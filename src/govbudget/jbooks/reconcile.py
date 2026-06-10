@@ -29,6 +29,24 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             "select org, exhibit_family, fiscal_year from jbook_documents where id=%s",
             (document_id,),
         ).fetchone()
+        # Re-reconciling replaces this document's verdicts: drop prior checks
+        # and their UNRESOLVED queue items (resolved items keep their audit trail).
+        con.execute(
+            """
+            delete from review_queue rq using reconciliation_checks c, extraction_runs r
+            where rq.check_id = c.id and c.extraction_run_id = r.id
+              and r.document_id = %s and rq.status = 'open'
+            """,
+            (document_id,),
+        )
+        con.execute(
+            """
+            delete from reconciliation_checks c using extraction_runs r
+            where c.extraction_run_id = r.id and r.document_id = %s
+              and not exists (select 1 from review_queue rq where rq.check_id = c.id)
+            """,
+            (document_id,),
+        )
         from govbudget.jbooks.orgs import workbook_org
 
         org = workbook_org(org)
@@ -70,12 +88,15 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             candidates = SCENARIO_MAP.get(scenario)
             if not candidates:
                 continue
+            fetch_types = list(candidates) + [
+                "fy_2026_total", "fy_2026_reconciliation_request",
+            ]
             row = con.execute(
                 "select amount_type, sum(amount_thousands) from budget_lines "
                 "where pe_bli=%s and amount_type = any(%s) "
                 "and exhibit=%s and organization=%s and fiscal_year=%s "
                 "group by amount_type",
-                (pe_bli, candidates, exhibit, org, fy),
+                (pe_bli, fetch_types, exhibit, org, fy),
             ).fetchall()
             by_type = {t: v for t, v in row}
             present = [
@@ -83,6 +104,14 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 for t in candidates
                 if by_type.get(t) is not None
             ]
+            if scenario in ("BudgetYearOne", "BudgetYearOneBase"):
+                total = by_type.get("fy_2026_total")
+                recon = by_type.get("fy_2026_reconciliation_request")
+                if total is not None and recon is not None:
+                    present.append((
+                        "fy_2026_total_minus_recon",
+                        (total - recon) / Decimal(1000),
+                    ))
             match = next(
                 ((t, v) for t, v in present if abs(v - amount_m) <= TOLERANCE_M), None
             )

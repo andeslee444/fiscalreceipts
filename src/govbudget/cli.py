@@ -253,6 +253,9 @@ def cmd_review(args) -> None:
                 print(f"#{r[0]} gate {r[1]} {r[2]}/{r[3]} expected={r[4]} actual={r[5]} :: {r[6]}")
             print(f"{len(rows)} open item(s)")
         elif args.review_action == "accept":
+            if args.id is None:
+                print("review accept requires --id")
+                sys.exit(2)
             con.execute(
                 "update review_queue set status='accepted', resolution=%s, resolved_at=now()"
                 " where id=%s",
