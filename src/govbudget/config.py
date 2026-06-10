@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = Path(os.environ.get("GOVBUDGET_DATA", ROOT / "data"))
+DATA_DIR = Path(os.environ.get("GOVBUDGET_DATA", ROOT / "data")).resolve()
 RAW_DIR = DATA_DIR / "raw"
 PARQUET_DIR = DATA_DIR / "parquet"
 DUCKDB_PATH = DATA_DIR / "duckdb" / "govbudget.duckdb"

@@ -7,3 +7,4 @@ def test_paths_and_constants():
     assert config.DOD_TOPTIER_CODE == "097"
     assert config.FY_START == 2017
     assert "contracts" in config.REQUIRED_COLUMNS
+    assert config.DATA_DIR.is_absolute()
