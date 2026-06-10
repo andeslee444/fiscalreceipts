@@ -12,6 +12,10 @@ def record_extraction_gaps(dsn: str, *, document_id: int) -> int:
             "select org, exhibit_family, fiscal_year from jbook_documents where id=%s",
             (document_id,),
         ).fetchone()
+        from govbudget.jbooks.orgs import doc_orgs_for, workbook_org
+
+        wb_org = workbook_org(org)
+        sibling_orgs = doc_orgs_for(wb_org)
         exhibit = {"rdte": "R-1", "procurement": "P-1"}.get(family)
         if exhibit is None:
             return 0
@@ -24,15 +28,15 @@ def record_extraction_gaps(dsn: str, *, document_id: int) -> int:
               and not exists (
                 select 1 from budget_line_details d
                 join jbook_documents j on j.id = d.document_id
-                where d.pe_bli = b.pe_bli and not d.superseded and j.org = %s
+                where d.pe_bli = b.pe_bli and not d.superseded and j.org = any(%s)
               )
             """,
-            (exhibit, org, fy, SENTINEL_PE, org),
+            (exhibit, wb_org, fy, SENTINEL_PE, sibling_orgs),
         ).fetchall()
         for (pe,) in missing:
             con.execute(
                 "insert into extraction_gaps (exhibit, pe_bli, reason, document_id)"
                 " values (%s,%s,%s,%s)",
-                (exhibit, pe, f"no extracted detail in {org} fy{fy} documents", document_id),
+                (exhibit, pe, f"no extracted detail in {wb_org} fy{fy} documents", document_id),
             )
         return len(missing)

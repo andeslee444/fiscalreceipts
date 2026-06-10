@@ -209,6 +209,30 @@ def test_budget_year_one_base_is_reconciled(pg_dsn):
     assert unrec == 0
 
 
+def test_gate_b_translates_document_org_aliases(pg_dsn):
+    upsert_documents(pg_dsn, [{
+        "org": "CHIPS", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "chips.pdf", "source_url": "https://example.test/chips.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        # control row lives under OSD, not CHIPS
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','OSD','0601101E','fy_2024_actuals',%s)",
+            (Decimal("280494"),),
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert check == (True,)
+
+
 def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     # corrupt one project row so Gate A fails for (0601101E, PriorYear)

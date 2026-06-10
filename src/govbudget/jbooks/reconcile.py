@@ -29,6 +29,9 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             "select org, exhibit_family, fiscal_year from jbook_documents where id=%s",
             (document_id,),
         ).fetchone()
+        from govbudget.jbooks.orgs import workbook_org
+
+        org = workbook_org(org)
         exhibit = {"rdte": "R-1", "procurement": "P-1"}.get(family)
         # ---------- Gate A: project rows sum to the PE-level amount ----------
         gate_a_rows = con.execute(
