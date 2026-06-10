@@ -279,6 +279,30 @@ def cmd_verify_phase1(args) -> None:
     ok = cov["pct"] >= 99.0 and acc["silent_unreconciled"] == 0 and (
         prov["sampled"] == 0 or prov["resolved"] == prov["sampled"]
     )
+    if args.trace:
+        import psycopg
+
+        from govbudget.jbooks.trace import trace_gate
+
+        with psycopg.connect(config.PG_DSN) as con:
+            sample = [r[0] for r in con.execute(
+                """
+                select pe_bli from budget_lines
+                where organization='DARPA' and exhibit='R-1'
+                  and amount_type='fy_2024_actuals'
+                order by amount_thousands desc nulls last limit 5
+                """
+            )]
+        t = trace_gate(
+            config.PG_DSN, pe_blis=sample,
+            award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+        )
+        print(f"gate 6 trace: {t['traced']}/{len(sample)} traced"
+              + (f" failed: {t['failed']}" if t["failed"] else ""))
+        if t.get("notes"):
+            for note in t["notes"]:
+                print(f"  note: {note}")
+        ok = ok and t["traced"] == len(sample)
     print("verify-phase1:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
 
@@ -339,6 +363,8 @@ def main(argv=None) -> None:
 
     v = sub.add_parser("verify-phase1", help="run phase 1 acceptance gates 1-3")
     v.add_argument("--orgs", default="DARPA")
+    v.add_argument("--trace", action="store_true",
+                   help="gate 6: walk budget->detail->crosswalk->award->recipient for top-5 DARPA PEs")
     v.set_defaults(func=cmd_verify_phase1)
 
     args = p.parse_args(argv)
