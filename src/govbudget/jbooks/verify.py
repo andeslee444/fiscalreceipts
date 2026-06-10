@@ -11,7 +11,8 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
             r[0]
             for r in con.execute(
                 "select distinct pe_bli from budget_lines "
-                "where exhibit='R-1' and organization = any(%s)",
+                "where exhibit='R-1' and organization = any(%s) "
+                "and pe_bli <> '9999999999'",
                 (organizations,),
             )
         }

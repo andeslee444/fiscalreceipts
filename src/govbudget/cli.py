@@ -158,6 +158,8 @@ def cmd_jbooks(args) -> None:
             print(f"load-rollups finished with {len(failures)} failure(s): {', '.join(failures)}")
             sys.exit(1)
     elif args.action == "extract":
+        from govbudget.jbooks.gaps import record_extraction_gaps
+
         with psycopg.connect(config.PG_DSN) as con:
             rows = con.execute(
                 "select id, file_path from jbook_documents "
@@ -177,7 +179,8 @@ def cmd_jbooks(args) -> None:
             result = reconcile.reconcile_document(
                 config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
             )
-            print(f"doc {doc_id}: run {run_id} reconcile {result}")
+            gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
+            print(f"doc {doc_id}: run {run_id} reconcile {result} gaps {gaps}")
 
 
 def cmd_review(args) -> None:
