@@ -44,15 +44,14 @@ def accuracy_gate(dsn: str) -> dict:
             """
             select count(*) from budget_line_details d
             where not d.superseded and not d.reconciled
-              and d.scenario = any(array['PriorYear', 'CurrentYear', 'BudgetYearOne'])
               and not exists (
                 select 1 from reconciliation_checks c
                 join review_queue rq on rq.check_id = c.id
                 where c.pe_bli = d.pe_bli and c.scenario = d.scenario
               )
-              and exists (  -- only count scenarios we promise to reconcile
+              and exists (  -- only count scenarios we promise to reconcile (Gate B)
                 select 1 from reconciliation_checks c2
-                where c2.pe_bli = d.pe_bli and c2.scenario = d.scenario
+                where c2.pe_bli = d.pe_bli and c2.scenario = d.scenario and c2.gate = 'B'
               )
             """
         ).fetchone()[0]
