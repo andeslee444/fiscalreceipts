@@ -29,7 +29,9 @@ def build_entity_xwalk(*, award_glob: str, out_path: Path) -> Path:
             group by recipient_uei
             """
         ).fetchall()
-        out: list[tuple] = []
+        # First pass: assign family + method; confidence starts as 'high' for
+        # parent-derived methods, 'medium' for recipient/self methods.
+        raw: list[tuple] = []
         for uei, rname, puei, pname, total in rows:
             if pname and normalize_name(pname):
                 family, method = normalize_name(pname), "parent_name"
@@ -40,6 +42,23 @@ def build_entity_xwalk(*, award_glob: str, out_path: Path) -> Path:
             else:
                 family, method = uei, "self_uei"
             confidence = "high" if method in ("parent_name", "parent_uei") else "medium"
+            raw.append((uei, rname, puei, pname, family, method, confidence, total))
+
+        # Second pass: families spanning >1 distinct parent_uei via name-merge
+        # are cross-parent merges and must be downgraded to 'medium'.
+        from collections import defaultdict
+        family_parent_ueis: dict[str, set[str]] = defaultdict(set)
+        for uei, rname, puei, pname, family, method, confidence, total in raw:
+            if puei:
+                family_parent_ueis[family].add(puei)
+        cross_parent_families = {
+            fam for fam, ueis in family_parent_ueis.items() if len(ueis) > 1
+        }
+
+        out: list[tuple] = []
+        for uei, rname, puei, pname, family, method, confidence, total in raw:
+            if family in cross_parent_families:
+                confidence = "medium"
             out.append((uei, rname, puei, pname, family, method, confidence, total))
         con.execute(
             "create table _x (recipient_uei varchar, recipient_name varchar,"

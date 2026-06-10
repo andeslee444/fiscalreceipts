@@ -26,6 +26,27 @@ def make_lake(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def test_confidence_tiers(tmp_path):
+    """Cross-parent-UEI name merges must carry 'medium' confidence; single-parent 'high'."""
+    lake = make_lake(tmp_path)
+    out = build_entity_xwalk(
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+        out_path=tmp_path / "entity_xwalk_conf.parquet",
+    )
+    rows = duckdb.sql(f"select * from read_parquet('{out}')").fetchall()
+    cols = [d[0] for d in duckdb.sql(f"describe select * from read_parquet('{out}')").fetchall()]
+    by_uei = {r[cols.index("recipient_uei")]: r for r in rows}
+    conf = cols.index("confidence")
+    # U1 (parent P1) and U2 (parent P2) share family 'BOEING' via name merge
+    # -> cross-parent merge -> both must be 'medium'
+    assert by_uei["U1"][conf] == "medium", f"Expected medium, got {by_uei['U1'][conf]!r}"
+    assert by_uei["U2"][conf] == "medium", f"Expected medium, got {by_uei['U2'][conf]!r}"
+    # U3 has a single parent UEI (P3) -> single-parent family -> stays 'high'
+    assert by_uei["U3"][conf] == "high", f"Expected high, got {by_uei['U3'][conf]!r}"
+    # U4 has no parent (recipient_name method) -> 'medium' (unchanged)
+    assert by_uei["U4"][conf] == "medium"
+
+
 def test_build_entity_xwalk_merges_families(tmp_path):
     lake = make_lake(tmp_path)
     out = build_entity_xwalk(

@@ -1,6 +1,21 @@
 from govbudget.entities import family_key, normalize_name
 
 
+def test_distinct_companies_stay_distinct():
+    """Regression: over-merge of UNITED* companies via DIVISION_SUFFIX_SEQS."""
+    a = normalize_name("UNITED DEFENSE SYSTEMS INC")
+    b = normalize_name("UNITED CAPITAL CORP.")
+    c = normalize_name("UNITED TACTICAL SYSTEMS, LLC")
+    assert len({a, b, c}) == 3, f"Over-merge: {a!r}, {b!r}, {c!r}"
+    # Delta is generic — DELTA INFORMATION SYSTEMS must not collapse to DELTA
+    assert normalize_name("DELTA INFORMATION SYSTEMS") != normalize_name("DELTA FOUNDATION"), (
+        "DELTA INFORMATION SYSTEMS and DELTA FOUNDATION must stay distinct"
+    )
+    # Boeing collapse must still work (non-generic head):
+    assert normalize_name("BOEING NORTH AMERICAN INC") == "BOEING"
+    assert normalize_name("BOEING CAPITAL CORPORATION") == "BOEING"
+
+
 def test_normalize_strips_legal_noise():
     assert normalize_name("THE BOEING COMPANY") == "BOEING"
     assert normalize_name("BOEING COMPANY, THE (INC)") == "BOEING"

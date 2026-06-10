@@ -38,9 +38,37 @@ DIVISION_SUFFIX_SEQS: list[tuple[str, ...]] = [
     ("TACTICAL", "SYSTEMS"),
 ]
 
+# Single-token heads that are too generic to safely collapse a company name to.
+# When division-suffix stripping would leave only one of these tokens behind,
+# the strip is suppressed — the suffixed form is more distinctive.
+GENERIC_HEADS = {
+    "UNITED", "GENERAL", "NATIONAL", "AMERICAN", "GLOBAL", "FIRST", "ADVANCED",
+    "INTERNATIONAL", "DELTA", "APEX", "ALPHA", "OMEGA", "PRECISION", "MARITIME",
+}
+
 _ABBREV = re.compile(r"(?<=[A-Z])\.(?=[A-Z])")  # dots inside abbreviations: L.L.C. → LLC
 _PUNCT = re.compile(r"[^A-Z0-9 ]+")
 _SPACES = re.compile(r"\s+")
+
+
+def _strip_division_suffixes(tokens: list[str]) -> list[str]:
+    """Recursively strip DIVISION_SUFFIX_SEQS from tail of tokens.
+
+    A strip only fires when BOTH:
+      (a) ≥2 tokens survive the strip, OR
+      (b) exactly 1 token survives AND it is not in GENERIC_HEADS.
+
+    This prevents over-merge: 'UNITED DEFENSE SYSTEMS' → survivor ['UNITED']
+    which is generic → strip suppressed → stays 'UNITED DEFENSE SYSTEMS'.
+    Meanwhile 'BOEING NORTH AMERICAN' → survivor ['BOEING'], not generic → strips.
+    """
+    for seq in DIVISION_SUFFIX_SEQS:
+        n = len(seq)
+        if len(tokens) > n and tokens[-n:] == list(seq):
+            survivor = tokens[:-n]
+            if len(survivor) >= 2 or (len(survivor) == 1 and survivor[0] not in GENERIC_HEADS):
+                return _strip_division_suffixes(survivor)
+    return tokens
 
 
 def normalize_name(name: str) -> str:
@@ -65,12 +93,8 @@ def normalize_name(name: str) -> str:
         while tokens and tokens[0] == "THE":
             tokens.pop(0)
             changed = True
-    # Strip known division-suffix sequences (only when tokens would remain)
-    for seq in DIVISION_SUFFIX_SEQS:
-        n = len(seq)
-        if len(tokens) > n and tuple(tokens[-n:]) == seq:
-            tokens = tokens[:-n]
-            break
+    # Strip known division-suffix sequences (guarded: won't reduce to a generic head)
+    tokens = _strip_division_suffixes(tokens)
     return " ".join(tokens)
 
 
