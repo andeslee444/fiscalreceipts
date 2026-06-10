@@ -89,17 +89,17 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             if match:
                 matched_type, expected = match
                 ok = True
-                detail = f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
+                detail = f"{exhibit} {matched_type}={expected}M vs XML {scenario}={amount_m}M"
             elif present:
                 matched_type, expected = present[0]
                 ok = False
-                detail = f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
+                detail = f"{exhibit} {matched_type}={expected}M vs XML {scenario}={amount_m}M"
             elif amount_m == 0:
                 # The R-1 display omits empty cells; an absent control row is
                 # semantically zero. Only an explicit zero may match it.
                 expected = None
                 ok = True
-                detail = f"absent R-1 cell == XML {scenario}=0.000 (zero-absent rule)"
+                detail = f"absent {exhibit} cell == XML {scenario}=0.000 (zero-absent rule)"
             else:
                 expected = None
                 ok = False

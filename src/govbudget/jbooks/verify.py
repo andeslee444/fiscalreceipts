@@ -8,6 +8,11 @@ from govbudget.jbooks.gaps import SENTINEL_PE
 
 def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
     """Gate 1: every in-scope R-1 line has detail rows or an extraction_gaps row."""
+    from govbudget.jbooks.orgs import doc_orgs_for, workbook_org
+
+    workbook_orgs = sorted({workbook_org(o) for o in organizations})
+    doc_orgs = sorted({d for w in workbook_orgs for d in doc_orgs_for(w)})
+
     with psycopg.connect(dsn) as con:
         r1 = {
             r[0]
@@ -15,7 +20,7 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
                 "select distinct pe_bli from budget_lines "
                 "where exhibit='R-1' and organization = any(%s) "
                 "and pe_bli <> %s",
-                (organizations, SENTINEL_PE),
+                (workbook_orgs, SENTINEL_PE),
             )
         }
         detailed = {
@@ -30,7 +35,7 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
                 "select eg.pe_bli from extraction_gaps eg "
                 "join jbook_documents j on j.id = eg.document_id "
                 "where j.org = any(%s)",
-                (organizations,),
+                (doc_orgs,),
             )
         }
     covered = r1 & (detailed | gapped)

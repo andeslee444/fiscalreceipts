@@ -41,6 +41,20 @@ def test_gaps_recorded_for_unextracted_r1_lines(pg_dsn):
     assert total == 1
 
 
+def test_coverage_gate_translates_aliased_orgs(pg_dsn):
+    from govbudget.jbooks.verify import coverage_gate
+
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','CYBER','0208085JCY','fy_2024_actuals',1000)",
+        )
+    cov = coverage_gate(pg_dsn, organizations=["CYBERCOM"])
+    assert cov["r1_lines"] == 1  # not a vacuous 0/0
+    assert cov["missing"] == ["0208085JCY"]
+
+
 def test_coverage_gap_lookup_is_org_scoped(pg_dsn):
     from govbudget.jbooks.verify import coverage_gate
 
