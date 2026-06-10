@@ -224,11 +224,15 @@ def cmd_jbooks(args) -> None:
                         " where organization is not null and organization <> ''"
                     )
                 })
+        fy_start = getattr(args, "fy_start", None)
+        fy_end = getattr(args, "fy_end", None)
         total = 0
         for org in orgs:
             n = crosswalk_org(
                 config.PG_DSN, organization=org, treasury_agency="097",
                 award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+                fy_start=fy_start,
+                fy_end=fy_end,
             )
             print(f"crosswalk {org}: {n} links")
             total += n
@@ -318,6 +322,10 @@ def main(argv=None) -> None:
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
     j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk"])
     j.add_argument("--org", default=None)
+    j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
+                   help="crosswalk: filter awards to fiscal years >= this value")
+    j.add_argument("--fy-end", type=int, default=None, dest="fy_end",
+                   help="crosswalk: filter awards to fiscal years <= this value")
     j.set_defaults(func=cmd_jbooks)
 
     rv = sub.add_parser("review", help="reconciliation review queue")

@@ -6,15 +6,25 @@ federal_accounts_funding_this_award list. Method 2 (token overlap): candidate
 confidence is raised to 'high' when PE/title tokens overlap the award's
 descriptions. Everything lands in budget_line_awards with method + confidence;
 nothing is asserted silently. v1 is LLM-free by design (recorded decision).
+
+v1 links are account+evidence-scoped; FY attribution is explicit via
+fy_start/fy_end or all-loaded-years by default.
 """
 import re
 
 import duckdb
 import psycopg
 
+# Trailing letter on budget accounts is the service designator and maps to
+# the treasury agency prefix USAspending uses (verified in the award lake:
+# 0400D->097-0400, 1319N->017-1319, 2040A->021-2040, 3600F->057-3600).
+AGENCY_BY_LETTER = {"D": "097", "N": "017", "A": "021", "F": "057"}
+
 STOPWORDS = {
     "the", "and", "for", "of", "to", "in", "a", "support", "services", "service",
     "program", "research", "development", "defense", "system", "systems",
+    "technology", "technologies", "advanced", "based", "high", "performance",
+    "management", "information", "operational", "tactical", "small",
 }
 
 
@@ -29,7 +39,9 @@ def _tokens(text: str | None) -> set[str]:
 
 def crosswalk_org(
     dsn: str, *, organization: str, treasury_agency: str, award_glob: str,
-    min_overlap: int = 1,
+    min_overlap: int = 2,
+    fy_start: int | None = None,
+    fy_end: int | None = None,
 ) -> int:
     """Crosswalk all of one organization's budget lines against the award lake.
 
@@ -55,10 +67,24 @@ def crosswalk_org(
     upserts = 0
     try:
         for pe_bli, exhibit, fy, account, line_title in lines:
-            # Normalize account: strip trailing alpha suffixes (e.g. "0400D" -> "0400")
-            # Federal account codes in USASpending are the 4-digit numeric appropriation only.
-            norm_account = account.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-            fed_account = f"{treasury_agency}-{norm_account}"
+            # Map service-letter suffix to treasury agency prefix.
+            # e.g. "1319N" -> agency "017", numeric "1319" -> fed_account "017-1319"
+            # Letterless accounts fall back to the caller-supplied treasury_agency.
+            if account and account[-1:].isalpha():
+                numeric, letter = account[:-1], account[-1].upper()
+            else:
+                numeric, letter = account, None
+            agency = AGENCY_BY_LETTER.get(letter, treasury_agency)
+            fed_account = f"{agency}-{numeric}"
+
+            # Optional FY filter on action_date
+            fy_filter = ""
+            if fy_start is not None and fy_end is not None:
+                fy_filter = (
+                    f" and try_cast(substr(action_date,1,4) as integer)"
+                    f" between {fy_start} and {fy_end}"
+                )
+
             rows = con.execute(
                 f"""
                 select award_id_piid,
@@ -71,10 +97,15 @@ def crosswalk_org(
                 from read_parquet('{award_glob}', union_by_name=true)
                 where federal_accounts_funding_this_award like '%{fed_account}%'
                   and award_id_piid is not null and award_id_piid <> ''
+                  {fy_filter}
                 group by award_id_piid
                 """
             ).fetchall()
             pe_tokens = _tokens(line_title) | title_tokens.get(pe_bli, set())
+
+            fy_suffix = "" if (fy_start is None or fy_end is None) else ""
+            all_years_note = "; all loaded award years" if (fy_start is None and fy_end is None) else ""
+
             with psycopg.connect(dsn) as pg:
                 for piid, rname, ruei, obligation, desc1, desc2, sub_agency in rows:
                     award_tokens = _tokens(desc1) | _tokens(desc2)
@@ -85,13 +116,13 @@ def crosswalk_org(
                     )
                     if overlap >= min_overlap:
                         confidence, method = "high", "account+tokens"
-                        rationale = f"account {fed_account}; token overlap {overlap}"
+                        rationale = f"account {fed_account}; token overlap {overlap}{all_years_note}"
                     elif org_in_subagency:
                         confidence, method = "medium", "account+subagency"
-                        rationale = f"account {fed_account}; sub-agency {sub_agency}"
+                        rationale = f"account {fed_account}; sub-agency {sub_agency}{all_years_note}"
                     else:
                         confidence, method = "low", "account"
-                        rationale = f"account {fed_account} only"
+                        rationale = f"account {fed_account} only{all_years_note}"
                     pg.execute(
                         """
                         insert into budget_line_awards
