@@ -1,3 +1,5 @@
+import pytest
+
 from govbudget.manifest import ManifestRecord, append_record, has_file, load_records
 
 
@@ -29,3 +31,12 @@ def test_has_file(tmp_path):
     append_record(path, make_record(name="x.zip"))
     assert has_file(path, "x.zip")
     assert not has_file(path, "y.zip")
+
+
+def test_load_raises_on_corrupt_line(tmp_path):
+    path = tmp_path / "manifest.jsonl"
+    append_record(path, make_record())
+    with open(path, "a") as f:
+        f.write("{not json\n")
+    with pytest.raises(ValueError, match="line 2"):
+        load_records(path)

@@ -23,8 +23,18 @@ def append_record(path: Path, record: ManifestRecord) -> None:
 def load_records(path: Path) -> list[ManifestRecord]:
     if not path.exists():
         return []
+    records = []
     with open(path) as f:
-        return [ManifestRecord(**json.loads(line)) for line in f if line.strip()]
+        for lineno, line in enumerate(f, start=1):
+            if not line.strip():
+                continue
+            try:
+                records.append(ManifestRecord(**json.loads(line)))
+            except (json.JSONDecodeError, TypeError) as e:
+                raise ValueError(
+                    f"Corrupt manifest line {lineno} in {path}: {e}"
+                ) from e
+    return records
 
 
 def has_file(path: Path, file_name: str) -> bool:
