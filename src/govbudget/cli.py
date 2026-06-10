@@ -72,6 +72,17 @@ def cmd_sync_subawards(args) -> None:
         print(f"subawards fy{args.fy}: loaded")
 
 
+def cmd_sync_fiscaldata(args) -> None:
+    from govbudget.fiscaldata import sync_mts_outlays
+
+    with httpx.Client(base_url=config.FISCALDATA_API, timeout=60) as client:
+        out = sync_mts_outlays(
+            client, parquet_dir=config.PARQUET_DIR, raw_dir=config.RAW_DIR,
+            manifest_path=config.MANIFEST_PATH, fy_start=config.FY_START,
+        )
+    print(f"fiscaldata: loaded {out}")
+
+
 def cmd_build(args) -> None:
     rc = subprocess.run(
         ["dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt"]
@@ -92,6 +103,9 @@ def main(argv=None) -> None:
     s = sub.add_parser("sync-subawards", help="DoD subawards (custom download) -> parquet")
     s.add_argument("--fy", type=int, required=True)
     s.set_defaults(func=cmd_sync_subawards)
+
+    f = sub.add_parser("sync-fiscaldata", help="Treasury MTS outlays -> parquet")
+    f.set_defaults(func=cmd_sync_fiscaldata)
 
     b = sub.add_parser("build", help="dbt build star schema")
     b.set_defaults(func=cmd_build)
