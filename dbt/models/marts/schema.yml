@@ -1,0 +1,10 @@
+version: 2
+models:
+  - name: fct_award_transactions
+    columns:
+      - name: transaction_key
+        data_tests: [unique, not_null]
+  - name: dim_recipients
+    columns:
+      - name: recipient_uei
+        data_tests: [unique, not_null]

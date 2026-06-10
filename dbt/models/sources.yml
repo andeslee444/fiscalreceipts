@@ -1,0 +1,17 @@
+version: 2
+sources:
+  - name: lake
+    schema: main
+    tables:
+      - name: contracts
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/contracts/*/*.parquet', hive_partitioning=true, union_by_name=true)"
+      - name: assistance
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/assistance/*/*.parquet', hive_partitioning=true, union_by_name=true)"
+      - name: subawards
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/subawards/*/*.parquet', hive_partitioning=true, union_by_name=true)"
+      - name: mts_outlays
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/mts_outlays/*.parquet')"

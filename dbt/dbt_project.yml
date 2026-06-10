@@ -1,0 +1,10 @@
+name: govbudget
+version: "1.0"
+profile: govbudget
+model-paths: ["models"]
+models:
+  govbudget:
+    +materialized: view
+    marts:
+      dim_recipients:
+        +materialized: table

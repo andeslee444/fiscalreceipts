@@ -1,0 +1,7 @@
+govbudget:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('GOVBUDGET_DUCKDB', 'data/duckdb/govbudget.duckdb') }}"
+      threads: 4
