@@ -317,6 +317,23 @@ def cmd_entity_graph(args) -> None:
     print(f"entity-graph: wrote {out}")
 
 
+def cmd_verify_phase2(args) -> None:
+    from govbudget.verify_phase2 import entity_gate, geography_gate, golden_gate
+
+    e = entity_gate(config.DUCKDB_PATH)
+    g = golden_gate(config.DUCKDB_PATH)
+    geo = geography_gate(config.DUCKDB_PATH)
+    print(f"gate e1 entities: {e['resolved']}/{e['top_n']} resolved ({e['resolved_pct']}%)")
+    print(f"gate e2 goldens: boeing {g['boeing_ueis']} UEIs one_family={g['boeing_one_family']}"
+          f" hii one_family={g['hii_one_family']}")
+    print(f"gate e3 geography: {geo['with_district']}/{geo['with_state']}"
+          f" ({geo['resolved_pct']}%) state-rows with districts")
+    ok = (e["resolved_pct"] >= 95.0 and g["boeing_one_family"] and g["hii_one_family"]
+          and geo["resolved_pct"] >= 99.0)
+    print("verify-phase2:", "PASS" if ok else "FAIL")
+    sys.exit(0 if ok else 1)
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -379,6 +396,9 @@ def main(argv=None) -> None:
     v.add_argument("--trace", action="store_true",
                    help="gate 6: walk budget->detail->crosswalk->award->recipient for top-5 DARPA PEs")
     v.set_defaults(func=cmd_verify_phase1)
+
+    v2 = sub.add_parser("verify-phase2", help="phase 2 acceptance gates")
+    v2.set_defaults(func=cmd_verify_phase2)
 
     args = p.parse_args(argv)
     args.func(args)
