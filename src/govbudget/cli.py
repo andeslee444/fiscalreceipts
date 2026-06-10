@@ -143,12 +143,20 @@ def cmd_jbooks(args) -> None:
             ).fetchall()
         failures = []
         for doc_id, title, file_path, fy in rows:
-            exhibit = "R-1" if title.startswith("r1") else "P-1"
             try:
-                n = rollup_loader.load_rollup(
-                    config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
-                    source_document_id=doc_id,
-                )
+                if title.startswith("r1"):
+                    n = rollup_loader.load_rollup(
+                        config.PG_DSN, Path(file_path), exhibit="R-1", fiscal_year=fy,
+                        source_document_id=doc_id,
+                    )
+                else:
+                    from govbudget.jbooks.p1_loader import load_p1_rollup
+
+                    exhibit = "P-1R" if title.startswith("p1r") else "P-1"
+                    n = load_p1_rollup(
+                        config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
+                        source_document_id=doc_id,
+                    )
             except Exception as e:
                 failures.append(title)
                 print(f"{title}: FAILED ({type(e).__name__}: {e})")
