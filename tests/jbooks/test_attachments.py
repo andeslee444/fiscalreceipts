@@ -45,3 +45,31 @@ def test_extract_on_pdf_without_attachments(tmp_path):
     pdf = make_pdf(tmp_path, {})
     assert extract_jbook_xml(pdf, tmp_path / "xml") == []
     assert list_embedded(pdf) == []
+
+
+def test_colliding_basenames_are_disambiguated_not_overwritten(tmp_path):
+    def zzz_with(name, body):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr(name, body)
+        return buf.getvalue()
+
+    pdf = make_pdf(tmp_path, {
+        "JB_A.zzz": zzz_with("Exhibit_R-2.xml", b"<a/>"),
+        "JB_B.zzz": zzz_with("Exhibit_R-2.xml", b"<b/>"),
+    })
+    out = extract_jbook_xml(pdf, tmp_path / "xml")
+    assert len(out) == 2
+    assert len({p.name for p in out}) == 2  # distinct file names
+    bodies = {p.read_bytes() for p in out}
+    assert bodies == {b"<a/>", b"<b/>"}
+
+
+def test_zip_member_paths_are_flattened(tmp_path):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("sub/dir/book.xml", XML_BODY)
+    pdf = make_pdf(tmp_path, {"book.zzz": buf.getvalue()})
+    out = extract_jbook_xml(pdf, tmp_path / "xml")
+    assert [p.name for p in out] == ["book.xml"]
+    assert out[0].parent == tmp_path / "xml"
