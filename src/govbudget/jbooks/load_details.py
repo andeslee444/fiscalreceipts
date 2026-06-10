@@ -14,7 +14,7 @@ def load_document_details(dsn: str, *, document_id: int, xml_path: Path) -> int:
         run_id = con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions) "
             "values (%s, 0, %s) returning id",
-            (document_id, json.dumps({"parser": "xml_parser/1", "source": xml_path.name})),
+            (document_id, json.dumps({"parser": "xml_parser/1", "source": str(xml_path)})),
         ).fetchone()[0]
         con.execute(
             "update budget_line_details set superseded=true where document_id=%s",

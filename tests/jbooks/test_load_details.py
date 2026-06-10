@@ -51,4 +51,5 @@ def test_reextract_supersedes_prior_run(pg_dsn):
         dead = con.execute(
             "select count(*) from budget_line_details where superseded"
         ).fetchone()[0]
+    assert dead > 0, "first run wrote no rows — fixture may be broken"
     assert live == dead  # second run superseded the first, equal row counts
