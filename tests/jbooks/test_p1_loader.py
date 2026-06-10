@@ -60,3 +60,33 @@ def test_p1_loader_is_idempotent(pg_dsn, tmp_path):
             "select count(*) from budget_lines where exhibit='P-1'"
         ).fetchone()[0]
     assert total == 3
+
+
+def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
+    # Real-data regression: Apache-style BLI split across two Line Numbers
+    # previously collided on upsert (last write wins, $138B understated).
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(P1_HEADERS)
+    ws.append(["2031A", "Aircraft Procurement, Army", "A", "01", "Aircraft",
+               "9", "20", "Rotary", "5757A05111", "AH-64 Apache Reman",
+               "A", "Weapon System Cost", "Add", 37, 649000, "", "", "", ""])
+    ws.append(["2031A", "Aircraft Procurement, Army", "A", "01", "Aircraft",
+               "10", "20", "Rotary", "5757A05111", "AH-64 Apache Reman",
+               "A", "Advance Procurement", "Add", "", 110000, "", "", "", ""])
+    p = tmp_path / "p1_split_lines.xlsx"
+    wb.save(p)
+
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        total = con.execute(
+            "select sum(amount_thousands) from budget_lines"
+            " where pe_bli='5757A05111' and amount_type='fy_2024_actuals'"
+        ).fetchone()[0]
+        n_rows = con.execute(
+            "select count(*) from budget_lines"
+            " where pe_bli='5757A05111' and amount_type='fy_2024_actuals'"
+        ).fetchone()[0]
+    assert total == Decimal("759000")  # 649000 + 110000
+    assert n_rows == 1  # single aggregated control row
