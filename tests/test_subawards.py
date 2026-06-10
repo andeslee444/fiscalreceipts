@@ -19,6 +19,12 @@ def make_client(status_sequence):
 
     def handler(request):
         if request.url.path.endswith("/bulk_download/awards/"):
+            import json
+
+            payload = json.loads(request.content)
+            assert "subawards" not in payload
+            assert payload["filters"]["sub_award_types"] == ["grant", "procurement"]
+            assert "prime_award_types" not in payload["filters"]
             return httpx.Response(200, json={
                 "file_name": "sub_dl_123.zip",
                 "status_url": "https://api.usaspending.gov/api/v2/download/status?file_name=sub_dl_123.zip",

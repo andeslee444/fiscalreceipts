@@ -928,7 +928,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ### Task 7: Subaward custom bulk download
 
-Subawards are not in the archive; they come from the custom download API (request → poll → download). API contract: `api_contracts/contracts/v2/bulk_download/awards.md` and `api_contracts/contracts/v2/download/status.md` in the `fedspendingtransparency/usaspending-api` repo. If the live API rejects the payload during the Task 10 smoke, fix the payload against those two docs — the payload builder is isolated in one function for exactly this reason.
+Subawards are not in the archive; they come from the custom download API (request → poll → download). API contract: `api_contracts/contracts/v2/bulk_download/awards.md` and `api_contracts/contracts/v2/download/status.md` in the `fedspendingtransparency/usaspending-api` repo. If the live API rejects the payload during the Task 10 smoke, fix the payload against those two docs — the payload builder is isolated in one function for exactly this reason. Live-smoke correction: the current API selects subawards via `filters.sub_award_types: ["grant", "procurement"]` with `prime_award_types` omitted — the top-level `subawards` boolean in the original plan payload is ignored by the server.
 
 **Files:**
 - Create: `src/govbudget/usaspending/subawards.py`

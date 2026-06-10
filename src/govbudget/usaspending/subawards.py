@@ -22,14 +22,14 @@ def request_subaward_download(client: httpx.Client, *, fiscal_year: int) -> dict
             "agencies": [
                 {"type": "awarding", "tier": "toptier", "name": "Department of Defense"}
             ],
-            "prime_award_types": [
-                "A", "B", "C", "D",
-                "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
-            ],
+            # Subawards are selected via sub_award_types; prime_award_types must
+            # be omitted or the server generates prime transactions instead
+            # (live-smoke finding 2026-06-10: a top-level "subawards" flag is
+            # ignored by the current API).
+            "sub_award_types": ["grant", "procurement"],
             "date_type": "action_date",
             "date_range": {"start_date": start, "end_date": end},
         },
-        "subawards": True,
         "file_format": "csv",
     }
     r = client.post("/bulk_download/awards/", json=payload)
