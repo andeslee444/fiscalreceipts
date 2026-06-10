@@ -44,6 +44,11 @@ def download_file(
                         n += len(chunk)
             tmp.rename(dest)
             return digest.hexdigest(), n
+        except OSError:
+            # Disk-level failure (e.g. ENOSPC mid-write): clean up the partial
+            # file to free space, but don't retry a doomed write.
+            tmp.unlink(missing_ok=True)
+            raise
         except httpx.HTTPError:
             tmp.unlink(missing_ok=True)
             if attempt == max_retries:
