@@ -203,6 +203,11 @@ def cmd_jbooks(args) -> None:
         if failures:
             print(f"extract finished with {len(failures)} failure(s)")
             sys.exit(1)
+    elif args.action == "export-facts":
+        from govbudget.jbooks.export_facts import export_facts
+
+        out = export_facts(config.PG_DSN, parquet_dir=config.PARQUET_DIR)
+        print("exported:", ", ".join(p.name for p in out))
 
 
 def cmd_review(args) -> None:
@@ -286,7 +291,7 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract"])
+    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts"])
     j.add_argument("--org", default=None)
     j.set_defaults(func=cmd_jbooks)
 

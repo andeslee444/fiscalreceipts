@@ -50,6 +50,7 @@ def _clean_tables(request):
         with psycopg.connect(dsn, autocommit=True) as con:
             con.execute(
                 "truncate jbook_documents, budget_lines, extraction_runs, budget_line_details, "
-                "detail_narratives, reconciliation_checks, review_queue, extraction_gaps "
+                "detail_narratives, reconciliation_checks, review_queue, extraction_gaps,"
+                " budget_line_awards "
                 "restart identity cascade"
             )

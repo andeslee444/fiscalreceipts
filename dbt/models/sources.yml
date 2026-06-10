@@ -15,3 +15,15 @@ sources:
       - name: mts_outlays
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/mts_outlays/*.parquet')"
+      - name: jbook_budget_lines
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/budget_lines.parquet')"
+      - name: jbook_details
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/details.parquet')"
+      - name: jbook_narratives
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/detail_narratives.parquet')"
+      - name: jbook_awards
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/budget_line_awards.parquet')"

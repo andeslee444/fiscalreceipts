@@ -19,7 +19,49 @@ def write_parquet(dir_path: Path, sql: str):
     duckdb.sql(f"copy ({sql}) to '{dir_path}/part.parquet' (format parquet)")
 
 
+JBOOK_BUDGET_LINE_COLS = (
+    "exhibit, fiscal_year, account, account_title, organization,"
+    " budget_activity, budget_activity_title, pe_bli, title, amount_type, amount_thousands"
+)
+
+JBOOK_DETAIL_COLS = (
+    "pe_bli, project_number, project_title, scenario, amount_millions,"
+    " xml_path, reconciled, org, exhibit_family, fiscal_year, document_id"
+)
+
+JBOOK_NARRATIVE_COLS = (
+    "pe_bli, project_number, kind, title, body, xml_path, org, fiscal_year"
+)
+
+JBOOK_AWARD_COLS = (
+    "pe_bli, exhibit, fiscal_year, organization, award_piid,"
+    " recipient_name, recipient_uei, matched_obligation, method, confidence, score, rationale"
+)
+
+
 def make_lake(data_dir: Path):
+    jbooks = data_dir / "parquet/jbooks"
+    jbooks.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(
+        f"copy (select * from (values ('R-1','2026','0400','Research','DARPA','1','Basic Research',"
+        f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494'))"
+        f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values ('0601101E',null,'Defense Research','PriorYear','280.494',"
+        f"'ProgramElement[0]','True','DARPA','rdte','2026','1'))"
+        f" t({JBOOK_DETAIL_COLS})) to '{jbooks}/details.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values ('0601101E',null,'accomplishment','Defense Research',"
+        f"'Some body text','ProgramElement[0]','DARPA','2026'))"
+        f" t({JBOOK_NARRATIVE_COLS})) to '{jbooks}/detail_narratives.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values ('0601101E','R-1','2026','DARPA','HR001124C0001',"
+        f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account'))"
+        f" t({JBOOK_AWARD_COLS})) to '{jbooks}/budget_line_awards.parquet' (format parquet)"
+    )
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
