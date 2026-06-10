@@ -138,6 +138,29 @@ def test_gate_b_ignores_other_org_control_rows(pg_dsn):
     assert check[1] == Decimal("280.494")
 
 
+def test_gate_b_zero_absent_rule(pg_dsn):
+    # No R-1 row at all for the PE: explicit XML zeros pass, nonzero amounts fail.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        zero_check = con.execute(
+            "select passed, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='BudgetYearOne'"
+        ).fetchone()
+        nonzero_check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert zero_check[0] is True and "zero-absent" in zero_check[1]
+    assert nonzero_check == (False,)  # 280.494M with no control row still fails
+
+
 def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     # corrupt one project row so Gate A fails for (0601101E, PriorYear)

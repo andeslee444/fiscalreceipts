@@ -75,12 +75,17 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                     expected = by_type[t] / Decimal(1000)  # R-1 $K -> $M
                     matched_type = t
                     break
-            ok = expected is not None and abs(expected - amount_m) <= TOLERANCE_M
-            detail = (
-                f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
-                if expected is not None
-                else f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
-            )
+            if expected is not None:
+                ok = abs(expected - amount_m) <= TOLERANCE_M
+                detail = f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
+            elif amount_m == 0:
+                # The R-1 display omits empty cells; an absent control row is
+                # semantically zero. Only an explicit zero may match it.
+                ok = True
+                detail = f"absent R-1 cell == XML {scenario}=0.000 (zero-absent rule)"
+            else:
+                ok = False
+                detail = f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
             check_id = _record(con, extraction_run_id, "B", pe_bli, scenario,
                                expected, amount_m, ok, detail)
             passed, failed, queued = _tally(con, check_id, ok, passed, failed, queued)
