@@ -82,3 +82,17 @@ def convert_zip_to_parquet(
     tmp_dir.rename(out_dir)
     zip_path.unlink()
     return [out_dir / name for name in part_names]
+
+
+def sweep_incoming_dirs(parquet_dir: Path) -> int:
+    """Delete orphaned fy=*.incoming dirs left by crashed conversions.
+
+    The sources.yml glob matches them and dbt's cast(fy as integer) then
+    fails the whole build, so they must be cleared before each sync.
+    """
+    if not parquet_dir.exists():
+        return 0
+    stale = [p for p in parquet_dir.glob("*/fy=*.incoming") if p.is_dir()]
+    for p in stale:
+        shutil.rmtree(p)
+    return len(stale)

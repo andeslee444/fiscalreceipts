@@ -86,3 +86,17 @@ def test_convert_partial_failure_leaves_live_partition_intact(tmp_path):
     assert (live / "existing.parquet").exists()
     assert not (parquet_dir / "contracts" / "fy=2017.incoming").exists()
     assert zip_path.exists()
+
+
+def test_sweep_incoming_dirs(tmp_path):
+    from govbudget.convert import sweep_incoming_dirs
+
+    stale = tmp_path / "contracts" / "fy=2017.incoming"
+    stale.mkdir(parents=True)
+    (stale / "part_000.parquet").write_bytes(b"x")
+    live = tmp_path / "contracts" / "fy=2017"
+    live.mkdir()
+    assert sweep_incoming_dirs(tmp_path) == 1
+    assert not stale.exists()
+    assert live.exists()
+    assert sweep_incoming_dirs(tmp_path / "missing") == 0

@@ -14,5 +14,7 @@ select
     awarding_sub_agency_name,
     cast(null as varchar) as naics_code,
     cast(null as varchar) as product_or_service_code,
-    primary_place_of_performance_state_code as pop_state
+    -- Assistance archives carry the state NAME (contracts carry the 2-letter
+    -- code); Phase 1 normalizes pop_state to one vocabulary.
+    primary_place_of_performance_state_name as pop_state
 from {{ source('lake', 'assistance') }}

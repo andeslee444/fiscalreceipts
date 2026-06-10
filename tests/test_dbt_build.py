@@ -30,10 +30,10 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/assistance/fy=2017",
         "select * from (values "
-        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MD')"
+        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND')"
         ") t(assistance_transaction_unique_key, action_date, federal_action_obligation, "
         "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
-        "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_code)",
+        "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_name)",
     )
     write_parquet(
         data_dir / "parquet/subawards/fy=2017",

@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import sys
+from pathlib import Path
 
 import httpx
 
@@ -24,11 +25,13 @@ def sync_archive_cmd(client, type_, fy) -> str:
 
 
 def cmd_sync_archive(args) -> None:
+    from govbudget.convert import sweep_incoming_dirs
     from govbudget.download import sweep_stale_parts
 
     swept = sweep_stale_parts(config.RAW_DIR)
     if swept:
         print(f"swept {swept} stale .part file(s)")
+    sweep_incoming_dirs(config.PARQUET_DIR)
     types = ["contracts", "assistance"] if args.type == "both" else [args.type]
     with _usaspending_client() as client:
         for fy in range(args.fy_start, args.fy_end + 1):
@@ -40,12 +43,13 @@ def cmd_sync_archive(args) -> None:
 def cmd_sync_subawards(args) -> None:
     import datetime as dt
 
-    from govbudget.convert import convert_zip_to_parquet
+    from govbudget.convert import convert_zip_to_parquet, sweep_incoming_dirs
     from govbudget.download import download_file, ensure_free_space, sweep_stale_parts
     from govbudget.manifest import ManifestRecord, append_record, has_dataset_fy, has_file
     from govbudget.usaspending.subawards import poll_until_ready, request_subaward_download
 
     sweep_stale_parts(config.RAW_DIR)
+    sweep_incoming_dirs(config.PARQUET_DIR)
     if has_dataset_fy(config.MANIFEST_PATH, "subawards", args.fy):
         print(f"subawards fy{args.fy}: skipped")
         return
@@ -91,6 +95,7 @@ def cmd_build(args) -> None:
         "GOVBUDGET_DATA": os.environ.get("GOVBUDGET_DATA", str(config.DATA_DIR)),
         "GOVBUDGET_DUCKDB": os.environ.get("GOVBUDGET_DUCKDB", str(config.DUCKDB_PATH)),
     }
+    Path(env["GOVBUDGET_DUCKDB"]).parent.mkdir(parents=True, exist_ok=True)
     rc = subprocess.run(
         ["dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt"],
         env=env,
