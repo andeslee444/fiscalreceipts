@@ -104,6 +104,95 @@ def cmd_migrate(args) -> None:
     print(f"migrations applied: {applied or 'none (up to date)'}")
 
 
+JBOOK_INDEX_URLS = [
+    "https://comptroller.war.gov/Budget-Materials/Budget2026/",
+    "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
+]
+
+
+def cmd_jbooks(args) -> None:
+    import psycopg
+
+    from govbudget.jbooks import acquire, load_details, reconcile, registry, rollup_loader
+    from govbudget.jbooks.db import migrate
+
+    migrate()
+    if args.action == "scrape":
+        docs = []
+        with httpx.Client(timeout=60) as client:
+            for index_url in JBOOK_INDEX_URLS:
+                docs.extend(registry.discover_documents(client, index_url, fiscal_year=config.JBOOK_FY))
+        n = registry.upsert_documents(config.PG_DSN, docs)
+        print(f"jbooks scrape: {len(docs)} discovered, {n} new")
+    elif args.action == "acquire":
+        with httpx.Client(timeout=120) as client:
+            n, failures = acquire.acquire_pending(
+                config.PG_DSN, client,
+                raw_docs_dir=config.RAW_DOCS_DIR, min_free_gb=config.MIN_FREE_GB,
+            )
+        print(f"jbooks acquire: {n} downloaded")
+        for doc_id, title, err in failures:
+            print(f"  FAILED #{doc_id} {title}: {err}")
+        if failures:
+            sys.exit(1)
+    elif args.action == "load-rollups":
+        with psycopg.connect(config.PG_DSN) as con:
+            rows = con.execute(
+                "select id, title, file_path, fiscal_year from jbook_documents "
+                "where exhibit_family='rollup' and status='downloaded'"
+            ).fetchall()
+        for doc_id, title, file_path, fy in rows:
+            exhibit = "R-1" if title.startswith("r1") else "P-1"
+            n = rollup_loader.load_rollup(
+                config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
+                source_document_id=doc_id,
+            )
+            print(f"{title}: {n} budget_lines")
+    elif args.action == "extract":
+        with psycopg.connect(config.PG_DSN) as con:
+            rows = con.execute(
+                "select id, file_path from jbook_documents "
+                "where has_embedded_xml and status='downloaded'"
+                + (" and org = %s" if args.org else ""),
+                ((args.org,) if args.org else ()),
+            ).fetchall()
+        for doc_id, file_path in rows:
+            xml_dir = Path(file_path).parent / "xml"
+            xmls = sorted(xml_dir.glob("*.xml"), key=lambda p: p.stat().st_size)
+            if not xmls:
+                print(f"doc {doc_id}: no xml on disk, skipping")
+                continue
+            run_id = load_details.load_document_details(
+                config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
+            )
+            result = reconcile.reconcile_document(
+                config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
+            )
+            print(f"doc {doc_id}: run {run_id} reconcile {result}")
+
+
+def cmd_review(args) -> None:
+    import psycopg
+
+    with psycopg.connect(config.PG_DSN) as con:
+        if args.review_action == "list":
+            rows = con.execute(
+                "select rq.id, c.gate, c.pe_bli, c.scenario, c.expected, c.actual, c.detail"
+                " from review_queue rq join reconciliation_checks c on c.id=rq.check_id"
+                " where rq.status='open' order by rq.id"
+            ).fetchall()
+            for r in rows:
+                print(f"#{r[0]} gate {r[1]} {r[2]}/{r[3]} expected={r[4]} actual={r[5]} :: {r[6]}")
+            print(f"{len(rows)} open item(s)")
+        elif args.review_action == "accept":
+            con.execute(
+                "update review_queue set status='accepted', resolution=%s, resolved_at=now()"
+                " where id=%s",
+                (args.reason, args.id),
+            )
+            print(f"#{args.id} accepted: {args.reason}")
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -142,6 +231,17 @@ def main(argv=None) -> None:
 
     m = sub.add_parser("migrate", help="apply postgres migrations")
     m.set_defaults(func=cmd_migrate)
+
+    j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
+    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract"])
+    j.add_argument("--org", default=None)
+    j.set_defaults(func=cmd_jbooks)
+
+    rv = sub.add_parser("review", help="reconciliation review queue")
+    rv.add_argument("review_action", choices=["list", "accept"])
+    rv.add_argument("--id", type=int)
+    rv.add_argument("--reason", default="")
+    rv.set_defaults(func=cmd_review)
 
     args = p.parse_args(argv)
     args.func(args)
