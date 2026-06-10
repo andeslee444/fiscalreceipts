@@ -10,6 +10,8 @@ def load_document_details(dsn: str, *, document_id: int, xml_path: Path) -> int:
     """Parse a J-book XML and load details/narratives. Supersedes prior rows
     for the document. Returns the extraction_run id."""
     records = parse_jbook_xml(xml_path)
+    if not records:
+        raise ValueError(f"no records parsed from {xml_path} — wrong file or schema drift")
     with psycopg.connect(dsn) as con:
         run_id = con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions) "
@@ -77,6 +79,8 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
     from govbudget.jbooks.p40_parser import parse_p40_xml
 
     records = parse_p40_xml(xml_path)
+    if not records:
+        raise ValueError(f"no records parsed from {xml_path} — wrong file or schema drift")
     with psycopg.connect(dsn) as con:
         run_id = con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions) "

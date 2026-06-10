@@ -165,27 +165,36 @@ def cmd_jbooks(args) -> None:
                 + (" and org = %s" if args.org else ""),
                 ((args.org,) if args.org else ()),
             ).fetchall()
+        from govbudget.jbooks.attachments import pick_book_xml
+        from govbudget.jbooks.gaps import record_extraction_gaps
+
+        failures = []
         for doc_id, file_path, family in rows:
-            xml_dir = Path(file_path).parent / "xml"
-            xmls = sorted(xml_dir.glob("*.xml"), key=lambda p: p.stat().st_size)
-            if not xmls:
+            book_xml = pick_book_xml(Path(file_path).parent / "xml")
+            if book_xml is None:
                 print(f"doc {doc_id}: no xml on disk, skipping")
                 continue
-            if family == "procurement":
-                run_id = load_details.load_procurement_details(
-                    config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
+            try:
+                if family == "procurement":
+                    run_id = load_details.load_procurement_details(
+                        config.PG_DSN, document_id=doc_id, xml_path=book_xml
+                    )
+                else:
+                    run_id = load_details.load_document_details(
+                        config.PG_DSN, document_id=doc_id, xml_path=book_xml
+                    )
+                result = reconcile.reconcile_document(
+                    config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
                 )
-            else:
-                run_id = load_details.load_document_details(
-                    config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
-                )
-            result = reconcile.reconcile_document(
-                config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
-            )
-            from govbudget.jbooks.gaps import record_extraction_gaps
-
-            gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
+                gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
+            except Exception as e:
+                failures.append((doc_id, f"{type(e).__name__}: {e}"))
+                print(f"doc {doc_id}: FAILED ({type(e).__name__}: {e})")
+                continue
             print(f"doc {doc_id}: run {run_id} reconcile {result} gaps {gaps}")
+        if failures:
+            print(f"extract finished with {len(failures)} failure(s)")
+            sys.exit(1)
 
 
 def cmd_review(args) -> None:

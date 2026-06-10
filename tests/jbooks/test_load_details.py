@@ -108,3 +108,17 @@ def test_reload_procurement_supersedes(pg_dsn):
         ).fetchone()[0]
     assert dead > 0
     assert live == dead
+
+
+def test_loaders_raise_on_zero_records(pg_dsn, tmp_path):
+    import pytest
+
+    from govbudget.jbooks.load_details import load_document_details, load_procurement_details
+
+    empty = tmp_path / "empty.xml"
+    empty.write_text('<?xml version="1.0"?><root/>')
+    doc_id = seed_proc_doc(pg_dsn)
+    with pytest.raises(ValueError, match="no records"):
+        load_procurement_details(pg_dsn, document_id=doc_id, xml_path=empty)
+    with pytest.raises(ValueError, match="no records"):
+        load_document_details(pg_dsn, document_id=doc_id, xml_path=empty)

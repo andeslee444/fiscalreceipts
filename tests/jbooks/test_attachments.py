@@ -73,3 +73,23 @@ def test_zip_member_paths_are_flattened(tmp_path):
     out = extract_jbook_xml(pdf, tmp_path / "xml")
     assert [p.name for p in out] == ["book.xml"]
     assert out[0].parent == tmp_path / "xml"
+
+
+def test_pick_book_xml_prefers_mjb_over_larger_companions(tmp_path):
+    from govbudget.jbooks.attachments import pick_book_xml
+
+    (tmp_path / "Exhibit_P-1D.xml").write_bytes(b"x" * 3000)
+    (tmp_path / "U_PROCUREMENT_MJB_123_CBDP_PB_2026.xml").write_bytes(b"x" * 1400)
+    (tmp_path / "U_PROCUREMENT_JB_123_CBDP_PB_2026.xml").write_bytes(b"x" * 1300)
+    assert pick_book_xml(tmp_path).name == "U_PROCUREMENT_MJB_123_CBDP_PB_2026.xml"
+
+
+def test_pick_book_xml_falls_back_to_jb_then_largest(tmp_path):
+    from govbudget.jbooks.attachments import pick_book_xml
+
+    (tmp_path / "U_RDTE_JB_1_X_PB_2026.xml").write_bytes(b"x" * 10)
+    (tmp_path / "other.xml").write_bytes(b"x" * 999)
+    assert pick_book_xml(tmp_path).name == "U_RDTE_JB_1_X_PB_2026.xml"
+    (tmp_path / "U_RDTE_JB_1_X_PB_2026.xml").unlink()
+    assert pick_book_xml(tmp_path).name == "other.xml"
+    assert pick_book_xml(tmp_path / "missing") is None

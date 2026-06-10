@@ -21,6 +21,25 @@ def _dest_path(out_dir: Path, base: str, attachment_name: str) -> Path:
     return p
 
 
+def pick_book_xml(xml_dir: Path) -> Path | None:
+    """Choose the justification-book XML among extracted attachments.
+
+    Books ship companion XMLs (Exhibit_R-1D/P-1D spreadsheets, wall charts)
+    that can be LARGER than the book itself, so prefer by name convention:
+    master book (_MJB_), then volume book (_JB_), then largest file.
+    """
+    if not xml_dir.exists():
+        return None
+    xmls = list(xml_dir.glob("*.xml"))
+    if not xmls:
+        return None
+    for marker in ("_MJB_", "_JB_"):
+        marked = [p for p in xmls if marker in p.name]
+        if marked:
+            return max(marked, key=lambda p: p.stat().st_size)
+    return max(xmls, key=lambda p: p.stat().st_size)
+
+
 def list_embedded(pdf_path: Path) -> list[str]:
     return list(PdfReader(str(pdf_path)).attachments.keys())
 
