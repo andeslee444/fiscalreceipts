@@ -208,6 +208,31 @@ def cmd_jbooks(args) -> None:
 
         out = export_facts(config.PG_DSN, parquet_dir=config.PARQUET_DIR)
         print("exported:", ", ".join(p.name for p in out))
+    elif args.action == "crosswalk":
+        from govbudget.jbooks.crosswalk import crosswalk_org
+        from govbudget.jbooks.orgs import workbook_org
+
+        import psycopg
+
+        if args.org:
+            orgs = [workbook_org(args.org)]
+        else:
+            with psycopg.connect(config.PG_DSN) as con:
+                orgs = sorted({
+                    r[0] for r in con.execute(
+                        "select distinct organization from budget_lines"
+                        " where organization is not null and organization <> ''"
+                    )
+                })
+        total = 0
+        for org in orgs:
+            n = crosswalk_org(
+                config.PG_DSN, organization=org, treasury_agency="097",
+                award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+            )
+            print(f"crosswalk {org}: {n} links")
+            total += n
+        print(f"crosswalk total: {total}")
 
 
 def cmd_review(args) -> None:
@@ -291,7 +316,7 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts"])
+    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk"])
     j.add_argument("--org", default=None)
     j.set_defaults(func=cmd_jbooks)
 
