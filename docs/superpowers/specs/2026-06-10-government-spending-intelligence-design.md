@@ -1,7 +1,7 @@
 # Government Spending Intelligence Platform — Design
 
 **Date:** 2026-06-10
-**Status:** Draft — pending user review
+**Status:** Approved 2026-06-10
 **Working name:** GovBudget
 
 ## 1. Problem & Opportunity
@@ -166,10 +166,23 @@ State/local PDFs →   (sums must match)       → object store (raw + parquet)
   with monitors, not hard-coded URLs
 - **Scrape etiquette** → government data is public domain; respect robots.txt and rate limits
 
-## 7. Open Questions for User
+## 7. Resolved Decisions (user-approved 2026-06-10)
 
-1. Audience/monetization priority: paid analyst tool first (A), or public-good site with
-   philanthropy funding (C)? Design assumes A with C as marketing surface.
-2. Wedge confirmation: DoD-first vs state-first?
-3. Hosting: local-first (Mac Mini + DuckDB, near-zero cost) vs cloud-first from day one?
-   Design assumes local-first dev, cloud when the product surface ships.
+1. **Audience:** Paid analyst platform (A) with public scorecards (C) as marketing surface.
+2. **Wedge:** DoD-first, then one-state pilot.
+3. **Hosting:** Local-first on user's Mac Mini. **Constraint: 256GB disk.**
+
+### Storage budget (256GB Mac Mini)
+
+The full USAspending database snapshot (~1.5TB+) does NOT fit and is not needed. Strategy:
+
+- Ingest via **scoped bulk award downloads** (DoD agencies first, FY2017+), not the full
+  DB archive. Convert CSV → Parquet immediately (zstd, ~5–10x compression); delete raw
+  CSVs after conversion, keeping a source manifest (URL, hash, date) for reproducibility —
+  bulk files can always be re-downloaded.
+- Estimated footprint: DoD prime + sub awards FY2017+ as Parquet ~20–40GB; SAM entity
+  registry ~5GB; J-book PDFs ~5–10GB; GAO/IG PDFs ~5GB; Postgres canonical facts ~10GB.
+  Comfortable inside 256GB with >100GB headroom.
+- Widening scope (all agencies, all years, state/local) → add an external SSD (~$100/TB)
+  or move analytics Parquet to cloud object storage; the architecture is unchanged either
+  way since DuckDB reads Parquet from local disk or S3 identically.
