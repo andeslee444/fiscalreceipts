@@ -57,8 +57,11 @@ def load_p1_rollup(
     id_cols = {j: P1_ID_HEADERS[h] for j, h in headers.items() if h in P1_ID_HEADERS}
     add_col = next(j for j, h in headers.items() if h == "Add/Non-Add")
 
-    # key: (account, account_title, organization, ba, ba_title, line_number, bli, title)
-    sums: dict[tuple, dict[str, Decimal]] = defaultdict(dict)
+    # key matches the DB unique constraint grain:
+    # (account, account_title, organization, ba, ba_title, bli, title)
+    # line_number is intentionally excluded so all cost-type sub-rows for the same
+    # BLI aggregate into a single bucket before insert (avoiding last-write-wins collision).
+    sums: dict[tuple, dict[str, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
         ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
         if not ids.get("pe_bli"):
@@ -68,7 +71,7 @@ def load_p1_rollup(
         key = (
             str(ids.get("account")), ids.get("account_title"),
             str(ids.get("organization")), _str(ids.get("budget_activity")),
-            ids.get("budget_activity_title"), _str(ids.get("line_number")),
+            ids.get("budget_activity_title"),
             str(ids.get("pe_bli")), ids.get("title"),
         )
         for j, amount_type in amount_cols.items():
@@ -78,29 +81,28 @@ def load_p1_rollup(
                 amount = Decimal(str(row[j]))
             except ArithmeticError:
                 continue
-            bucket = sums[key]
-            bucket[amount_type] = bucket.get(amount_type, Decimal(0)) + amount
+            sums[key][amount_type] += amount
 
     upserted = 0
     with psycopg.connect(dsn) as con:
         for key, amounts in sums.items():
             (account, account_title, organization, ba, ba_title,
-             line_number, pe_bli, title) = key
+             pe_bli, title) = key
             for amount_type, amount in amounts.items():
                 con.execute(
                     """
                     insert into budget_lines
                       (exhibit, fiscal_year, account, account_title, organization,
-                       budget_activity, budget_activity_title, line_number, pe_bli,
+                       budget_activity, budget_activity_title, pe_bli,
                        title, amount_type, amount_thousands, source_document_id)
-                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     on conflict (exhibit, fiscal_year, account, organization, budget_activity, pe_bli, amount_type)
                     do update set amount_thousands = excluded.amount_thousands,
                                   title = excluded.title,
                                   source_document_id = excluded.source_document_id
                     """,
                     (exhibit, fiscal_year, account, account_title, organization,
-                     ba, ba_title, line_number, pe_bli, title, amount_type, amount,
+                     ba, ba_title, pe_bli, title, amount_type, amount,
                      source_document_id),
                 )
                 upserted += 1
