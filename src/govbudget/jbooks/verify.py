@@ -92,7 +92,7 @@ def provenance_gate(dsn: str, *, sample_size: int = 50) -> dict:
             continue
         if sha and hashlib.sha256(p.read_bytes()).hexdigest() != sha:
             continue
-        if not xml_path or not xml_path.startswith("ProgramElement["):
+        if not xml_path or not xml_path.startswith(("ProgramElement[", "LineItem[")):
             continue
         resolved += 1
     return {"sampled": len(samples), "resolved": resolved}

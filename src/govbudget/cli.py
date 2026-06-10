@@ -158,27 +158,32 @@ def cmd_jbooks(args) -> None:
             print(f"load-rollups finished with {len(failures)} failure(s): {', '.join(failures)}")
             sys.exit(1)
     elif args.action == "extract":
-        from govbudget.jbooks.gaps import record_extraction_gaps
-
         with psycopg.connect(config.PG_DSN) as con:
             rows = con.execute(
-                "select id, file_path from jbook_documents "
+                "select id, file_path, exhibit_family from jbook_documents "
                 "where has_embedded_xml and status='downloaded'"
                 + (" and org = %s" if args.org else ""),
                 ((args.org,) if args.org else ()),
             ).fetchall()
-        for doc_id, file_path in rows:
+        for doc_id, file_path, family in rows:
             xml_dir = Path(file_path).parent / "xml"
             xmls = sorted(xml_dir.glob("*.xml"), key=lambda p: p.stat().st_size)
             if not xmls:
                 print(f"doc {doc_id}: no xml on disk, skipping")
                 continue
-            run_id = load_details.load_document_details(
-                config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
-            )
+            if family == "procurement":
+                run_id = load_details.load_procurement_details(
+                    config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
+                )
+            else:
+                run_id = load_details.load_document_details(
+                    config.PG_DSN, document_id=doc_id, xml_path=xmls[-1]
+                )
             result = reconcile.reconcile_document(
                 config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
             )
+            from govbudget.jbooks.gaps import record_extraction_gaps
+
             gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
             print(f"doc {doc_id}: run {run_id} reconcile {result} gaps {gaps}")
 
