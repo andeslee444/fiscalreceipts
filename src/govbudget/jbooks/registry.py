@@ -6,12 +6,35 @@ import psycopg
 from selectolax.parser import HTMLParser
 
 ROLLUP_NAMES = {"r1_display.xlsx", "p1_display.xlsx", "p1r_display.xlsx"}
-# e.g. RDTE_Vol1_DARPA_MasterJustificationBook_PB_2026.pdf
-JBOOK_RE = re.compile(
-    r"(?P<family>RDTE|PROC)_[^/]*?_(?P<org>[A-Za-z0-9-]+)_(?:Master)?JustificationBook[^/]*\.pdf$",
-    re.IGNORECASE,
-)
 FAMILY = {"RDTE": "rdte", "PROC": "procurement"}
+# Tokens that are structural, not part of the org name. Built from observed
+# real filenames: Vol1/VOL2B volume markers, PB/PB26 cycle markers, years,
+# JustificationBook in its camel-case, split, and Master variants.
+_NOISE_TOKEN = re.compile(
+    r"(?i)^(vol\w*|pb\d*|\d{2,4}|master|book|amended|base|oco"
+    r"|(master)?justification(book)?)$"
+)
+
+
+def _classify_jbook(name: str) -> tuple[str, str] | None:
+    """Classify a J-book PDF filename -> (exhibit_family, org), or None.
+
+    Handles both naming conventions on the comptroller site:
+    long  RDTE_Vol1_DARPA_MasterJustificationBook_PB_2026.pdf -> (rdte, DARPA)
+    short RDTE_CBDP_PB_2026.pdf                               -> (rdte, CBDP)
+    """
+    m = re.match(r"(?i)^(RDTE|PROC)[_-](.+)\.pdf$", name)
+    if not m:
+        return None
+    family = FAMILY[m.group(1).upper()]
+    tokens = re.split(r"[_-]+", m.group(2))
+    org_tokens = [
+        t for t in tokens
+        if t and not _NOISE_TOKEN.match(t) and t.upper() not in FAMILY
+    ]
+    if not org_tokens:
+        return None
+    return family, "_".join(org_tokens)
 
 
 def discover_documents(client: httpx.Client, index_url: str, *, fiscal_year: int) -> list[dict]:
@@ -32,10 +55,11 @@ def discover_documents(client: httpx.Client, index_url: str, *, fiscal_year: int
                 "title": name, "source_url": url,
             })
             continue
-        m = JBOOK_RE.search(name)
-        if m:
+        classified = _classify_jbook(name)
+        if classified:
+            family, org = classified
             docs.append({
-                "org": m.group("org"), "exhibit_family": FAMILY[m.group("family").upper()],
+                "org": org, "exhibit_family": family,
                 "fiscal_year": fiscal_year, "title": name, "source_url": url,
             })
     return docs
