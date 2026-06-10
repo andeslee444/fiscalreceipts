@@ -33,11 +33,21 @@ def cmd_sync_archive(args) -> None:
         print(f"swept {swept} stale .part file(s)")
     sweep_incoming_dirs(config.PARQUET_DIR)
     types = ["contracts", "assistance"] if args.type == "both" else [args.type]
+    failures = []
     with _usaspending_client() as client:
         for fy in range(args.fy_start, args.fy_end + 1):
             for type_ in types:
-                result = sync_archive_cmd(client, type_, fy)
+                try:
+                    result = sync_archive_cmd(client, type_, fy)
+                except Exception as e:
+                    failures.append((type_, fy))
+                    print(f"{type_} fy{fy}: FAILED ({type(e).__name__}: {e})")
+                    continue
                 print(f"{type_} fy{fy}: {result}")
+    if failures:
+        failed = ", ".join(f"{t} fy{fy}" for t, fy in failures)
+        print(f"sync-archive finished with {len(failures)} failure(s): {failed}")
+        sys.exit(1)
 
 
 def cmd_sync_subawards(args) -> None:

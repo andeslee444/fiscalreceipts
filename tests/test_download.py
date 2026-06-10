@@ -76,3 +76,11 @@ def test_sweep_stale_parts(tmp_path):
     assert not (tmp_path / "a.zip.part").exists()
     assert (tmp_path / "b.zip").exists()
     assert sweep_stale_parts(tmp_path / "missing") == 0
+
+
+def test_download_retry_defaults():
+    import inspect
+
+    sig = inspect.signature(download_file)
+    assert sig.parameters["max_retries"].default == 5
+    assert sig.parameters["backoff_base"].default == 5.0

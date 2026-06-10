@@ -77,3 +77,31 @@ def test_sync_skips_already_loaded_file(tmp_path):
         result = sync_archive(client, **kwargs)
     assert result == "skipped"
     assert len(load_records(manifest)) == 1
+
+
+def test_cmd_sync_archive_continues_past_failures(tmp_path, monkeypatch, capsys):
+    import pytest
+
+    from govbudget import cli, config
+
+    monkeypatch.setattr(config, "RAW_DIR", tmp_path / "raw")
+    monkeypatch.setattr(config, "PARQUET_DIR", tmp_path / "parquet")
+    calls = []
+
+    def fake_sync(client, type_, fy):
+        calls.append((type_, fy))
+        if fy == 2018:
+            raise RuntimeError("boom")
+        return "loaded"
+
+    monkeypatch.setattr(cli, "sync_archive_cmd", fake_sync)
+    monkeypatch.setattr(cli, "_usaspending_client", lambda: __import__("contextlib").nullcontext(object()))
+
+    args = type("A", (), {"type": "contracts", "fy_start": 2017, "fy_end": 2019})()
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_sync_archive(args)
+    assert exc.value.code == 1
+    assert calls == [("contracts", 2017), ("contracts", 2018), ("contracts", 2019)]
+    out = capsys.readouterr().out
+    assert "contracts fy2018: FAILED" in out
+    assert "1 failure(s)" in out

@@ -25,8 +25,8 @@ def download_file(
     url: str,
     dest: Path,
     *,
-    max_retries: int = 3,
-    backoff_base: float = 2.0,
+    max_retries: int = 5,
+    backoff_base: float = 5.0,
 ) -> tuple[str, int]:
     """Stream url to dest. Returns (sha256, byte_count). Writes dest.part then renames."""
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -53,7 +53,7 @@ def download_file(
             tmp.unlink(missing_ok=True)
             if attempt == max_retries:
                 raise
-            time.sleep(backoff_base**attempt)
+            time.sleep(min(backoff_base**attempt, 60))
     raise AssertionError("unreachable")
 
 
