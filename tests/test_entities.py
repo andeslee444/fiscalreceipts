@@ -22,3 +22,15 @@ def test_distinct_parents_same_normalized_name_share_family():
     # Two parent UEIs whose names normalize identically belong to one family
     # at the NAME level — the dbt layer merges via normalized parent name.
     assert normalize_name("THE BOEING COMPANY") == normalize_name("BOEING COMPANY, THE (INC)")
+
+
+def test_boeing_subsidiary_splits_normalize_to_boeing():
+    # Regression: self-parented Boeing subsidiaries must collapse to "BOEING"
+    # (loop iteration 1 fix: DIVISION_SUFFIX_SEQS + REALTY in LEGAL_SUFFIXES)
+    assert normalize_name("BOEING AEROSPACE OPERATIONS, I") == "BOEING"
+    assert normalize_name("BOEING REALTY CORP") == "BOEING"
+    assert normalize_name("BOEING NORTH AMERICAN, INC") == "BOEING"
+    assert normalize_name("BOEING CAPITAL CORPORATION") == "BOEING"
+    # Confirm other divisions not over-stripped
+    assert normalize_name("HUNTINGTON INGALLS INDUSTRIES, INC") == "HUNTINGTON INGALLS INDUSTRIES"
+    assert normalize_name("LOCKHEED MARTIN CORPORATION") == "LOCKHEED MARTIN"
