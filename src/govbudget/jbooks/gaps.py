@@ -13,6 +13,8 @@ def record_extraction_gaps(dsn: str, *, document_id: int) -> int:
             (document_id,),
         ).fetchone()
         exhibit = {"rdte": "R-1", "procurement": "P-1"}.get(family)
+        if exhibit is None:
+            return 0
         con.execute("delete from extraction_gaps where document_id=%s", (document_id,))
         missing = con.execute(
             """
@@ -31,6 +33,6 @@ def record_extraction_gaps(dsn: str, *, document_id: int) -> int:
             con.execute(
                 "insert into extraction_gaps (exhibit, pe_bli, reason, document_id)"
                 " values (%s,%s,%s,%s)",
-                (exhibit, pe, f"absent from {org} fy{fy} book xml", document_id),
+                (exhibit, pe, f"no extracted detail in {org} fy{fy} documents", document_id),
             )
         return len(missing)

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import psycopg
 
+from govbudget.jbooks.gaps import SENTINEL_PE
+
 
 def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
     """Gate 1: every in-scope R-1 line has detail rows or an extraction_gaps row."""
@@ -12,8 +14,8 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
             for r in con.execute(
                 "select distinct pe_bli from budget_lines "
                 "where exhibit='R-1' and organization = any(%s) "
-                "and pe_bli <> '9999999999'",
-                (organizations,),
+                "and pe_bli <> %s",
+                (organizations, SENTINEL_PE),
             )
         }
         detailed = {
@@ -22,7 +24,15 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
                 "select distinct pe_bli from budget_line_details where not superseded"
             )
         }
-        gapped = {r[0] for r in con.execute("select pe_bli from extraction_gaps")}
+        gapped = {
+            r[0]
+            for r in con.execute(
+                "select eg.pe_bli from extraction_gaps eg "
+                "join jbook_documents j on j.id = eg.document_id "
+                "where j.org = any(%s)",
+                (organizations,),
+            )
+        }
     covered = r1 & (detailed | gapped)
     missing = sorted(r1 - detailed - gapped)
     return {

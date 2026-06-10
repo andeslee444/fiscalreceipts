@@ -39,3 +39,32 @@ def test_gaps_recorded_for_unextracted_r1_lines(pg_dsn):
     with psycopg.connect(pg_dsn) as con:
         total = con.execute("select count(*) from extraction_gaps").fetchone()[0]
     assert total == 1
+
+
+def test_coverage_gap_lookup_is_org_scoped(pg_dsn):
+    from govbudget.jbooks.verify import coverage_gate
+
+    upsert_documents(pg_dsn, [
+        {"org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+         "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf"},
+        {"org": "OTHER", "exhibit_family": "rdte", "fiscal_year": 2026,
+         "title": "other.pdf", "source_url": "https://example.test/other.pdf"},
+    ])
+    with psycopg.connect(pg_dsn) as con:
+        other_id = con.execute(
+            "select id from jbook_documents where org='OTHER'"
+        ).fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','DARPA','0601999E','fy_2024_actuals',1000)",
+        )
+        # a gap row belonging to ANOTHER org's document must not cover DARPA's PE
+        con.execute(
+            "insert into extraction_gaps (exhibit, pe_bli, reason, document_id)"
+            " values ('R-1','0601999E','no extracted detail in OTHER fy2026 documents',%s)",
+            (other_id,),
+        )
+    cov = coverage_gate(pg_dsn, organizations=["DARPA"])
+    assert cov["covered"] == 0
+    assert cov["missing"] == ["0601999E"]
