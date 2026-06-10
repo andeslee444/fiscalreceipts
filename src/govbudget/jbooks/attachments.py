@@ -21,23 +21,30 @@ def _dest_path(out_dir: Path, base: str, attachment_name: str) -> Path:
     return p
 
 
-def pick_book_xml(xml_dir: Path) -> Path | None:
-    """Choose the justification-book XML among extracted attachments.
+FAMILY_MARKERS = {"rdte": "U_RDTE_", "procurement": "U_PROCUREMENT_"}
 
-    Books ship companion XMLs (Exhibit_R-1D/P-1D spreadsheets, wall charts)
-    that can be LARGER than the book itself, so prefer by name convention:
-    master book (_MJB_), then volume book (_JB_), then largest file.
+
+def pick_book_xml(xml_dir: Path, *, family: str) -> Path | None:
+    """Choose the justification-book XML for the given exhibit family.
+
+    Dual-family orgs share one xml dir, and books ship companion XMLs
+    (Exhibit_R-1D/P-1D spreadsheets) that can outweigh the book itself.
+    Filter by family marker first, then prefer master (_MJB_) over volume
+    (_JB_) books, then largest file as a last resort.
     """
     if not xml_dir.exists():
         return None
     xmls = list(xml_dir.glob("*.xml"))
     if not xmls:
         return None
-    for marker in ("_MJB_", "_JB_"):
-        marked = [p for p in xmls if marker in p.name]
+    marker = FAMILY_MARKERS.get(family, "")
+    family_xmls = [p for p in xmls if marker and p.name.upper().startswith(marker)]
+    pool = family_xmls or xmls
+    for book_marker in ("_MJB_", "_JB_"):
+        marked = [p for p in pool if book_marker in p.name]
         if marked:
             return max(marked, key=lambda p: p.stat().st_size)
-    return max(xmls, key=lambda p: p.stat().st_size)
+    return max(pool, key=lambda p: p.stat().st_size)
 
 
 def list_embedded(pdf_path: Path) -> list[str]:

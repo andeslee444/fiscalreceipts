@@ -75,21 +75,24 @@ def test_zip_member_paths_are_flattened(tmp_path):
     assert out[0].parent == tmp_path / "xml"
 
 
-def test_pick_book_xml_prefers_mjb_over_larger_companions(tmp_path):
+def test_pick_book_xml_filters_by_family_and_prefers_mjb(tmp_path):
     from govbudget.jbooks.attachments import pick_book_xml
 
     (tmp_path / "Exhibit_P-1D.xml").write_bytes(b"x" * 3000)
-    (tmp_path / "U_PROCUREMENT_MJB_123_CBDP_PB_2026.xml").write_bytes(b"x" * 1400)
-    (tmp_path / "U_PROCUREMENT_JB_123_CBDP_PB_2026.xml").write_bytes(b"x" * 1300)
-    assert pick_book_xml(tmp_path).name == "U_PROCUREMENT_MJB_123_CBDP_PB_2026.xml"
+    (tmp_path / "U_RDTE_MJB_1_DTRA_PB_2026.xml").write_bytes(b"x" * 2500)
+    (tmp_path / "U_PROCUREMENT_MJB_1_DTRA_PB_2026.xml").write_bytes(b"x" * 400)
+    (tmp_path / "U_PROCUREMENT_JB_1_DTRA_PB_2026.xml").write_bytes(b"x" * 300)
+    assert pick_book_xml(tmp_path, family="procurement").name == "U_PROCUREMENT_MJB_1_DTRA_PB_2026.xml"
+    assert pick_book_xml(tmp_path, family="rdte").name == "U_RDTE_MJB_1_DTRA_PB_2026.xml"
 
 
-def test_pick_book_xml_falls_back_to_jb_then_largest(tmp_path):
+def test_pick_book_xml_falls_back_jb_then_largest(tmp_path):
     from govbudget.jbooks.attachments import pick_book_xml
 
     (tmp_path / "U_RDTE_JB_1_X_PB_2026.xml").write_bytes(b"x" * 10)
     (tmp_path / "other.xml").write_bytes(b"x" * 999)
-    assert pick_book_xml(tmp_path).name == "U_RDTE_JB_1_X_PB_2026.xml"
+    assert pick_book_xml(tmp_path, family="rdte").name == "U_RDTE_JB_1_X_PB_2026.xml"
     (tmp_path / "U_RDTE_JB_1_X_PB_2026.xml").unlink()
-    assert pick_book_xml(tmp_path).name == "other.xml"
-    assert pick_book_xml(tmp_path / "missing") is None
+    # no family-marked file at all -> largest xml as last resort
+    assert pick_book_xml(tmp_path, family="rdte").name == "other.xml"
+    assert pick_book_xml(tmp_path / "missing", family="rdte") is None

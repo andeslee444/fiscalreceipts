@@ -178,7 +178,7 @@ def cmd_jbooks(args) -> None:
 
         failures = []
         for doc_id, file_path, family in rows:
-            book_xml = pick_book_xml(Path(file_path).parent / "xml")
+            book_xml = pick_book_xml(Path(file_path).parent / "xml", family=family)
             if book_xml is None:
                 print(f"doc {doc_id}: no xml on disk, skipping")
                 continue
