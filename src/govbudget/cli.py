@@ -84,8 +84,16 @@ def cmd_sync_fiscaldata(args) -> None:
 
 
 def cmd_build(args) -> None:
+    import os
+
+    env = {
+        **os.environ,
+        "GOVBUDGET_DATA": os.environ.get("GOVBUDGET_DATA", str(config.DATA_DIR)),
+        "GOVBUDGET_DUCKDB": os.environ.get("GOVBUDGET_DUCKDB", str(config.DUCKDB_PATH)),
+    }
     rc = subprocess.run(
-        ["dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt"]
+        ["dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt"],
+        env=env,
     ).returncode
     sys.exit(rc)
 

@@ -1,3 +1,5 @@
+-- Column order is load-bearing: fct_award_transactions UNION ALLs this model
+-- positionally with its sibling staging model. Keep both lists identical.
 select
     assistance_transaction_unique_key as transaction_key,
     'assistance' as award_type,
