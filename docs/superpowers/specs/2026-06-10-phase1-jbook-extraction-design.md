@@ -158,3 +158,25 @@ run by `govbudget verify-phase1` and in CI on the golden corpus):
   acceptance only requires the trace chain to exist, not to be complete.
 - **Postgres operational surface** — single local instance, plain SQL, no ORM;
   `govbudget migrate` is idempotent.
+
+## 8. Plan B Prerequisites (from Phase 1A final review, 2026-06-10)
+
+Phase 1A merged with these tracked obligations for Plan B:
+
+1. **Scenario lifecycle:** `BudgetYearOneBase` (41 live rows, $9.13B) and `AllPriorYears`
+   are extracted but outside SCENARIO_MAP — `reconciled=false` currently carries two
+   meanings (pending-review vs not-reconciled-by-design). Before marts ship: extend
+   SCENARIO_MAP or add an explicit terminal state so real dollars are never silently
+   dropped.
+2. **`extraction_gaps` producer:** the table is read by the coverage gate but nothing
+   writes it. Wire gap insertion into the extract path (in-scope R-1 PE with no XML
+   detail → gap row with reason) before scaling past DARPA.
+3. **P-1/P-1R rollup loaders:** the display workbooks use a different schema (Budget
+   Line Item, Quantity/Amount pairs, cost-type rows, Add/Non-Add). Give P-1R its own
+   exhibit code rather than relying on header-mismatch failures for scope enforcement.
+4. **Confirmed:** procurement books (CBDP verified) ALSO embed jb-schema XML — Tier 0
+   covers them; Tier 1 (Docling/Claude) shrinks to XML-less books only, if any exist.
+5. **Sentinel rows:** R-1 contains `9999999999` subtotal rows with empty organization —
+   Army-scope coverage gates must exclude them.
+6. **Acquire idempotency:** re-acquiring accumulates `__`-prefixed duplicate XML files
+   on disk (harmless, unbounded); `review accept` should require `--id`.
