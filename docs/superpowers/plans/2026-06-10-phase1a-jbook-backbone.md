@@ -1616,11 +1616,15 @@ def cmd_jbooks(args) -> None:
         print(f"jbooks scrape: {len(docs)} discovered, {n} new")
     elif args.action == "acquire":
         with httpx.Client(timeout=120) as client:
-            n = acquire.acquire_pending(
+            n, failures = acquire.acquire_pending(
                 config.PG_DSN, client,
                 raw_docs_dir=config.RAW_DOCS_DIR, min_free_gb=config.MIN_FREE_GB,
             )
         print(f"jbooks acquire: {n} downloaded")
+        for doc_id, title, err in failures:
+            print(f"  FAILED #{doc_id} {title}: {err}")
+        if failures:
+            sys.exit(1)
     elif args.action == "load-rollups":
         import psycopg
 

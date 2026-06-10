@@ -43,8 +43,9 @@ def test_acquire_downloads_detects_xml_and_updates_rows(pg_dsn, tmp_path):
         return httpx.Response(200, content=payloads[request.url.path])
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        n = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
+        n, failures = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
     assert n == 3
+    assert failures == []
     with psycopg.connect(pg_dsn) as con:
         rows = {
             r[0]: r for r in con.execute(
@@ -59,4 +60,34 @@ def test_acquire_downloads_detects_xml_and_updates_rows(pg_dsn, tmp_path):
 
     # second run: nothing pending
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        assert acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0) == 0
+        n2, f2 = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
+    assert (n2, f2) == (0, [])
+
+
+def test_acquire_continues_past_corrupt_pdf_and_marks_failed(pg_dsn, tmp_path):
+    upsert_documents(pg_dsn, [
+        {"org": "BAD", "exhibit_family": "rdte", "fiscal_year": 2026,
+         "title": "bad.pdf", "source_url": "https://example.test/bad.pdf"},
+        {"org": "GOOD", "exhibit_family": "rdte", "fiscal_year": 2026,
+         "title": "good.pdf", "source_url": "https://example.test/good.pdf"},
+    ])
+    payloads = {
+        "/bad.pdf": b"%PDF-1.4 this is not really a pdf",
+        "/good.pdf": make_pdf_bytes(True),
+    }
+
+    def handler(request):
+        return httpx.Response(200, content=payloads[request.url.path])
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        n, failures = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
+    assert n == 1
+    assert len(failures) == 1 and failures[0][1] == "bad.pdf"
+    with psycopg.connect(pg_dsn) as con:
+        statuses = dict(con.execute("select title, status from jbook_documents"))
+    assert statuses == {"bad.pdf": "failed", "good.pdf": "downloaded"}
+
+    # re-run: failed doc is NOT retried (no infinite re-download loop)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        n2, f2 = acquire_pending(pg_dsn, client, raw_docs_dir=tmp_path, min_free_gb=0)
+    assert (n2, f2) == (0, [])
