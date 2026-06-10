@@ -10,7 +10,13 @@ CONTRACT_COLS = (
     "contract_transaction_unique_key, action_date, federal_action_obligation, "
     "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
     "awarding_agency_name, awarding_sub_agency_name, naics_code, "
-    "product_or_service_code, primary_place_of_performance_state_code"
+    "product_or_service_code, primary_place_of_performance_state_code, "
+    "prime_award_transaction_place_of_performance_cd_current"
+)
+
+ENTITY_XWALK_COLS = (
+    "recipient_uei, recipient_name, parent_uei, parent_name, "
+    "family_key, method, confidence, total_obligation"
 )
 
 
@@ -65,17 +71,26 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
-        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA'),"
-        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA')"
+        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52'),"
+        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08')"
         f") t({CONTRACT_COLS})",
     )
     write_parquet(
         data_dir / "parquet/assistance/fy=2017",
         "select * from (values "
-        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND')"
+        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND','MD-04')"
         ") t(assistance_transaction_unique_key, action_date, federal_action_obligation, "
         "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
-        "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_name)",
+        "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_name, "
+        "prime_award_transaction_place_of_performance_cd_current)",
+    )
+    # entity_xwalk fixture — one row, all 8 columns
+    entities = data_dir / "parquet/entities"
+    entities.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('UEI1','ACME','PUEI1','ACME PARENT INC','ACME PARENT','parent_name','high',6000.5))"
+        f" t({ENTITY_XWALK_COLS})) to '{entities}/entity_xwalk.parquet' (format parquet)"
     )
     write_parquet(
         data_dir / "parquet/subawards/fy=2017",

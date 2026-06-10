@@ -307,6 +307,16 @@ def cmd_verify_phase1(args) -> None:
     sys.exit(0 if ok else 1)
 
 
+def cmd_entity_graph(args) -> None:
+    from govbudget.entity_graph import build_entity_xwalk
+
+    out = build_entity_xwalk(
+        award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+        out_path=config.PARQUET_DIR / "entities" / "entity_xwalk.parquet",
+    )
+    print(f"entity-graph: wrote {out}")
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -342,6 +352,9 @@ def main(argv=None) -> None:
 
     b = sub.add_parser("build", help="dbt build star schema")
     b.set_defaults(func=cmd_build)
+
+    e = sub.add_parser("entity-graph", help="build uei->family crosswalk")
+    e.set_defaults(func=cmd_entity_graph)
 
     m = sub.add_parser("migrate", help="apply postgres migrations")
     m.set_defaults(func=cmd_migrate)

@@ -14,5 +14,6 @@ select
     awarding_sub_agency_name,
     naics_code,
     product_or_service_code,
-    primary_place_of_performance_state_code as pop_state
+    primary_place_of_performance_state_code as pop_state,
+    prime_award_transaction_place_of_performance_cd_current as pop_district
 from {{ source('lake', 'contracts') }}
