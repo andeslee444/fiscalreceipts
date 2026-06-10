@@ -18,6 +18,11 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
     """Run Gates A and B for one document's live details. Returns counters."""
     passed = failed = queued = 0
     with psycopg.connect(dsn) as con:
+        org, family, fy = con.execute(
+            "select org, exhibit_family, fiscal_year from jbook_documents where id=%s",
+            (document_id,),
+        ).fetchone()
+        exhibit = {"rdte": "R-1", "procurement": "P-1"}.get(family)
         # ---------- Gate A: project rows sum to the PE-level amount ----------
         gate_a_rows = con.execute(
             """
@@ -57,8 +62,10 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 continue
             row = con.execute(
                 "select amount_type, sum(amount_thousands) from budget_lines "
-                "where pe_bli=%s and amount_type = any(%s) group by amount_type",
-                (pe_bli, candidates),
+                "where pe_bli=%s and amount_type = any(%s) "
+                "and exhibit=%s and organization=%s and fiscal_year=%s "
+                "group by amount_type",
+                (pe_bli, candidates, exhibit, org, fy),
             ).fetchall()
             by_type = {t: v for t, v in row}
             expected = None
@@ -72,7 +79,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             detail = (
                 f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
                 if expected is not None
-                else f"no R-1 row for {pe_bli} in {candidates}"
+                else f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
             )
             check_id = _record(con, extraction_run_id, "B", pe_bli, scenario,
                                expected, amount_m, ok, detail)
