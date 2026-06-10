@@ -1,6 +1,8 @@
 import pytest
 
-from govbudget.manifest import ManifestRecord, append_record, has_file, load_records
+from govbudget.manifest import (
+    ManifestRecord, append_record, has_dataset_fy, has_file, load_records,
+)
 
 
 def make_record(name="FY2017_097_Assistance_Full_20260601.zip"):
@@ -40,3 +42,12 @@ def test_load_raises_on_corrupt_line(tmp_path):
         f.write("{not json\n")
     with pytest.raises(ValueError, match="line 2"):
         load_records(path)
+
+
+def test_has_dataset_fy(tmp_path):
+    path = tmp_path / "manifest.jsonl"
+    assert not has_dataset_fy(path, "subawards", 2017)
+    append_record(path, make_record())  # dataset="assistance", fiscal_year=2017
+    assert has_dataset_fy(path, "assistance", 2017)
+    assert not has_dataset_fy(path, "assistance", 2018)
+    assert not has_dataset_fy(path, "subawards", 2017)

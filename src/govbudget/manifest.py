@@ -39,3 +39,10 @@ def load_records(path: Path) -> list[ManifestRecord]:
 
 def has_file(path: Path, file_name: str) -> bool:
     return any(r.file_name == file_name for r in load_records(path))
+
+
+def has_dataset_fy(path: Path, dataset: str, fiscal_year: int) -> bool:
+    return any(
+        r.dataset == dataset and r.fiscal_year == fiscal_year
+        for r in load_records(path)
+    )

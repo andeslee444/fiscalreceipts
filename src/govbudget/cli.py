@@ -42,10 +42,13 @@ def cmd_sync_subawards(args) -> None:
 
     from govbudget.convert import convert_zip_to_parquet
     from govbudget.download import download_file, ensure_free_space, sweep_stale_parts
-    from govbudget.manifest import ManifestRecord, append_record, has_file
+    from govbudget.manifest import ManifestRecord, append_record, has_dataset_fy, has_file
     from govbudget.usaspending.subawards import poll_until_ready, request_subaward_download
 
     sweep_stale_parts(config.RAW_DIR)
+    if has_dataset_fy(config.MANIFEST_PATH, "subawards", args.fy):
+        print(f"subawards fy{args.fy}: skipped")
+        return
     with _usaspending_client() as client:
         resp = request_subaward_download(client, fiscal_year=args.fy)
         file_name = resp["file_name"]
