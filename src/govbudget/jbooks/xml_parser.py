@@ -131,10 +131,17 @@ def parse_jbook_xml(path: Path) -> list[ProgramElementRecord]:
     for el in root.iter():
         if _local(el.tag) != "ProgramElement":
             continue
+        number = _text(el, "ProgramElementNumber")
+        if not number:
+            continue
         xml_path = f"ProgramElement[{pe_idx}]"
         by = _text(el, "BudgetYear")
+        try:
+            budget_year = int(by) if by else None
+        except ValueError:
+            budget_year = None
         record = ProgramElementRecord(
-            number=_text(el, "ProgramElementNumber") or "",
+            number=number,
             title=_text(el, "ProgramElementTitle"),
             r1_line_number=_text(el, "R1LineNumber"),
             appropriation_code=_text(el, "AppropriationCode"),
@@ -142,7 +149,7 @@ def parse_jbook_xml(path: Path) -> list[ProgramElementRecord]:
             budget_activity=_text(el, "BudgetActivityNumber"),
             budget_activity_title=_text(el, "BudgetActivityTitle"),
             service_agency=_text(el, "ServiceAgencyName"),
-            budget_year=int(by) if by else None,
+            budget_year=budget_year,
             mission_description=_text(el, "ProgramElementMissionDescription"),
             funding=_parse_funding(_child(el, "ProgramElementFunding")),
             xml_path=xml_path,
@@ -151,7 +158,6 @@ def parse_jbook_xml(path: Path) -> list[ProgramElementRecord]:
         if proj_list is not None:
             for j, p in enumerate(c for c in proj_list if _local(c.tag) == "Project"):
                 record.projects.append(_parse_project(p, f"{xml_path}/Project[{j}]"))
-        if record.number:
-            pes.append(record)
-            pe_idx += 1
+        pes.append(record)
+        pe_idx += 1
     return pes

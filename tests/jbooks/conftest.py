@@ -37,11 +37,19 @@ def pg(pg_dsn):
 
 
 @pytest.fixture(autouse=True)
-def _clean_tables(pg_dsn):
+def _clean_tables(request):
+    """Truncate Phase 1 tables after any test that actually used the DB.
+
+    Resolves pg_dsn only for tests that requested it, so DB-free tests
+    (parser, attachments) never trigger the Postgres session fixture.
+    """
+    uses_db = "pg_dsn" in request.fixturenames
+    dsn = request.getfixturevalue("pg_dsn") if uses_db else None
     yield
-    with psycopg.connect(pg_dsn, autocommit=True) as con:
-        con.execute(
-            "truncate jbook_documents, budget_lines, extraction_runs, budget_line_details, "
-            "detail_narratives, reconciliation_checks, review_queue, extraction_gaps "
-            "restart identity cascade"
-        )
+    if dsn:
+        with psycopg.connect(dsn, autocommit=True) as con:
+            con.execute(
+                "truncate jbook_documents, budget_lines, extraction_runs, budget_line_details, "
+                "detail_narratives, reconciliation_checks, review_queue, extraction_gaps "
+                "restart identity cascade"
+            )

@@ -1,9 +1,11 @@
+import pytest
 from decimal import Decimal
 from pathlib import Path
 
 from govbudget.jbooks.xml_parser import parse_jbook_xml
 
-FIXTURE = Path("tests/fixtures/jbooks/darpa_fy2026_excerpt.xml")
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_fy2026_excerpt.xml"
+FULL_XML = Path("data/raw_docs/fy2026/darpa/xml/U_RDTE_MJB_2506241317XAYF_DARPA_PB_2026.xml")
 
 
 def test_parses_program_elements_with_golden_values():
@@ -47,3 +49,31 @@ def test_xml_paths_are_resolvable():
     pe = pes[1]
     assert pe.xml_path.startswith("ProgramElement[")
     assert root is not None
+
+
+@pytest.mark.skipif(not FULL_XML.exists(), reason="full DARPA xml not on this machine")
+def test_full_darpa_book_counts_regression_guard():
+    pes = parse_jbook_xml(FULL_XML)
+    assert len(pes) == 24
+    assert sum(len(p.projects) for p in pes) == 63
+    narratives = [n for p in pes for proj in p.projects for n in proj.narratives]
+    assert len(narratives) == 393
+    assert all(n.body for n in narratives)
+
+
+def test_parse_is_deterministic():
+    a = [(pe.xml_path, pe.number) for pe in parse_jbook_xml(FIXTURE)]
+    b = [(pe.xml_path, pe.number) for pe in parse_jbook_xml(FIXTURE)]
+    assert a == b
+
+
+def test_non_numeric_budget_year_tolerated(tmp_path):
+    xml = (
+        '<?xml version="1.0"?><root>'
+        "<ProgramElement><ProgramElementNumber>0601101E</ProgramElementNumber>"
+        "<BudgetYear>TBD</BudgetYear></ProgramElement></root>"
+    )
+    p = tmp_path / "x.xml"
+    p.write_text(xml)
+    pes = parse_jbook_xml(p)
+    assert pes[0].budget_year is None
