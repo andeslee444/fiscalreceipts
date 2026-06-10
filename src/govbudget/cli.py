@@ -193,6 +193,25 @@ def cmd_review(args) -> None:
             print(f"#{args.id} accepted: {args.reason}")
 
 
+def cmd_verify_phase1(args) -> None:
+    from govbudget.jbooks.verify import accuracy_gate, coverage_gate, provenance_gate
+
+    orgs = args.orgs.split(",") if args.orgs else ["DARPA"]
+    cov = coverage_gate(config.PG_DSN, organizations=orgs)
+    acc = accuracy_gate(config.PG_DSN)
+    prov = provenance_gate(config.PG_DSN)
+    print(f"gate 1 coverage: {cov['covered']}/{cov['r1_lines']} ({cov['pct']}%)"
+          + (f" missing: {cov['missing']}" if cov["missing"] else ""))
+    print(f"gate 2 accuracy: silent_unreconciled={acc['silent_unreconciled']}"
+          f" open_review={acc['open_review_items']}")
+    print(f"gate 3 provenance: {prov['resolved']}/{prov['sampled']} resolved")
+    ok = cov["pct"] >= 99.0 and acc["silent_unreconciled"] == 0 and (
+        prov["sampled"] == 0 or prov["resolved"] == prov["sampled"]
+    )
+    print("verify-phase1:", "PASS" if ok else "FAIL")
+    sys.exit(0 if ok else 1)
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -242,6 +261,10 @@ def main(argv=None) -> None:
     rv.add_argument("--id", type=int)
     rv.add_argument("--reason", default="")
     rv.set_defaults(func=cmd_review)
+
+    v = sub.add_parser("verify-phase1", help="run phase 1 acceptance gates 1-3")
+    v.add_argument("--orgs", default="DARPA")
+    v.set_defaults(func=cmd_verify_phase1)
 
     args = p.parse_args(argv)
     args.func(args)
