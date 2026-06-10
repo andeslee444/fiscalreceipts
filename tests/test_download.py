@@ -65,3 +65,14 @@ def test_ensure_free_space_raises_when_insufficient(tmp_path):
     with pytest.raises(DiskSpaceError):
         ensure_free_space(tmp_path, min_free_gb=10**9)  # absurd requirement
     ensure_free_space(tmp_path, min_free_gb=0)  # should not raise
+
+
+def test_sweep_stale_parts(tmp_path):
+    (tmp_path / "a.zip.part").write_bytes(b"x")
+    (tmp_path / "b.zip").write_bytes(b"x")
+    from govbudget.download import sweep_stale_parts
+
+    assert sweep_stale_parts(tmp_path) == 1
+    assert not (tmp_path / "a.zip.part").exists()
+    assert (tmp_path / "b.zip").exists()
+    assert sweep_stale_parts(tmp_path / "missing") == 0

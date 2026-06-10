@@ -55,3 +55,13 @@ def download_file(
                 raise
             time.sleep(backoff_base**attempt)
     raise AssertionError("unreachable")
+
+
+def sweep_stale_parts(raw_dir: Path) -> int:
+    """Delete leftover *.part files from crashed downloads. Returns count removed."""
+    if not raw_dir.exists():
+        return 0
+    stale = list(raw_dir.glob("*.part"))
+    for p in stale:
+        p.unlink()
+    return len(stale)
