@@ -392,7 +392,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ### Task 4: USAspending archive client
 
-The Award Data Archive serves pre-generated per-agency per-FY zips (regenerated monthly) — far more reliable than custom download generation for full-agency pulls. API contract: `fedspendingtransparency/usaspending-api` repo, `api_contracts/contracts/v2/bulk_download/list_monthly_files.md`.
+The Award Data Archive serves pre-generated per-agency per-FY zips (regenerated monthly) — far more reliable than custom download generation for full-agency pulls. API contract: `fedspendingtransparency/usaspending-api` repo, `api_contracts/contracts/v2/bulk_download/list_monthly_files.md`. Live-smoke correction: agency ids come from `POST /bulk_download/list_agencies/` (`type: award_agencies`, field `toptier_agency_id`) — the `/references/toptier_agencies/` id namespace is rejected by the download endpoints.
 
 **Files:**
 - Create: `src/govbudget/usaspending/__init__.py` (empty), `src/govbudget/usaspending/archive.py`

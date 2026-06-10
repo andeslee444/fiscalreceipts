@@ -4,10 +4,13 @@ import pytest
 from govbudget.usaspending.archive import list_full_files, resolve_agency_id
 
 AGENCIES = {
-    "results": [
-        {"agency_id": 1137, "toptier_code": "012", "agency_name": "Department of Agriculture"},
-        {"agency_id": 1173, "toptier_code": "097", "agency_name": "Department of Defense"},
-    ]
+    "agencies": {
+        "cfo_agencies": [
+            {"toptier_agency_id": 14, "toptier_code": "012", "name": "Department of Agriculture"},
+            {"toptier_agency_id": 126, "toptier_code": "097", "name": "Department of Defense"},
+        ],
+        "other_agencies": [],
+    }
 }
 
 MONTHLY = {
@@ -33,7 +36,7 @@ MONTHLY = {
 
 def make_client():
     def handler(request):
-        if request.url.path.endswith("/references/toptier_agencies/"):
+        if request.url.path.endswith("/bulk_download/list_agencies/"):
             return httpx.Response(200, json=AGENCIES)
         if request.url.path.endswith("/bulk_download/list_monthly_files/"):
             return httpx.Response(200, json=MONTHLY)
@@ -47,7 +50,7 @@ def make_client():
 
 def test_resolve_agency_id_finds_dod():
     with make_client() as client:
-        assert resolve_agency_id(client, "097") == 1173
+        assert resolve_agency_id(client, "097") == 126
 
 
 def test_resolve_agency_id_unknown_code_raises():
@@ -58,5 +61,5 @@ def test_resolve_agency_id_unknown_code_raises():
 
 def test_list_full_files_picks_latest_full():
     with make_client() as client:
-        info = list_full_files(client, agency_id=1173, fiscal_year=2017, type_="contracts")
+        info = list_full_files(client, agency_id=126, fiscal_year=2017, type_="contracts")
     assert info["file_name"] == "FY2017_097_Contracts_Full_20260607.zip"

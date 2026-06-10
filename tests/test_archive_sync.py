@@ -16,14 +16,19 @@ def make_zip_bytes():
     return buf.getvalue()
 
 
-AGENCIES = {"results": [{"agency_id": 1173, "toptier_code": "097", "agency_name": "DoD"}]}
+AGENCIES = {
+    "agencies": {
+        "cfo_agencies": [{"toptier_agency_id": 126, "toptier_code": "097", "name": "DoD"}],
+        "other_agencies": [],
+    }
+}
 
 
 def make_client():
     zip_bytes = make_zip_bytes()
 
     def handler(request):
-        if request.url.path.endswith("/references/toptier_agencies/"):
+        if request.url.path.endswith("/bulk_download/list_agencies/"):
             return httpx.Response(200, json=AGENCIES)
         if request.url.path.endswith("/bulk_download/list_monthly_files/"):
             return httpx.Response(200, json={"monthly_files": [{

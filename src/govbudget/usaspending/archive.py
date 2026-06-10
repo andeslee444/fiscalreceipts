@@ -2,11 +2,18 @@ import httpx
 
 
 def resolve_agency_id(client: httpx.Client, toptier_code: str) -> int:
-    r = client.get("/references/toptier_agencies/")
+    """Resolve the download-center agency id for a toptier code.
+
+    Uses POST /bulk_download/list_agencies/ — the id namespace from
+    /references/toptier_agencies/ is NOT accepted by the bulk-download
+    endpoints (verified live 2026-06-10: DoD is 126 here, 1173 there).
+    """
+    r = client.post("/bulk_download/list_agencies/", json={"type": "award_agencies"})
     r.raise_for_status()
-    for agency in r.json()["results"]:
+    groups = r.json()["agencies"]
+    for agency in groups.get("cfo_agencies", []) + groups.get("other_agencies", []):
         if agency["toptier_code"] == toptier_code:
-            return agency["agency_id"]
+            return agency["toptier_agency_id"]
     raise LookupError(f"No toptier agency with code {toptier_code}")
 
 
