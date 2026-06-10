@@ -682,7 +682,7 @@ def convert_zip_to_parquet(
 Run: `uv run pytest tests/test_convert.py -v`
 Expected: PASS (3 passed)
 
-Note: in the rejection test, the zip is deleted only on success paths reached after the raise — verify the failing member's parquet remains absent from a usable partition by the `MissingColumnsError` aborting the whole call (partition dir was already cleared, which is correct: a rejected load leaves an empty partition, never a partial silent one).
+Note: conversion writes to a temporary `fy={year}.incoming` partition and atomically swaps it in only after every member validates — a rejected load preserves the prior live partition and the source zip (review fix; supersedes the original clear-then-write design).
 
 - [ ] **Step 5: Commit**
 
