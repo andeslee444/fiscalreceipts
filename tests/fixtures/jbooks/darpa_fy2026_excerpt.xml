@@ -1,0 +1,1173 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:MasterJustificationBook xmlns:ns0="http://www.dtic.mil/comptroller/xml/schema/022009/jb" xmlns:ns1="http://www.dtic.mil/comptroller/xml/schema/022009/r2" targetSchemaVersion="1.0">
+    <ns0:BudgetYear>2026</ns0:BudgetYear>
+    <ns0:BudgetCycle>PB</ns0:BudgetCycle>
+    <ns0:SubmissionDate>2025-06</ns0:SubmissionDate>
+    <ns0:ServiceAgencyName>Defense Advanced Research Projects Agency</ns0:ServiceAgencyName>
+    <ns0:CoverPage>
+        <ns0:LogoFileName>DOD-Seal_DARPA#huwuk.png</ns0:LogoFileName>
+    </ns0:CoverPage>
+    <ns0:ExternalDocuments>
+        <ns0:UserR1Doc>
+            <ns0:Title>Comptroller Exhibit R-1</ns0:Title>
+            <ns0:FileName>PB26 R-1 Final Revised (18JUN25)_DARPA#6uzEb.pdf</ns0:FileName>
+        </ns0:UserR1Doc>
+        <ns0:SupplementalDocList>
+            <ns0:SupplementalDoc>
+                <ns0:Title>Supplemental Document</ns0:Title>
+                <ns0:FileName>PB26 JBook Supplemental Doc - New PE Crosswalk (18JUN25)_DARPA#FSgR@.pdf</ns0:FileName>
+            </ns0:SupplementalDoc>
+        </ns0:SupplementalDocList>
+    </ns0:ExternalDocuments>
+    <ns0:TableOfContents>
+        <ns0:TocItemList>
+            <ns0:TocItem>
+                <ns0:Title>Defense Advanced Research Projects Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Missile Defense Agency</ns0:Title>
+                <ns0:Location>Volume 2</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Office of the Secretary Of Defense</ns0:Title>
+                <ns0:Location>Volume 3</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Creating Helpful Incentives To Produce Semi-Conductors (CHIPS) for America</ns0:Title>
+                <ns0:Location>Volume 3</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Chemical and Biological Defense Program</ns0:Title>
+                <ns0:Location>Volume 4</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Contract Audit Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Contract Management Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Counterintelligence and Security Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Information Systems Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Logistics Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Security Cooperation Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Technical Information Center</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Threat Reduction Agency</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>DoD Human Resources Activity</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Operational Test and Evaluation, Defense</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>The Joint Staff</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>United States Cyber Command</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>United States Special Operations Command</ns0:Title>
+                <ns0:Location>Volume 5</ns0:Location>
+            </ns0:TocItem>
+        </ns0:TocItemList>
+    </ns0:TableOfContents>
+    <ns0:DocumentAssemblyOptions>
+        <ns0:ForceEvenPages>true</ns0:ForceEvenPages>
+        <ns0:WorkFlowStatus>FINAL</ns0:WorkFlowStatus>
+        <ns0:VolumeTitleAggregation>Title(s) undefined</ns0:VolumeTitleAggregation>
+        <ns0:GenerateP1m>true</ns0:GenerateP1m>
+    </ns0:DocumentAssemblyOptions>
+    <ns0:JustificationBookGroupList>
+        <ns0:JustificationBookGroup>
+            <ns0:JustificationBookInfoList>
+                <ns0:JustificationBookInfo>
+                    <ns0:BookDescription>Defense Advanced Research Projects Agency</ns0:BookDescription>
+                    <ns0:BookLabel>Volume</ns0:BookLabel>
+                    <ns0:BookNumber>1</ns0:BookNumber>
+                    <ns0:JustificationBook targetSchemaVersion="1.0">
+                        <ns0:Title>Justification Book</ns0:Title>
+                        <ns0:BudgetYear>2026</ns0:BudgetYear>
+                        <ns0:BudgetCycle>PB</ns0:BudgetCycle>
+                        <ns0:SubmissionDate>2025-06</ns0:SubmissionDate>
+                        <ns0:ServiceAgencyName>Defense Advanced Research Projects Agency</ns0:ServiceAgencyName>
+                        <ns0:AppropriationCode>0400</ns0:AppropriationCode>
+                        <ns0:AppropriationName>Research, Development, Test &amp; Evaluation, Defense-Wide</ns0:AppropriationName>
+                        <ns0:CoverPage>
+                            <ns0:LogoFileName>DOD-Seal_DARPA#huwuk.png</ns0:LogoFileName>
+                        </ns0:CoverPage>
+                        <ns0:ExternalDocuments>
+                            <ns0:UserR1Doc>
+                                <ns0:Title>Comptroller Exhibit R-1</ns0:Title>
+                                <ns0:FileName>PB26 R-1 Final Revised (18JUN25)_DARPA#6uzEb.pdf</ns0:FileName>
+                            </ns0:UserR1Doc>
+                            <ns0:SupplementalDocList>
+                                <ns0:SupplementalDoc>
+                                    <ns0:Title>Supplemental Document</ns0:Title>
+                                    <ns0:FileName>PB26 JBook Supplemental Doc - New PE Crosswalk (18JUN25)_DARPA#FSgR@.pdf</ns0:FileName>
+                                </ns0:SupplementalDoc>
+                            </ns0:SupplementalDocList>
+                        </ns0:ExternalDocuments>
+                        <ns0:DocumentAssemblyOptions>
+                            <ns0:ForceEvenPages>true</ns0:ForceEvenPages>
+                            <ns0:WorkFlowStatus>FINAL</ns0:WorkFlowStatus>
+                            <ns0:VolumeTitleAggregation>Title(s) undefined</ns0:VolumeTitleAggregation>
+                            <ns0:GenerateProgramElementTocByTitle>true</ns0:GenerateProgramElementTocByTitle>
+                            <ns0:GenerateProgramElementTocByBA>true</ns0:GenerateProgramElementTocByBA>
+                            <ns0:IncludeTableOfVolumes>true</ns0:IncludeTableOfVolumes>
+                        </ns0:DocumentAssemblyOptions>
+                        <ns1:ProgramElementList targetSchemaVersion="1.0">
+                            <ns1:ProgramElement monetaryUnit="Millions">
+                                <ns1:ProgramElementNumber>0601101E</ns1:ProgramElementNumber>
+                                <ns1:ProgramElementTitle>DEFENSE RESEARCH SCIENCES</ns1:ProgramElementTitle>
+                                <ns1:R1LineNumber>2</ns1:R1LineNumber>
+                                <ns1:BudgetYear>2026</ns1:BudgetYear>
+                                <ns1:BudgetCycle>PB</ns1:BudgetCycle>
+                                <ns1:SubmissionDate>2025-06</ns1:SubmissionDate>
+                                <ns1:ServiceAgencyName>Defense Advanced Research Projects Agency</ns1:ServiceAgencyName>
+                                <ns1:AppropriationCode>0400</ns1:AppropriationCode>
+                                <ns1:AppropriationName>Research, Development, Test &amp; Evaluation, Defense-Wide</ns1:AppropriationName>
+                                <ns1:BudgetActivityNumber>1</ns1:BudgetActivityNumber>
+                                <ns1:BudgetActivityTitle>Basic Research</ns1:BudgetActivityTitle>
+                                <ns1:ProgramElementFunding>
+                                    <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                    <ns1:PriorYear>280.494</ns1:PriorYear>
+                                    <ns1:CurrentYear>293.145</ns1:CurrentYear>
+                                    <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                    <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                </ns1:ProgramElementFunding>
+                                <ns1:ProgramElementMissionDescription>The efforts described in this Program Element (PE) address the Basic Research associated with the Defense Research Sciences Program that provides the technical foundation for long-term National Security enhancement through the discovery of new phenomena and the exploration of the potential of such phenomena for Defense applications.  This PE supports the scientific study and experimentation that is the basis for more advanced knowledge and understanding in information, electronic, mathematical, computer, and materials sciences. This PE also supports innovation and robust transition planning in the technology cycle by working with entrepreneurs to increase the likelihood that DARPA funded technologies take root in the U.S. and provide new capabilities for national defense.
+
+The Math and Computer Sciences project supports scientific study and experimentation on new mathematical and computational algorithms, models, and mechanisms in support of long-term national security objectives. Modern analytic and information technologies enable important new military capabilities and drive the productivity gains essential to U.S. economic competitiveness. Conversely, new classes of threats, in particular threats that operate in or through the cyber and information domain, put military systems, critical infrastructure, and the civilian economy at risk. This project aims to magnify these opportunities and mitigate these threats by leveraging emerging mathematical and computational capabilities including artificial intelligence (AI), computational social science, machine learning and reasoning, data science, quantum science, complex systems modeling and simulation, and theories of computation and programming. The basic research conducted under the Math and Computer Sciences project will produce breakthroughs that enable new capabilities for national and homeland security.
+
+The Electronic Sciences project is for basic exploration of electronic and optoelectronic devices, circuits, and processing concepts to meet the military's need for near real-time information gathering, transmission, and processing. In seeking to continue the phenomenal advancement in microelectronics innovation that has characterized the last few decades, the project will provide DoD with new, improved, or potentially revolutionary device options for accomplishing these critical functions. The resulting technologies will help maintain knowledge of the enemy, communicate decisions based on that knowledge, and substantially improve the cost and performance of military systems. Research areas include analog, mixed signal, and photonic circuitry for communications and other applications; alternative computer architectures; and magnetic components to reduce the size of Electromagnetic (EM) and sensing systems. Other research could support field-portable electronics with reduced power requirements, and new approaches to nanometer-scale structures, molecules, and devices.
+
+The Beyond Scaling Sciences project supports investigations into materials, devices, and architectures to provide disruptive improvements in electronics performance that can be realized by techniques other than transistor scaling. Examples include circuit specialization, non-volatile memory devices that combine computation and memory, and new automated design tools using machine learning. Additionally, new design and manufacturing advances for three-dimensional microelectronics integration will underpin continued performance improvements as silicon transistor scaling plateaus.
+
+The Materials Sciences project provides the fundamental research that underpins the design, development, assembly, and optimization of advanced materials, devices, and systems for DoD applications in areas such as robust diagnostics and therapeutics, novel energetic materials, and complex hybrid systems.
+
+The Transformative Sciences project supports research and analysis that leverages converging technological forces and transformational trends in information-intensive subareas of life sciences, data sciences, and manufacturing.  Innovative technologies developed in this project will address multiple DoD challenges such as identification of and adaptation to emerging threats, access to DoD relevant critical materials for manufacturing and warfighter readiness.  Successful programs in this project will integrate diverse disciplines and engineer complex biological systems to detect novel threat agents, accelerate warfighter injury recover, accelerate recovery of DoD natural resources following natural disaster, and develop new platform materials and manufacturing processes.
+
+Beginning in FY 2026, efforts in this PE will be funded in PE 0601122E, Emerging Opportunities.</ns1:ProgramElementMissionDescription>
+                                <ns1:ChangeSummary>
+                                    <ns1:PreviousPresidentBudget>
+                                        <ns1:PriorYear>311.531</ns1:PriorYear>
+                                        <ns1:CurrentYear>303.830</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>332.425</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>332.425</ns1:BudgetYearOneBase>
+                                    </ns1:PreviousPresidentBudget>
+                                    <ns1:CurrentPresidentBudget>
+                                        <ns1:PriorYear>280.494</ns1:PriorYear>
+                                        <ns1:CurrentYear>293.145</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                    </ns1:CurrentPresidentBudget>
+                                    <ns1:TotalAdjustments>
+                                        <ns1:PriorYear>-31.037</ns1:PriorYear>
+                                        <ns1:CurrentYear>-10.685</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>-332.425</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>-332.425</ns1:BudgetYearOneBase>
+                                    </ns1:TotalAdjustments>
+                                    <ns1:AdjustmentDetails>
+                                        <ns1:CongressionalGeneralReductions>
+                                            <ns1:PriorYear>-7.500</ns1:PriorYear>
+                                            <ns1:CurrentYear>-10.685</ns1:CurrentYear>
+                                        </ns1:CongressionalGeneralReductions>
+                                        <ns1:CongressionalDirectedReductions>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalDirectedReductions>
+                                        <ns1:CongressionalRescissions>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalRescissions>
+                                        <ns1:CongressionalAdds>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalAdds>
+                                        <ns1:CongressionalDirectedTransfers>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalDirectedTransfers>
+                                        <ns1:Reprogrammings>
+                                            <ns1:PriorYear>-13.722</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:Reprogrammings>
+                                        <ns1:SBIRSTTRTransfer>
+                                            <ns1:PriorYear>-9.815</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:SBIRSTTRTransfer>
+                                        <ns1:OtherAdjustmentDetailList>
+                                            <ns1:OtherAdjustmentDetail>
+                                                <ns1:Title>TotalOtherAdjustments</ns1:Title>
+                                                <ns1:Funding>
+                                                    <ns1:BudgetYearOne>-332.425</ns1:BudgetYearOne>
+                                                    <ns1:BudgetYearOneBase>-332.425</ns1:BudgetYearOneBase>
+                                                </ns1:Funding>
+                                            </ns1:OtherAdjustmentDetail>
+                                        </ns1:OtherAdjustmentDetailList>
+                                    </ns1:AdjustmentDetails>
+                                    <ns1:SummaryExplanation>FY 2024:  Decrease reflects Congressional general reduction to reduce carryover in Next Generation Microelectronics - Advanced Manufacturing Science, SBIR/STTR transfer and reprogrammings.
+FY 2025:  Decrease reflects Congressional general reduction for an unjustified request.
+FY 2026:  Decrease reflects transfer of efforts from this PE to PE 0601122E, Emerging Opportunities beginning in FY 2026.</ns1:SummaryExplanation>
+                                </ns1:ChangeSummary>
+                                <ns1:ProjectList>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>CCS-02</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>MATH AND COMPUTER SCIENCES</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>160.158</ns1:PriorYear>
+                                            <ns1:CurrentYear>188.187</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Math and Computer Sciences project supports scientific study and experimentation on new mathematical and computational algorithms, models, and mechanisms in support of long-term national security objectives. Modern analytic and information technologies enable important new military capabilities and drive the productivity gains essential to U.S. economic competitiveness. Conversely, new classes of threats, in particular threats that operate in or through the cyber and information domain, put military systems, critical infrastructure, and the civilian economy at risk. This project aims to magnify these opportunities and mitigate these threats by leveraging emerging mathematical and computational capabilities, including artificial intelligence (AI), computational social science, machine learning and reasoning, data science, quantum science, complex systems modeling and simulation, and theories of computation and programming. The basic research conducted under the Math and Computer Sciences project will produce breakthroughs that enable new capabilities for national and homeland security.
+
+Beginning in FY 2026, this project will be funded in PE 0601122E, Project EMR-01.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Young Faculty Award (YFA)</ns1:Title>
+                                                    <ns1:Description>The goal of the Young Faculty Award (YFA) program is to encourage junior faculty at universities and their equivalent at non-profit science and technology research institutions to participate in sponsored research programs that will augment capabilities for future defense systems. This program focuses on cutting-edge technologies for greatly enhancing microsystems technologies, biological technologies, and defense sciences. The long-term goal for this program is to develop the next generation of scientists, engineers, and mathematicians in key disciplines who will focus a significant portion of their careers on Department of Defense (DoD) and national security issues. The aim is for YFA recipients to receive deep interactions with DARPA program managers, programs, performers, and the user community. Current activities include research in fifteen topic areas spanning from Machine Learning and Many Body Physics, to Wideband Transmitter-Antenna Interfaces and Multi-Scale Models of Infectious Disease Dynamics. A key aspect of the YFA program is DARPA-sponsored military visits; all YFA Principal Investigators are expected to participate in one or more military site visits to help them better understand DoD needs.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>17.000</ns1:Funding>
+                                                            <ns1:Text>-  Awarded FY 2024 grants for new two-year research efforts across YFA topic areas, establishing a new set of scientific approaches to solve current DoD challenges.
+-  Continued FY 2023 research on new concepts for microsystem, biological, strategic, and tactical technologies; information innovation; and defense sciences by exercising second year funding and by providing continued mentorship by program managers. 
+-  Awarded Director's Fellowships for top FY 2022 participants to refine technology further and align to DoD needs.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>17.000</ns1:Funding>
+                                                            <ns1:Text>-  Award FY 2025 grants for new two-year research efforts across YFA topic areas, establishing a new set of scientific approaches to solve current DoD challenges. 
+-  Continue FY 2024 research on new concepts for microsystem, biological, strategic, and tactical technologies; information innovation; and defense sciences by exercising second year funding and by providing continued mentorship by program managers. 
+-  Award Director's Fellowships for top FY 2023 participants to refine technology further and align to DoD needs.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Intrinsic Cognitive Security (ICS)</ns1:Title>
+                                                    <ns1:Description>The Intrinsic Cognitive Security (ICS) program is extending computational formal methods with cognitive guarantees and models to protect mixed reality (MR) users from cognitive attack. MR integrates virtual and real worlds in real time and will be ubiquitous in future military missions, including missions involving dismounted soldiers. Currently, users of MR systems are vulnerable to a wide variety of adversary attacks that exploit the intimate connection between users and MR equipment. Formal methods are rigorous, mathematics-based approaches that provide guarantees about computer-based systems, such as the absence of exploitable weaknesses. Cognitive models represent aspects of human perception, action, memory, and reasoning. The ICS program extends formal methods by explicitly creating and analyzing cognitive models as part of MR system development to protect the user from cognitive attacks. ICS will create cognitive guarantees that address mixed reality vulnerabilities and are expressed in languages suitable for proofs from models; will build cognitive models for reasoning about users of mixed reality systems with sufficient fidelity relative to human behaviors; and will evaluate model, proof, and guarantee validity using automated reasoning tools and prototype implementations of proved guarantees. The cognitive protections to be developed under ICS will prevent exploitation of MR systems by adversaries.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>3.000</ns1:Funding>
+                                                            <ns1:Text>-  Formulated approaches for combining computational formal methods with cognitive guarantees and models to protect MR users from cognitive attack.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>16.000</ns1:Funding>
+                                                            <ns1:Text>-  Create cognitive guarantees that address MR vulnerabilities and are expressed in languages suitable for proofs from models.
+-  Build cognitive models for reasoning about users of MR systems with sufficient fidelity relative to human behaviors.
+-  Evaluate model, proof, and guarantee validity using automated reasoning tools and create initial prototype implementations of proved guarantees.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Enhanced SBOM for Optimized Software Sustainment (E-BOSS)</ns1:Title>
+                                                    <ns1:Description>The Enhanced SBOM for Optimized Software Sustainment (E-BOSS) program is creating enhanced software bill of materials (eSBOM) technologies with new types of rich metadata and is developing cyber reasoning algorithms and tools that leverage eSBOMs to defend against potential flaws during the software development process and to triage and remediate flaws found in operation. The global impacts of flawed software deployed at scale, such as the Log4Shell vulnerability found in Log4j cloud and web app deployments, where mitigations took from one week to months, motivated new SBOM requirements in Executive Order 14028. SBOMs alone, however, cannot enable identification and mitigation of the flow of hostile data to the flaws in the code. E-BOSS is developing software technologies integrated with modern software build chains to enable rapid triage and remediation of vulnerabilities at enterprise scale. The enhanced metadata incorporated in the eSBOMs will enable trace back of discovered flaw evidence to derive the vulnerability triggers, starting from a crash and tracing back through complex inter-component interactions, transfers, and transformations. If successful, E-BOSS technologies will enable cyber-reasoning for improved remediation and sustainment of large-scale software systems.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>3.000</ns1:Funding>
+                                                            <ns1:Text>-  Established testbed for integration, testing, and evaluation of E-BOSS capabilities including infrastructure to support a continuous integration/continuous delivery (CI/CD) pipeline and network segregation based on purpose of use.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>14.000</ns1:Funding>
+                                                            <ns1:Text>-  Develop eSBOM formats that provide new types of rich metadata and cyber reasoning algorithms and tools that leverage eSBOMs to defend against potential flaws during software development.
+-  Conceptualize approaches for trace back of discovered flaws to derive the triggers and to identify how and where to apply fixes, starting from a crash and tracing back through complex inter-component interactions, transfers, and transformations.
+-  Extend testbed for integration, testing, and evaluation of eSBOM formats and trace back capabilities for enterprise-scale applications.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Scientific Feasibility (SciFy)</ns1:Title>
+                                                    <ns1:Description>The Scientific Feasibility (SciFy) program is developing computational methods to measure the feasibility of claims to enable accurate assessments of scientific content. Automated scientific content generation, via rapidly improving large pre-trained models, has the potential to disrupt the U.S. technology base in times of crisis and to distort the global race for technological dominance in key areas. Similarly, false capability claims can have significant negative implications for national security and international relations. To address these threats, SciFy focuses on methods for assessing the scientific feasibility of claims by using automated reasoning to decompose claims into constituent, verifiable parts. Assessing each component involves referencing existing technological advancements, foundational scientific principles, data, software, models, simulation results, and industry standards or benchmarks. SciFy will create methods that go beyond automated fact-checking by addressing complex component interactions and operational constraints, and evaluating logical consistency, system integration, and compatibility considerations. If successful, SciFy will enable the U.S. to reliably determine whether claimed scientific and technological capabilities are practical and realistic when considered as a whole, even when theoretically possible in parts. The SciFy program is also funded in PE 0602303E, Project IT-04.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01 and PE 0602025E, Project MSL-05.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>5.000</ns1:Funding>
+                                                            <ns1:Text>-  Conceptualized approaches to automatically reason, verify, and evaluate scientific, technological, and capability claims, especially in sensitive areas surrounding national security and defense.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>8.000</ns1:Funding>
+                                                            <ns1:Text>-  Develop methods to decompose scientific, technological, and capability claims into constituent, verifiable parts amenable to automated feasibility assessment.
+-  Develop techniques for automatically assessing component feasibility by referencing existing technological advancements, foundational scientific principles, data, software, models, simulation results, and industry standards or benchmarks.
+-  Extend and integrate approaches to address high priority scientific feasibility assessment use cases in collaboration with potential transition partners.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Advanced Tools for Modeling and Simulation</ns1:Title>
+                                                    <ns1:Description>The Advanced Tools for Modeling and Simulation thrust is developing foundational mathematical, computational, and multi-physics theories, approaches, and tools to better represent, quantify, and model complex Department of Defense (DoD) systems from multimodal data analysis through part/system design and fabrication. One focus area of this thrust is developing is a unified mathematical framework to enable better visualization and analysis of massive, complex data sets. Rigorous mathematical theories are also being developed to address uncertainty in the modeling and design of complex multi-scale physical and engineering systems, incorporating capabilities to handle noisy data and model uncertainty that were well beyond the scope of capabilities that existed at the time. Other work in this thrust focuses on developing the mathematical and computational tools required to generate and better manage the enormous complexity of design, ultimately allowing designers to more easily discover non-intuitive (yet realizable) designs that fully leverage new materials and advanced manufacturing approaches now available. Outcomes from this thrust seek to improve the speed and accuracy of modeling and simulation, as well as enable management of complexity across DoD devices, parts, and systems. Another focus area of this thrust is the development of quantum-assisted approaches for predicting behavior and non-intuitive failure pathways for complex, dynamic physical systems. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>4.000</ns1:Funding>
+                                                            <ns1:Text>-  Completed preliminary design and analysis of tabletop dynamical simulators to guide modeling of multiscale turbulent systems.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>7.324</ns1:Funding>
+                                                            <ns1:Text>-  Initiate development of tabletop dynamical simulators to capture high-resolution data of turbulent phenomenology. 
+-  Initiate development of machine language-based algorithms for predictive modeling and automated discovery of universal principles governing turbulence.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Advanced Research Concepts (ARC)</ns1:Title>
+                                                    <ns1:Description>The Advanced Research Concepts (ARC) program will rapidly explore revolutionary, nascent high-risk/high-reward ideas to accelerate the discovery of paradigm-shifting technologies. The program will focus on answering fundamental research questions to investigate the boundaries of what is possible and push the state of the art of science and technology. By exploring a high volume of ideas through targeted and limited-scope investments, this program will identify promising ideas early and assess the impact of further investment on problems of importance to the Department of Defense. The program will cover a broad spectrum of science and engineering disciplines that have applications for national security research. Individual efforts will explore numerous emerging technologies in various thrusts including, but not limited to, artificial intelligence and machine learning, mathematics, biology, chemistry, quantum technologies, social science, material science, electronics, sensing and measurement, and modeling.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>25.000</ns1:Funding>
+                                                            <ns1:Text>-  Explore the implications of advancement in Artificial Intelligence for the field of mathematics. 
+-  Investigate methodologies to better understand complex biological systems and improve rational engineering of systems. 
+-  Explore the fundamental questions at the intersection of biological and engineered systems. 
+-  Begin exploring the fundamental questions surrounding adaptability and resilience for future global change. 
+-  Explore simulations for growth of new device materials. 
+-  Explore fundamental questions surrounding emerging scientific fields to determine where additional investment will have the greatest impact.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Emerging Opportunities in Math and Computer Sciences</ns1:Title>
+                                                    <ns1:Description>The grounds for strategic surprise are often realized through the discovery of unifying principles, novel fundamental limits, and unexpected connections between nominally disparate fields. This thrust explores emergent capabilities and universal themes at the interface of quantum science, mathematics, nanoscience, and materials science to develop novel approaches to critical national security needs. Emerging opportunities in this thrust will explore and analyze new scientific and technological ideas, seeking answers to high-risk/high-reward "what if?" questions, and assess the impact of further investment on problems of importance to national security. Understanding the complex interplay between Department of Defense (DoD) systems and their environment is critical in developing new platforms and in determining the limitations of current platforms. Current mathematical tools cannot capture the nonlinear, multiscale, high dimensional dynamics of the coupled/multiscale physics that describe these complex physical systems. 
+
+Beginning in FY 2026, this program will be funded as Artificial Intelligence Studies and Concepts in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>5.700</ns1:Funding>
+                                                            <ns1:Text>-  Develop cost-effective human-artificial intelligence (AI) communication to incorporate complex logical knowledge and reasoning into AI systems, enabling much higher assurance in decision support than machine learning alone can, for obligations and permissions, e.g., in course-of-action planning and autonomous systems.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>In The Moment (ITM)</ns1:Title>
+                                                    <ns1:Description>*Previously part of Foundational Artificial Intelligence (AI) Science
+In the Moment (ITM) supports the development of algorithms that are trusted to make decisions independently in difficult domains. Military operations, such as mass casualty triage and disaster relief, require complex and rapid decision-making in dynamic situations where there is often no human consensus and no ground truth. The ITM program generates a quantitative alignment framework for trusted human decision-makers and algorithms. ITM investigates these decision-making problems in the context of medical triage in military environments. If the ITM program is successful, the alignment framework will support the development of algorithms that can be tuned to align with specific, trusted humans. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>15.000</ns1:Funding>
+                                                            <ns1:Text>-  Develop approaches for identifying key attributes of trusted human decision-making in dynamic settings. 
+-  Create an alignment framework for developing algorithms that can be tuned to align with specific, trusted humans. 
+-  Develop measurement techniques for quantifying the alignment of an algorithmic decision-maker with a human decision-maker.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Math and Algorithms Studies and Concepts</ns1:Title>
+                                                    <ns1:Description>This thrust will develop new mathematical tools for analyzing large data sets for the discovery of new/hidden relationships, for the prediction of phenomena and (rare) events, for the disentanglement of multimodal data, as well as for the discrimination between valuable and invaluable information.  This thrust includes the development of novel algorithms to search data, identify and quantify their relationships for task-specific applications and enable the generalizable abstractions directly from experimental data.  Emerging opportunities in this thrust will explore quantum algorithms for modeling complex systems for the simulation of highly correlated materials and systems that are intractable with current classical approaches, i.e. modeling magnetism, superconductivity and nature.  
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>10.000</ns1:Funding>
+                                                            <ns1:Text>-  Develop systematic methods to discover new numerical algorithms; assess efficacy by rediscovering known numerical algorithms and algorithm structures. 
+-  Extend algorithm discovery methods to search for new algorithms and algorithm structures. 
+-  Demonstrate optimization methods to systematically discover new algorithms and new algorithm structures, especially new hybrid classical-machine learning algorithm combinations. 
+-  Develop mathematical methods to systematically find transformations that simplify DoD relevant modeling problems.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Translating All C To Rust (TRACTOR)</ns1:Title>
+                                                    <ns1:Description>The Translating All C To Rust (TRACTOR) program aims to automate the process of transitioning legacy C to Rust, with the same quality and style that a skilled Rust developer would employ. At present, buffer overflow vulnerabilities and other related memory safety software flaws allow an attacker to inject messages that hijack control of a computer. TRACTOR combines programming language and machine learning techniques, including large language models, to eliminate memory safety vulnerabilities. TRACTOR researchers are building C to Rust translation systems for single-threaded application translation, and, with this experience, will then address multi-threaded application translation. If successful, TRACTOR will enable the wholesale translation of C programs to Rust, thereby eliminating memory safety vulnerabilities in mission-critical and other high-priority software-reliant systems. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>6.700</ns1:Funding>
+                                                            <ns1:Text>-  Combine programming language analysis and machine learning techniques to provide an automated C-to-Rust translation capability for single-threaded applications.
+-  Explore the use of formal analysis tools to enable modeling of the complexities of modern multicore central processing units for automated C-to-Rust translation of multi-threaded applications.
+-  Perform initial assessments of the tools in terms of percentages of C functions translated to safe and correct Rust programs, and in terms of the performance of the translation tools themselves.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Exponentiating Mathematics (expMath)</ns1:Title>
+                                                    <ns1:Description>The Exponentiating Mathematics (expMath) program will to develop and apply artificial intelligence (AI) techniques to enable breakthrough advances in national security-related mathematical fields. At present, important problems in mathematics take decades or centuries to resolve, but recent advances in generative AI (genAI) and large language models (LLMs) offer the promise of accelerating advances in mathematics. expMath aims to use AI to automate the discovery of new mathematical knowledge. Creating an AI with these mathematical capabilities will require advances along two fronts: decomposition/abstraction and formalization/informalization. expMath will focus on mathematical domains of particular importance for national security. If successful, expMath will provide the basis for potential leap-ahead mathematical capabilities for the U.S.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>2.000</ns1:Funding>
+                                                            <ns1:Text>-  Explore automated decomposition/abstraction approaches for breaking up a natural language statement into reusable natural language lemmas that, if true, constitute a proof.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Fostering Research and Growth in Emerging Artificial Intelligence (AI FORGE)</ns1:Title>
+                                                    <ns1:Description>The Fostering Research and Growth in Emerging Artificial Intelligence (AI FORGE) project aims to capture and solve pre-competitive AI research challenges to accelerate the development and fielding of frontier AI for national security. At present, a relatively small number of frontier AI companies drive most innovation in AI with a strong focus on commercialization and return-on-investment. AI FORGE seeks to make national security considerations more prominent in the generative AI development lifecycle. These considerations primarily involve the life- and mission-critical nature of national security generative AI use cases, which span information-centric intelligence analysis to grounded planning of logistics and tactical operations to embodiment in autonomous systems, and the highly adversarial nature of battlefield operational environments. For such use cases and environments, challenges of assurance, predictability, reliability, resilience, and transparency are of heightened importance. AI FORGE will conduct high-risk, high-reward efforts that address cross-cutting challenges that arise when using frontier AI for national security applications, systems, and missions. AI FORGE will combine the talents of universities with resources from frontier AI companies to create an R&amp;D ecosystem focused on national security.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-01.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>2.000</ns1:Funding>
+                                                            <ns1:Text>-  Conduct ideation workshops to characterize AI critical challenges for national security.
+-  Develop collaborations with government partners that define resource sharing.
+-  Work with frontier AI companies to define a mutually beneficial incentive structure for all parties (government, universities, and industry).</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-01.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Foundational Artificial Intelligence (AI) Science</ns1:Title>
+                                                    <ns1:Description>The Foundational Artificial Intelligence (AI) Science thrust is developing a fundamental scientific basis for understanding and quantifying performance expectations and limits of AI technologies. Current AI technologies are challenged in handling uncertainty and incompleteness of training protocols and data. This has prevented the successful integration of AI technology into many transformative Department of Defense (DoD) applications. To address these limitations, the Foundational AI Science thrust focuses on the development of new learning architectures that enhance AI systems' ability to handle uncertainty, reduce vulnerabilities, and improve robustness for Department of Defense AI systems. One focus area of this thrust is the ability to detect and accommodate novelty - i.e., violations of implicit or explicit assumptions - in AI applications. Another focus area is the development of a model framework for quantifying performance expectations and limits of AI systems as trusted human partners and collaborators. A third focus area is the development of new tools and methodologies that enable AI approaches for accelerated scientific discovery. The technology advances achieved under the Foundational AI Science thrust will ultimately remove technical barriers to exploiting AI technologies for scientific discovery, human-AI collaboration, accommodating novelty, and other DoD relevant applications.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>39.966</ns1:Funding>
+                                                            <ns1:Text>-  Empirically established that attribute alignment is correlated with willingness to delegate to another decision-maker. 
+-  Built baseline human-alignable algorithmic decision makers. 
+-  Validated baseline computational approaches for quantifying the measurement of alignment and the impact of alignment on trust (instantiated through decision to delegate) of algorithmic decision-makers. 
+-  Developed a community around AI decision-making for military medicine. 
+-  Evaluated the performance of machine learning algorithms in combination with a variety of new data modalities to predict mental states self-reported by users. 
+-  Investigated technologies and methodologies to partially automate knowledge curation in a human / machine collaboration in the domain of economic statecraft. 
+-  Formulated AI architectures, learning, and reasoning strategies for an autonomous scientist that can use scientific reasoning to acquire knowledge, develop creative hypotheses, and make decisions with its own knowledge in order to enable scientific discovery at speed and scale. 
+-  Explored methods to increase accountability and avoid over-trust through human-AI dialogue-based friction that reveals implicit assumptions and reflective reasoning that prompts critical analysis.
+-  Optimized AI and machine learning based approaches for automating critical mineral assessment workflows and collaborated with U.S. Government partners to quantify resource development impact economically and environmentally. 
+-  Continued to develop foundational AI science, advance the state of the art in AI engineering, and create human-machine teaming approaches that support trustworthy AI for mission- and safety-critical domains.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>39.378</ns1:Funding>
+                                                            <ns1:Text>-  Develop and demonstrate a rudimentary autonomous AI-based scientist that is simultaneously creative in its generation of scientific hypotheses and skeptical in its examination of scientific hypotheses. 
+-  Demonstrate accountability gains through the use of dialogue-based friction between AI systems and humans and evaluate the technique on DoD workflows associated with strategic planning and intelligence analysis. 
+-  Operationalize and harden AI and machine learning based approaches for automating critical mineral assessment workflows and transition capabilities and prototypes to U.S. Government partners. 
+-  Explore software-based methods of assuring safety for language-directed autonomous robots.  
+-  Continue to develop foundational AI science, advance the state of the art in AI engineering, and create human-machine teaming approaches that support trustworthy AI for mission- and safety-critical domains.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects program completion.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Knowledge Management at Scale</ns1:Title>
+                                                    <ns1:Description>The Knowledge Management at Scale thrust is focused on the development of knowledge management tools that can efficiently capture, analyze and reason with expertise, experience and data. The technology development under this thrust will help address a critical need for assimilating and preserving critical national security knowledge and expertise that is currently being lost due to attrition and other factors. Specific objectives include the following: 1) effective, trustworthy, and easily accepted approaches for domain agnostic knowledge acquisition at scale; 2) capabilities to identify correlations or hidden factors relating to knowledge acquired from different sources; and 3) techniques for incorporating domain models and other data sources for more extensive reasoning-based applications. Example approaches towards achieving these objectives include identifying and demonstrating robust knowledge acquisition tools, exploiting Artificial Intelligence (AI) techniques to establish a framework for knowledge analysis and causal reasoning, and developing automation tools that effectively elicit and impart acquired knowledge via user friendly interfaces.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>17.000</ns1:Funding>
+                                                            <ns1:Text>-  Evaluated novel AI knowledge management tools for use in domains of potential military interest.
+-  Incorporated personal sensor input modalities into novel AI tools. 
+-  Extended novel AI knowledge management tools to scale to individuals in organizations.
+-  Explored use of foundation models for organizational knowledge management.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>11.000</ns1:Funding>
+                                                            <ns1:Text>-  Compare novel knowledge management tools to foundation models through real-world experimentation in domains of potential military interest. 
+-  Transition novel knowledge management tools to military-relevant organizations and measure operational effectiveness in stakeholder defined experiments.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects program completion.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Environment-driven Conceptual Learning (ECOLE)</ns1:Title>
+                                                    <ns1:Description>The Environment-driven Conceptual Learning (ECOLE) program is creating artificial intelligence (AI) agents capable of continually learning from linguistic and visual input to enable human-machine collaborative analysis of image, video, and multimedia documents during time-sensitive, mission-critical Department of Defense analytic tasks, where reliability and robustness are essential. ECOLE aims to transform current machine learning approaches by developing algorithms that can identify, represent, and ground the attributes that form the symbolic and contextual model for a particular object or activity through interactive learning with a human analyst. Knowledge of attributes and affordances, learned dynamically from data encountered within an analytic workflow, will enable joint reasoning with a human partner. The acquired knowledge will also enable the machine to recognize when an observed object or activity is novel rather than misclassifying the newly observed object or action as a member of a previously-learned class and to readily learn a new symbolic representation through interaction with its human partner.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>14.000</ns1:Funding>
+                                                            <ns1:Text>-  Formulated initial AI agents capable of continually learning from language and vision to enable human-machine collaborative analysis of image, video, and multimedia documents.
+-  Developed initial algorithms that identify, represent, and ground novel attributes that form the symbolic and contextual model for a particular object or activity through interactive learning with a human analyst.
+-  Initiated development of a suite of collaborative human-machine, image analysis challenge problems based on inputs from potential transition partners in the defense and intelligence communities.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>9.085</ns1:Funding>
+                                                            <ns1:Text>-  Refine algorithms that identify, represent, and ground novel attributes that form the symbolic and contextual model for a particular object or activity through interactive learning with a human analyst.
+-  Utilize the AI agents' capabilities of continually learning from language and vision to enable human-machine collaborative analysis of image, video, and multimedia documents.
+-  Perform assessments of collaborative human-machine image and language analysis capabilities on challenge problems of interest to potential transition partners in the defense and intelligence communities.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects program completion.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Pipelined Reasoning of Verifiers Enabling Robust Systems (PROVERS)</ns1:Title>
+                                                    <ns1:Description>The Pipelined Reasoning of Verifiers Enabling Robust Systems (PROVERS) program is creating the basic science and technology needed for continuous reasoning about complex systems that can support software development pipelines. These mathematically based techniques, or formal methods, enable rigorous modeling, reasoning, and proving diverse properties of software code or design models, for example, the absence of a specific type of defect or security vulnerability. PROVERS integrates formal methods into a modern incremental and iterative development process by running tools at each code commit and delivering results to developers when they can most effectively remediate discovered issues. To achieve this, PROVERS is focusing on creating and sustaining a body of evidence that can co-evolve with the system under change to support continuous assessment and ensure that the system remains free of identified categories of defects and security vulnerabilities through its lifetime. Key PROVERS objectives include enabling proof maintenance and repair capabilities at a cost that is proportionate to code change; integration of formal methods with code, properties, and proofs in a single workflow that reduces human involvement; providing improved explanations to facilitate proof repair; and automating formal methods-based software analysis to support software developers that are not formal methods experts. PROVERS science and technology will facilitate the agile development and continuous improvement of mission-critical software systems that meet the high security and quality standards required by the Department of Defense (DoD). Beginning in FY 2025, this program is funded in PE 0602303E, Project IT-03.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>18.703</ns1:Funding>
+                                                            <ns1:Text>-  Developed and demonstrated formal methods approaches, tools, and data management techniques integrated in pipelined software development processes and quantified the costs related to adding formal methods-based assurances in development workflows.
+-  Implemented mathematical approaches for proof engineering at scale and demonstrated efficiency and quality of outputs within existing and modified workflows.
+-  Collaborated with DoD stakeholders on controlled formal-methods-based experiments on selected mission-critical software systems to quantify the improvements in development productivity and system security.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Alternative Computing</ns1:Title>
+                                                    <ns1:Description>The Alternative Computing thrust explored and developed new computational primitives for modeling and simulating complex systems. Despite decades of rapid advancement in electronic computing, there remained important national security relevant challenge problems that did not lend themselves to achieving tractable solutions under size, weight, and power (SWaP) constrained conditions. For example, simulation of complex nonlinear phenomena such as turbulence, fluid flow, and plasma dynamics can be challenging even using currently available high-power computing resources. Built on technologies developed under the Advanced Tools for Modeling and Simulation thrust, also in this PE/Project, the goal of the Alternative Computing thrust was to develop novel architectural and algorithmic approaches to enable fast and accurate simulations for problems that are practically intractable using electronic computers. Approaches considered under this thrust included the following: (1) analog computing substrates for efficiently simulating systems governed by complex non-linear phenomena; (2) multi-functional spin-based devices for scalable, efficient neuromorphic computing; (3) computing approaches that exploit the capacity of nonlinear systems to simulate nonlinear dynamical systems; and (4) quantum enabled optimization of complex systems.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>17.989</ns1:Funding>
+                                                            <ns1:Text>-  Calculated quantum resources required for a set of utility-scale transformational applications. 
+-  Calculated the hardware resources necessary to achieve key utility thresholds using quantum computers to solve transformational problems. 
+-  Performed benchmarking of quantum optimization algorithms against the best classical method to demonstrate and quantify quantum advantage.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Perceptually-Enabled Task Guidance (PTG)</ns1:Title>
+                                                    <ns1:Description>The Perceptually-Enabled Task Guidance (PTG) program developed artificial intelligence (AI) technology that guides users in the performance of a range of cognitively challenging physical tasks. PTG leveraged recent advances in machine perception, automated reasoning, and augmented reality. The program connects perception to reasoning and reasoning to augmented reality (AR) to create personalized, real-time feedback and contextualized assistance. To connect perception and reasoning, PTG developed AI technologies for (1) perceptual grounding, to create a shared vocabulary for perception and reasoning, and (2) perceptual attention, to select important information from large volumes of perceptual data. To connect reasoning with AR, PTG developed AI technologies for (3) knowledge transfer, to derive task models from instructions intended for humans, and (4) user modeling, to determine if, when, and how to best convey task information to the user. Together, PTG technologies laid the foundation for perceptually-enabled guidance and a qualitatively new type of AI device that enables mechanics and medics to perform physical tasks within and beyond their skillsets with greater accuracy and efficiency.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>12.000</ns1:Funding>
+                                                            <ns1:Text>-  Integrated perceptual, reasoning, and augmented reality technology with technologies for knowledge transfer, perceptual grounding, and perceptual attention and develop interactive demonstration scenarios involving answering questions for users performing tasks.
+-  Developed user modeling technologies applicable to individuals performing tasks in military use cases.
+-  Performed assessments of task completion and user acceptance of the integrated technologies in the completion of tasks.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Guaranteeing AI Robustness against Deception (GARD)</ns1:Title>
+                                                    <ns1:Description>The Guaranteeing AI Robustness against Deception (GARD) program developed techniques to defend against deception and other adversarial attacks on machine learning (ML) and artificial intelligence (AI) systems. GARD addressed the need to defend against deception attacks, whereby an adversary inputs engineered data into an ML system intending to cause the system to produce erroneous results. Deception attacks can enable adversaries to take control of autonomous systems, alter conclusions of ML-based decision support applications, and compromise tools and systems that rely on ML and AI technologies. Previous techniques for defending ML and AI were brittle due to a focus on individual attack methods and weak methods for testing and evaluation. The GARD program developed techniques that addressed the limitations of defenses and produced ML and AI systems suitable for use in adversarial environments. The GARD program also developed theory regarding potential fundamental limits on achievable ML robustness.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>5.000</ns1:Funding>
+                                                            <ns1:Text>-  Extended adversarial AI techniques to federated learning systems.
+-  Explored the potential of physically realizable attacks in domains relevant to the Department of Defense (DoD).
+-  Demonstrated and transitioned AI/ML defense technology to DoD transition partners.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Human Social Systems</ns1:Title>
+                                                    <ns1:Description>The social and behavioral sciences provided essential theories and models to enable deeper understanding of human social/behavioral systems relevant to national security such as mental health, humanitarian aid, disaster relief, and stability support missions, as well as tactical, operational, strategic, and policy-level decision-making across the Department of Defense (DoD). However, limitations to the speed, scalability, and reproducibility of empirical social science research continued to hamper its practical use by the DoD. Additionally, social behavioral models often failed to accurately interpret social behaviors because they did not sufficiently capture diversity of context. The Human Social Systems thrust addressed these limitations by focusing on the following technical challenges: (1) development and validation of new methods, models and tools to perform rigorous, reproducible experimental research at scales necessary to understand emergent properties of human social/behavioral systems; (2) identification methods to better characterize and quantify properties, dynamics, and behaviors of different social/behavioral systems to enable better and more confident forecasting of changes in such systems, particularly when under stress; (3) development of an understanding of the complex effect of context and incorporating these effects into models; and (4) development of strategic forecasting and operational decision aiding capabilities to account for local contextual and cultural factors to assess the likely effectiveness of and/or responses to actions within an Area of Operations. This research thrust endeavored to provide DoD with new, reliable strategies to better understand and respond to social/behavioral system issues at multiple scales (from small group to cities and/or regions) and to significantly improve DoD stabilization, deterrence, and/or gray zone mission outcomes.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>3.500</ns1:Funding>
+                                                            <ns1:Text>-  Tested the accuracy of causal models of regional socioeconomic systems derived from collective local understandings for predicting event outcomes compared to the current state of practice in new locations to test generalizability of methods.
+-  Evaluated the efficiency of methodologies for developing causal models of regional socioeconomic systems derived from collective local understanding compared to the current state of practice in new locations to test generalizability of methods.
+-  Evaluated the feasibility of targeted, closed-loop modulation of REM and corresponding effects on sleep-derived stress and trauma adaptation.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>ES-01</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>ELECTRONIC SCIENCES</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>5.802</ns1:PriorYear>
+                                            <ns1:CurrentYear>4.768</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Electronic Sciences project is for basic exploration of electronic and optoelectronic devices, circuits, and processing concepts to meet the military's need for near real-time information gathering, transmission, and processing. In seeking to continue the phenomenal advancement in microelectronics innovation that has characterized the last few decades, the project will provide DoD with new, improved, or potentially revolutionary device options for accomplishing these critical functions. The resulting technologies will help maintain knowledge of the adversary, communicate decisions based on that knowledge, and substantially improve the cost and performance of military systems. Research areas include analog, mixed signal, and photonic circuitry for communications and other applications; alternative computer architectures; and magnetic components to reduce the size of Electromagnetic (EM) and sensing systems. Other research could support field-portable electronics with reduced power requirements, and new approaches to nanometer-scale structures, molecules, and devices.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Atomic-Photonic Integration (A-PhI)</ns1:Title>
+                                                    <ns1:Description>The Atomic-Photonic Integration (A-PhI) program is reducing the size, weight, and power of atomic clocks and gyroscopes for position, navigation, and timing (PNT) applications through the development of integrated photonics. Specifically, A-PhI will demonstrate that a compact photonic integrated chip can replace the optical assembly for trapped atomic gyroscopes and clocks without degrading the performance of the device. PNT is a critical resource for all DoD missions such as communications, navigation, reconnaissance, and electronic warfare. While PNT needs usually are met by using the global positioning system (GPS), GPS signals are vulnerable to disruption and a fallback from GPS is essential. In the absence of GPS, tactical-grade clocks and tactical/navigation grade inertial measurement units (IMUs) currently can provide GPS-like accuracy only for the short term, and longer-term GPS-independent strategies are highly desirable. A-PhI will enable long-term GPS independence and enable better-than-GPS PNT accuracy for short durations.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>5.802</ns1:Funding>
+                                                            <ns1:Text>-  Tested the first highly accurate transportable optical atomic clock by referencing to civilian and military time standards.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>4.768</ns1:Funding>
+                                                            <ns1:Text>-  Demonstrate a trapped atom gyroscope with single measurement angle rate resolution and scale factor exceeding commercial gyroscopes.
+-  Demonstrate stability and dynamic control over trapped atoms.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects program completion.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>ES-02</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>BEYOND SCALING SCIENCES</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>43.607</ns1:PriorYear>
+                                            <ns1:CurrentYear>44.665</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Beyond Scaling Sciences project supports investigations into materials, devices, and architectures to provide disruptive improvements in electronics performance that can be realized by techniques other than transistor scaling. Examples include circuit specialization, non-volatile memory devices that combine computation and memory, and new automated design tools using machine learning. Additionally, new design and manufacturing advances for three-dimensional microelectronics integration will underpin continued performance improvements as silicon transistor scaling plateaus.
+
+Beginning in FY 2026, efforts in this Project will be funded in PE 0601122E, Project EMR-02.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Joint University Microelectronics Program 2.0 (JUMP 2.0)</ns1:Title>
+                                                    <ns1:Description>The Joint University Microelectronics Program 2.0 (JUMP 2.0) program is developing and demonstrating innovative next-generation microelectronics technologies through a public-private consortium with universities, the defense industrial base, and the semiconductor industry. The JUMP 2.0 program addresses the grand technical challenges of our increasingly connected world that must be overcome including: the need for innovation in analog hardware, increasing demand for more memory and data storage, the imbalance between data generation and communication capacity, the emerging security vulnerabilities in highly interconnected Artificial Intelligence systems, and the unsustainable growth in energy demands for computing. Therefore, the JUMP 2.0 program sponsors academic research teams focused on related key technology areas that will not only impact future defense and national security capabilities but also strengthen U.S. leadership in information and communication technology. The JUMP 2.0 program will push fundamental technology research themes in cognition, communications, sensing to action, computing and processing, memory and storage, integration and packaging, and high-performance energy efficient devices to enable key disruptive advances in microelectronic technology.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-02.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>28.000</ns1:Funding>
+                                                            <ns1:Text>-  Developed emerging materials, devices, and integration and packaging technologies for future microsystems.
+-  Established concepts for next-generation artificial intelligence, efficient communication, intelligent storage, novel sensing-to-action, and distributed computing architectures.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>28.000</ns1:Funding>
+                                                            <ns1:Text>-  Benchmark newly developed materials, devices, and integration and packaging technologies.
+-  Demonstrate components for demonstrating next-generation artificial intelligence, efficient communication, intelligent storage, novel sensing-to-action, and distributed computing architectures.
+-  Identify new research directions and amend new projects to the JUMP 2.0 university research portfolio.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-02.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Compartmentalization and Privilege Management (CPM)</ns1:Title>
+                                                    <ns1:Description>The Compartmentalization and Privilege Management (CPM) program is developing new system frameworks, architectures, and tooling to provide fine-grained, least-privileged compartmentalization that enables prevention and containment of cyber attacks. Today's information systems are structured around a monolithic core, the kernel, that operates within a single protection domain at a single high privilege-level. A monolithic kernel contains many separate components without protection boundaries between them. A single compromise anywhere in the system allows attackers effectively unlimited access through an extended sequence of exploits, privilege escalation, and lateral motion. CPM is developing technologies and tools to compartmentalize large, legacy software systems automatically and designing processor architectures and system software to enforce a compartment and privilege-level regime. CPM tools and architectures will prevent initial penetrations from propagating into successful cyber attacks.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-02.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>10.000</ns1:Funding>
+                                                            <ns1:Text>- Initiated development and adaptation of three processor architectures and accompanying system software to enforce a compartment and privilege-level regime with low overhead.
+-  Initiated development of a library of attack campaign test cases for quantifying compartmentalization effectiveness and overhead in operating systems to demonstrate attack containment.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>12.000</ns1:Funding>
+                                                            <ns1:Text>-  Produce initial processor designs and refined processor performance models for enforcing code compartmentalization policies.
+-  Incorporate refined processor performance models in initial implementations of compartmentalization and privilege management tools.
+-  Develop attack campaign test cases for operating systems and conduct initial experiments to measure effectiveness and overhead of compartmentalization and privilege management techniques.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-02.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Advanced Microsystems Manufacturing Technologies Studies and Concepts</ns1:Title>
+                                                    <ns1:Description>The Advanced Microsystems Manufacturing Technologies Studies and Concepts will examine the infrastructure needed to bring sustainability to advanced microsystems. Studies will examine technologies that reduce the cost and time-to-market footprint of microsystems manufacturing as well as foundational ecosystem enhancements that could provide far-reaching impact. This program will also examine ways to take advantage of commercial scaling while building in superior capabilities for defense systems through design and integration. These studies may lead to the development of new programs in these areas.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>4.665</ns1:Funding>
+                                                            <ns1:Text>-  Examine current and burgeoning technologies for scalable manufacturing of advanced microsystems.
+-  Investigate potential areas for leveraging commercial microsystems scaling for relevant defense applications.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects program completion.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Low Temperature Logic Technology (LTLT)</ns1:Title>
+                                                    <ns1:Description>The Low Temperature Logic Technology (LTLT) program exploited the unique device and material performance characteristics of state-of-the-art silicon transistors at cryogenic temperatures. Current silicon transistors were performance and power limited when operating at room temperature or higher. This program removed these limitations through modifying the design of existing silicon transistors to optimize their performance at cryogenic temperatures. The resulting devices are compatible with current complementary metal-oxide-semiconductor (CMOS) fabrication process flows and offer significant increases in performance and power efficiency over room temperature devices. This program has applied research efforts funded in PE 0602716E, Project ELT-02.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>5.607</ns1:Funding>
+                                                            <ns1:Text>-  Fabricated optimized transistors and generated compact device models.
+-  Demonstrated compact, low power memory cells and experimentally showed their performance at low temperature.
+-  Optimized high speed, low power switching devices and experimentally verified their performance advantage at low temperature.
+-  Optimized compact, high speed, low power static memory cells and experimentally verified their performance advantages at low temperature.
+-  Demonstrated 45X improvement in performance relative to power of low temperature central processing compared to processing at room temperature.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>MS-01</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>MATERIALS SCIENCES</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>66.406</ns1:PriorYear>
+                                            <ns1:CurrentYear>55.525</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Materials Sciences project provides the fundamental research that underpins the design, development, assembly, and optimization of advanced materials, devices, and systems for DoD applications in areas such as robust diagnostics and therapeutics, novel energetic materials, and complex hybrid systems.
+
+Beginning in FY 2026, efforts in this Project will be funded in PE 0601122E, Project EMR-03.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Fundamental Limits</ns1:Title>
+                                                    <ns1:Description>Understanding the Fundamental Limits (i.e., achievable boundaries) of scientific principles, processes and technologies is critical to better anticipate technological surprise for our adversaries and ourselves. This thrust explores boundaries across fields such as physics, chemistry, mathematics, biology, and engineering to address critical questions for national security, addressing foundational theory and approaches that include, for example, the fundamental limitations of optical technologies, potential implications for basic biology on national security, and the ability for modeling and simulation to provide a better understanding of complex systems. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-03.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>39.830</ns1:Funding>
+                                                            <ns1:Text>-  Developed test plan for large-scale experiments to understand the fundamental physics behind flow noise at high Reynolds numbers. 
+-  Performed initial demonstration of compact, highly sensitive atomic vapor-based electric and magnetic field sensor devices. 
+-  Performed initial demonstration of compact vapor-based quantum device with high atom-photon interaction strength and quantum coherence. 
+-  Performed an engineering analysis of atomic vapor benchtop devices to provide a blueprint for future fieldable systems tailored to DoD applications. 
+-  Completed initial modeling of high energy particle accelerator structures and particle source targets and continued evaluation of laser driver technical approaches for accelerator structures. 
+-  Defined system requirements for compact and directional particle sources. 
+-  Developed the theoretical framework for transport of spin polarized electrons. 
+-  Initiated efforts to develop techniques to control chemical reaction pathways for the synthesis and separation of chiral molecules. 
+-  Performed experiments to characterize and demonstrate persistence and transport of spin-polarized electrons in chiral and achiral molecules. 
+-  Investigated the fundamental properties that inhibit and enable adhesion in aqueous environments. 
+-  Developed methodologies for forming fuels efficiently from readily available sources directly at the point of need. 
+-  Developed models and device designs for correlated multiphoton sources for sensing, communication, and imaging. 
+-  Designed and simulated cavity-enhanced quantum control and readout schemes for atomic and molecular qubits. 
+-  Validated novel approaches to the scalable creation, autonomous error correction, and control of entangled and topologically protected qubits to enable new capabilities in quantum information processing. 
+-  Initiated exploration of novel sensor architectures to simultaneously levitate a heavy mass with high confinement bandwidth in a compact form factor. 
+-  Developed models and simulations of superconducting metamaterials to inform design and fabrication of enhanced quantum nanoelectronic devices.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>37.525</ns1:Funding>
+                                                            <ns1:Text>-  Use state-of-the-art modeling techniques to model the large-scale experiments to identify potential areas for future improvement. 
+-  Acquire data at high Reynolds number with smooth and rough wall conditions. 
+-  Conduct experiments with high-energy methods and conduct analyses to understand theories behind novel means of forced radioisotope decay. 
+-  Complete initial studies of staged accelerator concepts for high energy particle source systems.
+-  Produce and detect electrons and muons at 10 GeV energy levels and beyond. 
+-  Perform experiments to characterize and demonstrate persistence and transport of spin-polarized electrons in chiral and achiral molecules. 
+-  Test for yield improvements for synthesis and separation of chiral and achiral molecules. 
+-  Develop and initiate preliminary demonstrations of correlated multiphoton sources for sensing, communication, and imaging. 
+-  Demonstrate levitation of heavy mass with high confinement bandwidth in a compact form factor along Z axis. 
+-  Demonstrate applications and utility of novel approaches to scalable creation, autonomous error correction, and control of entangled and topologically protected qubits in enabling new capabilities in quantum information processing. 
+-  Explore the fundamental questions surrounding how light at the quantum level can enhance material properties to advance quantum technologies, sensing, measurement, computation and/or processing. 
+-  Develop device designs and simulations of superconducting nanoelectronic devices for computation, quantum sensing, and signal processing based on superconducting metamaterials. 
+-  Investigate methods by which biological systems encode and relay information.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-03.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Molecular Systems and Materials Assembly</ns1:Title>
+                                                    <ns1:Description>The Molecular Systems and Materials Assembly thrust is exploring new approaches for the synthesis, assembly, characterization and application of molecules and materials for a variety of DoD applications from the atomic to the product scale. Ultimately, materials and methods developed in this thrust will support a wide range of DoD applications that will leverage novel materials to extend the range, duration, and capabilities of DoD systems and the warfighter.  Through control of the arrangement, interactions, and assembly of atoms and molecules, new materials and manufacturing processes are being developed to address long-standing challenges in supply chains, logistics, and sustainment while simultaneously enhancing the warfighter's capabilities on the battlefield.  Efforts in this thrust range from fundamental science to better understand the chemistry and physics related to each application, to developing means to utilize such capabilities in future test systems and prototype devices.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-03.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>26.576</ns1:Funding>
+                                                            <ns1:Text>-  Predicted evolution of morphology and local gradients in electrochemical interfaces. 
+-  Demonstrated persistence improvements in solid-state laboratory scale battery test samples due to solid/solid morphogenic interfaces. 
+-  Demonstrated higher fatigue strength of test samples with morphogenic solid/liquid and solid/vapor interfaces in a corrosive environment. 
+-  Achieved simultaneous production of four human macronutrients in microbial food and initiated efforts to produce macro- and micro- nutrients in desired ratios. 
+-  Demonstrated in a laboratory environment each of the essential processes required to produce microbial food in the field and initiated efforts to reduce system size, weight, and power (SWaP). 
+-  Demonstrated ability to flavor microbial food and initiated efforts to produce multiple flavors and formats. 
+-  Provided initial proof-of-concept for scalable rare earth element separation methods that yield high purity single species from domestic sources. 
+-  Leveraged data-driven approaches to material discovery to identify candidate tunable optical materials that can lead to disruptive DoD technologies. 
+-  Modeled fundamental boundary layer flows to optimize drag reducing geometries in water. 
+-  Tested candidate drag reduction technologies on flat surfaces. 
+-  Finalized experimental material test platform designs and continuum material design optimization approaches. 
+-  Conducted proof-of-concept manufacturing demonstrations to produce and test multi-material structural components.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>12.394</ns1:Funding>
+                                                            <ns1:Text>-  Predict and validate the morphogenic evolution in electrochemical interfaces. 
+-  Assess new experimentally informed modeling techniques to allow for the design of new functional electrochemical interfaces. 
+-  Initiate research to optimize microbial biomass powder to meet DoD Nutritional Standards for Operational Rations (NSOR). 
+-  Initiate plan to achieve generally recognized as safe (GRAS) status for microbial biomass powder. 
+-  Test candidate drag reduction technologies on surfaces with complex curvatures. 
+-  Demonstrate novel material testing techniques to generate design-relevant properties 10x faster than current approaches. 
+-  Perform critical function and full system level demonstrations on material testing platforms and design optimization routines.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-03.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Emerging Opportunities in Materials Sciences</ns1:Title>
+                                                    <ns1:Description>The grounds for strategic surprise are often realized through the discovery of unifying principles, novel fundamental limits, and unexpected connections between nominally disparate fields.  Examples include new fundamental limits of sensing and information gathering capabilities enabled by multimodal sensor networks and new avenues to high performance information processing by encoding information within dynamical physical or biological systems. This thrust explores emergent capabilities and universal themes at the interface of quantum science, mathematics, nanoscience, and materials science to develop novel approaches to critical national security needs. Focus areas include harnessing the universal principles of turbulence from new forms of simulation for high complexity physical systems; systemic discovery of materials with desired properties; the analysis of new scientific and technological ideas of importance to national security. 
+
+Beginning in FY 2026, this program will be funded as Materials Sciences Studies and Concepts in PE 0601122E, Project EMR-03.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>5.606</ns1:Funding>
+                                                            <ns1:Text>-  Develop initial models of high energy displacement threshold materials and self-healing, annealing techniques.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-03.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>TRS-01</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>TRANSFORMATIVE SCIENCES</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>4.521</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Transformative Sciences project focused on research and analysis that leverages converging technological forces and transformational trends in information-intensive subareas of life sciences, data sciences, and manufacturing. Innovative technologies developed in this project addressed multiple DoD challenges such as identification of and adaptation to emerging threats, access to DoD relevant critical materials for manufacturing, and warfighter readiness. Successful programs in this project integrated diverse disciplines and engineered complex biological systems to detect novel threat agents, accelerated warfighter injury recovery, accelerated recovery of DoD natural resources following natural disaster, and developed new platform materials and manufacturing processes.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Rapid Healing for Warfighter Injuries</ns1:Title>
+                                                    <ns1:Description>The Rapid Healing for Warfighter Injuries effort addressed the DoD need for improving warfighter recovery from injury by developing technologies that can accelerate the restoration and repair of complex wounds. This program developed approaches that combine high-resolution biosensors to track the healing process in real-time with bioactuators to stimulate restoration where and when needed. The primary challenge to achieving this was the lack of a closed-loop interface that can manipulate highly complex signaling pathways in wounds and the developmental interdependencies that scale from cell to tissue. The program developed new methods to convert dense multi-modal information into the body's native repair processes and leveraged artificial intelligence to guide the delivery of the signals necessary for healing. Advances from this program produced bioactuators that can release diverse stimuli with high spatial and temporal resolution, and biosensors that provided the requisite in situ measurement to guide the healing process.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>0.927</ns1:Funding>
+                                                            <ns1:Text>-  Integrated sensors and actuators for all required physiological processes into a single platform.
+-  Demonstrated that the integrated system can fully heal wounds faster than current state of art and/or reduce deleterious effects (scarring) of normal healing in vivo.
+-  Demonstrated that the algorithmic model predicts the wound stage with at least 90% accuracy.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Engineering Functional Materials with Biology</ns1:Title>
+                                                    <ns1:Description>The Engineering Functional Materials with Biology program pursued new approaches to engineer complex biological systems for enhanced capabilities and functional materials to improve military infrastructure design and logistics, sensors, and platforms. Complex biological materials and systems have unique properties (e.g., controlled porosity, high strength-to-weight ratios, tunable magnetic and optical properties, etc.) not only because of the inherent biological components but also because of how those components are assembled together from microscopic to macroscopic scales. Engineering biology tools and techniques are now at a stage to improve the production, organization, and function of biomaterial systems for a variety of expanded capabilities, including those that can help DoD address supply chain challenges. This program conducted research to enable information-driven assembly of hierarchical biological systems for materials as well as alternate approaches for the production of critical molecules and materials. Advances in this program impacted: next-generation material design for optical and electronic applications; military approaches to infrastructure design in austere environments; and established methods for the manufacture and maintenance of military platforms.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>3.594</ns1:Funding>
+                                                            <ns1:Text>-  Characterized biological manufacturing approaches for increased performance of microbes in austere environments.
+-  Refined models to predict the feasibility, logistics, and economics of biomanufacturing in austere environments based on experimental biological data.
+-  Developed reproducible high-throughput methods to hypothesize and verify biological mode of action and gene function.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                </ns1:ProjectList>
+                            </ns1:ProgramElement>
+                            <ns1:ProgramElement monetaryUnit="Millions" format="R2Long">
+                                <ns1:ProgramElementNumber>0601117E</ns1:ProgramElementNumber>
+                                <ns1:ProgramElementTitle>BASIC OPERATIONAL MEDICAL SCIENCE</ns1:ProgramElementTitle>
+                                <ns1:R1LineNumber>5</ns1:R1LineNumber>
+                                <ns1:BudgetYear>2026</ns1:BudgetYear>
+                                <ns1:BudgetCycle>PB</ns1:BudgetCycle>
+                                <ns1:SubmissionDate>2025-06</ns1:SubmissionDate>
+                                <ns1:ServiceAgencyName>Defense Advanced Research Projects Agency</ns1:ServiceAgencyName>
+                                <ns1:AppropriationCode>0400</ns1:AppropriationCode>
+                                <ns1:AppropriationName>Research, Development, Test &amp; Evaluation, Defense-Wide</ns1:AppropriationName>
+                                <ns1:BudgetActivityNumber>1</ns1:BudgetActivityNumber>
+                                <ns1:BudgetActivityTitle>Basic Research</ns1:BudgetActivityTitle>
+                                <ns1:ProgramElementFunding>
+                                    <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                    <ns1:PriorYear>55.913</ns1:PriorYear>
+                                    <ns1:CurrentYear>89.143</ns1:CurrentYear>
+                                    <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                    <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                </ns1:ProgramElementFunding>
+                                <ns1:ChangeSummary>
+                                    <ns1:PreviousPresidentBudget>
+                                        <ns1:PriorYear>50.430</ns1:PriorYear>
+                                        <ns1:CurrentYear>99.048</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>113.121</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>113.121</ns1:BudgetYearOneBase>
+                                    </ns1:PreviousPresidentBudget>
+                                    <ns1:CurrentPresidentBudget>
+                                        <ns1:PriorYear>55.913</ns1:PriorYear>
+                                        <ns1:CurrentYear>89.143</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                    </ns1:CurrentPresidentBudget>
+                                    <ns1:TotalAdjustments>
+                                        <ns1:PriorYear>5.483</ns1:PriorYear>
+                                        <ns1:CurrentYear>-9.905</ns1:CurrentYear>
+                                        <ns1:BudgetYearOne>-113.121</ns1:BudgetYearOne>
+                                        <ns1:BudgetYearOneBase>-113.121</ns1:BudgetYearOneBase>
+                                    </ns1:TotalAdjustments>
+                                    <ns1:AdjustmentDetails>
+                                        <ns1:CongressionalGeneralReductions>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>-9.905</ns1:CurrentYear>
+                                        </ns1:CongressionalGeneralReductions>
+                                        <ns1:CongressionalDirectedReductions>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalDirectedReductions>
+                                        <ns1:CongressionalRescissions>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalRescissions>
+                                        <ns1:CongressionalAdds>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalAdds>
+                                        <ns1:CongressionalDirectedTransfers>
+                                            <ns1:PriorYear>0.000</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:CongressionalDirectedTransfers>
+                                        <ns1:Reprogrammings>
+                                            <ns1:PriorYear>7.111</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:Reprogrammings>
+                                        <ns1:SBIRSTTRTransfer>
+                                            <ns1:PriorYear>-1.628</ns1:PriorYear>
+                                            <ns1:CurrentYear>0.000</ns1:CurrentYear>
+                                        </ns1:SBIRSTTRTransfer>
+                                        <ns1:OtherAdjustmentDetailList>
+                                            <ns1:OtherAdjustmentDetail>
+                                                <ns1:Title>TotalOtherAdjustments</ns1:Title>
+                                                <ns1:Funding>
+                                                    <ns1:BudgetYearOne>-113.121</ns1:BudgetYearOne>
+                                                    <ns1:BudgetYearOneBase>-113.121</ns1:BudgetYearOneBase>
+                                                </ns1:Funding>
+                                            </ns1:OtherAdjustmentDetail>
+                                        </ns1:OtherAdjustmentDetailList>
+                                    </ns1:AdjustmentDetails>
+                                    <ns1:SummaryExplanation>FY 2024:  Increase reflects SBIR/STTR transfer offset by reprogrammings.
+FY 2025:  Decrease reflects Congressional general reduction for an execution adjustment.
+FY 2026:  Decrease reflects transfer of efforts from this PE to PE 0601122E, Emerging Opportunities beginning in FY 2026.</ns1:SummaryExplanation>
+                                </ns1:ChangeSummary>
+                                <ns1:ProjectList>
+                                    <ns1:Project>
+                                        <ns1:ProjectNumber>MED-01</ns1:ProjectNumber>
+                                        <ns1:ProjectTitle>BASIC OPERATIONAL MEDICAL SCIENCE</ns1:ProjectTitle>
+                                        <ns1:SpecialProject>0</ns1:SpecialProject>
+                                        <ns1:ProjectFunding>
+                                            <ns1:AllPriorYears>0.000</ns1:AllPriorYears>
+                                            <ns1:PriorYear>55.913</ns1:PriorYear>
+                                            <ns1:CurrentYear>89.143</ns1:CurrentYear>
+                                            <ns1:BudgetYearOne>0.000</ns1:BudgetYearOne>
+                                            <ns1:BudgetYearOneBase>0.000</ns1:BudgetYearOneBase>
+                                        </ns1:ProjectFunding>
+                                        <ns1:R2aExhibit>
+                                            <ns1:ProjectMissionDescription>The Basic Operational Medical Science Program Element (PE) will explore and develop basic research in medical-related information and technology leading to fundamental discoveries, tools, and applications critical to overcoming DoD challenges. This PE will address the Department's identified need for warfighter medical care related to prevention and treatment of infectious disease, real-time healthcare interventions of acute and chronic illness and injury, and interventions for improved warfighter resilience and performance against operational stressors. This PE also supports innovation and robust transition planning in the technology cycle by working with entrepreneurs to increase the likelihood that DARPA-funded technologies take root in the U.S. and provide new capabilities for national defense.
+
+Beginning in FY 2026, efforts in this PE will be funded in PE 0601122E, Emerging Opportunities.</ns1:ProjectMissionDescription>
+                                            <ns1:AccomplishmentPlannedProgramList>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Physiological Overmatch</ns1:Title>
+                                                    <ns1:Description>Warfighters operate under extreme physiological conditions, sometimes with limited resources and manpower, and must acclimate quickly to changing operational needs. The Physiological Overmatch program is investigating innovative approaches to allow the warfighter to adapt rapidly to operational challenges during deployment by developing novel detection and treatment systems. The program will initiate work in aiding the deployed soldier's ability to defend against biological pathogens, resist fatigue, combat sleep deprivation, and maintain a high capacity for operational performance. This program will seek to develop technology devices for in vivo release of therapies as needed by the warfighter and to understand the biological mechanisms of fatigue, which will enable improvements to warfighter health and operational performance. This approach represents a significant enhancement to warfighter performance by providing protection from impacts to operational readiness and provides information related to fatigue states and the ability to operate with prolonged sleep deprivation. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>12.575</ns1:Funding>
+                                                            <ns1:Text>-  Confirmed that the therapy delivery device remains active and localized for at least 60 days in vivo.
+-  Developed secure software to signal therapy activation in vivo. 
+-  Demonstrated decontamination of bacterial pathogens in vivo.
+-  Investigated approaches to obtain physiological measures across sleep deprived, sleep recovery, and non-sleep deprived states.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>9.131</ns1:Funding>
+                                                            <ns1:Text>-  Perform biospecimen collection and analysis to identify gut-derived biomolecules and metabolites in regulating sleep and arousal states.
+-  Identify potential molecular pathways or mechanisms of host interactions with the gut microbiome that are associated with the restorative effect of sleep on cognitive performance in an animal model. 
+-  Demonstrate release of pathogen-targeting probiotic in a large animal model from a fully integrated device. 
+-  Demonstrate release of therapy from a fully integrated device to regulate circadian rhythm in a large animal model.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Combatting Anti-Microbial Resistant Pathogens</ns1:Title>
+                                                    <ns1:Description>The Combatting Anti-Microbial Resistant Pathogens program is investigating fundamental methods for using preexisting host machinery as a technology to create medical countermeasures that degrade or deactivate pathogen targets. The DoD has long recognized the warfighter's outsized risk of exposure to biological threat agents and to infectious disease, including the increasing prevalence of antimicrobial-resistant (AMR) organisms that are ranked as a Tier 1 threat to the U.S. military. Similarly, the danger posed by bacterial biothreats persists with few countermeasures available. Key advances expected from this research include identifying methods to discover and develop new classes of chimeric therapeutics for AMR bacteria, bacterial biothreats, and other DoD-relevant diseases and threats. These approaches represent a significant departure from conventional therapeutics, which typically rely on a limited number of small molecules with a narrow set of targets and mechanism of action. Advances in this area may be applied to the mitigation of known, new, and emerging diseases that impact military readiness and pose a global health threat. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>8.423</ns1:Funding>
+                                                            <ns1:Text>-  Demonstrated chimeric molecules with greater efficacy of state-of-the-art treatment against selected pathogens.
+-  Initiated in vivo countermeasure testing.
+-  Demonstrated rapidly formulated and assembled chimeric molecules with increased efficacy over the state-of-the-art treatment against pathogens.
+-  Developed four novel chimeric countermeasures for consideration for full optimization and potential Investigational New Drug (IND) application submission.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>10.320</ns1:Funding>
+                                                            <ns1:Text>-  Continue in vivo safety and specificity studies of chimeric-molecule-based medical countermeasures against selected pathogens.
+-  Continue and expand independent verification and validation studies to facilitate transition to intragovernmental partners.
+-  Establish Good-Laboratory Practice (GLP) compliant in vivo models for pre-IND safety, genotoxicity, pharmacology, and toxicity assessments.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Synthetic Hemo-technologies to Locate &amp; Disinfect (SHIELD)*</ns1:Title>
+                                                    <ns1:Description>*Formerly Preventing Blood Stream Infections in Warfighters After Trauma
+
+Bloodstream infections (BSI) are a significant source of morbidity in service members that sustain combat-related injuries. Trauma temporarily degrades the efficacy of the host immune system thereby increasing the risk of life-threating opportunistic infections from fungi and bacteria that enter into the blood. If unchecked, bloodborne fungi and bacteria lead to debilitating conditions such as invasive fungal infections (IFI), sepsis, and shock. The Synthetic Hemo-technologies to Locate and Disinfect (SHIELD) program is developing a systems-level approach to prevent BSI in warfighters that suffer trauma from burn or blast. Prophylactic medical countermeasures circulating in the blood will be developed to bind infectious particles in the blood early and label pathogens for clearance and deliver drugs to destroy pathogens and/or restore healthy physiology. Ultimately, this program will develop novel technologies that will protect service members from morbidity and mortality associated with BSI. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>6.744</ns1:Funding>
+                                                            <ns1:Text>-  Initiated development of delivery molecules that can circulate in the bloodstream for an extended period of time.
+-  Evaluated the binding affinity of pathogen-agnostic recognition sequences of prophylaxes to different types of fungi and bacteria.
+-  Began to measure the ability for newly designed prophylaxes to bind or neutralize target pathogens.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>16.052</ns1:Funding>
+                                                            <ns1:Text>-  Demonstrate developed prophylaxes are non-toxic and non-immunogenic in the host.
+-  Demonstrate prophylactic prevents growth of a single fungal and bacterial pathogen in blood.
+-  Demonstrate developed prophylaxes increase survival in single fungal and bacterial pathogen in blood.
+-  Demonstrate prophylaxes are inhibiting abnormal inflammatory response following blood stream infection of bacterial and fungal pathogens.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Anesthetics for Battlefield Care (ABC)*</ns1:Title>
+                                                    <ns1:Description>*Formerly Modernized Field Anesthesia
+
+The Anesthetics for Battlefield Care (ABC) program aims to produce safe, battlefield-ready anesthetics to reduce the trauma associated with injury and improve combat casualty outcomes. Current therapeutics that enable life-saving interventions and wound stabilization must be used in hospitals or highly monitored settings due to their lack of safety. Prolonged peer or near-peer conflict could severely impact medical evacuation times, resulting in extended time before patients reach a hospital. The ABC program seeks to uncover mechanisms of anesthesia at multiple biological levels ranging from the molecular to the organismal. Novel treatments developed under the program will exhibit the desirable properties of anesthetics, including calming effects and loss of sensation and consciousness but will have vastly improved safety profiles, making them usable in the field by warfighters with minimal medical training. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>4.812</ns1:Funding>
+                                                            <ns1:Text>-  Developed appropriate biological models for evaluating anesthetic endpoints.
+-  Established methods to evaluate the biological mechanisms underlying the desired state of anesthesia.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>15.706</ns1:Funding>
+                                                            <ns1:Text>-  Develop appropriate biological models and implement systems and profiling techniques for interrogating multiple model systems of anesthesia.
+-  Initiate studies for anesthetic target discovery associated with analgesia, loss of consciousness, and immobility.
+-  Develop the computational infrastructure required for analysis and prioritization of cellular/molecular target space.
+-  Define target profile effects that are associated with current anesthetic interventions.
+-  Initiate studies for multi-system, multi-organism physiological computational modeling to guide drug design and medicinal chemistry.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Objective Prediction of Team Effectiveness via Models of Performance Outcomes (OP TEMPO)*</ns1:Title>
+                                                    <ns1:Description>*Formerly Accelerated Training and Readiness Assessment
+
+The Objective Prediction of Team Effectiveness via Models of Performance Outcomes (OP TEMPO) program seeks to advance technologies to drive efficiency and efficacy of military operator preparation and expertise building. This program seeks to understand fundamental biological processes to support real-time physiological assessment, performance diagnostics, and objective prediction of warfighter and team proficiency, with the ultimate goal of improved DoD mission readiness and execution. Advances in this program will result in a significant enhancement to warfighter team performance by providing methods to determine teaming potential and actionable paths to optimal teaming. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>4.249</ns1:Funding>
+                                                            <ns1:Text>-  Developed custom metrics for assessment of team performance and initiate capture of ground truth data across real-world team training sessions.
+-  Created testbed to identify and validate biobehavioral signatures of team coordination.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>12.517</ns1:Funding>
+                                                            <ns1:Text>-  Collect data and identify candidate biobehavioral signatures of warfighter and team performance.
+-  Demonstrate ability to measure and characterize identified signatures rapidly, reliably, and accurately during team training sessions.
+-  Initiate development of predictive models for biobehavioral signature validation.
+-  Identify two additional use cases to assess generalizability of bio-behavioral signatures and predictive models.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Simulating Microbial Systems (SMS)</ns1:Title>
+                                                    <ns1:Description>The Simulating Microbial Systems (SMS) program is developing the general capability to simulate microbial cell function and behavior to prevent strategic surprise. SMS is investigating combinations of computational advances with data acquisition techniques to advance the state of the art of cellular modeling. Bringing together communities in cell modeling, computational techniques, and wet lab measurements, this program will build from partial physics-based models of a minimal synthetic cell to more complete and faithful simulations of a DoD-relevant organism. SMS will experimentally evaluate simulations via milestones and pressure tests that relate to both general cell simulation and tailored stakeholder use cases. SMS is postured to be a valuable tool for acceleration of medical countermeasure developments and biomanufacturing. Additionally, the program will provide a baseline for further simulation development and importantly will provide the DoD and its stakeholders the ability to run microbial simulations to prevent surprise. 
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>17.312</ns1:Funding>
+                                                            <ns1:Text>-  Initiate investigation of new approaches and combinations thereof to develop baseline simulations for individual cells.
+-  Initiate development of simulations for individual cells and collection of data to support cell simulations.
+-  Begin performing experiments to independently validate simulations of fundamental biological processes and responses to stimuli or stress.
+-  Begin design of simulation pressure tests for tailored DoD use cases.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>CoasterChase</ns1:Title>
+                                                    <ns1:Description>DoD warfighters are often required to perform complex tasks in a high-stress situation. Warfighters under stress can make poor decisions with immediate and/or lasting consequences that may also contribute to long-term trauma. The CoasterChase program seeks to evaluate host response to stimulation of the digestive tract. The program will explore stress response to improve decision making and reduction of long-term trauma response with a combined sensing and stimulation ingestible device. The program aims to understand behavioral and physiological biomarkers of stress and inform device design parameters. Ultimately, the technology will enable improved memory retention, reduced effects of post-traumatic stress disorder (PTSD), maintenance of immune defense, and regulation of metabolism in austere domains.
+
+Beginning in FY 2026, this program will be funded in PE 0601122E, Project EMR-04.</ns1:Description>
+                                                    <ns1:PlannedProgram>
+                                                        <ns1:CurrentYear>
+                                                            <ns1:Funding>8.105</ns1:Funding>
+                                                            <ns1:Text>-  Initiate experiments to generate a baseline dataset for biomarker sensitivity response in in vitro models.
+-  Develop experiments to generate a baseline dataset for biomarker sensitivity response in animal models.</ns1:Text>
+                                                        </ns1:CurrentYear>
+                                                        <ns1:AppChangeSummary>The FY 2026 decrease reflects the transfer of the program from this PE/Project to PE 0601122E, Project EMR-04.</ns1:AppChangeSummary>
+                                                    </ns1:PlannedProgram>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Assessing Immune Memory (AIM)</ns1:Title>
+                                                    <ns1:Description>Warfighter defense against pathogens is reliant on multiple vaccinations administered repeatedly to maintain effective protection. The Assessing Immune Memory (AIM) program sought to increase the longevity of infectious disease protection in warfighters by establishing tools that can be employed in new prophylactic development pipelines. Specifically, this program progressed our understanding of critical host factors and immune responses that lead to durable protection following vaccination. This work served to de-risk the future development of research and evaluation (R&amp;E) tools capable of predicting candidate vaccine durability. Advances made during this program will inform future DoD efforts to ensure broader and consistent immunity in field-forward domains.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>12.178</ns1:Funding>
+                                                            <ns1:Text>-  Collected molecular profiles at early and late timepoints following vaccine challenge in relevant biological models.
+-  Defined cell and molecular features of vaccine responses that provide observably long immune protection.
+-  Performed single cell molecular analyses to categorize cell-type identifiers that contribute to immune memory.
+-  Integrated data to develop a roadmap for immune memory.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                                <ns1:AccomplishmentPlannedProgram>
+                                                    <ns1:Title>Improved Interventions</ns1:Title>
+                                                    <ns1:Description>The Improved Interventions program sought to develop novel pharmacological interventions that optimize the performance of the healthy warfighter and improve treatment of the injured warfighter. The status quo for pharmacological intervention is one drug, one target, which often has many undesirable side effects. This program created a platform for the development of pharmacological interventions with reduced side effects and increased safety. Therapeutics and countermeasures designed with this platform act by engaging multiple targets within biological systems of the body. Research within this program focused on the integration of novel bioinformatics approaches and chemical synthesis methods in order to achieve desired physiological effects with no negative side effects. This program established new pharmacological discovery and design principles that lead to safe and effective interventions for the treatment of battlefield causalities.</ns1:Description>
+                                                    <ns1:Accomplishment>
+                                                        <ns1:PriorYear>
+                                                            <ns1:Funding>6.932</ns1:Funding>
+                                                            <ns1:Text>-  Demonstrated that optimized novel multi-target drugs have greater efficacy than standard of care.
+-  Determined therapeutic index (i.e., ratio of toxic dose/effective dose) of the novel multi-target drug.
+-  Characterized pharmacokinetic properties of the novel multi-target drugs.
+-  Began Investigational New Drug (IND)-enabling preclinical studies for pharmacology and toxicology.</ns1:Text>
+                                                        </ns1:PriorYear>
+                                                    </ns1:Accomplishment>
+                                                </ns1:AccomplishmentPlannedProgram>
+                                            </ns1:AccomplishmentPlannedProgramList>
+                                        </ns1:R2aExhibit>
+                                    </ns1:Project>
+                                </ns1:ProjectList>
+                            </ns1:ProgramElement>
+                            </ns1:ProgramElementList>
+                    </ns0:JustificationBook>
+                </ns0:JustificationBookInfo>
+            </ns0:JustificationBookInfoList>
+        </ns0:JustificationBookGroup>
+    </ns0:JustificationBookGroupList>
+</ns0:MasterJustificationBook>
