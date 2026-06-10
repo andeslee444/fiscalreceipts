@@ -16,7 +16,10 @@ def pg_dsn():
     admin.execute(f"drop database if exists {TEST_DB}")
     admin.execute(f"create database {TEST_DB}")
     admin.close()
-    dsn = ADMIN_DSN.rsplit("/", 1)[0] + "/" + TEST_DB
+    from urllib.parse import urlsplit, urlunsplit
+
+    parts = urlsplit(ADMIN_DSN)
+    dsn = urlunsplit(parts._replace(path="/" + TEST_DB))
 
     from govbudget.jbooks.db import migrate
 

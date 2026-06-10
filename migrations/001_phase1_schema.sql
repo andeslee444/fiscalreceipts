@@ -16,6 +16,7 @@ create table if not exists jbook_documents (
 create table if not exists budget_lines (
   id bigserial primary key,
   exhibit text not null,
+  fiscal_year int not null,
   account text not null,
   account_title text,
   organization text not null,
@@ -27,7 +28,7 @@ create table if not exists budget_lines (
   amount_type text not null,
   amount_thousands numeric,
   source_document_id bigint references jbook_documents(id),
-  unique (exhibit, account, organization, pe_bli, amount_type)
+  unique (exhibit, fiscal_year, account, organization, pe_bli, amount_type)
 );
 
 create table if not exists extraction_runs (
@@ -90,6 +91,7 @@ create table if not exists review_queue (
 
 create table if not exists extraction_gaps (
   id bigserial primary key,
+  document_id bigint references jbook_documents(id),
   exhibit text not null,
   pe_bli text not null,
   reason text not null,

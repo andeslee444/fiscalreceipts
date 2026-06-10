@@ -1090,7 +1090,7 @@ def make_xlsx(tmp_path, with_preamble_rows=True):
 
 
 def test_load_rollup_melts_fy_columns(pg_dsn, tmp_path):
-    n = load_rollup(pg_dsn, make_xlsx(tmp_path), exhibit="R-1")
+    n = load_rollup(pg_dsn, make_xlsx(tmp_path), exhibit="R-1", fiscal_year=2026)
     assert n == 7  # ROW1: 4 amounts, ROW2: 3 amounts (None skipped)
     with psycopg.connect(pg_dsn) as con:
         val = con.execute(
@@ -1105,8 +1105,8 @@ def test_load_rollup_melts_fy_columns(pg_dsn, tmp_path):
 
 def test_load_rollup_is_idempotent_upsert(pg_dsn, tmp_path):
     p = make_xlsx(tmp_path)
-    load_rollup(pg_dsn, p, exhibit="R-1")
-    n2 = load_rollup(pg_dsn, p, exhibit="R-1")
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    n2 = load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
     assert n2 == 7  # upserts same rows
     with psycopg.connect(pg_dsn) as con:
         total = con.execute("select count(*) from budget_lines").fetchone()[0]
@@ -1153,7 +1153,7 @@ def _find_header_row(ws) -> tuple[int, dict[int, str]]:
     raise ValueError(f"No header row with {REQUIRED} found in first 20 rows")
 
 
-def load_rollup(dsn: str, xlsx_path: Path, *, exhibit: str, source_document_id: int | None = None) -> int:
+def load_rollup(dsn: str, xlsx_path: Path, *, exhibit: str, fiscal_year: int, source_document_id: int | None = None) -> int:
     """Melt an R-1/P-1 display workbook into budget_lines rows. Returns rows upserted."""
     ws = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = ws[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in ws.sheetnames else ws[ws.sheetnames[0]]
@@ -1176,17 +1176,17 @@ def load_rollup(dsn: str, xlsx_path: Path, *, exhibit: str, source_document_id: 
                 con.execute(
                     """
                     insert into budget_lines
-                      (exhibit, account, account_title, organization, budget_activity,
+                      (exhibit, fiscal_year, account, account_title, organization, budget_activity,
                        budget_activity_title, line_number, pe_bli, title, amount_type,
                        amount_thousands, source_document_id)
-                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    on conflict (exhibit, account, organization, pe_bli, amount_type)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict (exhibit, fiscal_year, account, organization, pe_bli, amount_type)
                     do update set amount_thousands = excluded.amount_thousands,
                                   title = excluded.title,
                                   source_document_id = excluded.source_document_id
                     """,
                     (
-                        exhibit, str(ids.get("account")), ids.get("account_title"),
+                        exhibit, fiscal_year, str(ids.get("account")), ids.get("account_title"),
                         str(ids.get("organization")), _str(ids.get("budget_activity")),
                         ids.get("budget_activity_title"), _str(ids.get("line_number")),
                         str(ids.get("pe_bli")), ids.get("title"), amount_type, amount,
@@ -1407,8 +1407,8 @@ def seed(pg_dsn, r1_fy2024_thousands):
     with psycopg.connect(pg_dsn) as con:
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
-            "insert into budget_lines (exhibit, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('R-1','0400','DARPA','0601101E',"
+            "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
+            " amount_type, amount_thousands) values ('R-1',2026,'0400','DARPA','0601101E',"
             " 'fy_2024_actuals', %s)",
             (r1_fy2024_thousands,),
         )
@@ -1626,13 +1626,13 @@ def cmd_jbooks(args) -> None:
 
         with psycopg.connect(config.PG_DSN) as con:
             rows = con.execute(
-                "select id, title, file_path from jbook_documents "
+                "select id, title, file_path, fiscal_year from jbook_documents "
                 "where exhibit_family='rollup' and status='downloaded'"
             ).fetchall()
-        for doc_id, title, file_path in rows:
+        for doc_id, title, file_path, fy in rows:
             exhibit = "R-1" if title.startswith("r1") else "P-1"
             n = rollup_loader.load_rollup(
-                config.PG_DSN, Path(file_path), exhibit=exhibit, source_document_id=doc_id
+                config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy, source_document_id=doc_id
             )
             print(f"{title}: {n} budget_lines")
     elif args.action == "extract":
@@ -1756,9 +1756,9 @@ def seed_full(pg_dsn, tmp_path):
             " where id=%s", (str(doc_file), sha, doc_id),
         )
         con.execute(
-            "insert into budget_lines (exhibit, account, organization, pe_bli,"
+            "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
             " amount_type, amount_thousands) values"
-            " ('R-1','0400','DARPA','0601101E','fy_2024_actuals', %s)",
+            " ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals', %s)",
             (Decimal("280494"),),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
