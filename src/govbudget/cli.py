@@ -141,13 +141,22 @@ def cmd_jbooks(args) -> None:
                 "select id, title, file_path, fiscal_year from jbook_documents "
                 "where exhibit_family='rollup' and status='downloaded'"
             ).fetchall()
+        failures = []
         for doc_id, title, file_path, fy in rows:
             exhibit = "R-1" if title.startswith("r1") else "P-1"
-            n = rollup_loader.load_rollup(
-                config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
-                source_document_id=doc_id,
-            )
+            try:
+                n = rollup_loader.load_rollup(
+                    config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
+                    source_document_id=doc_id,
+                )
+            except Exception as e:
+                failures.append(title)
+                print(f"{title}: FAILED ({type(e).__name__}: {e})")
+                continue
             print(f"{title}: {n} budget_lines")
+        if failures:
+            print(f"load-rollups finished with {len(failures)} failure(s): {', '.join(failures)}")
+            sys.exit(1)
     elif args.action == "extract":
         with psycopg.connect(config.PG_DSN) as con:
             rows = con.execute(
