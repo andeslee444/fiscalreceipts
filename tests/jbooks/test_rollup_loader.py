@@ -56,3 +56,33 @@ def test_load_rollup_is_idempotent_upsert(pg_dsn, tmp_path):
     with psycopg.connect(pg_dsn) as con:
         total = con.execute("select count(*) from budget_lines").fetchone()[0]
     assert total == 7
+
+
+def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit R-1"
+    ws.append(HEADERS)
+    ws.append(["0400", "RDT&E AF", "F", "03", "Advanced Dev", "104",
+               "0604776F", "DEPLOYMENT & DISTRIBUTION", "Y",
+               19441, 19441, None, 20000])
+    ws.append(["0400", "RDT&E AF", "F", "04", "Adv Component Dev", "131",
+               "0604776F", "DEPLOYMENT & DISTRIBUTION", "Y",
+               4840, 4840, None, 5000])
+    p = tmp_path / "r1_split.xlsx"
+    wb.save(p)
+
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        rows = con.execute(
+            "select budget_activity, amount_thousands from budget_lines "
+            "where pe_bli='0604776F' and amount_type='fy_2025_enacted' order by 1"
+        ).fetchall()
+        total = con.execute(
+            "select sum(amount_thousands) from budget_lines "
+            "where pe_bli='0604776F' and amount_type='fy_2025_enacted'"
+        ).fetchone()[0]
+    assert len(rows) == 2
+    assert total == Decimal("24281")

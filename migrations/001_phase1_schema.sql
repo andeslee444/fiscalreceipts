@@ -28,7 +28,7 @@ create table if not exists budget_lines (
   amount_type text not null,
   amount_thousands numeric,
   source_document_id bigint references jbook_documents(id),
-  unique (exhibit, fiscal_year, account, organization, pe_bli, amount_type)
+  unique (exhibit, fiscal_year, account, organization, budget_activity, pe_bli, amount_type)
 );
 
 create table if not exists extraction_runs (

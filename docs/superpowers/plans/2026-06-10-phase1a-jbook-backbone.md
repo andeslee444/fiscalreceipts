@@ -1531,8 +1531,8 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             if not candidates:
                 continue
             row = con.execute(
-                "select amount_type, amount_thousands from budget_lines "
-                "where pe_bli=%s and amount_type = any(%s)",
+                "select amount_type, sum(amount_thousands) from budget_lines "
+                "where pe_bli=%s and amount_type = any(%s) group by amount_type",
                 (pe_bli, candidates),
             ).fetchall()
             by_type = {t: v for t, v in row}
@@ -1593,7 +1593,7 @@ def _unreconcile(con, document_id, pe_bli, scenario):
 
 Run: `uv run pytest tests/jbooks/test_reconcile.py -v` — PASS (4 passed)
 
-Note on Gate A semantics with the real DARPA data: PE-level funding vs sum of project funding may legitimately differ for PEs with non-project costs; that is exactly what the review queue is for — the live smoke records the actual hit rate, and accept-as-is resolutions handle structural differences. Do not loosen the tolerance.
+Note on Gate A semantics with the real DARPA data: PE-level funding vs sum of project funding may legitimately differ for PEs with non-project costs; that is exactly what the review queue is for — the live smoke records the actual hit rate, and accept-as-is resolutions handle structural differences. Do not loosen the tolerance. Gate B sums budget_lines across budget activities — split-funded PEs have one R-1 row per BA.
 
 - [ ] **Step 5: Add CLI commands**
 

@@ -38,7 +38,7 @@ def load_rollup(
     dsn: str, xlsx_path: Path, *, exhibit: str, fiscal_year: int,
     source_document_id: int | None = None,
 ) -> int:
-    """Melt an R-1/P-1 display workbook into budget_lines rows. Returns rows upserted."""
+    """Melt an R-1/P-1 display workbook into budget_lines rows. Returns upsert executions fired (inserts + updates)."""
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = wb[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in wb.sheetnames else wb[wb.sheetnames[0]]
     header_row, headers = _find_header_row(sheet)
@@ -64,7 +64,7 @@ def load_rollup(
                        budget_activity, budget_activity_title, line_number, pe_bli,
                        title, amount_type, amount_thousands, source_document_id)
                     values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    on conflict (exhibit, fiscal_year, account, organization, pe_bli, amount_type)
+                    on conflict (exhibit, fiscal_year, account, organization, budget_activity, pe_bli, amount_type)
                     do update set amount_thousands = excluded.amount_thousands,
                                   title = excluded.title,
                                   source_document_id = excluded.source_document_id
