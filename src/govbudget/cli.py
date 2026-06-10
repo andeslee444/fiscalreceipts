@@ -97,6 +97,13 @@ def cmd_sync_fiscaldata(args) -> None:
     print(f"fiscaldata: loaded {out}")
 
 
+def cmd_migrate(args) -> None:
+    from govbudget.jbooks.db import migrate
+
+    applied = migrate()
+    print(f"migrations applied: {applied or 'none (up to date)'}")
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -132,6 +139,9 @@ def main(argv=None) -> None:
 
     b = sub.add_parser("build", help="dbt build star schema")
     b.set_defaults(func=cmd_build)
+
+    m = sub.add_parser("migrate", help="apply postgres migrations")
+    m.set_defaults(func=cmd_migrate)
 
     args = p.parse_args(argv)
     args.func(args)

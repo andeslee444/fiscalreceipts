@@ -8,6 +8,10 @@ PARQUET_DIR = DATA_DIR / "parquet"
 DUCKDB_PATH = DATA_DIR / "duckdb" / "govbudget.duckdb"
 MANIFEST_PATH = DATA_DIR / "manifest.jsonl"
 
+PG_DSN = os.environ.get("GOVBUDGET_PG_DSN", "postgresql://localhost/govbudget")
+RAW_DOCS_DIR = DATA_DIR / "raw_docs"
+JBOOK_FY = 2026
+
 USASPENDING_API = "https://api.usaspending.gov/api/v2"
 FISCALDATA_API = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service"
 
