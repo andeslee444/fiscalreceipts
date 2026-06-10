@@ -161,6 +161,54 @@ def test_gate_b_zero_absent_rule(pg_dsn):
     assert nonzero_check == (False,)  # 280.494M with no control row still fails
 
 
+def test_gate_b_matches_any_candidate_not_first_present(pg_dsn):
+    # fy_2025_total present but wrong; fy_2025_enacted present and right.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        for amount_type, amt in (("fy_2025_total", Decimal("999999")),
+                                 ("fy_2025_enacted", Decimal("293145"))):
+            con.execute(
+                "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+                " pe_bli, amount_type, amount_thousands)"
+                " values ('R-1',2026,'0400','DARPA','0601101E',%s,%s)",
+                (amount_type, amt),
+            )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='CurrentYear'"
+        ).fetchone()
+    assert check[0] is True
+    assert "fy_2025_enacted" in check[1]
+
+
+def test_budget_year_one_base_is_reconciled(pg_dsn):
+    from govbudget.jbooks.reconcile import DESIGN_EXCLUDED_SCENARIOS
+
+    assert "AllPriorYears" in DESIGN_EXCLUDED_SCENARIOS
+    assert "BudgetYearOneBase" in SCENARIO_MAP
+    doc_id, run_id = seed(pg_dsn, Decimal("280494"))
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        # fixture BudgetYearOneBase=0.000, no control row -> zero-absent PASS
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='BudgetYearOneBase'"
+        ).fetchone()
+        unrec = con.execute(
+            "select count(*) from budget_line_details where scenario='BudgetYearOneBase'"
+            " and not superseded and not reconciled and pe_bli='0601101E'"
+        ).fetchone()[0]
+    assert check == (True,)
+    assert unrec == 0
+
+
 def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     # corrupt one project row so Gate A fails for (0601101E, PriorYear)

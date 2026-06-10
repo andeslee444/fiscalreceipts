@@ -4,14 +4,21 @@ import psycopg
 
 TOLERANCE_M = Decimal("0.001")
 
-# XML scenario -> candidate R-1 amount_type slugs, in preference order.
-# PB books label FY relative to the budget year (BudgetYear=2026 =>
-# PriorYear=FY2024 actuals, CurrentYear=FY2025, BudgetYearOne=FY2026).
+# XML scenario -> candidate R-1 amount_type slugs. Gate B passes if ANY
+# candidate matches within tolerance (PB books split base/OOC/total
+# differently per org). PB2026: PriorYear=FY2024 actuals, CurrentYear=FY2025,
+# BudgetYearOne=FY2026 total request, BudgetYearOneBase=FY2026 base/disc.
 SCENARIO_MAP: dict[str, list[str]] = {
     "PriorYear": ["fy_2024_actuals"],
     "CurrentYear": ["fy_2025_total", "fy_2025_enacted"],
-    "BudgetYearOne": ["fy_2026_disc_request", "fy_2026_total"],
+    "BudgetYearOne": ["fy_2026_total", "fy_2026_disc_request"],
+    "BudgetYearOneBase": ["fy_2026_disc_request", "fy_2026_total"],
 }
+
+# Extracted but intentionally not reconciled: no R-1 display analog.
+# Marts and the accuracy gate treat these as not-served-by-design,
+# distinct from pending-review.
+DESIGN_EXCLUDED_SCENARIOS = frozenset({"AllPriorYears", "BudgetYearOneOOC"})
 
 
 def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) -> dict:
@@ -68,22 +75,30 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 (pe_bli, candidates, exhibit, org, fy),
             ).fetchall()
             by_type = {t: v for t, v in row}
-            expected = None
-            matched_type = None
-            for t in candidates:
-                if t in by_type and by_type[t] is not None:
-                    expected = by_type[t] / Decimal(1000)  # R-1 $K -> $M
-                    matched_type = t
-                    break
-            if expected is not None:
-                ok = abs(expected - amount_m) <= TOLERANCE_M
+            present = [
+                (t, by_type[t] / Decimal(1000))  # R-1 $K -> $M
+                for t in candidates
+                if by_type.get(t) is not None
+            ]
+            match = next(
+                ((t, v) for t, v in present if abs(v - amount_m) <= TOLERANCE_M), None
+            )
+            if match:
+                matched_type, expected = match
+                ok = True
+                detail = f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
+            elif present:
+                matched_type, expected = present[0]
+                ok = False
                 detail = f"R-1 {matched_type}={expected}M vs XML {scenario}={amount_m}M"
             elif amount_m == 0:
                 # The R-1 display omits empty cells; an absent control row is
                 # semantically zero. Only an explicit zero may match it.
+                expected = None
                 ok = True
                 detail = f"absent R-1 cell == XML {scenario}=0.000 (zero-absent rule)"
             else:
+                expected = None
                 ok = False
                 detail = f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
             check_id = _record(con, extraction_run_id, "B", pe_bli, scenario,
