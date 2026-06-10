@@ -37,6 +37,38 @@ def cmd_sync_archive(args) -> None:
                 print(f"{type_} fy{fy}: {result}")
 
 
+def cmd_sync_subawards(args) -> None:
+    import datetime as dt
+
+    from govbudget.convert import convert_zip_to_parquet
+    from govbudget.download import download_file, ensure_free_space, sweep_stale_parts
+    from govbudget.manifest import ManifestRecord, append_record, has_file
+    from govbudget.usaspending.subawards import poll_until_ready, request_subaward_download
+
+    sweep_stale_parts(config.RAW_DIR)
+    with _usaspending_client() as client:
+        resp = request_subaward_download(client, fiscal_year=args.fy)
+        file_name = resp["file_name"]
+        if has_file(config.MANIFEST_PATH, file_name):
+            print(f"subawards fy{args.fy}: skipped")
+            return
+        url = poll_until_ready(client, file_name)
+        ensure_free_space(config.RAW_DIR, config.MIN_FREE_GB)
+        zip_path = config.RAW_DIR / file_name
+        sha, n = download_file(client, url, zip_path)
+        convert_zip_to_parquet(
+            zip_path, dataset="subawards", fiscal_year=args.fy,
+            parquet_dir=config.PARQUET_DIR, raw_dir=config.RAW_DIR,
+            required_columns=config.REQUIRED_COLUMNS["subawards"],
+        )
+        append_record(config.MANIFEST_PATH, ManifestRecord(
+            dataset="subawards", fiscal_year=args.fy,
+            file_name=file_name, source_url=url, sha256=sha, bytes=n,
+            downloaded_at=dt.datetime.now(dt.UTC).isoformat(),
+        ))
+        print(f"subawards fy{args.fy}: loaded")
+
+
 def cmd_build(args) -> None:
     rc = subprocess.run(
         ["dbt", "build", "--project-dir", "dbt", "--profiles-dir", "dbt"]
@@ -53,6 +85,10 @@ def main(argv=None) -> None:
     a.add_argument("--fy-start", type=int, default=config.FY_START)
     a.add_argument("--fy-end", type=int, default=config.FY_END)
     a.set_defaults(func=cmd_sync_archive)
+
+    s = sub.add_parser("sync-subawards", help="DoD subawards (custom download) -> parquet")
+    s.add_argument("--fy", type=int, required=True)
+    s.set_defaults(func=cmd_sync_subawards)
 
     b = sub.add_parser("build", help="dbt build star schema")
     b.set_defaults(func=cmd_build)
