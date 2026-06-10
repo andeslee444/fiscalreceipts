@@ -1,0 +1,242 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:MasterJustificationBook xmlns:ns0="http://www.dtic.mil/comptroller/xml/schema/022009/jb" xmlns:ns1="http://www.dtic.mil/comptroller/xml/schema/20100219/procurement" targetSchemaVersion="1.0">
+    <ns0:BudgetYear>2026</ns0:BudgetYear>
+    <ns0:BudgetCycle>PB</ns0:BudgetCycle>
+    <ns0:SubmissionDate>2025-06</ns0:SubmissionDate>
+    <ns0:ServiceAgencyName>Chemical and Biological Defense Program</ns0:ServiceAgencyName>
+    <ns0:CoverPage>
+        <ns0:LogoFileName>CBDP.png</ns0:LogoFileName>
+    </ns0:CoverPage>
+    <ns0:ExternalDocuments>
+        <ns0:IntroductionDoc>
+            <ns0:Title>Introduction and Explanation of Contents</ns0:Title>
+            <ns0:FileName>overview.pdf</ns0:FileName>
+        </ns0:IntroductionDoc>
+        <ns0:UserP1Doc>
+            <ns0:Title>Comptroller Exhibit P-1</ns0:Title>
+            <ns0:FileName>p1.pdf</ns0:FileName>
+        </ns0:UserP1Doc>
+    </ns0:ExternalDocuments>
+    <ns0:TableOfContents>
+        <ns0:TocItemList>
+            <ns0:TocItem>
+                <ns0:Title>Chemical and Biological Defense Program</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Contract Audit Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Contract Management Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>DoD Human Resources Activity</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Information Systems Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Logistics Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Media Activity</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Production Act Purchases</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Security Cooperation Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Security Service</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Defense Threat Reduction Agency</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Department of Defense Education Activity</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Office of the Secretary Of Defense</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>The Joint Staff</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>United States Special Operations Command</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Washington Headquarters Service</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Joint Urgent Operational Needs Fund</ns0:Title>
+                <ns0:Location>Volume 1</ns0:Location>
+            </ns0:TocItem>
+            <ns0:TocItem>
+                <ns0:Title>Missile Defense Agency</ns0:Title>
+                <ns0:Location>Volume 2</ns0:Location>
+            </ns0:TocItem>
+        </ns0:TocItemList>
+    </ns0:TableOfContents>
+    <ns0:DocumentAssemblyOptions>
+        <ns0:ForceEvenPages>true</ns0:ForceEvenPages>
+        <ns0:WorkFlowStatus>FINAL</ns0:WorkFlowStatus>
+        <ns0:GenerateP1m>true</ns0:GenerateP1m>
+    </ns0:DocumentAssemblyOptions>
+    <ns0:JustificationBookGroupList>
+        <ns0:JustificationBookGroup>
+            <ns0:JustificationBookInfoList>
+                <ns0:JustificationBookInfo>
+                    <ns0:BookDescription>Chemical and Biological Defense Program</ns0:BookDescription>
+                    <ns0:BookLabel>Volume</ns0:BookLabel>
+                    <ns0:BookNumber>1</ns0:BookNumber>
+                    <ns0:JustificationBook targetSchemaVersion="1.0">
+                        <ns0:Title>Justification Book</ns0:Title>
+                        <ns0:BudgetYear>2026</ns0:BudgetYear>
+                        <ns0:BudgetCycle>PB</ns0:BudgetCycle>
+                        <ns0:SubmissionDate>2025-06</ns0:SubmissionDate>
+                        <ns0:ServiceAgencyName>Chemical and Biological Defense Program</ns0:ServiceAgencyName>
+                        <ns0:AppropriationCode>0300D</ns0:AppropriationCode>
+                        <ns0:AppropriationName>Procurement, Defense-Wide</ns0:AppropriationName>
+                        <ns0:CoverPage>
+                            <ns0:LogoFileName>CBDP.png</ns0:LogoFileName>
+                        </ns0:CoverPage>
+                        <ns0:ExternalDocuments>
+                            <ns0:IntroductionDoc>
+                                <ns0:Title>Introduction and Explanation of Contents</ns0:Title>
+                                <ns0:FileName>overview.pdf</ns0:FileName>
+                            </ns0:IntroductionDoc>
+                            <ns0:UserP1Doc>
+                                <ns0:Title>Comptroller Exhibit P-1</ns0:Title>
+                                <ns0:FileName>p1.pdf</ns0:FileName>
+                            </ns0:UserP1Doc>
+                        </ns0:ExternalDocuments>
+                        <ns0:DocumentAssemblyOptions>
+                            <ns0:ForceEvenPages>true</ns0:ForceEvenPages>
+                            <ns0:WorkFlowStatus>FINAL</ns0:WorkFlowStatus>
+                            <ns0:GenerateLineItemTocByTitle>true</ns0:GenerateLineItemTocByTitle>
+                            <ns0:GenerateLineItemTocByBA>true</ns0:GenerateLineItemTocByBA>
+                            <ns0:IncludeTableOfVolumes>true</ns0:IncludeTableOfVolumes>
+                        </ns0:DocumentAssemblyOptions>
+                        <ns1:LineItemList>
+                            <ns1:LineItem quantityUnits="Each" quantityUnitName="Each" unitCostUnits="Thousands" totalCostUnits="Millions" manufacturerRateUnits="Monthly">
+                                <ns1:LineItemNumber>7001SA1000</ns1:LineItemNumber>
+                                <ns1:LineItemTitle>Chemical Biological Situational Awareness</ns1:LineItemTitle>
+                                <ns1:P1LineNumber>120</ns1:P1LineNumber>
+                                <ns1:BudgetYear>2026</ns1:BudgetYear>
+                                <ns1:BudgetCycle>PB</ns1:BudgetCycle>
+                                <ns1:SubmissionDate>2025-06</ns1:SubmissionDate>
+                                <ns1:ServiceAgencyName>Chemical and Biological Defense Program</ns1:ServiceAgencyName>
+                                <ns1:AppropriationNumber>0300D</ns1:AppropriationNumber>
+                                <ns1:AppropriationTitle>Procurement, Defense-Wide</ns1:AppropriationTitle>
+                                <ns1:BudgetActivityNumber>3</ns1:BudgetActivityNumber>
+                                <ns1:BudgetActivityTitle>Chemical/Biological Defense</ns1:BudgetActivityTitle>
+                                <ns1:BudgetSubActivityNumber>1</ns1:BudgetSubActivityNumber>
+                                <ns1:BudgetSubActivityTitle>CBDP</ns1:BudgetSubActivityTitle>
+                                <ns1:ResourceSummary>
+                                    <ns1:TotalCost>
+                                        <ns1:AllPriorYears>1260.605</ns1:AllPriorYears>
+                                        <ns1:PriorYear>148.64</ns1:PriorYear>
+                                        <ns1:CurrentYear>186.841</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>208.051</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>208.051</ns1:BudgetYearOne>
+                                    </ns1:TotalCost>
+                                    <ns1:NetProcurementP1>
+                                        <ns1:AllPriorYears>1260.605</ns1:AllPriorYears>
+                                        <ns1:PriorYear>148.64</ns1:PriorYear>
+                                        <ns1:CurrentYear>186.841</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>208.051</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>208.051</ns1:BudgetYearOne>
+                                    </ns1:NetProcurementP1>
+                                    <ns1:TotalObligationAuthority>
+                                        <ns1:AllPriorYears>1260.605</ns1:AllPriorYears>
+                                        <ns1:PriorYear>148.64</ns1:PriorYear>
+                                        <ns1:CurrentYear>186.841</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>208.051</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>208.051</ns1:BudgetYearOne>
+                                    </ns1:TotalObligationAuthority>
+                                </ns1:ResourceSummary>
+                                <ns1:Description>The Situational Awareness (Understand) Portfolio enhances commanders' tactical and operational decisions by developing and fielding stronger detection and identification capabilities for Chemical Biological (CB) reconnaissance, surveillance, and site exploitation missions.  Focus is on increased detection accuracy, range and effectiveness to seamlessly integrate with non-CB sensor systems and relevant information systems, and Service fielded unmanned platforms.</ns1:Description>
+                                <ns1:Justification>Situational Awareness is a primary objective of the Chemical Biological Defense Program.  Operational forces must safely operate, survive, and sustain operations in a chemical and biological agent threat environment.  Contamination Avoidance maintains operational efficiency and minimizes the need to decontaminate vehicles, equipment, and areas.  Advanced chemical and biological defensive equipment strengthens the US's capability to detect and identify threat agents in the battle space and the homeland.  
+Warning, reporting, and reconnaissance efforts enable a tiered strategy detecting and warning complementary detection/identification systems to provide theater protection against large area and point attacks.  Supports Special Purpose Unit operations and the National Guard Bureau Weapons of Mass Destruction Civil Support Teams (WMD-CSTs).</ns1:Justification>
+                                <ns1:DocumentAssemblyOptions>
+                                    <ns1:p40AItemScheduleSetting>expandItemSuppressExhibit</ns1:p40AItemScheduleSetting>
+                                </ns1:DocumentAssemblyOptions>
+                            </ns1:LineItem>
+                            <ns1:LineItem quantityUnits="Each" quantityUnitName="Each" unitCostUnits="Thousands" totalCostUnits="Millions" manufacturerRateUnits="Monthly">
+                                <ns1:LineItemNumber>8001PH1000</ns1:LineItemNumber>
+                                <ns1:LineItemTitle>CB Protection &amp; Hazard Mitigation</ns1:LineItemTitle>
+                                <ns1:P1LineNumber>121</ns1:P1LineNumber>
+                                <ns1:BudgetYear>2026</ns1:BudgetYear>
+                                <ns1:BudgetCycle>PB</ns1:BudgetCycle>
+                                <ns1:SubmissionDate>2025-06</ns1:SubmissionDate>
+                                <ns1:ServiceAgencyName>Chemical and Biological Defense Program</ns1:ServiceAgencyName>
+                                <ns1:AppropriationNumber>0300D</ns1:AppropriationNumber>
+                                <ns1:AppropriationTitle>Procurement, Defense-Wide</ns1:AppropriationTitle>
+                                <ns1:BudgetActivityNumber>3</ns1:BudgetActivityNumber>
+                                <ns1:BudgetActivityTitle>Chemical/Biological Defense</ns1:BudgetActivityTitle>
+                                <ns1:BudgetSubActivityNumber>1</ns1:BudgetSubActivityNumber>
+                                <ns1:BudgetSubActivityTitle>CBDP</ns1:BudgetSubActivityTitle>
+                                <ns1:ResourceSummary>
+                                    <ns1:TotalCost>
+                                        <ns1:AllPriorYears>2134.581</ns1:AllPriorYears>
+                                        <ns1:PriorYear>217.255</ns1:PriorYear>
+                                        <ns1:CurrentYear>201.011</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>213.33</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>213.33</ns1:BudgetYearOne>
+                                    </ns1:TotalCost>
+                                    <ns1:NetProcurementP1>
+                                        <ns1:AllPriorYears>2134.581</ns1:AllPriorYears>
+                                        <ns1:PriorYear>217.255</ns1:PriorYear>
+                                        <ns1:CurrentYear>201.011</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>213.33</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>213.33</ns1:BudgetYearOne>
+                                    </ns1:NetProcurementP1>
+                                    <ns1:TotalObligationAuthority>
+                                        <ns1:AllPriorYears>2134.581</ns1:AllPriorYears>
+                                        <ns1:PriorYear>217.255</ns1:PriorYear>
+                                        <ns1:CurrentYear>201.011</ns1:CurrentYear>
+                                        <ns1:BudgetYearOneBase>213.33</ns1:BudgetYearOneBase>
+                                        <ns1:BudgetYearOneOOC>0</ns1:BudgetYearOneOOC>
+                                        <ns1:BudgetYearOne>213.33</ns1:BudgetYearOne>
+                                    </ns1:TotalObligationAuthority>
+                                </ns1:ResourceSummary>
+                                <ns1:Description>The Protection &amp; Hazard Mitigation (Protect) Portfolio enhances mission performance and provides effective protection against current and emerging threats by rapidly developing and fielding modernized protection capabilities.  Focus is on advances in materials and systems engineering to enhance protective properties against a broader array of hazards, while reducing operational challenges and logistical burdens in an unknown chemical and biological (CB) threat environment. Approaches focus on modular and customizable solutions that are effective against a broad range of challenges in varied environments. 
+
+The Protection &amp; Hazard Mitigation (Mitigate) Portfolio preserves combat power by developing and fielding systems that mitigate exposure to Chemical and Biological (CB) hazards and restores combat readiness of critical personnel and platforms.  Developmental efforts address personnel decontamination, including handling mass casualties and human remains, along with materiel decontamination, which includes sensitive equipment and aircraft.  Novel decontamination approaches focus on broad decontaminant applicability to CB hazards, while minimizing harm to individuals, equipment, and platforms.
+
+The FY 2026 request was reduced by $13.200 million for Advisory and Assistance Services to promote efficiencies and advance the policies of the Administration in alignment with Executive Order 14222, “Implementing the President’s Department of Government Efficiency Cost Efficiency Initiative.”
+
+The FY 2026 request reduces discretionary travel funding by $0.360 million to align with Executive Order 14222, “Implementing the President’s Department of Government Efficiency Cost Efficiency Initiative.”</ns1:Description>
+                                <ns1:Justification>Operational forces across the continuum of global, contingency, special operations/low-intensity conflict, counternarcotics, and other high-risk missions have an immediate need to survive and sustain operations in a CB threat environment.  Provides protective equipment and medical countermeasures that support protection prior to potential operations and mitigates the hazard if exposed.</ns1:Justification>
+                                <ns1:DocumentAssemblyOptions>
+                                    <ns1:p40AItemScheduleSetting>expandItemSuppressExhibit</ns1:p40AItemScheduleSetting>
+                                </ns1:DocumentAssemblyOptions>
+                            </ns1:LineItem>
+                        </ns1:LineItemList>
+                    </ns0:JustificationBook>
+                </ns0:JustificationBookInfo>
+            </ns0:JustificationBookInfoList>
+        </ns0:JustificationBookGroup>
+    </ns0:JustificationBookGroupList>
+</ns0:MasterJustificationBook>
