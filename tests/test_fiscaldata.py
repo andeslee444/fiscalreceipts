@@ -1,5 +1,6 @@
 import duckdb
 import httpx
+import pytest
 
 from govbudget.fiscaldata import fetch_all_pages, sync_mts_outlays
 
@@ -41,3 +42,29 @@ def test_sync_writes_parquet_and_manifest(tmp_path):
     n = duckdb.sql(f"select count(*) from read_parquet('{out}')").fetchone()[0]
     assert n == 2
     assert manifest.exists()
+
+
+def test_fetch_all_pages_raises_on_missing_meta():
+    def handler(request):
+        return httpx.Response(200, json={"data": []})
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(handler),
+        base_url="https://api.fiscaldata.treasury.gov/services/api/fiscal_service",
+    )
+    with client, pytest.raises(ValueError, match="total-pages"):
+        fetch_all_pages(client, "/v1/accounting/mts/mts_table_5", {})
+
+
+def test_sync_manifest_source_url_has_no_double_slash(tmp_path):
+    from govbudget.manifest import load_records
+
+    manifest = tmp_path / "manifest.jsonl"
+    with make_client() as client:
+        sync_mts_outlays(
+            client, parquet_dir=tmp_path / "parquet",
+            raw_dir=tmp_path / "raw", manifest_path=manifest, fy_start=2017,
+        )
+    url = load_records(manifest)[0].source_url
+    assert "//v1" not in url
+    assert url.endswith("/v1/accounting/mts/mts_table_5")

@@ -6,6 +6,7 @@ from pathlib import Path
 import duckdb
 import httpx
 
+from govbudget.convert import _sql_path
 from govbudget.manifest import ManifestRecord, append_record
 
 
@@ -17,7 +18,12 @@ def fetch_all_pages(client: httpx.Client, path: str, params: dict) -> list[dict]
         r.raise_for_status()
         body = r.json()
         rows.extend(body["data"])
-        if page >= int(body["meta"]["total-pages"]):
+        total_pages = body.get("meta", {}).get("total-pages")
+        if total_pages is None:
+            raise ValueError(
+                f"Unexpected FiscalData response — no meta.total-pages: {body!r}"
+            )
+        if page >= int(total_pages):
             return rows
         page += 1
 
@@ -40,8 +46,8 @@ def sync_mts_outlays(
     try:
         con.execute(
             f"""
-            copy (select * from read_json_auto('{jsonl}', format='newline_delimited'))
-            to '{out_path}' (format parquet, compression zstd)
+            copy (select * from read_json_auto('{_sql_path(jsonl)}', format='newline_delimited'))
+            to '{_sql_path(out_path)}' (format parquet, compression zstd)
             """
         )
     finally:
@@ -49,7 +55,8 @@ def sync_mts_outlays(
     jsonl.unlink()
     append_record(manifest_path, ManifestRecord(
         dataset="mts_outlays", fiscal_year=None,
-        file_name=out_path.name, source_url=str(client.base_url) + path,
+        file_name=out_path.name,
+        source_url=str(client.base_url).rstrip("/") + path,
         sha256=hashlib.sha256(out_path.read_bytes()).hexdigest(),
         bytes=out_path.stat().st_size,
         downloaded_at=dt.datetime.now(dt.UTC).isoformat(),
