@@ -671,7 +671,7 @@ def cmd_verify_phase5a(args) -> None:
     gates_ok = gates_ok and g3_ok
 
     # Gate 4: mention coverage + referential integrity
-    mng = mention_gate5a(config.DUCKDB_PATH, mentions_path, filings_path)
+    mng = mention_gate5a(mentions_path, filings_path)
     g4_ok = mng["ok"]
     if "reason" in mng:
         print(f"gate 4 mentions: {mng['reason']} → FAIL")

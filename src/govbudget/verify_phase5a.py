@@ -28,7 +28,7 @@ _BAD_TOKENS = ("caused", "because", "won_due")
 # Tables to audit for causation language.
 _MART_TABLES = ("fct_influence", "fct_program_lobbying", "dim_lobbyists")
 
-# Number of top families to check in match_gate5a (same top-N as pull_top_families default).
+# Number of top families to check in match_gate5a (gate spec: top-50; pull_top_families default is top-100).
 _MATCH_TOP_N = 50
 
 # Thresholds
@@ -59,25 +59,26 @@ def provenance_gate5a(filings_parquet_path: Path) -> dict:
         }
 
     con = duckdb.connect()
-    total = con.execute(
-        f"select count(*) from read_parquet('{filings_parquet_path}')"
-    ).fetchone()[0]
+    try:
+        total = con.execute(
+            f"select count(*) from read_parquet('{filings_parquet_path}')"
+        ).fetchone()[0]
 
-    if total == 0:
+        if total == 0:
+            return {
+                "ok": False,
+                "total_filings": 0,
+                "violations": 0,
+                "reason": "lda_filings.parquet is empty",
+            }
+
+        violations = con.execute(
+            f"select count(*) from read_parquet('{filings_parquet_path}') "
+            f"where filing_uuid is null or filing_uuid = '' "
+            f"   or url is null or url = ''"
+        ).fetchone()[0]
+    finally:
         con.close()
-        return {
-            "ok": False,
-            "total_filings": 0,
-            "violations": 0,
-            "reason": "lda_filings.parquet is empty",
-        }
-
-    violations = con.execute(
-        f"select count(*) from read_parquet('{filings_parquet_path}') "
-        f"where filing_uuid is null or filing_uuid = '' "
-        f"   or url is null or url = ''"
-    ).fetchone()[0]
-    con.close()
 
     return {
         "ok": violations == 0,
@@ -132,18 +133,20 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
 
     # Load matched family keys from filings (match_method != 'none')
     fcon = duckdb.connect()
-    if filings_parquet_path.exists():
-        matched_keys = set(
-            r[0]
-            for r in fcon.execute(
-                f"select distinct family_key_guess from read_parquet('{filings_parquet_path}') "
-                f"where match_method is not null and match_method <> 'none' "
-                f"  and family_key_guess is not null and family_key_guess <> ''"
-            ).fetchall()
-        )
-    else:
-        matched_keys = set()
-    fcon.close()
+    try:
+        if filings_parquet_path.exists():
+            matched_keys = set(
+                r[0]
+                for r in fcon.execute(
+                    f"select distinct family_key_guess from read_parquet('{filings_parquet_path}') "
+                    f"where match_method is not null and match_method <> 'none' "
+                    f"  and family_key_guess is not null and family_key_guess <> ''"
+                ).fetchall()
+            )
+        else:
+            matched_keys = set()
+    finally:
+        fcon.close()
 
     matched = []
     unmatched = []
@@ -188,6 +191,7 @@ def influence_gate5a(duckdb_path: Path) -> dict:
     """
     duckdb_path = Path(duckdb_path)
     con = duckdb.connect(str(duckdb_path), read_only=True)
+    _missing_tables = False
     try:
         # (a) families with both lobbying and obligations
         distinct_with_both = con.execute(
@@ -224,8 +228,25 @@ def influence_gate5a(duckdb_path: Path) -> dict:
         ).fetchall()
         bad_columns = [f"{tbl}.{col}" for tbl, col in rows]
 
+    except duckdb.CatalogException:
+        _missing_tables = True
     finally:
         con.close()
+
+    if _missing_tables:
+        return {
+            "ok": False,
+            "distinct_families_with_both": 0,
+            "threshold_families": _MIN_FAMILIES_WITH_BOTH,
+            "negative_lobbying_rows": 0,
+            "bad_columns": [],
+            "sub_checks": {
+                "families_with_both": False,
+                "no_negative_lobbying": True,
+                "no_causation_columns": True,
+            },
+            "reason": "mart tables missing — run govbudget build first",
+        }
 
     a_ok = distinct_with_both >= _MIN_FAMILIES_WITH_BOTH
     b_ok = negative_rows == 0
@@ -246,7 +267,6 @@ def influence_gate5a(duckdb_path: Path) -> dict:
 
 
 def mention_gate5a(
-    duckdb_path: Path,
     mentions_parquet_path: Path,
     filings_parquet_path: Path,
 ) -> dict:
@@ -285,29 +305,31 @@ def mention_gate5a(
         }
 
     con = duckdb.connect()
-    total_mentions = con.execute(
-        f"select count(*) from read_parquet('{mentions_parquet_path}')"
-    ).fetchone()[0]
+    try:
+        total_mentions = con.execute(
+            f"select count(*) from read_parquet('{mentions_parquet_path}')"
+        ).fetchone()[0]
 
-    distinct_pe_bli = con.execute(
-        f"select count(distinct pe_bli) from read_parquet('{mentions_parquet_path}')"
-    ).fetchone()[0]
+        distinct_pe_bli = con.execute(
+            f"select count(distinct pe_bli) from read_parquet('{mentions_parquet_path}')"
+        ).fetchone()[0]
 
-    # Orphan check: mentions whose filing_uuid is absent from filings or whose
-    # corresponding filing has an empty url.
-    orphan_mentions = con.execute(
-        f"""
-        select count(*)
-        from read_parquet('{mentions_parquet_path}') m
-        left join (
-            select filing_uuid, url
-            from read_parquet('{filings_parquet_path}')
-            where url is not null and url <> ''
-        ) f on f.filing_uuid = m.filing_uuid
-        where f.filing_uuid is null
-        """
-    ).fetchone()[0]
-    con.close()
+        # Orphan check: mentions whose filing_uuid is absent from filings or whose
+        # corresponding filing has an empty url.
+        orphan_mentions = con.execute(
+            f"""
+            select count(*)
+            from read_parquet('{mentions_parquet_path}') m
+            left join (
+                select filing_uuid, url
+                from read_parquet('{filings_parquet_path}')
+                where url is not null and url <> ''
+            ) f on f.filing_uuid = m.filing_uuid
+            where f.filing_uuid is null
+            """
+        ).fetchone()[0]
+    finally:
+        con.close()
 
     return {
         "ok": (

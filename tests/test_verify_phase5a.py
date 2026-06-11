@@ -61,7 +61,8 @@ def make_mentions(path: Path, rows: list[tuple]) -> None:
         "create table _m (filing_uuid varchar, pe_bli varchar,"
         " matched_term varchar, description_snippet varchar)"
     )
-    con.executemany("insert into _m values (?,?,?,?)", rows)
+    if rows:
+        con.executemany("insert into _m values (?,?,?,?)", rows)
     con.execute(f"copy _m to '{path}' (format parquet)")
     con.close()
 
@@ -386,6 +387,22 @@ class TestInfluenceGate5a:
         assert result["ok"] is False
         assert result["distinct_families_with_both"] == 29
 
+    def test_fail_mart_tables_missing_no_exception(self, tmp_path):
+        """DuckDB without mart tables → structured failure dict, no CatalogException."""
+        db = tmp_path / "empty.duckdb"
+        db.parent.mkdir(parents=True, exist_ok=True)
+        # Create a duckdb with no mart tables at all
+        con = duckdb.connect(str(db))
+        con.close()
+        result = influence_gate5a(db)
+        assert result["ok"] is False
+        assert "reason" in result
+        assert "mart tables missing" in result["reason"]
+        assert "govbudget build" in result["reason"]
+        # Should still have all the expected keys
+        assert "distinct_families_with_both" in result
+        assert "sub_checks" in result
+
 
 # ---------------------------------------------------------------------------
 # Gate 4: mention_gate5a
@@ -427,11 +444,9 @@ class TestMentionGate5a:
         return p
 
     def test_pass(self, tmp_path):
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = self._good_filings(tmp_path)
         mentions_p = self._good_mentions(tmp_path)
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is True
         assert result["total_mentions"] >= 10
         assert result["distinct_pe_bli"] >= 3
@@ -439,8 +454,6 @@ class TestMentionGate5a:
 
     def test_fail_too_few_mentions(self, tmp_path):
         """Only 5 total mentions → below 10 threshold → FAIL."""
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = self._good_filings(tmp_path)
         mentions_p = tmp_path / "lda_program_mentions.parquet"
         rows = [
@@ -451,14 +464,12 @@ class TestMentionGate5a:
             ("uuid-C", "PE002", "destroyer", "ref"),
         ]
         make_mentions(mentions_p, rows)
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert result["total_mentions"] == 5
 
     def test_fail_too_few_distinct_pe_bli(self, tmp_path):
         """10+ mentions but only 2 distinct pe_bli → FAIL."""
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = self._good_filings(tmp_path)
         mentions_p = tmp_path / "lda_program_mentions.parquet"
         # 12 mentions but only 2 pe_bli
@@ -468,14 +479,12 @@ class TestMentionGate5a:
             ("uuid-B", "PE002", "destroyer", f"ref {i}") for i in range(6)
         ]
         make_mentions(mentions_p, rows)
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert result["distinct_pe_bli"] == 2
 
     def test_fail_orphan_mention(self, tmp_path):
         """A mention whose filing_uuid does not appear in filings → orphan → FAIL."""
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = self._good_filings(tmp_path)
         mentions_p = tmp_path / "lda_program_mentions.parquet"
         rows = [
@@ -493,25 +502,30 @@ class TestMentionGate5a:
             ("uuid-GHOST", "PE001", "F-35", "ghost ref"),
         ]
         make_mentions(mentions_p, rows)
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert result["orphan_mentions"] == 1
 
     def test_fail_missing_mentions_file(self, tmp_path):
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = self._good_filings(tmp_path)
         mentions_p = tmp_path / "does_not_exist.parquet"
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert "missing" in result.get("reason", "").lower()
 
     def test_fail_missing_filings_file(self, tmp_path):
-        db = tmp_path / "t.duckdb"
-        make_duckdb_with_influence(db)
         filings_p = tmp_path / "does_not_exist.parquet"
         mentions_p = tmp_path / "mentions.parquet"
         make_mentions(mentions_p, [("u", "PE001", "t", "s")])
-        result = mention_gate5a(db, mentions_p, filings_p)
+        result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert "missing" in result.get("reason", "").lower()
+
+    def test_fail_zero_mentions_no_exception(self, tmp_path):
+        """mention_gate5a with a zero-row mentions parquet → ok False, no exception."""
+        filings_p = self._good_filings(tmp_path)
+        mentions_p = tmp_path / "lda_program_mentions.parquet"
+        make_mentions(mentions_p, [])
+        result = mention_gate5a(mentions_p, filings_p)
+        assert result["ok"] is False
+        assert result["total_mentions"] == 0
