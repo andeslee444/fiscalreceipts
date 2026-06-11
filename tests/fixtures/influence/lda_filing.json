@@ -1,0 +1,96 @@
+{
+  "count": 66,
+  "next": "https://lda.senate.gov/api/v1/filings/?client_name=lockheed&filing_year=2025&page=2&page_size=1",
+  "previous": null,
+  "results": [
+    {
+      "url": "https://lda.senate.gov/api/v1/filings/57a5f526-d6e0-402e-9f23-d2d4bd696ce8/",
+      "filing_uuid": "57a5f526-d6e0-402e-9f23-d2d4bd696ce8",
+      "filing_type": "Q1",
+      "filing_type_display": "1st Quarter - Report",
+      "filing_year": 2025,
+      "filing_period": "first_quarter",
+      "filing_period_display": "1st Quarter (Jan 1 - Mar 31)",
+      "filing_document_url": "https://lda.senate.gov/filings/public/filing/57a5f526-d6e0-402e-9f23-d2d4bd696ce8/print/",
+      "income": "30000.00",
+      "expenses": null,
+      "registrant": {
+        "id": 307832,
+        "name": "ETHERTON AND ASSOCIATES, INC.",
+        "description": "Lobbying and consulting services."
+      },
+      "client": {
+        "id": 182583,
+        "name": "LOCKHEED MARTIN CORPORATION",
+        "general_description": "Global aerospace and defense developer, manufacturer and services provider"
+      },
+      "lobbying_activities": [
+        {
+          "general_issue_code": "DEF",
+          "general_issue_code_display": "Defense",
+          "description": "FY26 National Defense Authorization Act All issues related to acquisition policy FY26 Appropriations Act Issues related to software procurement and acquisition policy FY25 Appropriations Act Issues related to software procurement and acquisition policy",
+          "foreign_entity_issues": "",
+          "lobbyists": [
+            {
+              "lobbyist": {
+                "id": 80347,
+                "first_name": "MOSHE",
+                "middle_name": "M",
+                "last_name": "SCHWARTZ"
+              },
+              "covered_position": null,
+              "new": false
+            }
+          ],
+          "government_entities": [
+            {"id": 2, "name": "HOUSE OF REPRESENTATIVES"},
+            {"id": 27, "name": "Joint Chiefs of Staff"},
+            {"id": 31, "name": "Navy, Dept of"},
+            {"id": 26, "name": "Office of the Secretary of Defense"},
+            {"id": 1, "name": "SENATE"}
+          ]
+        },
+        {
+          "general_issue_code": "GOV",
+          "general_issue_code_display": "Government Issues",
+          "description": "FY26 National Defense Authorization Act All issues relating to acquisition Issues relating to industrial base FY25 National Defense Authorization Act All issues relating to acquisition Issues relating to industrial base",
+          "foreign_entity_issues": "",
+          "lobbyists": [
+            {
+              "lobbyist": {
+                "id": 80347,
+                "first_name": "MOSHE",
+                "middle_name": "M",
+                "last_name": "SCHWARTZ"
+              },
+              "covered_position": null,
+              "new": false
+            }
+          ],
+          "government_entities": [
+            {"id": 2, "name": "HOUSE OF REPRESENTATIVES"}
+          ]
+        },
+        {
+          "general_issue_code": "INT",
+          "general_issue_code_display": "Intelligence",
+          "description": "FY25 Intelligence Authorization Act FY25 National Defense Authorization Act Issues related to security clearance FY26 Intelligence Authorization Act FY26 National Defense Authorization Act Issues related to security clearance",
+          "foreign_entity_issues": "",
+          "lobbyists": [
+            {
+              "lobbyist": {
+                "id": 80347,
+                "first_name": "MOSHE",
+                "middle_name": "M",
+                "last_name": "SCHWARTZ"
+              },
+              "covered_position": null,
+              "new": false
+            }
+          ],
+          "government_entities": []
+        }
+      ]
+    }
+  ]
+}

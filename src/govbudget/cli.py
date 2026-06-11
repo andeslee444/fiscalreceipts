@@ -607,6 +607,20 @@ def cmd_verify_phase4(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_influence(args) -> None:
+    from govbudget.influence.lda import pull_top_families
+
+    years = [int(y.strip()) for y in args.years.split(",")]
+    out_dir = config.PARQUET_DIR / "influence"
+    filings_path, activities_path, lobbyists_path = pull_top_families(
+        config.DUCKDB_PATH,
+        out_dir=out_dir,
+        top_n=args.top_n,
+        years=years,
+    )
+    print(f"influence pull: filings={filings_path} activities={activities_path} lobbyists={lobbyists_path}")
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -694,6 +708,15 @@ def main(argv=None) -> None:
                     help="Max department file size in MB to download (default: no cap = full capture)."
                          " Pass e.g. --max-mb 5 for debugging only.")
     st.set_defaults(func=cmd_states)
+
+    inf = sub.add_parser("influence", help="phase 5A lobbying data pipeline")
+    inf_sub = inf.add_subparsers(dest="influence_action", required=True)
+    inf_pull = inf_sub.add_parser("pull", help="pull LDA filings for top-N defense families")
+    inf_pull.add_argument("--top-n", type=int, default=100, dest="top_n",
+                          help="Number of top families by obligation to query (default: 100)")
+    inf_pull.add_argument("--years", default="2024,2025,2026",
+                          help="Comma-separated filing years (default: 2024,2025,2026)")
+    inf_pull.set_defaults(func=cmd_influence)
 
     args = p.parse_args(argv)
     args.func(args)
