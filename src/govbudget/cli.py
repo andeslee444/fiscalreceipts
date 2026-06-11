@@ -334,6 +334,46 @@ def cmd_verify_phase2(args) -> None:
     sys.exit(0 if ok else 1)
 
 
+def cmd_oversight(args) -> None:
+    from govbudget import config
+
+    if args.action == "scrape-pa":
+        from govbudget.oversight.payment_accuracy import scrape_payment_accuracy
+
+        out_path = config.PARQUET_DIR / "oversight" / "improper_payments.parquet"
+        with httpx.Client(
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36"
+                )
+            },
+            timeout=60,
+        ) as client:
+            out = scrape_payment_accuracy(client, out_path=out_path)
+        print(f"oversight scrape-pa: wrote {out}")
+    elif args.action == "high-risk":
+        from govbudget.oversight.high_risk import build_high_risk
+
+        out_path = config.PARQUET_DIR / "oversight" / "high_risk.parquet"
+        agency_map_csv = (
+            config.ROOT / "data-seeds" / "gao_high_risk_agency_map.csv"
+        )
+        with httpx.Client(
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36"
+                )
+            },
+            timeout=60,
+        ) as client:
+            out = build_high_risk(
+                client, agency_map_csv=agency_map_csv, out_path=out_path
+            )
+        print(f"oversight high-risk: wrote {out}")
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -399,6 +439,10 @@ def main(argv=None) -> None:
 
     v2 = sub.add_parser("verify-phase2", help="phase 2 acceptance gates")
     v2.set_defaults(func=cmd_verify_phase2)
+
+    ov = sub.add_parser("oversight", help="phase 3 oversight ingestion pipeline")
+    ov.add_argument("action", choices=["scrape-pa", "high-risk"])
+    ov.set_defaults(func=cmd_oversight)
 
     args = p.parse_args(argv)
     args.func(args)
