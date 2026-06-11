@@ -11,7 +11,7 @@ CONTRACT_COLS = (
     "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
     "awarding_agency_name, awarding_sub_agency_name, naics_code, "
     "product_or_service_code, primary_place_of_performance_state_code, "
-    "prime_award_transaction_place_of_performance_cd_current"
+    "prime_award_transaction_place_of_performance_cd_current, award_id_piid"
 )
 
 ENTITY_XWALK_COLS = (
@@ -71,8 +71,8 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
-        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52'),"
-        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08')"
+        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001'),"
+        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null)"
         f") t({CONTRACT_COLS})",
     )
     write_parquet(
@@ -101,6 +101,29 @@ def make_lake(data_dir: Path):
         data_dir / "parquet/mts_outlays",
         "select * from (values ('2017-10-31','Department of Defense','1000')) "
         "t(record_date, classification_desc, current_month_gross_outly_amt)",
+    )
+    # oversight fixtures for new efficiency marts
+    oversight = data_dir / "parquet/oversight"
+    oversight.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','hhs','2023','7.66','31700000000','413900000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','hhs','2022','6.26','25740000000','411300000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('SNAP','Department of Agriculture','usda','2023','5.74','5060000000','88100000000','https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('SNAP','Department of Agriculture','usda','2022','4.71','3970000000','84300000000','https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('Earned Income Tax Credit','Department of the Treasury','treasury','2023','34.02','21900000000','64400000000','https://paymentaccuracy.gov/program/treasury-eitc')"
+        f") t(program, agency_name, agency_code, fiscal_year, rate_pct, amount_usd, outlays_usd, source_url))"
+        f" to '{oversight}/improper_payments.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('DOD Contract Management','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-contract','DOD','true','DoD contract management','https://www.gao.gov/high-risk-list'),"
+        f"('DOD Weapon Systems Acquisition','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-weapons','DOD','true','DoD weapons programs','https://www.gao.gov/high-risk-list'),"
+        f"('Medicare/Medicaid','https://files.gao.gov/reports/GAO-25-107743/index.html#medicare','HHS','true','CMS programs','https://www.gao.gov/high-risk-list'),"
+        f"('Enforcement of Tax Laws','https://files.gao.gov/reports/GAO-25-107743/index.html#tax','TREASURY','true','IRS enforcement','https://www.gao.gov/high-risk-list'),"
+        f"('Unmapped Area','https://files.gao.gov/reports/GAO-25-107743/index.html#unmapped','','false','no clear agency','https://www.gao.gov/high-risk-list')"
+        f") t(area_title, area_url, agency_code, mapped, notes, source_url))"
+        f" to '{oversight}/high_risk.parquet' (format parquet)"
     )
 
 

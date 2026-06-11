@@ -30,3 +30,12 @@ sources:
       - name: entity_xwalk_src
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/entities/entity_xwalk.parquet')"
+  - name: oversight
+    schema: main
+    tables:
+      - name: improper_payments
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/oversight/improper_payments.parquet')"
+      - name: high_risk
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/oversight/high_risk.parquet')"

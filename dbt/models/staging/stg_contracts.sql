@@ -15,5 +15,7 @@ select
     naics_code,
     product_or_service_code,
     primary_place_of_performance_state_code as pop_state,
-    prime_award_transaction_place_of_performance_cd_current as pop_district
+    prime_award_transaction_place_of_performance_cd_current as pop_district,
+    -- award_id_piid: real column in contracts; null-cast in assistance (SAME position both files)
+    nullif(award_id_piid, '') as award_id_piid
 from {{ source('lake', 'contracts') }}

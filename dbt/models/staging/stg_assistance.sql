@@ -17,5 +17,7 @@ select
     -- Assistance archives carry the state NAME (contracts carry the 2-letter
     -- code); Phase 1 normalizes pop_state to one vocabulary.
     primary_place_of_performance_state_name as pop_state,
-    prime_award_transaction_place_of_performance_cd_current as pop_district
+    prime_award_transaction_place_of_performance_cd_current as pop_district,
+    -- award_id_piid: null-cast in assistance; real column in contracts (SAME position both files)
+    cast(null as varchar) as award_id_piid
 from {{ source('lake', 'assistance') }}

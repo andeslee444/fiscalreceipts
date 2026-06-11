@@ -8,3 +8,19 @@ models:
     columns:
       - name: recipient_uei
         data_tests: [unique, not_null]
+  - name: fct_budget_trajectory
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+  - name: fct_program_concentration
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+  - name: fct_agency_concentration
+    columns:
+      - name: awarding_sub_agency_name
+        data_tests: [not_null]
+  - name: fct_improper_exposure
+    columns:
+      - name: agency_code
+        data_tests: [not_null]
