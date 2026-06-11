@@ -5,11 +5,19 @@ Page structure (verified from live site, June 2026):
   - Sponsoring agency in <h3> containing "Sponsoring agency:"
   - Per-FY summary in <div class="metrics-summary">:
       PROGRAM METRICS / $41,256 M / inFY 2022 outlays, with a / 99.4% / payment accuracy rate
+  - Per-FY precise rates in <canvas class="improper-payment-estimates-doughnut-chart">
+    with attributes data-accuracy, data-improper, data-unknown (all floats in %).
   - FY labels also appear in <div class="usa-card__body"> containing
     "FY YYYY improper payment estimates"
 
 Output parquet columns (all varchar): program, agency_name, agency_code,
-fiscal_year, rate_pct, amount_usd, outlays_usd, source_url.
+fiscal_year, rate_pct, derived_improper_amount_usd, unknown_rate_pct,
+outlays_usd, source_url.
+
+agency_code is canonicalized via canonical_agency() at write time.
+
+NOTE: derived_improper_amount_usd is DERIVED (outlays × improper rate from
+data-improper attribute); it is NOT an agency-reported dollar figure.
 """
 from __future__ import annotations
 
@@ -22,15 +30,15 @@ import duckdb
 import httpx
 from selectolax.parser import HTMLParser
 
+from govbudget.agency_codes import canonical_agency
+
 INDEX_URL = "https://paymentaccuracy.gov/agencies-and-programs"
 _MILLION = 1_000_000
 
 # Regex to parse "$41,256 M" or "$1,234.56 M" style amounts
 _AMOUNT_RE = re.compile(r"\$([0-9,]+(?:\.[0-9]+)?)\s*M")
-# Regex to parse "FY 2022" from card body text
+# Regex to parse "FY 2022" from card body text or heading
 _FY_RE = re.compile(r"FY\s+(20\d\d)")
-# Regex to parse "99.4%" accuracy rate
-_RATE_RE = re.compile(r"(\d+\.?\d*)%")
 
 
 def discover_program_urls(client: httpx.Client, index_url: str) -> list[str]:
@@ -64,24 +72,25 @@ def _parse_dollar_millions(text: str) -> str | None:
         return None
 
 
-def _round_rate(val: float) -> str:
-    """Format improper rate to 1 decimal place, stripping trailing zeros."""
-    rounded = round(val, 1)
-    # Format: 1.0 -> "1.0", 0.6 -> "0.6"
-    return f"{rounded:.1f}"
-
-
 def parse_program_page(html: str, url: str) -> dict:
     """Parse one program page.
 
     Returns dict with keys:
       program, agency_name, agency_code, source_url,
-      fy_rows: list[dict] where each has fiscal_year, rate_pct, amount_usd,
+      fy_rows: list[dict] where each has fiscal_year, rate_pct,
+               derived_improper_amount_usd, unknown_rate_pct,
                outlays_usd, source_url.
 
     agency_code is extracted from the URL slug prefix (e.g. hhs-, ssa-, dow-).
-    rate_pct is the IMPROPER payment rate (= 100 - accuracy_rate).
-    amount_usd is derived as outlays * rate_pct / 100 (no separate amount shown).
+
+    rate_pct is the IMPROPER payment rate from data-improper attribute on the
+    canvas element (precise float, not rounded display text).
+
+    derived_improper_amount_usd is DERIVED: outlays * data-improper / 100.
+
+    unknown_rate_pct is from data-unknown attribute (0 if absent or zero);
+    set to None if neither data-unknown nor (accuracy + improper) sum to 100
+    and the attribute is absent.
     """
     tree = HTMLParser(html)
 
@@ -105,53 +114,76 @@ def parse_program_page(html: str, url: str) -> dict:
     if parts:
         agency_code = parts[0].lower()
 
-    # Per-FY data from metrics-summary cards
-    # Each card: [PROGRAM METRICS, $X M, inFY YYYY outlays, with a, ZZ.Z%, payment accuracy rate]
-    fy_rows: list[dict] = []
+    # --- Pass 1: outlays per FY from metrics-summary cards ---
+    # Each card has data-year and contains "$X M" and "FY YYYY outlays"
+    outlays_by_fy: dict[str, str] = {}
     for card in tree.css("div.metrics-summary"):
+        # Use data-year attribute when present for precise FY
+        fy: str | None = card.attributes.get("data-year")
+
         texts = [n.text(strip=True) for n in card.iter()
                  if hasattr(n, "tag") and n.text(strip=True)]
 
-        outlays_raw = None
-        fy = None
-        accuracy_rate = None
-
+        outlays_raw: str | None = None
         for t in texts:
-            # Parse dollar amount
             if _AMOUNT_RE.search(t) and outlays_raw is None:
                 outlays_raw = t
+            if fy is None:
+                fy_m = _FY_RE.search(t)
+                if fy_m:
+                    fy = fy_m.group(1)
 
-            # Parse FY year
-            fy_m = _FY_RE.search(t)
-            if fy_m and fy is None:
+        if fy and outlays_raw:
+            parsed = _parse_dollar_millions(outlays_raw)
+            if parsed:
+                outlays_by_fy[fy] = parsed
+
+    # --- Pass 2: precise rates from canvas data attributes within card bodies ---
+    # Each usa-card__body contains an <h2> "FY YYYY improper payment estimates"
+    # and a <canvas data-accuracy="..." data-improper="..." data-unknown="...">
+    fy_rows: list[dict] = []
+    for card_body in tree.css("div.usa-card__body"):
+        # Extract FY from heading within this card body
+        fy: str | None = None
+        for h2 in card_body.css("h2"):
+            fy_m = _FY_RE.search(h2.text(strip=True))
+            if fy_m:
                 fy = fy_m.group(1)
+                break
 
-            # Parse accuracy rate (the percentage in the card is accuracy, not improper)
-            rate_m = _RATE_RE.fullmatch(t)
-            if rate_m and accuracy_rate is None:
-                accuracy_rate = float(rate_m.group(1))
-
-        if fy is None or outlays_raw is None or accuracy_rate is None:
+        if fy is None:
             continue
 
-        outlays_usd = _parse_dollar_millions(outlays_raw)
+        # Extract precise rates from canvas
+        canvas = card_body.css_first("canvas.improper-payment-estimates-doughnut-chart")
+        if canvas is None:
+            continue
+
+        try:
+            improper_rate = float(canvas.attributes.get("data-improper", ""))
+        except (ValueError, TypeError):
+            continue
+
+        try:
+            unknown_rate: str | None = str(float(canvas.attributes.get("data-unknown", "")))
+        except (ValueError, TypeError):
+            unknown_rate = None
+
+        outlays_usd = outlays_by_fy.get(fy)
         if outlays_usd is None:
             continue
 
-        # Improper rate = 100 - accuracy_rate
-        improper_rate = 100.0 - accuracy_rate
-        rate_pct = _round_rate(improper_rate)
-
         # Derived amount: outlays * improper_rate / 100
         try:
-            amount_usd = str(round(int(outlays_usd) * improper_rate / 100))
+            derived_improper_amount_usd = str(round(int(outlays_usd) * improper_rate / 100))
         except (ValueError, ZeroDivisionError):
-            amount_usd = ""
+            derived_improper_amount_usd = ""
 
         fy_rows.append({
             "fiscal_year": fy,
-            "rate_pct": rate_pct,
-            "amount_usd": amount_usd,
+            "rate_pct": str(improper_rate),
+            "derived_improper_amount_usd": derived_improper_amount_usd,
+            "unknown_rate_pct": unknown_rate,
             "outlays_usd": outlays_usd,
             "source_url": url,
         })
@@ -173,7 +205,12 @@ def scrape_payment_accuracy(
     """Scrape all program pages and write improper_payments.parquet.
 
     Columns (all varchar): program, agency_name, agency_code, fiscal_year,
-    rate_pct, amount_usd, outlays_usd, source_url.
+    rate_pct, derived_improper_amount_usd, unknown_rate_pct, outlays_usd,
+    source_url.
+
+    agency_code is canonicalized at write time via canonical_agency().
+    derived_improper_amount_usd is DERIVED (outlays × data-improper rate);
+    NOT an agency-reported dollar figure.
     """
     urls = discover_program_urls(client, INDEX_URL)
     print(f"payment_accuracy: discovered {len(urls)} program pages")
@@ -190,10 +227,11 @@ def scrape_payment_accuracy(
                 rows.append((
                     page["program"],
                     page["agency_name"],
-                    page["agency_code"],
+                    canonical_agency(page["agency_code"]),
                     fy_row["fiscal_year"],
                     fy_row["rate_pct"],
-                    fy_row["amount_usd"],
+                    fy_row["derived_improper_amount_usd"],
+                    fy_row["unknown_rate_pct"],
                     fy_row["outlays_usd"],
                     fy_row["source_url"],
                 ))
@@ -212,10 +250,10 @@ def scrape_payment_accuracy(
         con.execute(
             "create table _ip ("
             "program varchar, agency_name varchar, agency_code varchar,"
-            "fiscal_year varchar, rate_pct varchar, amount_usd varchar,"
-            "outlays_usd varchar, source_url varchar)"
+            "fiscal_year varchar, rate_pct varchar, derived_improper_amount_usd varchar,"
+            "unknown_rate_pct varchar, outlays_usd varchar, source_url varchar)"
         )
-        con.executemany("insert into _ip values (?,?,?,?,?,?,?,?)", rows)
+        con.executemany("insert into _ip values (?,?,?,?,?,?,?,?,?)", rows)
         con.execute(
             f"copy _ip to '{out_path}' (format parquet, compression zstd)"
         )

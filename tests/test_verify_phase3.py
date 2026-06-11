@@ -43,12 +43,12 @@ def make_oversight_fixtures(
     for i in range(n_programs):
         ip_rows.append(
             f"('Program{i}','Agency{i % 5}','ag{i % 5}','2023',"
-            f"'5.0','1000000','20000000','https://paymentaccuracy.gov/program/p{i}')"
+            f"'5.0','1000000','0.0','20000000','https://paymentaccuracy.gov/program/p{i}')"
         )
     ip_sql = ",".join(ip_rows)
     write_parquet(
         ip_path, ip_sql,
-        "program, agency_name, agency_code, fiscal_year, rate_pct, amount_usd, outlays_usd, source_url",
+        "program, agency_name, agency_code, fiscal_year, rate_pct, derived_improper_amount_usd, unknown_rate_pct, outlays_usd, source_url",
     )
 
     # Build n_areas high-risk areas; mapped_count have agency_code, rest don't
@@ -121,7 +121,7 @@ def make_duckdb_with_marts(tmp_path: Path) -> Path:
     con.execute(
         "create table fct_improper_exposure as select * from (values "
         + ",".join(exposure_rows)
-        + ") t(agency_code, program_count, total_improper_amount_usd, weighted_rate_pct, latest_fiscal_year)"
+        + ") t(agency_code, program_count, derived_improper_amount_usd, weighted_rate_pct, latest_fiscal_year)"
     )
 
     # dim_programs: some DoD programs
@@ -205,7 +205,7 @@ class TestMartsGate:
         )
         con.execute(
             "create table fct_improper_exposure (agency_code varchar,"
-            " program_count integer, total_improper_amount_usd double,"
+            " program_count integer, derived_improper_amount_usd double,"
             " weighted_rate_pct double, latest_fiscal_year integer)"
         )
         con.close()
@@ -237,7 +237,7 @@ class TestMartsGate:
         )
         con.execute(
             "create table fct_improper_exposure (agency_code varchar,"
-            " program_count integer, total_improper_amount_usd double,"
+            " program_count integer, derived_improper_amount_usd double,"
             " weighted_rate_pct double, latest_fiscal_year integer)"
         )
         con.close()

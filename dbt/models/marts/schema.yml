@@ -24,3 +24,5 @@ models:
     columns:
       - name: agency_code
         data_tests: [not_null]
+      - name: derived_improper_amount_usd
+        description: "Derived: outlays × improper rate from paymentaccuracy.gov page attributes; not an agency-reported dollar figure."

@@ -7,7 +7,7 @@ with ip_parsed as (
         program,
         try_cast(fiscal_year as integer) as fiscal_year,
         try_cast(rate_pct as double) as rate_pct,
-        try_cast(amount_usd as double) as amount_usd,
+        try_cast(derived_improper_amount_usd as double) as derived_improper_amount_usd,
         try_cast(outlays_usd as double) as outlays_usd,
         source_url
     from {{ source('oversight', 'improper_payments') }}
@@ -28,16 +28,25 @@ latest_rows as (
         on l.agency_code = ip.agency_code
         and l.program = ip.program
         and l.latest_fy = ip.fiscal_year
+),
+aggregated as (
+    select
+        agency_code,
+        count(distinct program) as program_count,
+        sum(derived_improper_amount_usd) as total_derived,
+        sum(outlays_usd) as total_outlays,
+        max(fiscal_year) as latest_fiscal_year
+    from latest_rows
+    group by agency_code
 )
 select
     agency_code,
-    count(distinct program) as program_count,
-    sum(amount_usd) as total_improper_amount_usd,
+    program_count,
+    total_derived as derived_improper_amount_usd,
     case
-        when sum(outlays_usd) > 0
-        then round(100.0 * sum(amount_usd) / sum(outlays_usd), 4)
+        when total_outlays > 0
+        then round(100.0 * total_derived / total_outlays, 4)
         else null
     end as weighted_rate_pct,
-    max(fiscal_year) as latest_fiscal_year
-from latest_rows
-group by agency_code
+    latest_fiscal_year
+from aggregated

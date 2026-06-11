@@ -10,6 +10,8 @@ from pathlib import Path
 
 import duckdb
 
+from govbudget.agency_codes import canonical_agency
+
 
 def ingest_gate(ip_path: Path, hr_path: Path) -> dict:
     """Gate 1: improper_payments ≥50 programs with ≥1 FY row + source_url;
@@ -125,20 +127,22 @@ def marts_gate(duckdb_path: Path) -> dict:
 
 
 def trace_gate3(duckdb_path: Path, hr_path: Path) -> dict:
-    """Gate 4: For 2 mapped DoD high-risk areas → agency_code in {DOD,097,dow} →
+    """Gate 4: For 2 mapped DoD high-risk areas → agency_code = canonical 'DOD' →
     ≥1 dim_programs row exists (DoD programs = all of dim_programs in our DoD-scoped
     warehouse — assert non-empty) + fetch top family via fct_program_concentration
     for at least one DARPA/DoD PE.  Both DoD areas must trace.
+
+    agency_code values are canonical (via canonical_agency) so all DoD variants
+    (dow, 097, DOD, dod) normalize to 'DOD' at write time.
     """
     con_hr = duckdb.connect()
-    # Find DoD-mapped areas (agency_code in DOD-family)
-    dod_codes = ("DOD", "097", "dow", "Dow")
-    dod_placeholders = ",".join(f"'{c}'" for c in dod_codes)
+    # All DoD variants are canonicalized to 'DOD' at write time
+    dod_canonical = canonical_agency("DOD")  # -> "DOD"
     dod_areas = con_hr.execute(
         f"""
         select area_title, agency_code
         from read_parquet('{hr_path}')
-        where upper(agency_code) in ('DOD', '097', 'DOW')
+        where agency_code = '{dod_canonical}'
           and mapped = 'true'
         limit 5
         """

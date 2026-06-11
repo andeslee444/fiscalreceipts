@@ -107,12 +107,12 @@ def make_lake(data_dir: Path):
     oversight.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"copy (select * from (values "
-        f"('Medicare Fee-for-Service','Department of Health and Human Services','hhs','2023','7.66','31700000000','413900000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
-        f"('Medicare Fee-for-Service','Department of Health and Human Services','hhs','2022','6.26','25740000000','411300000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
-        f"('SNAP','Department of Agriculture','usda','2023','5.74','5060000000','88100000000','https://paymentaccuracy.gov/program/usda-snap'),"
-        f"('SNAP','Department of Agriculture','usda','2022','4.71','3970000000','84300000000','https://paymentaccuracy.gov/program/usda-snap'),"
-        f"('Earned Income Tax Credit','Department of the Treasury','treasury','2023','34.02','21900000000','64400000000','https://paymentaccuracy.gov/program/treasury-eitc')"
-        f") t(program, agency_name, agency_code, fiscal_year, rate_pct, amount_usd, outlays_usd, source_url))"
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS','2023','7.66','31700000000','0.0','413900000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS','2022','6.26','25740000000','0.0','411300000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('SNAP','Department of Agriculture','USDA','2023','5.74','5060000000','0.0','88100000000','https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('SNAP','Department of Agriculture','USDA','2022','4.71','3970000000','0.0','84300000000','https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('Earned Income Tax Credit','Department of the Treasury','TREASURY','2023','34.02','21900000000','0.0','64400000000','https://paymentaccuracy.gov/program/treasury-eitc')"
+        f") t(program, agency_name, agency_code, fiscal_year, rate_pct, derived_improper_amount_usd, unknown_rate_pct, outlays_usd, source_url))"
         f" to '{oversight}/improper_payments.parquet' (format parquet)"
     )
     duckdb.sql(

@@ -2,6 +2,7 @@
 -- Award dollars enter ONCE per award (not per transaction) to avoid double-count.
 -- Only high+medium confidence links (from fct_budget_to_awards by construction).
 -- HHI uses positive-obligation share only to keep HHI ∈ [0, 10000].
+-- positive-only shares: families with net deobligations keep full positive share (documented bias).
 with award_dollars as (
     -- sum obligation at award grain across all transactions (positive-only for share)
     select

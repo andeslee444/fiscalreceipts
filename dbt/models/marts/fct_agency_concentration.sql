@@ -2,6 +2,7 @@
 -- All transactions (contracts + assistance) included; family via entity_xwalk (fallback = recipient_name).
 -- HHI uses positive-obligation share only: families with net negative obligations are excluded
 -- from the share calculation to keep HHI ∈ (0, 10000].
+-- positive-only shares: families with net deobligations keep full positive share (documented bias).
 with txn_families as (
     select
         t.awarding_sub_agency_name,

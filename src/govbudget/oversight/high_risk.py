@@ -19,6 +19,8 @@ import duckdb
 import httpx
 from selectolax.parser import HTMLParser
 
+from govbudget.agency_codes import canonical_agency
+
 GAO_URL = "https://www.gao.gov/high-risk-list"
 
 # The 'This table' link in the current-list section is metadata, not an area
@@ -122,7 +124,8 @@ def build_high_risk(
         title = area["area_title"]
         # Normalize for map lookup (handles smart-quote variants)
         mapping = agency_map.get(_normalize_title(title), {})
-        agency_code = mapping.get("agency_code", "")
+        raw_code = mapping.get("agency_code", "")
+        agency_code = canonical_agency(raw_code) or ""
         notes = mapping.get("notes", "")
         mapped = "true" if agency_code else "false"
         rows.append((
