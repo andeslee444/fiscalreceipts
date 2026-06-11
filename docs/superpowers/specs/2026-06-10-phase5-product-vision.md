@@ -107,3 +107,29 @@ only (no speculation about individuals).
   follow-the-dollar, competition health, vendor network, risk overlays, shareable
   cards, influence panels. verify-phase5 evals: ≥90% NL accuracy, 100% citation
   resolution, dossier cited-or-absent gate.
+
+## Citation deep-links (user requirement, 2026-06-10): click a number → the PDF line
+
+Every rendered number must click through to the exact source location. Feasibility
+verified live: PE 0601101E's 280.494 locates deterministically on page 24 of the
+387-page DARPA book via pypdf text-layer search (J-book XML TOC only maps volumes,
+so page resolution = text-anchor search: PE/BLI anchor + exact amount string).
+
+Architecture (Phase 5B):
+- **provenance_pages builder:** one pass per source PDF → (document_id, pe_bli,
+  scenario, amount) → page number (+ word bounding box via PyMuPDF for highlight
+  rects). Cached table; rebuilt only when a document sha changes.
+- **Citation resolver API:** fact_id → { hosted_pdf_url#page=N, official_url
+  (comptroller.war.gov) #page=N, bbox, sha256, xml_path, retrieved_at }.
+- **Viewer UX:** click number → side-panel PDF.js opened AT the page with the line
+  highlighted; "open official source" link beside it. We host sha-verified copies
+  (official URLs can rot) while always co-citing the official URL.
+- **Source-tier honesty** (every number gets its native best citation):
+  J-book figures → PDF page deep-link + highlight; R-1/P-1 figures → workbook,
+  sheet + cell (rendered preview) — the source IS xlsx, not PDF; USAspending →
+  dataset + reproducible query permalink; LDA → filing UUID URL; state checkbook →
+  SoQL/source URL; derived metrics → formula + links to every input's citation.
+- **New verify-phase5 gate (click-through):** sample 50 rendered numbers per build;
+  mechanically resolve each citation and assert the cited page/cell/payload actually
+  contains the amount string. 100% required — a number whose citation fails to
+  resolve does not render.
