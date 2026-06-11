@@ -48,7 +48,9 @@ models:
       - name: jurisdiction
         data_tests: [not_null]
       - name: comparable_category
-        description: "Canonical category label from data-seeds/state_category_map.csv; maps jurisdiction-specific vocabulary to shared semantics."
+        description: "Canonical category label from dbt/seeds/state_category_map.csv; maps jurisdiction-specific vocabulary to shared semantics. All CT grant lines (State Aid Grants, Trnsfr Grant Expend-St Agency, Pass thru Grant Non-State, GT Transfer-Grant-St Agencies, Student Grant & Aid-Undergrad, State Aid Grants-State Agency) roll into grants_and_subventions. All CT consulting lines (Management Consultant Services, IT Consultant Services variants, Environmental Consulting Servi, Insurance Consultant Services) roll into consulting_professional."
         data_tests: [not_null]
       - name: amount_per_capita
         description: "Derived: total_amount_usd / population. Population from US Census NST-EST2024 estimates."
+      - name: coverage_note
+        description: "Human-readable capture provenance note per jurisdiction row. CA: 'CA full Open Fi$Cal capture FY2025 (all departments from pointer manifest)'. CT: 'CT full checkbook via Socrata SoQL aggregate (data.ct.gov ajdm-rvz7)'. Populated from jurisdiction field at build time."

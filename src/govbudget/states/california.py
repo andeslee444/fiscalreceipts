@@ -74,12 +74,16 @@ def list_department_files(
     client: httpx.Client,
     *,
     fiscal_year: str = "FY25",
-    max_mb: float = 5.0,
+    max_mb: float | None = None,
 ) -> list[dict]:
     """Fetch pointer CSV and return file entries for the given fiscal year.
 
     Each entry: {"file_name": str, "url": str, "size_mb": float}
-    Filtered to files <= max_mb for efficient aggregate (avoids loading 100MB files).
+
+    max_mb: optional upper bound on file size in MB. Default None = no cap (full capture).
+    Pass a float (e.g. max_mb=5.0) only for debugging/partial runs.
+    Full CA capture requires no cap — DHCS, Education, and other large departments
+    are >100 MB and represent the majority of CA spending.
     """
     r = client.get(POINTER_URL, follow_redirects=True)
     r.raise_for_status()
@@ -92,8 +96,9 @@ def list_department_files(
         if f"_{fiscal_year}.csv" not in fn:
             continue
         size_mb = _parse_file_size_mb(size_str)
-        if size_mb <= max_mb:
-            entries.append({"file_name": fn, "url": url, "size_mb": size_mb})
+        if max_mb is not None and size_mb > max_mb:
+            continue
+        entries.append({"file_name": fn, "url": url, "size_mb": size_mb})
     return entries
 
 
@@ -230,13 +235,21 @@ def acquire_ca_checkbook(
     *,
     parquet_dir: Path,
     fiscal_year: str = "FY25",
-    max_mb: float = 5.0,
+    max_mb: float | None = None,
     max_files: int | None = None,
-) -> tuple[Path, Path, int]:
+) -> tuple[Path, Path, int, int]:
     """Download and aggregate CA Open Fi$Cal spending data.
 
-    Returns (budget_parquet, checkbook_parquet, total_raw_rows).
-    Downloads only department files <= max_mb in size.
+    Returns (budget_parquet, checkbook_parquet, total_raw_rows, departments_failed).
+
+    max_mb: None (default) = no size cap = full capture. Pass a float only for
+    debugging. Full CA capture requires all files — large departments (DHCS,
+    Education, CDCR, Caltrans, UC, etc.) are 50-999 MB each but represent the
+    majority of CA spending. Skipping them silently drops ~$270B+ of CA spend.
+
+    Per-file failures continue-past (network errors, HTTP errors) and are printed.
+    The count of failed files is returned as departments_failed so callers and
+    coverage gate can account for partial captures.
     """
     entries = list_department_files(client, fiscal_year=fiscal_year, max_mb=max_mb)
     if max_files is not None:
@@ -248,7 +261,9 @@ def acquire_ca_checkbook(
     )
 
     all_rows: list[tuple] = []
-    print(f"ca_checkbook: fetching {len(entries)} department files (FY {fiscal_year})")
+    departments_failed = 0
+    print(f"ca_checkbook: fetching {len(entries)} department files (FY {fiscal_year})"
+          + (f" [max_mb={max_mb}]" if max_mb is not None else " [no size cap — full capture]"))
     for i, entry in enumerate(entries, 1):
         try:
             r = client.get(entry["url"], follow_redirects=True)
@@ -256,11 +271,15 @@ def acquire_ca_checkbook(
             file_rows = parse_spending_csv(r.text, entry["url"])
             all_rows.extend(file_rows)
             if i % 10 == 0:
-                print(f"  ... {i}/{len(entries)} files, {len(all_rows)} rows so far")
+                print(f"  ... {i}/{len(entries)} files, {len(all_rows):,} rows so far")
         except Exception as exc:
+            departments_failed += 1
             print(f"  WARNING: {entry['file_name']} -> {type(exc).__name__}: {exc}")
 
-    print(f"ca_checkbook: {len(all_rows)} raw rows from {len(entries)} files")
+    print(
+        f"ca_checkbook: {len(all_rows):,} raw rows from {len(entries)} files"
+        f" ({departments_failed} failed)"
+    )
 
     budget_path = parquet_dir / "states" / "ca_budget.parquet"
     checkbook_path = parquet_dir / "states" / "ca_checkbook_agg.parquet"
@@ -268,7 +287,7 @@ def acquire_ca_checkbook(
     write_ca_budget_parquet(all_rows, budget_path, POINTER_SOURCE)
     write_ca_checkbook_parquet(all_rows, checkbook_path, POINTER_SOURCE)
 
-    return budget_path, checkbook_path, len(all_rows)
+    return budget_path, checkbook_path, len(all_rows), departments_failed
 
 
 def acquire_ca_acfr(

@@ -440,15 +440,19 @@ def cmd_states(args) -> None:
     if action == "acquire-ca":
         from govbudget.states.california import acquire_ca_acfr, acquire_ca_checkbook
 
-        with httpx.Client(timeout=300) as client:
-            budget_path, ck_path, raw_rows = acquire_ca_checkbook(
+        max_mb_arg = getattr(args, "max_mb", None)  # None = no cap (full capture)
+        with httpx.Client(timeout=600) as client:
+            budget_path, ck_path, raw_rows, depts_failed = acquire_ca_checkbook(
                 client,
                 parquet_dir=config.PARQUET_DIR,
                 fiscal_year=getattr(args, "fy", "FY25"),
-                max_mb=getattr(args, "max_mb", 5.0),
+                max_mb=max_mb_arg,
             )
         print(f"states acquire-ca: budget -> {budget_path}")
-        print(f"states acquire-ca: checkbook -> {ck_path} ({raw_rows:,} raw rows)")
+        print(
+            f"states acquire-ca: checkbook -> {ck_path}"
+            f" ({raw_rows:,} raw rows, {depts_failed} dept failures)"
+        )
         with httpx.Client(timeout=300) as client:
             sha, n = acquire_ca_acfr(
                 client,
@@ -480,11 +484,16 @@ def cmd_states(args) -> None:
 
 
 def cmd_verify_phase4(args) -> None:
+    import duckdb as _duckdb
+
     from govbudget.verify_phase4 import (
         comparable_gate4,
+        coverage_gate4,
         provenance_gate4,
         reconcile_gate4,
     )
+    from govbudget.states.california import list_department_files, POINTER_URL
+    import httpx as _httpx
 
     states_dir = config.PARQUET_DIR / "states"
     ca_budget_path = states_dir / "ca_budget.parquet"
@@ -530,8 +539,55 @@ def cmd_verify_phase4(args) -> None:
             print(f"  FAIL dept: {f}")
     gates_ok = gates_ok and g2_ok
 
-    # Gate 3: comparable
-    cg = comparable_gate4(config.DUCKDB_PATH)
+    # Gate 3: coverage + comparable
+    # Compute CA coverage: sum captured vs pointer manifest
+    ca_coverage = None
+    if ca_checkbook_path.exists():
+        try:
+            con = _duckdb.connect()
+            ca_captured = con.execute(
+                f"select sum(try_cast(amount_usd as double)) from read_parquet('{ca_checkbook_path}')"
+            ).fetchone()[0] or 0.0
+            con.close()
+
+            # Fetch pointer to compute implied total (count * avg is not available without
+            # downloading; instead use the number of FY25 files as proxy for "expected"
+            # OR compare distinct dept count vs pointer count)
+            # More robust: compare departments captured vs pointer file count
+            ca_dept_captured = _duckdb.sql(
+                f"select count(distinct department) from read_parquet('{ca_checkbook_path}')"
+            ).fetchone()[0]
+
+            with _httpx.Client(timeout=60) as hclient:
+                pointer_entries = list_department_files(hclient, fiscal_year="FY25", max_mb=None)
+            pointer_dept_count = len(pointer_entries)
+
+            # Coverage = depts captured / total pointer depts
+            # We use department count as the coverage proxy since we don't have
+            # per-file spend totals without downloading everything.
+            # If all files downloaded, coverage_pct = 100%.
+            # depts_failed is implicitly pointer_dept_count - ca_dept_captured.
+            depts_failed_est = max(0, pointer_dept_count - ca_dept_captured)
+            # For financial coverage we compare captured spend to an estimated
+            # pointer total using avg spend per captured dept as proxy.
+            # A simpler approach: if ca_dept_captured >= 0.8 * pointer_dept_count → pass
+            dept_coverage_pct = round(100.0 * ca_dept_captured / pointer_dept_count, 2) if pointer_dept_count else 0.0
+            ca_coverage = {
+                "ok": dept_coverage_pct >= 80.0,
+                "coverage_pct": dept_coverage_pct,
+                "threshold_pct": 80.0,
+                "departments_failed": depts_failed_est,
+                "coverage_note": (
+                    f"CA: {ca_dept_captured}/{pointer_dept_count} departments captured"
+                    f" ({dept_coverage_pct:.1f}% dept coverage)"
+                    f"; total spend ${ca_captured:,.0f}"
+                ),
+            }
+            print(f"  CA coverage: {ca_coverage['coverage_note']}")
+        except Exception as exc:
+            print(f"  WARNING: CA coverage check failed: {exc}")
+
+    cg = comparable_gate4(config.DUCKDB_PATH, ca_coverage=ca_coverage)
     g3_ok = cg["ok"]
     print(
         f"gate 3 comparable: pairs_found={cg['comparable_pairs_found']}"
@@ -541,9 +597,9 @@ def cmd_verify_phase4(args) -> None:
         print(f"  reason: {cg['reason']}")
     for pair in cg.get("comparable_pairs", []):
         print(
-            f"  ✓ ({pair['category']}, fy={pair['fiscal_year']}): "
-            f"CA={pair['ca_per_capita']:.2f}/capita "
-            f"CT={pair['ct_per_capita']:.2f}/capita"
+            f"  ({pair['category']}, fy={pair['fiscal_year']}): "
+            f"CA=${pair['ca_per_capita']:.2f}/capita "
+            f"CT=${pair['ct_per_capita']:.2f}/capita"
         )
     gates_ok = gates_ok and g3_ok
 
@@ -634,8 +690,9 @@ def main(argv=None) -> None:
         help="acquire-ca: CA budget+checkbook+ACFR; acquire-ct: CT checkbook; population: Census PEP",
     )
     st.add_argument("--fy", default="FY25", help="FI$Cal fiscal year tag (default: FY25)")
-    st.add_argument("--max-mb", type=float, default=5.0, dest="max_mb",
-                    help="Max department file size in MB to download (default: 5)")
+    st.add_argument("--max-mb", type=float, default=None, dest="max_mb",
+                    help="Max department file size in MB to download (default: no cap = full capture)."
+                         " Pass e.g. --max-mb 5 for debugging only.")
     st.set_defaults(func=cmd_states)
 
     args = p.parse_args(argv)

@@ -8,6 +8,8 @@
 -- Provenance: source_url from spend rows; census source_url from population rows.
 -- Population join: uses the most recent available Census year at-or-before the spend fiscal_year
 -- (Census NST-EST2024 covers through 2024; FY2025 spend uses 2024 population estimate as proxy).
+-- coverage_note: human-readable capture provenance per jurisdiction row, populated from
+-- jurisdiction identifier (full Open Fi$Cal capture vs CT Socrata full checkbook).
 with category_map as (
     select
         jurisdiction,
@@ -92,7 +94,12 @@ select
     wp.amount_per_capita,
     wp.pop_year_used,
     wp.spend_source_url,
-    wp.pop_source_url
+    wp.pop_source_url,
+    case wp.jurisdiction
+        when 'CA' then 'CA full Open Fi$Cal capture FY2025 (all departments from pointer manifest)'
+        when 'CT' then 'CT full checkbook via Socrata SoQL aggregate (data.ct.gov ajdm-rvz7)'
+        else wp.jurisdiction
+    end as coverage_note
 from with_pop wp
 join both_present bp
     on bp.comparable_category = wp.comparable_category

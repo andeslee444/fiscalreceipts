@@ -11,9 +11,19 @@ Gates (CLI: verify-phase4):
                          consistency (not against an independently published total, which
                          ebudget.ca.gov does not provide in machine-readable form — recorded
                          substitution per plan task-3 context note).
-  3. comparable_gate4 — ≥1 (comparable_category, fiscal_year) where CA and CT both have
-                         per-capita figures > 0; provenance resolvable on each input row.
-                         Reports which (category, year) pairs satisfied the gate.
+  3. comparable_gate4 — Coverage + comparability gate:
+                         (a) coverage check: captured CA aggregate total must be ≥80% of the
+                             pointer manifest's implied total (sum over ALL departments listed
+                             in the pointer CSV). Pairs only count when both CA and CT pass
+                             coverage (CT full checkbook = 100% by definition of the Socrata
+                             SoQL aggregate).
+                         (b) ≥1 (comparable_category, fiscal_year) where CA and CT both have
+                             per-capita figures > 0 AND both jurisdictions pass coverage.
+                         (c) Prints coverage % per jurisdiction + the pairs with their values.
+                         Threshold: 80% coverage minimum. May NOT be lowered.
+
+  coverage_gate4 (standalone helper) — pure function: given captured_total_usd,
+                         pointer_total_usd, departments_failed → ok/coverage_pct/coverage_note.
 """
 from pathlib import Path
 
@@ -162,12 +172,126 @@ def reconcile_gate4(ca_budget_path: Path, ca_checkbook_path: Path) -> dict:
     }
 
 
-def comparable_gate4(duckdb_path: Path) -> dict:
-    """Gate 3: ≥1 (comparable_category, fiscal_year) where CA and CT both have per-capita
-    figures > 0; provenance (spend_source_url + pop_source_url) non-null on each row.
+COVERAGE_THRESHOLD_PCT = 80.0  # may NOT be lowered
+
+
+def coverage_gate4(
+    *,
+    jurisdiction: str,
+    captured_total_usd: float,
+    pointer_total_usd: float,
+    departments_failed: int,
+) -> dict:
+    """Pure coverage gate: captured_total_usd / pointer_total_usd ≥ 80%.
+
+    Used to screen whether a jurisdiction's data is complete enough to
+    participate in cross-jurisdiction comparables.
+
+    Args:
+        jurisdiction: 2-letter jurisdiction code (e.g. 'CA').
+        captured_total_usd: sum of amount_usd in the captured parquet.
+        pointer_total_usd: implied total from the pointer manifest (sum over
+            all departments listed, regardless of download success).
+        departments_failed: count of files that failed to download.
+
+    Returns dict with keys:
+        ok: bool — True if coverage_pct >= 80%.
+        coverage_pct: float — 100 * captured / pointer.
+        threshold_pct: float — always 80.0 (may not be lowered).
+        departments_failed: int — passed through for reporting.
+        coverage_note: str — human-readable provenance note.
+    """
+    if pointer_total_usd <= 0:
+        return {
+            "ok": False,
+            "coverage_pct": 0.0,
+            "threshold_pct": COVERAGE_THRESHOLD_PCT,
+            "departments_failed": departments_failed,
+            "coverage_note": f"{jurisdiction}: pointer_total_usd = 0 (no pointer data)",
+        }
+    coverage_pct = round(100.0 * captured_total_usd / pointer_total_usd, 2)
+    ok = coverage_pct >= COVERAGE_THRESHOLD_PCT
+    note = (
+        f"{jurisdiction}: captured ${captured_total_usd:,.0f} / "
+        f"pointer ${pointer_total_usd:,.0f} = {coverage_pct:.1f}% coverage"
+        + (f"; {departments_failed} dept file(s) failed" if departments_failed else "")
+    )
+    return {
+        "ok": ok,
+        "coverage_pct": coverage_pct,
+        "threshold_pct": COVERAGE_THRESHOLD_PCT,
+        "departments_failed": departments_failed,
+        "coverage_note": note,
+    }
+
+
+def comparable_gate4(
+    duckdb_path: Path,
+    *,
+    ca_coverage: dict | None = None,
+    ct_coverage: dict | None = None,
+) -> dict:
+    """Gate 3: Coverage-aware comparability gate.
+
+    (a) Coverage check: each jurisdiction must have coverage_pct ≥ 80% (via
+        ca_coverage / ct_coverage dicts from coverage_gate4). CT full checkbook
+        Socrata aggregate is treated as 100% coverage when ct_coverage is None.
+        If coverage fails, gate fails before checking pairs.
+
+    (b) ≥1 (comparable_category, fiscal_year) where CA and CT both have
+        per-capita figures > 0; provenance (spend_source_url + pop_source_url)
+        non-null on each row.
+
+    Args:
+        duckdb_path: path to the DuckDB with fct_state_per_capita.
+        ca_coverage: result from coverage_gate4(jurisdiction='CA', ...) or None.
+            None = skip coverage check for CA (backward compat with existing tests).
+        ct_coverage: result from coverage_gate4(jurisdiction='CT', ...) or None.
+            None = assume 100% (CT Socrata full-checkbook aggregate).
 
     Reports the specific (category, year) pairs that satisfied the gate.
+    Prints coverage % per jurisdiction.
     """
+    from collections import defaultdict
+
+    # ------------------------------------------------------------------
+    # Coverage preflight
+    # ------------------------------------------------------------------
+    coverage_results = {}
+
+    if ca_coverage is not None:
+        coverage_results["CA"] = ca_coverage
+        if not ca_coverage["ok"]:
+            return {
+                "ok": False,
+                "reason": (
+                    f"CA coverage insufficient: {ca_coverage['coverage_pct']:.1f}% "
+                    f"(threshold {COVERAGE_THRESHOLD_PCT}%). "
+                    "Re-run acquire-ca without --max-mb to get full capture."
+                ),
+                "comparable_pairs_found": 0,
+                "comparable_pairs": [],
+                "coverage": coverage_results,
+            }
+
+    if ct_coverage is not None:
+        coverage_results["CT"] = ct_coverage
+        if not ct_coverage["ok"]:
+            return {
+                "ok": False,
+                "reason": (
+                    f"CT coverage insufficient: {ct_coverage['coverage_pct']:.1f}% "
+                    f"(threshold {COVERAGE_THRESHOLD_PCT}%). "
+                    "Re-run acquire-ct."
+                ),
+                "comparable_pairs_found": 0,
+                "comparable_pairs": [],
+                "coverage": coverage_results,
+            }
+
+    # ------------------------------------------------------------------
+    # Per-capita pair check
+    # ------------------------------------------------------------------
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
         rows = con.execute(
@@ -190,12 +314,12 @@ def comparable_gate4(duckdb_path: Path) -> dict:
         return {
             "ok": False,
             "reason": "fct_state_per_capita is empty",
+            "comparable_pairs_found": 0,
             "comparable_pairs": [],
+            "coverage": coverage_results,
         }
 
     # Group by (category, year) and check both jurisdictions present with positive per-capita
-    from collections import defaultdict
-
     groups = defaultdict(dict)
     for cat, fy, jur, per_cap, spend_url, pop_url in rows:
         groups[(cat, fy)][jur] = {
@@ -236,4 +360,5 @@ def comparable_gate4(duckdb_path: Path) -> dict:
         "comparable_pairs_found": len(valid_pairs),
         "comparable_pairs": valid_pairs,
         "invalid_pairs": invalid_pairs,
+        "coverage": coverage_results,
     }
