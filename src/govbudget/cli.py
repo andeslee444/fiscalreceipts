@@ -607,6 +607,87 @@ def cmd_verify_phase4(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_verify_phase5a(args) -> None:
+    from govbudget.verify_phase5a import (
+        influence_gate5a,
+        match_gate5a,
+        mention_gate5a,
+        provenance_gate5a,
+    )
+
+    influence_dir = config.PARQUET_DIR / "influence"
+    filings_path = influence_dir / "lda_filings.parquet"
+    mentions_path = influence_dir / "lda_program_mentions.parquet"
+
+    gates_ok = True
+
+    # Gate 1: provenance
+    pg = provenance_gate5a(filings_path)
+    g1_ok = pg["ok"]
+    if "reason" in pg:
+        print(f"gate 1 provenance: {pg['reason']} → FAIL")
+    else:
+        print(
+            f"gate 1 provenance: filings={pg['total_filings']} violations={pg['violations']}"
+            f" → {'PASS' if g1_ok else 'FAIL'}"
+        )
+    gates_ok = gates_ok and g1_ok
+
+    # Gate 2: match coverage
+    mg = match_gate5a(config.DUCKDB_PATH, filings_path)
+    g2_ok = mg["ok"]
+    if "reason" in mg:
+        print(f"gate 2 match: {mg['reason']} → FAIL")
+    else:
+        print(
+            f"gate 2 match: top_n={mg['top_n']} matched={mg['matched_count']}"
+            f" fraction={mg['matched_fraction']:.1%} (threshold: ≥{mg['threshold']:.0%})"
+            f" → {'PASS' if g2_ok else 'FAIL'}"
+        )
+        if mg["unmatched_families"]:
+            print(
+                f"  unmatched families ({len(mg['unmatched_families'])}) — "
+                "candidates for Phase 5B alias work:"
+            )
+            for name in mg["unmatched_families"]:
+                print(f"    {name}")
+    gates_ok = gates_ok and g2_ok
+
+    # Gate 3: influence mart content + honesty
+    ig = influence_gate5a(config.DUCKDB_PATH)
+    g3_ok = ig["ok"]
+    print(
+        f"gate 3 influence: families_with_both={ig['distinct_families_with_both']}"
+        f" (threshold: ≥{ig['threshold_families']})"
+        f" negative_rows={ig['negative_lobbying_rows']}"
+        f" bad_columns={len(ig['bad_columns'])}"
+        f" → {'PASS' if g3_ok else 'FAIL'}"
+    )
+    for sub, ok in ig["sub_checks"].items():
+        if not ok:
+            print(f"  FAIL sub-check: {sub}")
+    if ig["bad_columns"]:
+        print(f"  causation columns found: {ig['bad_columns']}")
+    gates_ok = gates_ok and g3_ok
+
+    # Gate 4: mention coverage + referential integrity
+    mng = mention_gate5a(config.DUCKDB_PATH, mentions_path, filings_path)
+    g4_ok = mng["ok"]
+    if "reason" in mng:
+        print(f"gate 4 mentions: {mng['reason']} → FAIL")
+    else:
+        print(
+            f"gate 4 mentions: total={mng['total_mentions']}"
+            f" distinct_pe_bli={mng['distinct_pe_bli']}"
+            f" orphans={mng['orphan_mentions']}"
+            f" → {'PASS' if g4_ok else 'FAIL'}"
+        )
+    gates_ok = gates_ok and g4_ok
+
+    print("verify-phase5a:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_influence(args) -> None:
     import json
 
@@ -738,6 +819,9 @@ def main(argv=None) -> None:
 
     v4 = sub.add_parser("verify-phase4", help="phase 4 acceptance gates")
     v4.set_defaults(func=cmd_verify_phase4)
+
+    v5a = sub.add_parser("verify-phase5a", help="phase 5A acceptance gates (lobbying influence)")
+    v5a.set_defaults(func=cmd_verify_phase5a)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(
