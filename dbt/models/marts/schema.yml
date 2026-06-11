@@ -26,3 +26,29 @@ models:
         data_tests: [not_null]
       - name: derived_improper_amount_usd
         description: "Derived: outlays × improper rate from paymentaccuracy.gov page attributes; not an agency-reported dollar figure."
+  - name: fct_state_budget
+    description: "Typed California budget lines from Open Fi$Cal per-department transactions (FY2025). Grain: one row per (department, category, fund, fiscal_year) budget line."
+    columns:
+      - name: department
+        data_tests: [not_null]
+      - name: amount_usd
+        description: "Line-item expenditure amount in USD (cast from varchar source)"
+      - name: recomputed_dept_total_usd
+        description: "Derived: sum of all line-item amount_usd values for this department/fiscal_year, recomputed from source rows for pipeline-integrity reconciliation."
+  - name: fct_state_spend
+    description: "Union of CA and CT checkbook aggregates, jurisdiction-tagged. Grain: one row per (jurisdiction, department, category, fiscal_year)."
+    columns:
+      - name: jurisdiction
+        data_tests: [not_null]
+      - name: amount_usd
+        description: "Aggregated expenditure amount in USD for this (jurisdiction, department, category, fiscal_year)"
+  - name: fct_state_per_capita
+    description: "Cross-jurisdiction cost-per-capita comparable for CA and CT. Grain: (jurisdiction, comparable_category, fiscal_year). Only rows where BOTH CA and CT have spend for the same (comparable_category, fiscal_year) are included."
+    columns:
+      - name: jurisdiction
+        data_tests: [not_null]
+      - name: comparable_category
+        description: "Canonical category label from data-seeds/state_category_map.csv; maps jurisdiction-specific vocabulary to shared semantics."
+        data_tests: [not_null]
+      - name: amount_per_capita
+        description: "Derived: total_amount_usd / population. Population from US Census NST-EST2024 estimates."

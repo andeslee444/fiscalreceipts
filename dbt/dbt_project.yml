@@ -2,9 +2,18 @@ name: govbudget
 version: "1.0"
 profile: govbudget
 model-paths: ["models"]
+seed-paths: ["seeds"]
 models:
   govbudget:
     +materialized: view
     marts:
       dim_recipients:
         +materialized: table
+seeds:
+  govbudget:
+    state_category_map:
+      +column_types:
+        jurisdiction: varchar
+        raw_category: varchar
+        comparable_category: varchar
+        notes: varchar

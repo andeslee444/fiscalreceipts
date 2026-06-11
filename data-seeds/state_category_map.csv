@@ -1,0 +1,10 @@
+jurisdiction,raw_category,comparable_category,notes
+CA,Travel,travel,"CA Open Fi$Cal 'Travel' category: per-diem, airfare, lodging for state employees"
+CT,In-State Travel,travel,"CT OpenCheckbook in-state employee travel"
+CT,Out-Of-State Travel,travel,"CT OpenCheckbook out-of-state employee travel; combined with In-State Travel for comparable"
+CA,Grants and Subventions,grants_and_subventions,"CA Open Fi$Cal transfers to local governments and non-profits; largest CA category after Other Items"
+CT,State Aid Grants,grants_and_subventions,"CT OpenCheckbook state-to-local grants; largest CT grant category by spend"
+CA,Debt Service,debt_service,"CA Open Fi$Cal debt service payments (interest + principal)"
+CT,Debt Service Paid,debt_service,"CT OpenCheckbook debt service paid; semantically identical to CA category"
+CA,Consulting & Professional Svcs,consulting_professional,"CA Open Fi$Cal professional and consulting services contracts"
+CT,Management Consultant Services,consulting_professional,"CT OpenCheckbook management consulting; most directly comparable CT consulting subcategory"

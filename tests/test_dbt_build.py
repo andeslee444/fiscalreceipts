@@ -125,6 +125,42 @@ def make_lake(data_dir: Path):
         f") t(area_title, area_url, agency_code, mapped, notes, source_url))"
         f" to '{oversight}/high_risk.parquet' (format parquet)"
     )
+    # states fixtures for phase 4 marts
+    states = data_dir / "parquet/states"
+    states.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('Dept A','Agency','Travel','General Fund','2025','1000.0','False','https://open.fiscal.ca.gov/dept'),"
+        f"('Dept A','Agency','Salaries & Wages','General Fund','2025','5000.0','False','https://open.fiscal.ca.gov/dept'),"
+        f"('Dept B','Agency','Travel','General Fund','2025','2000.0','False','https://open.fiscal.ca.gov/dept'),"
+        f"('Dept B','Agency','Grants and Subventions','General Fund','2025','50000.0','False','https://open.fiscal.ca.gov/dept')"
+        f") t(department, agency, category, fund, fiscal_year, amount_usd, is_total, source_url))"
+        f" to '{states}/ca_budget.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('CA','Dept A','Travel','2025','1000.0','https://open.fiscal.ca.gov/dept'),"
+        f"('CA','Dept A','Salaries & Wages','2025','5000.0','https://open.fiscal.ca.gov/dept'),"
+        f"('CA','Dept B','Travel','2025','2000.0','https://open.fiscal.ca.gov/dept'),"
+        f"('CA','Dept B','Grants and Subventions','2025','50000.0','https://open.fiscal.ca.gov/dept')"
+        f") t(jurisdiction, department, category, fiscal_year, amount_usd, source_url))"
+        f" to '{states}/ca_checkbook_agg.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('CT','CT Dept 1','Out-Of-State Travel','2025','3000.0','https://data.ct.gov/q'),"
+        f"('CT','CT Dept 1','In-State Travel','2025','500.0','https://data.ct.gov/q'),"
+        f"('CT','CT Dept 1','State Aid Grants','2025','200000.0','https://data.ct.gov/q')"
+        f") t(jurisdiction, department, category, fiscal_year, amount_usd, source_url))"
+        f" to '{states}/ct_checkbook_agg.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('CA','2024','39000000','https://census.gov/pop'),"
+        f"('CT','2024','3600000','https://census.gov/pop')"
+        f") t(state, year, population, source_url))"
+        f" to '{states}/state_population.parquet' (format parquet)"
+    )
 
 
 def test_dbt_build_succeeds_on_fixture_lake(tmp_path):

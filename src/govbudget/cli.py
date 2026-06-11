@@ -479,6 +479,78 @@ def cmd_states(args) -> None:
         sys.exit(2)
 
 
+def cmd_verify_phase4(args) -> None:
+    from govbudget.verify_phase4 import (
+        comparable_gate4,
+        provenance_gate4,
+        reconcile_gate4,
+    )
+
+    states_dir = config.PARQUET_DIR / "states"
+    ca_budget_path = states_dir / "ca_budget.parquet"
+    ca_checkbook_path = states_dir / "ca_checkbook_agg.parquet"
+    ct_checkbook_path = states_dir / "ct_checkbook_agg.parquet"
+    population_path = states_dir / "state_population.parquet"
+
+    gates_ok = True
+
+    # Gate 1: provenance
+    pg = provenance_gate4(
+        ca_budget_path, ca_checkbook_path, ct_checkbook_path, population_path,
+        config.MANIFEST_PATH, config.RAW_DOCS_DIR,
+    )
+    g1_ok = pg["ok"]
+    files = pg["files"]
+    print(
+        f"gate 1 provenance: "
+        f"ca_budget={files['ca_budget'].get('total_rows','?')}rows"
+        f" ca_ck={files['ca_checkbook'].get('total_rows','?')}rows"
+        f" ct_ck={files['ct_checkbook'].get('total_rows','?')}rows"
+        f" pop={files['population'].get('total_rows','?')}rows"
+        f" acfr_sha={files['acfr']['sha256'][:16] if files['acfr']['sha256'] else 'missing'}..."
+        f" acfr_on_disk={files['acfr']['on_disk']}"
+        f" → {'PASS' if g1_ok else 'FAIL'}"
+    )
+    for name, info in files.items():
+        if not info.get("ok", False):
+            print(f"  {name}: {info}")
+    gates_ok = gates_ok and g1_ok
+
+    # Gate 2: aggregation reconciliation
+    rg = reconcile_gate4(ca_budget_path, ca_checkbook_path)
+    g2_ok = rg["ok"]
+    print(
+        f"gate 2 aggregation-reconciliation: "
+        f"depts={rg['total_departments']} passing={rg['passing']} failing={rg['failing_count']}"
+        f" pass_pct={rg['pass_pct']}% (threshold: ≥95% within {rg['threshold_pct']}%)"
+        f" → {'PASS' if g2_ok else 'FAIL'}"
+    )
+    if rg["failing_details"]:
+        for f in rg["failing_details"][:5]:
+            print(f"  FAIL dept: {f}")
+    gates_ok = gates_ok and g2_ok
+
+    # Gate 3: comparable
+    cg = comparable_gate4(config.DUCKDB_PATH)
+    g3_ok = cg["ok"]
+    print(
+        f"gate 3 comparable: pairs_found={cg['comparable_pairs_found']}"
+        f" → {'PASS' if g3_ok else 'FAIL'}"
+    )
+    if cg.get("reason"):
+        print(f"  reason: {cg['reason']}")
+    for pair in cg.get("comparable_pairs", []):
+        print(
+            f"  ✓ ({pair['category']}, fy={pair['fiscal_year']}): "
+            f"CA={pair['ca_per_capita']:.2f}/capita "
+            f"CT={pair['ct_per_capita']:.2f}/capita"
+        )
+    gates_ok = gates_ok and g3_ok
+
+    print("verify-phase4:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -551,6 +623,9 @@ def main(argv=None) -> None:
 
     v3 = sub.add_parser("verify-phase3", help="phase 3 acceptance gates")
     v3.set_defaults(func=cmd_verify_phase3)
+
+    v4 = sub.add_parser("verify-phase4", help="phase 4 acceptance gates")
+    v4.set_defaults(func=cmd_verify_phase4)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(

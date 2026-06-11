@@ -39,3 +39,22 @@ sources:
       - name: high_risk
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/oversight/high_risk.parquet')"
+  - name: states
+    schema: main
+    tables:
+      - name: ca_budget
+        description: "California budget lines from Open Fi$Cal per-department transaction files (all-varchar; FY2025)"
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/states/ca_budget.parquet')"
+      - name: ca_checkbook
+        description: "California Open Fi$Cal aggregated spend per department/category/year (all-varchar)"
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/states/ca_checkbook_agg.parquet')"
+      - name: ct_checkbook
+        description: "Connecticut OpenCheckbook aggregated spend per department/category/year from data.ct.gov Socrata (all-varchar; FY2019-2026)"
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/states/ct_checkbook_agg.parquet')"
+      - name: state_population
+        description: "US Census state population estimates (NST-EST2024); CA and CT included; all-varchar"
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/states/state_population.parquet')"
