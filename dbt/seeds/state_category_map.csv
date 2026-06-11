@@ -16,6 +16,3 @@ CT,IT Consultant Services Hourly,consulting_professional,"CT OpenCheckbook IT co
 CT,IT Consultant Services Fixed F,consulting_professional,"CT OpenCheckbook IT consulting fixed-fee engagements ($56M multi-year)"
 CT,Environmental Consulting Servi,consulting_professional,"CT OpenCheckbook environmental consulting services ($59M multi-year)"
 CT,Insurance Consultant Services,consulting_professional,"CT OpenCheckbook insurance advisory/brokerage consulting ($2M multi-year)"
-CA,Debt Service,debt_service,"CA Open Fi$Cal debt service payments. NOTE: Open Fi$Cal routes operational expenditures; bond-funded debt service may flow through Treasurer/Controller files. Category exists in the full capture but may understate total CA debt service — treat CA debt_service comparisons with caution. Included pending full-capture verification."
-CT,Debt Service Paid,debt_service,"CT OpenCheckbook debt service paid (canonical spelling; $19.4B multi-year)"
-CT,Debt Sevice Paid,debt_service,"CT OpenCheckbook debt service paid (typo variant present in actual data; $1.2B multi-year); mapped identically to 'Debt Service Paid'"
