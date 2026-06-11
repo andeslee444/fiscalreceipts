@@ -608,7 +608,12 @@ def cmd_verify_phase4(args) -> None:
 
 
 def cmd_influence(args) -> None:
+    import json
+
+    import duckdb
+
     from govbudget.influence.lda import pull_top_families
+    from govbudget.influence.mentions import build_program_terms, find_mentions
 
     years = [int(y.strip()) for y in args.years.split(",")]
     out_dir = config.PARQUET_DIR / "influence"
@@ -619,6 +624,43 @@ def cmd_influence(args) -> None:
         years=years,
     )
     print(f"influence pull: filings={filings_path} activities={activities_path} lobbyists={lobbyists_path}")
+
+    # --- Mentions extraction ---
+    # Load activities from the just-written parquet
+    acon = duckdb.connect()
+    rows = acon.execute(
+        f"select filing_uuid, description from read_parquet('{activities_path}')"
+    ).fetchall()
+    acon.close()
+    activities = [{"filing_uuid": r[0], "description": r[1]} for r in rows]
+
+    # Load programs from duckdb (read-only)
+    pcon = duckdb.connect(str(config.DUCKDB_PATH), read_only=True)
+    programs = pcon.execute("select pe_bli, title from dim_programs").fetchall()
+    pcon.close()
+
+    program_terms = build_program_terms(programs)
+    mentions = find_mentions(activities, program_terms)
+    print(f"influence pull: {len(mentions)} program-mention rows across "
+          f"{len({m['pe_bli'] for m in mentions})} distinct programs")
+
+    # Write lda_program_mentions.parquet
+    mentions_path = out_dir / "lda_program_mentions.parquet"
+    mcon = duckdb.connect()
+    try:
+        mcon.execute(
+            "create table _m (filing_uuid varchar, pe_bli varchar,"
+            " matched_term varchar, description_snippet varchar)"
+        )
+        mcon.executemany(
+            "insert into _m values (?,?,?,?)",
+            [(m["filing_uuid"], m["pe_bli"], m["matched_term"], m["description_snippet"])
+             for m in mentions],
+        )
+        mcon.execute(f"copy _m to '{mentions_path}' (format parquet, compression zstd)")
+    finally:
+        mcon.close()
+    print(f"influence pull: mentions -> {mentions_path}")
 
 
 def cmd_build(args) -> None:
