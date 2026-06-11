@@ -1,0 +1,71 @@
+# Phase 5 Product Vision — Interactive Program Explorer
+
+**Date:** 2026-06-10 · **Status:** User-directed vision capture (pre-spec)
+**Supersedes** the minimal "dashboard + text-to-SQL" Phase 5 sketch in the phase-gates doc — gates there still apply; the surface grows.
+
+## User direction (verbatim intent)
+
+Highly interactive web interface with animations and online research on the programs.
+Example: the DoD budget line for Loitering Munitions opens a breakdown — types of
+drones, drones in combat, drone animations (animations for the top 50 programs),
+associated news articles, links to the companies that won the award, bidders, and a
+timeline.
+
+## What the warehouse already enables (no new ingestion)
+
+- **Program dossier skeletons:** every PE carries mission descriptions +
+  accomplishments/plans narratives (already extracted, cited to XML paths) — the
+  editorial backbone of each program page.
+- **Money-flow visuals:** appropriation → PE → project → contract → prime → subaward
+  → entity family → state/district. Sankey/particle-flow animations straight from
+  fct_budget_to_awards + subawards + dim_geography.
+- **Timelines:** budget trajectory (FY2024→FY2026 per PE), contract action history
+  (transaction-level mods + deobligations), GAO high-risk/improper-payment overlays.
+- **Competition signal:** FPDS carries `number_of_offers_received` + competition type
+  per award → competed-vs-sole-source health per program. HONESTY NOTE: FPDS does
+  NOT name losing bidders — only counts. True bidder lists exist only prospectively
+  via SAM.gov opportunity notices (future enrichment). The UI must say "N offers
+  received," never invent bidder identities.
+- **Comparisons:** CA↔CT per-capita comparables; program-vs-program; entity families.
+
+## New build: research-enrichment pipeline (the first sanctioned heavy LLM use)
+
+Per-program dossiers for the top 50 programs by FY2026 request:
+- Web research (search APIs / curated defense-press RSS: news articles, agency
+  program pages, company releases) → cached snapshots with URL + retrieved-at.
+- Claude Batch synthesis into dossier sections (what it is, why it matters, players,
+  recent developments) where EVERY claim cites either a warehouse fact (provenance
+  id) or a fetched URL. Dossier citation gate joins verify-phase5.
+- Category → animation mapping (loitering munitions → drone swarm motif; hypersonics
+  → trajectory; space → constellation; shipbuilding → hull assembly; cyber → network)
+  driving per-category hero animations (Lottie/Canvas/react-three-fiber).
+
+## Candidate "super interesting" additions (brainstormed, for user selection)
+
+1. Follow-the-dollar story mode: animated journey of $1 of appropriation through
+   program → contract → company → congressional district.
+2. Anomaly/insight feed: auto-surfaced cards — biggest YoY swings, programs zeroed in
+   FY2026, concentration spikes, new entrants winning big, deobligation storms — each
+   card backed by a warehouse query + citation.
+3. District lens: "where the money lands" choropleth by congressional district with
+   per-district program lists ("your district builds the SM-6 seeker").
+4. Vendor family network: interactive entity graph (Boeing's 89 UEIs, JVs like
+   Bell-Boeing kept distinct), expandable to subaward supply chains.
+5. Competition health meter per program: offers received, sole-source share,
+   incumbent tenure.
+6. Book-diff "what changed this cycle": PB-to-PB new starts/cancellations/renames
+   (needs historical book backfill — schema already supports).
+7. Program genealogy timeline: budget lines + awards + GAO findings + news on one
+   scrubber.
+8. Risk overlays: GAO high-risk badges + improper-payment exposure on agency/program
+   surfaces.
+9. Public scorecard permalinks: shareable, statically-rendered program cards (social
+   preview images generated from the dossier).
+10. "Receipts" mode: every number on screen flips to its citation chain on hover —
+    the provenance ethos as UI.
+
+## Standing constraints carried into Phase 5
+
+Cited-or-absent rule for all LLM-generated dossier text; no invented bidders;
+animations decorate real data, never substitute for it; verify-phase5 evals
+(≥90% NL-question accuracy, 100% citation resolution) still gate the merge.
