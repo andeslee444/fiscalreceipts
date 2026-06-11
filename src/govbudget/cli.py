@@ -433,6 +433,52 @@ def cmd_verify_phase3(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_states(args) -> None:
+    from govbudget import config
+
+    action = args.action
+    if action == "acquire-ca":
+        from govbudget.states.california import acquire_ca_acfr, acquire_ca_checkbook
+
+        with httpx.Client(timeout=300) as client:
+            budget_path, ck_path, raw_rows = acquire_ca_checkbook(
+                client,
+                parquet_dir=config.PARQUET_DIR,
+                fiscal_year=getattr(args, "fy", "FY25"),
+                max_mb=getattr(args, "max_mb", 5.0),
+            )
+        print(f"states acquire-ca: budget -> {budget_path}")
+        print(f"states acquire-ca: checkbook -> {ck_path} ({raw_rows:,} raw rows)")
+        with httpx.Client(timeout=300) as client:
+            sha, n = acquire_ca_acfr(
+                client,
+                raw_docs_dir=config.RAW_DOCS_DIR,
+                manifest_path=config.MANIFEST_PATH,
+            )
+        print(f"states acquire-ca: ACFR sha={sha[:16]}... ({n:,} bytes)")
+    elif action == "acquire-ct":
+        from govbudget.states.connecticut import acquire_ct_checkbook
+
+        with httpx.Client(timeout=120) as client:
+            out_path, count = acquire_ct_checkbook(
+                client,
+                parquet_dir=config.PARQUET_DIR,
+            )
+        print(f"states acquire-ct: {count} rows -> {out_path}")
+    elif action == "population":
+        from govbudget.states.population import acquire_population
+
+        with httpx.Client(timeout=120) as client:
+            out_path, count = acquire_population(
+                client,
+                parquet_dir=config.PARQUET_DIR,
+            )
+        print(f"states population: {count} rows -> {out_path}")
+    else:
+        print(f"unknown states action: {action}", file=sys.stderr)
+        sys.exit(2)
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -505,6 +551,17 @@ def main(argv=None) -> None:
 
     v3 = sub.add_parser("verify-phase3", help="phase 3 acceptance gates")
     v3.set_defaults(func=cmd_verify_phase3)
+
+    st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
+    st.add_argument(
+        "action",
+        choices=["acquire-ca", "acquire-ct", "population"],
+        help="acquire-ca: CA budget+checkbook+ACFR; acquire-ct: CT checkbook; population: Census PEP",
+    )
+    st.add_argument("--fy", default="FY25", help="FI$Cal fiscal year tag (default: FY25)")
+    st.add_argument("--max-mb", type=float, default=5.0, dest="max_mb",
+                    help="Max department file size in MB to download (default: 5)")
+    st.set_defaults(func=cmd_states)
 
     args = p.parse_args(argv)
     args.func(args)
