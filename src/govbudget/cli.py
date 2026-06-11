@@ -374,6 +374,65 @@ def cmd_oversight(args) -> None:
         print(f"oversight high-risk: wrote {out}")
 
 
+def cmd_verify_phase3(args) -> None:
+    from govbudget.verify_phase3 import (
+        ingest_gate,
+        linkage_gate,
+        marts_gate,
+        trace_gate3,
+    )
+
+    ip_path = config.PARQUET_DIR / "oversight" / "improper_payments.parquet"
+    hr_path = config.PARQUET_DIR / "oversight" / "high_risk.parquet"
+
+    gates_ok = True
+
+    # Gate 1: ingest
+    ig = ingest_gate(ip_path, hr_path)
+    status = "PASS" if ig["ok"] else "FAIL"
+    print(
+        f"gate 1 ingest: programs={ig['program_count']} areas={ig['area_count']}"
+        f" ip_urls={ig['ip_rows_with_url']}/{ig['ip_total_rows']}"
+        f" hr_urls={ig['hr_rows_with_url']}/{ig['area_count']} → {status}"
+    )
+    gates_ok = gates_ok and ig["ok"]
+
+    # Gate 2: linkage
+    lg = linkage_gate(hr_path)
+    status = "PASS" if lg["ok"] else "FAIL"
+    print(
+        f"gate 2 linkage: mapped={lg['mapped']}/{lg['total_areas']}"
+        f" ({lg['mapped_pct']}%) unmapped={lg['unmapped_count']} → {status}"
+    )
+    gates_ok = gates_ok and lg["ok"]
+
+    # Gate 3: marts
+    mg = marts_gate(config.DUCKDB_PATH)
+    status = "PASS" if mg["ok"] else "FAIL"
+    print(
+        f"gate 3 marts: trajectory={mg['trajectory_rows']} concentration={mg['concentration_rows']}"
+        f" agency={mg['agency_rows']} exposure={mg['exposure_rows']}"
+        f" bad_hhi_prog={mg['bad_hhi_program']} bad_hhi_agency={mg['bad_hhi_agency']} → {status}"
+    )
+    gates_ok = gates_ok and mg["ok"]
+
+    # Gate 4: trace
+    tg = trace_gate3(config.DUCKDB_PATH, hr_path)
+    status = "PASS" if tg["ok"] else "FAIL"
+    print(
+        f"gate 4 trace: dod_areas={tg.get('dod_areas_checked', 0)}"
+        f" traced={tg.get('dod_areas_traced', 0)}"
+        f" dim_programs={tg.get('dim_programs_count', 0)}"
+        f" top_family={tg.get('sample_top_family')} → {status}"
+    )
+    if "reason" in tg:
+        print(f"  reason: {tg['reason']}")
+    gates_ok = gates_ok and tg["ok"]
+
+    print("verify-phase3:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -443,6 +502,9 @@ def main(argv=None) -> None:
     ov = sub.add_parser("oversight", help="phase 3 oversight ingestion pipeline")
     ov.add_argument("action", choices=["scrape-pa", "high-risk"])
     ov.set_defaults(func=cmd_oversight)
+
+    v3 = sub.add_parser("verify-phase3", help="phase 3 acceptance gates")
+    v3.set_defaults(func=cmd_verify_phase3)
 
     args = p.parse_args(argv)
     args.func(args)
