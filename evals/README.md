@@ -1,0 +1,13 @@
+# GovBudget Phase-5B Analyst Agent — NL Evaluation Set
+
+## Purpose
+
+`phase5_questions.yaml` contains 45 natural-language question-answer pairs designed to gate the Phase-5B analyst agent before it ships. The questions span every major data domain loaded in the GovBudget warehouse: J-book budget facts (with PDF-page citation expectations), budget trajectories, program-to-award crosswalk links, entity family consolidations, congressional-district geography, agency and program concentration (HHI), improper payment derived estimates, GAO high-risk program areas, state-level per-capita spending comparables, and aggregate contract-award statistics. Five entries are deliberately unanswerable (tagged `expected_answer: REFUSE`) to test honest refusal when the data does not exist in the warehouse, covering scenarios like: FY2023 J-book editions not ingested, FY2024 contract awards not yet loaded, state budgets for jurisdictions outside CA and CT, classified program details, and bid-competition data that is structurally absent from USASpending.
+
+## How verify-phase5 Consumes This File
+
+The Phase-5B gate script (`tests/test_eval_set.py` validates the YAML structure; the full verify-phase5 runner evaluates the analyst agent's live responses against each entry) applies two scoring criteria: **accuracy ≥ 90%** (at least 41 of 45 answers match, with numeric answers evaluated within the stated `tolerance`) and **citation resolution 100%** (every non-REFUSE answer that specifies `expected_citation_kind: pdf_page` or `source_url` must include a resolvable citation in the agent's response — a page reference or a URL present in the warehouse's source metadata). REFUSE entries pass if and only if the agent explicitly declines to answer and names the reason (data not loaded, classified, or structural gap). All expected answers were computed by running the accompanying `answer_sql` against the live `data/duckdb/govbudget.duckdb` in read-only mode; they must be regenerated whenever the warehouse is refreshed.
+
+## How to Extend
+
+To add a new question: (1) write `answer_sql` that runs cleanly against the live DuckDB (`uv run python -c "import duckdb; con = duckdb.connect('data/duckdb/govbudget.duckdb', read_only=True); print(con.execute(YOUR_SQL).fetchall())"`), (2) record the exact output as `expected_answer`, (3) assign the next sequential `id` (q046, q047, …), (4) choose `expected_citation_kind` matching where the fact lives, and (5) add `tolerance` for any floating-point answer. REFUSE entries must omit `answer_sql` entirely and explain in `notes` exactly which data gap causes the refusal. Run `uv run pytest tests/test_eval_set.py -q` after each addition to confirm structural validity passes.
