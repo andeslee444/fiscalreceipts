@@ -161,6 +161,38 @@ def make_lake(data_dir: Path):
         f") t(state, year, population, source_url))"
         f" to '{states}/state_population.parquet' (format parquet)"
     )
+    # influence fixtures for phase 5A marts
+    influence = data_dir / "parquet/influence"
+    influence.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('uuid-lda-001','https://lda.senate.gov/api/v1/filings/uuid-lda-001/','ACME PARENT INC','OUTSIDE FIRM LLC','2024','first_quarter','Q1','150000','','ACME PARENT','exact_family'),"
+        f"('uuid-lda-002','https://lda.senate.gov/api/v1/filings/uuid-lda-002/','ACME PARENT INC','ACME PARENT INC','2024','second_quarter','Q2','','50000','ACME PARENT','exact_family')"
+        f") t(filing_uuid, url, client_name, registrant_name, filing_year, filing_period, filing_type,"
+        f" income_usd, expenses_usd, family_key_guess, match_method))"
+        f" to '{influence}/lda_filings.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('uuid-lda-001','DEF','Defense','FY26 NDAA issues related to JADC2 and acquisition.','[\"SENATE\"]'),"
+        f"('uuid-lda-002','GOV','Government Issues','Issues related to C-130J aircraft and appropriations.','[]')"
+        f") t(filing_uuid, issue_code, issue_display, description, agencies_json))"
+        f" to '{influence}/lda_activities.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('uuid-lda-001','JANE DOE','Deputy Secretary of Defense (Smith Administration)'),"
+        f"('uuid-lda-002','JOHN SMITH','')"
+        f") t(filing_uuid, name, covered_position))"
+        f" to '{influence}/lda_lobbyists.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values "
+        f"('uuid-lda-001','0604122D8Z','JADC2','FY26 NDAA issues related to JADC2 and acquisition.'),"
+        f"('uuid-lda-002','2012C130J','C-130J','Issues related to C-130J aircraft and appropriations.')"
+        f") t(filing_uuid, pe_bli, matched_term, description_snippet))"
+        f" to '{influence}/lda_program_mentions.parquet' (format parquet)"
+    )
 
 
 def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
@@ -182,3 +214,18 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     assert con.sql(
         "select total_obligation from dim_recipients where recipient_uei='UEI1'"
     ).fetchone()[0] == 6000.5
+    # Phase 5A influence mart assertions
+    assert con.sql("select count(*) from fct_influence").fetchone()[0] >= 1
+    assert con.sql(
+        "select lobbying_total_usd from fct_influence"
+        " where family_key='ACME PARENT' and filing_year='2024'"
+    ).fetchone()[0] == 200000.0  # 150000 income + 50000 expenses
+    assert con.sql("select count(*) from fct_program_lobbying").fetchone()[0] == 2
+    assert con.sql("select count(*) from dim_lobbyists").fetchone()[0] == 2
+    # revolving_door true for JANE DOE (has covered_position), false for JOHN SMITH
+    assert con.sql(
+        "select revolving_door from dim_lobbyists where name='JANE DOE'"
+    ).fetchone()[0] is True
+    assert con.sql(
+        "select revolving_door from dim_lobbyists where name='JOHN SMITH'"
+    ).fetchone()[0] is False

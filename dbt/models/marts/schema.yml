@@ -42,6 +42,48 @@ models:
         data_tests: [not_null]
       - name: amount_usd
         description: "Aggregated expenditure amount in USD for this (jurisdiction, department, category, fiscal_year)"
+  - name: fct_influence
+    description: "Lobbying disclosure amounts per (family_key, filing_year) from Senate LDA, joined with total contract obligations from dim_entities. Grain: one row per (family_key, filing_year). Lobbying amounts reflect statutory disclosures only; no causal relationship between lobbying and awards is stated or implied."
+    columns:
+      - name: family_key
+        data_tests: [not_null]
+        description: "Normalized family key from dim_entities (or raw LDA client_name if unmatched)."
+      - name: filing_year
+        data_tests: [not_null]
+        description: "LDA filing year (calendar year of the report)."
+      - name: lobbying_income_usd
+        description: "Sum of income_usd from filings where an outside lobbying firm reported income from this client. Mutually exclusive with lobbying_expense_usd per filing."
+      - name: lobbying_expense_usd
+        description: "Sum of expenses_usd from in-house/self-filer filings. Mutually exclusive with lobbying_income_usd per filing."
+      - name: lobbying_total_usd
+        description: "Sum of lobbying_income_usd and lobbying_expense_usd; total lobbying outlay without double-counting (income and expenses are mutually exclusive per LDA filing)."
+      - name: obligations_usd
+        description: "Total federal contract obligations for this family from dim_entities (all years in the award lake). Shown alongside lobbying for context; no directional relationship implied."
+  - name: fct_program_lobbying
+    description: "Program-mention rows from LDA activity descriptions matched against dim_programs. Grain: one row per (filing_uuid, pe_bli, matched_term). Matching is deterministic (token/alias/PE-code substring with word boundaries). Each row is citation-ready via filing_url."
+    columns:
+      - name: filing_uuid
+        data_tests: [not_null]
+        description: "LDA filing UUID; permanent identifier resolvable at lda.senate.gov."
+      - name: pe_bli
+        data_tests: [not_null]
+        description: "Program element or budget line identifier matched from dim_programs."
+      - name: matched_term
+        description: "The exact term (title token, PE code, or alias) found in the filing description. Preserved for transparency and audit."
+      - name: filing_url
+        description: "Direct URL to the LDA filing record at lda.senate.gov."
+  - name: dim_lobbyists
+    description: "One row per unique lobbyist name from LDA disclosures. revolving_door flag derived from non-empty, non-N/A covered_position (prior government service); reflects statutory disclosure only."
+    columns:
+      - name: name
+        data_tests: [not_null, unique]
+        description: "Lobbyist full name as disclosed in LDA filing."
+      - name: covered_position
+        description: "Most recently disclosed prior government position (statutory disclosure). Empty when not disclosed."
+      - name: filings_count
+        description: "Number of distinct filings in which this lobbyist appears."
+      - name: revolving_door
+        description: "True when covered_position is non-empty and not N/A — indicating disclosed prior executive or legislative branch service. Reflects the statutory LDA disclosure; no further inference."
   - name: fct_state_per_capita
     description: "Cross-jurisdiction cost-per-capita comparable for CA and CT. Grain: (jurisdiction, comparable_category, fiscal_year). Only rows where BOTH CA and CT have spend for the same (comparable_category, fiscal_year) are included."
     columns:

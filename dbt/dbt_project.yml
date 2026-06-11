@@ -17,3 +17,8 @@ seeds:
         raw_category: varchar
         comparable_category: varchar
         notes: varchar
+    program_aliases:
+      +column_types:
+        alias: varchar
+        pe_bli: varchar
+        notes: varchar

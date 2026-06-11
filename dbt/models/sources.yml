@@ -39,6 +39,25 @@ sources:
       - name: high_risk
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/oversight/high_risk.parquet')"
+  - name: influence
+    schema: main
+    tables:
+      - name: lda_filings
+        description: "LDA filings from Senate LDA REST API; one row per unique filing UUID. Income and expenses are mutually exclusive per filing (outside-firm vs in-house). All-varchar."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_filings.parquet')"
+      - name: lda_activities
+        description: "LDA lobbying activities; one row per (filing_uuid, issue_code). agencies_json is JSON array of agency names. All-varchar."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_activities.parquet')"
+      - name: lda_lobbyists
+        description: "LDA lobbyists; one row per (filing_uuid, name, covered_position) after deduplication within each filing. All-varchar."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_lobbyists.parquet')"
+      - name: lda_program_mentions
+        description: "Deterministic program-mention matches from LDA activity descriptions. One row per (filing_uuid, pe_bli, matched_term). Citation-ready: filing_uuid resolves to filing URL. All-varchar."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_program_mentions.parquet')"
   - name: states
     schema: main
     tables:

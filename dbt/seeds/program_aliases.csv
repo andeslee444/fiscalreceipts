@@ -1,0 +1,13 @@
+alias,pe_bli,notes
+JASSM,0603000D8Z,Joint Air-to-Surface Standoff Missile; appears as "JASSM funding" in Lockheed 2025 LDA filings; pe_bli is Joint Munitions Advanced Technology which covers JASSM development
+C-130J,2012C130J,Lockheed C-130J Hercules variant; matches program AC/MC-130J (2012C130J)
+JADC2,0604122D8Z,Joint All-Domain Command and Control; direct title match in dim_programs
+C2BMC,0603896C,Command and Control Battle Management Communications; abbreviation used in LDA filings for the full BMD C2BMC program
+THAAD,MD07,Terminal High Altitude Area Defense; abbreviation used in LDA filings; exact program code in dim_programs
+Aegis,MD09,Aegis Ballistic Missile Defense; short alias used in filings referring to the Aegis BMD family
+Iron Dome,MD83,Israeli cooperative Iron Dome; appears in DoD LDA disclosures for funding appropriations
+GBI,MD08,Ground Based Interceptor; abbreviation for Ground Based Midcourse program (MD08)
+SBX,0603907C,Sea Based X-Band Radar; abbreviation used in congressional lobbying text
+MQ-9,1108MQ9,MQ-9 Reaper unmanned aerial vehicle; short alias for MQ-9 Unmanned Aerial Vehicle program
+CV-22,1000CV2200,CV-22 Osprey tiltrotor; abbreviation for CV-22 Modification program
+Hypersonic,0603183D8Z,Joint Hypersonic Technology Development and Transition; generic term lobbied frequently
