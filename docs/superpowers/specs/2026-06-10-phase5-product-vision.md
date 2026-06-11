@@ -69,3 +69,41 @@ Per-program dossiers for the top 50 programs by FY2026 request:
 Cited-or-absent rule for all LLM-generated dossier text; no invented bidders;
 animations decorate real data, never substitute for it; verify-phase5 evals
 (≥90% NL-question accuracy, 100% citation resolution) still gate the merge.
+
+## Influence layer (user direction, 2026-06-10): lobbying → benefits
+
+Track lobbying by companies and persons and link to the government funding benefits
+they receive. Sources + linkage (probed live):
+
+- **Senate LDA API** (lda.senate.gov/api/v1) — works anonymously (rate-limited),
+  108,620 filings for 2025, JSON with permanent filing UUIDs (citation-perfect).
+  Fields: registrant (lobbying firm), client (company), income/expense amounts,
+  lobbyist NAMES with covered government positions (statutory revolving-door
+  disclosure), issue codes (DEF/BUD/APP...), agencies lobbied, specific-issue text
+  (frequently names programs — a text crosswalk to PEs).
+- **House disclosures** (disclosures.house.gov XML bulk) — corroboration source.
+- **FEC** later (bulk files keyless): contributions → defense-committee members →
+  the `CongressionalAddDetail` elements ALREADY in our J-book XML → contractor
+  benefits. The full chain: money in → marks added → money out.
+
+Linkage plan: LDA client names → entity_xwalk families via the Phase-2 normalizer;
+influence mart per (family, year): lobbying_spend vs obligations_received vs
+congressional adds; lobbyist-person table with covered-position flags. UI: lobbying
+panel on program + company dossiers; revolving-door badges.
+
+**Honesty constraints:** present influence ALONGSIDE outcomes — never as causal
+claims ("lobbied $X while receiving $Y" with both cited; no "because"). Every figure
+cites a filing UUID or warehouse fact. Persons receive no awards — benefits attach
+to clients; persons appear as registered lobbyists with disclosed prior positions
+only (no speculation about individuals).
+
+## Phase 5 structure (revised)
+
+- **5A Influence layer:** LDA ingestion + entity linkage + influence marts +
+  verify-phase5a gates (filing provenance 100%, ≥80% of top-50 defense families
+  matched to LDA clients, influence mart non-empty with citations).
+- **5B Product surface:** Next.js app — program dossiers (top 50 w/ category
+  animations + research enrichment), receipts mode, anomaly feed, district lens,
+  follow-the-dollar, competition health, vendor network, risk overlays, shareable
+  cards, influence panels. verify-phase5 evals: ≥90% NL accuracy, 100% citation
+  resolution, dossier cited-or-absent gate.
