@@ -4,6 +4,7 @@ import {
   getSiteMeta,
   getPrograms,
   getAgencies,
+  getFeed,
   collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -29,6 +30,14 @@ export default function HomePage() {
   const programs = getPrograms();
   const agencies = getAgencies();
 
+  // Feed teaser: first 3 cards from the feed sidecar
+  let feedTeaser: ReturnType<typeof getFeed>["cards"] = [];
+  try {
+    feedTeaser = getFeed().cards.slice(0, 3);
+  } catch {
+    // feed sidecar not yet generated — render without teaser
+  }
+
   // Top 5 movers by |fy2526_change| (trajectory must be non-null + change non-null)
   const topMovers = programs
     .filter((p) => p.trajectory && p.trajectory.fy2526_change !== null)
@@ -40,7 +49,8 @@ export default function HomePage() {
     .slice(0, 5);
 
   // Citation slice: mover change fact_ids (+ their peer inputs so the
-  // derived-card chips are clickable) + agency FY24 derived fact_ids.
+  // derived-card chips are clickable) + agency FY24 derived fact_ids
+  // + feed teaser fact_ids.
   const pageFactIds: string[] = [];
   for (const p of topMovers) {
     if (p.trajectory_fact_ids?.fy2526_change) {
@@ -49,6 +59,9 @@ export default function HomePage() {
   }
   for (const a of agencies) {
     if (a.fy2024_fact_id_derived) pageFactIds.push(a.fy2024_fact_id_derived);
+  }
+  for (const card of feedTeaser) {
+    if (card.figure_fact_id) pageFactIds.push(card.figure_fact_id);
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
@@ -227,6 +240,52 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Feed teaser ──────────────────────────────────────────────────── */}
+      {feedTeaser.length > 0 && (
+        <section className="py-12 border-b border-border">
+          <div className="container mx-auto px-4 max-w-5xl">
+            <div className="flex items-baseline justify-between mb-2">
+              <h2 className="text-2xl font-bold">Anomaly Feed</h2>
+              <Link
+                href="/feed/"
+                className="text-sm text-primary underline decoration-dotted hover:decoration-solid"
+              >
+                View all &rarr;
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Automated signals: budget swings, cancelled programs, and new
+              contractors. Figures cite their source.
+            </p>
+            <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
+              {feedTeaser.map((card, i) => (
+                <div
+                  key={`feed-${i}`}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-muted/60 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">
+                      {card.headline}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {card.event_type.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  {card.program_url && (
+                    <Link
+                      href={card.program_url}
+                      className="shrink-0 ml-4 text-xs text-primary underline decoration-dotted hover:decoration-solid"
+                    >
+                      view &rarr;
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Trust anchor ─────────────────────────────────────────────────── */}
       <section className="border-t border-border bg-muted/30 py-10">

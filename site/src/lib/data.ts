@@ -537,6 +537,95 @@ export function collectCitationsWithInputs(factIds: string[]): CitationsMap {
   return result;
 }
 
+// ── feed.json ─────────────────────────────────────────────────────────────────
+
+export interface FeedCard {
+  event_type: "yoy_swing" | "zeroed_fy2026" | "concentration_shift" | "new_entrant";
+  family_key: string | null;
+  figure_fact_id: string | null;
+  figure_units: string;
+  figure_value: number | null;
+  fiscal_year: number | null;
+  headline: string;
+  organization: string | null;
+  pe_bli: string | null;
+  program_url: string | null;
+  why_url: string;
+}
+
+export interface FeedSidecar {
+  cards: FeedCard[];
+  total: number;
+}
+
+let _feed: FeedSidecar | null = null;
+
+export function getFeed(): FeedSidecar {
+  if (_feed) return _feed;
+  getSiteMeta();
+  _feed = readJson<FeedSidecar>("feed.json");
+  return _feed;
+}
+
+// ── districts/index.json ──────────────────────────────────────────────────────
+
+export interface DistrictIndexRow {
+  pop_district: string;
+  pop_state: string;
+  program_count: number;
+  total_cited_dollars: number;
+  total_linkable_dollars: number;
+}
+
+export interface DistrictIndex {
+  districts: DistrictIndexRow[];
+  geo_grand_total: number | null;
+  geo_grand_total_dataset: string;
+  total_districts: number;
+}
+
+let _districtIndex: DistrictIndex | null = null;
+
+export function getDistrictIndex(): DistrictIndex {
+  if (_districtIndex) return _districtIndex;
+  getSiteMeta();
+  _districtIndex = readJson<DistrictIndex>("districts/index.json");
+  return _districtIndex;
+}
+
+// ── districts/{pop_district}.json ─────────────────────────────────────────────
+
+export interface DistrictProgram {
+  award_count: number;
+  fact_id: string | null;
+  organization: string;
+  pe_bli: string;
+  program_url: string;
+  recipient_count: number;
+  title: string;
+  total_obligation: number | null;
+  transaction_count: number;
+}
+
+export interface DistrictDetail {
+  pop_district: string;
+  pop_state: string;
+  program_count: number;
+  programs: DistrictProgram[];
+  total_cited_dollars: number;
+  total_linkable_dollars: number;
+}
+
+const _districtDetails = new Map<string, DistrictDetail>();
+
+export function getDistrictDetail(popDistrict: string): DistrictDetail {
+  if (_districtDetails.has(popDistrict)) return _districtDetails.get(popDistrict)!;
+  getSiteMeta();
+  const detail = readJson<DistrictDetail>(`districts/${popDistrict}.json`);
+  _districtDetails.set(popDistrict, detail);
+  return detail;
+}
+
 // ── Type guards ───────────────────────────────────────────────────────────────
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {

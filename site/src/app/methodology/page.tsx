@@ -373,6 +373,72 @@ export default function MethodologyPage() {
         </ul>
       </section>
 
+      {/* §feed ───────────────────────────────────────────────────────── */}
+      <section id="feed" className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Anomaly Feed — signal types and thresholds</h2>
+        <p className="text-muted-foreground leading-7 mb-4">
+          The <a href="/feed/" className="underline hover:text-foreground">/feed</a>{" "}
+          page surfaces automated signals computed from the defense budget and
+          award data. Each signal type has a defined threshold; all figures
+          carry citations.
+        </p>
+        <div className="space-y-5 text-muted-foreground leading-7">
+          <div id="feed-yoy_swing">
+            <h3 className="font-semibold text-foreground mb-1">
+              Year-over-Year Swings (yoy_swing)
+            </h3>
+            <p>
+              Programs where FY2025 total is ≥ $50M and the absolute
+              percentage change to FY2026 is ≥ 50%. Budget figures come from
+              the <code className="text-xs bg-muted px-1 rounded">fct_budget_trajectory</code>{" "}
+              mart (trajectory pivot of FY2025 and FY2026 enacted/requested
+              budget workbook lines). The figure shown is the percentage
+              change; the delta in dollar terms is the cited trajectory figure.
+            </p>
+          </div>
+          <div id="feed-zeroed_fy2026">
+            <h3 className="font-semibold text-foreground mb-1">
+              Zeroed in FY2026 (zeroed_fy2026)
+            </h3>
+            <p>
+              Programs that had a positive FY2025 total but show zero or null
+              in FY2026. The figure shown is the last known FY2025 amount. No
+              FY2025 floor — any positive amount qualifies. Programs may be
+              cancelled, transferred, or restructured into another line item.
+            </p>
+          </div>
+          <div id="feed-concentration_shift">
+            <h3 className="font-semibold text-foreground mb-1">
+              Award Concentration Shifts (concentration_shift)
+            </h3>
+            <p>
+              Programs whose Herfindahl-Hirschman Index (HHI), computed from
+              high-confidence award transactions grouped by fiscal year, is
+              non-trivial. The HHI floor is $5M in matched obligations.
+              HHI = sum(share² × 10,000) where share = family_obligation /
+              total_obligation; only positive obligations are included
+              (negative/recoupment flows are excluded). An HHI above 2,500
+              indicates near-monopoly concentration; above 1,500 is
+              moderately concentrated.
+            </p>
+          </div>
+          <div id="feed-new_entrant">
+            <h3 className="font-semibold text-foreground mb-1">
+              New Defense Contractors (new_entrant)
+            </h3>
+            <p>
+              Entity families whose first award year in the DoD transaction
+              data is FY2024 or later and whose cumulative positive obligations
+              exceed $1M. &ldquo;First award year&rdquo; is determined from
+              the USAspending award archive (FY2017 onward). Entities that
+              received their first award before FY2017 may appear as new
+              entrants due to archive coverage limits — treat as a weak signal.
+              The figure shown is total cumulative obligations (USD).
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* §6 ─────────────────────────────────────────────────────────── */}
       <section id="6" className="mb-10">
         <h2 className="text-xl font-semibold mb-3">6. Corrections</h2>

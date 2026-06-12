@@ -1201,6 +1201,47 @@ def _build_derived_citation_rows(
                     built_at,
                 ))
 
+        # ---- Feed event derived citations ----
+        # yoy_swing and zeroed_fy2026 re-use trajectory fact_ids already emitted.
+        # concentration_shift HHI cites fct_program_concentration derived fact_ids.
+        # new_entrant has no figure citation (first_fy is a year label, not a dollar amount).
+        # For concentration_shift: emit a per-pe_bli-year derived row for the HHI figure.
+        # The mart uses (pe_bli, fiscal_year) tuples; the citation key mirrors that.
+        try:
+            feed_conc_rows = con.execute(
+                "select pe_bli, fiscal_year, hhi, matched_dollars"
+                " from fct_feed_events"
+                " where event_type = 'concentration_shift'"
+            ).fetchall()
+        except Exception:
+            feed_conc_rows = []
+
+        _FEED_HHI_FORMULA = (
+            "sum(share_pct * share_pct) over (pe_bli, fiscal_year) "
+            "where share = family_obligation / sum(family_obligation) "
+            "and obligation > 0 (feed HHI; positive-only shares)"
+        )
+        for fe_pe_bli, fe_fy, fe_hhi, fe_dollars in feed_conc_rows:
+            if fe_hhi is None or fe_pe_bli is None or fe_fy is None:
+                continue
+            fid = fact_id_derived("feed", f"concentration_shift|{fe_pe_bli}|{fe_fy}", "hhi")
+            rows.append(_null_derived_row(
+                fid, "derived", "Herfindahl-Hirschman Index",
+                _FEED_HHI_FORMULA,
+                "[]",
+                f"{fe_hhi:.3f}",
+                built_at,
+            ))
+            if fe_dollars is not None:
+                fid_d = fact_id_derived("feed", f"concentration_shift|{fe_pe_bli}|{fe_fy}", "matched_dollars")
+                rows.append(_null_derived_row(
+                    fid_d, "derived", "USD",
+                    "sum(obligations) for high-confidence awards in feed concentration window",
+                    "[]",
+                    f"{fe_dollars:.3f}",
+                    built_at,
+                ))
+
     finally:
         con.close()
 
@@ -1825,8 +1866,43 @@ def _write_all_sidecars(
         {"id": "s:downloads", "kind": "static", "title": "Downloads", "url": "/downloads/"},
         {"id": "s:methodology", "kind": "static", "title": "Methodology", "url": "/methodology/"},
         {"id": "s:about", "kind": "static", "title": "About", "url": "/about/"},
+        {"id": "s:feed", "kind": "static", "title": "Anomaly Feed", "url": "/feed/"},
+        {"id": "s:district", "kind": "static", "title": "Congressional Districts", "url": "/district/"},
     ]
     search_docs.extend(static_pages)
+
+    # Feed event docs — one search entry per distinct event-type
+    _FEED_EVENT_LABELS: dict[str, str] = {
+        "yoy_swing": "Year-over-year budget swing",
+        "zeroed_fy2026": "FY2026 zeroed programs",
+        "concentration_shift": "Award concentration shift",
+        "new_entrant": "New defense contractors",
+    }
+    for etype, label in _FEED_EVENT_LABELS.items():
+        search_docs.append({
+            "id": f"feed:{etype}",
+            "kind": "feed",
+            "title": label,
+            "url": f"/feed/#{etype}",
+        })
+
+    # District docs — one entry per distinct pop_district (from fct_district_programs)
+    try:
+        dist_keys_rows = con.execute(
+            "select distinct pop_state, pop_district from fct_district_programs"
+            " order by pop_state, pop_district"
+        ).fetchall()
+    except Exception:
+        dist_keys_rows = []
+    for pop_state, pop_district in dist_keys_rows:
+        if not pop_district:
+            continue
+        search_docs.append({
+            "id": f"district:{pop_district}",
+            "kind": "district",
+            "title": f"District {pop_district}",
+            "url": f"/district/{pop_district}/",
+        })
 
     _write_json(json_dir / "search_quick.json", {"docs": search_docs})
     n_files += 1
@@ -1870,6 +1946,30 @@ def _write_all_sidecars(
     flows_dir.mkdir(exist_ok=True)
     n_flows = _emit_flows_sidecars(flows_dir=flows_dir, con=con)
     n_files += n_flows
+
+    # ------------------------------------------------------------------ #
+    # 12. feed.json  (anomaly feed cards — Task 4)                       #
+    # ------------------------------------------------------------------ #
+    _emit_feed_sidecar(
+        json_dir=json_dir,
+        con=con,
+        prog_titles=prog_titles,
+        cited_fact_ids=_cited_fact_ids,
+    )
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 13. districts/index.json + districts/{pop_district}.json (Task 5)  #
+    # ------------------------------------------------------------------ #
+    dist_dir = json_dir / "districts"
+    dist_dir.mkdir(exist_ok=True)
+    n_dist = _emit_district_sidecars(
+        dist_dir=dist_dir,
+        con=con,
+        prog_titles=prog_titles,
+        cited_fact_ids=_cited_fact_ids,
+    )
+    n_files += n_dist
 
     return n_files
 
@@ -2262,6 +2362,259 @@ def _build_state_citation_rows(*, duckdb_path) -> list[tuple]:
             ))
 
     return rows
+
+
+def _emit_feed_sidecar(
+    *,
+    json_dir: Path,
+    con,
+    prog_titles: dict,
+    cited_fact_ids: set,
+) -> None:
+    """Emit json/feed.json from fct_feed_events (Task 4).
+
+    Each card: event_type, headline (text), figure, fact_id (cited if available),
+    pe_bli (optional), program_url (optional), why_url (methodology anchor).
+
+    Headline text is composed from the mart row fields.
+    yoy_swing / zeroed_fy2026 figures cite trajectory derived fact_ids.
+    concentration_shift HHI cites feed-surface derived fact_ids.
+    new_entrant figure has no citation (year label, not a dollar).
+
+    junk pe_bli filter: pe_bli='9999999999' excluded upstream in fct_feed_events SQL.
+    """
+    import json as _json
+
+    try:
+        feed_rows = con.execute(
+            "select event_type, pe_bli, organization, family_key,"
+            "       headline_value, comparison_value, pct_change,"
+            "       fiscal_year, units, detail_json"
+            " from fct_feed_events"
+            " order by event_type, pe_bli nulls last, family_key nulls last"
+        ).fetchall()
+    except Exception:
+        feed_rows = []
+
+    _WHY_BASE = "/methodology/#feed"
+
+    cards = []
+    for (event_type, pe_bli, organization, family_key,
+         headline_value, comparison_value, pct_change,
+         fiscal_year, units, detail_json) in feed_rows:
+
+        # Compose headline text
+        program_title = prog_titles.get(pe_bli, "") if pe_bli else ""
+        if event_type == "yoy_swing":
+            direction = "increased" if (pct_change or 0) >= 0 else "decreased"
+            pct_str = f"{abs(pct_change or 0):.0f}%"
+            headline_text = f"{program_title or pe_bli} {direction} {pct_str} FY25→26"
+            # figure: pct_change (rendered as %) — cite via trajectory derived fact_id
+            figure_value = pct_change
+            figure_units = "pct_change"
+            figure_fact_id = None
+            if pe_bli and organization:
+                # Reuse trajectory key pattern: the sidecar key is pe_bli|org
+                traj_key = f"{pe_bli}|{organization}"
+                fid_cand = fact_id_derived("trajectory", traj_key, "fy2526_change")
+                if fid_cand in cited_fact_ids:
+                    figure_fact_id = fid_cand
+
+        elif event_type == "zeroed_fy2026":
+            headline_text = f"{program_title or pe_bli} zeroed out in FY2026 (had {_fmt_thousands(comparison_value)} in FY25)"
+            figure_value = comparison_value  # last known (FY25)
+            figure_units = "thousands_usd"
+            figure_fact_id = None
+            if pe_bli and organization:
+                traj_key = f"{pe_bli}|{organization}"
+                fid_cand = fact_id_derived("trajectory", traj_key, "fy2025_total")
+                if fid_cand in cited_fact_ids:
+                    figure_fact_id = fid_cand
+
+        elif event_type == "concentration_shift":
+            headline_text = f"{program_title or pe_bli} award concentration HHI={headline_value:.0f} ({fiscal_year})"
+            figure_value = headline_value  # HHI
+            figure_units = "hhi"
+            figure_fact_id = None
+            if pe_bli and fiscal_year is not None:
+                fid_cand = fact_id_derived("feed", f"concentration_shift|{pe_bli}|{fiscal_year}", "hhi")
+                if fid_cand in cited_fact_ids:
+                    figure_fact_id = fid_cand
+
+        elif event_type == "new_entrant":
+            fk_display = family_key or "Unknown"
+            fy_str = str(int(comparison_value)) if comparison_value else "recent"
+            headline_text = f"{fk_display} new defense contractor (first award FY{fy_str}, {_fmt_dollars(headline_value)} total)"
+            figure_value = headline_value  # total_obligation
+            figure_units = "dollars"
+            figure_fact_id = None  # no citation for year label; total_obl too broad
+
+        else:
+            headline_text = f"{event_type}: {pe_bli or family_key}"
+            figure_value = headline_value
+            figure_units = units or "unknown"
+            figure_fact_id = None
+
+        card = {
+            "event_type": event_type,
+            "family_key": family_key,
+            "figure_fact_id": figure_fact_id,
+            "figure_units": figure_units,
+            "figure_value": float(figure_value) if figure_value is not None else None,
+            "fiscal_year": int(fiscal_year) if fiscal_year is not None else None,
+            "headline": headline_text,
+            "organization": organization,
+            "pe_bli": pe_bli,
+            "program_url": f"/program/{pe_bli}/" if pe_bli else None,
+            "why_url": f"{_WHY_BASE}-{event_type}",
+        }
+        cards.append(card)
+
+    _write_json(json_dir / "feed.json", {"cards": cards, "total": len(cards)})
+
+
+def _fmt_thousands(v) -> str:
+    """Quick compact formatter for thousands-USD (feed headline text only)."""
+    if v is None:
+        return "N/A"
+    raw = float(v) * 1000
+    if abs(raw) >= 1_000_000_000:
+        return f"${raw / 1_000_000_000:.1f}B"
+    if abs(raw) >= 1_000_000:
+        return f"${raw / 1_000_000:.1f}M"
+    if abs(raw) >= 1_000:
+        return f"${raw / 1_000:.1f}K"
+    return f"${raw:.0f}"
+
+
+def _fmt_dollars(v) -> str:
+    """Quick compact formatter for raw USD (feed headline text only)."""
+    if v is None:
+        return "N/A"
+    raw = float(v)
+    if abs(raw) >= 1_000_000_000:
+        return f"${raw / 1_000_000_000:.1f}B"
+    if abs(raw) >= 1_000_000:
+        return f"${raw / 1_000_000:.1f}M"
+    return f"${raw:.0f}"
+
+
+def _emit_district_sidecars(
+    *,
+    dist_dir: Path,
+    con,
+    prog_titles: dict,
+    cited_fact_ids: set,
+) -> int:
+    """Emit districts/index.json and districts/{pop_district}.json (Task 5).
+
+    High grain: programs with dollars + their usaspending fact_ids.
+    dim_geography grand total goes on the uncited ledger (state C, dataset='dim_geography').
+
+    index.json: totals per district + dim_geography grand total (uncited).
+    {pop_district}.json: per-district program list with cited dollars + counts.
+
+    Returns number of files written.
+    """
+    import json as _json
+
+    n_written = 0
+
+    # ---- District program rows from fct_district_programs ----
+    try:
+        dp_rows = con.execute(
+            "select pop_state, pop_district, pe_bli, program_title,"
+            "       organization, transaction_count, award_count,"
+            "       recipient_count, total_obligation"
+            " from fct_district_programs"
+            " order by pop_state, pop_district, total_obligation desc nulls last"
+        ).fetchall()
+    except Exception:
+        dp_rows = []
+
+    # ---- dim_geography grand total (stays state C) ----
+    try:
+        geo_total_row = con.execute(
+            "select sum(total_obligation) from dim_geography"
+            " where obligation_type = 'contract'"
+        ).fetchone()
+        geo_grand_total = float(geo_total_row[0]) if geo_total_row and geo_total_row[0] else None
+    except Exception:
+        geo_grand_total = None
+
+    # Build district index: distinct (pop_state, pop_district) with aggregates
+    district_index: dict[str, dict] = {}
+    district_programs: dict[str, list] = {}
+
+    for (pop_state, pop_district, pe_bli, program_title, organization,
+         transaction_count, award_count, recipient_count, total_obligation) in dp_rows:
+        if not pop_district:
+            continue
+        key = pop_district
+        title = prog_titles.get(pe_bli, program_title or "")
+
+        # Compute the usaspending fact_id for this (district, program)
+        key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+        fid = fact_id_usaspending("district_program", key_str, "total_obligation")
+        fact_id_for_program = fid if fid in cited_fact_ids else None
+
+        # district-level aggregate
+        if key not in district_index:
+            district_index[key] = {
+                "pop_district": pop_district,
+                "pop_state": pop_state,
+                "program_count": 0,
+                "total_linkable_dollars": 0.0,
+                # cited dollars: sum of dollars with a fact_id
+                "total_cited_dollars": 0.0,
+            }
+
+        district_index[key]["program_count"] += 1
+        district_index[key]["total_linkable_dollars"] += float(total_obligation or 0)
+        if fact_id_for_program:
+            district_index[key]["total_cited_dollars"] += float(total_obligation or 0)
+
+        # per-district program list
+        if key not in district_programs:
+            district_programs[key] = []
+        district_programs[key].append({
+            "award_count": award_count,
+            "fact_id": fact_id_for_program,
+            "organization": organization,
+            "pe_bli": pe_bli,
+            "program_url": f"/program/{pe_bli}/",
+            "recipient_count": recipient_count,
+            "title": title,
+            "total_obligation": float(total_obligation) if total_obligation is not None else None,
+            "transaction_count": transaction_count,
+        })
+
+    # ---- Write per-district files ----
+    for key, programs in district_programs.items():
+        info = district_index[key]
+        obj = {
+            "pop_district": info["pop_district"],
+            "pop_state": info["pop_state"],
+            "program_count": info["program_count"],
+            "programs": programs,
+            "total_cited_dollars": info["total_cited_dollars"],
+            "total_linkable_dollars": info["total_linkable_dollars"],
+        }
+        _write_json(dist_dir / f"{key}.json", obj)
+        n_written += 1
+
+    # ---- Write index file ----
+    index_records = sorted(district_index.values(), key=lambda x: (x["pop_state"], x["pop_district"]))
+    index_obj = {
+        "districts": index_records,
+        "geo_grand_total": geo_grand_total,
+        "geo_grand_total_dataset": "dim_geography",
+        "total_districts": len(index_records),
+    }
+    _write_json(dist_dir / "index.json", index_obj)
+    n_written += 1
+
+    return n_written
 
 
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
