@@ -47,6 +47,11 @@ function computeClickthroughSet() {
   let ldaDanglingPbl = null;
   let zeroAmountPbl = null;
   let officialSourcePbl = null;
+  // receiptsPbl: a program page that has BOTH data-fact-id AND data-uncited
+  // so that both State A and State C chip assertions can be sampled.
+  let receiptsPbl = null;
+
+  const outProgramDir = path.resolve(__dirname, "..", "..", "out", "program");
 
   for (const p of programsSorted) {
     if (
@@ -56,7 +61,8 @@ function computeClickthroughSet() {
       ldaLinkedPbl &&
       ldaDanglingPbl &&
       zeroAmountPbl &&
-      officialSourcePbl
+      officialSourcePbl &&
+      receiptsPbl
     )
       break;
 
@@ -141,6 +147,23 @@ function computeClickthroughSet() {
       zeroAmountPbl = p.pe_bli;
     }
 
+    // receipts test page: needs both [data-fact-id] and [data-uncited] elements
+    // We check the rendered out/ HTML for the presence of both attributes so
+    // we pick a page that will actually exercise State A and State C chips.
+    if (!receiptsPbl) {
+      const outHtmlPath = path.join(outProgramDir, p.pe_bli, "index.html");
+      if (fs.existsSync(outHtmlPath)) {
+        try {
+          const outHtml = fs.readFileSync(outHtmlPath, "utf8");
+          if (outHtml.includes("data-fact-id=") && outHtml.includes("data-uncited=")) {
+            receiptsPbl = p.pe_bli;
+          }
+        } catch {
+          // skip
+        }
+      }
+    }
+
     // official_url with #page= (from jbook_pdf citations)
     if (!officialSourcePbl) {
       for (const d of details) {
@@ -163,6 +186,7 @@ function computeClickthroughSet() {
     ldaDanglingPbl,
     zeroAmountPbl,
     officialSourcePbl,
+    receiptsPbl,
     citations,
     entities,
     entitySlugs,
@@ -175,7 +199,7 @@ export async function runClickthroughGate(baseUrl) {
 
   const set = computeClickthroughSet();
   notes.push(
-    `clickthrough set: unique=${set.uniquePbl}, ambiguous=${set.ambiguousPbl}, workbook=${set.workbookPbl}, ldaLinked=${set.ldaLinkedPbl}, ldaDangling=${set.ldaDanglingPbl}, zeroAmt=${set.zeroAmountPbl}, officialSrc=${set.officialSourcePbl}`
+    `clickthrough set: unique=${set.uniquePbl}, ambiguous=${set.ambiguousPbl}, workbook=${set.workbookPbl}, ldaLinked=${set.ldaLinkedPbl}, ldaDangling=${set.ldaDanglingPbl}, zeroAmt=${set.zeroAmountPbl}, officialSrc=${set.officialSourcePbl}, receipts=${set.receiptsPbl}`
   );
 
   const browser = await chromium.launch({ headless: true });
@@ -370,11 +394,11 @@ export async function runClickthroughGate(baseUrl) {
               // Check for sheet, cells, amount in card
               const panelText = await panel.textContent();
               const hasSheet =
-                cit.sheet_name && panelText.includes(cit.sheet_name);
+                cit.sheet && panelText.includes(cit.sheet);
               const hasCells = cit.cells && panelText.includes(cit.cells);
-              if (!hasSheet && !hasCells) {
+              if (!hasSheet || !hasCells) {
                 errors.push(
-                  `workbook cite (${set.workbookPbl}): sheet="${cit.sheet_name}" or cells="${cit.cells}" not found in panel`
+                  `workbook cite (${set.workbookPbl}): sheet="${cit.sheet}" (hasSheet=${hasSheet}) AND cells="${cit.cells}" (hasCells=${hasCells}) BOTH required in panel`
                 );
               } else {
                 notes.push(
@@ -578,9 +602,9 @@ export async function runClickthroughGate(baseUrl) {
     {
       const page = await context.newPage();
       try {
-        // Use a program with data-amount elements
-        const testPbl =
-          set.uniquePbl || set.ambiguousPbl || set.zeroAmountPbl;
+        // Use a program that has BOTH cited ([data-fact-id]) and uncited ([data-uncited])
+        // amounts so both State A and State C chip assertions can be exercised.
+        const testPbl = set.receiptsPbl || set.uniquePbl || set.ambiguousPbl || set.zeroAmountPbl;
         if (!testPbl) {
           errors.push("receipts mode: no program page available to test");
         } else {
@@ -619,8 +643,70 @@ export async function runClickthroughGate(baseUrl) {
                 `receipts mode (${testPbl}): no [data-amount] elements found`
               );
             } else {
-              // In receipts mode, each [data-amount] should have a visible chip/annotation
-              // Check localStorage persistence by reloading
+              // ── Assert chips appear on cited amounts ───────────────────────
+              // State A: [data-amount][data-fact-id] must contain a chip whose text includes '#'
+              const SAMPLE_SIZE = 5;
+
+              const citedEls = await page.$$("[data-amount][data-fact-id]");
+              const uncitedEls = await page.$$("[data-amount][data-uncited]");
+
+              // Sample cited elements (require at least 1, sample up to SAMPLE_SIZE)
+              const citedSample = citedEls.slice(0, SAMPLE_SIZE);
+              if (citedSample.length === 0) {
+                errors.push(
+                  `receipts mode (${testPbl}): no [data-amount][data-fact-id] elements to sample — cannot verify State A chips`
+                );
+              } else {
+                let citedChipMisses = 0;
+                for (const el of citedSample) {
+                  // chip is a child span containing '#<shortId>'
+                  const chip = await el.$("span");
+                  let chipText = chip ? await chip.textContent() : null;
+                  // fallback: check element full text contains '#'
+                  if (!chipText) {
+                    chipText = await el.textContent();
+                  }
+                  if (!chipText || !chipText.includes("#")) {
+                    citedChipMisses++;
+                  }
+                }
+                if (citedChipMisses > 0) {
+                  errors.push(
+                    `receipts mode (${testPbl}): ${citedChipMisses}/${citedSample.length} sampled [data-amount][data-fact-id] elements missing '#' chip in receipts mode`
+                  );
+                } else {
+                  notes.push(
+                    `receipts mode (${testPbl}): ${citedSample.length} cited chips show '#' ✓`
+                  );
+                }
+              }
+
+              // Sample uncited elements (require at least 1, sample up to SAMPLE_SIZE)
+              const uncitedSample = uncitedEls.slice(0, SAMPLE_SIZE);
+              if (uncitedSample.length === 0) {
+                errors.push(
+                  `receipts mode (${testPbl}): no [data-amount][data-uncited] elements to sample — cannot verify State C chips`
+                );
+              } else {
+                let uncitedChipMisses = 0;
+                for (const el of uncitedSample) {
+                  const text = await el.textContent();
+                  if (!text || !text.includes("uncited")) {
+                    uncitedChipMisses++;
+                  }
+                }
+                if (uncitedChipMisses > 0) {
+                  errors.push(
+                    `receipts mode (${testPbl}): ${uncitedChipMisses}/${uncitedSample.length} sampled [data-amount][data-uncited] elements missing 'uncited' text in receipts mode`
+                  );
+                } else {
+                  notes.push(
+                    `receipts mode (${testPbl}): ${uncitedSample.length} uncited chips show 'uncited' ✓`
+                  );
+                }
+              }
+
+              // ── Reload-persistence check ───────────────────────────────────
               await page.reload({ waitUntil: "networkidle" });
               const localStorageVal = await page.evaluate(
                 () => localStorage.getItem("receipts-mode")

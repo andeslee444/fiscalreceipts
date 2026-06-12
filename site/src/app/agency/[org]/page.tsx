@@ -93,9 +93,9 @@ export default async function AgencyPage({
                 ⁂{" "}
                 <span
                   className="italic"
-                  title="citation tier pending — sum of cited program figures, derivation tier pending"
+                  title="sum of all program FY24 figures (cited and uncited inputs) — derivation tier pending"
                 >
-                  sum of cited program figures — derivation tier pending
+                  sum of all program FY24 figures (cited and uncited inputs) — derivation tier pending
                 </span>
               </span>
             </span>
@@ -111,9 +111,9 @@ export default async function AgencyPage({
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            ⁂ Aggregate totals are sums of cited program figures — derivation
-            tier pending. Individual program FY24 figures are J-book–cited
-            where underlined. See{" "}
+            ⁂ Aggregate FY24 total is the sum of all program FY24 figures
+            (cited and uncited inputs) — derivation tier pending. Individual
+            program FY24 figures are J-book–cited where underlined. See{" "}
             <Link
               href="/methodology/"
               className="underline hover:text-foreground"

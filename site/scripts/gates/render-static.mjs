@@ -167,7 +167,8 @@ export async function runRenderStaticGate() {
           if (matches) {
             for (const m of matches) {
               // Check allowlist
-              const allowed = allowedPatterns.some((p) => m.includes(p) || p.includes(m));
+              const mTrimmed = m.trim();
+              const allowed = allowedPatterns.some((p) => mTrimmed === p.trim());
               if (!allowed) {
                 negativeErrors++;
                 const snippet = text.trim().slice(0, 120);

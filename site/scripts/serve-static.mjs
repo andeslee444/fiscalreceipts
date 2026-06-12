@@ -123,9 +123,11 @@ function handler(req, res) {
   // ── /assets/ → ../data/site ────────────────────────────────────────────
   if (urlPath.startsWith("/assets/")) {
     const rel = urlPath.slice("/assets/".length);
-    const filePath = path.join(assetsDir, rel);
-    // Security: stay within assetsDir
-    if (!filePath.startsWith(assetsDir)) {
+    const filePath = path.resolve(assetsDir, rel);
+    // Security: stay within assetsDir (require path.sep suffix to prevent
+    // prefix-matching attacks like /assets/../../../etc/passwd or
+    // a sibling dir that starts with the same prefix as assetsDir)
+    if (!filePath.startsWith(assetsDir + path.sep)) {
       res.writeHead(403);
       res.end("Forbidden");
       return;
