@@ -4,6 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { DownloadCards } from "@/components/download-cards";
+import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
   title: `Downloads — ${SITE_NAME}`,
@@ -19,33 +20,77 @@ export const metadata: Metadata = {
   },
 };
 
+const DATASETS = [
+  {
+    name: "DoD Program Elements (dim_programs)",
+    description:
+      "All 326 defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "J-book Details (jbook_details)",
+    description:
+      "Project-level cost detail rows extracted from DoD J-book XML attachments with XML paths and provenance.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "Budget Lines (budget_lines)",
+    description:
+      "Workbook-cited budget line items with cell-level provenance from R-1 and P-1 Excel rollups.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "Federal Awards (fct_budget_to_awards)",
+    description:
+      "USAspending award transactions linked to DoD program elements via budget account crosswalk.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "Entity Graph (dim_entities)",
+    description:
+      "Top contractor families with SAM.gov entity registration data, UEI counts, and confidence tiers.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "LDA Lobbying (fct_influence)",
+    description:
+      "Senate LDA lobbying filings linked to DoD programs, with filing UUIDs and client family keys.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+  {
+    name: "Citation Index (citations)",
+    description:
+      "44,754-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.",
+    url: "/downloads/",
+    encodingFormat: "application/vnd.apache.parquet",
+  },
+];
+
 export default function DownloadsPage() {
   const meta = getSiteMeta();
 
-  // JSON-LD Dataset
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "DataCatalog",
-    name: `${SITE_NAME} Data Exports`,
-    description:
-      "Bulk Parquet exports of DoD budget, contracts, entities, lobbying, and citation datasets.",
-    url: `${SITE_URL}/downloads/`,
-    dateModified: meta.built_at,
-    publisher: {
-      "@type": "Organization",
-      name: SITE_NAME,
-      url: SITE_URL,
-    },
-  };
+  const datasetsLd = DATASETS.map((d) =>
+    datasetJsonLd({
+      ...d,
+      dateModified: meta.built_at,
+    }),
+  );
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
+      {datasetsLd.map((ld, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ld) }}
+        />
+      ))}
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Downloads" }]}

@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { breadcrumbListJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 /**
- * Breadcrumbs — UI only (JSON-LD comes in Task 8).
- * Renders a compact breadcrumb trail.
+ * Breadcrumbs — UI + BreadcrumbList JSON-LD (Task 8).
+ * Renders a compact breadcrumb trail and injects schema.org BreadcrumbList.
  *
  * Usage:
  *   <Breadcrumbs items={[
@@ -23,6 +24,14 @@ interface BreadcrumbsProps {
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
+    <>
+      {/* BreadcrumbList JSON-LD — emitted alongside UI for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLd(breadcrumbListJsonLd(items)),
+        }}
+      />
     <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground mb-4">
       <ol className="flex flex-wrap items-center gap-1">
         {items.map((item, i) => {
@@ -54,5 +63,6 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
         })}
       </ol>
     </nav>
+    </>
   );
 }

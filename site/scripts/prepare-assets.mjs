@@ -154,29 +154,63 @@ if (fs.existsSync(detailsSrc)) {
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
 
-// Load programs.json for sample program URLs
+// Load programs.json — top 5 by FY26 dollars for representative program URLs
 const programsPath = path.join(jsonDir, "programs.json");
-let samplePrograms = [];
+let top5Programs = [];
 if (fs.existsSync(programsPath)) {
   const programs = JSON.parse(fs.readFileSync(programsPath, "utf8"));
-  samplePrograms = programs.slice(0, 3).map((p) => p.pe_bli);
+  // Sort by trajectory.fy2026_total descending (null last), take top 5
+  top5Programs = programs
+    .filter((p) => p.trajectory && p.trajectory.fy2026_total != null)
+    .sort((a, b) => (b.trajectory.fy2026_total ?? 0) - (a.trajectory.fy2026_total ?? 0))
+    .slice(0, 5);
+}
+
+// Load agencies for agency listing
+const agenciesPath = path.join(jsonDir, "agencies.json");
+let agencyList = [];
+if (fs.existsSync(agenciesPath)) {
+  const agencies = JSON.parse(fs.readFileSync(agenciesPath, "utf8"));
+  agencyList = agencies.map((a) => a.org);
 }
 
 const llmsTxt = [
   `# GovBudget`,
   ``,
   `GovBudget is a spending-intelligence platform for U.S. federal defense budget data.`,
-  `Every displayed number is citation-backed with PDF page-level provenance.`,
+  `Every program element, award, and lobbying figure is citation-backed: J-book PDF`,
+  `page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.`,
+  `The site covers 326 DoD R&D and procurement program elements across 20 agencies,`,
+  `200 top contractor families, and 44,754 source citations from FY2017 onward.`,
   ``,
-  `## Key pages`,
+  `## Core routes`,
   ``,
+  `${siteUrl}/`,
+  `${siteUrl}/programs/`,
+  `${siteUrl}/companies/`,
+  `${siteUrl}/data/`,
   `${siteUrl}/methodology/`,
   `${siteUrl}/downloads/`,
-  ...samplePrograms.map((pe_bli) => `${siteUrl}/program/${pe_bli}/`),
+  `${siteUrl}/about/`,
+  ``,
+  `## Top 5 programs by FY2026 budget`,
+  ``,
+  ...top5Programs.map(
+    (p) =>
+      `${siteUrl}/program/${p.pe_bli}/  # ${p.title} [${p.org}] FY26: ${(p.trajectory.fy2026_total / 1000).toFixed(1)}M`
+  ),
+  ``,
+  `## Data downloads`,
+  ``,
+  `${siteUrl}/downloads/  # Parquet exports: dim_programs, jbook_details, budget_lines, fct_budget_to_awards, dim_entities, fct_influence, citations`,
+  ``,
+  `## Agencies`,
+  ``,
+  ...agencyList.map((org) => `${siteUrl}/agency/${org}/`),
 ].join("\n");
 
 const llmsDest = path.join(siteDir, "public", "llms.txt");
 fs.writeFileSync(llmsDest, llmsTxt, "utf8");
-console.log("✓  llms.txt generated");
+console.log("✓  llms.txt generated (extended with all routes + top programs)");
 
 console.log("\n✅  prepare-assets complete\n");

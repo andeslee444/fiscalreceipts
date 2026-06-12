@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
   title: `Methodology — ${SITE_NAME}`,
@@ -16,8 +17,51 @@ export const metadata: Metadata = {
   },
 };
 
+const FAQ_ITEMS = [
+  {
+    question: "What is GovBudget and what does it cover?",
+    answer:
+      "GovBudget connects four government data silos: DoD budget justification books (J-books), USAspending federal award records, corporate entity registries, and Senate LDA lobbying disclosures. Every rendered number carries a citation to the exact source document, page, or API endpoint.",
+  },
+  {
+    question: "Where does every number come from?",
+    answer:
+      "Budget figures come from DoD J-book XML attachments (structured XML embedded inside official PDF submissions). Award figures come from USAspending.gov bulk archive files. Lobbying figures come from the Senate LDA public API. Company families are derived from SAM.gov entity registrations.",
+  },
+  {
+    question: "How do you verify the data?",
+    answer:
+      "Every J-book figure clears two arithmetic checks: project-level amounts must sum to the program-element total, and that total must match the R-1 or P-1 Excel rollup. Failures go to a human review queue, not the site. Each build also runs 197 automated test functions plus phase-level verification gates.",
+  },
+  {
+    question: "How confident should I be in the figures?",
+    answer:
+      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — from datasets where row-level citation linkage is not yet complete.",
+  },
+  {
+    question: "What are the known limitations?",
+    answer:
+      "FY attribution is approximate for multi-year contracts. Classified programs are absent from public J-books. Lobbying-obligations correlation is not causation. Company family groupings by name inference can be wrong for acquired or divested subsidiaries.",
+  },
+  {
+    question: "How do I report a correction?",
+    answer:
+      "Send us the citation that contradicts the number. We follow a supersede-not-delete policy: a corrected record is marked superseded and a new record takes its place. The old record is retained and accessible. Permalinks continue to resolve permanently.",
+  },
+  {
+    question: "How do I cite GovBudget data?",
+    answer:
+      "Include the source citation displayed alongside the figure: document title, fiscal year, page or XML element path, and the date we retrieved the file. USAspending-derived figures cite the archive file name and SHA-256 hash. J-book figures cite the PDF title, page number, and XML element path.",
+  },
+];
+
 export default function MethodologyPage() {
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqPageJsonLd(FAQ_ITEMS)) }}
+      />
     <div className="container mx-auto px-4 py-10 max-w-3xl">
       <h1 className="text-3xl font-bold mb-2">Methodology</h1>
       <p className="text-sm text-muted-foreground mb-8">
@@ -364,5 +408,6 @@ export default function MethodologyPage() {
         </p>
       </section>
     </div>
+    </>
   );
 }
