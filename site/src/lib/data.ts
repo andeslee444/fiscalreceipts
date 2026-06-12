@@ -360,6 +360,24 @@ export function getCitation(factId: string): Citation | undefined {
   return getCitations()[factId];
 }
 
+/**
+ * Return a slice of citations.json containing ONLY the given fact_ids.
+ * Memoized via getCitations() (loaded once per build process).
+ *
+ * Unknown fact_ids are silently skipped (zero_amount facts have no citations row).
+ * Pass the complete set of fact_ids for a page to produce the per-page slice.
+ */
+export function collectCitations(factIds: string[]): CitationsMap {
+  const all = getCitations();
+  const result: CitationsMap = {};
+  for (const id of factIds) {
+    if (id in all) {
+      result[id] = all[id];
+    }
+  }
+  return result;
+}
+
 // ── Type guards ───────────────────────────────────────────────────────────────
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {

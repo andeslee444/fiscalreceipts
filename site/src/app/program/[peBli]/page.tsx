@@ -4,8 +4,10 @@ import {
   getPrograms,
   getProgramDetails,
   getEntityTopByFamilyKey,
+  collectCitations,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ProgramHeader } from "@/components/program-header";
@@ -111,7 +113,35 @@ export default async function ProgramPage({
   const initialAwards = details.awards.slice(0, CAP);
   const initialMentions = details.mentions.slice(0, CAP);
 
+  // ── Collect per-page citation slice (Task 5) ──────────────────────────────
+  // Gather ALL fact_ids referenced on this page to avoid a 10MB full-citations
+  // client payload. Only jbook_pdf + workbook fact_ids appear on program pages
+  // (details rows with unique/ambiguous_first resolution, and budget_lines).
+  const pageFactIds: string[] = [];
+
+  // FY2024 header figure (state A when fact_id present)
+  if (program.fy2024_fact_id) {
+    pageFactIds.push(program.fy2024_fact_id);
+  }
+
+  // Details table: resolution ∈ {unique, ambiguous_first} → state A (fact_id resolves)
+  for (const d of details.details) {
+    if (d.resolution !== "zero_amount" && d.fact_id) {
+      pageFactIds.push(d.fact_id);
+    }
+  }
+
+  // Budget lines: workbook-cited, always state A
+  for (const bl of details.budget_lines) {
+    if (bl.fact_id) {
+      pageFactIds.push(bl.fact_id);
+    }
+  }
+
+  const citationsSlice = collectCitations(pageFactIds);
+
   return (
+    <CitationPanelProvider citations={citationsSlice}>
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       {/* Breadcrumbs */}
       <Breadcrumbs
@@ -155,5 +185,6 @@ export default async function ProgramPage({
         linkableKeys={linkableKeys}
       />
     </div>
+    </CitationPanelProvider>
   );
 }
