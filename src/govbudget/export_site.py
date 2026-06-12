@@ -223,8 +223,7 @@ def export_site(
                    bl.pe_bli, bl.title, bl.amount_type, bl.amount_thousands,
                    bl.source_document_id, j.sha256 as document_sha256,
                    bl.source_sheet,
-                   coalesce(array_to_string(bl.source_cells, ','), '') as source_cells,
-                   bl.budget_activity
+                   coalesce(array_to_string(bl.source_cells, ','), '') as source_cells
             from budget_lines bl
             left join jbook_documents j on j.id = bl.source_document_id
             order by bl.exhibit, bl.pe_bli, bl.amount_type
@@ -237,7 +236,7 @@ def export_site(
             (exhibit, fiscal_year, account, account_title, organization,
              budget_activity, budget_activity_title, pe_bli, title,
              amount_type, amount_thousands, source_document_id,
-             document_sha256, source_sheet, source_cells, budget_activity2) = row
+             document_sha256, source_sheet, source_cells) = row
             if source_document_id is None:
                 bl_excluded += 1
                 continue

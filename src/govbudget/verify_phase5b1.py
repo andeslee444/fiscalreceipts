@@ -117,17 +117,46 @@ def citation_gate5b1(
         kind = row[col_idx["kind"]]
         by_kind.setdefault(kind, []).append(row)
 
-    # Stratified sample: ≥5 per kind (or all if fewer)
+    # True two-pass stratified sample:
+    # Pass 1 — reserve min(_MIN_PER_KIND, len(rows)) per kind present.
+    # Pass 2 — distribute remaining budget across kinds in sorted order.
+    kinds_sorted = sorted(by_kind.keys())
+    reserved: dict[str, int] = {}
+    pass1_total = 0
+    for kind in kinds_sorted:
+        r = min(_MIN_PER_KIND, len(by_kind[kind]))
+        reserved[kind] = r
+        pass1_total += r
+
+    # If pass-1 already exceeds budget, scale down proportionally (round-robin trim).
+    if pass1_total > sample_size:
+        # Trim from the back of the sorted list until we fit
+        for kind in reversed(kinds_sorted):
+            excess = pass1_total - sample_size
+            if excess <= 0:
+                break
+            cut = min(reserved[kind], excess)
+            reserved[kind] -= cut
+            pass1_total -= cut
+
+    remaining = sample_size - pass1_total
+
+    # Pass 2 — distribute remaining slots, one per kind per round (round-robin)
+    extra: dict[str, int] = {k: 0 for k in kinds_sorted}
+    if remaining > 0:
+        for kind in kinds_sorted:
+            available = len(by_kind[kind]) - reserved[kind]
+            if available > 0 and remaining > 0:
+                give = min(available, remaining)
+                extra[kind] = give
+                remaining -= give
+                if remaining <= 0:
+                    break
+
     sample: list[tuple] = []
-    remaining = sample_size
-    for kind, rows in sorted(by_kind.items()):
-        n = max(_MIN_PER_KIND, 0)
-        take = min(n, len(rows), remaining)
-        take = max(take, min(len(rows), remaining))
-        sample.extend(rows[:take])
-        remaining -= take
-        if remaining <= 0:
-            break
+    for kind in kinds_sorted:
+        take = reserved[kind] + extra[kind]
+        sample.extend(by_kind[kind][:take])
 
     # Ensure we cap at sample_size total
     sample = sample[:sample_size]
@@ -295,12 +324,11 @@ def _verify_lda(row: tuple, idx: dict) -> str | None:
     if not official_url.startswith("https://lda.senate.gov/"):
         return f"official_url does not start with https://lda.senate.gov/: {official_url}"
 
-    # The filing UUID should be embedded in the URL path (LDA API contract)
-    # We check uuid-like segment presence (any hyphenated alphanumeric segment)
+    # The filing UUID must be embedded in the URL path (LDA API contract).
+    # All live LDA filing URLs are https://lda.senate.gov/filings/{uuid}/
     uuid_pattern = re.compile(r"[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}", re.I)
     if not uuid_pattern.search(official_url):
-        # Some URLs use a different scheme — still pass if it starts with lda.senate.gov
-        pass
+        return f"filing uuid not found in official_url: {official_url}"
 
     return None
 
@@ -451,9 +479,16 @@ def integrity_gate5b1(site_dir: Path) -> dict:
                 if man_unresolved is not None and man_zero is not None:
                     expected = unresolved_count + zero_count
                     actual_skipped = man_unresolved + man_zero
-                    # This is a soft check — counts may differ if details were
-                    # re-run since export; we warn rather than hard-fail.
-                    checks["jbook_manifest_skip_counts"] = True  # non-blocking
+                    if actual_skipped != expected:
+                        failures.append(
+                            f"jbook: manifest skipped counts mismatch — "
+                            f"manifest skipped_unresolved={man_unresolved} "
+                            f"skipped_zero_amount={man_zero} "
+                            f"(total={actual_skipped}) but parquet has "
+                            f"unresolved={unresolved_count} zero_amount={zero_count} "
+                            f"(total={expected})"
+                        )
+                    checks["jbook_manifest_skip_counts"] = (actual_skipped == expected)
             except Exception:
                 pass
     else:

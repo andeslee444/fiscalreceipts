@@ -184,7 +184,7 @@ def _make_site_with_lda(site_dir: Path) -> tuple[str, str]:
 
     Returns (filing_uuid, fact_id).
     """
-    filing_uuid = "uuid-lda-001"
+    filing_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     pe_bli = "0601101E"
     matched_term = "darpa"
     fid = fact_id_lda(filing_uuid, pe_bli, matched_term)
@@ -388,6 +388,173 @@ class TestCitationGate:
 
         assert result["ok"] is False
         assert len(result["failures"]) >= 1
+
+    def test_lda_url_without_uuid_fails(self, tmp_path):
+        """LDA citation whose official_url has no UUID in the path → gate FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_lda("no-uuid-here", "0601101E", "darpa")
+        (site / "citations").mkdir(parents=True)
+        _write_parquet(
+            site / "citations" / "citations.parquet",
+            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
+            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
+            " page_width double, page_height double, resolution varchar,"
+            " sheet varchar, cells varchar, amount_thousands double,"
+            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
+            " xml_path varchar, retrieved_at varchar",
+            [(fid, "lda_filing", None, None, None,
+              None, None, None, None, None, None, None,
+              None, None, None,
+              None, None, "https://lda.senate.gov/filings/no-uuid-here/", None, None)],
+        )
+        _write_manifest(site, citations={"lda_filing": 1})
+
+        result = citation_gate5b1(site)
+
+        assert result["ok"] is False, \
+            "expected FAIL when official_url has no filing UUID"
+        assert len(result["failures"]) >= 1
+        # The failure message must identify the fact_id
+        assert any(fid in str(f) for f in result["failures"]), \
+            f"expected {fid} in failures, got: {result['failures']}"
+
+
+# ---------------------------------------------------------------------------
+# Stratified sampling guarantee
+# ---------------------------------------------------------------------------
+
+
+class TestStratifiedSampling:
+    def test_stratification_guarantees_min_per_kind(self, tmp_path):
+        """100 jbook rows + 2 workbook + 2 lda, sample_size=50.
+
+        Every kind must appear in sample; workbook and lda must each get
+        ALL their rows (2 each); jbook gets the remainder (46).
+
+        The test detects the greedy bug by monkey-patching _verify_* to record
+        which fact_ids were actually sampled, then checking per-kind counts.
+        """
+        site = tmp_path / "site"
+
+        # Build a single valid workbook fixture (for the workbook citations)
+        wb_src = site / "_r1.xlsx"
+        _make_workbook(wb_src)
+        sha_wb = hashlib.sha256(wb_src.read_bytes()).hexdigest()
+        (site / "workbooks").mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(wb_src, site / "workbooks" / f"{sha_wb}.xlsx")
+
+        # Build a single valid PDF fixture (for the jbook citations)
+        sha_pdf = hashlib.sha256(FIXTURE_PDF.read_bytes()).hexdigest()
+        (site / "pdfs").mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(FIXTURE_PDF, site / "pdfs" / f"{sha_pdf}.pdf")
+
+        from govbudget.jbooks.provenance_pages import find_fact_page
+        hit = find_fact_page(FIXTURE_PDF, pe_bli="0601101E", amount=Decimal("280.494"))
+
+        # 100 jbook_pdf rows (same sha/pe_bli/page — same physical citation; fact_id
+        # differs by a unique suffix baked into fact_id_jbook via scenario field)
+        jbook_rows = []
+        for i in range(100):
+            fid = fact_id_jbook(sha_pdf, "0601101E", None, f"Scenario{i:04d}", "280.494")
+            jbook_rows.append((
+                fid, "jbook_pdf", "USD millions", hit["amount_text"],
+                hit["page_number"],
+                float(hit["x0"]), float(hit["x1"]),
+                float(hit["top_pt"]), float(hit["bottom_pt"]),
+                float(hit["page_width"]), float(hit["page_height"]),
+                hit["resolution"],
+                None, None, None,
+                sha_pdf,
+                f"https://cdn.example/pdfs/{sha_pdf}.pdf#page={hit['page_number']}",
+                f"https://example.mil/darpa.pdf#page={hit['page_number']}",
+                None, None,
+            ))
+
+        # 2 workbook rows
+        wb_rows = []
+        for i in range(2):
+            fid = fact_id_workbook(sha_wb, "R-1", 2026, "0400", f"ORG{i}", "01", "0601101E", "fy_2024_actuals")
+            wb_rows.append((
+                fid, "workbook", "USD thousands", None, None,
+                None, None, None, None, None, None, None,
+                "Exhibit R-1", "J2", 280494.0,
+                sha_wb, None, "https://example.mil/r1.xlsx", None, None,
+            ))
+
+        # 2 lda_filing rows (use a real UUID so the UUID check passes)
+        lda_rows = []
+        real_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        for i in range(2):
+            fid = fact_id_lda(f"uuid-lda-{i:03d}", "0601101E", "darpa")
+            lda_rows.append((
+                fid, "lda_filing", None, None, None,
+                None, None, None, None, None, None, None,
+                None, None, None,
+                None, None, f"https://lda.senate.gov/filings/{real_uuid}/", None, None,
+            ))
+
+        all_rows = jbook_rows + wb_rows + lda_rows
+
+        col_defs = (
+            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
+            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
+            " page_width double, page_height double, resolution varchar,"
+            " sheet varchar, cells varchar, amount_thousands double,"
+            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
+            " xml_path varchar, retrieved_at varchar"
+        )
+        _write_parquet(site / "citations" / "citations.parquet", col_defs, all_rows)
+        _write_manifest(site)
+
+        # Build a fact_id → kind lookup for asserting per-kind coverage
+        wb_fact_ids = {r[0] for r in wb_rows}
+        lda_fact_ids = {r[0] for r in lda_rows}
+        jbook_fact_ids = {r[0] for r in jbook_rows}
+
+        # Monkey-patch the _verify_* functions to record sampled fact_ids
+        import govbudget.verify_phase5b1 as _mod
+        sampled_fact_ids: list[str] = []
+        _orig_jbook = _mod._verify_jbook_pdf
+        _orig_wb = _mod._verify_workbook
+        _orig_lda = _mod._verify_lda
+
+        def _record_jbook(site_dir, row, idx):
+            sampled_fact_ids.append(row[idx["fact_id"]])
+            return _orig_jbook(site_dir, row, idx)
+
+        def _record_wb(site_dir, row, idx):
+            sampled_fact_ids.append(row[idx["fact_id"]])
+            return _orig_wb(site_dir, row, idx)
+
+        def _record_lda(row, idx):
+            sampled_fact_ids.append(row[idx["fact_id"]])
+            return _orig_lda(row, idx)
+
+        _mod._verify_jbook_pdf = _record_jbook
+        _mod._verify_workbook = _record_wb
+        _mod._verify_lda = _record_lda
+        try:
+            result = citation_gate5b1(site, sample_size=50)
+        finally:
+            _mod._verify_jbook_pdf = _orig_jbook
+            _mod._verify_workbook = _orig_wb
+            _mod._verify_lda = _orig_lda
+
+        assert result["ok"] is True, f"gate failures: {result.get('failures')}"
+        assert result["sampled"] == 50
+
+        sampled_set = set(sampled_fact_ids)
+        n_jbook_sampled = len(sampled_set & jbook_fact_ids)
+        n_wb_sampled = len(sampled_set & wb_fact_ids)
+        n_lda_sampled = len(sampled_set & lda_fact_ids)
+
+        # workbook and lda have only 2 rows each → must both be fully sampled
+        assert n_wb_sampled == 2, \
+            f"workbook under-sampled: got {n_wb_sampled}/2 (greedy bug?)"
+        assert n_lda_sampled == 2, \
+            f"lda under-sampled: got {n_lda_sampled}/2 (greedy bug?)"
+        assert n_jbook_sampled == 46, \
+            f"jbook count wrong: got {n_jbook_sampled}, expected 46 (= 50 - 2 - 2)"
 
 
 # ---------------------------------------------------------------------------
@@ -612,6 +779,23 @@ class TestIntegrityGate:
     def test_missing_site_dir_fails(self, tmp_path):
         result = integrity_gate5b1(tmp_path / "nonexistent")
         assert result["ok"] is False
+
+    def test_manifest_skip_count_mismatch_fails(self, tmp_path):
+        """manifest skipped_unresolved is higher than parquet count → integrity FAIL."""
+        site = tmp_path / "site"
+        self._make_full_site(site)
+
+        # Tamper: set skipped_unresolved to 1 higher than actual (parquet has 0 unresolved)
+        man = json.loads((site / "manifest.json").read_text())
+        man["skipped_unresolved"] = man.get("skipped_unresolved", 0) + 1
+        (site / "manifest.json").write_text(json.dumps(man, indent=2))
+
+        result = integrity_gate5b1(site)
+        assert result["ok"] is False, \
+            "expected FAIL when manifest skipped_unresolved doesn't match parquet counts"
+        assert any("skip" in f.lower() or "skipped" in f.lower() or "unresolved" in f.lower()
+                   for f in result["failures"]), \
+            f"expected skip-count failure description, got: {result['failures']}"
 
 
 # ---------------------------------------------------------------------------
