@@ -84,7 +84,7 @@ export interface ProgramRow {
   award_count: number;
   exhibit_family: string;
   fully_reconciled: boolean;
-  fy2024_actual_millions: number;
+  fy2024_actual_millions: number | null;
   fy2024_fact_id: string | null;
   hhi: ProgramHHI | null;
   narrative_count: number;
@@ -150,7 +150,8 @@ export interface ProgramAward {
 export interface ProgramMention {
   client_name: string;
   description_snippet: string;
-  family_key: string;
+  /** Can be null for dangling family_keys (2,781 / 32,780 lobbying rows). */
+  family_key: string | null;
   filing_url: string;
   filing_uuid: string;
   filing_year: string;
