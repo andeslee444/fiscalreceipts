@@ -15,3 +15,15 @@ def test_site_constants():
 
     assert config.SITE_DIR == config.DATA_DIR / "site"
     assert config.PDF_BASE_URL  # non-empty; env-overridable
+
+
+def test_research_dir_defined_and_absolute():
+    from govbudget import config
+    from pathlib import Path
+
+    assert hasattr(config, "RESEARCH_DIR"), "RESEARCH_DIR must be defined in config"
+    assert Path(config.RESEARCH_DIR).is_absolute(), "RESEARCH_DIR must be an absolute path"
+    # Must end with data/research (ROOT-relative, not DATA_DIR-relative)
+    rdir = str(config.RESEARCH_DIR)
+    assert rdir.endswith("data/research") or rdir.endswith("data\\research"), \
+        f"RESEARCH_DIR should be ROOT/data/research, got: {rdir}"

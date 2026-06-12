@@ -23,10 +23,13 @@ from govbudget.export_site import (
     USASPENDING_ENDPOINT_ALLOWLIST,
     _build_entity_ueis_sidecar,
     _build_filing_lda_citation_rows,
+    _build_state_citation_rows,
     _build_usaspending_citation_rows,
     _emit_flows_sidecars,
     _slugify,
     fact_id_lda_filing,
+    fact_id_state_file,
+    fact_id_state_soql,
     fact_id_usaspending,
 )
 from govbudget.verify_phase5b1 import (
@@ -840,7 +843,10 @@ class TestFlowsSidecar:
         required_keys = {"piid", "recipient_name", "family_slug", "district", "dollars", "confidence"}
         assert required_keys.issubset(first.keys()), f"missing keys: {required_keys - first.keys()}"
         assert first["confidence"] == "high"
-        assert first["district"] == "CO-CO-05"
+        # district should be pop_district alone (e.g. 'CO-05'), NOT double-prefixed 'CO-CO-05'
+        assert first["district"] == "CO-05", (
+            f"district should be pop_district alone (no state prefix re-prepended): {first['district']!r}"
+        )
 
     def test_flows_family_slug_format(self, tmp_path):
         """family_slug follows lower/hyphen rule."""
@@ -1053,3 +1059,339 @@ class TestBuildUsaspendingCitationRows:
             if official_url:
                 assert "usaspending.gov" in official_url or "api.usaspending.gov" in official_url, \
                     f"official_url should reference usaspending.gov: {official_url}"
+
+
+# ---------------------------------------------------------------------------
+# fact_id_state_soql / fact_id_state_file tests
+# ---------------------------------------------------------------------------
+
+
+class TestFactIdStateTiers:
+    def test_state_soql_stable_16hex(self):
+        fid = fact_id_state_soql("CT", "grants_and_subventions", "FY 2025")
+        assert len(fid) == 16
+        assert fid == fact_id_state_soql("CT", "grants_and_subventions", "FY 2025")
+
+    def test_state_soql_differs_by_category(self):
+        a = fact_id_state_soql("CT", "travel", "FY 2025")
+        b = fact_id_state_soql("CT", "grants_and_subventions", "FY 2025")
+        assert a != b
+
+    def test_state_file_stable_16hex(self):
+        fid = fact_id_state_file("CA", "grants_and_subventions", "FY 2025")
+        assert len(fid) == 16
+        assert fid == fact_id_state_file("CA", "grants_and_subventions", "FY 2025")
+
+    def test_state_soql_and_state_file_differ(self):
+        a = fact_id_state_soql("CT", "travel", "FY 2025")
+        b = fact_id_state_file("CT", "travel", "FY 2025")
+        assert a != b
+
+
+# ---------------------------------------------------------------------------
+# _build_state_citation_rows tests
+# ---------------------------------------------------------------------------
+
+
+def _make_state_per_capita_duckdb(tmp_path: Path) -> Path:
+    """Create a minimal DuckDB with fct_state_per_capita for state citation tier tests."""
+    db_path = tmp_path / "govbudget.duckdb"
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "CREATE TABLE fct_state_per_capita ("
+        "  jurisdiction varchar, comparable_category varchar,"
+        "  total_amount_usd double, spend_source_url varchar,"
+        "  pop_source_url varchar, amount_per_capita double,"
+        "  fiscal_year varchar"
+        ")"
+    )
+    con.executemany(
+        "INSERT INTO fct_state_per_capita VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            ("CT", "grants_and_subventions", 5000000.0,
+             "https://data.ct.gov/resource/ajdm-rvz7.json?$select=department",
+             "https://census.gov/pop/ct", 1400.0, "FY 2025"),
+            ("CA", "grants_and_subventions", 80000000.0,
+             "https://open.fiscal.ca.gov/dept_spending_transaction.html (pointer: DepartmentSpendingTransactionPointer.csv)",
+             "https://census.gov/pop/ca", 2100.0, "FY 2025"),
+            ("CT", "travel", 200000.0,
+             "https://data.ct.gov/resource/ajdm-rvz7.json?$select=department",
+             "https://census.gov/pop/ct", 56.0, "FY 2025"),
+        ],
+    )
+    con.close()
+    return db_path
+
+
+class TestBuildStateCitationRows:
+    def test_ct_rows_are_state_soql(self, tmp_path):
+        """CT rows emit kind='state_soql'."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        ct_rows = [r for r in rows if r[1] == "state_soql"]
+        assert len(ct_rows) == 2, f"expected 2 CT state_soql rows, got {len(ct_rows)}"
+
+    def test_ca_rows_are_state_file(self, tmp_path):
+        """CA rows emit kind='state_file'."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        ca_rows = [r for r in rows if r[1] == "state_file"]
+        assert len(ca_rows) == 1, f"expected 1 CA state_file row, got {len(ca_rows)}"
+
+    def test_ct_official_url_is_data_ct_gov_soql(self, tmp_path):
+        """CT official_url points to data.ct.gov with $select and $where."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        ct_rows = [r for r in rows if r[1] == "state_soql"]
+        for row in ct_rows:
+            official_url = row[17]  # index 17 = official_url
+            assert official_url and "data.ct.gov" in official_url, \
+                f"CT official_url should be data.ct.gov URL: {official_url!r}"
+            assert "$select" in official_url or "%24select" in official_url, \
+                f"CT official_url missing $select: {official_url!r}"
+
+    def test_ca_official_url_is_clean_pointer_url(self, tmp_path):
+        """CA official_url is the clean Open Fi$Cal pointer URL (no pointer note suffix)."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        ca_rows = [r for r in rows if r[1] == "state_file"]
+        for row in ca_rows:
+            official_url = row[17]
+            assert official_url and "open.fiscal.ca.gov" in official_url, \
+                f"CA official_url should be open.fiscal.ca.gov URL: {official_url!r}"
+            # Must NOT contain the pointer note suffix
+            assert "(pointer:" not in official_url, \
+                f"CA official_url should not contain pointer note: {official_url!r}"
+
+    def test_recorded_value_is_numeric(self, tmp_path):
+        """All rows have parseable numeric recorded_value."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        for row in rows:
+            rv = row[23]  # recorded_value
+            assert rv is not None, f"recorded_value should not be None"
+            float(rv)  # should not raise
+
+    def test_retrieved_at_is_present(self, tmp_path):
+        """All rows have a non-null retrieved_at."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        for row in rows:
+            retrieved_at = row[19]  # retrieved_at
+            assert retrieved_at, f"retrieved_at should be set: {retrieved_at!r}"
+
+    def test_fact_ids_are_stable(self, tmp_path):
+        """Fact IDs are deterministic and 16-hex."""
+        db_path = _make_state_per_capita_duckdb(tmp_path)
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        fids = [r[0] for r in rows]
+        for fid in fids:
+            assert len(fid) == 16, f"fact_id should be 16 chars: {fid!r}"
+            assert all(c in "0123456789abcdef" for c in fid), f"not hex: {fid!r}"
+        # All fact_ids are distinct
+        assert len(set(fids)) == len(fids), f"duplicate fact_ids: {fids}"
+
+    def test_empty_when_no_table(self, tmp_path):
+        """Returns empty list when fct_state_per_capita is absent."""
+        db_path = tmp_path / "empty.duckdb"
+        duckdb.connect(str(db_path)).close()
+        rows = _build_state_citation_rows(duckdb_path=db_path)
+        assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# State citation gate (citation_gate5b1) integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestStateCitationGates:
+    """citation_gate5b1 and integrity_gate5b1 handle state_soql and state_file kinds."""
+
+    def _ct_row(self, fid: str, official_url: str, recorded_value: str) -> tuple:
+        return (
+            fid, "state_soql", "USD", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None,
+            None, None, official_url, None, "2026-06-12T00:00:00+00:00",
+            None, None, None, recorded_value,
+        )
+
+    def _ca_row(self, fid: str, official_url: str, recorded_value: str) -> tuple:
+        return (
+            fid, "state_file", "USD", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None,
+            None, None, official_url, None, "2026-06-12T00:00:00+00:00",
+            "CA Open Fi$Cal pointer page", None, None, recorded_value,
+        )
+
+    def test_state_soql_happy_path(self, tmp_path):
+        """Valid state_soql row passes citation gate."""
+        site = tmp_path / "site"
+        fid = fact_id_state_soql("CT", "grants_and_subventions", "FY 2025")
+        url = (
+            "https://data.ct.gov/resource/ajdm-rvz7.json"
+            "?%24select=sum%28amount%29+as+total"
+            "&%24where=fiscal_year%3D%27FY+2025%27"
+        )
+        row = self._ct_row(fid, url, "5000000.000")
+
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"failures: {result.get('failures')}"
+
+    def test_state_soql_missing_recorded_value_fails(self, tmp_path):
+        """state_soql with null recorded_value → gate FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_state_soql("CT", "travel", "FY 2025")
+        url = "https://data.ct.gov/resource/ajdm-rvz7.json?%24select=sum%28amount%29+as+total&%24where=fiscal_year%3D%27FY+2025%27"
+        row = (
+            fid, "state_soql", "USD", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None,
+            None, None, url, None, "2026-06-12T00:00:00+00:00",
+            None, None, None, None,  # recorded_value=None
+        )
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "null recorded_value should fail"
+
+    def test_state_file_happy_path(self, tmp_path):
+        """Valid state_file row passes citation gate."""
+        site = tmp_path / "site"
+        fid = fact_id_state_file("CA", "grants_and_subventions", "FY 2025")
+        url = "https://open.fiscal.ca.gov/dept_spending_transaction.html"
+        row = self._ca_row(fid, url, "80000000.000")
+
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"failures: {result.get('failures')}"
+
+    def test_state_file_non_https_fails(self, tmp_path):
+        """state_file with http:// official_url → gate FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_state_file("CA", "travel", "FY 2025")
+        row = self._ca_row(fid, "http://open.fiscal.ca.gov/page.html", "500.000")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "non-https official_url should fail"
+
+    def test_integrity_gate_state_soql_passes(self, tmp_path):
+        """integrity_gate5b1 state_soql_url_and_value check passes on valid row."""
+        site = tmp_path / "site"
+        fid = fact_id_state_soql("CT", "consulting_professional", "FY 2025")
+        url = "https://data.ct.gov/resource/ajdm-rvz7.json?%24select=sum%28amount%29+as+total&%24where=x"
+        row = self._ct_row(fid, url, "999.000")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("state_soql_url_and_value") is True, \
+            f"expected pass: {result}"
+
+    def test_integrity_gate_state_file_passes(self, tmp_path):
+        """integrity_gate5b1 state_file_url_and_value check passes on valid row."""
+        site = tmp_path / "site"
+        fid = fact_id_state_file("CA", "consulting_professional", "FY 2025")
+        url = "https://open.fiscal.ca.gov/dept_spending_transaction.html"
+        row = self._ca_row(fid, url, "12345.000")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("state_file_url_and_value") is True, \
+            f"expected pass: {result}"
+
+
+# ---------------------------------------------------------------------------
+# Connecticut build_figure_soql_url tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFigureSoqlUrl:
+    """Verify the per-figure CT SoQL URL builder (Task 2c §F)."""
+
+    def test_ct_grants_soql_url_shape(self):
+        from govbudget.states.connecticut import build_figure_soql_url
+        url = build_figure_soql_url("grants_and_subventions", "FY 2025")
+        assert "data.ct.gov" in url
+        assert "select" in url.lower() or "%24select" in url
+        assert "where" in url.lower() or "%24where" in url
+        assert "FY 2025" in url or "FY+2025" in url
+
+    def test_ct_travel_soql_url_includes_in_state_travel(self):
+        """The travel category URL includes CT raw travel categories in the WHERE clause."""
+        from govbudget.states.connecticut import build_figure_soql_url
+        url = build_figure_soql_url("travel", "FY 2025")
+        # Should contain at least one of the raw CT travel category values
+        assert "In-State Travel" in url or "In-State" in url or "Travel" in url, \
+            f"Expected travel categories in URL: {url}"
+
+    def test_ct_soql_url_backwards_compat(self):
+        """build_soql_url without overrides behaves identically to before."""
+        from govbudget.states.connecticut import SOCRATA_BASE, build_soql_url
+        url_old = build_soql_url()
+        assert url_old.startswith(SOCRATA_BASE)
+        assert "$group" in url_old or "%24group" in url_old
+
+    def test_ct_soql_url_with_fiscal_year_compat(self):
+        """build_soql_url(fiscal_year=...) still works as before."""
+        from govbudget.states.connecticut import build_soql_url
+        url = build_soql_url(fiscal_year="FY 2025")
+        assert "FY 2025" in url or "FY+2025" in url
+
+
+# ---------------------------------------------------------------------------
+# config.RESEARCH_DIR tests
+# ---------------------------------------------------------------------------
+
+
+class TestResearchDirConfig:
+    def test_research_dir_is_defined(self):
+        from govbudget.config import RESEARCH_DIR
+        assert RESEARCH_DIR is not None
+
+    def test_research_dir_is_absolute(self):
+        from govbudget.config import RESEARCH_DIR
+        from pathlib import Path
+        assert Path(RESEARCH_DIR).is_absolute()
+
+    def test_research_dir_ends_with_data_research(self):
+        from govbudget.config import RESEARCH_DIR
+        # Should be ROOT/data/research
+        assert str(RESEARCH_DIR).endswith("data/research") or \
+               str(RESEARCH_DIR).endswith("data\\research"), \
+               f"RESEARCH_DIR should end with data/research: {RESEARCH_DIR}"
+
+    def test_recipient_ids_cache_uses_research_dir(self, tmp_path):
+        """_build_entity_ueis_sidecar uses RESEARCH_DIR not CWD-relative path."""
+        from govbudget import config
+        from govbudget.export_site import _build_entity_ueis_sidecar
+        import unittest.mock as mock
+
+        # Point RESEARCH_DIR to tmp_path so the cache is writable
+        fake_research_dir = tmp_path / "research"
+        fake_research_dir.mkdir()
+
+        # Write a test cache
+        cache_file = fake_research_dir / "usaspending_recipient_ids.json"
+        cache_file.write_text(json.dumps({"PARENT-TEST": "test-profile-id"}))
+
+        db_path = _make_xwalk_duckdb(tmp_path, [
+            ("UEI-TEST", "FAM-TEST", "PARENT-TEST", 100.0),
+        ])
+
+        with mock.patch.object(config, "RESEARCH_DIR", fake_research_dir):
+            result = _build_entity_ueis_sidecar(duckdb_path=db_path)
+
+        assert "FAM-TEST" in result
+        assert result["FAM-TEST"]["parent_uei"] == "PARENT-TEST"
+        assert result["FAM-TEST"]["profile_id"] == "test-profile-id"

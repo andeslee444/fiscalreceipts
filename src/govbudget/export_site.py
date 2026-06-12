@@ -96,6 +96,24 @@ def fact_id_lda_filing(filing_uuid: str, role: str) -> str:
     return hashlib.sha256(f"lda_filing_amount|{filing_uuid}|{role}".encode()).hexdigest()[:16]
 
 
+def fact_id_state_soql(jurisdiction: str, comparable_category: str, fiscal_year: str) -> str:
+    """Canonical identity for a state SoQL citation (CT Socrata aggregate).
+
+    sha256 of 'state_soql|{jurisdiction}|{comparable_category}|{fiscal_year}', hexdigest[:16].
+    """
+    key = f"state_soql|{jurisdiction}|{comparable_category}|{fiscal_year}"
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
+def fact_id_state_file(jurisdiction: str, comparable_category: str, fiscal_year: str) -> str:
+    """Canonical identity for a state file citation (CA pointer-page tier).
+
+    sha256 of 'state_file|{jurisdiction}|{comparable_category}|{fiscal_year}', hexdigest[:16].
+    """
+    key = f"state_file|{jurisdiction}|{comparable_category}|{fiscal_year}"
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
@@ -540,6 +558,10 @@ def export_site(
     filing_lda_rows = _build_filing_lda_citation_rows(duckdb_path=duckdb_path)
     citation_rows.extend(filing_lda_rows)
 
+    # --- 4g. State citation tier (CT state_soql + CA state_file) ---
+    state_citation_rows = _build_state_citation_rows(duckdb_path=duckdb_path)
+    citation_rows.extend(state_citation_rows)
+
     # Write citations.parquet
     _write_typed_parquet(
         cit_dir / "citations.parquet",
@@ -962,26 +984,61 @@ def _build_derived_citation_rows(
         # ---- State per-capita ----
         # surface='state_per_capita', key='{jurisdiction}|{category}',
         # metric='amount_per_capita'
-        # inputs = [spend_source_url, pop_source_url]
+        # inputs = state citation fact_ids (state_soql for CT, state_file for CA)
+        #          + pop_source_url (Census population URL)
+        # This rework (Task 2c) chains the DERIVED row through the state citation
+        # fact_ids so the input chain is properly ordered: state tier → derived tier.
         try:
             spc_rows = con.execute(
                 "select jurisdiction, comparable_category, amount_per_capita,"
-                " spend_source_url, pop_source_url"
+                " spend_source_url, pop_source_url, total_amount_usd,"
+                " fiscal_year"
                 " from fct_state_per_capita"
             ).fetchall()
         except Exception:
-            spc_rows = []
+            # Fallback: try without fiscal_year column (older schema)
+            try:
+                spc_rows_nfy = con.execute(
+                    "select jurisdiction, comparable_category, amount_per_capita,"
+                    " spend_source_url, pop_source_url, total_amount_usd"
+                    " from fct_state_per_capita"
+                ).fetchall()
+                spc_rows = [(j, c, pc, su, pu, total, None) for j, c, pc, su, pu, total in spc_rows_nfy]
+            except Exception:
+                spc_rows = []
 
-        for jurisdiction, category, per_cap, spend_url, pop_url in spc_rows:
+        # Build a fiscal_year map from fct_state_per_capita (best-guess: 2025 default)
+        for spc_row in spc_rows:
+            if len(spc_row) == 7:
+                jurisdiction, category, per_cap, spend_url, pop_url, total_usd, fiscal_year = spc_row
+            else:
+                jurisdiction, category, per_cap, spend_url, pop_url = spc_row[:5]
+                total_usd = spc_row[5] if len(spc_row) > 5 else None
+                fiscal_year = None
+
             if per_cap is None:
                 continue
             key_str = f"{jurisdiction}|{category}"
             fid = fact_id_derived("state_per_capita", key_str, "amount_per_capita")
-            inputs: list[str] = []
-            if spend_url:
-                inputs.append(spend_url)
+
+            # Build inputs: use state citation fact_id + pop URL
+            # CT → state_soql fact_id; CA → state_file fact_id
+            # fiscal_year for citation identity: default 'FY 2025'
+            fy_str = str(fiscal_year) if fiscal_year else "FY 2025"
+            inputs_list: list[str] = []
+            if jurisdiction == "CT":
+                state_fid = fact_id_state_soql(jurisdiction, category, fy_str)
+                inputs_list.append(state_fid)
+            elif jurisdiction == "CA":
+                state_fid = fact_id_state_file(jurisdiction, category, fy_str)
+                inputs_list.append(state_fid)
+            elif spend_url:
+                # Fallback for other jurisdictions: use raw URL
+                inputs_list.append(spend_url)
+
             if pop_url:
-                inputs.append(pop_url)
+                inputs_list.append(pop_url)
+
             formula = (
                 f"total_amount_usd / population"
                 f" (jurisdiction={jurisdiction!r}, category={category!r})"
@@ -989,7 +1046,7 @@ def _build_derived_citation_rows(
             rows.append(_null_derived_row(
                 fid, "derived", "USD per capita",
                 formula,
-                _json.dumps(inputs),
+                _json.dumps(inputs_list),
                 f"{per_cap:.6f}",
                 built_at,
             ))
@@ -1926,6 +1983,130 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
     return rows
 
 
+def _build_state_citation_rows(*, duckdb_path) -> list[tuple]:
+    """Build state citation rows for CT (state_soql) and CA (state_file).
+
+    CT tier (state_soql):
+      For each (jurisdiction='CT', comparable_category, fiscal_year) row in
+      fct_state_per_capita: emit kind='state_soql' with:
+        - official_url = the SoQL URL from build_figure_soql_url(comparable_category, fiscal_year)
+        - recorded_value = total_amount_usd from fct_state_per_capita
+        - retrieved_at = present ISO timestamp (the data was captured at export time)
+
+    CA tier (state_file):
+      For each (jurisdiction='CA', comparable_category, fiscal_year) row in
+      fct_state_per_capita: emit kind='state_file' with:
+        - official_url = the Open Fi$Cal pointer page URL (clean, no pointer note suffix)
+        - recorded_value = total_amount_usd
+        - formula = the pointer note explaining the source
+
+    Never fails export: missing tables or import errors → return empty list.
+    """
+    import datetime as _dt
+    import duckdb as _duckdb
+    from pathlib import Path as _Path
+
+    rows: list[tuple] = []
+    retrieved_at = _dt.datetime.now(_dt.UTC).isoformat()
+
+    try:
+        con = _duckdb.connect(str(duckdb_path), read_only=True)
+        try:
+            spc_rows = con.execute(
+                "select jurisdiction, comparable_category, total_amount_usd,"
+                " spend_source_url, fiscal_year"
+                " from fct_state_per_capita"
+            ).fetchall()
+        except Exception:
+            try:
+                # Fallback: without fiscal_year column
+                spc_rows_nfy = con.execute(
+                    "select jurisdiction, comparable_category, total_amount_usd,"
+                    " spend_source_url"
+                    " from fct_state_per_capita"
+                ).fetchall()
+                spc_rows = [(j, c, t, s, None) for j, c, t, s in spc_rows_nfy]
+            except Exception:
+                spc_rows = []
+        finally:
+            con.close()
+    except Exception:
+        return rows
+
+    # CA pointer page URL (clean version, no pointer note suffix)
+    # From states/california.py: POINTER_SOURCE has " (pointer: ...)" appended — strip it.
+    _CA_POINTER_PAGE_URL = "https://open.fiscal.ca.gov/dept_spending_transaction.html"
+    _CA_POINTER_NOTE = (
+        "Aggregate of CA Open Fi$Cal per-department CSV files;"
+        " pointer manifest: DepartmentSpendingTransactionPointer.csv"
+    )
+
+    for spc_row in spc_rows:
+        if len(spc_row) == 5:
+            jurisdiction, category, total_usd, spend_url, fiscal_year = spc_row
+        else:
+            jurisdiction, category, total_usd = spc_row[:3]
+            spend_url = spc_row[3] if len(spc_row) > 3 else None
+            fiscal_year = None
+
+        if total_usd is None:
+            continue
+
+        recorded_value = f"{float(total_usd):.3f}"
+        fy_str = str(fiscal_year) if fiscal_year else "FY 2025"
+
+        if jurisdiction == "CT":
+            # Build per-figure SoQL URL
+            try:
+                from govbudget.states.connecticut import build_figure_soql_url as _build_ct_url
+                official_url = _build_ct_url(category, fy_str)
+            except Exception:
+                official_url = spend_url or ""
+
+            fid = fact_id_state_soql(jurisdiction, category, fy_str)
+            rows.append((
+                fid, "state_soql", "USD",
+                None,   # amount_text
+                None, None, None, None, None, None, None,  # page bbox
+                None,   # resolution
+                None,   # sheet
+                None,   # cells
+                None,   # amount_thousands
+                None,   # sha256
+                None,   # hosted_pdf_url
+                official_url,
+                None,   # xml_path
+                retrieved_at,
+                None,   # formula
+                None,   # inputs
+                None,   # query_body
+                recorded_value,
+            ))
+
+        elif jurisdiction == "CA":
+            fid = fact_id_state_file(jurisdiction, category, fy_str)
+            rows.append((
+                fid, "state_file", "USD",
+                None,
+                None, None, None, None, None, None, None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                _CA_POINTER_PAGE_URL,
+                None,
+                retrieved_at,
+                _CA_POINTER_NOTE,  # formula field carries the pointer note
+                None,   # inputs
+                None,   # query_body
+                recorded_value,
+            ))
+
+    return rows
+
+
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
     """Build the family→parent-UEI sidecar (entity_ueis.json).
 
@@ -1980,8 +2161,9 @@ def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
         if should_close:
             con.close()
 
-    # Load recipient profile IDs from cache
-    cache_path = _Path("data/research/usaspending_recipient_ids.json")
+    # Load recipient profile IDs from cache (via config.RESEARCH_DIR, not CWD-relative)
+    from govbudget.config import RESEARCH_DIR as _RESEARCH_DIR
+    cache_path = _RESEARCH_DIR / "usaspending_recipient_ids.json"
     profile_cache: dict = {}
     if cache_path.exists():
         try:
@@ -2093,7 +2275,9 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
         for piid, uei, pop_state, pop_district, family_key, dollars in award_rows:
             recipient_name = uei_names.get(uei, uei or "Unknown")
             family_slug = _slugify(family_key or recipient_name or "unknown")
-            district = f"{pop_state}-{pop_district}" if pop_state and pop_district else None
+            # pop_district already carries the state prefix (e.g. 'CO-05');
+            # do NOT re-prepend pop_state to avoid double-prefix 'CO-CO-05'.
+            district = pop_district if pop_district else None
             awards.append({
                 "piid": piid,
                 "recipient_name": recipient_name,
@@ -2135,7 +2319,7 @@ def _slugify(s: str) -> str:
 def refresh_usaspending_ids(
     *,
     duckdb_path,
-    cache_path="data/research/usaspending_recipient_ids.json",
+    cache_path=None,
     polite_delay: float = _USAS_POLITE_DELAY,
 ) -> dict:
     """Refresh the USAspending recipient ID cache.
@@ -2156,6 +2340,9 @@ def refresh_usaspending_ids(
 
     import duckdb as _duckdb
 
+    if cache_path is None:
+        from govbudget.config import RESEARCH_DIR as _RESEARCH_DIR
+        cache_path = _RESEARCH_DIR / "usaspending_recipient_ids.json"
     cache_path = _Path(cache_path)
     cache: dict = {}
     if cache_path.exists():

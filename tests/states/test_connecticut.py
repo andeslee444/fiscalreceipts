@@ -18,6 +18,7 @@ import pytest
 
 from govbudget.states.connecticut import (
     SOCRATA_BASE,
+    build_figure_soql_url,
     build_soql_url,
     fetch_ct_checkbook,
     parse_ct_rows,
@@ -198,3 +199,84 @@ def test_write_ct_checkbook_parquet_jurisdiction_is_ct():
         ).fetchone()[0]
         con.close()
     assert non_ct == 0
+
+
+# ---------------------------------------------------------------------------
+# build_soql_url select/where override (Task 2c backwards-compat)
+# ---------------------------------------------------------------------------
+
+
+def test_build_soql_url_select_override_omits_group():
+    """select_override suppresses $group and $order (aggregate-only query)."""
+    url = build_soql_url(select_override="sum(amount) as total")
+    assert "$select" in url or "%24select" in url
+    # No $group in a per-figure aggregate URL
+    assert "$group" not in url
+
+
+def test_build_soql_url_select_override_with_fiscal_year():
+    """select_override + fiscal_year uses $where."""
+    url = build_soql_url(
+        select_override="sum(amount) as total",
+        fiscal_year="FY 2025",
+    )
+    assert "FY 2025" in url or "FY+2025" in url
+
+
+def test_build_soql_url_where_override_replaces_fiscal_year():
+    """where_override replaces the fiscal_year $where clause."""
+    url = build_soql_url(
+        select_override="sum(amount) as total",
+        where_override="fiscal_year='FY 2025' AND expense_category in ('Travel')",
+    )
+    assert "expense_category" in url
+    assert "Travel" in url
+
+
+def test_build_soql_url_backwards_compat_no_args():
+    """Calling build_soql_url() with no args still returns a grouped aggregate URL."""
+    url = build_soql_url()
+    assert "$group" in url or "%24group" in url
+    assert "$select" in url or "%24select" in url
+    assert url.startswith(SOCRATA_BASE)
+
+
+def test_build_soql_url_backwards_compat_fiscal_year_only():
+    """Calling build_soql_url(fiscal_year='FY 2025') still works as before."""
+    url = build_soql_url(fiscal_year="FY 2025")
+    assert "$group" in url or "%24group" in url
+    assert "FY 2025" in url or "FY+2025" in url
+
+
+# ---------------------------------------------------------------------------
+# build_figure_soql_url (per-figure CT SoQL URL builder)
+# ---------------------------------------------------------------------------
+
+
+def test_build_figure_soql_url_grants_shape():
+    """grants_and_subventions → data.ct.gov URL with $select=sum(amount) + $where."""
+    url = build_figure_soql_url("grants_and_subventions", "FY 2025")
+    assert "data.ct.gov" in url
+    assert "sum" in url.lower()
+    assert "where" in url.lower() or "%24where" in url
+
+
+def test_build_figure_soql_url_travel_includes_raw_categories():
+    """travel category URL includes CT raw category names from seed CSV."""
+    url = build_figure_soql_url("travel", "FY 2025")
+    # At least one of the raw CT travel categories should appear
+    found = "In-State" in url or "Out-Of-State" in url or "Travel" in url
+    assert found, f"Expected travel category names in URL: {url}"
+
+
+def test_build_figure_soql_url_unknown_category_still_returns_url():
+    """Unknown comparable_category returns a URL with just the fiscal_year filter."""
+    url = build_figure_soql_url("nonexistent_category", "FY 2025")
+    assert url.startswith(SOCRATA_BASE)
+    assert "FY 2025" in url or "FY+2025" in url
+
+
+def test_build_figure_soql_url_fiscal_year_in_where():
+    """fiscal_year is embedded in the $where clause."""
+    url = build_figure_soql_url("grants_and_subventions", "FY 2024")
+    assert "FY 2024" in url or "FY+2024" in url

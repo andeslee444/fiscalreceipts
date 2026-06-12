@@ -10,6 +10,7 @@ MANIFEST_PATH = DATA_DIR / "manifest.jsonl"
 
 PG_DSN = os.environ.get("GOVBUDGET_PG_DSN", "postgresql://localhost/govbudget")
 RAW_DOCS_DIR = DATA_DIR / "raw_docs"
+RESEARCH_DIR = ROOT / "data" / "research"
 JBOOK_FY = 2026
 
 # Phase 5B site export

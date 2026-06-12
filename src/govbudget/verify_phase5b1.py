@@ -182,6 +182,10 @@ def citation_gate5b1(
             reason = _verify_derived(row, col_idx, all_cits, col_idx)
         elif kind == "usaspending":
             reason = _verify_usaspending(row, col_idx)
+        elif kind == "state_soql":
+            reason = _verify_state_soql(row, col_idx)
+        elif kind == "state_file":
+            reason = _verify_state_file(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -506,6 +510,83 @@ def _verify_usaspending(row: tuple, idx: dict) -> str | None:
     return None
 
 
+def _verify_state_soql(row: tuple, idx: dict) -> str | None:
+    """Verify a state_soql citation (CT Socrata per-figure aggregate).
+
+    Rules:
+    1. official_url must be a data.ct.gov resource URL containing $select and $where.
+    2. recorded_value must be present and numeric.
+    3. retrieved_at must be present.
+    """
+    official_url = row[idx.get("official_url", -1)] if "official_url" in idx else None
+    recorded_value = row[idx.get("recorded_value", -1)] if "recorded_value" in idx else None
+    retrieved_at = row[idx.get("retrieved_at", -1)] if "retrieved_at" in idx else None
+
+    if not official_url:
+        return "state_soql: official_url is null or empty"
+
+    # Must reference data.ct.gov
+    if "data.ct.gov" not in official_url:
+        return f"state_soql: official_url does not reference data.ct.gov: {official_url!r}"
+
+    # Must contain $select and $where (the per-figure aggregate shape)
+    if "$select" not in official_url and "%24select" not in official_url:
+        return f"state_soql: official_url missing $select (not a per-figure SoQL URL): {official_url!r}"
+    if "$where" not in official_url and "%24where" not in official_url:
+        return f"state_soql: official_url missing $where (no filter applied): {official_url!r}"
+
+    # recorded_value must be present and parseable as a float
+    if recorded_value is None:
+        return "state_soql: recorded_value is null"
+    if not str(recorded_value).strip():
+        return "state_soql: recorded_value is blank"
+    try:
+        float(recorded_value)
+    except (ValueError, TypeError):
+        return f"state_soql: recorded_value is not numeric: {recorded_value!r}"
+
+    # retrieved_at must be present
+    if not retrieved_at:
+        return "state_soql: retrieved_at is null or empty"
+
+    return None
+
+
+def _verify_state_file(row: tuple, idx: dict) -> str | None:
+    """Verify a state_file citation (CA Open Fi$Cal pointer-page tier).
+
+    Rules:
+    1. official_url must be https:// (the pointer page URL).
+    2. recorded_value must be present and numeric.
+    3. retrieved_at must be present.
+    """
+    official_url = row[idx.get("official_url", -1)] if "official_url" in idx else None
+    recorded_value = row[idx.get("recorded_value", -1)] if "recorded_value" in idx else None
+    retrieved_at = row[idx.get("retrieved_at", -1)] if "retrieved_at" in idx else None
+
+    if not official_url:
+        return "state_file: official_url is null or empty"
+
+    if not official_url.startswith("https://"):
+        return f"state_file: official_url does not start with https://: {official_url!r}"
+
+    # recorded_value must be present and parseable as a float
+    if recorded_value is None:
+        return "state_file: recorded_value is null"
+    if not str(recorded_value).strip():
+        return "state_file: recorded_value is blank"
+    try:
+        float(recorded_value)
+    except (ValueError, TypeError):
+        return f"state_file: recorded_value is not numeric: {recorded_value!r}"
+
+    # retrieved_at must be present
+    if not retrieved_at:
+        return "state_file: retrieved_at is null or empty"
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 2: integrity_gate5b1
 # ---------------------------------------------------------------------------
@@ -592,6 +673,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     lda_cit_ids: set[str] = set()
     derived_cit_ids: set[str] = set()
     usaspending_cit_ids: set[str] = set()
+    state_soql_cit_ids: set[str] = set()
+    state_file_cit_ids: set[str] = set()
 
     for row in all_cit:
         kind = row[cidx["kind"]]
@@ -606,6 +689,10 @@ def integrity_gate5b1(site_dir: Path) -> dict:
             derived_cit_ids.add(fid)
         elif kind == "usaspending":
             usaspending_cit_ids.add(fid)
+        elif kind == "state_soql":
+            state_soql_cit_ids.add(fid)
+        elif kind == "state_file":
+            state_file_cit_ids.add(fid)
 
     # ---- jbook checks ----
     details_pq = site_dir / "data" / "jbook_details.parquet"
@@ -700,7 +787,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # A duplicate fact_id within a kind means a join fan-out slipped through (e.g. a
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
-    for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending"):
+    for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending",
+                 "state_soql", "state_file"):
         con = duckdb.connect()
         try:
             row = con.execute(
@@ -820,6 +908,54 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["usaspending_query_and_value"] = len(usas_failures) == 0
     else:
         checks["usaspending_query_and_value"] = True
+
+    # ---- State SOQL checks ----
+    # For each state_soql citation: official_url is data.ct.gov + $select/$where shape +
+    # recorded_value present + retrieved_at present.
+    if state_soql_cit_ids:
+        soql_failures: list[str] = []
+        for row in all_cit:
+            if row[cidx["kind"]] != "state_soql":
+                continue
+            fid = row[cidx["fact_id"]]
+            official_url = row[cidx["official_url"]] if "official_url" in cidx else None
+            recorded_value = row[cidx["recorded_value"]] if "recorded_value" in cidx else None
+            retrieved_at = row[cidx["retrieved_at"]] if "retrieved_at" in cidx else None
+            if not official_url or "data.ct.gov" not in official_url:
+                soql_failures.append(f"state_soql {fid}: official_url not data.ct.gov: {official_url!r}")
+            if recorded_value is None or not str(recorded_value).strip():
+                soql_failures.append(f"state_soql {fid}: recorded_value is null/blank")
+            if not retrieved_at:
+                soql_failures.append(f"state_soql {fid}: retrieved_at is null/blank")
+        if soql_failures:
+            failures.extend(soql_failures[:5])
+        checks["state_soql_url_and_value"] = len(soql_failures) == 0
+    else:
+        checks["state_soql_url_and_value"] = True
+
+    # ---- State file checks ----
+    # For each state_file citation: official_url is https:// + recorded_value present +
+    # retrieved_at present.
+    if state_file_cit_ids:
+        file_failures: list[str] = []
+        for row in all_cit:
+            if row[cidx["kind"]] != "state_file":
+                continue
+            fid = row[cidx["fact_id"]]
+            official_url = row[cidx["official_url"]] if "official_url" in cidx else None
+            recorded_value = row[cidx["recorded_value"]] if "recorded_value" in cidx else None
+            retrieved_at = row[cidx["retrieved_at"]] if "retrieved_at" in cidx else None
+            if not official_url or not official_url.startswith("https://"):
+                file_failures.append(f"state_file {fid}: official_url not https://: {official_url!r}")
+            if recorded_value is None or not str(recorded_value).strip():
+                file_failures.append(f"state_file {fid}: recorded_value is null/blank")
+            if not retrieved_at:
+                file_failures.append(f"state_file {fid}: retrieved_at is null/blank")
+        if file_failures:
+            failures.extend(file_failures[:5])
+        checks["state_file_url_and_value"] = len(file_failures) == 0
+    else:
+        checks["state_file_url_and_value"] = True
 
     # ---- Manifest rowcount check ----
     if man_path.exists():
