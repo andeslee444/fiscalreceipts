@@ -158,11 +158,22 @@ export async function runBuildGate() {
     const urlMatches = sitemapContent.match(/<url>/g) || [];
     const sitemapCount = urlMatches.length;
 
-    // Expected: static(7) + programs(326) + companies(200) + agencies(20) = 553
-    const expectedTotal = 7 + programCount + companyCount + agencyCount;
+    // Compute district page count from sidecar (0 if not yet generated)
+    let districtPageCount = 0;
+    try {
+      const districtIndex = readJson(path.join(jsonDir, "districts", "index.json"));
+      // +1 for /district/ index page, +N for each district detail page
+      districtPageCount = 1 + (districtIndex.total_districts ?? 0);
+    } catch {
+      // sidecars not generated — only count the base /district/ page if it exists
+      // but since the route needs params, it won't be in the sitemap when count=0.
+    }
+    // Expected: static(7) + feed(1) + district pages + programs + companies + agencies
+    // static(7) = /, /programs/, /companies/, /data/, /downloads/, /methodology/, /about/
+    const expectedTotal = 7 + 1 + districtPageCount + programCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
       errors.push(
-        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + ${programCount} programs + ${companyCount} companies + ${agencyCount} agencies)`
+        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${programCount} programs + ${companyCount} companies + ${agencyCount} agencies)`
       );
     } else {
       notes.push(`sitemap: ${sitemapCount} URLs ✓`);

@@ -22,6 +22,9 @@ interface EntityTop {
 interface AgencyRow {
   org: string;
 }
+interface DistrictIndexRow {
+  pop_district: string;
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE_URL.replace(/\/$/, "");
@@ -80,5 +83,49 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // sidecars not yet generated
   }
 
-  return [...staticPages, ...programPages, ...companyPages, ...agencyPages];
+  // ── Feed page ─────────────────────────────────────────────────────────────
+  const feedPages: MetadataRoute.Sitemap = [
+    {
+      url: `${base}/feed/`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
+  ];
+
+  // ── District pages ────────────────────────────────────────────────────────
+  let districtPages: MetadataRoute.Sitemap = [];
+  try {
+    const districtIndex = readJson<{ districts: DistrictIndexRow[] }>(
+      "districts/index.json",
+    );
+    const indexPage: MetadataRoute.Sitemap = [
+      {
+        url: `${base}/district/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.75,
+      },
+    ];
+    districtPages = [
+      ...indexPage,
+      ...districtIndex.districts.map((d) => ({
+        url: `${base}/district/${d.pop_district}/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.65,
+      })),
+    ];
+  } catch {
+    // sidecars not yet generated
+  }
+
+  return [
+    ...staticPages,
+    ...programPages,
+    ...companyPages,
+    ...agencyPages,
+    ...feedPages,
+    ...districtPages,
+  ];
 }

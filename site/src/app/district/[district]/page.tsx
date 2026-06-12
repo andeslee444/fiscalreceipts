@@ -1,0 +1,203 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getDistrictIndex, getDistrictDetail, collectCitations } from "@/lib/data";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CitationPanelProvider } from "@/components/citation-panel";
+import { Cite } from "@/components/cite";
+
+// No fallback pages beyond what generateStaticParams returns (SSG export).
+export const dynamicParams = false;
+
+interface Props {
+  params: Promise<{ district: string }>;
+}
+
+export function generateStaticParams(): { district: string }[] {
+  try {
+    const index = getDistrictIndex();
+    return index.districts.map((d) => ({ district: d.pop_district }));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { district } = await params;
+  let state = "";
+  try {
+    const detail = getDistrictDetail(district);
+    state = detail.pop_state ? ` (${detail.pop_state})` : "";
+  } catch {
+    // ignore
+  }
+  return {
+    title: `District ${district}${state} — ${SITE_NAME}`,
+    description: `Defense contract awards in congressional district ${district}${state} — high-confidence program links via USAspending crosswalk.`,
+    alternates: { canonical: `${SITE_URL}/district/${district}/` },
+    openGraph: {
+      title: `District ${district}${state} — ${SITE_NAME}`,
+      description: `Defense contract awards in congressional district ${district}${state}.`,
+      url: `${SITE_URL}/district/${district}/`,
+      siteName: SITE_NAME,
+    },
+  };
+}
+
+export default async function DistrictDetailPage({ params }: Props) {
+  const { district } = await params;
+  const detail = getDistrictDetail(district);
+
+  // Collect fact_ids for cited dollars
+  const pageFactIds: string[] = [];
+  for (const prog of detail.programs) {
+    if (prog.fact_id) pageFactIds.push(prog.fact_id);
+  }
+  const citationsSlice = collectCitations(pageFactIds);
+
+  const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
+  const totalCitedM = detail.total_cited_dollars / 1_000_000;
+  const totalLinkableM = detail.total_linkable_dollars / 1_000_000;
+
+  return (
+    <CitationPanelProvider citations={citationsSlice}>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Districts", href: "/district/" },
+            { label: `District ${district}${stateLabel}` },
+          ]}
+        />
+
+        {/* Disclaimer banner */}
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-6">
+          <strong>Coverage note:</strong> District data reflects only
+          high-confidence award links from the DARPA crosswalk.
+          Geographic totals from{" "}
+          <code className="text-xs bg-amber-200/40 dark:bg-amber-900/40 px-1 rounded">
+            dim_geography
+          </code>{" "}
+          are uncited (⁂) — citation tier pending. Recipients and transaction
+          counts are from USAspending; no additional verification applied.
+        </div>
+
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-1">
+            District {district}
+            {stateLabel}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {detail.program_count} linked program
+            {detail.program_count !== 1 ? "s" : ""} via high-confidence
+            USAspending crosswalk.
+          </p>
+
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums">
+                {detail.program_count}
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linked programs
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums">
+                ${totalLinkableM.toFixed(0)}M
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                linkable obligations
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums">
+                ${totalCitedM.toFixed(0)}M
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                cited (USAspending)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Program table */}
+        <div className="rounded-lg border border-border overflow-hidden bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                  Program
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden sm:table-cell">
+                  Org
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+                  Obligations
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                  Recipients
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide hidden md:table-cell">
+                  Transactions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {detail.programs.map((prog) => (
+                <tr
+                  key={prog.pe_bli}
+                  className="hover:bg-muted/40 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={prog.program_url}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {prog.title}
+                    </Link>
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      {prog.pe_bli}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                    {prog.organization}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {prog.total_obligation !== null ? (
+                      <Cite
+                        value={prog.total_obligation}
+                        units="USD"
+                        dataset="fct_district_programs"
+                        factId={prog.fact_id}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
+                    {prog.recipient_count.toLocaleString("en-US")}
+                  </td>
+                  <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
+                    {prog.transaction_count.toLocaleString("en-US")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Obligations are high-confidence USAspending award links only. Cited
+          figures (underlined) open a USAspending citation with the API query
+          used to verify the amount. See{" "}
+          <Link href="/methodology/" className="underline hover:text-foreground">
+            methodology
+          </Link>{" "}
+          for crosswalk details.
+        </p>
+      </div>
+    </CitationPanelProvider>
+  );
+}
