@@ -58,6 +58,19 @@ def test_load_rollup_is_idempotent_upsert(pg_dsn, tmp_path):
     assert total == 7
 
 
+def test_load_rollup_records_cell_provenance(pg_dsn, tmp_path):
+    xlsx = make_xlsx(tmp_path, with_preamble_rows=True)
+    load_rollup(pg_dsn, xlsx, exhibit="R-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        row = con.execute(
+            "select source_sheet, source_cells from budget_lines"
+            " where amount_type = 'fy_2024_actuals'"
+            " and pe_bli = '0601101E'"
+        ).fetchone()
+    assert row[0]                      # sheet name recorded
+    assert row[1] == ["J4"]            # col J (0-based 9 → letter J), data row 4
+
+
 def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
     from openpyxl import Workbook
 

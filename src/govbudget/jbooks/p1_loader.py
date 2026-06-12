@@ -5,6 +5,7 @@ from pathlib import Path
 
 import psycopg
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 P1_ID_HEADERS = {
     "Account": "account",
@@ -62,7 +63,11 @@ def load_p1_rollup(
     # line_number is intentionally excluded so all cost-type sub-rows for the same
     # BLI aggregate into a single bucket before insert (avoiding last-write-wins collision).
     sums: dict[tuple, dict[str, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
-    for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
+    cells: dict[tuple, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
+    for row_idx, row in enumerate(
+        sheet.iter_rows(min_row=header_row + 1, values_only=True),
+        start=header_row + 1,
+    ):
         ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
         if not ids.get("pe_bli"):
             continue
@@ -82,6 +87,7 @@ def load_p1_rollup(
             except ArithmeticError:
                 continue
             sums[key][amount_type] += amount
+            cells[key][amount_type].append(f"{get_column_letter(j + 1)}{row_idx}")
 
     upserted = 0
     with psycopg.connect(dsn) as con:
@@ -94,16 +100,19 @@ def load_p1_rollup(
                     insert into budget_lines
                       (exhibit, fiscal_year, account, account_title, organization,
                        budget_activity, budget_activity_title, pe_bli,
-                       title, amount_type, amount_thousands, source_document_id)
-                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       title, amount_type, amount_thousands, source_document_id,
+                       source_sheet, source_cells)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     on conflict (exhibit, fiscal_year, account, organization, budget_activity, pe_bli, amount_type)
                     do update set amount_thousands = excluded.amount_thousands,
                                   title = excluded.title,
-                                  source_document_id = excluded.source_document_id
+                                  source_document_id = excluded.source_document_id,
+                                  source_sheet = excluded.source_sheet,
+                                  source_cells = excluded.source_cells
                     """,
                     (exhibit, fiscal_year, account, account_title, organization,
                      ba, ba_title, pe_bli, title, amount_type, amount,
-                     source_document_id),
+                     source_document_id, sheet.title, cells[key][amount_type]),
                 )
                 upserted += 1
     return upserted

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import psycopg
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 ID_HEADERS = {
     "Account": "account",
@@ -46,7 +47,10 @@ def load_rollup(
     id_cols = {j: ID_HEADERS[h] for j, h in headers.items() if h in ID_HEADERS}
     upserted = 0
     with psycopg.connect(dsn) as con:
-        for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
+        for row_idx, row in enumerate(
+            sheet.iter_rows(min_row=header_row + 1, values_only=True),
+            start=header_row + 1,
+        ):
             ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
             if not ids.get("pe_bli"):
                 continue
@@ -57,24 +61,28 @@ def load_rollup(
                     amount = Decimal(str(row[j]))
                 except ArithmeticError:
                     continue
+                cell = f"{get_column_letter(j + 1)}{row_idx}"
                 con.execute(
                     """
                     insert into budget_lines
                       (exhibit, fiscal_year, account, account_title, organization,
                        budget_activity, budget_activity_title, line_number, pe_bli,
-                       title, amount_type, amount_thousands, source_document_id)
-                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       title, amount_type, amount_thousands, source_document_id,
+                       source_sheet, source_cells)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     on conflict (exhibit, fiscal_year, account, organization, budget_activity, pe_bli, amount_type)
                     do update set amount_thousands = excluded.amount_thousands,
                                   title = excluded.title,
-                                  source_document_id = excluded.source_document_id
+                                  source_document_id = excluded.source_document_id,
+                                  source_sheet = excluded.source_sheet,
+                                  source_cells = excluded.source_cells
                     """,
                     (
                         exhibit, fiscal_year, str(ids.get("account")), ids.get("account_title"),
                         str(ids.get("organization")), _str(ids.get("budget_activity")),
                         ids.get("budget_activity_title"), _str(ids.get("line_number")),
                         str(ids.get("pe_bli")), ids.get("title"), amount_type, amount,
-                        source_document_id,
+                        source_document_id, sheet.title, [cell],
                     ),
                 )
                 upserted += 1

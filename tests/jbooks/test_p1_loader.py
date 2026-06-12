@@ -62,6 +62,18 @@ def test_p1_loader_is_idempotent(pg_dsn, tmp_path):
     assert total == 3
 
 
+def test_load_p1_records_contributing_cells(pg_dsn, tmp_path):
+    xlsx = make_p1_xlsx(tmp_path)
+    load_p1_rollup(pg_dsn, xlsx, exhibit="P-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        row = con.execute(
+            "select source_sheet, source_cells from budget_lines where pe_bli = %s"
+            " and amount_type = 'fy_2024_actuals'",
+            ("7001SA1000",),
+        ).fetchone()
+    assert row[1] == ["O3", "O4"]      # BOTH contributing cells — honesty for summed facts
+
+
 def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
     # Real-data regression: Apache-style BLI split across two Line Numbers
     # previously collided on upsert (last write wins, $138B understated).
