@@ -131,17 +131,17 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
     con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
 
-    # 2. fct_budget_to_awards
-    con.execute("create table fct_budget_to_awards (pe_bli varchar, fiscal_year integer, award_piid varchar, matched_obligation double, confidence double)")
-    con.execute("insert into fct_budget_to_awards values ('0601101E',2026,'W911QX-24-C-0001',1000000.0,0.9)")
+    # 2. fct_budget_to_awards  (live cols: pe_bli,exhibit,fiscal_year,organization,award_piid,recipient_name,recipient_uei,method,confidence,program_title)
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency','medium','Defense Research Sciences')")
 
-    # 3. fct_budget_trajectory
-    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, abs_change double, pct_change double)")
+    # 3. fct_budget_trajectory  (live cols: pe_bli,organization,fy2024_actuals,fy2025_total,fy2026_total,fy2526_change,fy2526_pct_change)
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
     con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
 
-    # 4. dim_entities
-    con.execute("create table dim_entities (family_key varchar, display_name varchar, total_obligation double)")
-    con.execute("insert into dim_entities values ('lockheed','Lockheed Martin',50000000.0)")
+    # 4. dim_entities  (live cols: family_key,display_name,uei_count,total_obligation,worst_confidence)
+    con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
+    con.execute("insert into dim_entities values ('lockheed','Lockheed Martin',5,50000000.0,'medium')")
 
     # 5. fct_influence
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
@@ -161,21 +161,21 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("insert into dim_lobbyists values ('J. Smith','Deputy Secretary of Defense',5,true)")
 
-    # 8. fct_program_concentration
-    con.execute("create table fct_program_concentration (pe_bli varchar, organization varchar, hhi double, top_recipient varchar)")
-    con.execute("insert into fct_program_concentration values ('0601101E','DARPA',4200.0,'Lockheed Martin')")
+    # 8. fct_program_concentration  (live cols: pe_bli,hhi,top_family,family_count,program_dollars)
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute("insert into fct_program_concentration values ('0601101E',4200.0,'Lockheed Martin',12,500000000.0)")
 
-    # 9. fct_improper_exposure
-    con.execute("create table fct_improper_exposure (agency_code varchar, program_name varchar, improper_rate double, obligations_usd double)")
-    con.execute("insert into fct_improper_exposure values ('097','DARPA Research',0.03,280000000.0)")
+    # 9. fct_improper_exposure  (live cols: agency_code,program_count,derived_improper_amount_usd,weighted_rate_pct,latest_fiscal_year)
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("insert into fct_improper_exposure values ('097',5,8400000.0,0.03,2025)")
 
-    # 10. dim_geography
-    con.execute("create table dim_geography (recipient_uei varchar, state_code varchar, congressional_district varchar)")
-    con.execute("insert into dim_geography values ('UEI123456','VA','VA-08')")
+    # 10. dim_geography  (live cols: pop_state,pop_district,transaction_count,total_obligation)
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("insert into dim_geography values ('VA','VA-08',150,5000000.0)")
 
-    # 11. fct_state_per_capita
-    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year integer, total_amount_usd double, population integer, amount_per_capita double)")
-    con.execute("insert into fct_state_per_capita values ('CA','Education',2025,5000000000.0,39500000,126.58)")
+    # 11. fct_state_per_capita  (live cols: jurisdiction,comparable_category,fiscal_year varchar,total_amount_usd,population,amount_per_capita,pop_year_used,spend_source_url,pop_source_url,coverage_note)
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.execute("insert into fct_state_per_capita values ('CA','Education','2025',5000000000.0,39500000,126.58,2020,'https://example.com/spend','https://example.com/pop','full state')")
 
     con.close()
 
@@ -664,3 +664,418 @@ def test_export_site_jbook_sha256_dedup(pg_dsn, tmp_path):
     from govbudget.verify_phase5b1 import integrity_gate5b1
     igr = integrity_gate5b1(site)
     assert igr["ok"] is True, f"integrity_gate5b1 failed after sha-dedup export: {igr}"
+
+
+# ---------------------------------------------------------------------------
+# Task 1 (Phase 5B-2): JSON sidecars
+# ---------------------------------------------------------------------------
+
+
+def _run_export_with_sidecars(pg_dsn, tmp_path):
+    """Helper: seed minimal data, run export_site, return (site_path, out_dict)."""
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    out = export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    return site, out
+
+
+def test_json_sidecars_return_dict_and_manifest(pg_dsn, tmp_path):
+    """export_site return dict gains 'json_files'; manifest gains 'json_sidecars'."""
+    site, out = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    assert "json_files" in out, "return dict missing 'json_files' key"
+    assert isinstance(out["json_files"], int)
+    assert out["json_files"] > 0
+
+    man = json.loads((site / "manifest.json").read_text())
+    assert "json_sidecars" in man, "manifest missing 'json_sidecars' key"
+    assert man["json_sidecars"] == out["json_files"]
+
+
+def test_json_dir_created(pg_dsn, tmp_path):
+    """out_dir/json/ directory is created."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+    assert (site / "json").is_dir()
+
+
+def test_programs_json_schema(pg_dsn, tmp_path):
+    """programs.json has expected top-level fields per program entry."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    programs_path = site / "json" / "programs.json"
+    assert programs_path.exists(), "programs.json missing"
+
+    programs = json.loads(programs_path.read_text())
+    assert isinstance(programs, list)
+    assert len(programs) >= 1
+
+    p = programs[0]
+    required_keys = {
+        "pe_bli", "org", "exhibit_family", "title", "project_count",
+        "fully_reconciled", "fy2024_actual_millions",
+        "fy2024_fact_id",  # nullable
+        "trajectory",      # nullable
+        "narrative_count", "award_count", "hhi",
+    }
+    assert required_keys <= set(p.keys()), f"programs.json entry missing keys: {required_keys - set(p.keys())}"
+
+    # fy2024_fact_id: string or null
+    fid = p["fy2024_fact_id"]
+    assert fid is None or (isinstance(fid, str) and len(fid) == 16), f"bad fy2024_fact_id: {fid!r}"
+
+    # trajectory: dict or null
+    traj = p["trajectory"]
+    if traj is not None:
+        assert "fy2024_actuals" in traj
+        assert "fy2025_total" in traj
+        assert "fy2026_total" in traj
+        assert "fy2526_change" in traj
+        assert "fy2526_pct_change" in traj
+
+
+def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
+    """A program whose pe_bli has no PriorYear+null_project_number detail row
+    must have fy2024_fact_id=null in programs.json."""
+    # The seeded dim_programs has pe_bli='0601101E'. We seed a budget_line_detail
+    # only with scenario='PriorYear' and project_number=None (via _seed_jbook_doc).
+    # To test the null case: seed a second program row with a different pe_bli
+    # that has NO jbook detail.
+    db = tmp_path / "wh.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    # Copy _make_test_duckdb but add a second dim_programs row with no matching details
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("insert into dim_programs values ('9999ZZZZ','Orphan Program','DARPA','rdte',0,0.0,false)")
+    # Build the rest of the tables
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
+    con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.close()
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+    build_provenance_pages(pg_dsn)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    programs = json.loads((site / "json" / "programs.json").read_text())
+    by_pe = {p["pe_bli"]: p for p in programs}
+
+    # 9999ZZZZ has no jbook details → fact_id must be null
+    assert "9999ZZZZ" in by_pe, "9999ZZZZ not in programs.json"
+    assert by_pe["9999ZZZZ"]["fy2024_fact_id"] is None, (
+        f"expected null fy2024_fact_id for 9999ZZZZ, got {by_pe['9999ZZZZ']['fy2024_fact_id']}"
+    )
+    # 0601101E may have a fact_id (depends on provenance resolution)
+    # — just confirm it's not missing from programs.json
+    assert "0601101E" in by_pe
+
+
+def test_programs_json_org_translation(pg_dsn, tmp_path):
+    """Forward org translation: DPAP program joins OSD trajectory row (not DPAP)."""
+    # Fixture: add DPAP program + OSD trajectory row; also keep OSD program + OSD trajectory.
+    db = tmp_path / "wh.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    # OSD program — direct join
+    con.execute("insert into dim_programs values ('OSDPROG1','OSD Program','OSD','rdte',1,10.0,false)")
+    # DPAP program — forward-translated to OSD
+    con.execute("insert into dim_programs values ('DPAPPROG1','DPAP Program','DPAP','rdte',1,5.0,false)")
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    con.execute("insert into fct_budget_trajectory values ('OSDPROG1','OSD',10000.0,11000.0,12000.0,2000.0,18.18)")
+    con.execute("insert into fct_budget_trajectory values ('DPAPPROG1','OSD',5000.0,5500.0,6000.0,500.0,9.09)")
+    con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
+    con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.close()
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+    build_provenance_pages(pg_dsn)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    programs = json.loads((site / "json" / "programs.json").read_text())
+    by_pe = {p["pe_bli"]: p for p in programs}
+
+    # OSD program joins its own trajectory row directly
+    assert by_pe["OSDPROG1"]["trajectory"] is not None, "OSD program should have trajectory"
+    assert by_pe["OSDPROG1"]["trajectory"]["fy2026_total"] == 12000.0
+
+    # DPAP program joins OSD trajectory (forward translation: DPAP → OSD)
+    assert by_pe["DPAPPROG1"]["trajectory"] is not None, (
+        "DPAP program should join OSD trajectory via forward translation"
+    )
+    assert by_pe["DPAPPROG1"]["trajectory"]["fy2026_total"] == 6000.0
+
+
+def test_program_details_json_structure(pg_dsn, tmp_path):
+    """program_details/{pe_bli}.json has correct keys; zero-amount detail carries xml_path."""
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    detail_dir = site / "json" / "program_details"
+    assert detail_dir.is_dir(), "program_details/ directory missing"
+
+    detail_files = list(detail_dir.glob("*.json"))
+    assert len(detail_files) >= 1, "no program_details JSON files written"
+
+    # Parse the one we seeded
+    det_path = detail_dir / "0601101E.json"
+    assert det_path.exists(), "0601101E.json not found in program_details/"
+
+    det = json.loads(det_path.read_text())
+    required_keys = {"details", "narratives", "budget_lines", "awards", "mentions"}
+    assert required_keys <= set(det.keys()), f"missing keys: {required_keys - set(det.keys())}"
+
+    # details rows must have resolution and xml_path always present
+    assert isinstance(det["details"], list)
+    if det["details"]:
+        d = det["details"][0]
+        assert "fact_id" in d
+        assert "scenario" in d
+        assert "resolution" in d, "resolution must be present on every detail row"
+        assert "xml_path" in d, "xml_path must be present on every detail row (zero-amount chip depends on it)"
+
+    # budget_lines rows
+    assert isinstance(det["budget_lines"], list)
+    if det["budget_lines"]:
+        bl = det["budget_lines"][0]
+        assert "fact_id" in bl
+        assert "amount_thousands" in bl
+        assert "source_sheet" in bl
+        assert "source_cells" in bl
+
+    # mentions rows
+    assert isinstance(det["mentions"], list)
+    if det["mentions"]:
+        m = det["mentions"][0]
+        assert "filing_uuid" in m
+        assert "filing_url" in m
+        assert "description_snippet" in m
+
+
+def test_entities_top_json_schema(pg_dsn, tmp_path):
+    """entities_top.json has correct schema with uei_count and worst_confidence."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    path = site / "json" / "entities_top.json"
+    assert path.exists(), "entities_top.json missing"
+
+    entities = json.loads(path.read_text())
+    assert isinstance(entities, list)
+
+    if entities:
+        e = entities[0]
+        required = {"family_key", "slug", "display_name", "uei_count",
+                    "total_obligation", "worst_confidence"}
+        assert required <= set(e.keys()), f"missing keys: {required - set(e.keys())}"
+        # slug = family_key.lower().replace(' ', '-')
+        assert e["slug"] == e["family_key"].lower().replace(" ", "-")
+
+
+def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
+    """A family_key whose display_name exactly matches an award recipient_name
+    gets >0 award rows; a non-matching family gets []."""
+    # Seed a dim_entities row matching the fct_budget_to_awards recipient_name 'Lockheed Martin'
+    db = tmp_path / "wh.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,280.494,true)")
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    # Award whose recipient_name matches 'Lockheed Martin' (the display_name we'll seed)
+    con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency','medium','Defense Research Sciences')")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    # Matching entity
+    con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
+    con.execute("insert into dim_entities values ('lockheed','Lockheed Martin',5,50000000.0,'medium')")
+    # Non-matching entity
+    con.execute("insert into dim_entities values ('boeing','The Boeing Company',3,30000000.0,'high')")
+    con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
+    con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.close()
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+    build_provenance_pages(pg_dsn)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    detail_dir = site / "json" / "entity_details"
+    assert detail_dir.is_dir()
+
+    # Lockheed Martin matches → should have awards
+    lm_path = detail_dir / "lockheed.json"
+    assert lm_path.exists(), "lockheed.json missing"
+    lm = json.loads(lm_path.read_text())
+    assert "awards" in lm
+    assert len(lm["awards"]) > 0, "expected >0 awards for matching family"
+    # influence rows have nonAdditive marker
+    if lm["influence"]:
+        assert "nonAdditive" in lm["influence"][0]
+        assert lm["influence"][0]["nonAdditive"] is True
+
+    # Boeing does not match → awards should be []
+    # slug = family_key.lower().replace(' ', '-') = 'boeing'
+    boeing_path = detail_dir / "boeing.json"
+    assert boeing_path.exists(), "boeing.json missing"
+    boeing = json.loads(boeing_path.read_text())
+    assert boeing["awards"] == [], f"expected empty awards for Boeing, got: {boeing['awards']}"
+
+
+def test_agencies_json_schema(pg_dsn, tmp_path):
+    """agencies.json has org, program_count, fy2024_total_millions, fy2026_total_thousands."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    path = site / "json" / "agencies.json"
+    assert path.exists(), "agencies.json missing"
+
+    agencies = json.loads(path.read_text())
+    assert isinstance(agencies, list)
+    assert len(agencies) >= 1
+
+    a = agencies[0]
+    required = {"org", "program_count", "fy2024_total_millions"}
+    assert required <= set(a.keys()), f"missing keys: {required - set(a.keys())}"
+    assert "fy2026_total_thousands" in a  # nullable
+
+
+def test_citations_json_keyed_by_fact_id(pg_dsn, tmp_path):
+    """citations.json is a dict keyed by fact_id; keys match citations.parquet."""
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    path = site / "json" / "citations.json"
+    assert path.exists(), "citations.json missing"
+
+    cit_json = json.loads(path.read_text())
+    assert isinstance(cit_json, dict)
+
+    # Keys must match citations.parquet fact_ids
+    cit_pq = site / "citations" / "citations.parquet"
+    if cit_pq.exists():
+        pq_ids = {r[0] for r in duckdb.sql(
+            f"select fact_id from read_parquet('{cit_pq}')"
+        ).fetchall()}
+        assert set(cit_json.keys()) == pq_ids, (
+            f"citations.json keys ({len(cit_json)}) don't match parquet "
+            f"({len(pq_ids)})"
+        )
+
+
+def test_search_quick_json_schema(pg_dsn, tmp_path):
+    """search_quick.json has docs array with program, company, agency, static entries."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    path = site / "json" / "search_quick.json"
+    assert path.exists(), "search_quick.json missing"
+
+    sq = json.loads(path.read_text())
+    assert "docs" in sq
+    docs = sq["docs"]
+    assert isinstance(docs, list)
+
+    kinds = {d["kind"] for d in docs}
+    assert "program" in kinds, "no program docs in search_quick"
+    assert "agency" in kinds, "no agency docs in search_quick"
+    assert "static" in kinds, "no static docs in search_quick"
+
+    # Program docs have required fields
+    prog_docs = [d for d in docs if d["kind"] == "program"]
+    assert prog_docs
+    pd_ = prog_docs[0]
+    assert "id" in pd_ and pd_["id"].startswith("p:")
+    assert "url" in pd_ and pd_["url"].startswith("/program/")
+    assert "pe_bli" in pd_
+    assert "org" in pd_
+    assert "dollars" in pd_  # nullable OK
+
+
+def test_site_meta_json(pg_dsn, tmp_path):
+    """site_meta.json has manifest passthrough + built_at + counts."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    path = site / "json" / "site_meta.json"
+    assert path.exists(), "site_meta.json missing"
+
+    meta = json.loads(path.read_text())
+    assert "built_at" in meta
+    assert "schema_version" in meta
+    assert meta["schema_version"] == 1
+    assert "uncited_datasets" in meta
+    assert "counts" in meta
+
+
+def test_json_sort_keys(pg_dsn, tmp_path):
+    """All JSON sidecar files are written with sort_keys=True."""
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+
+    json_dir = site / "json"
+    # Check a simple top-level file (site_meta.json must be sorted)
+    meta_text = (json_dir / "site_meta.json").read_text()
+    meta = json.loads(meta_text)
+    if isinstance(meta, dict):
+        keys = list(meta.keys())
+        assert keys == sorted(keys), f"site_meta.json keys not sorted: {keys}"
+
+    # Check programs.json entries
+    programs_text = (json_dir / "programs.json").read_text()
+    programs = json.loads(programs_text)
+    if programs and isinstance(programs[0], dict):
+        keys = list(programs[0].keys())
+        assert keys == sorted(keys), f"programs.json[0] keys not sorted: {keys}"

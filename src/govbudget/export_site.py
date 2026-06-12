@@ -1,8 +1,8 @@
-"""Phase 5B-1: typed site artifact export.
+"""Phase 5B-1/5B-2: typed site artifact export.
 
 export_site(dsn, duckdb_path, *, out_dir, pdf_base_url) → summary dict.
 
-Produces:
+Produces (5B-1):
   out_dir/data/{mart}.parquet      — 11 DuckDB mart tables, typed, zstd
   out_dir/data/jbook_details.parquet   — Postgres typed export w/ fact_id + resolution
   out_dir/data/jbook_narratives.parquet
@@ -11,6 +11,16 @@ Produces:
   out_dir/pdfs/{sha256}.pdf            — sha-named PDF copies
   out_dir/workbooks/{sha256}.xlsx      — sha-named XLSX copies
   out_dir/manifest.json
+
+Produces (5B-2 sidecars):
+  out_dir/json/programs.json
+  out_dir/json/program_details/{pe_bli}.json  (326 files)
+  out_dir/json/entities_top.json
+  out_dir/json/entity_details/{slug}.json     (top-200 entities)
+  out_dir/json/agencies.json
+  out_dir/json/citations.json
+  out_dir/json/search_quick.json
+  out_dir/json/site_meta.json
 
 Canonical identity functions (fact_id_*) are defined here and imported by
 verify_phase5b1 and tests — single source of truth.
@@ -524,6 +534,24 @@ def export_site(
         json.dumps(manifest, indent=2, sort_keys=True)
     )
 
+    # -----------------------------------------------------------------------
+    # 6. JSON sidecars (Phase 5B-2)
+    # -----------------------------------------------------------------------
+    n_json = _emit_json_sidecars(
+        out_dir=out_dir,
+        duckdb_path=duckdb_path,
+        detail_rows=detail_rows,
+        bl_rows=bl_rows,
+        citation_rows=citation_rows,
+        manifest=manifest,
+    )
+
+    # Update manifest with json_sidecars count
+    manifest["json_sidecars"] = n_json
+    (out_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True)
+    )
+
     return {
         "datasets": len(final_counts),
         "citations": len(citation_rows),
@@ -531,7 +559,587 @@ def export_site(
         "workbooks": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
         "skipped_zero_amount": skipped_zero_amount,
+        "json_files": n_json,
     }
+
+
+# ---------------------------------------------------------------------------
+# Org translation (mirrors govbudget.jbooks.orgs — no circular import needed)
+# ---------------------------------------------------------------------------
+
+_ORG_ALIASES: dict[str, str] = {
+    "CYBERCOM": "CYBER",
+    "CHIPS": "OSD",
+    "DPAP": "OSD",
+}
+
+
+def _workbook_org(org: str) -> str:
+    """Forward-translate program org to trajectory org key."""
+    return _ORG_ALIASES.get(org, org)
+
+
+# ---------------------------------------------------------------------------
+# JSON sidecar emission (Phase 5B-2)
+# ---------------------------------------------------------------------------
+
+
+def _emit_json_sidecars(
+    *,
+    out_dir: Path,
+    duckdb_path: Path,
+    detail_rows: list,
+    bl_rows: list,
+    citation_rows: list,
+    manifest: dict,
+) -> int:
+    """Emit all JSON sidecars to out_dir/json/.
+
+    Reads DuckDB mart tables (read-only) and uses the already-computed
+    detail_rows / bl_rows / citation_rows from the main export pass.
+
+    Returns:
+        Number of JSON files written (feeds into manifest["json_sidecars"]).
+    """
+    import duckdb as _duckdb
+
+    json_dir = out_dir / "json"
+    json_dir.mkdir(parents=True, exist_ok=True)
+
+    # -- Open DuckDB for mart reads ------------------------------------------
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        return _write_all_sidecars(
+            json_dir=json_dir,
+            out_dir=out_dir,
+            con=con,
+            detail_rows=detail_rows,
+            bl_rows=bl_rows,
+            citation_rows=citation_rows,
+            manifest=manifest,
+        )
+    finally:
+        con.close()
+
+
+def _write_all_sidecars(
+    *,
+    json_dir: Path,
+    out_dir: Path,
+    con,  # duckdb connection (read-only mart)
+    detail_rows: list,
+    bl_rows: list,
+    citation_rows: list,
+    manifest: dict,
+) -> int:
+    """Core sidecar writer; called from _emit_json_sidecars."""
+
+    n_files = 0
+
+    # ------------------------------------------------------------------ #
+    # 0. Build in-memory indexes from already-fetched data                #
+    # ------------------------------------------------------------------ #
+
+    # jbook_details index: pe_bli → list of detail dicts
+    # detail_rows cols: (fact_id, pe_bli, project_number, project_title, scenario,
+    #                    amount_millions, units, xml_path, org, exhibit_family,
+    #                    fiscal_year, document_sha256, resolution)
+    from collections import defaultdict
+
+    details_by_pe: dict[str, list] = defaultdict(list)
+    for row in detail_rows:
+        (fid, pe_bli, project_number, project_title, scenario,
+         amount_millions, units, xml_path, org, exhibit_family,
+         fiscal_year, document_sha256, resolution) = row
+        details_by_pe[pe_bli].append({
+            "fact_id": fid,
+            "project_number": project_number,
+            "project_title": project_title,
+            "scenario": scenario,
+            "amount_millions": amount_millions,
+            "units": units,
+            "resolution": resolution,
+            "xml_path": xml_path,
+        })
+
+    # fy2024_fact_id index: pe_bli → fact_id (jbook_details WHERE
+    # project_number IS NULL AND scenario='PriorYear'; nullable if absent)
+    fy2024_fact_id: dict[str, str] = {}
+    for row in detail_rows:
+        (fid, pe_bli, project_number, project_title, scenario, *rest) = row
+        if project_number is None and scenario == "PriorYear":
+            if pe_bli not in fy2024_fact_id:
+                fy2024_fact_id[pe_bli] = fid
+
+    # budget_lines index: pe_bli → list of bl dicts
+    # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
+    #                organization, budget_activity, budget_activity_title,
+    #                pe_bli, title, amount_type, amount_thousands, units,
+    #                document_sha256, source_sheet, source_cells)
+    bl_by_pe: dict[str, list] = defaultdict(list)
+    for row in bl_rows:
+        (fid, exhibit, fiscal_year, account, account_title,
+         organization, budget_activity, budget_activity_title,
+         pe_bli, title, amount_type, amount_thousands, units,
+         document_sha256, source_sheet, source_cells) = row
+        bl_by_pe[pe_bli].append({
+            "fact_id": fid,
+            "exhibit": exhibit,
+            "amount_type": amount_type,
+            "amount_thousands": amount_thousands,
+            "units": units,
+            "account_title": account_title,
+            "organization": organization,
+            "source_sheet": source_sheet,
+            "source_cells": source_cells,
+        })
+
+    # ------------------------------------------------------------------ #
+    # 1. Load mart tables from DuckDB                                     #
+    # ------------------------------------------------------------------ #
+
+    # dim_programs
+    prog_rows = con.execute(
+        "select pe_bli, org, exhibit_family, title, project_count,"
+        " fy2024_actual_millions, fully_reconciled from dim_programs"
+    ).fetchall()
+
+    # fct_budget_trajectory → keyed by (pe_bli, organization)
+    traj_rows = con.execute(
+        "select pe_bli, organization, fy2024_actuals, fy2025_total,"
+        " fy2026_total, fy2526_change, fy2526_pct_change"
+        " from fct_budget_trajectory"
+    ).fetchall()
+    traj_index: dict[tuple, dict] = {}
+    for r in traj_rows:
+        traj_index[(r[0], r[1])] = {
+            "fy2024_actuals": r[2],
+            "fy2025_total": r[3],
+            "fy2026_total": r[4],
+            "fy2526_change": r[5],
+            "fy2526_pct_change": r[6],
+        }
+
+    # fct_program_lobbying — narratives / mentions
+    lob_rows = con.execute(
+        "select filing_uuid, pe_bli, program_title, matched_term,"
+        " description_snippet, filing_url, client_name, family_key, filing_year"
+        " from fct_program_lobbying"
+    ).fetchall()
+    mentions_by_pe: dict[str, list] = defaultdict(list)
+    for r in lob_rows:
+        (filing_uuid, pe_bli, program_title, matched_term,
+         description_snippet, filing_url, client_name, family_key, filing_year) = r
+        if not filing_uuid or not pe_bli:
+            continue
+        mentions_by_pe[pe_bli].append({
+            "filing_uuid": filing_uuid,
+            "matched_term": matched_term,
+            "description_snippet": description_snippet,
+            "filing_url": filing_url,
+            "client_name": client_name,
+            "family_key": family_key,
+            "filing_year": filing_year,
+        })
+
+    # fct_budget_to_awards
+    awards_rows = con.execute(
+        "select pe_bli, award_piid, recipient_name, confidence"
+        " from fct_budget_to_awards"
+    ).fetchall()
+    awards_by_pe: dict[str, list] = defaultdict(list)
+    for r in awards_rows:
+        pe_bli, award_piid, recipient_name, confidence = r
+        awards_by_pe[pe_bli].append({
+            "recipient_name": recipient_name,
+            "award_piid": award_piid,
+            "confidence": confidence,
+        })
+
+    # fct_program_concentration — HHI keyed by pe_bli
+    conc_rows = con.execute(
+        "select pe_bli, hhi, top_family, family_count, program_dollars"
+        " from fct_program_concentration"
+    ).fetchall()
+    hhi_by_pe: dict[str, dict] = {}
+    for r in conc_rows:
+        pe_bli, hhi, top_family, family_count, program_dollars = r
+        hhi_by_pe[pe_bli] = {
+            "hhi": hhi,
+            "top_family": top_family,
+            "family_count": family_count,
+            "program_dollars": program_dollars,
+        }
+
+    # jbook_narratives — from detail_rows we don't have narratives;
+    # we need to re-read from the written parquet or store them in memory.
+    # Since narratives come from a separate Postgres query, we read the
+    # already-written parquet file.
+    narr_by_pe: dict[str, list] = defaultdict(list)
+    narr_pq = out_dir / "data" / "jbook_narratives.parquet"
+    if narr_pq.exists():
+        import duckdb as _duckdb2
+        narr_rows = _duckdb2.sql(
+            f"select pe_bli, kind, title, body from read_parquet('{narr_pq}')"
+        ).fetchall()
+        for pe_bli, kind, title, body in narr_rows:
+            narr_by_pe[pe_bli].append({"kind": kind, "title": title, "body": body})
+
+    # dim_entities top-200 (ordered by total_obligation desc)
+    entity_rows = con.execute(
+        "select family_key, display_name, uei_count, total_obligation, worst_confidence"
+        " from dim_entities order by total_obligation desc limit 200"
+    ).fetchall()
+
+    # Build set of top-200 family_keys for mention link resolution
+    top200_family_keys: set[str] = {r[0] for r in entity_rows}
+
+    # fct_influence keyed by family_key
+    influence_rows = con.execute(
+        "select family_key, filing_year, filings_count, lobbying_income_usd,"
+        " lobbying_expense_usd, lobbying_total_usd, family_obligations_usd"
+        " from fct_influence"
+    ).fetchall()
+    influence_by_fk: dict[str, list] = defaultdict(list)
+    for r in influence_rows:
+        (fk, filing_year, filings_count, lobbying_income_usd,
+         lobbying_expense_usd, lobbying_total_usd, family_obligations_usd) = r
+        influence_by_fk[fk].append({
+            "filing_year": filing_year,
+            "filings_count": filings_count,
+            "lobbying_income_usd": lobbying_income_usd,
+            "lobbying_expense_usd": lobbying_expense_usd,
+            "lobbying_total_usd": lobbying_total_usd,
+            "family_obligations_usd": family_obligations_usd,
+            "nonAdditive": True,
+        })
+
+    # fct_program_lobbying keyed by family_key (for entity_details/mentions)
+    mentions_by_fk: dict[str, list] = defaultdict(list)
+    for r in lob_rows:
+        (filing_uuid, pe_bli, program_title, matched_term,
+         description_snippet, filing_url, client_name, family_key, filing_year) = r
+        if not family_key or not pe_bli:
+            continue
+        mentions_by_fk[family_key].append({
+            "filing_uuid": filing_uuid,
+            "pe_bli": pe_bli,
+            "program_title": program_title,
+            "matched_term": matched_term,
+            "filing_year": filing_year,
+            "filing_url": filing_url,
+        })
+
+    # awards by display_name (for entity_details; exact match only)
+    awards_by_display: dict[str, list] = defaultdict(list)
+    for r in awards_rows:
+        pe_bli, award_piid, recipient_name, confidence = r
+        if recipient_name:
+            awards_by_display[recipient_name].append({
+                "pe_bli": pe_bli,
+                "award_piid": award_piid,
+                "confidence": confidence,
+            })
+
+    # dim_programs set for linked_programs computation
+    prog_titles: dict[str, str] = {}
+    for r in prog_rows:
+        prog_titles[r[0]] = r[3]  # pe_bli → title
+
+    # ------------------------------------------------------------------ #
+    # 2. programs.json                                                    #
+    # ------------------------------------------------------------------ #
+
+    programs_list = []
+    for r in prog_rows:
+        pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
+        translated = _workbook_org(org)
+        traj = traj_index.get((pe_bli, translated))
+        programs_list.append({
+            "award_count": len(awards_by_pe.get(pe_bli, [])),
+            "exhibit_family": exhibit_family,
+            "fy2024_actual_millions": fy2024_actual_millions,
+            "fy2024_fact_id": fy2024_fact_id.get(pe_bli),
+            "fully_reconciled": fully_reconciled,
+            "hhi": hhi_by_pe.get(pe_bli),
+            "narrative_count": len(narr_by_pe.get(pe_bli, [])),
+            "org": org,
+            "pe_bli": pe_bli,
+            "project_count": project_count,
+            "title": title,
+            "trajectory": traj,
+        })
+
+    _write_json(json_dir / "programs.json", programs_list)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 3. program_details/{pe_bli}.json  (one file per program)           #
+    # ------------------------------------------------------------------ #
+
+    det_dir = json_dir / "program_details"
+    det_dir.mkdir(exist_ok=True)
+
+    all_pe_blis = {r[0] for r in prog_rows}
+    for pe_bli in all_pe_blis:
+        obj = {
+            "awards": awards_by_pe.get(pe_bli, []),
+            "budget_lines": bl_by_pe.get(pe_bli, []),
+            "details": details_by_pe.get(pe_bli, []),
+            "mentions": _build_mentions(
+                mentions_by_pe.get(pe_bli, []),
+                top200_family_keys,
+            ),
+            "narratives": narr_by_pe.get(pe_bli, []),
+        }
+        _write_json(det_dir / f"{pe_bli}.json", obj)
+        n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 4. entities_top.json                                               #
+    # ------------------------------------------------------------------ #
+
+    entities_list = []
+    for r in entity_rows:
+        family_key, display_name, uei_count, total_obligation, worst_confidence = r
+        slug = family_key.lower().replace(" ", "-")
+        entities_list.append({
+            "display_name": display_name,
+            "family_key": family_key,
+            "slug": slug,
+            "total_obligation": total_obligation,
+            "uei_count": uei_count,
+            "worst_confidence": worst_confidence,
+        })
+
+    _write_json(json_dir / "entities_top.json", entities_list)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 5. entity_details/{slug}.json  (one file per top-200 entity)       #
+    # ------------------------------------------------------------------ #
+
+    ent_dir = json_dir / "entity_details"
+    ent_dir.mkdir(exist_ok=True)
+
+    for r in entity_rows:
+        family_key, display_name, uei_count, total_obligation, worst_confidence = r
+        slug = family_key.lower().replace(" ", "-")
+
+        # awards: recipient_name == display_name exact match
+        entity_awards = awards_by_display.get(display_name, [])
+
+        # mentions from fct_program_lobbying by family_key
+        ent_mentions = mentions_by_fk.get(family_key, [])
+
+        # linked_programs: distinct pe_bli from mentions that are in dim_programs
+        linked: list[dict] = []
+        seen_pe: set[str] = set()
+        for m in ent_mentions:
+            p = m["pe_bli"]
+            if p in prog_titles and p not in seen_pe:
+                linked.append({"pe_bli": p, "title": prog_titles[p]})
+                seen_pe.add(p)
+
+        obj = {
+            "awards": entity_awards,
+            "influence": influence_by_fk.get(family_key, []),
+            "linked_programs": linked,
+            "mentions": ent_mentions,
+        }
+        _write_json(ent_dir / f"{slug}.json", obj)
+        n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 6. agencies.json                                                   #
+    # ------------------------------------------------------------------ #
+
+    # Compute per-org: program_count, fy2024 total, fy2026 sum
+    from collections import Counter
+    org_prog_count: Counter = Counter()
+    org_fy2024_millions: dict[str, float] = {}
+    org_fy2026_thousands: dict[str, float] = {}
+
+    for r in prog_rows:
+        pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
+        org_prog_count[org] += 1
+        cur = org_fy2024_millions.get(org, 0.0)
+        org_fy2024_millions[org] = cur + (fy2024_actual_millions or 0.0)
+        # Sum trajectory fy2026_total for this program (using forward-translated org)
+        translated = _workbook_org(org)
+        traj = traj_index.get((pe_bli, translated))
+        if traj and traj["fy2026_total"] is not None:
+            org_fy2026_thousands[org] = (
+                org_fy2026_thousands.get(org, 0.0) + traj["fy2026_total"]
+            )
+
+    agencies_list = []
+    for org in sorted(org_prog_count.keys()):
+        fy26 = org_fy2026_thousands.get(org)  # None if no trajectories
+        agencies_list.append({
+            "fy2024_total_millions": org_fy2024_millions.get(org, 0.0),
+            "fy2026_total_thousands": fy26,
+            "org": org,
+            "program_count": org_prog_count[org],
+        })
+
+    _write_json(json_dir / "agencies.json", agencies_list)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 7. citations.json  (keyed by fact_id)                              #
+    # ------------------------------------------------------------------ #
+
+    # citation_rows cols: (fact_id, kind, units, amount_text, page_number,
+    #                      x0, x1, top_pt, bottom_pt, page_width, page_height,
+    #                      resolution, sheet, cells, amount_thousands, sha256,
+    #                      hosted_pdf_url, official_url, xml_path, retrieved_at)
+    citations_dict: dict[str, dict] = {}
+    for row in citation_rows:
+        (fid, kind, units, amount_text, page_number, x0, x1,
+         top_pt, bottom_pt, page_width, page_height, resolution,
+         sheet, cells, amount_thousands, sha256, hosted_pdf_url,
+         official_url, xml_path, retrieved_at) = row
+        citations_dict[fid] = {
+            "amount_text": amount_text,
+            "amount_thousands": amount_thousands,
+            "bottom_pt": bottom_pt,
+            "cells": cells,
+            "hosted_pdf_url": hosted_pdf_url,
+            "kind": kind,
+            "official_url": official_url,
+            "page_height": page_height,
+            "page_number": page_number,
+            "page_width": page_width,
+            "resolution": resolution,
+            "retrieved_at": retrieved_at,
+            "sha256": sha256,
+            "sheet": sheet,
+            "top_pt": top_pt,
+            "units": units,
+            "x0": x0,
+            "x1": x1,
+            "xml_path": xml_path,
+        }
+
+    _write_json(json_dir / "citations.json", citations_dict)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 8. search_quick.json                                               #
+    # ------------------------------------------------------------------ #
+
+    search_docs: list[dict] = []
+
+    # Program docs
+    for r in prog_rows:
+        pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
+        translated = _workbook_org(org)
+        traj = traj_index.get((pe_bli, translated))
+        # dollars: fy2026_total (already thousands) ?? fy2024_actual_millions * 1000
+        dollars = None
+        if traj and traj["fy2026_total"] is not None:
+            dollars = traj["fy2026_total"]
+        elif fy2024_actual_millions is not None:
+            dollars = fy2024_actual_millions * 1000.0
+        search_docs.append({
+            "dollars": dollars,
+            "id": f"p:{pe_bli}",
+            "kind": "program",
+            "org": org,
+            "pe_bli": pe_bli,
+            "title": title,
+            "url": f"/program/{pe_bli}/",
+        })
+
+    # Entity (company) docs — top-200
+    for r in entity_rows:
+        family_key, display_name, uei_count, total_obligation, worst_confidence = r
+        slug = family_key.lower().replace(" ", "-")
+        search_docs.append({
+            "id": f"c:{slug}",
+            "kind": "company",
+            "title": display_name,
+            "url": f"/company/{slug}/",
+        })
+
+    # Agency docs
+    for org in sorted(org_prog_count.keys()):
+        search_docs.append({
+            "id": f"a:{org}",
+            "kind": "agency",
+            "title": org,
+            "url": f"/agency/{org}/",
+        })
+
+    # Static pages
+    static_pages = [
+        {"id": "s:home", "kind": "static", "title": "GovBudget", "url": "/"},
+        {"id": "s:programs", "kind": "static", "title": "Programs", "url": "/programs/"},
+        {"id": "s:companies", "kind": "static", "title": "Companies", "url": "/companies/"},
+        {"id": "s:data", "kind": "static", "title": "Data Explorer", "url": "/data/"},
+        {"id": "s:downloads", "kind": "static", "title": "Downloads", "url": "/downloads/"},
+        {"id": "s:methodology", "kind": "static", "title": "Methodology", "url": "/methodology/"},
+        {"id": "s:about", "kind": "static", "title": "About", "url": "/about/"},
+    ]
+    search_docs.extend(static_pages)
+
+    _write_json(json_dir / "search_quick.json", {"docs": search_docs})
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 9. site_meta.json                                                  #
+    # ------------------------------------------------------------------ #
+
+    # Compute counts for the meta file
+    meta_counts = {
+        "agencies": len(org_prog_count),
+        "citations": len(citation_rows),
+        "companies": len(entity_rows),
+        "programs": len(prog_rows),
+    }
+
+    site_meta = {
+        "built_at": manifest.get("built_at"),
+        "counts": meta_counts,
+        "pdf_base_url": manifest.get("pdf_base_url"),
+        "schema_version": manifest.get("schema_version", 1),
+        "skipped_unresolved": manifest.get("skipped_unresolved", 0),
+        "skipped_zero_amount": manifest.get("skipped_zero_amount", 0),
+        "uncited_datasets": manifest.get("uncited_datasets", []),
+    }
+
+    _write_json(json_dir / "site_meta.json", site_meta)
+    n_files += 1
+
+    return n_files
+
+
+def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:
+    """Enrich mention dicts with filing_url derived from filing_uuid.
+
+    The filing_url stored in fct_program_lobbying is the API URL; it's
+    passed through as-is. The human LDA URL (for display) is derived
+    as: https://lda.senate.gov/filings/public/filing/{uuid}/print/
+    This lives in the site layer — sidecars store the API URL.
+    """
+    result = []
+    for m in raw_mentions:
+        result.append({
+            "client_name": m.get("client_name"),
+            "description_snippet": m.get("description_snippet"),
+            "family_key": m.get("family_key"),
+            "filing_url": m.get("filing_url"),
+            "filing_uuid": m.get("filing_uuid"),
+            "filing_year": m.get("filing_year"),
+            "matched_term": m.get("matched_term"),
+        })
+    return result
+
+
+def _write_json(path: Path, obj) -> None:
+    """Write obj as JSON with sort_keys=True."""
+    path.write_text(json.dumps(obj, sort_keys=True))
 
 
 # ---------------------------------------------------------------------------
