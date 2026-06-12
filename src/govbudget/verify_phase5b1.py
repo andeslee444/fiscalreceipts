@@ -178,6 +178,8 @@ def citation_gate5b1(
             reason = _verify_workbook(site_dir, row, col_idx)
         elif kind == "lda_filing":
             reason = _verify_lda(row, col_idx)
+        elif kind == "derived":
+            reason = _verify_derived(row, col_idx, all_cits, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -341,6 +343,115 @@ def _verify_lda(row: tuple, idx: dict) -> str | None:
     return None
 
 
+_FACT_ID_PATTERN = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _verify_derived(
+    row: tuple,
+    idx: dict,
+    all_cits: list[tuple],
+    cit_idx: dict,
+) -> str | None:
+    """Verify a derived citation.
+
+    Rules:
+    1. formula must be non-empty.
+    2. recorded_value must be present.
+    3. inputs is a JSON array string (may be []).
+    4. If all inputs are 16-hex fact_ids (i.e. references to other citations):
+       a. All referenced fact_ids must exist in the citation set.
+       b. For trajectory difference (formula contains ' - ') with exactly 2
+          16-hex inputs: recompute fy26 - fy25 within 0.001 tolerance.
+       c. For trajectory sum (formula starts with 'sum(budget_lines') with
+          16-hex inputs: recompute sum within 0.001 tolerance.
+    5. If inputs contain URLs (non-hex strings): shape check only.
+    """
+    import json as _json
+    from decimal import Decimal as D
+
+    formula = row[idx.get("formula", -1)] if "formula" in idx else None
+    inputs_raw = row[idx.get("inputs", -1)] if "inputs" in idx else None
+    recorded_value = row[idx.get("recorded_value", -1)] if "recorded_value" in idx else None
+
+    if not formula:
+        return "formula is null or empty"
+    if recorded_value is None:
+        return "recorded_value is null"
+
+    # Parse inputs
+    if inputs_raw is None:
+        inputs = []
+    else:
+        try:
+            inputs = _json.loads(inputs_raw)
+        except Exception as e:
+            return f"inputs not valid JSON: {e}"
+    if not isinstance(inputs, list):
+        return "inputs is not a JSON array"
+
+    # Check if all inputs are 16-hex fact_ids
+    all_fact_ids = all(isinstance(x, str) and _FACT_ID_PATTERN.match(x) for x in inputs)
+
+    if inputs and all_fact_ids:
+        # Build lookup: fact_id → recorded_value from citation set
+        fid_to_rv: dict[str, str | None] = {}
+        for cit_row in all_cits:
+            cit_fid = cit_row[cit_idx["fact_id"]]
+            cit_rv = cit_row[cit_idx.get("recorded_value", -1)] if "recorded_value" in cit_idx else None
+            fid_to_rv[cit_fid] = cit_rv
+
+        # Rule 4a: all input fact_ids must resolve
+        missing = [f for f in inputs if f not in fid_to_rv]
+        if missing:
+            return f"derived inputs not found in citations: {missing[:3]}"
+
+        # Rule 4b: difference formula (fy2526_change = fy2026 - fy2025)
+        if " - " in formula and len(inputs) == 2:
+            rv0 = fid_to_rv.get(inputs[0])
+            rv1 = fid_to_rv.get(inputs[1])
+            if rv0 is not None and rv1 is not None:
+                try:
+                    expected = D(rv0) - D(rv1)
+                    actual = D(recorded_value)
+                    if abs(actual - expected) > D("0.001"):
+                        return (
+                            f"derived difference recompute mismatch: "
+                            f"{rv0} - {rv1} = {expected} but recorded_value={recorded_value}"
+                        )
+                except Exception as e:
+                    return f"derived difference recompute error: {e}"
+
+        # Rule 4c: sum formula over fact_id inputs
+        elif formula.startswith("sum(budget_lines") and len(inputs) > 0:
+            values = []
+            for inp_fid in inputs:
+                rv = fid_to_rv.get(inp_fid)
+                if rv is not None:
+                    try:
+                        values.append(D(rv))
+                    except Exception:
+                        pass
+            if values:
+                try:
+                    expected_sum = sum(values, D(0))
+                    actual = D(recorded_value)
+                    if abs(actual - expected_sum) > D("0.001"):
+                        return (
+                            f"derived sum recompute mismatch: "
+                            f"sum({len(values)} inputs)={expected_sum} "
+                            f"but recorded_value={recorded_value}"
+                        )
+                except Exception as e:
+                    return f"derived sum recompute error: {e}"
+
+    # URL inputs or empty inputs: shape check only (no network, no arithmetic)
+    # Just confirm recorded_value is a parseable number or non-empty string
+    if recorded_value is not None and len(recorded_value.strip()) == 0:
+        return "recorded_value is blank"
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 2: integrity_gate5b1
 # ---------------------------------------------------------------------------
@@ -425,6 +536,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     jbook_cit_ids: set[str] = set()
     wb_cit_ids: set[str] = set()
     lda_cit_ids: set[str] = set()
+    derived_cit_ids: set[str] = set()
 
     for row in all_cit:
         kind = row[cidx["kind"]]
@@ -435,6 +547,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
             wb_cit_ids.add(fid)
         elif kind == "lda_filing":
             lda_cit_ids.add(fid)
+        elif kind == "derived":
+            derived_cit_ids.add(fid)
 
     # ---- jbook checks ----
     details_pq = site_dir / "data" / "jbook_details.parquet"
@@ -529,7 +643,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # A duplicate fact_id within a kind means a join fan-out slipped through (e.g. a
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
-    for kind in ("jbook_pdf", "workbook", "lda_filing"):
+    for kind in ("jbook_pdf", "workbook", "lda_filing", "derived"):
         con = duckdb.connect()
         try:
             row = con.execute(
@@ -579,6 +693,48 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["lda_fact_ids_in_mart"] = len(lda_not_in_mart) == 0
     else:
         checks["lda_fact_ids_in_mart"] = True
+
+    # ---- Derived checks ----
+    # For each derived citation: formula non-empty + recorded_value present.
+    # Input resolution: if inputs are fact_ids, they must all exist in citations.
+    if derived_cit_ids:
+        derived_failures: list[str] = []
+        # Build a fast fact_id lookup from all_cit
+        all_cit_fid_set = {r[cidx["fact_id"]] for r in all_cit}
+        for row in all_cit:
+            if row[cidx["kind"]] != "derived":
+                continue
+            fid = row[cidx["fact_id"]]
+            # formula must be non-empty
+            formula = row[cidx["formula"]] if "formula" in cidx else None
+            recorded_value = row[cidx["recorded_value"]] if "recorded_value" in cidx else None
+            inputs_raw = row[cidx["inputs"]] if "inputs" in cidx else None
+            if not formula:
+                derived_failures.append(f"derived {fid}: formula is null/empty")
+                continue
+            if recorded_value is None:
+                derived_failures.append(f"derived {fid}: recorded_value is null")
+                continue
+            # Check input fact_id resolution
+            if inputs_raw:
+                try:
+                    import json as _json
+                    import re as _re
+                    inputs_list = _json.loads(inputs_raw)
+                    _hex16 = _re.compile(r"^[0-9a-f]{16}$")
+                    fid_inputs = [x for x in inputs_list if isinstance(x, str) and _hex16.match(x)]
+                    for inp in fid_inputs:
+                        if inp not in all_cit_fid_set:
+                            derived_failures.append(
+                                f"derived {fid}: input fact_id {inp!r} not found in citations"
+                            )
+                except Exception:
+                    pass  # invalid JSON handled by citation_gate
+        if derived_failures:
+            failures.extend(derived_failures[:5])
+        checks["derived_formula_and_value"] = len(derived_failures) == 0
+    else:
+        checks["derived_formula_and_value"] = True
 
     # ---- Manifest rowcount check ----
     if man_path.exists():

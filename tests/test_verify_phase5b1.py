@@ -53,6 +53,21 @@ def _write_parquet(path: Path, col_defs: str, rows: list[tuple]) -> None:
         con.close()
 
 
+# ---------------------------------------------------------------------------
+# Common citation column definitions (updated for 5B-3 derived-tier schema)
+# ---------------------------------------------------------------------------
+
+_CIT_COL_DEFS = (
+    "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
+    " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
+    " page_width double, page_height double, resolution varchar,"
+    " sheet varchar, cells varchar, amount_thousands double,"
+    " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
+    " xml_path varchar, retrieved_at varchar,"
+    " formula varchar, inputs varchar, query_body varchar, recorded_value varchar"
+)
+
+
 def _make_workbook(path: Path, sheet_name: str = "Exhibit R-1") -> None:
     """Create a minimal XLSX with one data row."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -112,12 +127,7 @@ def _make_site_with_jbook_pdf(
     # citations.parquet with jbook_pdf row
     _write_parquet(
         site_dir / "citations" / "citations.parquet",
-        "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-        " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-        " page_width double, page_height double, resolution varchar,"
-        " sheet varchar, cells varchar, amount_thousands double,"
-        " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-        " xml_path varchar, retrieved_at varchar",
+        _CIT_COL_DEFS,
         [(fid, "jbook_pdf", "USD millions", amount_text, page_n,
           float(hit["x0"]), float(hit["x1"]),
           float(hit["top_pt"]), float(hit["bottom_pt"]),
@@ -127,7 +137,8 @@ def _make_site_with_jbook_pdf(
           sha,
           f"https://cdn.example/pdfs/{sha}.pdf#page={page_n}",
           f"https://example.mil/darpa.pdf#page={page_n}",
-          None, None)],
+          None, None,
+          None, None, None, None)],  # formula, inputs, query_body, recorded_value
     )
 
     return sha, page_n, hit
@@ -166,16 +177,12 @@ def _make_site_with_workbook(site_dir: Path) -> tuple[str, str]:
     # citations.parquet with workbook row
     _write_parquet(
         site_dir / "citations" / "citations.parquet",
-        "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-        " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-        " page_width double, page_height double, resolution varchar,"
-        " sheet varchar, cells varchar, amount_thousands double,"
-        " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-        " xml_path varchar, retrieved_at varchar",
+        _CIT_COL_DEFS,
         [(fid, "workbook", "USD thousands", None, None,
           None, None, None, None, None, None, None,
           "Exhibit R-1", "J2", 280494.0,
-          sha, None, "https://example.mil/r1.xlsx", None, None)],
+          sha, None, "https://example.mil/r1.xlsx", None, None,
+          None, None, None, None)],  # formula, inputs, query_body, recorded_value
     )
 
     return sha, fid
@@ -205,16 +212,12 @@ def _make_site_with_lda(site_dir: Path) -> tuple[str, str]:
 
     _write_parquet(
         site_dir / "citations" / "citations.parquet",
-        "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-        " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-        " page_width double, page_height double, resolution varchar,"
-        " sheet varchar, cells varchar, amount_thousands double,"
-        " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-        " xml_path varchar, retrieved_at varchar",
+        _CIT_COL_DEFS,
         [(fid, "lda_filing", None, None, None,
           None, None, None, None, None, None, None,
           None, None, None,
-          None, None, filing_url, None, None)],
+          None, None, filing_url, None, None,
+          None, None, None, None)],  # formula, inputs, query_body, recorded_value
     )
 
     return filing_uuid, fid
@@ -283,12 +286,7 @@ class TestCitationGate:
         (site / "citations").mkdir(parents=True)
         _write_parquet(
             site / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             [],
         )
         _write_manifest(site)
@@ -313,12 +311,7 @@ class TestCitationGate:
         (site / "citations").mkdir(parents=True, exist_ok=True)
         _write_parquet(
             site / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             [(fid, "jbook_pdf", "USD millions", "999999.000", page_n,
               float(hit["x0"]), float(hit["x1"]),
               float(hit["top_pt"]), float(hit["bottom_pt"]),
@@ -328,7 +321,8 @@ class TestCitationGate:
               sha,
               f"https://cdn.example/pdfs/{sha}.pdf#page={page_n}",
               f"https://example.mil/darpa.pdf#page={page_n}",
-              None, None)],
+              None, None,
+              None, None, None, None)],
         )
         _write_manifest(site, citations={"jbook_pdf": 1})
 
@@ -348,16 +342,12 @@ class TestCitationGate:
         (site / "citations").mkdir(parents=True, exist_ok=True)
         _write_parquet(
             site / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             [(fid, "workbook", "USD thousands", None, None,
               None, None, None, None, None, None, None,
               "Exhibit R-1", "J2", 999999.0,   # WRONG amount
-              sha, None, "https://example.mil/r1.xlsx", None, None)],
+              sha, None, "https://example.mil/r1.xlsx", None, None,
+              None, None, None, None)],
         )
         _write_manifest(site, citations={"workbook": 1})
 
@@ -373,16 +363,12 @@ class TestCitationGate:
         (site / "citations").mkdir(parents=True)
         _write_parquet(
             site / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             [(fid, "lda_filing", None, None, None,
               None, None, None, None, None, None, None,
               None, None, None,
-              None, None, "https://not-lda.example.com/f/1", None, None)],
+              None, None, "https://not-lda.example.com/f/1", None, None,
+              None, None, None, None)],
         )
         _write_manifest(site, citations={"lda_filing": 1})
 
@@ -398,16 +384,12 @@ class TestCitationGate:
         (site / "citations").mkdir(parents=True)
         _write_parquet(
             site / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             [(fid, "lda_filing", None, None, None,
               None, None, None, None, None, None, None,
               None, None, None,
-              None, None, "https://lda.senate.gov/filings/no-uuid-here/", None, None)],
+              None, None, "https://lda.senate.gov/filings/no-uuid-here/", None, None,
+              None, None, None, None)],
         )
         _write_manifest(site, citations={"lda_filing": 1})
 
@@ -470,6 +452,7 @@ class TestStratifiedSampling:
                 f"https://cdn.example/pdfs/{sha_pdf}.pdf#page={hit['page_number']}",
                 f"https://example.mil/darpa.pdf#page={hit['page_number']}",
                 None, None,
+                None, None, None, None,  # formula, inputs, query_body, recorded_value
             ))
 
         # 2 workbook rows
@@ -481,6 +464,7 @@ class TestStratifiedSampling:
                 None, None, None, None, None, None, None,
                 "Exhibit R-1", "J2", 280494.0,
                 sha_wb, None, "https://example.mil/r1.xlsx", None, None,
+                None, None, None, None,  # formula, inputs, query_body, recorded_value
             ))
 
         # 2 lda_filing rows (use a real UUID so the UUID check passes)
@@ -493,19 +477,12 @@ class TestStratifiedSampling:
                 None, None, None, None, None, None, None,
                 None, None, None,
                 None, None, f"https://lda.senate.gov/filings/{real_uuid}/", None, None,
+                None, None, None, None,  # formula, inputs, query_body, recorded_value
             ))
 
         all_rows = jbook_rows + wb_rows + lda_rows
 
-        col_defs = (
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar"
-        )
-        _write_parquet(site / "citations" / "citations.parquet", col_defs, all_rows)
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, all_rows)
         _write_manifest(site)
 
         # Build a fact_id → kind lookup for asserting per-kind coverage
@@ -635,24 +612,22 @@ class TestIntegrityGate:
              sha_pdf,
              f"https://cdn.example/pdfs/{sha_pdf}.pdf#page={page_n}",
              f"https://example.mil/darpa.pdf#page={page_n}",
-             None, None),
+             None, None,
+             None, None, None, None),  # formula, inputs, query_body, recorded_value
             (fid_wb, "workbook", "USD thousands", None, None,
              None, None, None, None, None, None, None,
              "Exhibit R-1", "J2", 280494.0,
-             sha_wb, None, "https://example.mil/r1.xlsx", None, None),
+             sha_wb, None, "https://example.mil/r1.xlsx", None, None,
+             None, None, None, None),  # formula, inputs, query_body, recorded_value
             (fid_lda, "lda_filing", None, None, None,
              None, None, None, None, None, None, None,
              None, None, None,
-             None, None, "https://lda.senate.gov/filings/uuid-001/", None, None),
+             None, None, "https://lda.senate.gov/filings/uuid-001/", None, None,
+             None, None, None, None),  # formula, inputs, query_body, recorded_value
         ]
         _write_parquet(
             site_dir / "citations" / "citations.parquet",
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             cit_rows,
         )
 
@@ -702,8 +677,9 @@ class TestIntegrityGate:
                      sha,
                      f"https://cdn.example/pdfs/{sha}.pdf#page={hit['page_number']}",
                      "https://example.mil/darpa.pdf#page=1",
-                     None, None)
-        _write_parquet(cit_pq, ", ".join(f"{c} varchar" for c in cols), existing + [extra_row])
+                     None, None,
+                     None, None, None, None)  # formula, inputs, query_body, recorded_value
+        _write_parquet(cit_pq, _CIT_COL_DEFS, existing + [extra_row])
 
         result = integrity_gate5b1(site)
         assert result["ok"] is False
@@ -763,15 +739,11 @@ class TestIntegrityGate:
         extra = (extra_fid, "workbook", "USD thousands", None, None,
                  None, None, None, None, None, None, None,
                  "Sheet1", "A1", 100.0,
-                 ids["sha_wb"], None, "https://example.mil/r1.xlsx", None, None)
+                 ids["sha_wb"], None, "https://example.mil/r1.xlsx", None, None,
+                 None, None, None, None)  # formula, inputs, query_body, recorded_value
         _write_parquet(
             cit_pq,
-            "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-            " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-            " page_width double, page_height double, resolution varchar,"
-            " sheet varchar, cells varchar, amount_thousands double,"
-            " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-            " xml_path varchar, retrieved_at varchar",
+            _CIT_COL_DEFS,
             existing + [extra],
         )
 
@@ -850,20 +822,14 @@ class TestCoverageReport:
 class TestCitationDistinctnessCheck:
     """citation_distinctness: raw row count == count(distinct fact_id) per kind."""
 
-    _CIT_COLS = (
-        "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
-        " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
-        " page_width double, page_height double, resolution varchar,"
-        " sheet varchar, cells varchar, amount_thousands double,"
-        " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
-        " xml_path varchar, retrieved_at varchar"
-    )
+    _CIT_COLS = _CIT_COL_DEFS
 
     def _lda_row(self, fid: str, uuid: str) -> tuple:
         url = f"https://lda.senate.gov/filings/{uuid}/"
         return (fid, "lda_filing", None, None, None,
                 None, None, None, None, None, None, None,
-                None, None, None, None, None, url, None, None)
+                None, None, None, None, None, url, None, None,
+                None, None, None, None)  # formula, inputs, query_body, recorded_value
 
     def test_duplicated_lda_fact_id_fails(self, tmp_path):
         """citations.parquet with the same lda_filing fact_id twice → FAIL."""
@@ -911,4 +877,213 @@ class TestCitationDistinctnessCheck:
 
         assert result["checks"].get("citation_distinctness") is True, (
             f"citation_distinctness should be True for distinct rows, got: {result}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Derived citation tier tests (Phase 5B-3)
+# ---------------------------------------------------------------------------
+
+
+from govbudget.export_site import fact_id_derived
+
+
+def _make_derived_row(fid: str, formula: str, inputs_json: str,
+                      recorded_value: str, units: str = "USD thousands",
+                      retrieved_at: str = "2026-06-12T00:00:00+00:00") -> tuple:
+    """Build a 24-element derived citation row."""
+    return (fid, "derived", units, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, retrieved_at,
+            formula, inputs_json, None, recorded_value)
+
+
+class TestFactIdDerived:
+    """fact_id_derived is deterministic and distinct."""
+
+    def test_stable_and_16hex(self):
+        fid = fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
+        assert len(fid) == 16
+        assert fid == fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
+
+    def test_differs_by_surface(self):
+        a = fact_id_derived("trajectory", "k", "m")
+        b = fact_id_derived("agency", "k", "m")
+        assert a != b
+
+    def test_differs_by_key(self):
+        a = fact_id_derived("trajectory", "k1", "m")
+        b = fact_id_derived("trajectory", "k2", "m")
+        assert a != b
+
+    def test_differs_by_metric(self):
+        a = fact_id_derived("trajectory", "k", "fy2025_total")
+        b = fact_id_derived("trajectory", "k", "fy2026_total")
+        assert a != b
+
+    def test_hash_prefix(self):
+        import hashlib
+        fid = fact_id_derived("x", "y", "z")
+        expected = hashlib.sha256("derived|x|y|z".encode()).hexdigest()[:16]
+        assert fid == expected
+
+
+class TestDerivedCitationGate:
+    """citation_gate5b1 handles derived kind correctly."""
+
+    def test_derived_happy_path(self, tmp_path):
+        """Derived row with formula + recorded_value → PASS."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
+        row = _make_derived_row(fid, "sum(budget_lines.amount_thousands where amount_type=fy_2026_total)",
+                                "[]", "295000.000")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"failures: {result.get('failures')}"
+        assert result["sampled"] >= 1
+
+    def test_derived_missing_formula_fails(self, tmp_path):
+        """Derived row with null formula → FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("agency", "DARPA", "fy2024_total_millions")
+        row = _make_derived_row(fid, "", "[]", "1234.000")  # empty formula
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "expected FAIL for empty formula"
+        assert len(result["failures"]) >= 1
+
+    def test_derived_missing_recorded_value_fails(self, tmp_path):
+        """Derived row with null recorded_value → FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("concentration", "0601101E", "hhi")
+        # Build row with recorded_value=None
+        row = (fid, "derived", "HHI", None,
+               None, None, None, None, None, None, None, None,
+               None, None, None, None, None, None, None, "2026-06-12T00:00:00",
+               "sum(share_pct^2) where obligation>0", "[]", None, None)  # recorded_value=None
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "expected FAIL for null recorded_value"
+
+    def test_derived_with_url_inputs_passes(self, tmp_path):
+        """Derived row with URL inputs (per-capita) → PASS (shape check only)."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("state_per_capita", "CA|Education", "amount_per_capita")
+        import json
+        inputs = json.dumps(["https://example.com/spend", "https://example.com/pop"])
+        row = _make_derived_row(fid,
+                                "total_amount_usd / population",
+                                inputs, "126.580000", "USD per capita")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"URL-input derived should pass: {result.get('failures')}"
+
+
+class TestDerivedRecompute:
+    """_verify_derived recomputes trajectory difference and sum."""
+
+    def test_trajectory_difference_recompute_pass(self, tmp_path):
+        """fy2526_change = fy2026 - fy2025: correct recompute → PASS."""
+        site = tmp_path / "site"
+        import json
+
+        fid_fy25 = fact_id_derived("trajectory", "0601101E|DARPA", "fy2025_total")
+        fid_fy26 = fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
+        fid_chg  = fact_id_derived("trajectory", "0601101E|DARPA", "fy2526_change")
+
+        rows = [
+            _make_derived_row(fid_fy25, "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+                              "[]", "293145.000"),
+            _make_derived_row(fid_fy26, "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+                              "[]", "295000.000"),
+            # fy2526_change = fy2026 - fy2025; inputs = [fid_fy26, fid_fy25]
+            _make_derived_row(fid_chg, "fy2026_total - fy2025_total",
+                              json.dumps([fid_fy26, fid_fy25]), "1855.000"),
+        ]
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, rows)
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"difference recompute should pass: {result.get('failures')}"
+
+    def test_trajectory_difference_recompute_wrong_value_fails(self, tmp_path):
+        """fy2526_change with wrong recorded_value → FAIL."""
+        site = tmp_path / "site"
+        import json
+
+        fid_fy25 = fact_id_derived("trajectory", "0601101E|DARPA", "fy2025_total")
+        fid_fy26 = fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
+        fid_chg  = fact_id_derived("trajectory", "0601101E|DARPA", "fy2526_change")
+
+        rows = [
+            _make_derived_row(fid_fy25, "sum(budget_lines...)", "[]", "293145.000"),
+            _make_derived_row(fid_fy26, "sum(budget_lines...)", "[]", "295000.000"),
+            # Wrong recorded_value: should be 1855 but says 9999
+            _make_derived_row(fid_chg, "fy2026_total - fy2025_total",
+                              json.dumps([fid_fy26, fid_fy25]), "9999.000"),
+        ]
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, rows)
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "wrong difference should fail"
+        assert any(fid_chg in str(f) for f in result["failures"])
+
+    def test_derived_inputs_missing_fact_id_fails(self, tmp_path):
+        """Derived row whose inputs reference a non-existent fact_id → FAIL."""
+        site = tmp_path / "site"
+        import json
+
+        fid_chg = fact_id_derived("trajectory", "0601101E|DARPA", "fy2526_change")
+        phantom_id = "deadbeef12345678"  # not in citations
+
+        row = _make_derived_row(fid_chg, "fy2026_total - fy2025_total",
+                                json.dumps([phantom_id, phantom_id]), "0.000")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "phantom input fact_id should fail"
+
+
+class TestDerivedIntegrityGate:
+    """integrity_gate5b1 checks derived formula+value."""
+
+    def test_derived_formula_and_value_check_passes(self, tmp_path):
+        """Derived row with formula+recorded_value → integrity PASS."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("state_per_capita", "VA|Defense", "amount_per_capita")
+        row = _make_derived_row(fid, "total_amount_usd / population",
+                                "[]", "55.123")
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("derived_formula_and_value") is True, (
+            f"expected pass for valid derived row: {result}"
+        )
+
+    def test_derived_missing_formula_fails_integrity(self, tmp_path):
+        """Derived row with null formula → integrity FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_derived("entity", "some-family", "total_obligation")
+        # Row with formula=None
+        row = (fid, "derived", "USD", None,
+               None, None, None, None, None, None, None, None,
+               None, None, None, None, None, None, None, "2026-06-12",
+               None, "[]", None, "5000000.000")  # formula=None
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("derived_formula_and_value") is False, (
+            f"expected fail for null formula: {result}"
         )

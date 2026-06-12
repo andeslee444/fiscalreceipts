@@ -233,8 +233,10 @@ def test_export_site_happy_path(pg_dsn, tmp_path):
     assert "schema_version" in man
     assert man["schema_version"] == 1
 
-    # fct_budget_trajectory should be in uncited_datasets (no citation tier yet)
-    assert "fct_budget_trajectory" in man["uncited_datasets"]
+    # fct_budget_to_awards is not in _CITED_DATASETS, so it should remain uncited
+    assert "fct_budget_to_awards" in man["uncited_datasets"]
+    # fct_budget_trajectory now has a derived citation tier (Task 2a)
+    assert "fct_budget_trajectory" not in man["uncited_datasets"]
 
     # manifest dataset rowcounts match actual files
     for name, count in man["datasets"].items():

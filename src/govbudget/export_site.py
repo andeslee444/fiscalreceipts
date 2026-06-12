@@ -66,6 +66,15 @@ def fact_id_lda(filing_uuid, pe_bli, matched_term) -> str:
     return hashlib.sha256(f"{filing_uuid}|{pe_bli}|{matched_term}".encode()).hexdigest()[:16]
 
 
+def fact_id_derived(surface: str, key: str, metric: str) -> str:
+    """Canonical identity for a derived (computed) citation.
+
+    sha256 of 'derived|{surface}|{key}|{metric}', hexdigest[:16].
+    All three components must be non-empty strings.
+    """
+    return hashlib.sha256(f"derived|{surface}|{key}|{metric}".encode()).hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
@@ -85,7 +94,20 @@ _MART_NAMES = [
 ]
 
 # Citation tiers — datasets that have a citation kind in this export
-_CITED_DATASETS = {"jbook_details", "budget_lines", "fct_program_lobbying"}
+# (derived rows cover fct_budget_trajectory, dim_programs, fct_program_concentration,
+#  fct_improper_exposure, fct_state_per_capita, dim_entities, fct_influence)
+_CITED_DATASETS = {
+    "jbook_details",
+    "budget_lines",
+    "fct_program_lobbying",
+    "fct_budget_trajectory",
+    "dim_programs",
+    "fct_program_concentration",
+    "fct_improper_exposure",
+    "fct_state_per_capita",
+    "dim_entities",
+    "fct_influence",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -389,6 +411,7 @@ def export_site(
                 official, # official_url
                 None,     # xml_path
                 ret_at,   # retrieved_at
+                None, None, None, None,  # formula, inputs, query_body, recorded_value
             ))
 
     # --- 4b. workbook citations ---
@@ -412,6 +435,7 @@ def export_site(
             None,  # official_url — populated below
             None,  # xml_path
             None,  # retrieved_at — populated below
+            None, None, None, None,  # formula, inputs, query_body, recorded_value
         ))
 
     # Populate official_url and retrieved_at for workbook citations
@@ -430,7 +454,8 @@ def export_site(
             (fid, kind, units, amount_text, page_number, x0, x1,
              top_pt, bottom_pt, page_width, page_height, resolution,
              sheet, cells, amount_thousands, sha256, hosted_pdf_url,
-             official_url, xml_path, retrieved_at) = row
+             official_url, xml_path, retrieved_at,
+             formula, inputs, query_body, recorded_value) = row
             if kind == "workbook" and sha256 in doc_lookup:
                 src_url, dl_at = doc_lookup[sha256]
                 official_url = src_url
@@ -440,6 +465,7 @@ def export_site(
                 top_pt, bottom_pt, page_width, page_height, resolution,
                 sheet, cells, amount_thousands, sha256, hosted_pdf_url,
                 official_url, xml_path, retrieved_at,
+                formula, inputs, query_body, recorded_value,
             ))
         citation_rows = updated
 
@@ -471,7 +497,16 @@ def export_site(
             filing_url,  # official_url
             None,  # xml_path
             None,  # retrieved_at
+            None, None, None, None,  # formula, inputs, query_body, recorded_value
         ))
+
+    # --- 4d. Derived citations (computed/formula figures on rendered surfaces) ---
+    derived_rows = _build_derived_citation_rows(
+        duckdb_path=duckdb_path,
+        bl_rows=bl_rows,
+        citation_rows=citation_rows,
+    )
+    citation_rows.extend(derived_rows)
 
     # Write citations.parquet
     _write_typed_parquet(
@@ -489,6 +524,9 @@ def export_site(
             ("sha256", "varchar"),
             ("hosted_pdf_url", "varchar"), ("official_url", "varchar"),
             ("xml_path", "varchar"), ("retrieved_at", "varchar"),
+            # Derived-tier columns (nullable for all other kinds)
+            ("formula", "varchar"), ("inputs", "varchar"),
+            ("query_body", "varchar"), ("recorded_value", "varchar"),
         ],
         rows=citation_rows,
     )
@@ -568,6 +606,460 @@ def export_site(
 # ---------------------------------------------------------------------------
 
 from govbudget.jbooks.orgs import workbook_org as _workbook_org
+
+
+# ---------------------------------------------------------------------------
+# Derived citation tier (Phase 5B-3)
+# ---------------------------------------------------------------------------
+
+def _null_derived_row(fid: str, kind: str, units: str | None,
+                      formula: str, inputs: str, recorded_value: str | None,
+                      retrieved_at: str | None,
+                      query_body: str | None = None) -> tuple:
+    """Build a 24-element citation row for kind='derived'."""
+    return (
+        fid, kind, units,
+        None,   # amount_text
+        None, None, None, None, None, None, None,  # page bbox
+        None,   # resolution
+        None,   # sheet
+        None,   # cells
+        None,   # amount_thousands
+        None,   # sha256
+        None,   # hosted_pdf_url
+        None,   # official_url
+        None,   # xml_path
+        retrieved_at,
+        formula,
+        inputs,
+        query_body,
+        recorded_value,
+    )
+
+
+def _build_derived_citation_rows(
+    *,
+    duckdb_path,
+    bl_rows: list,
+    citation_rows: list,
+) -> list[tuple]:
+    """Build derived citation rows for all rendered surfaces.
+
+    Derived rows cover figures that are computed from warehouse data (trajectory
+    totals, agency sums, HHI, improper exposure, per-capita, entity obligations,
+    influence dollars) rather than directly extracted from a source document.
+
+    Key design decisions (documented):
+    - trajectory / program headline figures share the SAME fact_ids.  Program
+      page FY25/FY26 headline figures are rendered from the same trajectory mart
+      rows, so they do not produce separate citations — the page simply references
+      the trajectory-surface fact_id.  This avoids fact_id duplication.
+    - Inputs for trajectory metrics are the budget_lines.parquet fact_ids joined
+      by (pe_bli, workbook_org(org), amount_type).  Naive pe_bli-only joins
+      silently miss rows where the workbook org differs from the program org.
+      We use _workbook_org to translate before joining.
+    - HHI formula explicitly states the positive-only-shares bias (warehouse query
+      filters obligation > 0; negative/recoupment obligations are excluded).
+    - Influence inputs: constituent LDA filing API URLs from lda_filings parquet,
+      joined by family_key + filing_year.  If lda_filings is not available,
+      inputs = [] and the formula is self-describing.
+    - Entity total_obligation: inputs = [] (too many UEIs to enumerate; formula
+      states the query).  Scoped to top-200 entities only.
+    - Per-capita: inputs = [spend_source_url, pop_source_url] already stored in
+      fct_state_per_capita.
+
+    Scope guard: derived rows total ≈ a few thousand.  Do NOT emit one row per
+    transaction or per UEI.
+    """
+    import datetime
+    import duckdb as _duckdb
+    import json as _json
+
+    rows: list[tuple] = []
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+
+    # Build a fast lookup: (pe_bli, org_translated, amount_type) → fact_id
+    # from the already-built bl_rows.
+    # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
+    #   organization, budget_activity, budget_activity_title, pe_bli, title,
+    #   amount_type, amount_thousands, units, document_sha256, source_sheet, source_cells)
+    bl_key_to_fid: dict[tuple, list[str]] = {}
+    for r in bl_rows:
+        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, _, bl_amt_type, _, _, _, _, _ = r
+        k = (bl_pe, bl_org, bl_amt_type)
+        bl_key_to_fid.setdefault(k, []).append(fid_bl)
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        # ---- Trajectory figures ----
+        # surface='trajectory', key='{pe_bli}|{org}',
+        # metrics: fy2024_actuals, fy2025_total, fy2026_total, fy2526_change
+        #
+        # Inputs for each metric = budget_lines fact_ids matched via
+        # (pe_bli, workbook_org(org), amount_type).
+        # We use a simple mapping from trajectory metric to workbook amount_type:
+        #   fy2024_actuals  → fy_2024_actuals
+        #   fy2025_total    → fy_2025_total  (may also be fy_2025_enacted; both appended)
+        #   fy2026_total    → fy_2026_total  (may also be fy_2026_request)
+        #   fy2526_change   → derived difference; inputs = union of fy2025/fy2026 inputs
+        _METRIC_TO_AMOUNT_TYPES: dict[str, list[str]] = {
+            "fy2024_actuals": ["fy_2024_actuals"],
+            "fy2025_total":   ["fy_2025_total", "fy_2025_enacted"],
+            "fy2026_total":   ["fy_2026_total", "fy_2026_request"],
+        }
+        _METRIC_FORMULA: dict[str, str] = {
+            "fy2024_actuals": "sum(budget_lines.amount_thousands where amount_type=fy_2024_actuals)",
+            "fy2025_total":   "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+            "fy2026_total":   "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+            "fy2526_change":  "fy2026_total - fy2025_total",
+        }
+
+        try:
+            traj_rows = con.execute(
+                "select pe_bli, organization, fy2024_actuals, fy2025_total,"
+                " fy2026_total, fy2526_change from fct_budget_trajectory"
+            ).fetchall()
+        except Exception:
+            traj_rows = []
+
+        for pe_bli, org, fy24, fy25, fy26, chg in traj_rows:
+            translated_org = _workbook_org(org)
+            key_str = f"{pe_bli}|{org}"
+
+            # For each plain metric, collect inputs
+            fy25_input_fids: list[str] = []
+            fy26_input_fids: list[str] = []
+
+            for metric, value in [
+                ("fy2024_actuals", fy24),
+                ("fy2025_total",   fy25),
+                ("fy2026_total",   fy26),
+            ]:
+                if value is None:
+                    continue
+                fid = fact_id_derived("trajectory", key_str, metric)
+                # Collect budget_lines fact_ids as inputs
+                amt_types = _METRIC_TO_AMOUNT_TYPES[metric]
+                input_fids: list[str] = []
+                for at in amt_types:
+                    input_fids.extend(bl_key_to_fid.get((pe_bli, translated_org, at), []))
+                # Deduplicate while preserving order
+                seen: set[str] = set()
+                unique_inputs: list[str] = []
+                for f in input_fids:
+                    if f not in seen:
+                        seen.add(f)
+                        unique_inputs.append(f)
+                inputs_json = _json.dumps(unique_inputs)
+                recorded = f"{value:.3f}"
+                if metric == "fy2025_total":
+                    fy25_input_fids = unique_inputs
+                elif metric == "fy2026_total":
+                    fy26_input_fids = unique_inputs
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD thousands",
+                    _METRIC_FORMULA[metric],
+                    inputs_json,
+                    recorded,
+                    built_at,
+                ))
+
+            # fy2526_change = fy2026_total - fy2025_total
+            if chg is not None:
+                fid = fact_id_derived("trajectory", key_str, "fy2526_change")
+                change_inputs = list(dict.fromkeys(fy26_input_fids + fy25_input_fids))
+                inputs_json = _json.dumps(change_inputs)
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD thousands",
+                    _METRIC_FORMULA["fy2526_change"],
+                    inputs_json,
+                    f"{chg:.3f}",
+                    built_at,
+                ))
+
+        # NOTE: program FY25/FY26 headline figures reuse trajectory fact_ids.
+        # Program pages render state using surface='trajectory', same key and metric.
+        # No separate emission here — document this once to avoid duplication.
+
+        # ---- Agency sums ----
+        # surface='agency', key=org, metric='fy2024_total_millions'
+        # inputs = fact_ids from jbook_details (fy2024 PriorYear resolution != unresolved)
+        # recon §I: cited jbook detail fact_ids only — use the already-emitted citation_rows
+        jbook_fids_by_pe: dict[str, str] = {}
+        for row in citation_rows:
+            if row[1] == "jbook_pdf":
+                r_fid = row[0]
+                # We need pe_bli from jbook_details — not directly in citation_rows.
+                # We store a local map during emission.  Defer to after the trajectory loop.
+                pass
+        # Re-build from citation_rows using the fact_id → pe_bli mapping
+        # (we iterate citation_rows which has jbook_pdf rows by fact_id; the detail rows
+        # already built in the main export pass are not passed here, so we use a heuristic:
+        # the already-built citation_rows for kind=jbook_pdf are the cited jbook facts,
+        # but we have no pe_bli in the citation row itself.  Instead we use bl_rows
+        # which are per-pe_bli and are guaranteed cited.)
+        # Practical approach: for agency sums, inputs = workbook fact_ids for
+        # fy_2024_actuals per program under this org.
+        try:
+            prog_rows_d = con.execute(
+                "select pe_bli, org, fy2024_actual_millions from dim_programs"
+            ).fetchall()
+        except Exception:
+            prog_rows_d = []
+
+        org_to_fids: dict[str, list[str]] = {}
+        org_to_cited_count: dict[str, int] = {}
+        org_to_total: dict[str, float] = {}
+        for pe_bli, org, fy24_m in prog_rows_d:
+            translated = _workbook_org(org)
+            # workbook fact_ids for fy_2024_actuals for this program
+            fids_24 = bl_key_to_fid.get((pe_bli, translated, "fy_2024_actuals"), [])
+            org_to_fids.setdefault(org, []).extend(fids_24)
+            if fy24_m is not None:
+                org_to_total[org] = org_to_total.get(org, 0.0) + fy24_m
+            org_to_cited_count[org] = org_to_cited_count.get(org, 0) + len(fids_24)
+
+        for org, total in org_to_total.items():
+            fid = fact_id_derived("agency", org, "fy2024_total_millions")
+            input_fids = list(dict.fromkeys(org_to_fids.get(org, [])))
+            n_cited = org_to_cited_count.get(org, 0)
+            n_programs = sum(1 for _, o, _ in prog_rows_d if o == org)
+            n_uncited = n_programs - n_cited
+            formula_text = (
+                f"sum(dim_programs.fy2024_actual_millions) for org={org!r}"
+                f" ({n_cited} programs cited via workbook; {n_uncited} uncited)"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD millions",
+                formula_text,
+                _json.dumps(input_fids),
+                f"{total:.3f}",
+                built_at,
+            ))
+
+        # ---- HHI ----
+        # surface='concentration', key=pe_bli, metrics hhi + program_dollars
+        # Positive-only shares: obligation > 0 (recoupment/negative flows excluded)
+        try:
+            conc_rows = con.execute(
+                "select pe_bli, hhi, program_dollars from fct_program_concentration"
+            ).fetchall()
+        except Exception:
+            conc_rows = []
+
+        _HHI_FORMULA = (
+            "sum(share_pct * share_pct) over (partition by pe_bli) "
+            "where share = family_obligation / sum(family_obligation) "
+            "and obligation > 0 (positive-only shares; negative obligations excluded)"
+        )
+        _DOLLARS_FORMULA = (
+            "sum(fct_award_transactions.obligation) for this pe_bli "
+            "via fct_budget_to_awards high-confidence join, obligation > 0"
+        )
+        for pe_bli, hhi, prog_dollars in conc_rows:
+            if hhi is not None:
+                fid = fact_id_derived("concentration", pe_bli, "hhi")
+                rows.append(_null_derived_row(
+                    fid, "derived", "Herfindahl-Hirschman Index",
+                    _HHI_FORMULA,
+                    "[]",
+                    f"{hhi:.3f}",
+                    built_at,
+                    query_body=_HHI_FORMULA,
+                ))
+            if prog_dollars is not None:
+                fid = fact_id_derived("concentration", pe_bli, "program_dollars")
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD",
+                    _DOLLARS_FORMULA,
+                    "[]",
+                    f"{prog_dollars:.3f}",
+                    built_at,
+                    query_body=_DOLLARS_FORMULA,
+                ))
+
+        # ---- Improper exposure ----
+        # surface='improper', key=agency_code,
+        # metric='derived_improper_amount_usd'
+        # formula = 'outlays_usd * improper_rate / 100'
+        # inputs = [paymentaccuracy source_url from oversight parquet]
+        try:
+            improper_rows = con.execute(
+                "select agency_code, derived_improper_amount_usd, weighted_rate_pct"
+                " from fct_improper_exposure"
+            ).fetchall()
+        except Exception:
+            improper_rows = []
+
+        # Probe oversight parquet for paymentaccuracy source URLs
+        oversight_urls: dict[str, str] = {}
+        oversight_pq = duckdb_path.parent / "parquet" / "oversight" / "improper_payments.parquet"
+        if not oversight_pq.exists():
+            # Try alternative location
+            oversight_pq = duckdb_path.parent.parent / "data" / "parquet" / "oversight" / "improper_payments.parquet"
+        if oversight_pq.exists():
+            try:
+                url_rows = _duckdb.sql(
+                    f"select agency_code, source_url from read_parquet('{oversight_pq}')"
+                    " where source_url is not null"
+                ).fetchall()
+                for ac, su in url_rows:
+                    if ac and su:
+                        oversight_urls[ac] = su
+            except Exception:
+                pass
+
+        for agency_code, derived_amount, rate in improper_rows:
+            if derived_amount is None:
+                continue
+            fid = fact_id_derived("improper", agency_code, "derived_improper_amount_usd")
+            source_url = oversight_urls.get(agency_code)
+            inputs = [source_url] if source_url else []
+            formula = (
+                f"outlays_usd * improper_rate / 100"
+                f" (rate={rate:.4f}% from paymentaccuracy.gov)"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD",
+                formula,
+                _json.dumps(inputs),
+                f"{derived_amount:.3f}",
+                built_at,
+            ))
+
+        # ---- State per-capita ----
+        # surface='state_per_capita', key='{jurisdiction}|{category}',
+        # metric='amount_per_capita'
+        # inputs = [spend_source_url, pop_source_url]
+        try:
+            spc_rows = con.execute(
+                "select jurisdiction, comparable_category, amount_per_capita,"
+                " spend_source_url, pop_source_url"
+                " from fct_state_per_capita"
+            ).fetchall()
+        except Exception:
+            spc_rows = []
+
+        for jurisdiction, category, per_cap, spend_url, pop_url in spc_rows:
+            if per_cap is None:
+                continue
+            key_str = f"{jurisdiction}|{category}"
+            fid = fact_id_derived("state_per_capita", key_str, "amount_per_capita")
+            inputs: list[str] = []
+            if spend_url:
+                inputs.append(spend_url)
+            if pop_url:
+                inputs.append(pop_url)
+            formula = (
+                f"total_amount_usd / population"
+                f" (jurisdiction={jurisdiction!r}, category={category!r})"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD per capita",
+                formula,
+                _json.dumps(inputs),
+                f"{per_cap:.6f}",
+                built_at,
+            ))
+
+        # ---- Entity total obligation (top-200 only) ----
+        # surface='entity', key=family_key, metric='total_obligation'
+        # formula = 'sum of obligations across N UEIs FY2017-2026'
+        # inputs = []  (too many UEIs to enumerate; query is self-describing)
+        try:
+            entity_rows = con.execute(
+                "select family_key, total_obligation, uei_count"
+                " from dim_entities"
+                " order by total_obligation desc nulls last"
+                " limit 200"
+            ).fetchall()
+        except Exception:
+            entity_rows = []
+
+        for family_key, total_obl, uei_count in entity_rows:
+            if total_obl is None:
+                continue
+            fid = fact_id_derived("entity", family_key, "total_obligation")
+            formula = (
+                f"sum(fct_award_transactions.obligation) across {uei_count or '?'} UEIs"
+                f" via entity_xwalk, FY2017-2026"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD",
+                formula,
+                "[]",
+                f"{total_obl:.3f}",
+                built_at,
+                query_body=(
+                    "select sum(t.obligation) from fct_award_transactions t"
+                    " join entity_xwalk x on t.recipient_uei=x.recipient_uei"
+                    f" where x.family_key='{family_key}'"
+                ),
+            ))
+
+        # ---- Influence dollars ----
+        # surface='influence', key='{family_key}|{filing_year}',
+        # metrics: lobbying_income_usd / lobbying_expense_usd / lobbying_total_usd
+        # inputs = constituent filing API URLs (lda_filings by family_key+filing_year)
+        try:
+            influence_rows = con.execute(
+                "select family_key, filing_year, lobbying_income_usd,"
+                " lobbying_expense_usd, lobbying_total_usd"
+                " from fct_influence"
+            ).fetchall()
+        except Exception:
+            influence_rows = []
+
+        # Probe lda_filings parquet for filing API URLs grouped by family_key + filing_year
+        lda_urls_index: dict[tuple, list[str]] = {}
+        lda_filings_pq = duckdb_path.parent / "parquet" / "influence" / "lda_filings.parquet"
+        if not lda_filings_pq.exists():
+            lda_filings_pq = duckdb_path.parent.parent / "data" / "parquet" / "influence" / "lda_filings.parquet"
+        if lda_filings_pq.exists():
+            try:
+                # Check if family_key column exists
+                cols_check = _duckdb.sql(
+                    f"select * from read_parquet('{lda_filings_pq}') limit 0"
+                ).columns
+                if "family_key" in cols_check and "filing_year" in cols_check:
+                    url_col = "filing_url" if "filing_url" in cols_check else None
+                    if url_col:
+                        url_rows_lda = _duckdb.sql(
+                            f"select family_key, filing_year, {url_col}"
+                            f" from read_parquet('{lda_filings_pq}')"
+                            f" where {url_col} is not null"
+                        ).fetchall()
+                        for fk, fy, fu in url_rows_lda:
+                            if fk and fy and fu:
+                                lda_urls_index.setdefault((fk, str(fy)), []).append(fu)
+            except Exception:
+                pass
+
+        for family_key, filing_year, income, expense, total in influence_rows:
+            key_str = f"{family_key}|{filing_year}"
+            filing_urls = lda_urls_index.get((family_key, str(filing_year)), [])
+            inputs_json = _json.dumps(filing_urls[:20])  # cap to avoid huge inputs
+
+            for metric, value, formula_txt in [
+                ("lobbying_income_usd",   income,  "sum(income) from LDA filings for this registrant-year"),
+                ("lobbying_expense_usd",  expense, "sum(expenses) from LDA filings for this registrant-year"),
+                ("lobbying_total_usd",    total,   "lobbying_income_usd + lobbying_expense_usd (or max where only one reported)"),
+            ]:
+                if value is None:
+                    continue
+                fid = fact_id_derived("influence", key_str, metric)
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD",
+                    formula_txt,
+                    inputs_json,
+                    f"{value:.3f}",
+                    built_at,
+                ))
+
+    finally:
+        con.close()
+
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -991,24 +1483,30 @@ def _write_all_sidecars(
     # citation_rows cols: (fact_id, kind, units, amount_text, page_number,
     #                      x0, x1, top_pt, bottom_pt, page_width, page_height,
     #                      resolution, sheet, cells, amount_thousands, sha256,
-    #                      hosted_pdf_url, official_url, xml_path, retrieved_at)
+    #                      hosted_pdf_url, official_url, xml_path, retrieved_at,
+    #                      formula, inputs, query_body, recorded_value)
     citations_dict: dict[str, dict] = {}
     for row in citation_rows:
         (fid, kind, units, amount_text, page_number, x0, x1,
          top_pt, bottom_pt, page_width, page_height, resolution,
          sheet, cells, amount_thousands, sha256, hosted_pdf_url,
-         official_url, xml_path, retrieved_at) = row
+         official_url, xml_path, retrieved_at,
+         formula, inputs, query_body, recorded_value) = row
         citations_dict[fid] = {
             "amount_text": amount_text,
             "amount_thousands": amount_thousands,
             "bottom_pt": bottom_pt,
             "cells": cells,
+            "formula": formula,
             "hosted_pdf_url": hosted_pdf_url,
+            "inputs": inputs,
             "kind": kind,
             "official_url": official_url,
             "page_height": page_height,
             "page_number": page_number,
             "page_width": page_width,
+            "query_body": query_body,
+            "recorded_value": recorded_value,
             "resolution": resolution,
             "retrieved_at": retrieved_at,
             "sha256": sha256,
