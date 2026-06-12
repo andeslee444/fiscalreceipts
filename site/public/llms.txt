@@ -1,0 +1,12 @@
+# GovBudget
+
+GovBudget is a spending-intelligence platform for U.S. federal defense budget data.
+Every displayed number is citation-backed with PDF page-level provenance.
+
+## Key pages
+
+https://govbudget-placeholder.example/methodology/
+https://govbudget-placeholder.example/downloads/
+https://govbudget-placeholder.example/program/0602025E/
+https://govbudget-placeholder.example/program/0602718BR/
+https://govbudget-placeholder.example/program/0603760E/

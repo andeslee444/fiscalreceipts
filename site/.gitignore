@@ -1,0 +1,8 @@
+node_modules/
+.next/
+out/
+public/assets/
+public/duckdb/
+public/pdf.worker.min.mjs
+public/json-lite/
+test-results/
