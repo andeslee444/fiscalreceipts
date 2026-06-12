@@ -71,6 +71,38 @@ def test_load_rollup_records_cell_provenance(pg_dsn, tmp_path):
     assert row[1] == ["J4"]            # col J (0-based 9 → letter J), data row 4
 
 
+def test_load_rollup_skips_nan_amount(pg_dsn, tmp_path):
+    """Cells whose value is the literal string 'NaN' produce Decimal('NaN') without raising,
+    so they must be caught by an explicit is_nan() guard and skipped."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit R-1"
+    ws.append(HEADERS)
+    # amount cell is the string "NaN" — Decimal("NaN") does NOT raise; is_nan() is True
+    ws.append(["0400", "RDT&E Defense-Wide", "DARPA", "01", "Basic Research", "2",
+               "0601101E", "DEFENSE RESEARCH SCIENCES", "Y",
+               "NaN", 293145, None, 0])
+    p = tmp_path / "r1_nan.xlsx"
+    wb.save(p)
+
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        # The NaN cell (fy_2024_actuals) must NOT be inserted
+        nan_row = con.execute(
+            "select count(*) from budget_lines"
+            " where pe_bli='0601101E' and amount_type='fy_2024_actuals'"
+        ).fetchone()[0]
+        # But the valid cells should still be loaded
+        valid_row = con.execute(
+            "select count(*) from budget_lines"
+            " where pe_bli='0601101E' and amount_type='fy_2025_enacted'"
+        ).fetchone()[0]
+    assert nan_row == 0, "NaN amount must be skipped (not inserted)"
+    assert valid_row == 1, "Valid amounts in the same row must still load"
+
+
 def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
     from openpyxl import Workbook
 

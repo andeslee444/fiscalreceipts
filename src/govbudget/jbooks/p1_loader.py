@@ -86,6 +86,8 @@ def load_p1_rollup(
                 amount = Decimal(str(row[j]))
             except ArithmeticError:
                 continue
+            if amount.is_nan():
+                continue
             sums[key][amount_type] += amount
             cells[key][amount_type].append(f"{get_column_letter(j + 1)}{row_idx}")
 

@@ -61,6 +61,8 @@ def load_rollup(
                     amount = Decimal(str(row[j]))
                 except ArithmeticError:
                     continue
+                if amount.is_nan():
+                    continue
                 cell = f"{get_column_letter(j + 1)}{row_idx}"
                 con.execute(
                     """

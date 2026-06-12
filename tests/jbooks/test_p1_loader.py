@@ -74,6 +74,38 @@ def test_load_p1_records_contributing_cells(pg_dsn, tmp_path):
     assert row[1] == ["O3", "O4"]      # BOTH contributing cells — honesty for summed facts
 
 
+def test_p1_loader_skips_nan_amount(pg_dsn, tmp_path):
+    """Cells whose value is the literal string 'NaN' produce Decimal('NaN') without raising.
+    For P-1, this NaN contaminates the sums bucket. Must be caught by is_nan() guard
+    so both the sum and the cell list are excluded together."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(["banner"])
+    ws.append(P1_HEADERS)
+    # Row with one "NaN" amount cell and one valid amount cell
+    ws.append(["0300D", "Procurement, Defense-Wide", "CBDP", "03", "Chem/Bio Defense",
+               "120", "1", "CBDP", "9999NAN1", "NaN Test BLI",
+               "A", "Weapon System Cost", "Add",
+               2, "NaN",  # FY 2024 Actuals Amount = "NaN" → Decimal('NaN') without raise
+               1, 150000,  # FY 2025 Enacted Amount = valid
+               "", 0])     # FY 2026 Disc Request Amount = 0 (valid)
+    p = tmp_path / "p1_nan.xlsx"
+    wb.save(p)
+
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
+    with psycopg.connect(pg_dsn) as con:
+        rows = dict(con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where exhibit='P-1' and pe_bli='9999NAN1'"
+        ).fetchall())
+    # NaN cell must be entirely absent (no budget_lines row for fy_2024_actuals)
+    assert "fy_2024_actuals" not in rows, "NaN amount must not produce a budget_lines row"
+    # Valid amounts must still load
+    assert rows["fy_2025_enacted"] == Decimal("150000")
+    assert rows["fy_2026_disc_request"] == Decimal("0")
+
+
 def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
     # Real-data regression: Apache-style BLI split across two Line Numbers
     # previously collided on upsert (last write wins, $138B understated).

@@ -9,7 +9,7 @@ EXPORTS: dict[str, str] = {
         "select exhibit, fiscal_year, account, account_title, organization,"
         " budget_activity, budget_activity_title, pe_bli, title, amount_type,"
         " amount_thousands, source_document_id, source_sheet,"
-        " array_to_string(source_cells, ',') as source_cells from budget_lines"
+        " coalesce(array_to_string(source_cells, ','), '') as source_cells from budget_lines"
     ),
     "details": (
         "select d.pe_bli, d.project_number, d.project_title, d.scenario,"
@@ -59,7 +59,8 @@ def export_facts(dsn: str, *, parquet_dir: Path) -> list[Path]:
                         f"insert into _t values ({', '.join(['?'] * len(cols))})",
                         [[None if v is None else str(v) for v in row] for row in rows],
                     )
-                con.execute(f"copy _t to '{out}' (format parquet, compression zstd)")
+                out_sql = str(out).replace("'", "''")
+                con.execute(f"copy _t to '{out_sql}' (format parquet, compression zstd)")
                 written.append(out)
     finally:
         con.close()
