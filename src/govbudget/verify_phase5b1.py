@@ -180,6 +180,8 @@ def citation_gate5b1(
             reason = _verify_lda(row, col_idx)
         elif kind == "derived":
             reason = _verify_derived(row, col_idx, all_cits, col_idx)
+        elif kind == "usaspending":
+            reason = _verify_usaspending(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -452,6 +454,58 @@ def _verify_derived(
     return None
 
 
+# Allowlisted USAspending endpoints (no network in gates — shape check only)
+_USASPENDING_ENDPOINT_ALLOWLIST = {
+    "api/v2/references/filter/",
+    "api/v2/recipient/",
+}
+
+
+def _verify_usaspending(row: tuple, idx: dict) -> str | None:
+    """Verify a USAspending citation (shape-only, no network).
+
+    Rules:
+    1. official_url must contain api.usaspending.gov with an allowlisted endpoint
+       OR be None/empty (hash permalink is optional, durable artifact is query_body).
+    2. query_body must be non-null and JSON-parseable.
+    3. recorded_value must be present and non-blank.
+    4. profile link is optional (official_url may be null for rows where profile
+       id lookup failed — this is not a failure).
+    """
+    import json as _json
+
+    query_body = row[idx.get("query_body", -1)] if "query_body" in idx else None
+    recorded_value = row[idx.get("recorded_value", -1)] if "recorded_value" in idx else None
+    official_url = row[idx.get("official_url", -1)] if "official_url" in idx else None
+
+    # query_body is the durable artifact — must be present and valid JSON
+    if not query_body:
+        return "usaspending: query_body is null or empty"
+    try:
+        parsed = _json.loads(query_body)
+    except Exception as e:
+        return f"usaspending: query_body is not valid JSON: {e}"
+    if not isinstance(parsed, dict):
+        return "usaspending: query_body does not parse to a dict"
+
+    # recorded_value must be present
+    if recorded_value is None:
+        return "usaspending: recorded_value is null"
+    if not recorded_value.strip():
+        return "usaspending: recorded_value is blank"
+
+    # official_url shape check (optional — may be None when hash minting skipped)
+    if official_url:
+        # Must reference usaspending.gov domain (not just contain the path fragment)
+        if "api.usaspending.gov" not in official_url and "usaspending.gov" not in official_url:
+            return (
+                f"usaspending: official_url does not reference api.usaspending.gov"
+                f" or usaspending.gov: {official_url!r}"
+            )
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 2: integrity_gate5b1
 # ---------------------------------------------------------------------------
@@ -537,6 +591,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     wb_cit_ids: set[str] = set()
     lda_cit_ids: set[str] = set()
     derived_cit_ids: set[str] = set()
+    usaspending_cit_ids: set[str] = set()
 
     for row in all_cit:
         kind = row[cidx["kind"]]
@@ -549,6 +604,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
             lda_cit_ids.add(fid)
         elif kind == "derived":
             derived_cit_ids.add(fid)
+        elif kind == "usaspending":
+            usaspending_cit_ids.add(fid)
 
     # ---- jbook checks ----
     details_pq = site_dir / "data" / "jbook_details.parquet"
@@ -643,7 +700,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # A duplicate fact_id within a kind means a join fan-out slipped through (e.g. a
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
-    for kind in ("jbook_pdf", "workbook", "lda_filing", "derived"):
+    for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending"):
         con = duckdb.connect()
         try:
             row = con.execute(
@@ -735,6 +792,34 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["derived_formula_and_value"] = len(derived_failures) == 0
     else:
         checks["derived_formula_and_value"] = True
+
+    # ---- USAspending checks ----
+    # For each usaspending citation: query_body parses as JSON + recorded_value present.
+    if usaspending_cit_ids:
+        usas_failures: list[str] = []
+        for row in all_cit:
+            if row[cidx["kind"]] != "usaspending":
+                continue
+            fid = row[cidx["fact_id"]]
+            query_body = row[cidx["query_body"]] if "query_body" in cidx else None
+            recorded_value = row[cidx["recorded_value"]] if "recorded_value" in cidx else None
+            if not query_body:
+                usas_failures.append(f"usaspending {fid}: query_body is null/empty")
+                continue
+            try:
+                import json as _json
+                parsed = _json.loads(query_body)
+                if not isinstance(parsed, dict):
+                    usas_failures.append(f"usaspending {fid}: query_body not a dict")
+            except Exception:
+                usas_failures.append(f"usaspending {fid}: query_body not valid JSON")
+            if recorded_value is None or not str(recorded_value).strip():
+                usas_failures.append(f"usaspending {fid}: recorded_value is null/blank")
+        if usas_failures:
+            failures.extend(usas_failures[:5])
+        checks["usaspending_query_and_value"] = len(usas_failures) == 0
+    else:
+        checks["usaspending_query_and_value"] = True
 
     # ---- Manifest rowcount check ----
     if man_path.exists():

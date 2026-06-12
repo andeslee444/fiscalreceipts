@@ -75,6 +75,27 @@ def fact_id_derived(surface: str, key: str, metric: str) -> str:
     return hashlib.sha256(f"derived|{surface}|{key}|{metric}".encode()).hexdigest()[:16]
 
 
+def fact_id_usaspending(surface: str, key: str, metric: str) -> str:
+    """Canonical identity for a USAspending citation.
+
+    sha256 of 'usaspending|{surface}|{key}|{metric}', hexdigest[:16].
+    surface: 'family_year' | 'district_program'
+    key: '{family_key}|{fiscal_year}' or '{pop_state}|{pop_district}|{pe_bli}'
+    metric: 'total_obligation'
+    """
+    return hashlib.sha256(f"usaspending|{surface}|{key}|{metric}".encode()).hexdigest()[:16]
+
+
+def fact_id_lda_filing(filing_uuid: str, role: str) -> str:
+    """Canonical identity for a filing-level LDA citation (income or expenses).
+
+    sha256 of 'lda_filing|{filing_uuid}|{role}', hexdigest[:16].
+    role: 'income' | 'expenses'
+    This is distinct from fact_id_lda (which is for program-mention citations).
+    """
+    return hashlib.sha256(f"lda_filing_amount|{filing_uuid}|{role}".encode()).hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
@@ -95,7 +116,8 @@ _MART_NAMES = [
 
 # Citation tiers — datasets that have a citation kind in this export
 # (derived rows cover fct_budget_trajectory, dim_programs, fct_program_concentration,
-#  fct_improper_exposure, fct_state_per_capita, dim_entities, fct_influence)
+#  fct_improper_exposure, fct_state_per_capita, dim_entities, fct_influence;
+#  usaspending rows cover fct_family_obligations_by_year, fct_district_programs)
 _CITED_DATASETS = {
     "jbook_details",
     "budget_lines",
@@ -107,6 +129,8 @@ _CITED_DATASETS = {
     "fct_state_per_capita",
     "dim_entities",
     "fct_influence",
+    "fct_family_obligations_by_year",
+    "fct_district_programs",
 }
 
 
@@ -507,6 +531,14 @@ def export_site(
         citation_rows=citation_rows,
     )
     citation_rows.extend(derived_rows)
+
+    # --- 4e. USAspending citations (family-year obligations + district programs) ---
+    usas_rows = _build_usaspending_citation_rows(duckdb_path=duckdb_path)
+    citation_rows.extend(usas_rows)
+
+    # --- 4f. Filing-level LDA amount citations ---
+    filing_lda_rows = _build_filing_lda_citation_rows(duckdb_path=duckdb_path)
+    citation_rows.extend(filing_lda_rows)
 
     # Write citations.parquet
     _write_typed_parquet(
@@ -1095,6 +1127,7 @@ def _emit_json_sidecars(
         return _write_all_sidecars(
             json_dir=json_dir,
             out_dir=out_dir,
+            duckdb_path=duckdb_path,
             con=con,
             detail_rows=detail_rows,
             bl_rows=bl_rows,
@@ -1109,6 +1142,7 @@ def _write_all_sidecars(
     *,
     json_dir: Path,
     out_dir: Path,
+    duckdb_path: Path,
     con,  # duckdb connection (read-only mart)
     detail_rows: list,
     bl_rows: list,
@@ -1608,7 +1642,581 @@ def _write_all_sidecars(
     _write_json(json_dir / "site_meta.json", site_meta)
     n_files += 1
 
+    # ------------------------------------------------------------------ #
+    # 10. entity_ueis.json  (family → parent-UEI sidecar)                #
+    # ------------------------------------------------------------------ #
+    entity_ueis = _build_entity_ueis_sidecar(duckdb_path=duckdb_path, con=con)
+    _write_json(json_dir / "entity_ueis.json", entity_ueis)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 11. flows/{pe_bli}.json  (17 crosswalked programs)                 #
+    # ------------------------------------------------------------------ #
+    flows_dir = json_dir / "flows"
+    flows_dir.mkdir(exist_ok=True)
+    n_flows = _emit_flows_sidecars(flows_dir=flows_dir, con=con)
+    n_files += n_flows
+
     return n_files
+
+
+# ---------------------------------------------------------------------------
+# USAspending citation tier (Phase 5B-3)
+# ---------------------------------------------------------------------------
+
+# Durable USAspending v2 endpoint (v1 is dead; v2 verified live 2026-06-12)
+_USASPENDING_FILTER_ENDPOINT = "api/v2/references/filter/"
+_USASPENDING_BASE = "https://api.usaspending.gov/"
+
+# Polite delay between USAspending API calls (seconds)
+_USAS_POLITE_DELAY = 0.5
+
+# Allowlisted USAspending endpoints for verify gates
+USASPENDING_ENDPOINT_ALLOWLIST = {
+    "api/v2/references/filter/",
+    "api/v2/recipient/",
+}
+
+
+def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
+                          units: str | None,
+                          official_url: str | None = None) -> tuple:
+    """Build a 24-element citation row for kind='usaspending'."""
+    return (
+        fid, "usaspending", units,
+        None,   # amount_text
+        None, None, None, None, None, None, None,  # page bbox
+        None,   # resolution
+        None,   # sheet
+        None,   # cells
+        None,   # amount_thousands
+        None,   # sha256
+        None,   # hosted_pdf_url
+        official_url,
+        None,   # xml_path
+        None,   # retrieved_at
+        None,   # formula
+        None,   # inputs
+        query_body,
+        recorded_value,
+    )
+
+
+def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
+    """Build USAspending citation rows for family-year obligations and district programs.
+
+    kind='usaspending': durable artifact = {endpoint, query_body}.
+    query_body is the JSON-serializable filter dict for api/v2/references/filter/.
+
+    Scope:
+    - Family-year: top-200 families (by total_obligation) × all years from
+      fct_family_obligations_by_year — one citation per (family_key, fiscal_year).
+      query_body = {'filters': {'recipient_search_text': [UEIs], 'time_period': [...]}}.
+    - District programs: all 267 rows from fct_district_programs — one citation
+      per (pop_state, pop_district, pe_bli).
+      query_body = {'filters': {'place_of_performance_locations': [...], 'award_ids': [...]}}.
+
+    Never fails export: network errors or missing data → skip silently.
+    """
+    import datetime
+    import json as _json
+
+    import duckdb as _duckdb
+
+    rows: list[tuple] = []
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        # ---- Family-year: top-200 families from dim_entities ----
+        # Get the top-200 family_keys ordered by total_obligation
+        try:
+            top200 = con.execute(
+                "select family_key, total_obligation from dim_entities"
+                " order by total_obligation desc nulls last limit 200"
+            ).fetchall()
+        except Exception:
+            top200 = []
+
+        top200_keys = {r[0] for r in top200}
+
+        # Get all UEIs per family (from entity_xwalk) for query_body construction
+        try:
+            uei_rows = con.execute(
+                "select family_key, recipient_uei from entity_xwalk"
+                " where family_key is not null"
+            ).fetchall()
+        except Exception:
+            uei_rows = []
+
+        family_ueis: dict[str, list[str]] = {}
+        for fk, uei in uei_rows:
+            if uei:
+                family_ueis.setdefault(fk, []).append(uei)
+
+        # Get family-year obligations (only for top-200 families)
+        try:
+            foy_rows = con.execute(
+                "select family_key, fiscal_year, total_obligation"
+                " from fct_family_obligations_by_year"
+            ).fetchall()
+        except Exception:
+            foy_rows = []
+
+        for family_key, fiscal_year, total_obl in foy_rows:
+            if family_key not in top200_keys:
+                continue
+            if total_obl is None:
+                continue
+
+            ueis = family_ueis.get(family_key, [])
+            # Cap UEIs to avoid excessively large query_body
+            capped_ueis = sorted(ueis)[:50]
+
+            query_body = _json.dumps({
+                "filters": {
+                    "recipient_search_text": capped_ueis,
+                    "time_period": [{"start_date": f"{fiscal_year}-10-01",
+                                     "end_date": f"{fiscal_year + 1}-09-30"}],
+                },
+                "version": "2020-06-01",
+            }, sort_keys=True)
+
+            key_str = f"{family_key}|{fiscal_year}"
+            fid = fact_id_usaspending("family_year", key_str, "total_obligation")
+            rows.append(_null_usaspending_row(
+                fid, query_body, f"{total_obl:.3f}", "USD",
+                official_url=f"{_USASPENDING_BASE}{_USASPENDING_FILTER_ENDPOINT}",
+            ))
+
+        # ---- District programs: all 267 rows from fct_district_programs ----
+        try:
+            dp_rows = con.execute(
+                "select pop_state, pop_district, pe_bli, total_obligation"
+                " from fct_district_programs"
+            ).fetchall()
+        except Exception:
+            dp_rows = []
+
+        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+            if total_obl is None:
+                continue
+
+            # Get top award PIIDs for this (district, program) to anchor the filter
+            try:
+                piids = con.execute(
+                    "select distinct t.award_id_piid"
+                    " from fct_award_transactions t"
+                    " join (select distinct award_piid from fct_budget_to_awards"
+                    "       where confidence='high' and pe_bli=?) b"
+                    "   on t.award_id_piid = b.award_piid"
+                    " where t.pop_state=? and t.pop_district=?"
+                    " limit 25",
+                    [pe_bli, pop_state, pop_district],
+                ).fetchall()
+                piid_list = [r[0] for r in piids if r[0]]
+            except Exception:
+                piid_list = []
+
+            query_body = _json.dumps({
+                "filters": {
+                    "place_of_performance_locations": [
+                        {"country": "USA", "state": pop_state,
+                         "district_original": pop_district}
+                    ],
+                    "award_ids": piid_list[:25],
+                },
+                "version": "2020-06-01",
+            }, sort_keys=True)
+
+            key_str = f"{pop_state}|{pop_district}|{pe_bli}"
+            fid = fact_id_usaspending("district_program", key_str, "total_obligation")
+            rows.append(_null_usaspending_row(
+                fid, query_body, f"{total_obl:.3f}", "USD",
+                official_url=f"{_USASPENDING_BASE}{_USASPENDING_FILTER_ENDPOINT}",
+            ))
+
+    finally:
+        con.close()
+
+    return rows
+
+
+def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
+    """Build filing-level LDA citation rows for /filing pages.
+
+    Emits kind='lda_filing' rows with:
+      - fact_id = fact_id_lda_filing(filing_uuid, 'income' | 'expenses')
+      - official_url = filing API URL (https://lda.senate.gov/api/v1/filings/{uuid}/)
+      - recorded_value = the amount (income_usd or expenses_usd)
+
+    Only emits when the amount is non-null and non-empty (truthy string).
+    Covers the 4,258 LDA filings so /filing pages render state A for amounts.
+    """
+    import duckdb as _duckdb
+    from pathlib import Path as _Path
+
+    rows: list[tuple] = []
+
+    # Find the lda_filings parquet
+    duckdb_path = _Path(duckdb_path)
+    lda_pq = duckdb_path.parent / "parquet" / "influence" / "lda_filings.parquet"
+    if not lda_pq.exists():
+        lda_pq = duckdb_path.parent.parent / "data" / "parquet" / "influence" / "lda_filings.parquet"
+    if not lda_pq.exists():
+        return rows
+
+    try:
+        lda_filings = _duckdb.sql(
+            f"select filing_uuid, url, income_usd, expenses_usd"
+            f" from read_parquet('{lda_pq}')"
+        ).fetchall()
+    except Exception:
+        return rows
+
+    for filing_uuid, url, income_usd, expenses_usd in lda_filings:
+        if not filing_uuid:
+            continue
+        # official_url: the filing API URL (starts with https://lda.senate.gov/)
+        official_url = url or f"https://lda.senate.gov/api/v1/filings/{filing_uuid}/"
+
+        # Income row
+        if income_usd and str(income_usd).strip():
+            fid = fact_id_lda_filing(filing_uuid, "income")
+            rows.append((
+                fid, "lda_filing", "USD",
+                None,   # amount_text
+                None, None, None, None, None, None, None,  # page bbox
+                None,   # resolution
+                None,   # sheet
+                None,   # cells
+                None,   # amount_thousands
+                None,   # sha256
+                None,   # hosted_pdf_url
+                official_url,
+                None,   # xml_path
+                None,   # retrieved_at
+                None,   # formula
+                None,   # inputs
+                None,   # query_body
+                str(income_usd).strip(),  # recorded_value
+            ))
+
+        # Expenses row
+        if expenses_usd and str(expenses_usd).strip():
+            fid = fact_id_lda_filing(filing_uuid, "expenses")
+            rows.append((
+                fid, "lda_filing", "USD",
+                None,
+                None, None, None, None, None, None, None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                official_url,
+                None,
+                None,
+                None,
+                None,
+                None,
+                str(expenses_usd).strip(),
+            ))
+
+    return rows
+
+
+def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
+    """Build the family→parent-UEI sidecar (entity_ueis.json).
+
+    Deterministic parent-UEI rule (recon §E):
+      For each family_key: choose the parent_uei from the member row with the
+      maximum total_obligation among rows where parent_uei IS NOT NULL.
+      Families where all members have null parent_uei → parent_uei: null.
+
+    Returns: {family_key: {parent_uei: str|null, profile_id: str|null}}
+    profile_id is loaded from the usaspending_recipient_ids.json cache if present.
+    """
+    import duckdb as _duckdb
+    from pathlib import Path as _Path
+
+    duckdb_path = _Path(duckdb_path)
+    result: dict = {}
+
+    should_close = con is None
+    if con is None:
+        con = _duckdb.connect(str(duckdb_path), read_only=True)
+
+    try:
+        # Deterministic rule: max total_obligation member with non-null parent_uei
+        try:
+            xwalk_rows = con.execute(
+                "select family_key, parent_uei, total_obligation from entity_xwalk"
+                " where family_key is not null"
+            ).fetchall()
+        except Exception:
+            xwalk_rows = []
+
+        # Build: family_key → list of (parent_uei, total_obligation)
+        family_candidates: dict[str, list] = {}
+        all_family_keys: set = set()
+        for fk, puei, tobl in xwalk_rows:
+            all_family_keys.add(fk)
+            if puei and tobl is not None:
+                family_candidates.setdefault(fk, []).append((puei, float(tobl)))
+
+        # Choose max-obligation parent_uei per family
+        family_parent_uei: dict[str, str | None] = {}
+        for fk in all_family_keys:
+            candidates = family_candidates.get(fk, [])
+            if candidates:
+                # Pick parent_uei of the highest-obligation member
+                best = max(candidates, key=lambda x: x[1])
+                family_parent_uei[fk] = best[0]
+            else:
+                family_parent_uei[fk] = None
+
+    finally:
+        if should_close:
+            con.close()
+
+    # Load recipient profile IDs from cache
+    cache_path = _Path("data/research/usaspending_recipient_ids.json")
+    profile_cache: dict = {}
+    if cache_path.exists():
+        try:
+            import json as _json
+            profile_cache = _json.loads(cache_path.read_text())
+        except Exception:
+            pass
+
+    # Build result
+    for fk, parent_uei in family_parent_uei.items():
+        profile_id = profile_cache.get(parent_uei) if parent_uei else None
+        result[fk] = {
+            "parent_uei": parent_uei,
+            "profile_id": profile_id,
+        }
+
+    return result
+
+
+def _emit_flows_sidecars(*, flows_dir, con) -> int:
+    """Emit flows/{pe_bli}.json for the 17 crosswalked programs.
+
+    Each file: {header: {pe_bli, title, org, fy2026_total},
+                awards: [{piid, recipient_name, family_slug, district, dollars}] (top-12)}
+
+    Only confidence='high' awards, only rows with non-null pop_district.
+    family_slug is derived with the lower/hyphen slugify rule.
+    """
+    from pathlib import Path as _Path
+    import json as _json
+
+    flows_dir = _Path(flows_dir)
+    n_written = 0
+
+    # Get program metadata
+    try:
+        prog_meta = {
+            r[0]: {"title": r[1], "org": r[2]}
+            for r in con.execute(
+                "select pe_bli, title, org from dim_programs"
+            ).fetchall()
+        }
+    except Exception:
+        prog_meta = {}
+
+    # Get fy2026_total per pe_bli from trajectory
+    try:
+        traj_fy26 = {}
+        for r in con.execute(
+            "select t.pe_bli, t.fy2026_total from fct_budget_trajectory t"
+            " join dim_programs p on p.pe_bli = t.pe_bli"
+            "  and t.organization = p.org"
+        ).fetchall():
+            traj_fy26[r[0]] = r[1]
+    except Exception:
+        traj_fy26 = {}
+
+    # Get distinct programs in fct_district_programs (the 17 crosswalked programs)
+    try:
+        crosswalked_pe_blis = [
+            r[0] for r in con.execute(
+                "select distinct pe_bli from fct_district_programs order by pe_bli"
+            ).fetchall()
+        ]
+    except Exception:
+        crosswalked_pe_blis = []
+
+    for pe_bli in crosswalked_pe_blis:
+        # Get top-12 high-confidence awards for this program with non-null district
+        try:
+            award_rows = con.execute(
+                """
+                select
+                    t.award_id_piid as piid,
+                    t.recipient_uei,
+                    t.pop_state,
+                    t.pop_district,
+                    coalesce(x.family_key, t.recipient_uei) as family_key,
+                    sum(t.obligation) as dollars
+                from fct_award_transactions t
+                join (
+                    select distinct award_piid
+                    from fct_budget_to_awards
+                    where confidence='high' and pe_bli=?
+                ) b on t.award_id_piid = b.award_piid
+                left join entity_xwalk x on t.recipient_uei = x.recipient_uei
+                where t.pop_district is not null and t.obligation > 0
+                group by 1,2,3,4,5
+                order by dollars desc
+                limit 12
+                """,
+                [pe_bli],
+            ).fetchall()
+        except Exception:
+            award_rows = []
+
+        # Build recipient_name lookup: UEI → name
+        try:
+            uei_names = {
+                r[0]: r[1] for r in con.execute(
+                    "select recipient_uei, recipient_name from entity_xwalk"
+                    " where recipient_uei is not null"
+                ).fetchall()
+            }
+        except Exception:
+            uei_names = {}
+
+        awards = []
+        for piid, uei, pop_state, pop_district, family_key, dollars in award_rows:
+            recipient_name = uei_names.get(uei, uei or "Unknown")
+            family_slug = _slugify(family_key or recipient_name or "unknown")
+            district = f"{pop_state}-{pop_district}" if pop_state and pop_district else None
+            awards.append({
+                "piid": piid,
+                "recipient_name": recipient_name,
+                "family_slug": family_slug,
+                "district": district,
+                "dollars": float(dollars) if dollars is not None else None,
+                "confidence": "high",
+            })
+
+        meta = prog_meta.get(pe_bli, {})
+        header = {
+            "pe_bli": pe_bli,
+            "title": meta.get("title"),
+            "org": meta.get("org"),
+            "fy2026_total": traj_fy26.get(pe_bli),
+        }
+
+        obj = {"header": header, "awards": awards}
+        _write_json(flows_dir / f"{pe_bli}.json", obj)
+        n_written += 1
+
+    return n_written
+
+
+def _slugify(s: str) -> str:
+    """Slugify: lowercase, replace spaces/special chars with hyphens, collapse."""
+    import re
+    s = s.lower().strip()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s
+
+
+# ---------------------------------------------------------------------------
+# USAspending recipient ID cache + lookup
+# ---------------------------------------------------------------------------
+
+
+def refresh_usaspending_ids(
+    *,
+    duckdb_path,
+    cache_path="data/research/usaspending_recipient_ids.json",
+    polite_delay: float = _USAS_POLITE_DELAY,
+) -> dict:
+    """Refresh the USAspending recipient ID cache.
+
+    For each unique parent_uei found via the entity_xwalk deterministic rule,
+    POST to api/v2/recipient/ with the UEI as keyword.
+    Picks the row with level='P' (parent) or the first result if no P-level.
+
+    Network-fail → null id for that UEI (never fail the whole run).
+    Polite: {polite_delay}s between calls.
+    Uses skip-if-cached: already-resolved UEIs (including null values) are skipped.
+
+    Returns: updated cache dict {uei: profile_id|null}.
+    """
+    import json as _json
+    import time
+    from pathlib import Path as _Path
+
+    import duckdb as _duckdb
+
+    cache_path = _Path(cache_path)
+    cache: dict = {}
+    if cache_path.exists():
+        try:
+            cache = _json.loads(cache_path.read_text())
+        except Exception:
+            cache = {}
+
+    # Collect all parent_ueis from entity_xwalk
+    duckdb_path = _Path(duckdb_path)
+    try:
+        con = _duckdb.connect(str(duckdb_path), read_only=True)
+        uei_rows = con.execute(
+            "select distinct parent_uei from entity_xwalk where parent_uei is not null"
+        ).fetchall()
+        con.close()
+        all_parent_ueis = {r[0] for r in uei_rows if r[0]}
+    except Exception:
+        all_parent_ueis = set()
+
+    # Skip already-cached (including null values — sentinel key present in cache)
+    to_lookup = [u for u in sorted(all_parent_ueis) if u not in cache]
+    print(f"USAspending recipient ID refresh: {len(to_lookup)} UEIs to look up "
+          f"({len(all_parent_ueis) - len(to_lookup)} already cached)")
+
+    if not to_lookup:
+        return cache
+
+    try:
+        import urllib.request
+        import urllib.parse
+    except ImportError:
+        print("urllib not available — skipping network lookup")
+        return cache
+
+    for uei in to_lookup:
+        try:
+            body = _json.dumps({"keyword": uei}).encode()
+            req = urllib.request.Request(
+                f"{_USASPENDING_BASE}api/v2/recipient/",
+                data=body,
+                method="POST",
+                headers={"Content-Type": "application/json",
+                         "User-Agent": "govbudget-cite/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read())
+            results = data.get("results", [])
+            # Prefer P (parent) level
+            p_level = next((r for r in results if r.get("recipient_level") == "P"), None)
+            chosen = p_level or (results[0] if results else None)
+            profile_id = chosen.get("id") if chosen else None
+            cache[uei] = profile_id
+        except Exception:
+            cache[uei] = None
+        time.sleep(polite_delay)
+
+    # Persist cache
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(_json.dumps(cache, sort_keys=True, indent=2))
+    return cache
 
 
 def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:

@@ -851,7 +851,14 @@ def cmd_verify_phase5b1(args) -> None:
 
 
 def cmd_export_site(args) -> None:
-    from govbudget.export_site import export_site
+    from govbudget.export_site import export_site, refresh_usaspending_ids
+
+    if getattr(args, "refresh_usaspending_ids", False):
+        print("Refreshing USAspending recipient ID cache...")
+        cache = refresh_usaspending_ids(duckdb_path=config.DUCKDB_PATH)
+        n_resolved = sum(1 for v in cache.values() if v is not None)
+        n_null = sum(1 for v in cache.values() if v is None)
+        print(f"Recipient ID cache: {len(cache)} entries, {n_resolved} resolved, {n_null} null")
 
     out = export_site(
         config.PG_DSN, config.DUCKDB_PATH, out_dir=config.SITE_DIR,
@@ -940,6 +947,15 @@ def main(argv=None) -> None:
     v5a.set_defaults(func=cmd_verify_phase5a)
 
     es = sub.add_parser("export-site", help="export typed site artifacts + citations + documents")
+    es.add_argument(
+        "--refresh-usaspending-ids",
+        action="store_true",
+        default=False,
+        dest="refresh_usaspending_ids",
+        help="refresh USAspending recipient profile ID cache before exporting "
+             "(POST api/v2/recipient/ for each parent_uei; skip-if-cached; "
+             "default: offline-safe, cache-only)",
+    )
     es.set_defaults(func=cmd_export_site)
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
