@@ -208,6 +208,11 @@ def cmd_jbooks(args) -> None:
 
         out = export_facts(config.PG_DSN, parquet_dir=config.PARQUET_DIR)
         print("exported:", ", ".join(p.name for p in out))
+    elif args.action == "provenance-pages":
+        from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+        n = build_provenance_pages(config.PG_DSN)
+        print(f"provenance-pages: {n} facts resolved")
     elif args.action == "crosswalk":
         from govbudget.jbooks.crosswalk import crosswalk_org
         from govbudget.jbooks.orgs import workbook_org
@@ -815,7 +820,7 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk"])
+    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages"])
     j.add_argument("--org", default=None)
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
                    help="crosswalk: filter awards to fiscal years >= this value")
