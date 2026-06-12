@@ -165,3 +165,22 @@ export function resultToCsv(result: QueryResult): string {
 }
 
 export { ROW_CAP };
+
+// ── Teardown ──────────────────────────────────────────────────────────────────
+
+/**
+ * Terminate the DuckDB singleton — closes the db and its worker.
+ * Call from an unmount effect when the Explorer is removed from the page.
+ * Nulls _dbPromise so a remount re-initialises cleanly.
+ */
+export async function terminateDuckDB(): Promise<void> {
+  if (!_dbPromise) return;
+  const promise = _dbPromise;
+  _dbPromise = null;
+  try {
+    const db = await promise;
+    await db.terminate();
+  } catch {
+    // ignore — already terminated or never fully initialised
+  }
+}

@@ -24,17 +24,17 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
       <table className="w-full text-sm">
         <thead className="bg-muted/60 text-left">
           <tr>
-            <th className="px-4 py-3 font-medium text-muted-foreground w-10 text-right">
+            <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-10 text-right">
               #
             </th>
-            <th className="px-4 py-3 font-medium">Company</th>
-            <th className="px-4 py-3 font-medium text-center w-24">
+            <th scope="col" className="px-4 py-3 font-medium">Company</th>
+            <th scope="col" className="px-4 py-3 font-medium text-center w-24">
               UEIs
             </th>
-            <th className="px-4 py-3 font-medium text-right">
+            <th scope="col" className="px-4 py-3 font-medium text-right">
               Total obligations ⁂
             </th>
-            <th className="px-4 py-3 font-medium text-center w-28">
+            <th scope="col" className="px-4 py-3 font-medium text-center w-28">
               Confidence
             </th>
           </tr>

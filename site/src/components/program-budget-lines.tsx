@@ -56,16 +56,16 @@ export function ProgramBudgetLines({ budgetLines }: ProgramBudgetLinesProps) {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground">
+                    <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">
                       Account
                     </th>
-                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground">
+                    <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">
                       Org
                     </th>
-                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground">
+                    <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">
                       Type
                     </th>
-                    <th className="text-right py-2 font-medium text-muted-foreground">
+                    <th scope="col" className="text-right py-2 font-medium text-muted-foreground">
                       Amount
                     </th>
                   </tr>

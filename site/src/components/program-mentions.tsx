@@ -146,6 +146,7 @@ export function ProgramMentions({
     setLoading(true);
     setError(null);
     try {
+      // full details file ~tens of KB; acceptable; revisit if payloads grow
       const resp = await fetch(`/json-lite/program_details/${peBli}.json`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data: ProgramDetails = await resp.json();
@@ -176,7 +177,7 @@ export function ProgramMentions({
       <div>
         {displayedMentions.map((mention, i) => (
           <MentionRow
-            key={`${mention.filing_uuid}-${i}`}
+            key={`${mention.filing_uuid}-${mention.matched_term}-${i}`}
             mention={mention}
             linkableKeys={linkableKeys}
           />

@@ -107,9 +107,9 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-left">
             <tr>
-              <th className="px-4 py-3 font-medium text-muted-foreground w-24">PE/BLI</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground w-16">Org</th>
-              <th className="px-4 py-3 font-medium">
+              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-24">PE/BLI</th>
+              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-16">Org</th>
+              <th scope="col" className="px-4 py-3 font-medium">
                 <button
                   onClick={() => toggleSort("title")}
                   className="flex items-center hover:text-foreground transition-colors"
@@ -118,7 +118,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   <SortIcon col="title" sortKey={sortKey} sortAsc={sortAsc} />
                 </button>
               </th>
-              <th className="px-4 py-3 font-medium text-right">
+              <th scope="col" className="px-4 py-3 font-medium text-right">
                 <button
                   onClick={() => toggleSort("fy2024_actual")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"
@@ -131,7 +131,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   />
                 </button>
               </th>
-              <th className="px-4 py-3 font-medium text-right">
+              <th scope="col" className="px-4 py-3 font-medium text-right">
                 <button
                   onClick={() => toggleSort("fy2026_total")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"

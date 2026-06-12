@@ -17,7 +17,7 @@
  *     (2px pad; amber outline)
  *   - resolution === 'ambiguous_first' → amber badge
  *     "first matching page — see methodology"
- *   - StrictMode-safe: renderTask.cancel() + pdf.destroy() in cleanup
+ *   - StrictMode-safe: renderTask.cancel() + loadingTask.destroy() in cleanup
  *   - Loading skeleton while rendering
  *   - Error state: "couldn't load the PDF — open the official source"
  *     with official link. NEVER fake success.
@@ -32,7 +32,8 @@ import { useAssetUrl } from "@/components/asset-config";
 
 // ── PDF.js lazy import ───────────────────────────────────────────────────────
 // Imported dynamically to avoid SSR issues (PDF.js expects browser globals).
-// pdfjs-dist v6: PDFDocumentProxy has cleanup() (not destroy()).
+// pdfjs-dist v6: PDFDocumentLoadingTask has destroy() — cancels the HTTP fetch,
+// tears down the worker channel, and supersedes cleanup().
 // RenderParameters requires `canvas: HTMLCanvasElement | null`.
 
 type PdfDocProxy = import("pdfjs-dist").PDFDocumentProxy;
@@ -93,6 +94,7 @@ export function PdfView({ citation }: PdfViewProps) {
 
     let pdf: PdfDocProxy | null = null;
     let renderTask: RenderTask | null = null;
+    let loadingTask: ReturnType<typeof import("pdfjs-dist")["getDocument"]> | null = null;
     let cancelled = false;
 
     const canvas = canvasRef.current;
@@ -110,16 +112,18 @@ export function PdfView({ citation }: PdfViewProps) {
         const pdfjs = await getPdfJs();
         if (cancelled) return;
 
-        const loadingTask = pdfjs.getDocument({ url });
+        loadingTask = pdfjs.getDocument({ url });
         pdf = await loadingTask.promise;
         if (cancelled) {
-          pdf.cleanup().catch(() => {});
+          // destroy() cancels the HTTP fetch + worker channel and tears down the
+          // document; supersedes cleanup() in pdfjs v6.
+          loadingTask.destroy().catch(() => {});
           return;
         }
 
         const page = await pdf.getPage(pageNum);
         if (cancelled) {
-          pdf.cleanup().catch(() => {});
+          loadingTask.destroy().catch(() => {});
           return;
         }
 
@@ -132,7 +136,7 @@ export function PdfView({ citation }: PdfViewProps) {
 
         const ctx = canvas.getContext("2d");
         if (!ctx || cancelled) {
-          pdf.cleanup().catch(() => {});
+          loadingTask.destroy().catch(() => {});
           return;
         }
 
@@ -163,17 +167,8 @@ export function PdfView({ citation }: PdfViewProps) {
 
     return () => {
       cancelled = true;
-      if (renderTask) {
-        try {
-          renderTask.cancel();
-        } catch {
-          // ignore cancel errors
-        }
-      }
-      if (pdf) {
-        // pdfjs-dist v6: use cleanup() to release resources
-        pdf.cleanup().catch(() => {});
-      }
+      renderTask?.cancel();
+      loadingTask?.destroy().catch(() => {});
     };
   }, [containerWidth, citation, assetUrl]);
 

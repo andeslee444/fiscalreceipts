@@ -19,6 +19,7 @@ import {
   registerDatasets,
   runQuery,
   resultToCsv,
+  terminateDuckDB,
   ROW_CAP,
   type QueryResult,
   type DatasetName,
@@ -254,6 +255,13 @@ export function Explorer({ datasets }: ExplorerProps) {
   const [engineError, setEngineError] = React.useState<string | null>(null);
   const dbRef = React.useRef<AsyncDuckDB | null>(null);
 
+  // Terminate the DuckDB singleton on unmount to release worker + WASM memory.
+  React.useEffect(() => {
+    return () => {
+      terminateDuckDB().catch(() => {});
+    };
+  }, []);
+
   // Dataset / query state
   const [selectedDataset, setSelectedDataset] = React.useState<DatasetName>(
     datasets[0]?.name ?? "budget_lines",
@@ -299,26 +307,8 @@ export function Explorer({ datasets }: ExplorerProps) {
   }
 
   // ── Query runner ─────────────────────────────────────────────────────────
-  async function execSql(sql: string) {
-    const db = await ensureEngine();
-    if (!db) return;
-
-    setQueryState("running");
-    setQueryError(null);
-    setQueryResult(null);
-
-    try {
-      const result = await runQuery(db, sql);
-      setQueryResult(result);
-      setQueryState("done");
-    } catch (err) {
-      setQueryError(String(err));
-      setQueryState("error");
-    }
-  }
-
-  // Kick off engine + run a canned query
-  async function runCanned(sql: string) {
+  /** Ensure engine is ready, then execute sql and update result state. */
+  async function runSql(sql: string) {
     const db = await ensureEngine();
     if (!db) return;
 
@@ -446,7 +436,7 @@ export function Explorer({ datasets }: ExplorerProps) {
               data-testid="canned-query"
               onClick={() => {
                 setCustomSql(q.sql);
-                runCanned(q.sql);
+                runSql(q.sql);
               }}
               disabled={queryState === "running"}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
@@ -473,7 +463,7 @@ export function Explorer({ datasets }: ExplorerProps) {
         />
         <div className="mt-2 flex gap-2">
           <button
-            onClick={() => execSql(customSql || `SELECT * FROM '${selectedDataset}.parquet' LIMIT 50`)}
+            onClick={() => runSql(customSql || `SELECT * FROM '${selectedDataset}.parquet' LIMIT 50`)}
             disabled={queryState === "running"}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
@@ -532,6 +522,7 @@ export function Explorer({ datasets }: ExplorerProps) {
                     {queryResult.columns.map((col) => (
                       <th
                         key={col}
+                        scope="col"
                         className="px-3 py-2 text-left font-semibold text-muted-foreground whitespace-nowrap"
                       >
                         {col}

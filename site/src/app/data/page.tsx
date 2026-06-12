@@ -169,16 +169,16 @@ export default function DataPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-2 text-left font-semibold text-muted-foreground">
+                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
                   Dataset
                 </th>
-                <th className="px-4 py-2 text-right font-semibold text-muted-foreground">
+                <th scope="col" className="px-4 py-2 text-right font-semibold text-muted-foreground">
                   Rows
                 </th>
-                <th className="px-4 py-2 text-left font-semibold text-muted-foreground">
+                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
                   Citation
                 </th>
-                <th className="px-4 py-2 text-left font-semibold text-muted-foreground">
+                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
                   Description
                 </th>
               </tr>

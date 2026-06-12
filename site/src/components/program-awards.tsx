@@ -78,6 +78,7 @@ export function ProgramAwards({
     setLoading(true);
     setError(null);
     try {
+      // full details file ~tens of KB; acceptable; revisit if payloads grow
       const resp = await fetch(`/json-lite/program_details/${peBli}.json`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data: ProgramDetails = await resp.json();
@@ -118,20 +119,20 @@ export function ProgramAwards({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left py-2 pr-3 font-medium text-muted-foreground">
+              <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">
                 Recipient
               </th>
-              <th className="text-left py-2 pr-3 font-medium text-muted-foreground">
+              <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">
                 PIID
               </th>
-              <th className="text-left py-2 font-medium text-muted-foreground">
+              <th scope="col" className="text-left py-2 font-medium text-muted-foreground">
                 Confidence
               </th>
             </tr>
           </thead>
           <tbody>
-            {displayedAwards.map((award) => (
-              <AwardRow key={award.award_piid} award={award} />
+            {displayedAwards.map((award, i) => (
+              <AwardRow key={`${award.award_piid || 'row'}-${i}`} award={award} />
             ))}
           </tbody>
         </table>

@@ -136,19 +136,19 @@ export default async function CompanyPage({
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">
                     Filing year
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
                     Filings
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
                     Income ⁂
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
                     Expense ⁂
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
                     Total ⁂
                   </th>
                 </tr>
@@ -325,13 +325,13 @@ export default async function CompanyPage({
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">
                     Recipient
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">
                     Award PIID
                   </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                  <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-center">
                     Confidence
                   </th>
                 </tr>
