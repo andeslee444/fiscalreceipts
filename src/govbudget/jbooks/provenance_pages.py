@@ -54,6 +54,9 @@ def _resolve_fact(page_texts: list[str], plumber, *, pe_bli: str,
     `plumber` is a zero-arg callable returning the (lazily opened, cached)
     pdfplumber.PDF — so documents whose facts all miss never pay the open cost.
     """
+    if not amount.is_finite():
+        return {**_UNRESOLVED, "resolution": "unresolved",
+                "candidate_pages": 0, "amount_text": str(amount)}
     targets = amount_strings(amount)
     if amount == 0:
         return {**_UNRESOLVED, "resolution": "zero_amount",
@@ -140,10 +143,10 @@ def build_provenance_pages(dsn: str) -> int:
             texts = _page_texts(pdf_path)
             pdf_handle = None
 
-            def plumber():
+            def plumber(path=pdf_path):
                 nonlocal pdf_handle
                 if pdf_handle is None:
-                    pdf_handle = pdfplumber.open(pdf_path)
+                    pdf_handle = pdfplumber.open(path)
                 return pdf_handle
 
             try:
