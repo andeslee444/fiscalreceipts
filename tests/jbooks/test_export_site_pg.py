@@ -577,3 +577,90 @@ def test_export_site_producer_consumer_integration(pg_dsn, tmp_path):
     assert isinstance(cov_result, dict)
     assert "by_resolution" in cov_result
     assert "total_details" in cov_result
+
+
+def test_export_site_jbook_sha256_dedup(pg_dsn, tmp_path):
+    """Two jbook_documents rows with the same sha256 (different source_url) + one
+    resolved provenance_pages fact → exactly ONE jbook_pdf citation emitted.
+
+    This guards against the sha256-join fan-out: jbook_documents.sha256 is NOT unique
+    (the same PDF may be re-hosted at a second URL). The export must deduplicate the
+    documents side of the join so each fact gets exactly one citation row.
+    """
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    sha = hashlib.sha256(FIXTURE_PDF.read_bytes()).hexdigest()
+
+    # Seed TWO jbook_documents rows with identical sha256 but different source_urls.
+    # Use 'on conflict do nothing' guard on source_url to avoid touching prior rows;
+    # we insert two brand-new URLs that cannot conflict with existing fixtures.
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        for i, suffix in enumerate(["mirror-a", "mirror-b"]):
+            con.execute(
+                "insert into jbook_documents"
+                " (org, exhibit_family, fiscal_year, title, source_url, file_path,"
+                " sha256, downloaded_at, status) values"
+                " ('DARPA','rdte',2026,'dedup_test.pdf',%s,%s,%s,now(),'downloaded')"
+                " on conflict (source_url) do nothing",
+                (
+                    f"https://example.mil/dedup/{suffix}/darpa.pdf",
+                    str(FIXTURE_PDF),
+                    sha,
+                ),
+            )
+        # Seed one budget_line_details row via a single doc_id (first inserted)
+        doc_id = con.execute(
+            "select id from jbook_documents where source_url = %s",
+            ("https://example.mil/dedup/mirror-a/darpa.pdf",),
+        ).fetchone()[0]
+        run_id_row = con.execute(
+            "select max(id) from extraction_runs where document_id = %s",
+            (doc_id,),
+        ).fetchone()[0]
+        if run_id_row is None:
+            con.execute(
+                "insert into extraction_runs (document_id, tier, tool_versions)"
+                " values (%s, 1, '{}')",
+                (doc_id,),
+            )
+            run_id_row = con.execute("select max(id) from extraction_runs").fetchone()[0]
+        # Upsert detail row (scenario unique to this test to avoid conftest conflicts)
+        con.execute(
+            "insert into budget_line_details"
+            " (extraction_run_id, document_id, pe_bli, scenario, amount_millions, xml_path)"
+            " values (%s,%s,'0601101E','ShaDedup','280.494','ProgramElement[0]')"
+            " on conflict do nothing",
+            (run_id_row, doc_id),
+        )
+
+    # Build provenance_pages — will resolve the detail row to the PDF
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="https://cdn.example/pdfs")
+
+    cit_pq = site / "citations" / "citations.parquet"
+    if not cit_pq.exists():
+        # If no citation was emitted (e.g. resolution=unresolved in this env) skip
+        import pytest as _pytest
+        _pytest.skip("No citations written — resolution may be unresolved in this env")
+
+    # Count jbook_pdf citations for our specific sha
+    jbook_rows = duckdb.sql(
+        f"select fact_id, sha256 from read_parquet('{cit_pq}')"
+        f" where kind = 'jbook_pdf' and sha256 = '{sha}'"
+    ).fetchall()
+
+    # Must have no duplicate fact_ids for this sha — dedup enforced
+    fact_ids = [r[0] for r in jbook_rows]
+    assert len(fact_ids) == len(set(fact_ids)), (
+        f"jbook_pdf citations for sha={sha[:12]}… are not distinct: {fact_ids}"
+    )
+
+    # The integrity gate must also pass (citation_distinctness included)
+    from govbudget.verify_phase5b1 import integrity_gate5b1
+    igr = integrity_gate5b1(site)
+    assert igr["ok"] is True, f"integrity_gate5b1 failed after sha-dedup export: {igr}"

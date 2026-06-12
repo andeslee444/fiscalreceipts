@@ -334,7 +334,17 @@ def export_site(
                        p.resolution, p.candidate_pages,
                        j.source_url, j.downloaded_at
                 from provenance_pages p
-                join jbook_documents j on j.sha256 = p.document_sha256
+                -- Deduplicate jbook_documents on sha256 before joining: the same PDF
+                -- may appear under two source_urls (e.g. a document re-hosted at a new
+                -- URL without changing content). A straight join on sha256 would fan-out
+                -- provenance_pages rows and produce duplicate citations. We select the
+                -- row with the lowest id to make the choice deterministic and stable.
+                join (
+                    select distinct on (sha256) sha256, source_url, downloaded_at
+                    from jbook_documents
+                    where sha256 is not null
+                    order by sha256, id
+                ) j on j.sha256 = p.document_sha256
                 order by p.document_sha256, p.pe_bli, p.scenario
                 """
             ).fetchall()

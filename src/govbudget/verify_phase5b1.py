@@ -524,6 +524,32 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     else:
         checks["workbook_set_equality"] = True
 
+    # ---- citation_distinctness check ----
+    # For each citation kind, verify that total row count == count(distinct fact_id).
+    # A duplicate fact_id within a kind means a join fan-out slipped through (e.g. a
+    # filing_uuid that appears twice in lda_filings multiplied a mention row).
+    distinctness_ok = True
+    for kind in ("jbook_pdf", "workbook", "lda_filing"):
+        con = duckdb.connect()
+        try:
+            row = con.execute(
+                f"select count(*), count(distinct fact_id)"
+                f" from read_parquet('{_sql_path(cit_pq)}')"
+                f" where kind = ?",
+                [kind],
+            ).fetchone()
+        finally:
+            con.close()
+        total_rows, distinct_ids = row
+        if total_rows != distinct_ids:
+            failures.append(
+                f"citation_distinctness: kind={kind!r} has {total_rows} rows"
+                f" but only {distinct_ids} distinct fact_ids"
+                f" ({total_rows - distinct_ids} duplicate(s))"
+            )
+            distinctness_ok = False
+    checks["citation_distinctness"] = distinctness_ok
+
     # ---- LDA checks ----
     lda_pq = site_dir / "data" / "fct_program_lobbying.parquet"
     if lda_pq.exists() and lda_cit_ids:

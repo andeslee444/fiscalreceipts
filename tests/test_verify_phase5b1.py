@@ -840,3 +840,75 @@ class TestCoverageReport:
         """Non-gating: missing dir returns a dict with ok=False or a summary."""
         report = coverage_report5b1(tmp_path / "nonexistent")
         assert isinstance(report, dict)
+
+
+# ---------------------------------------------------------------------------
+# Gate 2 sub-check: citation_distinctness
+# ---------------------------------------------------------------------------
+
+
+class TestCitationDistinctnessCheck:
+    """citation_distinctness: raw row count == count(distinct fact_id) per kind."""
+
+    _CIT_COLS = (
+        "fact_id varchar, kind varchar, units varchar, amount_text varchar,"
+        " page_number integer, x0 double, x1 double, top_pt double, bottom_pt double,"
+        " page_width double, page_height double, resolution varchar,"
+        " sheet varchar, cells varchar, amount_thousands double,"
+        " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
+        " xml_path varchar, retrieved_at varchar"
+    )
+
+    def _lda_row(self, fid: str, uuid: str) -> tuple:
+        url = f"https://lda.senate.gov/filings/{uuid}/"
+        return (fid, "lda_filing", None, None, None,
+                None, None, None, None, None, None, None,
+                None, None, None, None, None, url, None, None)
+
+    def test_duplicated_lda_fact_id_fails(self, tmp_path):
+        """citations.parquet with the same lda_filing fact_id twice → FAIL."""
+        site = tmp_path / "site"
+        uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        fid = fact_id_lda(uuid, "0601101E", "darpa")
+
+        # Two rows with identical fact_id (simulates join fan-out from dup filing row)
+        rows = [
+            self._lda_row(fid, uuid),
+            self._lda_row(fid, uuid),  # duplicate
+        ]
+        _write_parquet(site / "citations" / "citations.parquet", self._CIT_COLS, rows)
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+
+        assert result["ok"] is False, "expected FAIL when lda_filing has duplicate fact_id"
+        assert result["checks"].get("citation_distinctness") is False, (
+            f"citation_distinctness check should be False, got: {result['checks']}"
+        )
+        assert any("citation_distinctness" in f for f in result["failures"]), (
+            f"expected citation_distinctness in failures, got: {result['failures']}"
+        )
+        assert any("lda_filing" in f for f in result["failures"]), (
+            f"expected 'lda_filing' named in failure, got: {result['failures']}"
+        )
+
+    def test_all_distinct_passes(self, tmp_path):
+        """citations.parquet with two different lda_filing fact_ids → PASS."""
+        site = tmp_path / "site"
+        uuid1 = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        uuid2 = "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        fid1 = fact_id_lda(uuid1, "0601101E", "darpa")
+        fid2 = fact_id_lda(uuid2, "0601101E", "darpa")
+
+        rows = [
+            self._lda_row(fid1, uuid1),
+            self._lda_row(fid2, uuid2),
+        ]
+        _write_parquet(site / "citations" / "citations.parquet", self._CIT_COLS, rows)
+        _write_manifest(site)
+
+        result = integrity_gate5b1(site)
+
+        assert result["checks"].get("citation_distinctness") is True, (
+            f"citation_distinctness should be True for distinct rows, got: {result}"
+        )

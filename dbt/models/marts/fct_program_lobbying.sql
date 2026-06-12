@@ -15,6 +15,13 @@ with mentions as (
     from {{ source('influence', 'lda_program_mentions') }}
 ),
 filings as (
+    -- Deduplicate lda_filings to one row per filing_uuid before joining.
+    -- The declared mart grain is (filing_uuid, pe_bli, matched_term); any
+    -- duplicate filing_uuid rows in lda_filings (e.g. from a re-pull that
+    -- leaves an extra row) would fan-out mentions and violate that grain.
+    -- Strategy: row_number() ordered by filing_year desc, url to pick
+    -- deterministically — same URL is stable across re-pulls so the chosen
+    -- row is reproducible even if the table temporarily holds duplicates.
     select
         filing_uuid,
         url                     as filing_url,
@@ -29,7 +36,15 @@ filings as (
             else null
         end                     as family_key,
         filing_year
-    from {{ source('influence', 'lda_filings') }}
+    from (
+        select *,
+               row_number() over (
+                   partition by filing_uuid
+                   order by filing_year desc, url
+               ) as _rn
+        from {{ source('influence', 'lda_filings') }}
+    ) t
+    where _rn = 1
 ),
 programs as (
     select
