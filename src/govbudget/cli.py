@@ -793,6 +793,63 @@ def cmd_build(args) -> None:
     sys.exit(rc)
 
 
+def cmd_verify_phase5b1(args) -> None:
+    from govbudget.verify_phase5b1 import (
+        citation_gate5b1,
+        coverage_report5b1,
+        integrity_gate5b1,
+    )
+
+    site_dir = config.SITE_DIR
+    gates_ok = True
+
+    # Gate 1: citation re-derivation (100% required)
+    cg = citation_gate5b1(site_dir)
+    g1_ok = cg["ok"]
+    if cg.get("reason"):
+        print(f"gate 1 citations: {cg['reason']} → FAIL")
+    else:
+        print(
+            f"gate 1 citations: sampled={cg['sampled']} passed={cg['passed']}"
+            f" failures={len(cg['failures'])} → {'PASS' if g1_ok else 'FAIL'}"
+        )
+        for fid, reason in cg["failures"][:10]:
+            print(f"  FAIL {fid}: {reason}")
+    gates_ok = gates_ok and g1_ok
+
+    # Gate 2: integrity checks
+    ig = integrity_gate5b1(site_dir)
+    g2_ok = ig["ok"]
+    if ig.get("reason"):
+        print(f"gate 2 integrity: {ig['reason']} → FAIL")
+    else:
+        checks_str = " ".join(f"{k}={'PASS' if v else 'FAIL'}" for k, v in ig["checks"].items())
+        print(
+            f"gate 2 integrity: {checks_str}"
+            f" → {'PASS' if g2_ok else 'FAIL'}"
+        )
+        for failure in ig["failures"]:
+            print(f"  FAIL: {failure}")
+    gates_ok = gates_ok and g2_ok
+
+    # Gate 3: coverage (non-gating)
+    cr = coverage_report5b1(site_dir)
+    total = cr.get("total_details", 0)
+    print(
+        f"gate 3 coverage (non-gating): total={total}"
+        f" unique={cr.get('unique', 0)}"
+        f" ambiguous={cr.get('ambiguous_first', 0)}"
+        f" zero_amount={cr.get('zero_amount', 0)}"
+        f" unresolved={cr.get('unresolved', 0)}"
+        f" uncited_datasets={len(cr.get('uncited_datasets', []))}"
+    )
+    if cr.get("uncited_datasets"):
+        print(f"  uncited_datasets (deferred to 5B-2+): {cr['uncited_datasets']}")
+
+    print("verify-phase5b1:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_export_site(args) -> None:
     from govbudget.export_site import export_site
 
@@ -873,6 +930,9 @@ def main(argv=None) -> None:
 
     es = sub.add_parser("export-site", help="export typed site artifacts + citations + documents")
     es.set_defaults(func=cmd_export_site)
+
+    v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
+    v5b1.set_defaults(func=cmd_verify_phase5b1)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(
