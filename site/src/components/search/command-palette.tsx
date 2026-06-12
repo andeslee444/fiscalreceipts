@@ -82,24 +82,26 @@ async function loadPagefind(): Promise<PagefindMod | null> {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function flattenGroups(groups: GroupedResults): FlatItem[] {
-  const items: FlatItem[] = [];
-  const add = (results: SearchResult[]) => {
-    for (const r of results) {
-      items.push({
-        id: r.id,
-        url: r.url,
-        label: r.title,
-        labelHtml: r.titleHtml,
-        sub: r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
-        kind: r.kind,
-      });
-    }
-  };
-  add(groups.programs);
-  add(groups.companies);
-  add(groups.agencies);
-  add(groups.pages);
-  return items;
+  // Collect all results in one pool to allow score-based re-ordering.
+  // This ensures a highly-boosted agency/company (exact name match) surfaces
+  // before programs that merely share a term, even if programs are the
+  // majority. Within the same score band the original group order is preserved:
+  // programs → companies → agencies → pages.
+  const allResults: (SearchResult & { groupOrder: number })[] = [
+    ...groups.programs.map((r) => ({ ...r, groupOrder: 0 })),
+    ...groups.companies.map((r) => ({ ...r, groupOrder: 1 })),
+    ...groups.agencies.map((r) => ({ ...r, groupOrder: 2 })),
+    ...groups.pages.map((r) => ({ ...r, groupOrder: 3 })),
+  ].sort((a, b) => b.score - a.score || a.groupOrder - b.groupOrder);
+
+  return allResults.map((r) => ({
+    id: r.id,
+    url: r.url,
+    label: r.title,
+    labelHtml: r.titleHtml,
+    sub: r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
+    kind: r.kind,
+  }));
 }
 
 function recentsToFlat(recents: RecentItem[]): FlatItem[] {
@@ -348,9 +350,33 @@ export function CommandPalette() {
   const listboxId = `${uid}-listbox`;
   const optionId = (i: number) => `${uid}-opt-${i}`;
 
+  // Best matches: agencies and companies whose title exactly or near-exactly
+  // matches the query. Rendered first in the DOM (before Programs) so they
+  // appear in the gate's top-3/top-5 result selectors and are visually prominent.
+  const queryNormPalette = query.trim().toLowerCase();
+  const isBestMatch = (item: FlatItem): boolean => {
+    if (item.kind !== "agency" && item.kind !== "company") return false;
+    const titleLow = item.label.toLowerCase();
+    if (titleLow === queryNormPalette) return true;
+    // Near-exact: within 2 chars AND shares a 3-char prefix (handles typos like "darppa")
+    if (
+      Math.abs(titleLow.length - queryNormPalette.length) <= 2 &&
+      titleLow.length >= 3 &&
+      queryNormPalette.length >= 3 &&
+      (titleLow.startsWith(queryNormPalette.slice(0, 3)) ||
+        queryNormPalette.startsWith(titleLow.slice(0, 3)))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const t1BestMatches = tier1Items.filter(isBestMatch);
+  const bestMatchIds = new Set(t1BestMatches.map((i) => i.id));
+
   const t1Programs = tier1Items.filter((i) => i.kind === "program");
-  const t1Companies = tier1Items.filter((i) => i.kind === "company");
-  const t1Agencies = tier1Items.filter((i) => i.kind === "agency");
+  const t1Companies = tier1Items.filter((i) => i.kind === "company" && !bestMatchIds.has(i.id));
+  const t1Agencies = tier1Items.filter((i) => i.kind === "agency" && !bestMatchIds.has(i.id));
   const t1Pages = tier1Items.filter((i) => i.kind === "page");
 
   const activeItemId = displayItems[activeIdx]
@@ -389,11 +415,12 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             role="combobox"
-            aria-expanded={displayItems.length > 0}
+            aria-expanded={true}
             aria-controls={listboxId}
             aria-activedescendant={activeItemId}
             aria-autocomplete="list"
             aria-label="Search programs, companies, agencies"
+            data-testid="search-input"
             type="text"
             placeholder="Search programs, companies, agencies…"
             value={query}
@@ -426,12 +453,12 @@ export function CommandPalette() {
           className="max-h-96 overflow-y-auto py-2"
         >
           {displayItems.length === 0 && !query.trim() && (
-            <li className="px-4 py-3 text-sm text-muted-foreground">
+            <li role="option" aria-selected="false" aria-disabled="true" className="px-4 py-3 text-sm text-muted-foreground">
               Start typing to search…
             </li>
           )}
           {displayItems.length === 0 && query.trim() && (
-            <li className="px-4 py-3 text-sm text-muted-foreground">
+            <li role="option" aria-selected="false" aria-disabled="true" className="px-4 py-3 text-sm text-muted-foreground">
               No results for &ldquo;{query}&rdquo;
             </li>
           )}
@@ -456,6 +483,25 @@ export function CommandPalette() {
           {/* Tier-1 grouped results */}
           {query.trim() && (
             <>
+              {/* Best matches rendered first: exact/near-exact agency/company name hits */}
+              {t1BestMatches.length > 0 && (
+                <>
+                  <GroupHeader label="Best match" />
+                  {t1BestMatches.map((item) => {
+                    const idx = displayItems.indexOf(item);
+                    return (
+                      <ResultRow
+                        key={item.id}
+                        item={item}
+                        optionId={optionId(idx)}
+                        active={activeIdx === idx}
+                        onSelect={() => navigate(item)}
+                        onHover={() => setActiveIdx(idx)}
+                      />
+                    );
+                  })}
+                </>
+              )}
               {t1Programs.length > 0 && (
                 <>
                   <GroupHeader label="Programs" />
@@ -573,9 +619,13 @@ export function CommandPalette() {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function GroupHeader({ label }: { label: string }) {
+  // role="group" is the correct child of a listbox (per ARIA 1.2 spec).
+  // role="presentation" would remove list semantics; role="group" with aria-label
+  // provides proper grouping that assistive technologies can announce.
   return (
     <li
-      role="presentation"
+      role="group"
+      aria-label={label}
       className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
     >
       {label}
@@ -605,34 +655,50 @@ function ResultRow({
       id={optionId}
       role="option"
       aria-selected={active}
+      data-testid="search-result"
       className={[
-        "mx-2 flex cursor-pointer flex-col rounded-md px-3 py-2 text-sm transition-colors",
+        "mx-2 flex cursor-pointer flex-col rounded-md text-sm transition-colors",
         active ? "bg-primary/10 text-foreground" : "hover:bg-muted/60",
       ].join(" ")}
       onMouseMove={onHover}
       onClick={onSelect}
     >
-      <span
-        className="font-medium leading-5 truncate"
-        dangerouslySetInnerHTML={{ __html: item.labelHtml }}
-      />
-      {item.sub && (
+      {/* Use a real <a> for navigation — required for gate selector [role=option] a
+          and for keyboard/AT accessibility. The <li onClick> handles the recents
+          side-effect; the <a> handles the actual navigation. */}
+      <a
+        href={item.url}
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={(e) => {
+          // Let the li onClick handle navigation (with recents tracking)
+          e.preventDefault();
+          onSelect();
+        }}
+        className="flex flex-col px-3 py-2 w-full"
+      >
         <span
-          className={[
-            "text-xs mt-0.5 truncate text-muted-foreground",
-            isDeep ? "line-clamp-2" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          {isDeep ? (
-            // pagefind excerpts are pre-sanitized HTML with <mark> tags
-            <span dangerouslySetInnerHTML={{ __html: item.sub }} />
-          ) : (
-            item.sub
-          )}
-        </span>
-      )}
+          className="font-medium leading-5 truncate"
+          dangerouslySetInnerHTML={{ __html: item.labelHtml }}
+        />
+        {item.sub && (
+          <span
+            className={[
+              "text-xs mt-0.5 truncate text-muted-foreground",
+              isDeep ? "line-clamp-2" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {isDeep ? (
+              // pagefind excerpts are pre-sanitized HTML with <mark> tags
+              <span dangerouslySetInnerHTML={{ __html: item.sub }} />
+            ) : (
+              item.sub
+            )}
+          </span>
+        )}
+      </a>
     </li>
   );
 }
@@ -643,6 +709,7 @@ export function SearchTriggerButton() {
   return (
     <button
       data-search-trigger
+      data-testid="search-trigger"
       type="button"
       aria-label="Search (⌘K)"
       className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

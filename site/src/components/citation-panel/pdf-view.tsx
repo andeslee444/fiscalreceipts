@@ -199,13 +199,14 @@ export function PdfView({ citation }: PdfViewProps) {
       {/* Ambiguous resolution badge */}
       {isAmbiguous && (
         <div
+          data-testid="ambiguous-badge"
           className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
           role="note"
-          aria-label="First matching page — see methodology"
+          aria-label="Ambiguous match: first matching page — see methodology"
         >
           <span className="shrink-0 mt-0.5">⚠</span>
           <span>
-            first matching page — see methodology
+            Ambiguous: first matching page — see methodology
           </span>
         </div>
       )}
@@ -237,7 +238,8 @@ export function PdfView({ citation }: PdfViewProps) {
               {"couldn't load the PDF — open the official source"}
             </p>
             {error && (
-              <p className="text-xs font-mono text-muted-foreground/70 max-w-full truncate">
+              /* text-muted-foreground/70 would fail WCAG AA; use full opacity */
+              <p className="text-xs font-mono text-muted-foreground max-w-full truncate">
                 {error}
               </p>
             )}

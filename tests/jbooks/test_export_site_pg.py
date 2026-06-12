@@ -789,6 +789,81 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     assert "0601101E" in by_pe
 
 
+def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
+    """fy2024_fact_id must be null when the PriorYear fact has resolution='zero_amount'.
+
+    The bug: export_site used to emit the fact_id from jbook_details even when
+    that fact's provenance resolution was 'zero_amount' (meaning it is excluded
+    from citations.json). Gate 2 then flagged the emitted data-fact-id as
+    unresolvable. The fix: only emit fy2024_fact_id when the fact_id appears in
+    the citation rows (resolution unique or ambiguous_first).
+    """
+    db = tmp_path / "wh.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    con.execute("create table dim_programs (pe_bli varchar, title varchar, org varchar, exhibit_family varchar, project_count integer, fy2024_actual_millions double, fully_reconciled boolean)")
+    con.execute("insert into dim_programs values ('0601101E','Defense Research Sciences','DARPA','rdte',1,0.0,false)")
+    con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
+    con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
+    con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
+    con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
+    con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
+    con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
+    con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
+    con.close()
+
+    # Seed a jbook document + extraction_run + budget_line_detail
+    sha = hashlib.sha256(FIXTURE_PDF.read_bytes()).hexdigest()
+    with psycopg.connect(pg_dsn, autocommit=True) as pg_con:
+        pg_con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url, file_path, sha256, downloaded_at, status) values"
+            " ('DARPA','rdte',2026,'excerpt.pdf','https://example.mil/zeroamt.pdf',%s,%s,"
+            " now(),'downloaded') on conflict (source_url) do nothing",
+            (str(FIXTURE_PDF), sha),
+        )
+        doc_id = pg_con.execute(
+            "select id from jbook_documents where source_url='https://example.mil/zeroamt.pdf'"
+        ).fetchone()[0]
+        pg_con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions)"
+            " values (%s, 1, '{}')",
+            (doc_id,),
+        )
+        run_id = pg_con.execute("select max(id) from extraction_runs").fetchone()[0]
+        # Seed a PriorYear detail row with amount_millions=0 (triggers zero_amount resolution)
+        pg_con.execute(
+            "insert into budget_line_details (extraction_run_id, document_id, pe_bli,"
+            " scenario, amount_millions, xml_path) values"
+            " (%s,%s,'0601101E','PriorYear','0.000','ProgramElement[0]')",
+            (run_id, doc_id),
+        )
+        # Seed provenance_pages directly with resolution='zero_amount'
+        pg_con.execute(
+            "insert into provenance_pages"
+            " (document_sha256, pe_bli, project_number, scenario, amount_millions,"
+            "  amount_text, page_number, resolution, candidate_pages)"
+            " values (%s,'0601101E',null,'PriorYear',0.000,'0.000',null,'zero_amount',0)"
+            " on conflict do nothing",
+            (sha,),
+        )
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    programs = json.loads((site / "json" / "programs.json").read_text())
+    by_pe = {p["pe_bli"]: p for p in programs}
+
+    assert "0601101E" in by_pe, "0601101E not in programs.json"
+    assert by_pe["0601101E"]["fy2024_fact_id"] is None, (
+        f"fy2024_fact_id must be null when resolution=zero_amount (citations.json has no entry);"
+        f" got {by_pe['0601101E']['fy2024_fact_id']!r}"
+    )
+
+
 def test_programs_json_org_translation(pg_dsn, tmp_path):
     """Forward org translation: DPAP program joins OSD trajectory row (not DPAP)."""
     # Fixture: add DPAP program + OSD trajectory row; also keep OSD program + OSD trajectory.

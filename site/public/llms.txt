@@ -1,12 +1,52 @@
 # GovBudget
 
 GovBudget is a spending-intelligence platform for U.S. federal defense budget data.
-Every displayed number is citation-backed with PDF page-level provenance.
+Every program element, award, and lobbying figure is citation-backed: J-book PDF
+page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
+The site covers 326 DoD R&D and procurement program elements across 20 agencies,
+200 top contractor families, and 44,754 source citations from FY2017 onward.
 
-## Key pages
+## Core routes
 
+https://govbudget-placeholder.example/
+https://govbudget-placeholder.example/programs/
+https://govbudget-placeholder.example/companies/
+https://govbudget-placeholder.example/data/
 https://govbudget-placeholder.example/methodology/
 https://govbudget-placeholder.example/downloads/
-https://govbudget-placeholder.example/program/0602025E/
-https://govbudget-placeholder.example/program/0602718BR/
-https://govbudget-placeholder.example/program/0603760E/
+https://govbudget-placeholder.example/about/
+
+## Top 5 programs by FY2026 budget
+
+https://govbudget-placeholder.example/program/0607210D8Z/  # Industrial Base Analysis and Sustainment Support [OSD] FY26: 2328.4M
+https://govbudget-placeholder.example/program/0603467E/  # DARPA Advanced Technology Development [DARPA] FY26: 1733.5M
+https://govbudget-placeholder.example/program/0603941D8Z/  # Test & Evaluation Science & Technology [OSD] FY26: 1645.8M
+https://govbudget-placeholder.example/program/0604874C/  # Improved Homeland Defense Interceptors [MDA] FY26: 1637.4M
+https://govbudget-placeholder.example/program/0602025E/  # Making, Maintaining, Supply Chain and Logistics [DARPA] FY26: 1597.0M
+
+## Data downloads
+
+https://govbudget-placeholder.example/downloads/  # Parquet exports: dim_programs, jbook_details, budget_lines, fct_budget_to_awards, dim_entities, fct_influence, citations
+
+## Agencies
+
+https://govbudget-placeholder.example/agency/CBDP/
+https://govbudget-placeholder.example/agency/CYBERCOM/
+https://govbudget-placeholder.example/agency/DARPA/
+https://govbudget-placeholder.example/agency/DCAA/
+https://govbudget-placeholder.example/agency/DCMA/
+https://govbudget-placeholder.example/agency/DCSA/
+https://govbudget-placeholder.example/agency/DHRA/
+https://govbudget-placeholder.example/agency/DISA/
+https://govbudget-placeholder.example/agency/DLA/
+https://govbudget-placeholder.example/agency/DPAA/
+https://govbudget-placeholder.example/agency/DPAP/
+https://govbudget-placeholder.example/agency/DSCA/
+https://govbudget-placeholder.example/agency/DTIC/
+https://govbudget-placeholder.example/agency/DTRA/
+https://govbudget-placeholder.example/agency/MDA/
+https://govbudget-placeholder.example/agency/OSD/
+https://govbudget-placeholder.example/agency/OTE/
+https://govbudget-placeholder.example/agency/SOCOM/
+https://govbudget-placeholder.example/agency/TJS/
+https://govbudget-placeholder.example/agency/WHS/

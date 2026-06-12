@@ -13,7 +13,7 @@
  *   - else plain text
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ProgramDetails } from "@/lib/data";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
@@ -49,10 +49,11 @@ interface ProgramMentionsProps {
   /** pe_bli for client-side fetch */
   peBli: string;
   /**
-   * Set of family_keys that are linkable (present in entities_top.json).
-   * Passed from the server component to avoid re-fetching.
+   * Array of family_keys that are linkable (present in entities_top.json).
+   * Passed as string[] (not Set) because Sets are not serializable across
+   * the Next.js App Router server→client boundary.
    */
-  linkableKeys: Set<string>;
+  linkableKeys: string[];
 }
 
 function MentionRow({
@@ -125,6 +126,10 @@ export function ProgramMentions({
   peBli,
   linkableKeys,
 }: ProgramMentionsProps) {
+  // Reconstruct as Set inside the client component for O(1) lookup.
+  // The prop arrives as string[] because Sets cannot cross the server→client boundary.
+  const linkableKeysSet = useMemo(() => new Set(linkableKeys), [linkableKeys]);
+
   const [expanded, setExpanded] = useState(false);
   const [allMentions, setAllMentions] = useState<ProgramMention[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -179,7 +184,7 @@ export function ProgramMentions({
           <MentionRow
             key={`${mention.filing_uuid}-${mention.matched_term}-${i}`}
             mention={mention}
-            linkableKeys={linkableKeys}
+            linkableKeys={linkableKeysSet}
           />
         ))}
       </div>

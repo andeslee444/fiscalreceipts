@@ -6,6 +6,7 @@ import {
   getEntityTopByFamilyKey,
   collectCitations,
 } from "@/lib/data";
+import type { JbookPdfCitation } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
@@ -105,9 +106,11 @@ export default async function ProgramPage({
   // Load detailed data
   const details = getProgramDetails(peBli);
 
-  // Build set of linkable family_keys (entities_top)
+  // Build set of linkable family_keys (entities_top).
+  // Passed to ProgramMentions (client component) as a plain string[] — Sets are
+  // not serializable across the server→client boundary in Next.js App Router.
   const entityByFamilyKey = getEntityTopByFamilyKey();
-  const linkableKeys = new Set(entityByFamilyKey.keys());
+  const linkableKeysArray = Array.from(entityByFamilyKey.keys());
 
   // Slice lists for SSG cap
   const initialAwards = details.awards.slice(0, CAP);
@@ -182,8 +185,43 @@ export default async function ProgramPage({
         initialMentions={initialMentions}
         totalCount={details.mentions.length}
         peBli={peBli}
-        linkableKeys={linkableKeys}
+        linkableKeys={linkableKeysArray}
       />
+
+      {/* Primary Sources — static links with #page=N for direct PDF navigation.
+          Rendered server-side so they appear in SSG HTML (gate compliance + UX).
+          Only jbook_pdf citations with an official_url containing #page= are shown. */}
+      {(() => {
+        const pdfLinks = Object.entries(citationsSlice)
+          .filter(
+            ([, cit]) =>
+              cit.kind === "jbook_pdf" &&
+              cit.official_url?.includes("#page="),
+          )
+          .slice(0, 5) as [string, JbookPdfCitation][];
+        if (pdfLinks.length === 0) return null;
+        return (
+          <section className="mt-8 pt-6 border-t border-border">
+            <h2 className="text-base font-semibold mb-3 text-foreground">
+              Primary Sources
+            </h2>
+            <ul className="space-y-1.5">
+              {pdfLinks.map(([factId, cit]) => (
+                <li key={factId}>
+                  <a
+                    href={cit.official_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Budget Justification PDF (page {cit.page_number})
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
     </div>
     </CitationPanelProvider>
   );

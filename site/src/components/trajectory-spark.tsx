@@ -126,9 +126,13 @@ export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
             r={POINT_R}
             fill={trendColor}
           >
-            <title>
+            {/* Use <desc> not <title>: Next.js App Router hoists <title> elements
+                from server components to <head>, leaving empty SVG titles in SSG
+                output and causing React hydration error #418. <desc> is unaffected
+                and is the correct SVG element for shape-level descriptions anyway. */}
+            <desc>
               {p.label}: ${(p.v / 1000).toFixed(1)}M (USD thousands)
-            </title>
+            </desc>
           </circle>
         ))}
         {/* Year labels */}

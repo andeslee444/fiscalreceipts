@@ -125,6 +125,7 @@ export function ReceiptsToggle() {
 
   return (
     <button
+      data-testid="receipts-toggle"
       onClick={toggle}
       aria-pressed={receiptsOn}
       aria-label={`Receipts mode: ${receiptsOn ? "on" : "off"}. Click to ${receiptsOn ? "disable" : "enable"} citation chips.`}

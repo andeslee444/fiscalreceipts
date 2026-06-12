@@ -56,7 +56,7 @@ function cannedQueriesFor(name: DatasetName): CannedQuery[] {
         {
           label: "Top programs by FY26 total",
           sql: t(`
-SELECT pe_bli, org, fy2026_total
+SELECT pe_bli, organization, fy2026_total
 FROM 'fct_budget_trajectory.parquet'
 WHERE fy2026_total IS NOT NULL
 ORDER BY fy2026_total DESC
@@ -80,12 +80,12 @@ LIMIT 50
     case "budget_lines":
       return [
         {
-          label: "Top programs by FY26 budget",
+          label: "Top programs by FY26 request",
           sql: t(`
 SELECT pe_bli, exhibit, account_title,
        SUM(amount_thousands) AS total_thousands
 FROM 'budget_lines.parquet'
-WHERE amount_type = 'BA'
+WHERE amount_type = 'fy_2026_request'
 GROUP BY pe_bli, exhibit, account_title
 ORDER BY total_thousands DESC
 LIMIT 50
@@ -129,10 +129,9 @@ LIMIT 50
         {
           label: "Districts by total obligation",
           sql: t(`
-SELECT district_id, state_code, congressional_district,
-       total_obligation_usd
+SELECT pop_state, pop_district, total_obligation
 FROM 'dim_geography.parquet'
-ORDER BY total_obligation_usd DESC
+ORDER BY total_obligation DESC
 LIMIT 50
           `),
         },
@@ -209,11 +208,11 @@ LIMIT 50
     case "fct_state_per_capita":
       return [
         {
-          label: "Highest per-capita obligation by state",
+          label: "Per-capita obligation by jurisdiction",
           sql: t(`
-SELECT state_code, obligation_per_capita_usd, total_obligation_usd
+SELECT jurisdiction, fiscal_year, amount_per_capita, total_amount_usd
 FROM 'fct_state_per_capita.parquet'
-ORDER BY obligation_per_capita_usd DESC
+ORDER BY amount_per_capita DESC
 LIMIT 50
           `),
         },
@@ -222,11 +221,12 @@ LIMIT 50
     case "fct_improper_exposure":
       return [
         {
-          label: "Programs with highest improper payment exposure",
+          label: "Agencies with highest improper payment exposure",
           sql: t(`
-SELECT pe_bli, exposure_usd, exposure_pct
+SELECT agency_code, program_count, derived_improper_amount_usd,
+       weighted_rate_pct, latest_fiscal_year
 FROM 'fct_improper_exposure.parquet'
-ORDER BY exposure_usd DESC
+ORDER BY derived_improper_amount_usd DESC
 LIMIT 50
           `),
         },
@@ -382,7 +382,7 @@ export function Explorer({ datasets }: ExplorerProps) {
           <p className="text-sm font-medium text-destructive">
             Engine failed to load
           </p>
-          <pre className="mt-2 text-xs text-destructive/80 whitespace-pre-wrap">
+          <pre className="mt-2 text-xs text-destructive whitespace-pre-wrap">
             {engineError}
           </pre>
         </div>
@@ -486,7 +486,7 @@ export function Explorer({ datasets }: ExplorerProps) {
           <p className="text-sm font-semibold text-destructive mb-1">
             Query error
           </p>
-          <pre className="text-xs text-destructive/80 whitespace-pre-wrap overflow-x-auto">
+          <pre className="text-xs text-destructive whitespace-pre-wrap overflow-x-auto">
             {queryError}
           </pre>
         </div>

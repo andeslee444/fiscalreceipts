@@ -145,6 +145,7 @@ function CitationPanelDialog({
 
         {/* Panel — right-side sheet */}
         <DialogPrimitive.Content
+          data-testid="citation-panel"
           className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-background shadow-xl outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right duration-200"
           aria-label="Citation details"
         >
@@ -225,8 +226,9 @@ function CitationPanelDialog({
               )}
 
               {/* fact_id short — debugging aid */}
+              {/* Note: muted-foreground/60 fails WCAG AA contrast; use muted-foreground at full opacity */}
               {shortId && (
-                <p className="text-[11px] font-mono text-muted-foreground/60">
+                <p className="text-[11px] font-mono text-muted-foreground">
                   fact #{shortId}
                 </p>
               )}

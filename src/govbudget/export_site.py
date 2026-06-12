@@ -653,13 +653,20 @@ def _write_all_sidecars(
             "xml_path": xml_path,
         })
 
+    # Set of fact_ids that have a valid citation row (resolution unique/ambiguous_first)
+    # Only these are safe to emit as data-fact-id (gate 2 Cite state A contract).
+    _cited_fact_ids: set[str] = {row[0] for row in citation_rows}
+
     # fy2024_fact_id index: pe_bli → fact_id (jbook_details WHERE
-    # project_number IS NULL AND scenario='PriorYear'; nullable if absent)
+    # project_number IS NULL AND scenario='PriorYear'; nullable if absent).
+    # ONLY populated when that fact_id exists in _cited_fact_ids; otherwise
+    # null so the page renders honest Cite state C (data-uncited) instead of
+    # emitting a dangling data-fact-id that citations.json cannot resolve.
     fy2024_fact_id: dict[str, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario, *rest) = row
         if project_number is None and scenario == "PriorYear":
-            if pe_bli not in fy2024_fact_id:
+            if pe_bli not in fy2024_fact_id and fid in _cited_fact_ids:
                 fy2024_fact_id[pe_bli] = fid
 
     # budget_lines index: pe_bli → list of bl dicts
