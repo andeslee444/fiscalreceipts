@@ -22,6 +22,11 @@
  * as plain text (no link) when the family_key is not in entities_top.
  */
 
+/**
+ * Citation type re-exports — using `export type` so the bundler
+ * knows these are erased at runtime and will not chase through
+ * the server-only data.ts module graph.
+ */
 export type {
   Citation,
   CitationKind,
@@ -31,7 +36,27 @@ export type {
   WorkbookCitation,
 } from "@/lib/data";
 
-export { isJbookPdf, isLdaFiling, isWorkbook } from "@/lib/data";
+// ── Type guards (defined here so client components can import them
+//    without pulling in server-only data.ts) ────────────────────────────────
+
+import type {
+  Citation,
+  JbookPdfCitation,
+  WorkbookCitation,
+  LdaFilingCitation,
+} from "@/lib/data";
+
+export function isJbookPdf(c: Citation): c is JbookPdfCitation {
+  return c.kind === "jbook_pdf";
+}
+
+export function isWorkbook(c: Citation): c is WorkbookCitation {
+  return c.kind === "workbook";
+}
+
+export function isLdaFiling(c: Citation): c is LdaFilingCitation {
+  return c.kind === "lda_filing";
+}
 
 // ── LDA URL helpers ───────────────────────────────────────────────────────────
 

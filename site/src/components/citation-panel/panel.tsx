@@ -25,7 +25,7 @@ import React, { useCallback, useContext, useState } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
-import { isJbookPdf, isWorkbook, isLdaFiling } from "@/lib/data";
+import { isJbookPdf, isWorkbook, isLdaFiling } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { PdfView } from "./pdf-view";
