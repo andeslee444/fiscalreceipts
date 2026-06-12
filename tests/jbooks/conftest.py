@@ -51,6 +51,5 @@ def _clean_tables(request):
             con.execute(
                 "truncate jbook_documents, budget_lines, extraction_runs, budget_line_details, "
                 "detail_narratives, reconciliation_checks, review_queue, extraction_gaps,"
-                " budget_line_awards "
-                "restart identity cascade"
+                " budget_line_awards, provenance_pages restart identity cascade"
             )
