@@ -15,8 +15,8 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 4 | State pilot (CA/CT comparables) | verify-phase4 | ✅ merged | CA $314.1B full capture; 3 honest comparables |
 | 5A | Influence layer (Senate LDA) | verify-phase5a | ✅ merged | 4,258 filings; 32,780 program mentions/245 programs; match 80% |
 | 5B-1 | Citation + export backbone | verify-phase5b1 | ✅ merged | 44,754 citations (3,417 pdf / 8,557 workbook / 32,780 lda); 0 unresolved; 50/50 re-derived |
-| 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 (see eval framework) | 🔜 NEXT | — |
-| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, influence panels, share cards, top-50 dossiers + animations | verify-phase5b3 + dossier_gate | pending | — |
+| 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 | ✅ merged | 556 SSG pages (326 program/200 company/20 agency); 7 gates PASS; search 24/24 incl. typos; LHCI ≥90; a11y 0 serious; visual gate r2 medians 5/5/5/5 (r1 FAILED on doubled uncited-flag + mobile nav — agent-visual judging caught what no mechanical gate saw); 8,834 amount spans full-corpus verified cited/chipped/flagged |
+| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, influence panels, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | 🔜 NEXT | — |
 | 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | pending | — |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
@@ -74,6 +74,20 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   guards at every parse boundary.
 - **USAspending throttles multi-GB pulls** — patient 20–25min cooldown retry loops
   succeed where hammering fails.
+- **Agent-visual judging catches what mechanical gates can't** (5B-2): all 7
+  tool gates passed while the uncited-flag rendered doubled/overlapping and the
+  mobile nav didn't collapse — 3-judge screenshot rubric failed it; after fixes,
+  5/5/5/5. Visual gates are load-bearing for UI phases, not decoration.
+- **Gate checks must be audited for vacuousness**: two clickthrough assertions
+  passed while testing nothing (a misspelled field name; a missing chip check) —
+  found only by the final whole-implementation review asking "would this gate
+  catch a regression?". Negative-scan allowlists need exact-match semantics.
+- **Tech-stack lessons (5B-2):** SVG `<title>` inside server components gets
+  hoisted by Next → hydration mismatch (use `<desc>`); .wasm needs
+  `application/wasm` content-type for streaming compile; RSC→client props must
+  be JSON-serializable (no Set); runtime asset config (public/config.json) beats
+  env-baked bases — one artifact is both gated and shippable; Turbopack honors
+  webpack magic comments (turbopackIgnore) for externals like Pagefind.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
