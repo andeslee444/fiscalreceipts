@@ -152,12 +152,13 @@ Alias table rows generated here are curated + cited before entering search.
 - **5B-4 verify-phase5 assembly + loop:** eval_gate (analyst agent), full gate
   suite, regression sweep 1–5A, final review, merge.
 
-## 9. User decisions required before public launch (not blocking 5B-1/5B-2 dev)
+## 9. User decisions (status as of 2026-06-11)
 
-1. Product name + domain (placeholder: "GovBudget" / vercel preview URL).
-2. Object storage: **R2 recommended** (free egress) vs S3.
-3. Vercel account: deploys must use the andes.lee444@gmail.com identity (existing
-   free-account constraint).
+1. Product name + domain: **PENDING** (placeholder: "GovBudget" / vercel preview
+   URL; shortlist under user review).
+2. Object storage: **DECIDED — Cloudflare R2** (free egress).
+3. Vercel account: **DECIDED** — deploys use the andes.lee444@gmail.com identity
+   (existing free-account constraint).
 
 ## Self-Review Notes
 
