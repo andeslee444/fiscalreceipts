@@ -1,0 +1,179 @@
+"use client";
+
+/**
+ * Dataset download cards — uses useAssetUrl() to resolve runtime asset base.
+ */
+
+import { useAssetUrl } from "@/components/asset-config";
+
+interface DatasetCard {
+  name: string;
+  description: string;
+  parquetPath: string;
+  rowCount?: number;
+  isCited?: boolean;
+}
+
+const DATASETS: DatasetCard[] = [
+  {
+    name: "dim_programs",
+    description: "326 DoD R&D and procurement program elements with metadata.",
+    parquetPath: "/data/dim_programs.parquet",
+  },
+  {
+    name: "jbook_details",
+    description:
+      "Project-level cost figures from J-book XML (R-2/P-40 exhibits), with page-level PDF citation.",
+    parquetPath: "/data/jbook_details.parquet",
+    isCited: true,
+  },
+  {
+    name: "budget_lines",
+    description:
+      "Budget line items from R-1 and P-1 Excel rollups (workbook-cited).",
+    parquetPath: "/data/budget_lines.parquet",
+    isCited: true,
+  },
+  {
+    name: "fct_budget_trajectory",
+    description: "FY2024–FY2026 budget trajectory per program element.",
+    parquetPath: "/data/fct_budget_trajectory.parquet",
+  },
+  {
+    name: "dim_entities",
+    description: "Top-200 contractor families by total federal obligation.",
+    parquetPath: "/data/dim_entities.parquet",
+  },
+  {
+    name: "fct_influence",
+    description:
+      "LDA lobbying filings by family key and filing year — income, expense, totals.",
+    parquetPath: "/data/fct_influence.parquet",
+  },
+  {
+    name: "fct_program_lobbying",
+    description: "Program mentions extracted from LDA filing issue text.",
+    parquetPath: "/data/fct_program_lobbying.parquet",
+  },
+  {
+    name: "fct_budget_to_awards",
+    description:
+      "Budget-to-contract crosswalk (confidence-tiered: high/medium/low).",
+    parquetPath: "/data/fct_budget_to_awards.parquet",
+  },
+  {
+    name: "dim_geography",
+    description: "Per-state defense spending aggregates.",
+    parquetPath: "/data/dim_geography.parquet",
+  },
+  {
+    name: "fct_state_per_capita",
+    description: "State-level per-capita spending with Census population data.",
+    parquetPath: "/data/fct_state_per_capita.parquet",
+  },
+  {
+    name: "fct_program_concentration",
+    description: "HHI contractor concentration scores per program element.",
+    parquetPath: "/data/fct_program_concentration.parquet",
+  },
+  {
+    name: "fct_improper_exposure",
+    description: "Agency-level improper-payment exposure estimates (derived).",
+    parquetPath: "/data/fct_improper_exposure.parquet",
+  },
+  {
+    name: "jbook_narratives",
+    description: "Mission/accomplishment narratives from J-book exhibits.",
+    parquetPath: "/data/jbook_narratives.parquet",
+  },
+  {
+    name: "citations",
+    description:
+      "All 44,754 source citations (jbook_pdf + workbook + lda_filing), keyed by fact_id.",
+    parquetPath: "/data/citations.parquet",
+    isCited: true,
+  },
+];
+
+export function DownloadCards({ builtAt }: { builtAt: string }) {
+  const assetUrl = useAssetUrl();
+
+  const builtDate = builtAt
+    ? new Date(builtAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "unknown";
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-6">
+        Bundle built: <time dateTime={builtAt}>{builtDate}</time>. Files are
+        in Apache Parquet format, readable with DuckDB, pandas, R
+        arrow/duckdb, or any Parquet-compatible tool. Each file includes the
+        same provenance metadata that backs on-screen figures.
+      </p>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {DATASETS.map((ds) => (
+          <div
+            key={ds.name}
+            className="rounded-lg border border-border bg-card p-4 flex flex-col gap-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-mono text-sm font-semibold text-foreground">
+                {ds.name}
+              </span>
+              {ds.isCited && (
+                <span className="shrink-0 text-xs rounded bg-emerald-100 text-emerald-800 px-1.5 py-0.5">
+                  cited
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground leading-5">
+              {ds.description}
+            </p>
+            <a
+              href={assetUrl(ds.parquetPath)}
+              className="mt-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              download
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {ds.name}.parquet
+            </a>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8 rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground mb-2">
+          Additional assets (not in table above)
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-xs">
+          <li>
+            <code>citations.parquet</code> — 44,754 source citations linking
+            fact_ids to PDF pages, workbook cells, and LDA filing UUIDs
+          </li>
+          <li>
+            <code>pdfs/</code> — 34 SHA-named J-book PDFs (~149 MB total)
+          </li>
+          <li>
+            <code>workbooks/</code> — 3 R-1/P-1 Excel rollup files
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
