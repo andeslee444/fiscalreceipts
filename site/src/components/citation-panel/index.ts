@@ -2,3 +2,6 @@ export { CitationPanelProvider, useCitationPanel } from "./panel";
 export { PdfView } from "./pdf-view";
 export { WorkbookCard } from "./workbook-card";
 export { LdaCard } from "./lda-card";
+export { DerivedCard } from "./derived-card";
+export { UsaspendingCard } from "./usaspending-card";
+export { StateCard } from "./state-card";

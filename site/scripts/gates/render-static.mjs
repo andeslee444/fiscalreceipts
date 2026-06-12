@@ -14,6 +14,15 @@
  *     OUTSIDE [data-amount] subtrees → FAIL (listing page + snippet).
  *     Exceptions: content inside <script>, <style>, JSON-LD <script> tags.
  *     Allowlist (prose-allowlist.json) consulted for known prose mentions.
+ *
+ * (c) DATASET LEDGER (Phase 5B-3 — binding evaluator design):
+ *     Reads site_meta.json's uncited_datasets ledger. Every [data-amount]
+ *     element MUST carry data-dataset; then:
+ *       - state C ([data-uncited]) with a dataset NOT on the ledger → FAIL
+ *         (flipped datasets may no longer render ⁂)
+ *       - state A ([data-fact-id]) with a dataset still ON the ledger → FAIL
+ *         (a dataset cannot be both 'citation pending' and cited)
+ *       - missing/empty data-dataset on ANY [data-amount] → FAIL
  */
 
 import fs from "fs";
@@ -54,6 +63,11 @@ export async function runRenderStaticGate() {
   const citations = readJson(path.join(jsonDir, "citations.json"));
   const citationKeys = new Set(Object.keys(citations));
 
+  // ── Load the dataset ledger (site_meta.uncited_datasets) ─────────────────
+  const siteMeta = readJson(path.join(jsonDir, "site_meta.json"));
+  const uncitedDatasets = new Set(siteMeta.uncited_datasets || []);
+  notes.push(`dataset ledger: [${[...uncitedDatasets].join(", ")}]`);
+
   // ── Load prose allowlist ──────────────────────────────────────────────────
   let allowlist = [];
   try {
@@ -69,8 +83,10 @@ export async function runRenderStaticGate() {
 
   let positiveErrors = 0;
   let negativeErrors = 0;
+  let ledgerErrors = 0;
   const positiveFailures = [];
   const negativeFailures = [];
+  const ledgerFailures = [];
 
   for (const filePath of htmlFiles) {
     const relPath = path.relative(outDir, filePath);
@@ -97,6 +113,33 @@ export async function runRenderStaticGate() {
       const citationKind = el.getAttribute("data-citation-kind");
       const xmlPath = el.getAttribute("data-xml-path");
       const uncited = el.getAttribute("data-uncited");
+      const dataset = el.getAttribute("data-dataset");
+
+      // ── (c) Dataset ledger enforcement ─────────────────────────────────
+      // Missing data-dataset on ANY [data-amount] → FAIL.
+      if (!dataset || dataset.trim() === "") {
+        ledgerErrors++;
+        ledgerFailures.push({
+          file: relPath,
+          issue: `[data-amount] missing data-dataset attribute`,
+          attrs: el.rawAttrs?.slice(0, 200),
+        });
+      } else if (uncited === "true" && !uncitedDatasets.has(dataset)) {
+        // State C with a dataset NOT on the ledger — the dataset has a
+        // citation tier, so it may no longer render ⁂.
+        ledgerErrors++;
+        ledgerFailures.push({
+          file: relPath,
+          issue: `state-C (uncited) span for dataset "${dataset}" which is NOT on the uncited ledger — must be flipped to a cited state`,
+        });
+      } else if (factId && uncitedDatasets.has(dataset)) {
+        // State A with a dataset still ON the ledger — contradiction.
+        ledgerErrors++;
+        ledgerFailures.push({
+          file: relPath,
+          issue: `state-A (cited) span for dataset "${dataset}" which IS on the uncited ledger — ledger and citations disagree`,
+        });
+      }
 
       let stateMatch = false;
 
@@ -223,6 +266,20 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`negative scan: no unattributed currency patterns ✓`);
+  }
+
+  if (ledgerErrors > 0) {
+    errors.push(
+      `${ledgerErrors} [data-amount] elements violate the dataset ledger (first 10):`
+    );
+    for (const f of ledgerFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}${f.attrs ? ` [${f.attrs}]` : ""}`);
+    }
+    if (ledgerFailures.length > 10) {
+      errors.push(`  ... and ${ledgerFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(`dataset ledger: all [data-amount] elements consistent with uncited_datasets ✓`);
   }
 
   return { pass: errors.length === 0, errors, notes };

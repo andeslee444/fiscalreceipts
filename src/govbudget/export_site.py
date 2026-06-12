@@ -908,6 +908,45 @@ def _build_derived_citation_rows(
                 built_at,
             ))
 
+        # ---- Agency FY26 sums ----
+        # surface='agency', key=org, metric='fy2026_total_thousands'
+        # Mirrors the agencies.json sidecar sum: per program, join trajectory
+        # via (pe_bli, _workbook_org(org)) and sum fy2026_total.
+        # inputs = the per-program trajectory fy2026_total DERIVED fact_ids
+        # (peer fact_ids — each resolves in the citation set; recorded_values
+        # of the inputs sum to this row's recorded_value).
+        traj_fy26: dict[tuple, float] = {}
+        for t_pe, t_org, _t24, _t25, t_fy26, _tchg in traj_rows:
+            if t_fy26 is not None:
+                traj_fy26[(t_pe, t_org)] = t_fy26
+
+        org_fy26_total: dict[str, float] = {}
+        org_fy26_inputs: dict[str, list[str]] = {}
+        for pe_bli, org, _fy24_m in prog_rows_d:
+            translated = _workbook_org(org)
+            fy26_val = traj_fy26.get((pe_bli, translated))
+            if fy26_val is None:
+                continue
+            org_fy26_total[org] = org_fy26_total.get(org, 0.0) + fy26_val
+            org_fy26_inputs.setdefault(org, []).append(
+                fact_id_derived("trajectory", f"{pe_bli}|{translated}", "fy2026_total")
+            )
+
+        for org, total26 in org_fy26_total.items():
+            fid = fact_id_derived("agency", org, "fy2026_total_thousands")
+            input_fids = list(dict.fromkeys(org_fy26_inputs.get(org, [])))
+            formula_text = (
+                f"sum(fct_budget_trajectory.fy2026_total) for org={org!r}"
+                f" ({len(input_fids)} programs with trajectory rows)"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD thousands",
+                formula_text,
+                _json.dumps(input_fids),
+                f"{total26:.3f}",
+                built_at,
+            ))
+
         # ---- HHI ----
         # surface='concentration', key=pe_bli, metrics hhi + program_dollars
         # Positive-only shares: obligation > 0 (recoupment/negative flows excluded)
@@ -1269,6 +1308,20 @@ def _write_all_sidecars(
             if pe_bli not in fy2024_fact_id and fid in _cited_fact_ids:
                 fy2024_fact_id[pe_bli] = fid
 
+    # fy2024_xml_path index: pe_bli → xml_path for PriorYear root rows that
+    # have NO citation row (zero_amount facts).  Lets the program headline
+    # FY24 figure render honest Cite state B (xml-path chip) instead of
+    # state C — required by the dataset-ledger render gate, since
+    # jbook_details is a cited dataset and may no longer render ⁂.
+    fy2024_xml_path: dict[str, str] = {}
+    for row in detail_rows:
+        (fid, pe_bli, project_number, project_title, scenario,
+         _amount_millions, _units, xml_path, *rest) = row
+        if project_number is None and scenario == "PriorYear":
+            if (pe_bli not in fy2024_xml_path and fid not in _cited_fact_ids
+                    and xml_path):
+                fy2024_xml_path[pe_bli] = xml_path
+
     # budget_lines index: pe_bli → list of bl dicts
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
     #                organization, budget_activity, budget_activity_title,
@@ -1362,11 +1415,21 @@ def _write_all_sidecars(
     hhi_by_pe: dict[str, dict] = {}
     for r in conc_rows:
         pe_bli, hhi, top_family, family_count, program_dollars = r
+        # Derived citation fact_ids (Task 3 flips) — only attached when the
+        # citation row actually exists (caller guarantees factId resolves).
+        hhi_fid = fact_id_derived("concentration", pe_bli, "hhi")
+        dollars_fid = fact_id_derived("concentration", pe_bli, "program_dollars")
         hhi_by_pe[pe_bli] = {
             "hhi": hhi,
             "top_family": top_family,
             "family_count": family_count,
             "program_dollars": program_dollars,
+            "hhi_fact_id": hhi_fid if (hhi is not None and hhi_fid in _cited_fact_ids) else None,
+            "program_dollars_fact_id": (
+                dollars_fid
+                if (program_dollars is not None and dollars_fid in _cited_fact_ids)
+                else None
+            ),
         }
 
     # jbook_narratives — from detail_rows we don't have narratives;
@@ -1398,10 +1461,34 @@ def _write_all_sidecars(
         " lobbying_expense_usd, lobbying_total_usd, family_obligations_usd"
         " from fct_influence"
     ).fetchall()
+    # dim_entities total per family_key — used to attach the entity derived
+    # fact_id to influence rows' family_obligations_usd ONLY when the values
+    # agree (they are computed from the same warehouse data; mismatch → no fid,
+    # the page then omits the figure rather than render a dangling citation).
+    entity_total_by_fk: dict[str, float] = {
+        r[0]: r[3] for r in entity_rows if r[3] is not None
+    }
+
     influence_by_fk: dict[str, list] = defaultdict(list)
     for r in influence_rows:
         (fk, filing_year, filings_count, lobbying_income_usd,
          lobbying_expense_usd, lobbying_total_usd, family_obligations_usd) = r
+        infl_key = f"{fk}|{filing_year}"
+
+        def _infl_fid(metric: str, value) -> str | None:
+            if value is None:
+                return None
+            fid = fact_id_derived("influence", infl_key, metric)
+            return fid if fid in _cited_fact_ids else None
+
+        fam_obl_fid = None
+        if family_obligations_usd is not None:
+            ent_total = entity_total_by_fk.get(fk)
+            if ent_total is not None and abs(ent_total - family_obligations_usd) <= 0.01:
+                cand = fact_id_derived("entity", fk, "total_obligation")
+                if cand in _cited_fact_ids:
+                    fam_obl_fid = cand
+
         influence_by_fk[fk].append({
             "filing_year": filing_year,
             "filings_count": filings_count,
@@ -1409,6 +1496,10 @@ def _write_all_sidecars(
             "lobbying_expense_usd": lobbying_expense_usd,
             "lobbying_total_usd": lobbying_total_usd,
             "family_obligations_usd": family_obligations_usd,
+            "income_fact_id": _infl_fid("lobbying_income_usd", lobbying_income_usd),
+            "expense_fact_id": _infl_fid("lobbying_expense_usd", lobbying_expense_usd),
+            "total_fact_id": _infl_fid("lobbying_total_usd", lobbying_total_usd),
+            "family_obligations_fact_id": fam_obl_fid,
             "nonAdditive": True,
         })
 
@@ -1448,6 +1539,34 @@ def _write_all_sidecars(
     # 2. programs.json                                                    #
     # ------------------------------------------------------------------ #
 
+    def _trajectory_fact_ids(pe_bli: str, translated_org: str, traj: dict | None) -> dict | None:
+        """Derived trajectory fact_ids for a program (Task 3 flips).
+
+        Mirrors _build_derived_citation_rows emission conditions exactly:
+        a metric fid is attached only when the metric value is non-None
+        (fy2526_change additionally requires both fy25 and fy26 non-None)
+        AND the fid actually resolves in the citation set.
+        NEVER recompute these hashes in TS — Python is the single source.
+        """
+        if traj is None:
+            return None
+        key_str = f"{pe_bli}|{translated_org}"
+        out: dict[str, str | None] = {}
+        for metric in ("fy2024_actuals", "fy2025_total", "fy2026_total"):
+            fid = fact_id_derived("trajectory", key_str, metric)
+            out[metric] = (
+                fid if (traj.get(metric) is not None and fid in _cited_fact_ids) else None
+            )
+        chg_fid = fact_id_derived("trajectory", key_str, "fy2526_change")
+        chg_ok = (
+            traj.get("fy2526_change") is not None
+            and traj.get("fy2025_total") is not None
+            and traj.get("fy2026_total") is not None
+            and chg_fid in _cited_fact_ids
+        )
+        out["fy2526_change"] = chg_fid if chg_ok else None
+        return out
+
     programs_list = []
     for r in prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
@@ -1458,6 +1577,11 @@ def _write_all_sidecars(
             "exhibit_family": exhibit_family,
             "fy2024_actual_millions": fy2024_actual_millions,
             "fy2024_fact_id": fy2024_fact_id.get(pe_bli),
+            "fy2024_xml_path": (
+                fy2024_xml_path.get(pe_bli)
+                if pe_bli not in fy2024_fact_id
+                else None
+            ),
             "fully_reconciled": fully_reconciled,
             "hhi": hhi_by_pe.get(pe_bli),
             "narrative_count": len(narr_by_pe.get(pe_bli, [])),
@@ -1466,6 +1590,7 @@ def _write_all_sidecars(
             "project_count": project_count,
             "title": title,
             "trajectory": traj,
+            "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, translated, traj),
         })
 
     _write_json(json_dir / "programs.json", programs_list)
@@ -1497,6 +1622,14 @@ def _write_all_sidecars(
     # 4. entities_top.json                                               #
     # ------------------------------------------------------------------ #
 
+    def _entity_total_fid(family_key: str, total_obligation) -> str | None:
+        """Derived entity total_obligation fact_id (Task 3 flips) — only when
+        the citation row exists in the citation set."""
+        if total_obligation is None:
+            return None
+        fid = fact_id_derived("entity", family_key, "total_obligation")
+        return fid if fid in _cited_fact_ids else None
+
     entities_list = []
     for r in entity_rows:
         family_key, display_name, uei_count, total_obligation, worst_confidence = r
@@ -1506,6 +1639,7 @@ def _write_all_sidecars(
             "family_key": family_key,
             "slug": slug,
             "total_obligation": total_obligation,
+            "total_obligation_fact_id": _entity_total_fid(family_key, total_obligation),
             "uei_count": uei_count,
             "worst_confidence": worst_confidence,
         })
@@ -1574,9 +1708,15 @@ def _write_all_sidecars(
     agencies_list = []
     for org in sorted(org_prog_count.keys()):
         fy26 = org_fy2026_thousands.get(org)  # None if no trajectories
+        fy24_fid = fact_id_derived("agency", org, "fy2024_total_millions")
+        fy26_fid = fact_id_derived("agency", org, "fy2026_total_thousands")
         agencies_list.append({
             "fy2024_total_millions": org_fy2024_millions.get(org, 0.0),
+            "fy2024_fact_id_derived": fy24_fid if fy24_fid in _cited_fact_ids else None,
             "fy2026_total_thousands": fy26,
+            "fy2026_fact_id_derived": (
+                fy26_fid if (fy26 is not None and fy26_fid in _cited_fact_ids) else None
+            ),
             "org": org,
             "program_count": org_prog_count[org],
         })

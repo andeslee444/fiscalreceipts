@@ -136,7 +136,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   onClick={() => toggleSort("fy2026_total")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"
                 >
-                  FY26 total ⁂{" "}
+                  FY26 total{" "}
                   <SortIcon
                     col="fy2026_total"
                     sortKey={sortKey}
@@ -168,7 +168,9 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     <Cite
                       value={p.fy2024_actual_millions}
                       units="USD millions"
+                      dataset="jbook_details"
                       factId={p.fy2024_fact_id}
+                      xmlPath={p.fy2024_xml_path}
                     />
                   ) : (
                     <span className="text-muted-foreground/50">—</span>
@@ -179,6 +181,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     <Cite
                       value={p.trajectory.fy2026_total}
                       units="USD thousands"
+                      dataset="fct_budget_trajectory"
+                      factId={p.trajectory_fact_ids?.fy2026_total}
                     />
                   ) : (
                     <span className="text-muted-foreground/50">—</span>
@@ -191,8 +195,9 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
-        ⁂ FY26 figures from trajectory dataset — citation tier pending. FY24
-        actuals cited to J-book PDF where available (underlined). See{" "}
+        FY26 figures carry derived workbook citations (click to inspect the
+        formula and inputs). FY24 actuals cited to J-book PDF where available
+        (underlined). See{" "}
         <Link href="/methodology/" className="underline hover:text-foreground">
           methodology
         </Link>

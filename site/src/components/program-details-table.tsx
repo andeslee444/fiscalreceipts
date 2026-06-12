@@ -152,12 +152,14 @@ export function ProgramDetailsTable({ details }: ProgramDetailsTableProps) {
                           <Cite
                             value={row.amount_millions}
                             units="USD millions"
+                            dataset="jbook_details"
                             xmlPath={row.xml_path}
                           />
                         ) : (
                           <Cite
                             value={row.amount_millions}
                             units="USD millions"
+                            dataset="jbook_details"
                             factId={row.fact_id}
                           />
                         )}

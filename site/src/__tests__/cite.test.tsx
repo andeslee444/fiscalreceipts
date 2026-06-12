@@ -19,7 +19,7 @@ describe("Cite three-state contract", () => {
   describe("State A — factId provided (cited)", () => {
     it("renders data-amount attribute", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123def456" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123def456" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).not.toBeNull();
@@ -27,7 +27,7 @@ describe("Cite three-state contract", () => {
 
     it("renders data-fact-id with the provided factId", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123def4567890" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123def4567890" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("data-fact-id", "abc123def4567890");
@@ -35,7 +35,7 @@ describe("Cite three-state contract", () => {
 
     it("does NOT have data-uncited or data-citation-kind attributes", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123def456" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123def456" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).not.toHaveAttribute("data-uncited");
@@ -44,7 +44,7 @@ describe("Cite three-state contract", () => {
 
     it("displays the formatted amount", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123" />,
       );
       // 280494 thousands = $280.5M
       expect(container.textContent).toContain("$280.5M");
@@ -52,7 +52,7 @@ describe("Cite three-state contract", () => {
 
     it("has exactTitle in title attribute", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("title");
@@ -67,7 +67,7 @@ describe("Cite three-state contract", () => {
         <CitationPanelContext.Provider
           value={{ openPanel: (id) => { calledWith = id; } }}
         >
-          <Cite value={100} units="USD millions" factId="test-fact-001" />
+          <Cite value={100} units="USD millions" dataset="test_dataset" factId="test-fact-001" />
         </CitationPanelContext.Provider>,
       );
       const el = container.querySelector("[data-amount]") as HTMLElement;
@@ -77,7 +77,7 @@ describe("Cite three-state contract", () => {
 
     it("has role='button' and tabIndex=0 for keyboard accessibility", () => {
       const { container } = render(
-        <Cite value={280494} units="USD thousands" factId="abc123def456" />,
+        <Cite value={280494} units="USD thousands" dataset="test_dataset" factId="abc123def456" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("role", "button");
@@ -90,7 +90,7 @@ describe("Cite three-state contract", () => {
         <CitationPanelContext.Provider
           value={{ openPanel: (id) => { calledWith = id; } }}
         >
-          <Cite value={100} units="USD millions" factId="test-fact-enter" />
+          <Cite value={100} units="USD millions" dataset="test_dataset" factId="test-fact-enter" />
         </CitationPanelContext.Provider>,
       );
       const el = container.querySelector("[data-amount]") as HTMLElement;
@@ -105,7 +105,7 @@ describe("Cite three-state contract", () => {
       const { container } = render(
         <Cite
           value={0}
-          units="USD millions"
+          units="USD millions" dataset="test_dataset"
           xmlPath="ProgramElement[0]/Project[4]"
         />,
       );
@@ -117,7 +117,7 @@ describe("Cite three-state contract", () => {
       const { container } = render(
         <Cite
           value={0}
-          units="USD millions"
+          units="USD millions" dataset="test_dataset"
           xmlPath="ProgramElement[0]/Project[4]"
         />,
       );
@@ -128,7 +128,7 @@ describe("Cite three-state contract", () => {
     it("renders data-xml-path with the provided path", () => {
       const path = "ProgramElement[0]/Project[4]";
       const { container } = render(
-        <Cite value={0} units="USD millions" xmlPath={path} />,
+        <Cite value={0} units="USD millions" dataset="test_dataset" xmlPath={path} />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("data-xml-path", path);
@@ -136,7 +136,7 @@ describe("Cite three-state contract", () => {
 
     it("does NOT have data-fact-id or data-uncited", () => {
       const { container } = render(
-        <Cite value={0} units="USD millions" xmlPath="ProgramElement[0]" />,
+        <Cite value={0} units="USD millions" dataset="test_dataset" xmlPath="ProgramElement[0]" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).not.toHaveAttribute("data-fact-id");
@@ -146,7 +146,7 @@ describe("Cite three-state contract", () => {
     it("shows the xml path in a chip", () => {
       const path = "ProgramElement[0]/Project[4]";
       const { container } = render(
-        <Cite value={0} units="USD millions" xmlPath={path} />,
+        <Cite value={0} units="USD millions" dataset="test_dataset" xmlPath={path} />,
       );
       // The chip span inside should show the path text
       expect(container.textContent).toContain(path);
@@ -156,7 +156,7 @@ describe("Cite three-state contract", () => {
       const { container } = render(
         <Cite
           value={100}
-          units="USD millions"
+          units="USD millions" dataset="test_dataset"
           factId="fact-wins"
           xmlPath="ProgramElement[0]"
         />,
@@ -171,7 +171,7 @@ describe("Cite three-state contract", () => {
   describe("State C — no factId, no xmlPath (uncited)", () => {
     it("renders data-amount attribute", () => {
       const { container } = render(
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).not.toBeNull();
@@ -179,7 +179,7 @@ describe("Cite three-state contract", () => {
 
     it("renders data-uncited='true'", () => {
       const { container } = render(
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("data-uncited", "true");
@@ -187,7 +187,7 @@ describe("Cite three-state contract", () => {
 
     it("does NOT have data-fact-id or data-citation-kind", () => {
       const { container } = render(
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).not.toHaveAttribute("data-fact-id");
@@ -196,14 +196,14 @@ describe("Cite three-state contract", () => {
 
     it("renders the ⁂ symbol", () => {
       const { container } = render(
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       expect(container.textContent).toContain("⁂");
     });
 
     it("shows tooltip with 'citation tier pending — see methodology'", () => {
       const { container } = render(
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       // The ⁂ span has the title
       const chip = container.querySelector('[title*="citation tier pending"]');
@@ -213,17 +213,85 @@ describe("Cite three-state contract", () => {
     it("displays formatted amount", () => {
       const { container } = render(
         // 1597049 thousands = $1.60B → <10B → 2 dec → $1.60B
-        <Cite value={1597049} units="USD thousands" />,
+        <Cite value={1597049} units="USD thousands" dataset="test_dataset" />,
       );
       expect(container.textContent).toContain("$1.60B");
     });
 
     it("null factId and null xmlPath → State C", () => {
       const { container } = render(
-        <Cite value={100} units="USD millions" factId={null} xmlPath={null} />,
+        <Cite value={100} units="USD millions" dataset="test_dataset" factId={null} xmlPath={null} />,
       );
       const el = container.querySelector("[data-amount]");
       expect(el).toHaveAttribute("data-uncited", "true");
+    });
+  });
+
+  // ── data-dataset (Phase 5B-3 dataset-ledger contract) ─────────────────────
+  describe("data-dataset attribute (required on ALL three states)", () => {
+    it("State A emits data-dataset", () => {
+      const { container } = render(
+        <Cite
+          value={100}
+          units="USD millions"
+          dataset="fct_budget_trajectory"
+          factId="abc123def4567890"
+        />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-dataset", "fct_budget_trajectory");
+    });
+
+    it("State B emits data-dataset", () => {
+      const { container } = render(
+        <Cite
+          value={0}
+          units="USD millions"
+          dataset="jbook_details"
+          xmlPath="ProgramElement[0]/Project[4]"
+        />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-dataset", "jbook_details");
+    });
+
+    it("State C emits data-dataset", () => {
+      const { container } = render(
+        <Cite value={100} units="USD" dataset="dim_geography" />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-dataset", "dim_geography");
+    });
+  });
+
+  // ── display override (non-currency figures, e.g. HHI) ─────────────────────
+  describe("display override", () => {
+    it("renders the display string instead of formatAmount", () => {
+      const { container } = render(
+        <Cite
+          value={4200.4}
+          units="USD"
+          dataset="fct_program_concentration"
+          factId="abc123def4567890"
+          display="4200"
+        />,
+      );
+      expect(container.textContent).toContain("4200");
+      expect(container.textContent).not.toContain("$");
+    });
+
+    it("uses the display string as title", () => {
+      const { container } = render(
+        <Cite
+          value={4200.4}
+          units="USD"
+          dataset="fct_program_concentration"
+          factId="abc123def4567890"
+          display="4200"
+        />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("title", "4200");
     });
   });
 
@@ -233,7 +301,7 @@ describe("Cite three-state contract", () => {
       const factId = "abc123def456789f";
       const { container } = render(
         <ReceiptsContext.Provider value={{ receiptsOn: true }}>
-          <Cite value={100} units="USD millions" factId={factId} />
+          <Cite value={100} units="USD millions" dataset="test_dataset" factId={factId} />
         </ReceiptsContext.Provider>,
       );
       // Short ID = last 8 chars of factId: "456789f" is only 7 chars; last 8 = "f456789f"
@@ -244,7 +312,7 @@ describe("Cite three-state contract", () => {
       const factId = "abc123def456789f";
       const { container } = render(
         <ReceiptsContext.Provider value={{ receiptsOn: false }}>
-          <Cite value={100} units="USD millions" factId={factId} />
+          <Cite value={100} units="USD millions" dataset="test_dataset" factId={factId} />
         </ReceiptsContext.Provider>,
       );
       expect(container.textContent).not.toContain("#f456789f");
@@ -253,7 +321,7 @@ describe("Cite three-state contract", () => {
     it("State C shows a single 'uncited' chip when receipts ON", () => {
       const { container } = render(
         <ReceiptsContext.Provider value={{ receiptsOn: true }}>
-          <Cite value={100} units="USD millions" />
+          <Cite value={100} units="USD millions" dataset="test_dataset" />
         </ReceiptsContext.Provider>,
       );
       // Single chip contains both ⁂ and 'uncited' text

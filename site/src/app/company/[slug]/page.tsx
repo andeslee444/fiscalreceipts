@@ -5,10 +5,12 @@ import {
   getEntitiesTop,
   getEntityTopMap,
   getEntityDetails,
+  collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
+import { CitationPanelProvider } from "@/components/citation-panel";
 import { humanLdaUrl } from "@/lib/citations";
 
 export const dynamicParams = false;
@@ -60,11 +62,28 @@ export default async function CompanyPage({
   // Resolve family_obligations_usd from influence rows (non-additive — show once)
   const firstInfluenceRow = details.influence[0];
   const familyObligationsUsd = firstInfluenceRow?.family_obligations_usd;
+  const familyObligationsFactId =
+    firstInfluenceRow?.family_obligations_fact_id ?? null;
 
   // Linked programs chips
   const linkedPrograms = details.linked_programs.slice(0, 20);
 
+  // Citation slice: entity total + influence dollars (Phase 5B-3 flips).
+  // Derived inputs are URLs (filing API links) → no extra slice entries.
+  const pageFactIds: string[] = [];
+  if (entity.total_obligation_fact_id) {
+    pageFactIds.push(entity.total_obligation_fact_id);
+  }
+  if (familyObligationsFactId) pageFactIds.push(familyObligationsFactId);
+  for (const row of details.influence) {
+    for (const fid of [row.income_fact_id, row.expense_fact_id, row.total_fact_id]) {
+      if (fid) pageFactIds.push(fid);
+    }
+  }
+  const citationsSlice = collectCitationsWithInputs(pageFactIds);
+
   return (
+    <CitationPanelProvider citations={citationsSlice}>
     <div className="container mx-auto px-4 py-8 max-w-5xl" data-pagefind-body>
       <Breadcrumbs
         items={[
@@ -87,8 +106,12 @@ export default async function CompanyPage({
           </span>
           <span>
             Total obligations:{" "}
-            <Cite value={entity.total_obligation} units="USD" />
-            <span className="ml-1">⁂</span>
+            <Cite
+              value={entity.total_obligation}
+              units="USD"
+              dataset="dim_entities"
+              factId={entity.total_obligation_fact_id}
+            />
           </span>
           <span
             className={[
@@ -101,19 +124,27 @@ export default async function CompanyPage({
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          ⁂ Total obligations are USAspending-derived — citation tier pending.
-          Confidence reflects entity resolution method (see{" "}
+          Total obligations carry a derived USAspending citation — click the
+          figure to inspect the derivation. Confidence reflects entity
+          resolution method (see{" "}
           <Link href="/methodology/#4" className="underline hover:text-foreground">
             methodology §4
           </Link>
           ).
         </p>
 
-        {/* Family obligations — non-additive, shown once */}
-        {familyObligationsUsd != null && (
+        {/* Family obligations — non-additive, shown once.
+            Rendered only when the figure carries its derived citation
+            (cited-or-absent under the dataset-ledger gate). */}
+        {familyObligationsUsd != null && familyObligationsFactId != null && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
             <span className="font-medium">Family-level obligations:</span>{" "}
-            <Cite value={familyObligationsUsd} units="USD" />
+            <Cite
+              value={familyObligationsUsd}
+              units="USD"
+              dataset="fct_influence"
+              factId={familyObligationsFactId}
+            />
             <span className="ml-2 text-xs text-amber-700">
               — constant across all filing years listed below and non-additive
               (do not sum across rows; this figure represents total family
@@ -143,13 +174,13 @@ export default async function CompanyPage({
                     Filings
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
-                    Income ⁂
+                    Income
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
-                    Expense ⁂
+                    Expense
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium text-muted-foreground text-right">
-                    Total ⁂
+                    Total
                   </th>
                 </tr>
               </thead>
@@ -170,6 +201,8 @@ export default async function CompanyPage({
                         <Cite
                           value={row.lobbying_income_usd as number}
                           units="USD"
+                          dataset="fct_influence"
+                          factId={row.income_fact_id}
                         />
                       ) : (
                         <span className="text-muted-foreground/50">—</span>
@@ -180,6 +213,8 @@ export default async function CompanyPage({
                         <Cite
                           value={row.lobbying_expense_usd as number}
                           units="USD"
+                          dataset="fct_influence"
+                          factId={row.expense_fact_id}
                         />
                       ) : (
                         <span className="text-muted-foreground/50">—</span>
@@ -190,6 +225,8 @@ export default async function CompanyPage({
                         <Cite
                           value={row.lobbying_total_usd as number}
                           units="USD"
+                          dataset="fct_influence"
+                          factId={row.total_fact_id}
                         />
                       ) : (
                         <span className="text-muted-foreground/50">—</span>
@@ -201,10 +238,10 @@ export default async function CompanyPage({
             </table>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            ⁂ Lobbying figures from LDA filings — citation tier pending for
-            raw dollar aggregates. This table shows lobbying activity side by
-            side with federal obligations; lobbying and contracts reflect
-            correlation, not causation.
+            Lobbying dollar aggregates carry derived LDA citations — click a
+            figure for the formula and constituent filings. This table shows
+            lobbying activity side by side with federal obligations; lobbying
+            and contracts reflect correlation, not causation.
           </p>
         </section>
       )}
@@ -369,5 +406,6 @@ export default async function CompanyPage({
         )}
       </section>
     </div>
+    </CitationPanelProvider>
   );
 }

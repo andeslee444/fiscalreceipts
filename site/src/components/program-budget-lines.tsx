@@ -89,6 +89,7 @@ export function ProgramBudgetLines({ budgetLines }: ProgramBudgetLinesProps) {
                         <Cite
                           value={bl.amount_thousands}
                           units="USD thousands"
+                          dataset="budget_lines"
                           factId={bl.fact_id}
                         />
                       </td>

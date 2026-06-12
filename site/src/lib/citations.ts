@@ -34,6 +34,10 @@ export type {
   JbookPdfCitation,
   LdaFilingCitation,
   WorkbookCitation,
+  DerivedCitation,
+  UsaspendingCitation,
+  StateSoqlCitation,
+  StateFileCitation,
 } from "@/lib/data";
 
 // ── Type guards (defined here so client components can import them
@@ -44,6 +48,10 @@ import type {
   JbookPdfCitation,
   WorkbookCitation,
   LdaFilingCitation,
+  DerivedCitation,
+  UsaspendingCitation,
+  StateSoqlCitation,
+  StateFileCitation,
 } from "@/lib/data";
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -56,6 +64,89 @@ export function isWorkbook(c: Citation): c is WorkbookCitation {
 
 export function isLdaFiling(c: Citation): c is LdaFilingCitation {
   return c.kind === "lda_filing";
+}
+
+export function isDerived(c: Citation): c is DerivedCitation {
+  return c.kind === "derived";
+}
+
+export function isUsaspending(c: Citation): c is UsaspendingCitation {
+  return c.kind === "usaspending";
+}
+
+export function isStateSoql(c: Citation): c is StateSoqlCitation {
+  return c.kind === "state_soql";
+}
+
+export function isStateFile(c: Citation): c is StateFileCitation {
+  return c.kind === "state_file";
+}
+
+// ── Derived-citation input helpers ───────────────────────────────────────────
+
+/** 16-hex fact_id pattern (export_site identity hashes). */
+export const FACT_ID_PATTERN = /^[0-9a-f]{16}$/;
+
+export interface DerivedInput {
+  /** Raw input string from the inputs JSON array. */
+  value: string;
+  /** True when the input is a 16-hex fact_id referencing another citation. */
+  isFactId: boolean;
+  /** True when the input looks like an http(s) URL. */
+  isUrl: boolean;
+}
+
+/**
+ * Parse a derived citation's `inputs` JSON-array string into typed entries.
+ * Returns [] on null/malformed input (never throws).
+ */
+export function parseDerivedInputs(inputs: string | null | undefined): DerivedInput[] {
+  if (!inputs) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(inputs);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: DerivedInput[] = [];
+  for (const item of parsed) {
+    if (typeof item !== "string" || item.length === 0) continue;
+    out.push({
+      value: item,
+      isFactId: FACT_ID_PATTERN.test(item),
+      isUrl: /^https?:\/\//i.test(item),
+    });
+  }
+  return out;
+}
+
+/**
+ * Pretty-print a usaspending query_body JSON string (2-space indent).
+ * Falls back to the raw string when it does not parse.
+ */
+export function prettyQueryBody(queryBody: string | null | undefined): string {
+  if (!queryBody) return "";
+  try {
+    return JSON.stringify(JSON.parse(queryBody), null, 2);
+  } catch {
+    return queryBody;
+  }
+}
+
+/**
+ * Classify a usaspending citation's official_url:
+ *   'permalink' — usaspending.gov search-hash permalink (…/search/?hash=…)
+ *   'profile'   — usaspending.gov recipient profile page
+ *   'endpoint'  — api.usaspending.gov API endpoint (default)
+ */
+export function usaspendingUrlKind(
+  officialUrl: string | null | undefined,
+): "permalink" | "profile" | "endpoint" {
+  if (!officialUrl) return "endpoint";
+  if (/usaspending\.gov\/search\/?\?hash=/i.test(officialUrl)) return "permalink";
+  if (/usaspending\.gov\/recipient\//i.test(officialUrl)) return "profile";
+  return "endpoint";
 }
 
 // ── LDA URL helpers ───────────────────────────────────────────────────────────

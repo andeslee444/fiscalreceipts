@@ -5,8 +5,10 @@ import { Cite } from "@/components/cite";
  * ProgramConcentration — HHI concentration card.
  *
  * Shown only when hhi is non-null.
- * program_dollars is derived/uncited → State C.
- * HHI value is derived → State C.
+ * Phase 5B-3 flip: both figures are State A via derived citation fact_ids
+ * carried on the sidecar (dataset fct_program_concentration):
+ *   - HHI value → hhi_fact_id (display override — index, not currency)
+ *   - program_dollars → program_dollars_fact_id
  */
 
 interface ProgramConcentrationProps {
@@ -35,32 +37,25 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
 
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* HHI */}
+          {/* HHI — derived citation (display override: index, not dollars) */}
           <div>
             <div className="text-xs text-muted-foreground mb-1">
               HHI Index
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
-                title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Derived — no direct citation."
+                title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Derived from positive-only contractor shares — click the value for the formula."
               >
                 ⓘ
               </span>
             </div>
             <div className={`text-xl font-bold ${color}`}>
-              <span
-                data-amount
-                data-uncited="true"
-                title={`${hhi.hhi.toFixed(1)} (derived HHI)`}
-              >
-                {hhi.hhi.toFixed(0)}
-                <span
-                  className="ml-0.5 text-muted-foreground text-sm"
-                  title="citation tier pending — see methodology"
-                  aria-hidden="true"
-                >
-                  ⁂
-                </span>
-              </span>
+              <Cite
+                value={hhi.hhi}
+                units="USD"
+                dataset="fct_program_concentration"
+                factId={hhi.hhi_fact_id}
+                display={hhi.hhi.toFixed(0)}
+              />
             </div>
             <div className={`text-xs font-medium ${color}`}>{label}</div>
           </div>
@@ -83,13 +78,13 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
             </div>
           </div>
 
-          {/* Program dollars — derived/uncited State C */}
+          {/* Program dollars — derived citation */}
           <div>
             <div className="text-xs text-muted-foreground mb-1">
               Program Obligations
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
-                title="Total contract obligations attributed to this program element. Derived — uncited (see methodology)."
+                title="Total contract obligations attributed to this program element. Derived — click the value for the formula."
               >
                 ⓘ
               </span>
@@ -98,6 +93,8 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
               <Cite
                 value={hhi.program_dollars}
                 units="USD"
+                dataset="fct_program_concentration"
+                factId={hhi.program_dollars_fact_id}
               />
             </div>
           </div>

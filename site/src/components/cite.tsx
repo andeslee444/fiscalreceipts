@@ -7,22 +7,28 @@
  * The three states are defined by props:
  *
  * State A — cited (factId resolves in citations.json):
- *   <span data-amount data-fact-id={factId}>
+ *   <span data-amount data-fact-id={factId} data-dataset={dataset}>
  *   Clicking/entering opens the citation panel via CitationPanelContext.
  *   Caller GUARANTEES factId resolves in citations.json.
  *
  * State B — xml-path (zero_amount jbook facts: no citation row, but xml_path known):
- *   <span data-amount data-citation-kind="xml-path" data-xml-path={xmlPath}>
+ *   <span data-amount data-citation-kind="xml-path" data-xml-path={xmlPath} data-dataset={dataset}>
  *   Renders value + a small chip showing the xml path.
  *   Title attr explains: "cited to the budget justification XML — zero-dollar line, no page highlight"
  *   No panel opens.
  *
  * State C — uncited (no factId, no xmlPath):
- *   <span data-amount data-uncited="true">
+ *   <span data-amount data-uncited="true" data-dataset={dataset}>
  *   Renders value + visible ⁂ symbol + tooltip "citation tier pending — see methodology".
  *   No panel opens.
  *
  * Decision order: A if factId, else B if xmlPath, else C.
+ *
+ * dataset (REQUIRED) — the warehouse dataset the VALUE came from (e.g.
+ * 'fct_budget_trajectory', 'jbook_details', 'dim_entities'). Emitted as
+ * data-dataset on ALL three states. The render-static dataset-ledger gate
+ * enforces: state C is only allowed for datasets on site_meta.uncited_datasets,
+ * and state A is forbidden for datasets still on that ledger.
  *
  * Receipts mode (ReceiptsContext):
  *   When ON:
@@ -35,10 +41,16 @@ import React, { createContext, useContext } from "react";
 import { formatAmount, exactTitle, type AmountUnits } from "@/lib/format";
 
 // ── Citation Panel Context ─────────────────────────────────────────────────
-// Task 5 implements the real panel; for now, a no-op default.
+// The panel provider (citation-panel/panel.tsx) implements the real openPanel.
 
 interface CitationPanelContextValue {
   openPanel: (factId: string) => void;
+  /**
+   * True when the given fact_id is available in the current page's citation
+   * slice (derived-card input chips use this to decide clickability).
+   * Optional — consumers treat a missing implementation as "not available".
+   */
+  hasCitation?: (factId: string) => boolean;
 }
 
 export const CitationPanelContext = createContext<CitationPanelContextValue>({
@@ -47,6 +59,7 @@ export const CitationPanelContext = createContext<CitationPanelContextValue>({
       `[Cite] openPanel("${factId}") called without a CitationPanelContext.Provider`,
     );
   },
+  hasCitation: () => false,
 });
 
 // ── Receipts Context ───────────────────────────────────────────────────────
@@ -67,6 +80,11 @@ export interface CiteProps {
   /** Units (NEVER inferred — always declared by the data source). */
   units: AmountUnits;
   /**
+   * REQUIRED: name of the dataset the value came from — emitted as
+   * data-dataset on all three states (dataset-ledger render gate).
+   */
+  dataset: string;
+  /**
    * State A: fact_id that resolves in citations.json.
    * Caller guarantees this resolves. If provided, overrides xmlPath.
    */
@@ -76,6 +94,13 @@ export interface CiteProps {
    * Used when factId is absent but an xml_path is known from jbook_details.
    */
   xmlPath?: string | null;
+  /**
+   * Optional display override for non-currency figures (e.g. an HHI index).
+   * When set, this string is rendered instead of formatAmount(value, units),
+   * and the title attribute is the override verbatim (units are shown in the
+   * citation panel instead).
+   */
+  display?: string;
   /** Additional className for the outer span. */
   className?: string;
 }
@@ -85,16 +110,25 @@ export interface CiteProps {
  *
  * The rendered span ALWAYS has:
  *   - data-amount (no value — presence-only marker)
+ *   - data-dataset={dataset}
  *   - title={exactTitle(value, units)} for screen readers / hover
  *
  * Plus state-specific attributes as documented above.
  */
-export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
+export function Cite({
+  value,
+  units,
+  dataset,
+  factId,
+  xmlPath,
+  display,
+  className,
+}: CiteProps) {
   const { openPanel } = useContext(CitationPanelContext);
   const { receiptsOn } = useContext(ReceiptsContext);
 
-  const display = formatAmount(value, units);
-  const title = exactTitle(value, units);
+  const displayText = display ?? formatAmount(value, units);
+  const title = display ?? exactTitle(value, units);
 
   // ── State A: cited ───────────────────────────────────────────────────────
   if (factId) {
@@ -103,6 +137,7 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
       <span
         data-amount
         data-fact-id={factId}
+        data-dataset={dataset}
         title={title}
         className={[
           "cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid",
@@ -113,7 +148,7 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
           .join(" ")}
         role="button"
         tabIndex={0}
-        aria-label={`${display} — click to view citation`}
+        aria-label={`${displayText} — click to view citation`}
         onClick={() => openPanel(factId)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -122,7 +157,7 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
           }
         }}
       >
-        {display}
+        {displayText}
         {receiptsOn && (
           <span
             className="ml-1 inline-block rounded bg-blue-100 px-1 py-0.5 font-mono text-[10px] text-blue-700 align-middle"
@@ -142,11 +177,12 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
         data-amount
         data-citation-kind="xml-path"
         data-xml-path={xmlPath}
+        data-dataset={dataset}
         title={title}
         className={["text-foreground", className].filter(Boolean).join(" ")}
-        aria-label={`${display} — zero-dollar line cited to budget justification XML`}
+        aria-label={`${displayText} — zero-dollar line cited to budget justification XML`}
       >
-        {display}
+        {displayText}
         <span
           className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"
           title="cited to the budget justification XML — zero-dollar line, no page highlight"
@@ -163,11 +199,12 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
     <span
       data-amount
       data-uncited="true"
+      data-dataset={dataset}
       title={title}
       className={["text-foreground", className].filter(Boolean).join(" ")}
-      aria-label={`${display} — citation tier pending`}
+      aria-label={`${displayText} — citation tier pending`}
     >
-      {display}
+      {displayText}
       {receiptsOn ? (
         <span
           className="ml-0.5 inline-flex items-baseline whitespace-nowrap rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"

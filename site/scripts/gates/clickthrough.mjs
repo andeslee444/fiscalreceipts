@@ -681,11 +681,20 @@ export async function runClickthroughGate(baseUrl) {
                 }
               }
 
-              // Sample uncited elements (require at least 1, sample up to SAMPLE_SIZE)
+              // Sample uncited elements (sample up to SAMPLE_SIZE).
+              // Since the Phase 5B-3 ledger flips, program-page datasets are
+              // all cited — a page may legitimately have ZERO State C spans.
+              // Only fail when the page-set scan PROMISED uncited elements
+              // (set.receiptsPbl found data-uncited in this page's SSG HTML);
+              // otherwise note State C chips as N/A for this page.
               const uncitedSample = uncitedEls.slice(0, SAMPLE_SIZE);
-              if (uncitedSample.length === 0) {
+              if (uncitedSample.length === 0 && set.receiptsPbl === testPbl) {
                 errors.push(
                   `receipts mode (${testPbl}): no [data-amount][data-uncited] elements to sample — cannot verify State C chips`
+                );
+              } else if (uncitedSample.length === 0) {
+                notes.push(
+                  `receipts mode (${testPbl}): no State C spans on this page (all datasets cited — ledger flips) — State C chip check N/A`
                 );
               } else {
                 let uncitedChipMisses = 0;

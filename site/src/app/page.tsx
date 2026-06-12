@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSiteMeta, getPrograms, getAgencies } from "@/lib/data";
+import {
+  getSiteMeta,
+  getPrograms,
+  getAgencies,
+  collectCitationsWithInputs,
+} from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Cite } from "@/components/cite";
-import { formatAmount } from "@/lib/format";
+import { CitationPanelProvider } from "@/components/citation-panel";
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} — Federal Defense Budget, Contracts & Lobbying`,
@@ -34,7 +39,21 @@ export default function HomePage() {
     )
     .slice(0, 5);
 
+  // Citation slice: mover change fact_ids (+ their peer inputs so the
+  // derived-card chips are clickable) + agency FY24 derived fact_ids.
+  const pageFactIds: string[] = [];
+  for (const p of topMovers) {
+    if (p.trajectory_fact_ids?.fy2526_change) {
+      pageFactIds.push(p.trajectory_fact_ids.fy2526_change);
+    }
+  }
+  for (const a of agencies) {
+    if (a.fy2024_fact_id_derived) pageFactIds.push(a.fy2024_fact_id_derived);
+  }
+  const citationsSlice = collectCitationsWithInputs(pageFactIds);
+
   return (
+    <CitationPanelProvider citations={citationsSlice}>
     <div>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="bg-background border-b border-border py-16 md:py-24">
@@ -107,20 +126,24 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-2">Largest FY25→26 changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 and FY2026
-            enacted. Dollar deltas are from the trajectory dataset —{" "}
-            <span className="font-medium">citation tier pending</span> (⁂).
+            enacted. Dollar deltas carry derived workbook citations — click a
+            figure to inspect the formula and inputs.
           </p>
           <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
             {topMovers.map((p) => {
               const change = p.trajectory!.fy2526_change!;
               const isPos = change >= 0;
+              // NOTE: the Cite (role=button) must NOT nest inside the Link —
+              // axe flags nested-interactive. Title links; figure sits beside it.
               return (
-                <Link
+                <div
                   key={p.pe_bli}
-                  href={`/program/${p.pe_bli}/`}
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/60 transition-colors group"
                 >
-                  <div className="min-w-0">
+                  <Link
+                    href={`/program/${p.pe_bli}/`}
+                    className="min-w-0"
+                  >
                     <span className="font-mono text-xs text-muted-foreground mr-2">
                       {p.pe_bli}
                     </span>
@@ -130,7 +153,7 @@ export default function HomePage() {
                     <span className="ml-2 text-xs text-muted-foreground">
                       {p.org}
                     </span>
-                  </div>
+                  </Link>
                   <div
                     className={[
                       "shrink-0 ml-4 text-sm font-mono font-semibold",
@@ -138,15 +161,20 @@ export default function HomePage() {
                     ].join(" ")}
                   >
                     {isPos ? "+" : ""}
-                    <Cite value={change} units="USD thousands" />
+                    <Cite
+                      value={change}
+                      units="USD thousands"
+                      dataset="fct_budget_trajectory"
+                      factId={p.trajectory_fact_ids?.fy2526_change}
+                    />
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            ⁂ Trajectory figures are from budget justification workbooks —
-            citation tier pending for this dataset. See{" "}
+            Trajectory figures are derived from budget justification
+            workbooks — each delta cites its FY25/FY26 inputs. See{" "}
             <Link href="/methodology/" className="underline hover:text-foreground">
               methodology
             </Link>
@@ -167,25 +195,34 @@ export default function HomePage() {
             {agencies
               .sort((a, b) => b.program_count - a.program_count)
               .map((agency) => (
-                <Link
+                // Cite (role=button) must not nest inside the Link — the org
+                // name links; the FY24 sum is a sibling Cite (derived citation).
+                <div
                   key={agency.org}
-                  href={`/agency/${agency.org}/`}
                   className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors"
                 >
-                  <span className="font-mono font-bold text-sm text-primary group-hover:underline">
+                  <Link
+                    href={`/agency/${agency.org}/`}
+                    className="font-mono font-bold text-sm text-primary group-hover:underline"
+                  >
                     {agency.org}
-                  </span>
+                  </Link>
                   <span className="text-xs text-muted-foreground mt-1">
                     {agency.program_count} program
                     {agency.program_count !== 1 ? "s" : ""}
                   </span>
                   {agency.fy2024_total_millions > 0 && (
                     <span className="text-xs text-muted-foreground mt-0.5">
-                      {formatAmount(agency.fy2024_total_millions, "USD millions")}{" "}
-                      FY24 ⁂
+                      <Cite
+                        value={agency.fy2024_total_millions}
+                        units="USD millions"
+                        dataset="dim_programs"
+                        factId={agency.fy2024_fact_id_derived}
+                      />{" "}
+                      FY24
                     </span>
                   )}
-                </Link>
+                </div>
               ))}
           </div>
         </div>
@@ -206,6 +243,7 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </CitationPanelProvider>
   );
 }
 

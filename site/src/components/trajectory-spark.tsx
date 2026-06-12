@@ -1,13 +1,16 @@
-import type { ProgramTrajectory } from "@/lib/data";
+import type { ProgramTrajectory, ProgramTrajectoryFactIds } from "@/lib/data";
+import { Cite } from "@/components/cite";
 
 /**
  * TrajectorySpark — inline SVG sparkline from trajectory data.
  *
- * SERVER COMPONENT — renders at SSG with no client JS.
+ * SERVER COMPONENT (embeds the client <Cite> for the legend values).
  * Skip gracefully when trajectory is null or all values are null.
  *
  * Units: trajectory values are in USD thousands.
  * We render a 3-point sparkline: FY24 actuals → FY25 total → FY26 total.
+ * Legend dollar values are wrapped in <Cite> with the derived trajectory
+ * fact_ids (dataset fct_budget_trajectory) — Phase 5B-3 flip.
  */
 
 const SVG_WIDTH = 120;
@@ -17,9 +20,13 @@ const PADDING = 6;
 
 interface TrajectorySparkProps {
   trajectory: ProgramTrajectory | null;
+  trajectoryFactIds?: ProgramTrajectoryFactIds | null;
 }
 
-export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
+export function TrajectorySpark({
+  trajectory,
+  trajectoryFactIds,
+}: TrajectorySparkProps) {
   if (!trajectory) {
     return (
       <p className="text-xs text-muted-foreground italic">
@@ -28,14 +35,18 @@ export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
     );
   }
 
-  // Collect the three data points in order
-  const rawPoints: [string, number | null][] = [
-    ["FY24", trajectory.fy2024_actuals],
-    ["FY25", trajectory.fy2025_total],
-    ["FY26", trajectory.fy2026_total],
+  // Collect the three data points in order (label, value, derived fact_id)
+  const rawPoints: [string, number | null, string | null][] = [
+    ["FY24", trajectory.fy2024_actuals, trajectoryFactIds?.fy2024_actuals ?? null],
+    ["FY25", trajectory.fy2025_total, trajectoryFactIds?.fy2025_total ?? null],
+    ["FY26", trajectory.fy2026_total, trajectoryFactIds?.fy2026_total ?? null],
   ];
 
-  const defined = rawPoints.filter(([, v]) => v !== null) as [string, number][];
+  const defined = rawPoints.filter(([, v]) => v !== null) as [
+    string,
+    number,
+    string | null,
+  ][];
 
   if (defined.length < 2) {
     return (
@@ -49,7 +60,7 @@ export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
   }
 
   // Compute min/max for y scaling
-  const values = defined.map(([, v]) => v);
+  const values = defined.map(([, v]) => v as number);
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
   const range = maxV - minV;
@@ -69,9 +80,10 @@ export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
     return PADDING + innerH - ((v - minV) / range) * innerH;
   }
 
-  const points = defined.map(([label, v], i) => ({
+  const points = defined.map(([label, v, factId], i) => ({
     label,
     v,
+    factId,
     x: toX(i),
     y: toY(v),
   }));
@@ -150,12 +162,19 @@ export function TrajectorySpark({ trajectory }: TrajectorySparkProps) {
         ))}
       </svg>
 
-      {/* Compact year/value legend */}
+      {/* Compact year/value legend — Cite-wrapped (dataset fct_budget_trajectory) */}
       <dl className="flex gap-3 text-xs text-muted-foreground flex-wrap">
         {points.map((p) => (
           <div key={p.label} className="flex flex-col">
             <dt className="font-medium text-foreground/80">{p.label}</dt>
-            <dd>${(p.v / 1000).toFixed(1)}M</dd>
+            <dd>
+              <Cite
+                value={p.v}
+                units="USD thousands"
+                dataset="fct_budget_trajectory"
+                factId={p.factId}
+              />
+            </dd>
           </div>
         ))}
       </dl>

@@ -25,12 +25,23 @@ import React, { useCallback, useContext, useState } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
-import { isJbookPdf, isWorkbook, isLdaFiling } from "@/lib/citations";
+import {
+  isJbookPdf,
+  isWorkbook,
+  isLdaFiling,
+  isDerived,
+  isUsaspending,
+  isStateSoql,
+  isStateFile,
+} from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { PdfView } from "./pdf-view";
 import { WorkbookCard } from "./workbook-card";
 import { LdaCard } from "./lda-card";
+import { DerivedCard } from "./derived-card";
+import { UsaspendingCard } from "./usaspending-card";
+import { StateCard } from "./state-card";
 
 // ── CitationPanelProvider ─────────────────────────────────────────────────────
 
@@ -78,8 +89,21 @@ export function CitationPanelProvider({
     [citations],
   );
 
+  // Derived-card input chips ask this before rendering a clickable chip —
+  // calling openPanel again from inside the panel REPLACES the active card
+  // (stack/replace navigation).
+  const hasCitation = useCallback(
+    (factId: string) => factId in citations,
+    [citations],
+  );
+
+  const contextValue = React.useMemo(
+    () => ({ openPanel, hasCitation }),
+    [openPanel, hasCitation],
+  );
+
   return (
-    <CitationPanelContext.Provider value={{ openPanel }}>
+    <CitationPanelContext.Provider value={contextValue}>
       {/*
         AssetConfigProvider is needed here so child components (PdfView,
         WorkbookCard) can call useAssetUrl(). If the parent layout already
@@ -115,6 +139,14 @@ function kindLabel(citation: Citation): string {
       return "Budget Workbook";
     case "lda_filing":
       return "LDA Lobbying Filing";
+    case "derived":
+      return "Derived Figure";
+    case "usaspending":
+      return "USAspending Query";
+    case "state_soql":
+      return "State Open Data Query";
+    case "state_file":
+      return "State Source File";
   }
 }
 
@@ -126,6 +158,13 @@ function kindBadgeClass(citation: Citation): string {
       return "bg-green-100 text-green-800";
     case "lda_filing":
       return "bg-purple-100 text-purple-800";
+    case "derived":
+      return "bg-cyan-100 text-cyan-800";
+    case "usaspending":
+      return "bg-orange-100 text-orange-800";
+    case "state_soql":
+    case "state_file":
+      return "bg-teal-100 text-teal-800";
   }
 }
 
@@ -251,6 +290,15 @@ function CitationBody({ citation }: { citation: Citation }) {
   }
   if (isLdaFiling(citation)) {
     return <LdaCard citation={citation} />;
+  }
+  if (isDerived(citation)) {
+    return <DerivedCard citation={citation} />;
+  }
+  if (isUsaspending(citation)) {
+    return <UsaspendingCard citation={citation} />;
+  }
+  if (isStateSoql(citation) || isStateFile(citation)) {
+    return <StateCard citation={citation} />;
   }
   // Should never reach here — exhaustive guard
   return (

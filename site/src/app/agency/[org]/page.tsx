@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAgencies, getAgencyMap, getPrograms } from "@/lib/data";
+import {
+  getAgencies,
+  getAgencyMap,
+  getPrograms,
+  collectCitationsWithInputs,
+} from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
+import { CitationPanelProvider } from "@/components/citation-panel";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const dynamicParams = false;
@@ -56,8 +62,18 @@ export default async function AgencyPage({
 
   const pageUrl = `${SITE_URL}/agency/${org}/`;
 
+  // Citation slice: agency derived sums (+ their inputs so derived-card
+  // chips are clickable) + per-program FY24 jbook fact_ids.
+  const pageFactIds: string[] = [];
+  if (agency.fy2024_fact_id_derived) pageFactIds.push(agency.fy2024_fact_id_derived);
+  if (agency.fy2026_fact_id_derived) pageFactIds.push(agency.fy2026_fact_id_derived);
+  for (const p of agencyPrograms) {
+    if (p.fy2024_fact_id) pageFactIds.push(p.fy2024_fact_id);
+  }
+  const citationsSlice = collectCitationsWithInputs(pageFactIds);
+
   return (
-    <>
+    <CitationPanelProvider citations={citationsSlice}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -88,16 +104,9 @@ export default async function AgencyPage({
               <Cite
                 value={agency.fy2024_total_millions}
                 units="USD millions"
+                dataset="dim_programs"
+                factId={agency.fy2024_fact_id_derived}
               />
-              <span className="ml-1 text-xs">
-                ⁂{" "}
-                <span
-                  className="italic"
-                  title="sum of all program FY24 figures (cited and uncited inputs) — derivation tier pending"
-                >
-                  sum of all program FY24 figures (cited and uncited inputs) — derivation tier pending
-                </span>
-              </span>
             </span>
             {agency.fy2026_total_thousands != null && (
               <span>
@@ -105,15 +114,17 @@ export default async function AgencyPage({
                 <Cite
                   value={agency.fy2026_total_thousands}
                   units="USD thousands"
+                  dataset="dim_programs"
+                  factId={agency.fy2026_fact_id_derived}
                 />
-                <span className="ml-1 text-xs">⁂</span>
               </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            ⁂ Aggregate FY24 total is the sum of all program FY24 figures
-            (cited and uncited inputs) — derivation tier pending. Individual
-            program FY24 figures are J-book–cited where underlined. See{" "}
+            Aggregate totals are derived sums over this agency&apos;s program
+            figures — click a total to inspect the formula and its cited
+            inputs. Individual program FY24 figures are J-book–cited where
+            underlined. See{" "}
             <Link
               href="/methodology/"
               className="underline hover:text-foreground"
@@ -150,7 +161,9 @@ export default async function AgencyPage({
                       <Cite
                         value={p.fy2024_actual_millions}
                         units="USD millions"
+                        dataset="jbook_details"
                         factId={p.fy2024_fact_id}
+                        xmlPath={p.fy2024_xml_path}
                       />
                       <span className="ml-1 text-xs">FY24</span>
                     </>
@@ -163,6 +176,6 @@ export default async function AgencyPage({
           </div>
         </section>
       </div>
-    </>
+    </CitationPanelProvider>
   );
 }

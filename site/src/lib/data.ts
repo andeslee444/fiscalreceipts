@@ -73,10 +73,27 @@ export interface ProgramTrajectory {
   fy2526_pct_change: number | null;
 }
 
+/**
+ * Derived-citation fact_ids for trajectory figures (Phase 5B-3 flips).
+ * Computed in Python (export_site.fact_id_derived) — NEVER recompute in TS.
+ * Each id is non-null only when the metric value is non-null AND the
+ * citation row exists in citations.json.
+ */
+export interface ProgramTrajectoryFactIds {
+  fy2024_actuals: string | null;
+  fy2025_total: string | null;
+  fy2026_total: string | null;
+  fy2526_change: string | null;
+}
+
 export interface ProgramHHI {
   family_count: number;
   hhi: number;
+  /** Derived citation fact_id for the HHI value (nullable). */
+  hhi_fact_id: string | null;
   program_dollars: number;
+  /** Derived citation fact_id for program_dollars (nullable). */
+  program_dollars_fact_id: string | null;
   top_family: string;
 }
 
@@ -86,6 +103,8 @@ export interface ProgramRow {
   fully_reconciled: boolean;
   fy2024_actual_millions: number | null;
   fy2024_fact_id: string | null;
+  /** xml_path for zero-amount FY24 facts (Cite state B fallback). */
+  fy2024_xml_path: string | null;
   hhi: ProgramHHI | null;
   narrative_count: number;
   org: string;
@@ -93,6 +112,7 @@ export interface ProgramRow {
   project_count: number;
   title: string;
   trajectory: ProgramTrajectory | null;
+  trajectory_fact_ids: ProgramTrajectoryFactIds | null;
 }
 
 let _programs: ProgramRow[] | null = null;
@@ -183,6 +203,8 @@ export interface EntityTop {
   family_key: string;
   slug: string;
   total_obligation: number;
+  /** Derived citation fact_id for total_obligation (nullable). */
+  total_obligation_fact_id: string | null;
   uei_count: number;
   worst_confidence: string;
 }
@@ -212,6 +234,11 @@ export interface EntityInfluenceRow {
   [key: string]: unknown;
   nonAdditive?: boolean;
   family_obligations_usd?: number;
+  /** Derived citation fact_ids (Phase 5B-3 flips, nullable). */
+  income_fact_id?: string | null;
+  expense_fact_id?: string | null;
+  total_fact_id?: string | null;
+  family_obligations_fact_id?: string | null;
 }
 
 export interface EntityAwardRow {
@@ -256,7 +283,11 @@ export function getEntityDetails(slug: string): EntityDetails {
 
 export interface AgencyRow {
   fy2024_total_millions: number;
+  /** Derived citation fact_id for the FY24 agency sum (nullable). */
+  fy2024_fact_id_derived: string | null;
   fy2026_total_thousands: number | null;
+  /** Derived citation fact_id for the FY26 agency sum (nullable). */
+  fy2026_fact_id_derived: string | null;
   org: string;
   program_count: number;
 }
@@ -277,13 +308,32 @@ export function getAgencyMap(): Map<string, AgencyRow> {
 
 // ── citations.json ───────────────────────────────────────────────────────────
 
-export type CitationKind = "jbook_pdf" | "workbook" | "lda_filing";
+export type CitationKind =
+  | "jbook_pdf"
+  | "workbook"
+  | "lda_filing"
+  | "derived"
+  | "usaspending"
+  | "state_soql"
+  | "state_file";
 
 export interface CitationBase {
   kind: CitationKind;
   official_url: string | null;
   retrieved_at: string | null;
   units: string | null;
+  /**
+   * Phase 5B-3 citation-tier fields (nullable; populated for the
+   * derived / usaspending / state_soql / state_file kinds only):
+   *   formula        — human-readable derivation formula or pointer note
+   *   inputs         — JSON array string of 16-hex fact_ids and/or URLs
+   *   query_body     — JSON filter body (usaspending) or query text
+   *   recorded_value — value captured at export time (string decimal)
+   */
+  formula: string | null;
+  inputs: string | null;
+  query_body: string | null;
+  recorded_value: string | null;
 }
 
 export interface JbookPdfCitation extends CitationBase {
@@ -343,7 +393,82 @@ export interface LdaFilingCitation extends CitationBase {
   xml_path: null;
 }
 
-export type Citation = JbookPdfCitation | WorkbookCitation | LdaFilingCitation;
+/** Shared null-bbox shape for the non-document citation kinds. */
+interface NonDocumentCitationFields {
+  amount_text: null;
+  amount_thousands: null;
+  bottom_pt: null;
+  cells: null;
+  hosted_pdf_url: null;
+  page_height: null;
+  page_number: null;
+  page_width: null;
+  resolution: null;
+  sha256: null;
+  sheet: null;
+  top_pt: null;
+  x0: null;
+  x1: null;
+  xml_path: null;
+}
+
+/**
+ * derived — figure computed from warehouse data (trajectory totals, agency
+ * sums, HHI, entity obligations, influence dollars, per-capita).
+ * formula + recorded_value always present; inputs is a JSON array string of
+ * 16-hex fact_ids (recomputable chain) and/or source URLs.
+ */
+export interface DerivedCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "derived";
+  formula: string;
+  inputs: string;
+  recorded_value: string;
+}
+
+/**
+ * usaspending — durable artifact is {endpoint (official_url), query_body}.
+ * recorded_value captured at export; live API results may drift.
+ * official_url may be the API endpoint, a usaspending.gov search-hash
+ * permalink (when minted), or a recipient profile URL.
+ */
+export interface UsaspendingCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "usaspending";
+  official_url: string;
+  query_body: string;
+  recorded_value: string;
+}
+
+/**
+ * state_soql — CT Socrata aggregate; official_url is the exact SoQL URL.
+ * The CT dataset refreshes nightly, so live results may drift from the
+ * captured value.
+ */
+export interface StateSoqlCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "state_soql";
+  official_url: string;
+  recorded_value: string;
+  retrieved_at: string;
+}
+
+/**
+ * state_file — CA Open Fi$Cal pointer tier; official_url is the pointer page,
+ * formula carries the pointer/aggregation note.
+ */
+export interface StateFileCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "state_file";
+  official_url: string;
+  recorded_value: string;
+  retrieved_at: string;
+}
+
+export type Citation =
+  | JbookPdfCitation
+  | WorkbookCitation
+  | LdaFilingCitation
+  | DerivedCitation
+  | UsaspendingCitation
+  | StateSoqlCitation
+  | StateFileCitation;
 
 export type CitationsMap = Record<string, Citation>;
 
@@ -378,6 +503,40 @@ export function collectCitations(factIds: string[]): CitationsMap {
   return result;
 }
 
+/** 16-hex fact_id pattern (matches export_site identity hashes). */
+const FACT_ID_RE = /^[0-9a-f]{16}$/;
+
+/**
+ * Like collectCitations, but ALSO pulls in ONE level of derived-citation
+ * inputs: for every requested fact_id whose citation is kind='derived',
+ * any 16-hex entries in its inputs JSON array are added to the slice too.
+ *
+ * This makes derived-card input chips clickable (they open their own
+ * citation in the panel) without shipping the full citations map.
+ * URL inputs are ignored (rendered as external links, no slice entry).
+ */
+export function collectCitationsWithInputs(factIds: string[]): CitationsMap {
+  const all = getCitations();
+  const result = collectCitations(factIds);
+  for (const id of Object.keys(result)) {
+    const c = result[id];
+    if (c.kind !== "derived" || !c.inputs) continue;
+    let inputs: unknown;
+    try {
+      inputs = JSON.parse(c.inputs);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(inputs)) continue;
+    for (const inp of inputs) {
+      if (typeof inp === "string" && FACT_ID_RE.test(inp) && inp in all) {
+        result[inp] = all[inp];
+      }
+    }
+  }
+  return result;
+}
+
 // ── Type guards ───────────────────────────────────────────────────────────────
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -390,4 +549,20 @@ export function isWorkbook(c: Citation): c is WorkbookCitation {
 
 export function isLdaFiling(c: Citation): c is LdaFilingCitation {
   return c.kind === "lda_filing";
+}
+
+export function isDerived(c: Citation): c is DerivedCitation {
+  return c.kind === "derived";
+}
+
+export function isUsaspending(c: Citation): c is UsaspendingCitation {
+  return c.kind === "usaspending";
+}
+
+export function isStateSoql(c: Citation): c is StateSoqlCitation {
+  return c.kind === "state_soql";
+}
+
+export function isStateFile(c: Citation): c is StateFileCitation {
+  return c.kind === "state_file";
 }

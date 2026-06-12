@@ -32,7 +32,7 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
               UEIs
             </th>
             <th scope="col" className="px-4 py-3 font-medium text-right">
-              Total obligations ⁂
+              Total obligations
             </th>
             <th scope="col" className="px-4 py-3 font-medium text-center w-28">
               Confidence
@@ -57,7 +57,12 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
                 {c.uei_count}
               </td>
               <td className="px-4 py-3 text-right tabular-nums">
-                <Cite value={c.total_obligation} units="USD" />
+                <Cite
+                  value={c.total_obligation}
+                  units="USD"
+                  dataset="dim_entities"
+                  factId={c.total_obligation_fact_id}
+                />
               </td>
               <td className="px-4 py-3 text-center">
                 <span

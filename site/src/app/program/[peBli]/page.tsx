@@ -4,7 +4,7 @@ import {
   getPrograms,
   getProgramDetails,
   getEntityTopByFamilyKey,
-  collectCitations,
+  collectCitationsWithInputs,
 } from "@/lib/data";
 import type { JbookPdfCitation } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -116,15 +116,29 @@ export default async function ProgramPage({
   const initialAwards = details.awards.slice(0, CAP);
   const initialMentions = details.mentions.slice(0, CAP);
 
-  // ── Collect per-page citation slice (Task 5) ──────────────────────────────
+  // ── Collect per-page citation slice (Task 5 + 5B-3 flips) ─────────────────
   // Gather ALL fact_ids referenced on this page to avoid a 10MB full-citations
-  // client payload. Only jbook_pdf + workbook fact_ids appear on program pages
-  // (details rows with unique/ambiguous_first resolution, and budget_lines).
+  // client payload: jbook_pdf details, workbook budget_lines, plus the derived
+  // trajectory / concentration fact_ids (Phase 5B-3). Derived inputs are
+  // pulled in too (one level) so derived-card input chips are clickable.
   const pageFactIds: string[] = [];
 
   // FY2024 header figure (state A when fact_id present)
   if (program.fy2024_fact_id) {
     pageFactIds.push(program.fy2024_fact_id);
+  }
+
+  // Derived trajectory figures (FY24/FY25/FY26/change + sparkline legend)
+  if (program.trajectory_fact_ids) {
+    for (const fid of Object.values(program.trajectory_fact_ids)) {
+      if (fid) pageFactIds.push(fid);
+    }
+  }
+
+  // Derived concentration figures (HHI + program dollars)
+  if (program.hhi?.hhi_fact_id) pageFactIds.push(program.hhi.hhi_fact_id);
+  if (program.hhi?.program_dollars_fact_id) {
+    pageFactIds.push(program.hhi.program_dollars_fact_id);
   }
 
   // Details table: resolution ∈ {unique, ambiguous_first} → state A (fact_id resolves)
@@ -141,7 +155,7 @@ export default async function ProgramPage({
     }
   }
 
-  const citationsSlice = collectCitations(pageFactIds);
+  const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
   return (
     <CitationPanelProvider citations={citationsSlice}>

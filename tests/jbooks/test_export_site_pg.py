@@ -744,6 +744,77 @@ def test_programs_json_schema(pg_dsn, tmp_path):
         assert "fy2526_pct_change" in traj
 
 
+def test_sidecar_derived_fact_ids(pg_dsn, tmp_path):
+    """Phase 5B-3 flips: sidecars CARRY derived citation fact_ids minted in
+    Python (fact_id_derived) — programs.json trajectory_fact_ids + hhi fids,
+    agencies.json fy2024/fy2026 derived fids, entities_top total_obligation
+    fid, entity_details influence fids. Every attached fid must resolve in
+    citations.json (caller guarantees factId resolves)."""
+    from govbudget.export_site import fact_id_derived
+
+    site, _ = _run_export_with_sidecars(pg_dsn, tmp_path)
+    citations = json.loads((site / "json" / "citations.json").read_text())
+
+    # ── programs.json: trajectory_fact_ids + hhi fact ids ──────────────────
+    programs = json.loads((site / "json" / "programs.json").read_text())
+    by_pe = {p["pe_bli"]: p for p in programs}
+    p = by_pe["0601101E"]
+
+    tfi = p["trajectory_fact_ids"]
+    assert tfi is not None, "trajectory_fact_ids missing for program with trajectory"
+    key = "0601101E|DARPA"
+    for metric in ("fy2024_actuals", "fy2025_total", "fy2026_total", "fy2526_change"):
+        expected = fact_id_derived("trajectory", key, metric)
+        assert tfi[metric] == expected, f"{metric}: {tfi[metric]!r} != {expected!r}"
+        assert expected in citations, f"{metric} fid not in citations.json"
+        assert citations[expected]["kind"] == "derived"
+
+    assert "fy2024_xml_path" in p  # nullable; present on every entry
+
+    hhi = p["hhi"]
+    assert hhi["hhi_fact_id"] == fact_id_derived("concentration", "0601101E", "hhi")
+    assert hhi["program_dollars_fact_id"] == fact_id_derived(
+        "concentration", "0601101E", "program_dollars"
+    )
+    assert hhi["hhi_fact_id"] in citations
+    assert hhi["program_dollars_fact_id"] in citations
+
+    # ── agencies.json: derived agency-sum fact ids ──────────────────────────
+    agencies = json.loads((site / "json" / "agencies.json").read_text())
+    a = {x["org"]: x for x in agencies}["DARPA"]
+    fy24_fid = fact_id_derived("agency", "DARPA", "fy2024_total_millions")
+    fy26_fid = fact_id_derived("agency", "DARPA", "fy2026_total_thousands")
+    assert a["fy2024_fact_id_derived"] == fy24_fid
+    assert a["fy2026_fact_id_derived"] == fy26_fid
+    assert citations[fy24_fid]["kind"] == "derived"
+    assert citations[fy26_fid]["kind"] == "derived"
+    # FY26 sum recorded_value matches the sidecar sum (single program: 295000)
+    assert citations[fy26_fid]["recorded_value"] == "295000.000"
+    # FY26 inputs are the per-program trajectory fy2026_total derived fids
+    inputs = json.loads(citations[fy26_fid]["inputs"])
+    assert inputs == [fact_id_derived("trajectory", key, "fy2026_total")]
+
+    # ── entities_top.json: entity total_obligation fid ──────────────────────
+    ents = json.loads((site / "json" / "entities_top.json").read_text())
+    e = {x["family_key"]: x for x in ents}["lockheed"]
+    ent_fid = fact_id_derived("entity", "lockheed", "total_obligation")
+    assert e["total_obligation_fact_id"] == ent_fid
+    assert citations[ent_fid]["kind"] == "derived"
+
+    # ── entity_details: influence row fids ──────────────────────────────────
+    det = json.loads((site / "json" / "entity_details" / "lockheed.json").read_text())
+    row = det["influence"][0]
+    infl_key = "lockheed|2025"
+    assert row["income_fact_id"] == fact_id_derived("influence", infl_key, "lobbying_income_usd")
+    assert row["expense_fact_id"] == fact_id_derived("influence", infl_key, "lobbying_expense_usd")
+    assert row["total_fact_id"] == fact_id_derived("influence", infl_key, "lobbying_total_usd")
+    for fid in (row["income_fact_id"], row["expense_fact_id"], row["total_fact_id"]):
+        assert fid in citations and citations[fid]["kind"] == "derived"
+    # family_obligations_usd (50000000.0) matches dim_entities.total_obligation
+    # exactly → carries the ENTITY derived fid (cited-or-absent on the page)
+    assert row["family_obligations_fact_id"] == ent_fid
+
+
 def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     """A program whose pe_bli has no PriorYear+null_project_number detail row
     must have fy2024_fact_id=null in programs.json."""
@@ -865,6 +936,13 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
     assert by_pe["0601101E"]["fy2024_fact_id"] is None, (
         f"fy2024_fact_id must be null when resolution=zero_amount (citations.json has no entry);"
         f" got {by_pe['0601101E']['fy2024_fact_id']!r}"
+    )
+    # Phase 5B-3: zero-amount PriorYear facts surface their xml_path so the
+    # headline FY24 figure renders Cite state B (xml-path chip), never state C
+    # (jbook_details is a cited dataset under the dataset-ledger gate).
+    assert by_pe["0601101E"]["fy2024_xml_path"] == "ProgramElement[0]", (
+        f"expected fy2024_xml_path='ProgramElement[0]' for the zero-amount fact,"
+        f" got {by_pe['0601101E']['fy2024_xml_path']!r}"
     )
 
 
