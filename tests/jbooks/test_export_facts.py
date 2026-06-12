@@ -12,6 +12,31 @@ from govbudget.jbooks.registry import upsert_documents
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_fy2026_excerpt.xml"
 
 
+def _seed_full(pg_dsn, tmp_path):
+    """Seed one downloaded document with sha256 + extraction_run + budget_lines + details."""
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        # Mark as downloaded with sha256
+        con.execute(
+            "update jbook_documents set status='downloaded', sha256='abc123', file_path=%s"
+            " where id=%s",
+            (str(tmp_path / "darpa.pdf"), doc_id),
+        )
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    return doc_id
+
+
 def test_export_facts_writes_parquet(pg_dsn, tmp_path):
     upsert_documents(pg_dsn, [{
         "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
@@ -27,10 +52,13 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
-    out = export_facts(pg_dsn, parquet_dir=tmp_path)
-    assert sorted(p.name for p in out) == [
-        "budget_line_awards.parquet", "budget_lines.parquet",
-        "detail_narratives.parquet", "details.parquet",
+    paths = export_facts(pg_dsn, parquet_dir=tmp_path)
+    assert [p.name for p in paths] == [
+        "budget_line_awards.parquet",
+        "budget_lines.parquet",
+        "detail_narratives.parquet",
+        "details.parquet",
+        "documents.parquet",
     ]
     n = duckdb.sql(
         f"select count(*) from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"
@@ -41,3 +69,25 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
         " where reconciled"
     ).fetchone()[0]
     assert rec > 0
+
+
+def test_export_facts_includes_provenance_columns(pg_dsn, tmp_path):
+    _seed_full(pg_dsn, tmp_path)
+    paths = export_facts(pg_dsn, parquet_dir=tmp_path)
+    bl_cols = set(duckdb.sql(
+        f"select * from read_parquet('{tmp_path}/jbooks/budget_lines.parquet') limit 0"
+    ).columns)
+    assert {"source_document_id", "source_sheet", "source_cells"} <= bl_cols
+    nr_cols = set(duckdb.sql(
+        f"select * from read_parquet('{tmp_path}/jbooks/detail_narratives.parquet') limit 0"
+    ).columns)
+    assert "document_id" in nr_cols
+    dt_cols = set(duckdb.sql(
+        f"select * from read_parquet('{tmp_path}/jbooks/details.parquet') limit 0"
+    ).columns)
+    assert "document_sha256" in dt_cols
+    doc_cols = set(duckdb.sql(
+        f"select * from read_parquet('{tmp_path}/jbooks/documents.parquet') limit 0"
+    ).columns)
+    assert {"id", "org", "fiscal_year", "title", "source_url", "sha256",
+            "downloaded_at", "rel_path"} <= doc_cols
