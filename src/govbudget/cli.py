@@ -793,6 +793,21 @@ def cmd_build(args) -> None:
     sys.exit(rc)
 
 
+def cmd_export_site(args) -> None:
+    from govbudget.export_site import export_site
+
+    out = export_site(
+        config.PG_DSN, config.DUCKDB_PATH, out_dir=config.SITE_DIR,
+        pdf_base_url=config.PDF_BASE_URL,
+    )
+    print(
+        f"export-site: {out['datasets']} datasets, {out['citations']} citations,"
+        f" {out['pdfs']} pdfs, {out['workbooks']} workbooks,"
+        f" {out['skipped_unresolved']} unresolved, {out['skipped_zero_amount']} zero-amount"
+        f" -> {config.SITE_DIR}"
+    )
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -855,6 +870,9 @@ def main(argv=None) -> None:
 
     v5a = sub.add_parser("verify-phase5a", help="phase 5A acceptance gates (lobbying influence)")
     v5a.set_defaults(func=cmd_verify_phase5a)
+
+    es = sub.add_parser("export-site", help="export typed site artifacts + citations + documents")
+    es.set_defaults(func=cmd_export_site)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(
