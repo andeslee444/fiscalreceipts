@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 import React from "react";
 import { Cite, CitationPanelContext, ReceiptsContext } from "@/components/cite";
 
@@ -73,6 +73,29 @@ describe("Cite three-state contract", () => {
       const el = container.querySelector("[data-amount]") as HTMLElement;
       el.click();
       expect(calledWith).toBe("test-fact-001");
+    });
+
+    it("has role='button' and tabIndex=0 for keyboard accessibility", () => {
+      const { container } = render(
+        <Cite value={280494} units="USD thousands" factId="abc123def456" />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("role", "button");
+      expect(el).toHaveAttribute("tabindex", "0");
+    });
+
+    it("calls openPanel on Enter keydown", () => {
+      let calledWith: string | null = null;
+      const { container } = render(
+        <CitationPanelContext.Provider
+          value={{ openPanel: (id) => { calledWith = id; } }}
+        >
+          <Cite value={100} units="USD millions" factId="test-fact-enter" />
+        </CitationPanelContext.Provider>,
+      );
+      const el = container.querySelector("[data-amount]") as HTMLElement;
+      fireEvent.keyDown(el, { key: "Enter" });
+      expect(calledWith).toBe("test-fact-enter");
     });
   });
 

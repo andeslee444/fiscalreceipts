@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Build-time (server-only) data loaders for GovBudget site.
  * Reads JSON sidecars from ../data/site/json/ relative to the repo root.

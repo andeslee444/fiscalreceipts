@@ -116,14 +116,16 @@ for (const fname of duckdbFiles) {
       fs.copyFileSync(alt2, dest);
       console.log(`✓  duckdb/${fname} (from ${path.basename(alt2)})`);
     } else {
-      // List available files to help debugging
-      if (fs.existsSync(duckdbDistDir)) {
-        const available = fs.readdirSync(duckdbDistDir).filter(f => f.includes("mvp") || f.includes("eh"));
-        console.warn(`⚠   duckdb/${fname} not found. Available: ${available.join(", ")}`);
-      } else {
-        console.error(`❌  FATAL: @duckdb/duckdb-wasm dist directory not found: ${duckdbDistDir}`);
-        process.exit(1);
-      }
+      // FATAL: missing file means the build cannot serve DuckDB queries at runtime
+      const available = fs.existsSync(duckdbDistDir)
+        ? fs.readdirSync(duckdbDistDir).join(", ")
+        : "(dist dir missing)";
+      console.error(
+        `❌  FATAL: duckdb/${fname} not found (tried ${path.basename(alt1)}, ${path.basename(alt2)}).\n` +
+          `    Available in dist: ${available}\n` +
+          `    Re-install @duckdb/duckdb-wasm or update the filename list in prepare-assets.mjs.`
+      );
+      process.exit(1);
     }
   }
 }

@@ -42,8 +42,10 @@ interface CitationPanelContextValue {
 }
 
 export const CitationPanelContext = createContext<CitationPanelContextValue>({
-  openPanel: () => {
-    // no-op default — Task 5 replaces this with a real implementation
+  openPanel: (factId: string) => {
+    console.warn(
+      `[Cite] openPanel("${factId}") called without a CitationPanelContext.Provider`,
+    );
   },
 });
 

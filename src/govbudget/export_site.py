@@ -564,19 +564,10 @@ def export_site(
 
 
 # ---------------------------------------------------------------------------
-# Org translation (mirrors govbudget.jbooks.orgs — no circular import needed)
+# Org translation
 # ---------------------------------------------------------------------------
 
-_ORG_ALIASES: dict[str, str] = {
-    "CYBERCOM": "CYBER",
-    "CHIPS": "OSD",
-    "DPAP": "OSD",
-}
-
-
-def _workbook_org(org: str) -> str:
-    """Forward-translate program org to trajectory org key."""
-    return _ORG_ALIASES.get(org, org)
+from govbudget.jbooks.orgs import workbook_org as _workbook_org
 
 
 # ---------------------------------------------------------------------------
@@ -1139,6 +1130,7 @@ def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:
 
 def _write_json(path: Path, obj) -> None:
     """Write obj as JSON with sort_keys=True."""
+    # single-line on purpose: citations.json is ~10MB; sidecars are machine-read only
     path.write_text(json.dumps(obj, sort_keys=True))
 
 
