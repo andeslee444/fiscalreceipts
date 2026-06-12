@@ -6,12 +6,14 @@ Gates (CLI: verify-phase5a):
   2. match_gate5a       — of the top-50 families by obligation (same ordering as
                           pull_top_families), ≥80% have ≥1 filing row matched
                           (match_method != 'none'). Reports unmatched families
-                          for Phase 5B alias work.
+                          for Phase 5B alias work.  Also validates that every
+                          existing 'normalized'-stamped row passes the
+                          token-boundary containment predicate (gate hardening).
   3. influence_gate5a   — in fct_influence: (a) ≥30 distinct families with both
-                          lobbying dollars > 0 AND obligations > 0; (b) no
-                          negative lobbying values; (c) honesty check: no column
-                          in fct_influence, fct_program_lobbying, or dim_lobbyists
-                          contains 'caused', 'because', or 'won_due'.
+                          lobbying dollars > 0 AND family_obligations_usd > 0;
+                          (b) no negative lobbying values; (c) honesty check: no
+                          column in fct_influence, fct_program_lobbying, or
+                          dim_lobbyists contains 'caused', 'because', or 'won_due'.
   4. mention_gate5a     — ≥10 program-mention rows across ≥3 distinct pe_bli;
                           every mention's filing_uuid resolves to a filing row
                           that has a non-empty url (zero orphans).
@@ -21,6 +23,9 @@ All DuckDB connections opened read_only=True.
 from pathlib import Path
 
 import duckdb
+
+from govbudget.influence.lda import _normalized_tier_match
+from govbudget.entities import normalize_name
 
 # Tokens forbidden in mart column names (no causation language).
 _BAD_TOKENS = ("caused", "because", "won_due")
@@ -99,6 +104,11 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
         order by total_obligation desc nulls last
         limit 50
 
+    Gate hardening (sub-assertion): every row stamped match_method='normalized'
+    must re-validate against the current token-boundary tier predicate
+    (_normalized_tier_match) to detect stale rows written before the fix.
+    The gate FAILS listing offending (client_name, family_key_guess) pairs.
+
     Returns dict with keys:
         ok: bool
         top_n: int                   — how many families were evaluated
@@ -106,6 +116,8 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
         matched_fraction: float      — matched_count / top_n
         threshold: float             — always 0.80
         unmatched_families: list[str] — display_names of unmatched families
+        bad_normalized_rows: list[tuple[str,str]] — (client_name, family_key_guess)
+                             pairs stamped 'normalized' that fail re-validation
     """
     duckdb_path = Path(duckdb_path)
     filings_parquet_path = Path(filings_parquet_path)
@@ -128,10 +140,12 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
             "matched_fraction": 0.0,
             "threshold": _MATCH_THRESHOLD,
             "unmatched_families": [],
+            "bad_normalized_rows": [],
             "reason": "dim_entities is empty — run govbudget build first",
         }
 
     # Load matched family keys from filings (match_method != 'none')
+    # Also load all 'normalized' rows for the hardening sub-assertion.
     fcon = duckdb.connect()
     try:
         if filings_parquet_path.exists():
@@ -143,10 +157,24 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
                     f"  and family_key_guess is not null and family_key_guess <> ''"
                 ).fetchall()
             )
+            # Gate hardening: re-validate every 'normalized'-stamped row
+            normalized_rows = fcon.execute(
+                f"select client_name, family_key_guess "
+                f"from read_parquet('{filings_parquet_path}') "
+                f"where match_method = 'normalized'"
+            ).fetchall()
         else:
             matched_keys = set()
+            normalized_rows = []
     finally:
         fcon.close()
+
+    # Re-validate each 'normalized' row using the current token-boundary predicate
+    bad_normalized_rows: list[tuple[str, str]] = []
+    for client_name, family_key_guess in normalized_rows:
+        norm = normalize_name(client_name or "")
+        if not _normalized_tier_match(norm, family_key_guess or ""):
+            bad_normalized_rows.append((client_name, family_key_guess))
 
     matched = []
     unmatched = []
@@ -160,13 +188,16 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
     matched_count = len(matched)
     matched_fraction = matched_count / top_n if top_n else 0.0
 
+    gate_ok = matched_fraction >= _MATCH_THRESHOLD and len(bad_normalized_rows) == 0
+
     return {
-        "ok": matched_fraction >= _MATCH_THRESHOLD,
+        "ok": gate_ok,
         "top_n": top_n,
         "matched_count": matched_count,
         "matched_fraction": round(matched_fraction, 4),
         "threshold": _MATCH_THRESHOLD,
         "unmatched_families": unmatched,
+        "bad_normalized_rows": bad_normalized_rows,
     }
 
 
@@ -199,7 +230,7 @@ def influence_gate5a(duckdb_path: Path) -> dict:
             select count(distinct family_key)
             from fct_influence
             where (lobbying_income_usd > 0 or lobbying_expense_usd > 0)
-              and obligations_usd > 0
+              and family_obligations_usd > 0
             """
         ).fetchone()[0]
 

@@ -19,7 +19,15 @@ filings as (
         filing_uuid,
         url                     as filing_url,
         client_name,
-        family_key_guess        as family_key,
+        -- family_key attribution requires a verified match; 'none' rows carry only
+        -- the queried family name, not an established link.  The program mention
+        -- itself (filing_uuid ↔ pe_bli) is valid regardless of match_method;
+        -- only the family_key attribution is gated on a confirmed match.
+        case
+            when match_method is not null and match_method <> 'none'
+                then family_key_guess
+            else null
+        end                     as family_key,
         filing_year
     from {{ source('influence', 'lda_filings') }}
 ),

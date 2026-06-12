@@ -21,10 +21,12 @@ from govbudget.influence.lda import (
     _load_top_raw_names,
     _match_method,
     _normalize_dollar,
+    _normalized_tier_match,
     _suffix_residue_match,
     _trim_filing,
     fetch_client_filings,
     pull_top_families,
+    restamp_filings,
 )
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "influence"
@@ -731,3 +733,236 @@ class TestAliasMatchIntegration:
         aliases = _load_aliases()
         result = _match_method("V2X, Inc.", "LOCKHEED MARTIN", alias_norms=aliases.get("LOCKHEED MARTIN"))
         assert result == "none"
+
+
+# ===========================================================================
+# Finding 1: _normalized_tier_match token-boundary tests
+# ===========================================================================
+
+class TestNormalizedTierMatch:
+    """Tests for _normalized_tier_match (token-boundary containment + guard)."""
+
+    # --- Guard: short single-token keys must be blocked ---
+
+    def test_bp_does_not_match_bpu(self):
+        """'BP' (1 token, 2 chars) must NOT match 'JAMESTOWN BPU' via normalized tier.
+
+        The old substring test would match because 'BP' is inside 'BPU'.
+        The token-boundary predicate must block this."""
+        assert _normalized_tier_match("JAMESTOWN BPU", "BP") is False
+
+    def test_bp_guard_rejected(self):
+        """'BP' alone fails the guard (1 token, 2 chars < 4)."""
+        assert _normalized_tier_match("BP ENERGY COMPANY", "BP") is False
+
+    def test_single_short_token_rejected(self):
+        """Any single token key with fewer than 4 chars is rejected by guard."""
+        assert _normalized_tier_match("AB SOMETHING INC", "AB") is False
+        assert _normalized_tier_match("XYZ CORP", "XY") is False
+
+    # --- Contiguous token sequence matching ---
+
+    def test_lockheed_martin_prefix_matches(self):
+        """'LOCKHEED MARTIN' (2-token key) matches as contiguous prefix."""
+        assert _normalized_tier_match("LOCKHEED MARTIN SPACE SYSTEMS", "LOCKHEED MARTIN") is True
+
+    def test_general_dynamics_matches(self):
+        """'GENERAL DYNAMICS' matches as contiguous prefix in longer name."""
+        assert _normalized_tier_match("GENERAL DYNAMICS LAND", "GENERAL DYNAMICS") is True
+
+    def test_raytheon_single_4char_token_matches(self):
+        """Single token ≥ 4 chars ('RAYTHEON') is allowed by guard and matches."""
+        assert _normalized_tier_match("RAYTHEON INTELLIGENCE SPACE", "RAYTHEON") is True
+
+    def test_martin_marietta_non_contiguous_rejected(self):
+        """'LOCKHEED MARTIN' tokens are not a contiguous subsequence of 'MARTIN MARIETTA'."""
+        assert _normalized_tier_match("MARTIN MARIETTA", "LOCKHEED MARTIN") is False
+
+    def test_middle_window_match(self):
+        """Key tokens appearing in the middle of a longer name still match."""
+        # "ALPHA LOCKHEED MARTIN BETA" → tokens [ALPHA, LOCKHEED, MARTIN, BETA]
+        # key [LOCKHEED, MARTIN] appears at position 1
+        assert _normalized_tier_match("ALPHA LOCKHEED MARTIN BETA", "LOCKHEED MARTIN") is True
+
+    def test_single_token_key_at_start(self):
+        """Single 4+-char token key matching the first token of client."""
+        assert _normalized_tier_match("BOEING DEFENSE SPACE", "BOEING") is True
+
+    def test_exact_match_returns_true(self):
+        """When norm == family_key, _normalized_tier_match should return True."""
+        assert _normalized_tier_match("LOCKHEED MARTIN", "LOCKHEED MARTIN") is True
+
+    def test_empty_client_returns_false(self):
+        assert _normalized_tier_match("", "LOCKHEED MARTIN") is False
+
+    def test_empty_key_returns_false(self):
+        assert _normalized_tier_match("LOCKHEED MARTIN CORP", "") is False
+
+    # --- Integration: _match_method uses token-boundary tier ---
+
+    def test_match_method_bp_jamestown_bpu_is_none(self):
+        """'JAMESTOWN BPU' vs family 'BP' → 'none' (no curated alias; BP fails guard)."""
+        result = _match_method("JAMESTOWN BPU", "BP")
+        assert result != "normalized", (
+            f"Expected 'none' (or non-'normalized'), got {result!r}"
+        )
+
+    def test_match_method_general_dynamics_land_systems_normalized(self):
+        """'GENERAL DYNAMICS LAND SYSTEMS' vs 'GENERAL DYNAMICS' → 'normalized'."""
+        result = _match_method("GENERAL DYNAMICS LAND SYSTEMS", "GENERAL DYNAMICS")
+        assert result == "normalized"
+
+    def test_match_method_lockheed_martin_space_normalized(self):
+        """'LOCKHEED MARTIN SPACE SYSTEMS' vs 'LOCKHEED MARTIN' → 'normalized'."""
+        result = _match_method("LOCKHEED MARTIN SPACE SYSTEMS", "LOCKHEED MARTIN")
+        assert result == "normalized"
+
+    def test_match_method_martin_marietta_vs_lockheed_martin_is_none(self):
+        """'MARTIN MARIETTA' vs 'LOCKHEED MARTIN' → 'none' (non-contiguous)."""
+        result = _match_method("MARTIN MARIETTA", "LOCKHEED MARTIN")
+        assert result == "none"
+
+    def test_match_method_raytheon_normalized(self):
+        """'RAYTHEON INTELLIGENCE SPACE' vs 'RAYTHEON' → 'normalized' (4-char guard passes)."""
+        result = _match_method("RAYTHEON INTELLIGENCE SPACE", "RAYTHEON")
+        assert result == "normalized"
+
+
+# ===========================================================================
+# Finding 1b: restamp_filings tests
+# ===========================================================================
+
+def _make_fixture_duckdb_for_restamp(tmp_path: Path) -> Path:
+    """Create a minimal duckdb with entity_xwalk for restamp testing."""
+    db_path = tmp_path / "restamp_test.duckdb"
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "create table entity_xwalk ("
+        "recipient_uei varchar, recipient_name varchar, parent_uei varchar,"
+        "parent_name varchar, family_key varchar, method varchar,"
+        "confidence varchar, total_obligation double)"
+    )
+    # No rows needed — restamp just needs the table to exist
+    con.close()
+    return db_path
+
+
+def _write_filings_parquet(path: Path, rows: list[tuple]) -> None:
+    """Write a minimal lda_filings.parquet fixture."""
+    import duckdb as _duckdb
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = _duckdb.connect()
+    con.execute(
+        "create table _f (filing_uuid varchar, url varchar, client_name varchar,"
+        " registrant_name varchar, filing_year varchar, filing_period varchar,"
+        " filing_type varchar, income_usd varchar, expenses_usd varchar,"
+        " family_key_guess varchar, match_method varchar)"
+    )
+    if rows:
+        con.executemany("insert into _f values (?,?,?,?,?,?,?,?,?,?,?)", rows)
+    con.execute(f"copy _f to '{path}' (format parquet, compression zstd)")
+    con.close()
+
+
+class TestRestampFilings:
+    """Tests for restamp_filings (Finding 1b)."""
+
+    def test_bad_normalized_row_becomes_none(self, tmp_path):
+        """A row stamped 'normalized' under old substring logic is re-stamped 'none'.
+
+        'JAMESTOWN BPU' vs family 'BP': old code would stamp 'normalized' because
+        'BP' is a character-substring of 'BPU'. After restamp it must become 'none'
+        (BP fails the guard: 1 token, 2 chars < 4).
+        """
+        filings_path = tmp_path / "influence" / "lda_filings.parquet"
+        db_path = _make_fixture_duckdb_for_restamp(tmp_path)
+
+        rows = [
+            # This row was incorrectly stamped 'normalized' by the old substring logic
+            ("uuid-bad", "https://lda.senate.gov/f/1", "JAMESTOWN BPU",
+             "LobbyFirm", "2025", "Q1", "LD2", "50000", "", "BP", "normalized"),
+            # 'BP' client_name normalizes to 'BP' which equals family_key 'BP' → exact_family
+            ("uuid-good", "https://lda.senate.gov/f/2", "BP",
+             "LobbyFirm", "2025", "Q1", "LD2", "100000", "", "BP", "exact_family"),
+        ]
+        _write_filings_parquet(filings_path, rows)
+
+        counts = restamp_filings(filings_path, db_path)
+
+        # Before: 1 normalized, 1 exact_family
+        assert counts["before"].get("normalized", 0) == 1
+        assert counts["before"].get("exact_family", 0) == 1
+
+        # After: 'JAMESTOWN BPU' / 'BP' must not be 'normalized'
+        assert counts["after"].get("normalized", 0) == 0, (
+            f"Expected 0 'normalized' rows after restamp, got: {counts['after']}"
+        )
+
+        # Verify parquet was rewritten correctly
+        rcon = duckdb.connect()
+        rows_after = rcon.execute(
+            f"select filing_uuid, match_method from read_parquet('{filings_path}') "
+            f"order by filing_uuid"
+        ).fetchall()
+        rcon.close()
+
+        row_map = {uuid: mm for uuid, mm in rows_after}
+        assert row_map["uuid-bad"] != "normalized", (
+            f"Expected uuid-bad to be re-stamped away from 'normalized', got {row_map['uuid-bad']!r}"
+        )
+        # 'BP' exact match → exact_family
+        assert row_map["uuid-good"] == "exact_family"
+
+    def test_valid_normalized_row_stays_normalized(self, tmp_path):
+        """A legitimately 'normalized' row (2-token key, token-contiguous) stays 'normalized'."""
+        filings_path = tmp_path / "influence" / "lda_filings.parquet"
+        db_path = _make_fixture_duckdb_for_restamp(tmp_path)
+
+        rows = [
+            # "GENERAL DYNAMICS LAND" has 'GENERAL DYNAMICS' as contiguous prefix → valid
+            ("uuid-gd", "https://lda.senate.gov/f/3", "GENERAL DYNAMICS LAND SYSTEMS",
+             "LobbyFirm", "2025", "Q1", "LD2", "200000", "", "GENERAL DYNAMICS", "normalized"),
+        ]
+        _write_filings_parquet(filings_path, rows)
+
+        counts = restamp_filings(filings_path, db_path)
+
+        assert counts["after"].get("normalized", 0) == 1
+
+    def test_restamp_writes_parquet_atomically(self, tmp_path):
+        """After restamp the parquet file still exists and is readable."""
+        filings_path = tmp_path / "influence" / "lda_filings.parquet"
+        db_path = _make_fixture_duckdb_for_restamp(tmp_path)
+
+        rows = [
+            ("uuid-x", "https://lda.senate.gov/f/x", "LOCKHEED MARTIN CORPORATION",
+             "Firm", "2025", "Q1", "LD2", "1000", "", "LOCKHEED MARTIN", "exact_family"),
+        ]
+        _write_filings_parquet(filings_path, rows)
+        restamp_filings(filings_path, db_path)
+
+        assert filings_path.exists()
+        rcon = duckdb.connect()
+        count = rcon.execute(
+            f"select count(*) from read_parquet('{filings_path}')"
+        ).fetchone()[0]
+        rcon.close()
+        assert count == 1
+
+    def test_restamp_returns_before_after_counts(self, tmp_path):
+        """restamp_filings returns a dict with 'before' and 'after' keys."""
+        filings_path = tmp_path / "influence" / "lda_filings.parquet"
+        db_path = _make_fixture_duckdb_for_restamp(tmp_path)
+
+        rows = [
+            ("uuid-1", "https://lda.senate.gov/f/1", "RAYTHEON CORP",
+             "Firm", "2025", "Q1", "LD2", "1000", "", "RAYTHEON", "normalized"),
+        ]
+        _write_filings_parquet(filings_path, rows)
+        result = restamp_filings(filings_path, db_path)
+
+        assert "before" in result
+        assert "after" in result
+        assert isinstance(result["before"], dict)
+        assert isinstance(result["after"], dict)

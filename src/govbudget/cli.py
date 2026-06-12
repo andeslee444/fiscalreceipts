@@ -642,6 +642,7 @@ def cmd_verify_phase5a(args) -> None:
         print(
             f"gate 2 match: top_n={mg['top_n']} matched={mg['matched_count']}"
             f" fraction={mg['matched_fraction']:.1%} (threshold: ≥{mg['threshold']:.0%})"
+            f" bad_normalized={len(mg.get('bad_normalized_rows', []))}"
             f" → {'PASS' if g2_ok else 'FAIL'}"
         )
         if mg["unmatched_families"]:
@@ -651,6 +652,13 @@ def cmd_verify_phase5a(args) -> None:
             )
             for name in mg["unmatched_families"]:
                 print(f"    {name}")
+        if mg.get("bad_normalized_rows"):
+            print(
+                f"  FAIL: {len(mg['bad_normalized_rows'])} 'normalized'-stamped row(s) "
+                "fail token-boundary re-validation — run: govbudget influence restamp"
+            )
+            for client, fk in mg["bad_normalized_rows"][:10]:
+                print(f"    client={client!r} family_key={fk!r}")
     gates_ok = gates_ok and g2_ok
 
     # Gate 3: influence mart content + honesty
@@ -686,6 +694,26 @@ def cmd_verify_phase5a(args) -> None:
 
     print("verify-phase5a:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)
+
+
+def cmd_influence_restamp(args) -> None:
+    """Re-stamp match_method on existing lda_filings.parquet using current tier logic."""
+    from govbudget.influence.lda import restamp_filings
+
+    filings_path = config.PARQUET_DIR / "influence" / "lda_filings.parquet"
+    if not filings_path.exists():
+        print(f"influence restamp: no filings parquet at {filings_path}")
+        sys.exit(1)
+
+    print(f"influence restamp: reading {filings_path} ...")
+    counts = restamp_filings(filings_path, config.DUCKDB_PATH)
+    print("influence restamp: BEFORE tier counts:")
+    for mm, n in sorted(counts["before"].items()):
+        print(f"  {mm}: {n}")
+    print("influence restamp: AFTER tier counts:")
+    for mm, n in sorted(counts["after"].items()):
+        print(f"  {mm}: {n}")
+    print(f"influence restamp: done → {filings_path}")
 
 
 def cmd_influence(args) -> None:
@@ -843,6 +871,14 @@ def main(argv=None) -> None:
     inf_pull.add_argument("--years", default="2024,2025,2026",
                           help="Comma-separated filing years (default: 2024,2025,2026)")
     inf_pull.set_defaults(func=cmd_influence)
+    inf_restamp = inf_sub.add_parser(
+        "restamp",
+        help=(
+            "Re-stamp match_method on existing lda_filings.parquet using the current "
+            "tier logic; no network calls, no re-pull."
+        ),
+    )
+    inf_restamp.set_defaults(func=cmd_influence_restamp)
 
     args = p.parse_args(argv)
     args.func(args)

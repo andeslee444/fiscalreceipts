@@ -91,7 +91,7 @@ def make_duckdb_with_influence(
         f"family_key varchar, display_name varchar, filing_year varchar,"
         f" filings_count integer, lobbying_income_usd double,"
         f" lobbying_expense_usd double, lobbying_total_usd double,"
-        f" obligations_usd double{extra_fi})"
+        f" family_obligations_usd double{extra_fi})"
     )
     if fct_influence_rows:
         if bad_col_name == "fct_influence":
@@ -529,3 +529,132 @@ class TestMentionGate5a:
         result = mention_gate5a(mentions_p, filings_p)
         assert result["ok"] is False
         assert result["total_mentions"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Finding 1d: match_gate5a gate hardening — bad 'normalized' rows fail gate
+# ---------------------------------------------------------------------------
+
+
+class TestMatchGate5aHardening:
+    """Finding 1d: sub-assertion that all 'normalized' rows pass token-boundary re-validation."""
+
+    def _make_entities(self, n: int) -> list[tuple]:
+        return [
+            (f"family_{i}", f"Family {i}", float(10000 - i * 100))
+            for i in range(n)
+        ]
+
+    def test_gate_fails_when_bad_normalized_row_present(self, tmp_path):
+        """A filing stamped 'normalized' that fails token-boundary check causes gate FAIL.
+
+        'JAMESTOWN BPU' stamped as 'normalized' for family 'BP' is a legacy bad row.
+        The gate re-validates and must fail with that pair listed.
+        """
+        db = tmp_path / "t.duckdb"
+        # Need enough families to be above 80% threshold so the ONLY failure is
+        # the bad_normalized sub-assertion. Use 10 families, all matched.
+        n = 10
+        entities = self._make_entities(n)
+        make_duckdb_with_influence(db, dim_entities_rows=entities)
+
+        # All 10 families have a legitimately-matched filing
+        filings_rows = [
+            (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
+             "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
+            for i in range(n)
+        ]
+        # Inject one stale 'normalized' row for a different family
+        filings_rows.append(
+            ("uuid-bad-norm", "https://lda.senate.gov/f/bad", "JAMESTOWN BPU",
+             "Firm", "2025", "Q1", "LD2", "50000", "", "BP", "normalized")
+        )
+        filings_p = tmp_path / "lda_filings.parquet"
+        make_filings(filings_p, filings_rows)
+
+        result = match_gate5a(db, filings_p)
+
+        # Gate must fail because of the bad normalized row
+        assert result["ok"] is False
+        assert len(result["bad_normalized_rows"]) >= 1
+        # The offending pair must be listed
+        bad_pairs = result["bad_normalized_rows"]
+        assert any(client == "JAMESTOWN BPU" and fk == "BP" for client, fk in bad_pairs), (
+            f"Expected ('JAMESTOWN BPU', 'BP') in bad_normalized_rows, got {bad_pairs}"
+        )
+
+    def test_gate_passes_when_all_normalized_rows_valid(self, tmp_path):
+        """Gate passes when all 'normalized' rows satisfy token-boundary containment."""
+        db = tmp_path / "t.duckdb"
+        n = 10
+        entities = self._make_entities(n)
+        make_duckdb_with_influence(db, dim_entities_rows=entities)
+
+        filings_rows = [
+            (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
+             "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
+            for i in range(n)
+        ]
+        # Add a valid 'normalized' row: "GENERAL DYNAMICS LAND" contains "GENERAL DYNAMICS"
+        filings_rows.append(
+            ("uuid-gd", "https://lda.senate.gov/f/gd", "GENERAL DYNAMICS LAND SYSTEMS",
+             "Firm", "2025", "Q1", "LD2", "200000", "", "GENERAL DYNAMICS", "normalized")
+        )
+        filings_p = tmp_path / "lda_filings.parquet"
+        make_filings(filings_p, filings_rows)
+
+        result = match_gate5a(db, filings_p)
+
+        assert result["ok"] is True
+        assert result["bad_normalized_rows"] == []
+
+    def test_bad_normalized_rows_key_always_present(self, tmp_path):
+        """Result dict always contains 'bad_normalized_rows' key."""
+        db = tmp_path / "t.duckdb"
+        entities = [("fam_a", "Family A", 1000.0)]
+        make_duckdb_with_influence(db, dim_entities_rows=entities)
+        filings_p = tmp_path / "lda_filings.parquet"
+        make_filings(filings_p, [])
+        result = match_gate5a(db, filings_p)
+        assert "bad_normalized_rows" in result
+
+
+# ---------------------------------------------------------------------------
+# Finding 2: influence_gate5a uses family_obligations_usd (rename check)
+# ---------------------------------------------------------------------------
+
+
+class TestInfluenceGate5aObligationsColumn:
+    """Finding 2: verify influence_gate5a queries the renamed family_obligations_usd column."""
+
+    def _good_fct_influence(self) -> list[tuple]:
+        return [
+            (f"family_{i}", f"Family {i}", "2025", 5, 1000000.0, 0.0, 1000000.0, 5000000000.0)
+            for i in range(35)
+        ]
+
+    def test_families_with_zero_obligations_not_counted(self, tmp_path):
+        """Families with family_obligations_usd=0 but lobbying>0 do NOT count toward ≥30."""
+        db = tmp_path / "t.duckdb"
+        rows = [
+            # 29 families with both obligations and lobbying > 0
+            (f"family_{i}", f"Family {i}", "2025", 5, 1000000.0, 0.0, 1000000.0, 5000000000.0)
+            for i in range(29)
+        ] + [
+            # 5 families with lobbying but zero obligations
+            (f"noobl_{i}", f"NoObl {i}", "2025", 2, 500000.0, 0.0, 500000.0, 0.0)
+            for i in range(5)
+        ]
+        make_duckdb_with_influence(db, fct_influence_rows=rows)
+        result = influence_gate5a(db)
+        # 29 < 30 threshold → FAIL
+        assert result["ok"] is False
+        assert result["distinct_families_with_both"] == 29
+
+    def test_pass_with_family_obligations_usd_column(self, tmp_path):
+        """influence_gate5a passes when fct_influence has family_obligations_usd column."""
+        db = tmp_path / "t.duckdb"
+        make_duckdb_with_influence(db, fct_influence_rows=self._good_fct_influence())
+        result = influence_gate5a(db)
+        assert result["ok"] is True
+        assert result["distinct_families_with_both"] >= 30

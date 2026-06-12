@@ -57,8 +57,8 @@ models:
         description: "Sum of expenses_usd from in-house/self-filer filings. Mutually exclusive with lobbying_income_usd per filing."
       - name: lobbying_total_usd
         description: "Sum of lobbying_income_usd and lobbying_expense_usd; total lobbying outlay without double-counting (income and expenses are mutually exclusive per LDA filing)."
-      - name: obligations_usd
-        description: "Total federal contract obligations for this family from dim_entities (all years in the award lake). Shown alongside lobbying for context; no directional relationship implied."
+      - name: family_obligations_usd
+        description: "Total federal contract obligations for this family from dim_entities (all years in the award lake). NON-ADDITIVE: this is a family-level constant repeated on every (family_key, filing_year) row — do NOT SUM across rows; use MAX or join dim_entities directly. Shown alongside lobbying for context; no directional relationship implied."
   - name: fct_program_lobbying
     description: "Program-mention rows from LDA activity descriptions matched against dim_programs. Grain: one row per (filing_uuid, pe_bli, matched_term). Matching is deterministic (token/alias/PE-code substring with word boundaries). Each row is citation-ready via filing_url."
     columns:

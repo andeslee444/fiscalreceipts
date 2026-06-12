@@ -19,13 +19,19 @@ with filings as (
     from {{ source('influence', 'lda_filings') }}
     where family_key_guess is not null
       and family_key_guess <> ''
+      -- Exclude rows where the family link is not established.
+      -- family_key_guess on an unmatched row is only the queried family name,
+      -- NOT a verified link between the client and the family; attributing
+      -- lobbying dollars to the family based on a 'none' match would over-count.
+      and match_method is not null
+      and match_method <> 'none'
     group by family_key_guess, filing_year
 ),
 entities as (
     select
         family_key,
         display_name,
-        total_obligation as obligations_usd
+        total_obligation as family_obligations_usd
     from {{ ref('dim_entities') }}
 )
 select
@@ -37,7 +43,11 @@ select
     coalesce(f.lobbying_expense_usd, 0) as lobbying_expense_usd,
     coalesce(f.lobbying_income_usd, 0)
         + coalesce(f.lobbying_expense_usd, 0)  as lobbying_total_usd,
-    e.obligations_usd
+    -- NON-ADDITIVE: family_obligations_usd is a family-level total from dim_entities,
+    -- repeated on every (family_key, filing_year) row.  Do NOT SUM this column
+    -- across rows — it will over-count by the number of filing years present.
+    -- Use MAX(family_obligations_usd) or join dim_entities directly for aggregation.
+    e.family_obligations_usd
 from filings f
 left join entities e
     on e.family_key = f.family_key

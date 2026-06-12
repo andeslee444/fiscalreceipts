@@ -223,6 +223,43 @@ def _suffix_residue_match(norm_client: str, family_key: str) -> bool:
     return client_core == key_core
 
 
+def _normalized_tier_match(norm_client: str, family_key: str) -> bool:
+    """Return True iff family_key matches tier 3 ('normalized') against norm_client.
+
+    Requirements (both must hold):
+    1. Token-boundary containment: the token sequence of family_key appears as a
+       *contiguous* subsequence of norm_client's token list.  Bare substring in
+       the character sense is NOT sufficient — "BP" must not match token "BPU".
+    2. Guard: family_key has ≥2 tokens OR its single token is ≥4 characters.
+       This mirrors the suffix_residue guard and prevents single short-token keys
+       like "BP" (2 chars, 1 token) from producing false positives.
+
+    Examples:
+      "LOCKHEED MARTIN SPACE SYSTEMS" / "LOCKHEED MARTIN" → True  (contiguous 2-token prefix)
+      "GENERAL DYNAMICS LAND SYSTEMS" / "GENERAL DYNAMICS" → True  (contiguous prefix)
+      "JAMESTOWN BPU"                 / "BP"               → False (guard: 1 token, 2 chars)
+      "MARTIN MARIETTA"               / "LOCKHEED MARTIN"  → False (tokens not contiguous)
+      "RAYTHEON INTELLIGENCE SPACE"   / "RAYTHEON"         → True  (1 token ≥ 4 chars, contiguous)
+    """
+    key_tokens = family_key.split()
+    if not key_tokens:
+        return False
+
+    # Guard: ≥2 tokens OR single token ≥4 chars
+    if len(key_tokens) == 1 and len(key_tokens[0]) < 4:
+        return False
+
+    client_tokens = norm_client.split()
+    n_key = len(key_tokens)
+    n_client = len(client_tokens)
+
+    # Sliding window: check every contiguous window of length n_key in client_tokens
+    for i in range(n_client - n_key + 1):
+        if client_tokens[i:i + n_key] == key_tokens:
+            return True
+    return False
+
+
 def _match_method(
     client_name: str,
     family_key: str,
@@ -235,7 +272,10 @@ def _match_method(
     Tiers (first match wins):
       'exact_family'   — normalize_name(client_name) == family_key
       'curated_alias'  — normalize_name(client_name) in alias_norms
-      'normalized'     — family_key appears as substring in normalize_name(client_name)
+      'normalized'     — family_key token sequence is a contiguous subsequence of
+                         normalize_name(client_name) tokens AND family_key has ≥2
+                         tokens or its single token is ≥4 chars (prevents short
+                         single-token keys like "BP" from matching e.g. "JAMESTOWN BPU")
       'family_raw_name'— normalize_name(client_name) in family_raw_names
       'suffix_residue' — residual cores match after GENERIC_RESIDUE removal
       'none'           — no match
@@ -247,7 +287,7 @@ def _match_method(
         return "exact_family"
     if alias_norms and norm in alias_norms:
         return "curated_alias"
-    if family_key and family_key in norm:
+    if _normalized_tier_match(norm, family_key):
         return "normalized"
     if family_raw_names and norm in family_raw_names:
         return "family_raw_name"
@@ -480,6 +520,89 @@ def _pull_families_with_client(
     return all_filings, all_activities, all_lobbyists
 
 
+def restamp_filings(filings_parquet: Path, duckdb_path: str | Path) -> dict:
+    """Re-stamp match_method on every row using the current tier logic.
+
+    Reads filings_parquet, recomputes match_method for every (client_name,
+    family_key_guess) row using the same tier function + alias/raw-name sets
+    loaded from duckdb_path (entity_xwalk) and the default client_aliases.csv.
+    Rewrites the parquet atomically (temp file then rename).
+
+    Returns a dict:
+        before: {match_method: count}
+        after:  {match_method: count}
+
+    The caller must run this after updating _match_method logic.  It does NOT
+    re-pull from LDA — it operates entirely on the existing parquet rows.
+    """
+    filings_parquet = Path(filings_parquet)
+    duckdb_path = Path(duckdb_path)
+
+    # Load the parquet into an in-memory list
+    rcon = duckdb.connect()
+    try:
+        rows = rcon.execute(
+            f"select filing_uuid, url, client_name, registrant_name, filing_year, "
+            f"filing_period, filing_type, income_usd, expenses_usd, "
+            f"family_key_guess, match_method "
+            f"from read_parquet('{filings_parquet}')"
+        ).fetchall()
+    finally:
+        rcon.close()
+
+    # Collect before-counts
+    before: dict[str, int] = {}
+    for row in rows:
+        mm = row[10] or "none"
+        before[mm] = before.get(mm, 0) + 1
+
+    # Load aliases and raw names keyed by family_key
+    alias_map = _load_aliases()  # {family_key: {norm, ...}}
+    family_keys = list({row[9] for row in rows if row[9]})
+    family_raw_names_map: dict[str, set[str]] = {}
+    if duckdb_path.exists():
+        try:
+            family_raw_names_map = _load_family_raw_names(duckdb_path, family_keys)
+        except Exception as exc:
+            print(f"  WARNING: restamp_filings: could not load entity_xwalk: {exc}")
+
+    # Re-stamp each row
+    new_rows: list[tuple] = []
+    after: dict[str, int] = {}
+    for row in rows:
+        (uuid, url, client_name, registrant_name, filing_year, filing_period,
+         filing_type, income_usd, expenses_usd, family_key_guess, _old_mm) = row
+        new_mm = _match_method(
+            client_name or "",
+            family_key_guess or "",
+            family_raw_names=family_raw_names_map.get(family_key_guess or ""),
+            alias_norms=alias_map.get(family_key_guess or ""),
+        )
+        after[new_mm] = after.get(new_mm, 0) + 1
+        new_rows.append((
+            uuid, url, client_name, registrant_name, filing_year, filing_period,
+            filing_type, income_usd, expenses_usd, family_key_guess, new_mm,
+        ))
+
+    # Write atomically: temp file → rename
+    tmp_path = filings_parquet.with_suffix(".parquet.tmp")
+    wcon = duckdb.connect()
+    try:
+        wcon.execute(
+            "create table _f (filing_uuid varchar, url varchar, client_name varchar,"
+            " registrant_name varchar, filing_year varchar, filing_period varchar,"
+            " filing_type varchar, income_usd varchar, expenses_usd varchar,"
+            " family_key_guess varchar, match_method varchar)"
+        )
+        wcon.executemany("insert into _f values (?,?,?,?,?,?,?,?,?,?,?)", new_rows)
+        wcon.execute(f"copy _f to '{tmp_path}' (format parquet, compression zstd)")
+    finally:
+        wcon.close()
+    tmp_path.replace(filings_parquet)
+
+    return {"before": before, "after": after}
+
+
 def pull_top_families(
     duckdb_path: str | Path,
     *,
@@ -499,6 +622,14 @@ def pull_top_families(
       lda_filings.parquet     — one row per unique filing
       lda_activities.parquet  — one row per activity
       lda_lobbyists.parquet   — one row per lobbyist (deduped per filing)
+
+    Single-attribution note: families are processed in descending obligation order
+    (matching the dim_entities query).  When a filing UUID is returned by queries
+    for two different families, it is attributed to the *first* family processed
+    (the higher-obligation family) via the global seen_uuids dedup set.  This is
+    intentional: single attribution prevents double-counting of lobbying spend
+    across families when the same registrant filing was returned for multiple
+    client_name search terms.
 
     _client: optional injected httpx.Client (for testing; must already be open).
     _aliases_csv: optional path override for client_aliases.csv (for testing).
