@@ -932,11 +932,18 @@ class TestDerivedCitationGate:
     """citation_gate5b1 handles derived kind correctly."""
 
     def test_derived_happy_path(self, tmp_path):
-        """Derived row with formula + recorded_value → PASS."""
+        """Derived row with formula + recorded_value → PASS.
+
+        Uses the pivot formula when inputs=[] (sum formula with empty inputs fails).
+        """
         site = tmp_path / "site"
         fid = fact_id_derived("trajectory", "0601101E|DARPA", "fy2026_total")
-        row = _make_derived_row(fid, "sum(budget_lines.amount_thousands where amount_type=fy_2026_total)",
-                                "[]", "295000.000")
+        # When no budget_lines inputs are available, emission side uses pivot formula.
+        row = _make_derived_row(
+            fid,
+            "trajectory pivot of budget_lines (inputs unavailable for this org/type)",
+            "[]", "295000.000",
+        )
         _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
         _write_manifest(site)
 
@@ -991,7 +998,11 @@ class TestDerivedRecompute:
     """_verify_derived recomputes trajectory difference and sum."""
 
     def test_trajectory_difference_recompute_pass(self, tmp_path):
-        """fy2526_change = fy2026 - fy2025: correct recompute → PASS."""
+        """fy2526_change = fy2026 - fy2025: correct recompute → PASS.
+
+        Peer rows use pivot formula when no budget_lines inputs available.
+        The fy2526_change row uses the two peer derived fact_ids as inputs.
+        """
         site = tmp_path / "site"
         import json
 
@@ -1000,11 +1011,14 @@ class TestDerivedRecompute:
         fid_chg  = fact_id_derived("trajectory", "0601101E|DARPA", "fy2526_change")
 
         rows = [
-            _make_derived_row(fid_fy25, "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+            # Peer rows use pivot formula (no budget_lines inputs available)
+            _make_derived_row(fid_fy25,
+                              "trajectory pivot of budget_lines (inputs unavailable for this org/type)",
                               "[]", "293145.000"),
-            _make_derived_row(fid_fy26, "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+            _make_derived_row(fid_fy26,
+                              "trajectory pivot of budget_lines (inputs unavailable for this org/type)",
                               "[]", "295000.000"),
-            # fy2526_change = fy2026 - fy2025; inputs = [fid_fy26, fid_fy25]
+            # fy2526_change = fy2026 - fy2025; inputs = [fid_fy26, fid_fy25] (peer derived fids)
             _make_derived_row(fid_chg, "fy2026_total - fy2025_total",
                               json.dumps([fid_fy26, fid_fy25]), "1855.000"),
         ]

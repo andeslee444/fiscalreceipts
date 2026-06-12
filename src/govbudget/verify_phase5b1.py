@@ -398,6 +398,15 @@ def _verify_derived(
     # Check if all inputs are 16-hex fact_ids
     all_fact_ids = all(isinstance(x, str) and _FACT_ID_PATTERN.match(x) for x in inputs)
 
+    # Rule for sum formula with empty inputs: a 'sum(budget_lines' formula that has
+    # no inputs is not recomputable — it must fail.  The emission side must use the
+    # pivot formula string instead ('trajectory pivot of budget_lines ...').
+    if not inputs and formula.startswith("sum(budget_lines"):
+        return (
+            "derived sum formula with empty inputs — not recomputable; "
+            "use pivot formula string for honest shape-check rows"
+        )
+
     if inputs and all_fact_ids:
         # Build lookup: fact_id → recorded_value from citation set
         fid_to_rv: dict[str, str | None] = {}

@@ -1395,3 +1395,566 @@ class TestResearchDirConfig:
         assert "FAM-TEST" in result
         assert result["FAM-TEST"]["parent_uei"] == "PARENT-TEST"
         assert result["FAM-TEST"]["profile_id"] == "test-profile-id"
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: Federal fiscal-year boundary (FY2025 = 2024-10-01 → 2025-09-30)
+# ---------------------------------------------------------------------------
+
+
+class TestFiscalYearBoundary:
+    """FY boundary: FY{N} spans {N-1}-10-01 to {N}-09-30.
+
+    Before fix: code used f"{fiscal_year}-10-01" / f"{fiscal_year+1}-09-30"
+    which gave FY2025 → 2025-10-01 → 2026-09-30 (wrong — that is FY2026).
+    After fix:  f"{fiscal_year-1}-10-01" / f"{fiscal_year}-09-30"
+    which gives FY2025 → 2024-10-01 → 2025-09-30 (correct).
+    """
+
+    def _get_time_period_for(self, db_path, fiscal_year: int) -> dict:
+        """Return the time_period dict from a family-year query_body for the given FY.
+
+        Identifies the row by its fact_id (which embeds fiscal_year in the key).
+        """
+        rows = _build_usaspending_citation_rows(duckdb_path=db_path)
+        for row in rows:
+            fid = row[0]
+            qb_raw = row[22]
+            if qb_raw is None:
+                continue
+            # The family-year fact_id key is "{family_key}|{fiscal_year}"
+            # We detect the right row by checking if the key ends with "|{fiscal_year}"
+            from govbudget.export_site import fact_id_usaspending
+            # Re-derive what fid should be for FAM-A at this fiscal_year
+            expected_fid = fact_id_usaspending("family_year", f"FAM-A|{fiscal_year}", "total_obligation")
+            if fid == expected_fid:
+                qb = json.loads(qb_raw)
+                tp_list = qb.get("filters", {}).get("time_period", [])
+                if tp_list:
+                    return tp_list[0]
+        return {}
+
+    def test_fy2025_start_date_is_2024_10_01(self, tmp_path):
+        """FY2025 query_body must have start_date='2024-10-01'."""
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        tp = self._get_time_period_for(db_path, 2025)
+        assert tp, "expected a FY2025 time_period entry"
+        assert tp["start_date"] == "2024-10-01", (
+            f"FY2025 start_date should be 2024-10-01, got {tp['start_date']!r}"
+        )
+
+    def test_fy2025_end_date_is_2025_09_30(self, tmp_path):
+        """FY2025 query_body must have end_date='2025-09-30'."""
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        tp = self._get_time_period_for(db_path, 2025)
+        assert tp, "expected a FY2025 time_period entry"
+        assert tp["end_date"] == "2025-09-30", (
+            f"FY2025 end_date should be 2025-09-30, got {tp['end_date']!r}"
+        )
+
+    def test_fy2024_start_date_is_2023_10_01(self, tmp_path):
+        """FY2024 query_body must have start_date='2023-10-01'."""
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        tp = self._get_time_period_for(db_path, 2024)
+        assert tp, "expected a FY2024 time_period entry"
+        assert tp["start_date"] == "2023-10-01", (
+            f"FY2024 start_date should be 2023-10-01, got {tp['start_date']!r}"
+        )
+
+    def test_fy2024_end_date_is_2024_09_30(self, tmp_path):
+        """FY2024 query_body must have end_date='2024-09-30'."""
+        db_path = _make_usaspending_mart_duckdb(tmp_path)
+        tp = self._get_time_period_for(db_path, 2024)
+        assert tp, "expected a FY2024 time_period entry"
+        assert tp["end_date"] == "2024-09-30", (
+            f"FY2024 end_date should be 2024-09-30, got {tp['end_date']!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fix 2a: fy2526_change inputs = [fy2026_total peer fid, fy2025_total peer fid]
+# Fix 2b: trajectory total rows with no budget_lines inputs use alternate formula
+# Fix 2b (verify side): sum formula with empty inputs → fail; pivot formula → pass
+# ---------------------------------------------------------------------------
+
+
+def _make_trajectory_duckdb(
+    tmp_path: Path,
+    *,
+    add_budget_lines: bool = True,
+) -> Path:
+    """Minimal DuckDB for derived citation tests.
+
+    Trajectory row: pe_bli='0601101E', org='DARPA',
+      fy2024_actuals=700000.0, fy2025_total=780000.0, fy2026_total=846900.0,
+      fy2526_change=66900.0.
+
+    If add_budget_lines=True, populate budget_lines with matching org/pe_bli/type rows.
+    """
+    db_path = tmp_path / "govbudget.duckdb"
+    con = duckdb.connect(str(db_path))
+
+    con.execute(
+        "CREATE TABLE fct_budget_trajectory (pe_bli varchar, organization varchar,"
+        " fy2024_actuals double, fy2025_total double, fy2026_total double,"
+        " fy2526_change double, fy2526_pct_change double)"
+    )
+    con.execute(
+        "INSERT INTO fct_budget_trajectory VALUES"
+        " ('0601101E', 'DARPA', 700000.0, 780000.0, 846900.0, 66900.0, 8.58)"
+    )
+
+    # dim_programs needed for agency sum path
+    con.execute(
+        "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
+        " title varchar, project_count integer, fy2024_actual_millions double,"
+        " fully_reconciled boolean)"
+    )
+    con.execute(
+        "INSERT INTO dim_programs VALUES ('0601101E', 'DARPA', 'rdte', 'Defense Research', 1, 700.0, true)"
+    )
+
+    # fct_program_concentration (stub)
+    con.execute(
+        "CREATE TABLE fct_program_concentration (pe_bli varchar, hhi double,"
+        " top_family varchar, family_count integer, program_dollars double)"
+    )
+
+    # fct_improper_exposure (stub)
+    con.execute(
+        "CREATE TABLE fct_improper_exposure (agency_code varchar,"
+        " derived_improper_amount_usd double, weighted_rate_pct double)"
+    )
+
+    # fct_state_per_capita (stub)
+    con.execute(
+        "CREATE TABLE fct_state_per_capita (jurisdiction varchar,"
+        " comparable_category varchar, amount_per_capita double,"
+        " spend_source_url varchar, pop_source_url varchar,"
+        " total_amount_usd double, fiscal_year varchar)"
+    )
+
+    # dim_entities (stub)
+    con.execute(
+        "CREATE TABLE dim_entities (family_key varchar, display_name varchar,"
+        " uei_count integer, total_obligation double, worst_confidence varchar)"
+    )
+
+    # fct_influence (stub)
+    con.execute(
+        "CREATE TABLE fct_influence (family_key varchar, filing_year integer,"
+        " filings_count integer, lobbying_income_usd double,"
+        " lobbying_expense_usd double, lobbying_total_usd double,"
+        " family_obligations_usd double)"
+    )
+
+    # fct_program_lobbying (stub)
+    con.execute(
+        "CREATE TABLE fct_program_lobbying (filing_uuid varchar, pe_bli varchar,"
+        " matched_term varchar, filing_url varchar)"
+    )
+
+    con.close()
+    return db_path
+
+
+def _make_budget_lines_rows(
+    *,
+    pe_bli: str = "0601101E",
+    org: str = "DARPA",
+    sha256: str = "a" * 64,
+) -> list:
+    """Build minimal bl_rows matching the trajectory row."""
+    from govbudget.export_site import fact_id_workbook
+    rows = []
+    for fy_year, amt_type, amount in [
+        (2024, "fy_2024_actuals", 700000.0),
+        (2025, "fy_2025_total", 780000.0),
+        (2026, "fy_2026_total", 846900.0),
+    ]:
+        fid = fact_id_workbook(sha256, "R-1", fy_year, "0400", org, "01", pe_bli, amt_type)
+        rows.append((
+            fid, "R-1", fy_year, "0400", "RDT&E", org, "01", "Basic Research",
+            pe_bli, "Defense Research", amt_type, float(amount),
+            "USD thousands", sha256, "Sheet1", "J2",
+        ))
+    return rows
+
+
+class TestFy2526ChangeInputs:
+    """fy2526_change inputs must be the TWO peer derived fact_ids, not budget_lines."""
+
+    def test_fy2526_change_inputs_are_two_derived_fids(self, tmp_path):
+        """fy2526_change inputs == [fy2026_total_fid, fy2025_total_fid]."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+        db_path = _make_trajectory_duckdb(tmp_path)
+        bl_rows = _make_budget_lines_rows()
+
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=bl_rows,
+            citation_rows=[],
+        )
+
+        pe_bli = "0601101E"
+        org = "DARPA"
+        key = f"{pe_bli}|{org}"
+
+        change_fid = fact_id_derived("trajectory", key, "fy2526_change")
+        chg_row = next((r for r in derived if r[0] == change_fid), None)
+        assert chg_row is not None, f"fy2526_change row not found in derived rows"
+
+        inputs_raw = chg_row[21]  # index 21 = inputs
+        inputs = json.loads(inputs_raw)
+        assert len(inputs) == 2, (
+            f"fy2526_change must have exactly 2 inputs (peer derived fids), got {len(inputs)}: {inputs}"
+        )
+
+        fy26_fid = fact_id_derived("trajectory", key, "fy2026_total")
+        fy25_fid = fact_id_derived("trajectory", key, "fy2025_total")
+        assert fy26_fid in inputs, f"fy2026_total fid {fy26_fid!r} not in inputs {inputs}"
+        assert fy25_fid in inputs, f"fy2025_total fid {fy25_fid!r} not in inputs {inputs}"
+
+    def test_fy2526_change_only_emitted_when_both_peers_exist(self, tmp_path):
+        """fy2526_change row absent when fy2025 or fy2026 peer is missing."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+
+        db_path = tmp_path / "govbudget_partial.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_budget_trajectory (pe_bli varchar, organization varchar,"
+            " fy2024_actuals double, fy2025_total double, fy2026_total double,"
+            " fy2526_change double, fy2526_pct_change double)"
+        )
+        # fy2526_change is set but fy2025_total is NULL → both peers don't exist
+        con.execute(
+            "INSERT INTO fct_budget_trajectory VALUES"
+            " ('0601101E', 'DARPA', 700000.0, NULL, 846900.0, NULL, NULL)"
+        )
+        for tbl in [
+            "dim_programs", "fct_program_concentration", "fct_improper_exposure",
+            "fct_state_per_capita", "dim_entities", "fct_influence", "fct_program_lobbying",
+        ]:
+            # create stubs
+            pass
+        _stubs = _make_trajectory_duckdb.__wrapped__ if hasattr(_make_trajectory_duckdb, "__wrapped__") else None
+        # Add stub tables manually
+        con.execute(
+            "CREATE TABLE dim_programs (pe_bli varchar, org varchar, exhibit_family varchar,"
+            " title varchar, project_count integer, fy2024_actual_millions double,"
+            " fully_reconciled boolean)"
+        )
+        for tbl, cols in [
+            ("fct_program_concentration", "pe_bli varchar, hhi double, top_family varchar, family_count integer, program_dollars double"),
+            ("fct_improper_exposure", "agency_code varchar, derived_improper_amount_usd double, weighted_rate_pct double"),
+            ("fct_state_per_capita", "jurisdiction varchar, comparable_category varchar, amount_per_capita double, spend_source_url varchar, pop_source_url varchar, total_amount_usd double, fiscal_year varchar"),
+            ("dim_entities", "family_key varchar, display_name varchar, uei_count integer, total_obligation double, worst_confidence varchar"),
+            ("fct_influence", "family_key varchar, filing_year integer, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double"),
+            ("fct_program_lobbying", "filing_uuid varchar, pe_bli varchar, matched_term varchar, filing_url varchar"),
+        ]:
+            con.execute(f"CREATE TABLE {tbl} ({cols})")
+        con.close()
+
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=[],
+            citation_rows=[],
+        )
+        key = "0601101E|DARPA"
+        change_fid = fact_id_derived("trajectory", key, "fy2526_change")
+        chg_row = next((r for r in derived if r[0] == change_fid), None)
+        assert chg_row is None, (
+            "fy2526_change row should NOT be emitted when fy2525_total is NULL (peer missing)"
+        )
+
+    def test_verify_derived_difference_recomputes_via_peer_fids(self, tmp_path):
+        """_verify_derived rule 4b recomputes fy26 - fy25 from the peer recorded_values."""
+        from govbudget.verify_phase5b1 import _verify_derived
+
+        # Build a minimal citation set with three rows:
+        #   fy2025_total: recorded_value='780000.000'
+        #   fy2026_total: recorded_value='846900.000'
+        #   fy2526_change: inputs=[fy2026_fid, fy2025_fid], recorded_value='66900.000'
+        from govbudget.export_site import fact_id_derived
+
+        key = "0601101E|DARPA"
+        fy25_fid = fact_id_derived("trajectory", key, "fy2025_total")
+        fy26_fid = fact_id_derived("trajectory", key, "fy2026_total")
+        chg_fid  = fact_id_derived("trajectory", key, "fy2526_change")
+
+        def _row(fid, formula, inputs_json, recorded_value):
+            return (
+                fid, "derived", "USD thousands", None,
+                None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None,
+                formula, inputs_json, None, recorded_value,
+            )
+
+        fy25_row = _row(fy25_fid,
+                        "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+                        "[]", "780000.000")
+        fy26_row = _row(fy26_fid,
+                        "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+                        "[]", "846900.000")
+        chg_row  = _row(chg_fid,
+                        "fy2026_total - fy2025_total",
+                        json.dumps([fy26_fid, fy25_fid]),
+                        "66900.000")
+
+        all_cits = [fy25_row, fy26_row, chg_row]
+        col_names = [
+            "fact_id", "kind", "units", "amount_text",
+            "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height",
+            "resolution", "sheet", "cells", "amount_thousands", "sha256",
+            "hosted_pdf_url", "official_url", "xml_path", "retrieved_at",
+            "formula", "inputs", "query_body", "recorded_value",
+        ]
+        idx = {name: i for i, name in enumerate(col_names)}
+
+        reason = _verify_derived(chg_row, idx, all_cits, idx)
+        assert reason is None, f"_verify_derived should pass for correct difference: {reason}"
+
+    def test_verify_derived_difference_recompute_mismatch_fails(self, tmp_path):
+        """_verify_derived rule 4b fails when recorded_value != fy26 - fy25."""
+        from govbudget.verify_phase5b1 import _verify_derived
+        from govbudget.export_site import fact_id_derived
+
+        key = "0601101E|DARPA"
+        fy25_fid = fact_id_derived("trajectory", key, "fy2025_total")
+        fy26_fid = fact_id_derived("trajectory", key, "fy2026_total")
+        chg_fid  = fact_id_derived("trajectory", key, "fy2526_change")
+
+        def _row(fid, formula, inputs_json, recorded_value):
+            return (
+                fid, "derived", "USD thousands", None,
+                None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None,
+                formula, inputs_json, None, recorded_value,
+            )
+
+        fy25_row = _row(fy25_fid,
+                        "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+                        "[]", "780000.000")
+        fy26_row = _row(fy26_fid,
+                        "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+                        "[]", "846900.000")
+        # Wrong recorded_value: should be 66900.000, write 99999.000
+        chg_row  = _row(chg_fid,
+                        "fy2026_total - fy2025_total",
+                        json.dumps([fy26_fid, fy25_fid]),
+                        "99999.000")  # deliberate mismatch
+
+        all_cits = [fy25_row, fy26_row, chg_row]
+        col_names = [
+            "fact_id", "kind", "units", "amount_text",
+            "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height",
+            "resolution", "sheet", "cells", "amount_thousands", "sha256",
+            "hosted_pdf_url", "official_url", "xml_path", "retrieved_at",
+            "formula", "inputs", "query_body", "recorded_value",
+        ]
+        idx = {name: i for i, name in enumerate(col_names)}
+
+        reason = _verify_derived(chg_row, idx, all_cits, idx)
+        assert reason is not None, "_verify_derived should FAIL for wrong difference value"
+        assert "mismatch" in reason.lower() or "recompute" in reason.lower(), (
+            f"expected 'mismatch' or 'recompute' in reason: {reason!r}"
+        )
+
+
+class TestTrajectoryTotalPivotFormula:
+    """Trajectory total rows with no matching budget_lines use the pivot formula string."""
+
+    def test_total_rows_with_no_bl_inputs_use_pivot_formula(self, tmp_path):
+        """When no bl_rows exist for an org, trajectory totals use 'trajectory pivot' formula."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+        db_path = _make_trajectory_duckdb(tmp_path)
+        # Pass empty bl_rows → no inputs can be found
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=[],
+            citation_rows=[],
+        )
+
+        key = "0601101E|DARPA"
+        for metric in ("fy2025_total", "fy2026_total"):
+            fid = fact_id_derived("trajectory", key, metric)
+            row = next((r for r in derived if r[0] == fid), None)
+            assert row is not None, f"row for {metric} not found"
+            formula = row[20]  # index 20 = formula
+            inputs_raw = row[21]  # index 21 = inputs
+            inputs = json.loads(inputs_raw)
+            assert inputs == [], f"inputs should be empty list when no bl_rows: {inputs}"
+            # Formula must use the pivot formula (not the sum formula)
+            assert "pivot" in formula.lower() or "unavailable" in formula.lower(), (
+                f"Formula should indicate pivot/unavailable when no budget_lines inputs, got: {formula!r}"
+            )
+
+    def test_total_rows_with_bl_inputs_use_sum_formula(self, tmp_path):
+        """When bl_rows exist for org, trajectory totals use sum formula."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+        db_path = _make_trajectory_duckdb(tmp_path)
+        bl_rows = _make_budget_lines_rows()
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=bl_rows,
+            citation_rows=[],
+        )
+
+        key = "0601101E|DARPA"
+        for metric in ("fy2025_total", "fy2026_total"):
+            fid = fact_id_derived("trajectory", key, metric)
+            row = next((r for r in derived if r[0] == fid), None)
+            assert row is not None, f"row for {metric} not found"
+            formula = row[20]
+            assert formula.startswith("sum(budget_lines"), (
+                f"Formula should start with 'sum(budget_lines' when inputs exist, got: {formula!r}"
+            )
+
+    def test_verify_derived_sum_empty_inputs_fails(self):
+        """_verify_derived: sum formula with inputs==[] fails with 'empty inputs' message."""
+        from govbudget.verify_phase5b1 import _verify_derived
+        from govbudget.export_site import fact_id_derived
+
+        fid = fact_id_derived("trajectory", "0601101E|DARPA", "fy2025_total")
+        row = (
+            fid, "derived", "USD thousands", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+            "[]",  # empty inputs — problematic sum formula
+            None, "780000.000",
+        )
+        col_names = [
+            "fact_id", "kind", "units", "amount_text",
+            "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height",
+            "resolution", "sheet", "cells", "amount_thousands", "sha256",
+            "hosted_pdf_url", "official_url", "xml_path", "retrieved_at",
+            "formula", "inputs", "query_body", "recorded_value",
+        ]
+        idx = {name: i for i, name in enumerate(col_names)}
+
+        reason = _verify_derived(row, idx, [row], idx)
+        assert reason is not None, (
+            "_verify_derived should FAIL for sum formula with empty inputs"
+        )
+        assert "empty" in reason.lower() or "input" in reason.lower(), (
+            f"expected 'empty' or 'input' in reason: {reason!r}"
+        )
+
+    def test_verify_derived_pivot_formula_passes_shape_check(self):
+        """_verify_derived: pivot formula with inputs==[] passes (honest shape row)."""
+        from govbudget.verify_phase5b1 import _verify_derived
+        from govbudget.export_site import fact_id_derived
+
+        fid = fact_id_derived("trajectory", "0601101E|DARPA", "fy2025_total")
+        row = (
+            fid, "derived", "USD thousands", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            "trajectory pivot of budget_lines (inputs unavailable for this org/type)",
+            "[]",  # empty inputs — OK for pivot formula
+            None, "780000.000",
+        )
+        col_names = [
+            "fact_id", "kind", "units", "amount_text",
+            "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height",
+            "resolution", "sheet", "cells", "amount_thousands", "sha256",
+            "hosted_pdf_url", "official_url", "xml_path", "retrieved_at",
+            "formula", "inputs", "query_body", "recorded_value",
+        ]
+        idx = {name: i for i, name in enumerate(col_names)}
+
+        reason = _verify_derived(row, idx, [row], idx)
+        assert reason is None, (
+            f"_verify_derived should PASS for pivot formula with empty inputs: {reason}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fix 4: Agency formula n_cited counts programs (not budget-lines)
+# ---------------------------------------------------------------------------
+
+
+def _make_agency_duckdb(tmp_path: Path) -> tuple[Path, list]:
+    """DuckDB + bl_rows for agency-sum citation tests."""
+    db_path = _make_trajectory_duckdb(tmp_path)
+    # Add a second program under the same org with NO matching budget_lines
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "INSERT INTO dim_programs VALUES "
+        "('0601102E', 'DARPA', 'rdte', 'Program Two', 1, 300.0, false)"
+    )
+    con.close()
+
+    # bl_rows only for '0601101E', not '0601102E'
+    bl_rows = _make_budget_lines_rows(pe_bli="0601101E")
+    return db_path, bl_rows
+
+
+class TestAgencyFormulaCounts:
+    """n_cited must count programs-with-≥1-cited-line, not raw budget-line count."""
+
+    def test_n_cited_counts_programs_not_lines(self, tmp_path):
+        """n_cited reflects programs with ≥1 cited budget_line, not total lines."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+        db_path, bl_rows = _make_agency_duckdb(tmp_path)
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=bl_rows,
+            citation_rows=[],
+        )
+
+        agency_fid = fact_id_derived("agency", "DARPA", "fy2024_total_millions")
+        agency_row = next((r for r in derived if r[0] == agency_fid), None)
+        assert agency_row is not None, "agency sum row for DARPA not found"
+
+        formula = agency_row[20]  # formula field
+        # n_cited must be 1 (only '0601101E' has budget_lines), n_programs=2, n_uncited=1
+        # Formula: "... (1 programs cited via workbook; 1 uncited)"
+        assert "1 programs cited" in formula, (
+            f"n_cited should be '1 programs' (not {len(bl_rows)} lines), formula: {formula!r}"
+        )
+        assert "1 uncited" in formula, (
+            f"n_uncited should be '1' (program 0601102E has no lines), formula: {formula!r}"
+        )
+
+    def test_n_cited_never_negative(self, tmp_path):
+        """n_uncited = n_programs - n_cited is never negative."""
+        from govbudget.export_site import (
+            _build_derived_citation_rows,
+            fact_id_derived,
+        )
+        db_path, bl_rows = _make_agency_duckdb(tmp_path)
+        derived = _build_derived_citation_rows(
+            duckdb_path=db_path,
+            bl_rows=bl_rows,
+            citation_rows=[],
+        )
+
+        # Extract all agency-derived rows and check formula for "uncited"
+        import re
+        for row in derived:
+            if row[1] != "derived":
+                continue
+            formula = row[20] or ""
+            match = re.search(r"(\d+) uncited", formula)
+            if match:
+                uncited_val = int(match.group(1))
+                assert uncited_val >= 0, (
+                    f"n_uncited is negative ({uncited_val}) in formula: {formula!r}"
+                )

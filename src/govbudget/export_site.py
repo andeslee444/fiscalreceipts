@@ -767,6 +767,9 @@ def _build_derived_citation_rows(
             "fy2026_total":   "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
             "fy2526_change":  "fy2026_total - fy2025_total",
         }
+        # Formula used when no budget_lines inputs can be joined (org/type mismatch):
+        # honest shape-check row, not a fake sum.
+        _PIVOT_FORMULA = "trajectory pivot of budget_lines (inputs unavailable for this org/type)"
 
         try:
             traj_rows = con.execute(
@@ -810,18 +813,29 @@ def _build_derived_citation_rows(
                     fy25_input_fids = unique_inputs
                 elif metric == "fy2026_total":
                     fy26_input_fids = unique_inputs
+                # Use pivot formula when no budget_lines inputs found — avoids a
+                # fake sum formula with empty inputs that _verify_derived would reject.
+                formula = (
+                    _METRIC_FORMULA[metric] if unique_inputs
+                    else _PIVOT_FORMULA
+                )
                 rows.append(_null_derived_row(
                     fid, "derived", "USD thousands",
-                    _METRIC_FORMULA[metric],
+                    formula,
                     inputs_json,
                     recorded,
                     built_at,
                 ))
 
             # fy2526_change = fy2026_total - fy2025_total
-            if chg is not None:
+            # Inputs are the TWO peer derived fact_ids so _verify_derived rule 4b can
+            # genuinely recompute the difference from peer recorded_values.
+            # Only emit when BOTH peers exist (fy25 and fy26 are non-None).
+            if chg is not None and fy25 is not None and fy26 is not None:
                 fid = fact_id_derived("trajectory", key_str, "fy2526_change")
-                change_inputs = list(dict.fromkeys(fy26_input_fids + fy25_input_fids))
+                fy26_peer_fid = fact_id_derived("trajectory", key_str, "fy2026_total")
+                fy25_peer_fid = fact_id_derived("trajectory", key_str, "fy2025_total")
+                change_inputs = [fy26_peer_fid, fy25_peer_fid]
                 inputs_json = _json.dumps(change_inputs)
                 rows.append(_null_derived_row(
                     fid, "derived", "USD thousands",
@@ -862,7 +876,8 @@ def _build_derived_citation_rows(
             prog_rows_d = []
 
         org_to_fids: dict[str, list[str]] = {}
-        org_to_cited_count: dict[str, int] = {}
+        # n_cited_programs: count of programs with ≥1 cited budget_line (not total lines)
+        org_to_cited_programs: dict[str, int] = {}
         org_to_total: dict[str, float] = {}
         for pe_bli, org, fy24_m in prog_rows_d:
             translated = _workbook_org(org)
@@ -871,12 +886,14 @@ def _build_derived_citation_rows(
             org_to_fids.setdefault(org, []).extend(fids_24)
             if fy24_m is not None:
                 org_to_total[org] = org_to_total.get(org, 0.0) + fy24_m
-            org_to_cited_count[org] = org_to_cited_count.get(org, 0) + len(fids_24)
+            # Count this program only if it has ≥1 cited budget_line
+            if fids_24:
+                org_to_cited_programs[org] = org_to_cited_programs.get(org, 0) + 1
 
         for org, total in org_to_total.items():
             fid = fact_id_derived("agency", org, "fy2024_total_millions")
             input_fids = list(dict.fromkeys(org_to_fids.get(org, [])))
-            n_cited = org_to_cited_count.get(org, 0)
+            n_cited = org_to_cited_programs.get(org, 0)
             n_programs = sum(1 for _, o, _ in prog_rows_d if o == org)
             n_uncited = n_programs - n_cited
             formula_text = (
@@ -1832,8 +1849,8 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
             query_body = _json.dumps({
                 "filters": {
                     "recipient_search_text": capped_ueis,
-                    "time_period": [{"start_date": f"{fiscal_year}-10-01",
-                                     "end_date": f"{fiscal_year + 1}-09-30"}],
+                    "time_period": [{"start_date": f"{fiscal_year - 1}-10-01",
+                                     "end_date": f"{fiscal_year}-09-30"}],
                 },
                 "version": "2020-06-01",
             }, sort_keys=True)

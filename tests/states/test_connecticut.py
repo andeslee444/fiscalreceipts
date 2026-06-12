@@ -280,3 +280,53 @@ def test_build_figure_soql_url_fiscal_year_in_where():
     """fiscal_year is embedded in the $where clause."""
     url = build_figure_soql_url("grants_and_subventions", "FY 2024")
     assert "FY 2024" in url or "FY+2024" in url
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: CT SoQL single-quote escaping
+# ---------------------------------------------------------------------------
+
+
+def test_build_figure_soql_url_apostrophe_in_category(monkeypatch):
+    """Category names containing a single-quote must be escaped as '' in SoQL."""
+    from govbudget.states import connecticut as ct_mod
+    from urllib.parse import unquote
+
+    # Inject a fictional category with an apostrophe into the map
+    monkeypatch.setattr(
+        ct_mod,
+        "_CT_CATEGORY_MAP",
+        {"apostrophe_cat": ["O'Brien Expenses", "Normal Category"]},
+    )
+
+    url = build_figure_soql_url("apostrophe_cat", "FY 2025")
+
+    # Decode percent-encoding for inspection
+    decoded = unquote(url)
+
+    # Each raw category with an apostrophe must have it doubled in the SQL string
+    # e.g. 'O''Brien Expenses' (not 'O'Brien Expenses' which breaks the SQL)
+    assert "O''Brien" in decoded, (
+        f"Single-quote in category name must be escaped as '' in SoQL URL.\n"
+        f"Decoded URL: {decoded!r}"
+    )
+    # Must not contain an unescaped single-quote inside the IN-list strings
+    # (the fiscal_year filter uses a quote too, but category quotes should be doubled)
+    # Simple check: the apostrophe pattern within the IN-list values must be doubled
+    import re
+    in_list_match = re.search(r"expense_category\s+in\s+\((.+?)\)", decoded, re.IGNORECASE)
+    if in_list_match:
+        in_list_str = in_list_match.group(1)
+        # "O'Brien" (single quote) should NOT appear in the in-list;
+        # only "O''Brien" (doubled) is acceptable
+        assert "O'Brien" not in in_list_str.replace("O''Brien", ""), (
+            f"Unescaped apostrophe found in IN-list: {in_list_str!r}"
+        )
+
+
+def test_build_figure_soql_url_no_apostrophe_unchanged():
+    """Category with no apostrophe is not affected by the escaping change."""
+    url = build_figure_soql_url("travel", "FY 2025")
+    # Should still work and return a valid URL
+    assert "data.ct.gov" in url
+    assert "FY 2025" in url or "FY+2025" in url

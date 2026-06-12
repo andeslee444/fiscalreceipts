@@ -142,8 +142,9 @@ def build_figure_soql_url(
     cat_map = _load_ct_category_map()
     raw_categories = cat_map.get(comparable_category, [])
 
-    # Build the IN-list for the $where clause using single-quoted SQL strings
-    in_list = ", ".join(f"'{c}'" for c in raw_categories)
+    # Build the IN-list for the $where clause using single-quoted SQL strings.
+    # Escape any single-quotes inside category names by doubling them (SQL standard).
+    in_list = ", ".join(f"'{c.replace(chr(39), chr(39) + chr(39))}'" for c in raw_categories)
 
     if in_list:
         where = f"fiscal_year='{fiscal_year}' AND expense_category in ({in_list})"

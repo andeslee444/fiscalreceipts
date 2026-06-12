@@ -137,7 +137,8 @@ def _make_test_duckdb(db_path: Path) -> None:
 
     # 3. fct_budget_trajectory  (live cols: pe_bli,organization,fy2024_actuals,fy2025_total,fy2026_total,fy2526_change,fy2526_pct_change)
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
-    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
 
     # 4. dim_entities  (live cols: family_key,display_name,uei_count,total_obligation,worst_confidence)
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
@@ -760,7 +761,8 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     # Build the rest of the tables
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
-    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
@@ -880,7 +882,8 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     con.execute("insert into dim_programs values ('DPAPPROG1','DPAP Program','DPAP','rdte',1,5.0,false)")
     con.execute("create table fct_budget_to_awards (pe_bli varchar, exhibit varchar, fiscal_year integer, organization varchar, award_piid varchar, recipient_name varchar, recipient_uei varchar, method varchar, confidence varchar, program_title varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
-    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
     con.execute("insert into fct_budget_trajectory values ('OSDPROG1','OSD',10000.0,11000.0,12000.0,2000.0,18.18)")
     con.execute("insert into fct_budget_trajectory values ('DPAPPROG1','OSD',5000.0,5500.0,6000.0,500.0,9.09)")
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
@@ -1001,7 +1004,8 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     # Award whose recipient_name matches 'Lockheed Martin' (the display_name we'll seed)
     con.execute("insert into fct_budget_to_awards values ('0601101E','R-1',2026,'DARPA','W911QX-24-C-0001','Lockheed Martin','UEI123','account+subagency','medium','Defense Research Sciences')")
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
-    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,14506.0,5.17)")
+    # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
+    con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
     # Matching entity
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("insert into dim_entities values ('lockheed','Lockheed Martin',5,50000000.0,'medium')")
