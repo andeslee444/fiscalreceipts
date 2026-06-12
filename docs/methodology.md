@@ -1,6 +1,6 @@
 # Methodology
 
-**Last updated:** 2026-06-10
+**Last updated:** 2026-06-12
 
 ---
 
@@ -60,13 +60,15 @@ federal programs at high risk for fraud, waste, or mismanagement. We collect
 each area's title and its link in the current GAO report. Update cadence:
 biennial.
 
-**Senate lobbying disclosures — planned (Phase 5).** The Senate Lobbying
-Disclosure Act database (`lda.senate.gov/api/v1`) contains 108,620 filings
-for 2025, each with a permanent UUID, registrant, client company, dollar
-amounts, agencies lobbied, and issue text that frequently names specific
-programs. We will link LDA client names to our company-family database and
-publish lobbying expenditure alongside federal obligations received — presented
-side by side, never as causal claims.
+**Senate lobbying disclosures — lda.senate.gov.** The Senate Lobbying
+Disclosure Act database (`lda.senate.gov/api/v1`) contains filings
+for 2025 and prior years, each with a permanent UUID, registrant, client
+company, dollar amounts, agencies lobbied, and issue text that frequently names
+specific programs. We have linked LDA client names to our company-family
+database: 32,780 program mentions across 245 programs connect filings to budget
+lines. Lobbying income and expenditure by year are shown alongside federal
+obligations received — influence is presented side by side with outcomes, never
+as a causal claim.
 
 **State checkbooks — California and Connecticut (pilot).** California's Open
 Fi$Cal and Connecticut's OpenCheckbook publish transaction-level government
