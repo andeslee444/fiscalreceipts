@@ -1,0 +1,120 @@
+# Phase 5B-2: Site Skeleton Implementation Plan (rev 2 — post adversarial review)
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** A statically-exported, citation-first Next.js site at `GovBudget/site/`: 326 program pages, ~20 agency pages, top-200 company pages — every rendered number cited, xml-path-chipped, or explicitly flagged; click-a-number→PDF.js-at-the-highlighted-line; receipts mode; two-tier search; SEO; `verify-phase5b2` gate suite per the ROADMAP evaluator framework.
+
+**Architecture:** Standalone npm package (root workspaces list is explicit — site stays out). `output: 'export'` SSG; page data from JSON sidecars emitted by `export-site` (Node never reads parquet). **Asset base is RUNTIME config, not build-baked env:** all asset consumers (PDF.js, DuckDB-WASM, download links) are client components using `useAssetUrl()` backed by `public/config.json` (`{"assetBaseUrl": "/assets"}` default; prod deploy rewrites it to the R2 host) — ONE build artifact is both gated and shippable. Gates run a single local server (`:4173`) serving `out/` at `/` AND `../data/site` at `/assets/` (same-origin → no CORS in gates; R2 CORS is a launch-time concern only).
+
+**Tech stack (pins verified on npm 2026-06-12):** next 16.2.9 · react/react-dom 19.2.7 · typescript ^5 · tailwindcss ^4 + @tailwindcss/postcss ^4 · radix-ui ^1.4.3 · lucide-react ^0.564.0 · clsx/tailwind-merge/cva · `@duckdb/duckdb-wasm 1.33.1-dev55.0` EXACT (no stable 1.33.x exists; README records that this bundles DuckDB engine ~1.5.x) · `pdfjs-dist 6.0.227` (v6: `getDocument({...})` param object REQUIRED; worker+API versions must match) · `minisearch 7.2.0` · `pagefind 1.5.2` · dev: `@lhci/cli 0.15.1`, `playwright ^1.50`, `@axe-core/playwright`, `vitest`.
+
+**Recon facts (verified live; implementers do NOT rediscover):**
+- Node v24.13.0/npm 11.6.2. Parent `package-lock.json` exists → `next.config.ts` MUST set `outputFileTracingRoot: __dirname` + `turbopack: { root: __dirname }`. Never touch root `vercel.json`.
+- Bundle `GovBudget/data/site/` (gitignored): 14 parquets 3.2MB; citations.parquet 44,754 rows (jbook_pdf 3,417 / workbook 8,557 / lda_filing 32,780); pdfs/ 34 sha-named 149MB; workbooks/ 3 xlsx; manifest.json (schema_version 1, uncited_datasets = 11 of 14 datasets).
+- **Citation render paths are FOUR:** (1) `jbook_pdf` → `/pdfs/{sha}.pdf#page=N` + bbox (x0/x1/top_pt/bottom_pt pts, TOP-origin, 792×612 landscape) + resolution unique(209)/ambiguous_first(3,208 → amber caveat badge); (2) `workbook` → sheet+cells+amount_thousands, hosted `/workbooks/{sha}.xlsx`, card not in-browser render; (3) `lda_filing` → official_url is the LDA JSON API; visible link = `https://lda.senate.gov/filings/public/filing/{uuid}/print/` derived from uuid, API URL co-cited; (4) **zero_amount jbook facts (1,004): NO citations row but jbook_details carries fact_id + xml_path + resolution='zero_amount' → render an XML-PATH CHIP** (not the uncited flag, not a panel). 2,781/32,780 lobbying rows have dangling family_key (render client_name as plain text, no link). description_snippet truncated ~120 chars (append …).
+- **`<Cite>` THREE-STATE CONTRACT (binding for Tasks 3/4a/4b/9):** state A cited: `data-amount data-fact-id={id}` where id resolves in citations.json; state B xml-path: `data-amount data-citation-kind="xml-path" data-xml-path={path}` (zero_amount facts; chip shows path, no panel); state C uncited: `data-amount data-uncited="true"` + visible ⁂ + tooltip "citation tier pending — methodology". render_gate accepts exactly these three shapes.
+- **Units per-dataset, NEVER inferred:** thousands (budget_lines, trajectory, workbook citations) / millions (jbook_details, dim_programs.fy2024_actual_millions, jbook amount_text) / raw USD (dim_entities, dim_geography, fct_influence, fct_state_per_capita). fct_influence.family_obligations_usd NON-ADDITIVE.
+- **pe_bli unique only in dim_programs (326).** Program routes from dim_programs ONLY. Service rows (A/N/F, 1,628 trajectory rows) have no pages (ROADMAP backlog). **Org translation (CORRECTED): forward-translate the PROGRAM org via `govbudget.jbooks.orgs.workbook_org(org)` (ORG_ALIASES.get(org, org): CYBERCOM→CYBER, CHIPS→OSD, DPAP→OSD) and join trajectory on `(pe_bli, workbook_org(org))`. NEVER invert ORG_ALIASES (non-injective: inversion maps OSD→DPAP and corrupts 128 OSD programs). Expected: 324/326 programs join a trajectory row; 2 legitimately null.**
+- Entity slugs `family_key.lower().replace(' ', '-')` collision-free (verified incl. top-200). Heavy pages exist: fct_program_lobbying max 879 rows for 0606301D8Z (7 more >480); fct_budget_to_awards max 488 (0605502E); jbook_details max 85 (0608776D8Z) → SSG lists CAPPED at 25 with "showing 25 of N" + client expand reading the per-program JSON chunk.
+- Awards↔entities join: recipient_name == display_name exact matches only ≈18 of top-200 families (the crosswalk mart contains R&D performers, not primes) — EXPECTED, not a bug; company awards section needs a designed empty state ("No crosswalk-linked award rows — see methodology confidence tiers"). Warehouse-side family-level awards mart → ROADMAP backlog.
+- DuckDB-WASM: client-only, module-singleton promise (StrictMode), mvp/eh bundles self-hosted in `public/duckdb/` (never coi). PDF.js worker: copy to `public/pdf.worker.min.mjs`, `GlobalWorkerOptions.workerSrc='/pdf.worker.min.mjs'`; render scale = containerWidth/792; highlight rect = `{left:x0*s, top:top_pt*s, width:(x1-x0)*s, height:(bottom_pt-top_pt)*s}` (+2px pad); `renderTask.cancel()` cleanup.
+- **Pagefind import (CORRECTED): Turbopack supports webpack magic comments — use `await import(/* turbopackIgnore: true */ '/pagefind/pagefind.js')`** with try/catch dev stub (404s under `next dev`). `new Function` eval-import is the fallback only if the comment regresses (note in code).
+- Static export: `generateStaticParams` + `dynamicParams = false` on every dynamic route; `trailingSlash: true`; `images.unoptimized`; no headers/redirects/middleware; JSON-LD via script tag with `.replace(/</g,'\\u003c')`.
+- Light-first theme from web/'s `:root` oklch palette (web/src/app/globals.css); do NOT mirror web/'s dark hardcode/Cognito/pg. Tailwind v4 CSS-first; ESLint 9 flat config like web/eslint.config.mjs.
+- Python: gates print `gate N name: ... → PASS/FAIL` + exit codes; evals live at `GovBudget/evals/` (absolute: /Users/andeslee/Documents/Cursor-Projects/GovBudget/evals/search_eval.yaml — NOT site/evals); tests/jbooks/test_export_site_pg.py `_make_test_duckdb` fixture schemas DIVERGE from live marts (fixture trajectory has abs_change/pct_change vs live fy2526_change/fy2526_pct_change; dim_entities lacks uei_count/worst_confidence; fct_budget_to_awards lacks recipient columns) — Task 1 MUST first align the fixture to the live mart columns (describe data/site/data/*.parquet is ground truth).
+- docs/methodology.md exists but its LDA section is stale future-tense — Task 4b updates the source doc (present tense, new Last-updated) BEFORE porting.
+
+**Explicit scope decisions (recorded; Task 10 updates ROADMAP to match):**
+1. USAspending/state/derived citation tiers move from "owner: 5B-2" to **5B-3** (they land with the features that surface those numbers: district lens, feed, dossiers). In 5B-2, trajectory/dim_entities/fct_influence figures render flagged (state C) — mechanically gated. ROADMAP backlog #2 text is rewritten accordingly in Task 10.
+2. `/filing/{uuid}` pages (4,258) deferred to 5B-3; lobbying mentions link to the human LDA URL externally meanwhile. `/agency/{org}` IS in scope (≈20 thin SSG pages) — spec §3 route, search agency results and GovernmentOrganization JSON-LD point there (never at /programs/?org=).
+3. Workbook in-browser preview deferred (cells card ships); search dollar-weighted ranking deferred BUT `search_quick.json` program docs carry `dollars` (fy2026_total ?? fy2024_actual_millions*1000, thousands) NOW so the index schema doesn't churn. Both → backlog.
+4. Per-source "data as of" stamps: bundle-level built_at renders in the footer + /downloads now; per-dataset retrieved_at stamps deferred to 5B-3 (needs export-side per-source capture).
+
+**Evaluator design (instantiates ROADMAP framework; CLI `uv run python -m govbudget verify-phase5b2` → `npm --prefix site run verify`):**
+`site/scripts/verify.mjs` starts ONE server (`scripts/serve-static.mjs`: custom ~60-line node http server, `:4173`, serves out/ at `/` with trailingSlash resolution + `../data/site` at `/assets/` with HTTP **Range** support for PDF.js/duckdb) and runs:
+1. `build_gate` (mechanical): out/ exists; program pages == programs.json count (326); agency pages == distinct orgs; company pages == 200; core pages (/, /programs, /companies, /data, /downloads, /methodology, /about) present; out/pagefind/pagefind.js exists; sitemap URL count == emitted pages AND every URL starts with NEXT_PUBLIC_SITE_URL origin; robots.txt present; llms.txt contains /methodology/, /downloads/, and ≥1 /program/ URL; `citations.json key count == manifest citation total (44,754)`.
+2. `render_static_gate` (mechanical, FULL corpus): parse EVERY html file in out/: (a) every `[data-amount]` matches exactly one of the three Cite states (resolving fact-id / xml-path chip with non-empty path / uncited flag); (b) NEGATIVE scan: currency patterns (`$X(,XXX)*(.X+)? [BMK]?`, comma-grouped dollar strings) appearing OUTSIDE `[data-amount]` elements fail the gate, with an allowlist file (`scripts/gates/prose-allowlist.json`) for legit prose mentions (each entry documented).
+3. `render_live_gate` (Playwright, stratified sample): home, /programs, /companies, /data, /downloads, /methodology, 1 agency page, 4 program pages chosen deterministically to include {a zero-amount-chip program, a no-trajectory program, the heaviest page 0606301D8Z, one unique-resolution page}, 2 company pages incl. one with dangling lobbying family_keys: zero console errors; JSON-LD parses; title+description non-empty. On /data: run one canned query → non-empty results table (proves WASM worker + parquet over /assets).
+4. `clickthrough_gate` (Playwright): page set COMPUTED from sidecars to guarantee coverage: ≥1 unique jbook citation (highlight geometry within 3px of bbox*scale), ≥1 ambiguous_first (amber badge asserted), ≥1 workbook card (sheet+cells+amount), ≥1 lda mention with entity link (href = human URL containing uuid), ≥1 dangling lda (plain text, no link), ≥1 zero-amount xml-path chip (no panel), official-source link carries #page=N. 100% pass. PLUS receipts mode: toggle ON in header → every visible [data-amount] shows inline chip → reload → still ON (localStorage).
+5. `search_gate` (Playwright): drive `evals/search_eval.yaml` (~25 cases: names, pe_bli codes, companies, typos 'lockeed'→lockheed-martin, agency 'darpa'→/agency/DARPA/, 3 deep-tier narrative phrases): expected slug in top-3 (tier-1) / top-5 (tier-2). ≥90% overall AND 100% of typo cases.
+6. `a11y_gate`: @axe-core/playwright on home, program (panel OPEN), company, /data, search-open: zero serious/critical.
+7. `perf_gate`: LHCI `staticDistDir './out'` with EXPLICIT `collect.url` list (5): /, /program/0606301D8Z/ (heaviest), /program/0601101E/, /company/{top-slug}/, /data/: performance ≥90, LCP <2.5s, CLS <0.1, TBT <300ms.
+8. `visual_gate` (orchestrator-run, not in verify.mjs): `scripts/screenshots.mjs` → {home, program w/ panel open, program receipts-ON, company, /data, search-open} × {390, 768, 1440}px → `docs/superpowers/reviews/5b2-visual/` → 3 independent opus vision judges, rubric {layout integrity, readability/contrast, data-presentation quality, trust/credibility} 1–5; median ≥4 each, any Blocker fails.
+Plus regression: pytest green (export-site sidecars), verify-phase5b1 green, vitest green.
+
+---
+
+### Task 1: JSON sidecars from export-site (Python)
+
+**Files:** Modify `src/govbudget/export_site.py`, `tests/jbooks/test_export_site_pg.py`.
+
+**Step 0 (required):** align `_make_test_duckdb` fixture mart schemas to the LIVE mart columns (ground truth: `describe select * from read_parquet('data/site/data/{name}.parquet')`) — trajectory fy2526_change/fy2526_pct_change; dim_entities + uei_count/worst_confidence; fct_budget_to_awards full column set; keep existing tests green.
+
+Emit `out_dir/json/`:
+- `programs.json` — per dim_programs row: `{pe_bli, org, exhibit_family, title, project_count, fully_reconciled, fy2024_actual_millions, fy2024_fact_id (jbook_details WHERE pe_bli match AND project_number IS NULL AND scenario='PriorYear' → fact_id; null if absent — TDD both cases), trajectory: {fy2024_actuals, fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change}|null (join on (pe_bli, workbook_org(org)) — forward translation ONLY; TDD seeds one OSD program + OSD trajectory row AND one DPAP program + OSD trajectory row: both must join), narrative_count, award_count, hhi: {...}|null}`.
+- `program_details/{pe_bli}.json` — `{details: [{fact_id, project_number, project_title, scenario, amount_millions, units, resolution, xml_path}], narratives: [{kind, title, body}], budget_lines: [{fact_id, exhibit, amount_type, amount_thousands, units, account_title, organization, source_sheet, source_cells}], awards: [{recipient_name, award_piid, confidence}], mentions: [{filing_uuid, matched_term, description_snippet, filing_url, client_name, family_key, filing_year}]}` (326 files; resolution + xml_path ALWAYS present on details rows — the zero-amount chip depends on them).
+- `entities_top.json` — top 200 by total_obligation: `{family_key, slug, display_name, uei_count, total_obligation, worst_confidence}`.
+- `entity_details/{slug}.json` — `{influence: [...rows incl. family_obligations_usd with nonAdditive: true marker], awards: [...recipient_name == display_name exact; EXPECT ≈18/200 non-empty — assert in TDD that a seeded matching family gets >0 and a non-matching gets []], mentions: [fct_program_lobbying rows by family_key: {filing_uuid, pe_bli, program_title, matched_term, filing_year, filing_url}], linked_programs: [distinct mention pe_bli ∩ dim_programs, with titles]}`.
+- `agencies.json` — distinct dim_programs.org: `{org, program_count, fy2024_total_millions, fy2026_total_thousands|null (sum of joined trajectories)}`.
+- `citations.json` — all 44,754 rows keyed by fact_id (build-time ground truth).
+- `search_quick.json` — docs: programs `{id:'p:'+pe_bli, kind:'program', title, pe_bli, org, dollars (fy2026_total ?? fy2024_actual_millions*1000, thousands, nullable), url:'/program/{pe_bli}/'}`, entities top-200 `{id:'c:'+slug, kind:'company', title:display_name, url:'/company/{slug}/'}`, agencies `{id:'a:'+org, kind:'agency', title:org, url:'/agency/{org}/'}`, static pages.
+- `site_meta.json` — manifest passthrough + uncited_datasets + built_at + counts.
+All `json.dumps(..., sort_keys=True)`; return dict + manifest gain `"json_sidecars": n`; verify-phase5b1 must STAY green (it ignores json/ and its manifest check reads only the keys it knows — VERIFY by running it in the task). TDD per schema (incl. fy2024_fact_id null case, org-join ambiguity seeds, mentions array, zero-amount details row carrying xml_path). Commit `feat(5b2): export-site json sidecars for SSG`.
+
+### Task 2: Scaffold site/
+
+As rev-1 (package.json pins, next.config.ts with export/trailingSlash/unoptimized/outputFileTracingRoot/turbopack.root, tsconfig, ESLint flat, postcss, .nvmrc 24, .gitignore +`public/config.json`? NO — config.json default IS committed (`{"assetBaseUrl": "/assets"}`); gitignore: node_modules/.next/out/public/assets/public/duckdb/public/pdf.worker.min.mjs/public/json-lite). `src/lib/site.ts`: `SITE_NAME = "GovBudget"` (single TABLED-name constant) + `SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example"` (metadataBase). `scripts/prepare-assets.mjs`: copies pdf worker + duckdb dist files + search_quick.json→public/json-lite/ + generates public/llms.txt from site_meta + sidecar presence check (schema_version===1, LOUD exit 1 "run export-site first"). globals.css light palette; layout (light, skip-link, header w/ search trigger + receipts toggle slot, footer w/ built_at stamp). shadcn primitives. `npm run dev` + `npm run build` green. Commit.
+
+### Task 3: Data + citation foundation
+
+As rev-1 PLUS: `cite.tsx` implements the THREE-STATE contract verbatim (header recon bullet); receipts toggle placed in the site header (persists localStorage key `receipts-mode`); `assetUrl` → `useAssetUrl()` hook backed by `public/config.json` fetched once via a client provider (default '/assets' on fetch failure for resilience? NO — loud console.error + default '/assets'); SSG-rendered download hrefs must come from client components using the hook. `format.ts` units lookup; `humanLdaUrl`; slugify. Vitest for all lib fns + the three Cite DOM shapes (react testing via vitest+jsdom or assert rendered attrs — keep light). Commit.
+
+### Task 4a: Program dossier route
+
+**Files:** src/app/program/[peBli]/page.tsx, src/components/{program-header,program-figures,program-budget-lines,program-narratives,program-awards,program-mentions,program-concentration,trajectory-spark,breadcrumbs}.tsx.
+
+326 SSG pages; `dynamicParams=false`. Header (title/org link to /agency/{org}/ /exhibit_family/fully_reconciled badge/pe_bli mono). Figures: FY24 actuals → `<Cite factId={programs.fy2024_fact_id} ...>` (state A; falls to C if null); FY25/FY26 from trajectory → state C (uncited, flagged) per scope decision 1. Details table: each amount uses state A when resolution∈{unique,ambiguous_first} (fact_id resolves) and **state B xml-path chip when resolution='zero_amount'**. Budget lines table (workbook-cited, state A). Narratives (mission first; `data-pagefind-body` wraps main content; accomplishments collapsible). Awards + mentions lists CAPPED at 25 with "showing 25 of N" + client expand loading the rest from `/json-lite/program_details/{pe_bli}.json`? — prepare-assets copies program_details into public/json-lite/ (3-4MB total; acceptable) so expansion is client-side fetch. Mentions: matched_term chip, snippet…, human filing link, client link only when family in entities_top (else plain text). Concentration card when hhi present. Trajectory sparkline inline SVG at SSG. Breadcrumbs UI. Commit.
+
+### Task 4b: Home, indexes, agency/company/static pages
+
+**Files:** src/app/{page,programs/page,companies/page,agency/[org]/page,company/[slug]/page,methodology/page,downloads/page,about/page,not-found}.tsx + company-* components. FIRST: update docs/methodology.md (LDA paragraph → present tense; Last-updated → today) then port.
+
+Home: hero + search CTA, stats band (site_meta counts — counts are not dollar amounts; plain), top movers (largest |fy2526_change| among dim_programs-joined trajectories — dollar deltas are trajectory → state C flagged), agency grid. /programs: client-filterable table over programs.json (org filter, FY26 sort; amounts state C; program links). /agency/[org]: ≈20 SSG pages — program list, count, FY24 total (millions; sum of cited figures is DERIVED → state C + note), GovernmentOrganization JSON-LD. /companies: top-200 table (total_obligation state C). /company/[slug]: header (obligation state C), influence table (per-year, state C, non-additive note rendered), mentions list (cited filing links, linked programs), awards with the DESIGNED EMPTY STATE ("No crosswalk-linked award rows for this family — our budget→award links are confidence-tiered; see methodology."). /downloads: dataset cards + built_at + Dataset JSON-LD; /about: corrections policy + correlational-not-causal disclaimer. not-found. Commit.
+
+### Task 5: Citation side-panel
+
+As rev-1 (panel + pdf-view with highlight math + ambiguous badge + workbook card + lda card with humanLdaUrl + API co-cite) PLUS: panel never opens for state B/C (chip/tooltip only); all asset fetches via useAssetUrl(); error state never fakes success. Commit.
+
+### Task 6: DuckDB-WASM explorer (/data)
+
+As rev-1 (singleton, self-hosted bundles, registerFileURL per dataset via useAssetUrl, canned queries per dataset, free-form read-only SQL, 500-row cap, CSV copy) — canned query buttons get `data-testid="canned-query"` and results table `data-testid="query-results"` (render_live_gate depends on them). Commit.
+
+### Task 7: Two-tier search
+
+As rev-1 with corrections: agency results → `/agency/{org}/`; program docs carry `dollars`; Pagefind via `/* turbopackIgnore: true */` import + dev stub; eval file at ABSOLUTE `GovBudget/evals/search_eval.yaml` (repo-root evals dir, consistent with phase5_questions.yaml). Commit.
+
+### Task 8: SEO plumbing
+
+As rev-1 PLUS: `metadataBase = new URL(SITE_URL)`; canonical/OG absolute from SITE_URL; sitemap.ts URLs absolute; llms.txt generated with absolute URLs incl. /methodology/, /downloads/, sample programs. GovernmentOrganization JSON-LD on /agency pages (not /programs). Commit.
+
+### Task 9: Gate suite
+
+**Files:** site/scripts/{verify.mjs, serve-static.mjs, screenshots.mjs}, site/scripts/gates/{build.mjs, render-static.mjs, render-live.mjs, clickthrough.mjs, search.mjs, a11y.mjs, prose-allowlist.json}, site/lighthouserc.cjs (explicit collect.url 5 pages incl. /program/0606301D8Z/ and /data/), cli.py `verify-phase5b2`.
+
+Gates EXACTLY per the header evaluator design (1–7; visual is Task 10). serve-static.mjs: node http, Range support (parse Range header, 206 + Content-Range), out/ trailing-slash resolution (`try $uri, $uri/index.html, $uri.html`), /assets/→../data/site. clickthrough computes its page set from citations.json + program_details at runtime (deterministic: lowest pe_bli satisfying each predicate). `npm run verify` aggregates gate lines → exit code. cli.py: `cmd_verify_phase5b2` shells `npm --prefix site run verify`, streams output, exits with its code. Commit.
+
+### Task 10: THE LOOP + visual gate + merge + ROADMAP
+
+- `npx playwright install chromium` (one-time, in site/).
+- Loop (repo root): `uv run python -m govbudget export-site` → `cd site && npm ci && npm run build` → `uv run python -m govbudget verify-phase5b2` → subagent fixes → repeat until gates 1–7 PASS.
+- visual_gate: screenshots.mjs (6 states × 3 viewports) → docs/superpowers/reviews/5b2-visual/ → 3 opus vision judges (rubric in header) → fix → re-shoot until median ≥4, no Blockers. Commit screenshots + verdict summary.
+- Regression: verify-phase1..5b1 PASS, `uv run pytest -q` green, `npm test` green, `npm run lint` clean.
+- Final opus whole-implementation review (branch diff incl. site/) → fix → merge to main + push.
+- Update ROADMAP.md: ledger 5B-2 ✅ + live numbers (page counts, gate results, LHCI scores); findings-log additions; backlog rewrite per scope decisions 1–4 (USAspending/state tiers → 5B-3 owner; workbook preview; dollar-weighted ranking; per-dataset stamps; service-program pages; family-level awards mart; R2 CORS live test → pre-launch checklist).
+
+---
+
+## Self-Review Notes (rev 2)
+
+- All 25 adversarial findings incorporated: three-state Cite contract (B1), org forward-translation via workbook_org (B2), fy2024_fact_id + entity mentions sidecars, render gate split (full-corpus static + negative currency scan + stratified live), deterministic clickthrough coverage incl. zero-amount/dangling/receipts, /data gated, /agency pages added, scope decisions recorded with ROADMAP follow-through, runtime asset config killing the env-bake problem, turbopackIgnore correction, Task 4 split, heavy-page caps + heaviest-page gate pinning, LHCI explicit URLs, SITE_URL/metadataBase, fixture-schema alignment step, methodology refresh, absolute eval path, awards-join expectation (≈18/200) + designed empty state.
+- Evaluator coverage now: every rendered number (full corpus, positive AND negative scan), all four citation paths clicked, receipts mode, search incl. typos, WASM live query, a11y w/ panel open, perf on heaviest pages, visual 3-judge rubric. The phase goal is measured, not sampled around.
