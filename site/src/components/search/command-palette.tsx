@@ -1,0 +1,667 @@
+"use client";
+
+/**
+ * CommandPalette — two-tier search dialog
+ *
+ * Opens via:
+ *   1. The header search trigger button
+ *   2. ⌘K / Ctrl+K keyboard shortcut
+ *   3. / shortcut (when no input is focused)
+ *   4. Any element with [data-search-trigger] (document-level click listener)
+ *
+ * Tier-1: MiniSearch quick index (per-keystroke, no debounce)
+ *   — grouped: Programs / Companies / Agencies / Pages
+ *   — ≤5 per group, highlighted matches
+ *
+ * Tier-2: Pagefind deep search (200ms debounce, ≥3 chars)
+ *   — imported via turbopackIgnore magic comment
+ *   — 404s in `next dev` → caught, dev stub returns []
+ *   — If the magic comment regresses, use:
+ *       new Function('s', 'return import(s)')('/pagefind/pagefind.js')
+ *   — Results stream in an "In documents" group below Tier-1 rows
+ *
+ * ARIA: role=combobox on input, aria-expanded, listbox + option ids,
+ *       aria-activedescendant, arrow/enter/escape keyboard nav.
+ */
+
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { quickSearch, warmIndex, getRecents, addRecent } from "@/lib/search";
+import type { GroupedResults, RecentItem, SearchResult } from "@/lib/search";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface FlatItem {
+  id: string;
+  url: string;
+  label: string;
+  labelHtml: string;
+  sub?: string;
+  kind: string;
+}
+
+// ── Pagefind loader ───────────────────────────────────────────────────────────
+
+type PagefindMod = {
+  debouncedSearch: (
+    q: string,
+  ) => Promise<{
+    results: { data: () => Promise<{ url: string; excerpt: string }> }[];
+  } | null>;
+};
+
+let pagefindMod: PagefindMod | null = null;
+let pagefindLoading = false;
+
+async function loadPagefind(): Promise<PagefindMod | null> {
+  if (pagefindMod) return pagefindMod;
+  if (pagefindLoading) return null;
+  pagefindLoading = true;
+  try {
+    // turbopackIgnore tells Turbopack to skip bundling this dynamic import.
+    // The file only exists after `npm run build` (postbuild pagefind step).
+    // In dev (next dev) this 404s — the catch returns null.
+    // Fallback if magic comment regresses:
+    //   const mod = await new Function('s', 'return import(s)')('/pagefind/pagefind.js');
+    const mod = await import(/* turbopackIgnore: true */ "/pagefind/pagefind.js" as string);
+    pagefindMod = mod as PagefindMod;
+    return pagefindMod;
+  } catch {
+    // Dev stub — pagefind not built yet
+    return null;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function flattenGroups(groups: GroupedResults): FlatItem[] {
+  const items: FlatItem[] = [];
+  const add = (results: SearchResult[]) => {
+    for (const r of results) {
+      items.push({
+        id: r.id,
+        url: r.url,
+        label: r.title,
+        labelHtml: r.titleHtml,
+        sub: r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
+        kind: r.kind,
+      });
+    }
+  };
+  add(groups.programs);
+  add(groups.companies);
+  add(groups.agencies);
+  add(groups.pages);
+  return items;
+}
+
+function recentsToFlat(recents: RecentItem[]): FlatItem[] {
+  return recents.map((r) => ({
+    id: r.id,
+    url: r.url,
+    label: r.title,
+    labelHtml: r.title,
+    sub: r.kind.charAt(0).toUpperCase() + r.kind.slice(1),
+    kind: r.kind,
+  }));
+}
+
+// ── Tier-1 effect (per-keystroke) ─────────────────────────────────────────────
+
+function useTier1(query: string) {
+  const [items, setItems] = useState<FlatItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const trimmed = query.trim();
+
+    // Wrap reset in a microtask so it's not synchronous at the effect top-level
+    const applyEmpty = () => startTransition(() => { if (!cancelled) setItems([]); });
+
+    if (!trimmed) {
+      applyEmpty();
+      return () => { cancelled = true; };
+    }
+    quickSearch(query)
+      .then((groups) => {
+        if (!cancelled) startTransition(() => setItems(flattenGroups(groups)));
+      })
+      .catch(() => {
+        applyEmpty();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  return items;
+}
+
+// ── Tier-2 effect (debounced pagefind) ────────────────────────────────────────
+
+function useTier2(query: string) {
+  const [items, setItems] = useState<FlatItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    let cancelled = false;
+
+    // Defer state resets into a microtask to avoid synchronous setState in effect body
+    const applyEmpty = () => {
+      if (!cancelled) {
+        startTransition(() => {
+          setItems([]);
+          setLoading(false);
+        });
+      }
+    };
+
+    if (!trimmed || trimmed.length < 3) {
+      applyEmpty();
+      return () => { cancelled = true; };
+    }
+
+    startTransition(() => setLoading(true));
+
+    const timer = setTimeout(async () => {
+      try {
+        const pf = await loadPagefind();
+        if (!pf || cancelled) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const search = await pf.debouncedSearch(trimmed);
+        if (!search || cancelled) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const results = await Promise.all(
+          search.results.slice(0, 5).map((r) => r.data()),
+        );
+        if (!cancelled) {
+          setItems(
+            results.map((r, i) => ({
+              id: `pf-${i}`,
+              url: r.url,
+              label: r.url,
+              labelHtml: r.url,
+              sub: r.excerpt,
+              kind: "page",
+            })),
+          );
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems([]);
+          setLoading(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  return { items, loading };
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+export function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [recents, setRecents] = useState<RecentItem[]>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const uid = useId();
+
+  const tier1Items = useTier1(query);
+  const { items: tier2Items, loading: loading2 } = useTier2(query);
+
+  const openPalette = useCallback(() => {
+    setOpen(true);
+    setQuery("");
+    setActiveIdx(0);
+  }, []);
+
+  const closePalette = useCallback(() => {
+    setOpen(false);
+    setQuery("");
+    setActiveIdx(0);
+  }, []);
+
+  const navigate = useCallback(
+    (item: FlatItem) => {
+      addRecent({
+        id: item.id,
+        title: item.label,
+        url: item.url,
+        kind: item.kind as RecentItem["kind"],
+      });
+      closePalette();
+      window.location.href = item.url;
+    },
+    [closePalette],
+  );
+
+  // Pre-warm index on mount
+  useEffect(() => {
+    warmIndex();
+  }, []);
+
+  // Load recents when palette opens (deferred to avoid synchronous setState in effect)
+  useEffect(() => {
+    if (!open) return undefined;
+    // Use setTimeout to defer both the setState and the focus — avoids
+    // synchronous setState at effect top-level (react-hooks/set-state-in-effect)
+    const timer = setTimeout(() => {
+      startTransition(() => setRecents(getRecents()));
+      inputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  // Global keyboard shortcut: ⌘K / Ctrl+K / /
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      const isInput =
+        tag === "input" || tag === "textarea" || tag === "select";
+
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (open) closePalette();
+        else openPalette();
+        return;
+      }
+      if (e.key === "/" && !isInput && !open) {
+        e.preventDefault();
+        openPalette();
+        return;
+      }
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        closePalette();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, openPalette, closePalette]);
+
+  // Document-level listener for [data-search-trigger] elements
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-search-trigger]")) {
+        e.preventDefault();
+        openPalette();
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [openPalette]);
+
+  // All displayed items (for keyboard nav) — memoized so handleKeyDown dep is stable
+  const displayItems = useMemo<FlatItem[]>(
+    () =>
+      query.trim()
+        ? [...tier1Items, ...tier2Items]
+        : recentsToFlat(recents),
+    [query, tier1Items, tier2Items, recents],
+  );
+
+  // Keyboard navigation inside the listbox
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!displayItems.length) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.min(i + 1, displayItems.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const item = displayItems[activeIdx];
+        if (item) navigate(item);
+      }
+    },
+    [displayItems, activeIdx, navigate],
+  );
+
+  if (!open) return null;
+
+  const listboxId = `${uid}-listbox`;
+  const optionId = (i: number) => `${uid}-opt-${i}`;
+
+  const t1Programs = tier1Items.filter((i) => i.kind === "program");
+  const t1Companies = tier1Items.filter((i) => i.kind === "company");
+  const t1Agencies = tier1Items.filter((i) => i.kind === "agency");
+  const t1Pages = tier1Items.filter((i) => i.kind === "page");
+
+  const activeItemId = displayItems[activeIdx]
+    ? optionId(activeIdx)
+    : undefined;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        aria-hidden="true"
+        onClick={closePalette}
+      />
+
+      {/* Dialog */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
+        className="fixed left-1/2 top-[10vh] z-50 w-full max-w-xl -translate-x-1/2 rounded-xl border border-border bg-background shadow-2xl overflow-hidden"
+      >
+        {/* Search input */}
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+          <svg
+            className="w-4 h-4 text-muted-foreground shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            ref={inputRef}
+            role="combobox"
+            aria-expanded={displayItems.length > 0}
+            aria-controls={listboxId}
+            aria-activedescendant={activeItemId}
+            aria-autocomplete="list"
+            aria-label="Search programs, companies, agencies"
+            type="text"
+            placeholder="Search programs, companies, agencies…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActiveIdx(0);
+            }}
+            onKeyDown={handleKeyDown}
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+          />
+          {loading2 && (
+            <span className="text-xs text-muted-foreground animate-pulse">
+              searching…
+            </span>
+          )}
+          <kbd
+            className="hidden sm:inline-block rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground font-mono"
+            aria-label="Press Escape to close"
+          >
+            esc
+          </kbd>
+        </div>
+
+        {/* Results */}
+        <ul
+          id={listboxId}
+          ref={listRef}
+          role="listbox"
+          aria-label="Search results"
+          className="max-h-96 overflow-y-auto py-2"
+        >
+          {displayItems.length === 0 && !query.trim() && (
+            <li className="px-4 py-3 text-sm text-muted-foreground">
+              Start typing to search…
+            </li>
+          )}
+          {displayItems.length === 0 && query.trim() && (
+            <li className="px-4 py-3 text-sm text-muted-foreground">
+              No results for &ldquo;{query}&rdquo;
+            </li>
+          )}
+
+          {/* Recents (empty query) */}
+          {!query.trim() && recents.length > 0 && (
+            <>
+              <GroupHeader label="Recent" />
+              {recentsToFlat(recents).map((item, i) => (
+                <ResultRow
+                  key={item.id}
+                  item={item}
+                  optionId={optionId(i)}
+                  active={activeIdx === i}
+                  onSelect={() => navigate(item)}
+                  onHover={() => setActiveIdx(i)}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Tier-1 grouped results */}
+          {query.trim() && (
+            <>
+              {t1Programs.length > 0 && (
+                <>
+                  <GroupHeader label="Programs" />
+                  {t1Programs.map((item) => {
+                    const idx = displayItems.indexOf(item);
+                    return (
+                      <ResultRow
+                        key={item.id}
+                        item={item}
+                        optionId={optionId(idx)}
+                        active={activeIdx === idx}
+                        onSelect={() => navigate(item)}
+                        onHover={() => setActiveIdx(idx)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {t1Companies.length > 0 && (
+                <>
+                  <GroupHeader label="Companies" />
+                  {t1Companies.map((item) => {
+                    const idx = displayItems.indexOf(item);
+                    return (
+                      <ResultRow
+                        key={item.id}
+                        item={item}
+                        optionId={optionId(idx)}
+                        active={activeIdx === idx}
+                        onSelect={() => navigate(item)}
+                        onHover={() => setActiveIdx(idx)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {t1Agencies.length > 0 && (
+                <>
+                  <GroupHeader label="Agencies" />
+                  {t1Agencies.map((item) => {
+                    const idx = displayItems.indexOf(item);
+                    return (
+                      <ResultRow
+                        key={item.id}
+                        item={item}
+                        optionId={optionId(idx)}
+                        active={activeIdx === idx}
+                        onSelect={() => navigate(item)}
+                        onHover={() => setActiveIdx(idx)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {t1Pages.length > 0 && (
+                <>
+                  <GroupHeader label="Pages" />
+                  {t1Pages.map((item) => {
+                    const idx = displayItems.indexOf(item);
+                    return (
+                      <ResultRow
+                        key={item.id}
+                        item={item}
+                        optionId={optionId(idx)}
+                        active={activeIdx === idx}
+                        onSelect={() => navigate(item)}
+                        onHover={() => setActiveIdx(idx)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Tier-2 pagefind results */}
+          {tier2Items.length > 0 && (
+            <>
+              <GroupHeader label="In documents" />
+              {tier2Items.map((item) => {
+                const idx = displayItems.indexOf(item);
+                return (
+                  <ResultRow
+                    key={item.id}
+                    item={item}
+                    optionId={optionId(idx)}
+                    active={activeIdx === idx}
+                    onSelect={() => navigate(item)}
+                    onHover={() => setActiveIdx(idx)}
+                    isDeep
+                  />
+                );
+              })}
+            </>
+          )}
+        </ul>
+
+        {/* Footer hint */}
+        <div className="border-t border-border px-4 py-2 flex items-center gap-4 text-xs text-muted-foreground">
+          <span>
+            <kbd className="font-mono">↑↓</kbd> navigate
+          </span>
+          <span>
+            <kbd className="font-mono">↵</kbd> open
+          </span>
+          <span>
+            <kbd className="font-mono">⌘K</kbd> toggle
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function GroupHeader({ label }: { label: string }) {
+  return (
+    <li
+      role="presentation"
+      className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+    >
+      {label}
+    </li>
+  );
+}
+
+interface ResultRowProps {
+  item: FlatItem;
+  optionId: string;
+  active: boolean;
+  onSelect: () => void;
+  onHover: () => void;
+  isDeep?: boolean;
+}
+
+function ResultRow({
+  item,
+  optionId,
+  active,
+  onSelect,
+  onHover,
+  isDeep = false,
+}: ResultRowProps) {
+  return (
+    <li
+      id={optionId}
+      role="option"
+      aria-selected={active}
+      className={[
+        "mx-2 flex cursor-pointer flex-col rounded-md px-3 py-2 text-sm transition-colors",
+        active ? "bg-primary/10 text-foreground" : "hover:bg-muted/60",
+      ].join(" ")}
+      onMouseMove={onHover}
+      onClick={onSelect}
+    >
+      <span
+        className="font-medium leading-5 truncate"
+        dangerouslySetInnerHTML={{ __html: item.labelHtml }}
+      />
+      {item.sub && (
+        <span
+          className={[
+            "text-xs mt-0.5 truncate text-muted-foreground",
+            isDeep ? "line-clamp-2" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {isDeep ? (
+            // pagefind excerpts are pre-sanitized HTML with <mark> tags
+            <span dangerouslySetInnerHTML={{ __html: item.sub }} />
+          ) : (
+            item.sub
+          )}
+        </span>
+      )}
+    </li>
+  );
+}
+
+// ── Trigger button (fills header slot) ───────────────────────────────────────
+
+export function SearchTriggerButton() {
+  return (
+    <button
+      data-search-trigger
+      type="button"
+      aria-label="Search (⌘K)"
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      <svg
+        className="w-3.5 h-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <span className="hidden sm:inline">Search</span>
+      <kbd className="hidden md:inline-block rounded border border-border px-1 py-0.5 text-[10px] font-mono">
+        ⌘K
+      </kbd>
+    </button>
+  );
+}

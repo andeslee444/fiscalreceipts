@@ -1,0 +1,139 @@
+# GovBudget Search Evaluation Cases
+#
+# Each case has:
+#   query:            the user-typed string
+#   expect_url_top3:  the expected URL must appear in top-3 results (tier: quick)
+#   expect_url_top5:  the expected URL must appear in top-5 results (tier: deep)
+#   tier:             quick | deep
+#   note:             human-readable description
+#
+# Gate requirement: ≥90% overall, 100% of typo cases.
+# Tier-1 (quick) cases use expect_url_top3; Tier-2 (deep) use expect_url_top5.
+
+cases:
+
+  # ── Exact pe_bli match ──────────────────────────────────────────────────────
+  - query: "0601101E"
+    expect_url_top3: "/program/0601101E/"
+    tier: quick
+    note: "Exact PE/BLI code for DARPA Defense Research Sciences"
+
+  - query: "0603467E"
+    expect_url_top3: "/program/0603467E/"
+    tier: quick
+    note: "Exact pe_bli for DARPA Advanced Technology Development"
+
+  - query: "0606301D8Z"
+    expect_url_top3: "/program/0606301D8Z/"
+    tier: quick
+    note: "Exact pe_bli for the heaviest SSG page (Aviation Safety Technologies)"
+
+  # ── Program title queries ───────────────────────────────────────────────────
+  - query: "defense research sciences"
+    expect_url_top3: "/program/0601101E/"
+    tier: quick
+    note: "Full program title match — top DARPA basic research program"
+
+  - query: "sensor technology"
+    expect_url_top3: "/program/0603767E/"
+    tier: quick
+    note: "DARPA Sensor Technology program title"
+
+  - query: "tactical technology"
+    expect_url_top3: "/program/0602702E/"
+    tier: quick
+    note: "DARPA Tactical Technology program title"
+
+  - query: "network centric warfare"
+    expect_url_top3: "/program/0603766E/"
+    tier: quick
+    note: "DARPA Network-Centric Warfare Technology program"
+
+  - query: "advanced technology development"
+    expect_url_top3: "/program/0603467E/"
+    tier: quick
+    note: "DARPA Advanced Technology Development program"
+
+  - query: "aviation safety"
+    expect_url_top3: "/program/0606301D8Z/"
+    tier: quick
+    note: "OSD Aviation Safety Technologies program"
+
+  - query: "electronics technology"
+    expect_url_top3: "/program/0602716E/"
+    tier: quick
+    note: "DARPA Electronics Technology program"
+
+  # ── Agency queries ──────────────────────────────────────────────────────────
+  - query: "darpa"
+    expect_url_top3: "/agency/DARPA/"
+    tier: quick
+    note: "Exact agency acronym lookup"
+
+  - query: "SOCOM"
+    expect_url_top3: "/agency/SOCOM/"
+    tier: quick
+    note: "Special Operations Command agency lookup"
+
+  - query: "MDA"
+    expect_url_top3: "/agency/MDA/"
+    tier: quick
+    note: "Missile Defense Agency lookup"
+
+  # ── Company queries ─────────────────────────────────────────────────────────
+  - query: "lockheed martin"
+    expect_url_top3: "/company/lockheed-martin/"
+    tier: quick
+    note: "Top defense contractor exact name"
+
+  - query: "boeing"
+    expect_url_top3: "/company/boeing/"
+    tier: quick
+    note: "Boeing company lookup"
+
+  - query: "raytheon"
+    expect_url_top3: "/company/raytheon/"
+    tier: quick
+    note: "Raytheon company lookup"
+
+  - query: "general dynamics"
+    expect_url_top3: "/company/general-dynamics/"
+    tier: quick
+    note: "General Dynamics company lookup"
+
+  - query: "northrop grumman"
+    expect_url_top3: "/company/northrop-grumman/"
+    tier: quick
+    note: "Northrop Grumman company lookup"
+
+  # ── Typo cases (100% required by gate) ─────────────────────────────────────
+  - query: "lockeed"
+    expect_url_top3: "/company/lockheed-martin/"
+    tier: quick
+    note: "Typo: 'lockeed' → lockheed-martin (1 missing char, fuzzy 0.2)"
+
+  - query: "darppa"
+    expect_url_top3: "/agency/DARPA/"
+    tier: quick
+    note: "Typo: 'darppa' → DARPA (1 extra char)"
+
+  - query: "boeng"
+    expect_url_top3: "/company/boeing/"
+    tier: quick
+    note: "Typo: 'boeng' → boeing (1 missing char)"
+
+  # ── Deep tier (pagefind narrative search) ──────────────────────────────────
+  - query: "Perceptually-Enabled Task Guidance augmented reality"
+    expect_url_top5: "/program/0601101E/"
+    tier: deep
+    note: "Deep search: narrative phrase from 0601101E DARPA Defense Research Sciences (PTG program)"
+
+  - query: "nodes will redirect correct selectively"
+    expect_url_top5: "/program/0602702E/"
+    tier: deep
+    note: "Deep search: narrative phrase from 0602702E DARPA Tactical Technology"
+
+  - query: "requests for communication services MINC"
+    expect_url_top5: "/program/0603760E/"
+    tier: deep
+    note: "Deep search: narrative phrase from 0603760E DARPA Command Control Communications (MINC program)"

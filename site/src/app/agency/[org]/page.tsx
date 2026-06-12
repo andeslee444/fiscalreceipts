@@ -5,6 +5,7 @@ import { getAgencies, getAgencyMap, getPrograms } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
+import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const dynamicParams = false;
 
@@ -53,24 +54,17 @@ export default async function AgencyPage({
       return bv - av;
     });
 
-  // JSON-LD
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "GovernmentOrganization",
-    name: org,
-    url: `${SITE_URL}/agency/${org}/`,
-    description: `${org}: DoD defense agency with ${agency.program_count} program elements.`,
-  };
+  const pageUrl = `${SITE_URL}/agency/${org}/`;
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+          __html: safeJsonLd(governmentOrganizationJsonLd(org, pageUrl)),
         }}
       />
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-8 max-w-5xl" data-pagefind-body>
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },

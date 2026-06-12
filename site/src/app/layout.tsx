@@ -5,6 +5,8 @@ import Link from "next/link";
 import "./globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { ReceiptsProvider, ReceiptsToggle } from "@/components/receipts-toggle";
+import { CommandPalette, SearchTriggerButton } from "@/components/search/command-palette";
+import { websiteJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 // Read built_at from site_meta.json at build time
 function getBuiltAt(): string {
@@ -37,7 +39,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* Site-wide WebSite + SearchAction JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd()) }}
+        />
         <ReceiptsProvider>
+          {/* Global two-tier search dialog */}
+          <CommandPalette />
           {/* Skip link for keyboard / screen reader users */}
           <a href="#main-content" className="skip-to-content">
             Skip to content
@@ -65,10 +74,9 @@ export default function RootLayout({
                 </Link>
               </nav>
 
-              {/* Slots for search trigger (Task 7) and receipts toggle */}
+              {/* Search trigger and receipts toggle */}
               <div className="ml-auto flex items-center gap-2">
-                {/* id="search-trigger-slot" — Task 7 fills this */}
-                <div id="search-trigger-slot" />
+                <SearchTriggerButton />
                 {/* Receipts toggle (Task 3) */}
                 <ReceiptsToggle />
               </div>
