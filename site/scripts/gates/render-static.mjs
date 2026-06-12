@@ -46,11 +46,6 @@ function* walkHtmlFiles(dir) {
   }
 }
 
-/** Check if a string looks like JSON (for JSON-LD detection) */
-function looksLikeJson(s) {
-  return s.trim().startsWith("{") || s.trim().startsWith("[");
-}
-
 export async function runRenderStaticGate() {
   const errors = [];
   const notes = [];

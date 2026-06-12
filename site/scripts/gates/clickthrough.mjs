@@ -458,10 +458,6 @@ export async function runClickthroughGate(baseUrl) {
           // The client_name should appear as text, not wrapped in a company link
           const clientName = danglingMention.client_name || "";
           if (clientName) {
-            const hasPlainText = await page
-              .getByText(clientName.slice(0, 30), { exact: false })
-              .count()
-              .catch(() => 0);
             // Check there is no link to /company/ for this client
             const companyLinks = await page.$$eval(
               `a[href*="/company/"]`,

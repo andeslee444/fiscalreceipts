@@ -138,10 +138,7 @@ export async function runBuildGate() {
   }
 
   // ── Sitemap ───────────────────────────────────────────────────────────────
-  // Next.js static export writes sitemap as out/sitemap.xml or out/sitemap/index.html
-  const sitemapXml = path.join(outDir, "sitemap.xml");
-  // Try alternate: out/sitemap.xml from app/sitemap.ts -> writes out/sitemap.xml directly
-  // or it may be at out/sitemap/index.html as plain text
+  // Next.js static export from app/sitemap.ts → out/sitemap.xml
   let sitemapContent = null;
   const sitemapCandidates = [
     path.join(outDir, "sitemap.xml"),
@@ -189,7 +186,6 @@ export async function runBuildGate() {
   }
 
   // ── robots.txt ────────────────────────────────────────────────────────────
-  const robotsTxt = path.join(outDir, "robots.txt");
   // Next.js static export from app/robots.ts → out/robots.txt
   const robotsCandidates = [
     path.join(outDir, "robots.txt"),
