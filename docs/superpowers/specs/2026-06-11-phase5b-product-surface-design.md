@@ -154,8 +154,10 @@ Alias table rows generated here are curated + cited before entering search.
 
 ## 9. User decisions (status as of 2026-06-11)
 
-1. Product name + domain: **PENDING** (placeholder: "GovBudget" / vercel preview
-   URL; shortlist under user review).
+1. Product name + domain: **TABLED** (user direction 2026-06-12). Shortlist:
+   Outlays (outlays.us / openoutlays.com) and FiscalReceipts (fiscalreceipts.com)
+   — both domain-available as of 2026-06-11. Build continues under the
+   "GovBudget" placeholder; nothing in 5B-1/5B-2 may hardcode a brand name.
 2. Object storage: **DECIDED — Cloudflare R2** (free egress).
 3. Vercel account: **DECIDED** — deploys use the andes.lee444@gmail.com identity
    (existing free-account constraint).
