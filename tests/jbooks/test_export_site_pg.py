@@ -39,6 +39,13 @@ def test_canonical_amount_three_decimals():
     assert canonical_amount("0") == "0.000"
 
 
+def test_canonical_amount_none_raises():
+    """canonical_amount(None) must raise ValueError — never silently hash None."""
+    import pytest as _pytest
+    with _pytest.raises(ValueError, match="None"):
+        canonical_amount(None)
+
+
 def test_fact_id_jbook_stable():
     fid = fact_id_jbook("sha256abc", "0601101E", None, "PriorYear", "280.494")
     # must be deterministic
@@ -141,8 +148,14 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
 
     # 6. fct_program_lobbying — MUST include filing_uuid, pe_bli, matched_term, filing_url
+    # Use a proper UUID format so citation_gate5b1's UUID regex check passes.
+    _lda_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
-    con.execute("insert into fct_program_lobbying values ('uuid-lda-001','0601101E','Defense Research Sciences','darpa','mentioned DARPA','https://lda.senate.gov/filings/uuid-lda-001/','Lockheed Martin','lockheed','2025')")
+    con.execute(
+        f"insert into fct_program_lobbying values"
+        f" ('{_lda_uuid}','0601101E','Defense Research Sciences','darpa','mentioned DARPA',"
+        f"'https://lda.senate.gov/filings/{_lda_uuid}/','Lockheed Martin','lockheed','2025')"
+    )
 
     # 7. dim_lobbyists
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
@@ -407,3 +420,160 @@ def test_export_site_pdfs_copied(pg_dsn, tmp_path):
     assert dest.exists(), "PDF not copied to site/pdfs/{sha}.pdf"
     assert dest.stat().st_size == FIXTURE_PDF.stat().st_size
     assert out["pdfs"] >= 1
+
+
+def test_export_site_sha_verified_copy(pg_dsn, tmp_path):
+    """A dest PDF with matching size but corrupt content is re-copied on export."""
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    # First export: creates the correct copy
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    dest = site / "pdfs" / f"{sha}.pdf"
+    assert dest.exists()
+    original_size = dest.stat().st_size
+
+    # Corrupt dest: same size, different bytes (flip first byte)
+    data = bytearray(dest.read_bytes())
+    data[0] = (data[0] + 1) % 256
+    dest.write_bytes(bytes(data))
+    assert dest.stat().st_size == original_size  # size unchanged
+    assert hashlib.sha256(dest.read_bytes()).hexdigest() != sha  # but sha differs
+
+    # Second export: must detect sha mismatch and re-copy
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    # After re-export the dest sha must match again
+    actual_sha = hashlib.sha256(dest.read_bytes()).hexdigest()
+    assert actual_sha == sha, f"re-copy did not restore sha: got {actual_sha}"
+
+
+def test_export_site_null_amount_thousands_excluded(pg_dsn, tmp_path):
+    """budget_lines row with NULL amount_thousands is excluded; export still succeeds."""
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+
+    # Seed a budget_lines row with source_document_id set but amount_thousands = NULL
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            """
+            insert into budget_lines
+              (exhibit, fiscal_year, account, account_title, organization,
+               budget_activity, budget_activity_title, pe_bli, title,
+               amount_type, amount_thousands, source_document_id,
+               source_sheet, source_cells)
+            values
+              ('R-2', 2026, '0400', 'RDT&E Defense-Wide', 'DARPA',
+               '01', 'Basic Research', '0601101E', 'NULL AMOUNT ROW',
+               'fy_2025_enacted', NULL, %s, 'Exhibit R-2', ARRAY['K5'])
+            on conflict (exhibit, fiscal_year, account, organization,
+                         budget_activity, pe_bli, amount_type)
+            do nothing
+            """,
+            (doc_id,),
+        )
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    # Export must not raise
+    out = export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    # The NULL-amount row must not appear in budget_lines.parquet
+    bl_pq = site / "data" / "budget_lines.parquet"
+    rows = duckdb.sql(
+        f"select pe_bli, title from read_parquet('{bl_pq}')"
+        " where title = 'NULL AMOUNT ROW'"
+    ).fetchall()
+    assert rows == [], f"NULL amount_thousands row should be excluded, got: {rows}"
+
+
+def test_export_site_details_without_provenance_pages(pg_dsn, tmp_path):
+    """jbook_details row with no provenance_pages match gets resolution='unresolved'
+    in the parquet. The integrity gate must still pass and manifest skip counts
+    must match the parquet.
+    """
+    from govbudget.verify_phase5b1 import (
+        citation_gate5b1,
+        coverage_report5b1,
+        integrity_gate5b1,
+    )
+
+    # Seed a jbook doc + detail but do NOT call build_provenance_pages
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    # (no build_provenance_pages call → no provenance_pages row → LEFT JOIN produces null
+    #  → coalesce gives 'unresolved' in jbook_details.parquet)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+
+    # jbook_details parquet should have the row with resolution='unresolved'
+    jd_pq = site / "data" / "jbook_details.parquet"
+    unresolved_count = duckdb.sql(
+        f"select count(*) from read_parquet('{jd_pq}')"
+        " where resolution = 'unresolved'"
+    ).fetchone()[0]
+    assert unresolved_count >= 1, "expected at least one unresolved row in jbook_details"
+
+    # manifest skip counts must match parquet
+    import json as _json
+    man = _json.loads((site / "manifest.json").read_text())
+    assert man["skipped_unresolved"] == unresolved_count, (
+        f"manifest skipped_unresolved={man['skipped_unresolved']} "
+        f"but parquet has {unresolved_count} unresolved rows"
+    )
+
+    # integrity gate must pass (unresolved rows have no citations — that's expected)
+    igr = integrity_gate5b1(site)
+    assert igr["ok"] is True, f"integrity_gate5b1 failed: {igr}"
+
+
+def test_export_site_producer_consumer_integration(pg_dsn, tmp_path):
+    """Producer→consumer: run citation, integrity, and coverage gates against
+    the site that export_site just produced. Locks export and gate schemas together.
+
+    Seeds a jbook PDF + provenance_pages (produces jbook_pdf + lda citations).
+    No budget_lines seeded so no workbook citation — avoids PDF-sha-as-xlsx mismatch.
+    A column rename in either export_site or verify_phase5b1 will fail this suite.
+    """
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+    from govbudget.verify_phase5b1 import (
+        citation_gate5b1,
+        coverage_report5b1,
+        integrity_gate5b1,
+    )
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    # No _seed_budget_line — avoid workbook citation pointing to a PDF sha as xlsx
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="https://cdn.example/pdfs")
+
+    # Gate 1: citation_gate5b1
+    cit_result = citation_gate5b1(site)
+    assert cit_result["ok"] is True, (
+        f"citation_gate5b1 failed after export_site: {cit_result}"
+    )
+
+    # Gate 2: integrity_gate5b1
+    int_result = integrity_gate5b1(site)
+    assert int_result["ok"] is True, (
+        f"integrity_gate5b1 failed after export_site: {int_result}"
+    )
+
+    # Gate 3: coverage_report5b1 (non-gating — just assert it returns a valid dict)
+    cov_result = coverage_report5b1(site)
+    assert isinstance(cov_result, dict)
+    assert "by_resolution" in cov_result
+    assert "total_details" in cov_result

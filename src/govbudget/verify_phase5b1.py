@@ -38,6 +38,11 @@ from decimal import Decimal
 from pathlib import Path
 
 
+def _sql_path(p) -> str:
+    """Return a path string safe for embedding in DuckDB SQL string literals."""
+    return str(p).replace("'", "''")
+
+
 # ---------------------------------------------------------------------------
 # Gate 1: citation_gate5b1
 # ---------------------------------------------------------------------------
@@ -88,7 +93,7 @@ def citation_gate5b1(
 
     con = duckdb.connect()
     try:
-        total = con.execute(f"select count(*) from read_parquet('{cit_pq}')").fetchone()[0]
+        total = con.execute(f"select count(*) from read_parquet('{_sql_path(cit_pq)}')").fetchone()[0]
     finally:
         con.close()
 
@@ -104,8 +109,8 @@ def citation_gate5b1(
     # Load all citations grouped by kind
     con = duckdb.connect()
     try:
-        all_cits = con.execute(f"select * from read_parquet('{cit_pq}')").fetchall()
-        col_names = [d[0] for d in con.execute(f"describe select * from read_parquet('{cit_pq}')").fetchall()]
+        all_cits = con.execute(f"select * from read_parquet('{_sql_path(cit_pq)}')").fetchall()
+        col_names = [d[0] for d in con.execute(f"describe select * from read_parquet('{_sql_path(cit_pq)}')").fetchall()]
     finally:
         con.close()
 
@@ -282,35 +287,38 @@ def _verify_workbook(site_dir: Path, row: tuple, idx: dict) -> str | None:
     except Exception as e:
         return f"load_workbook error: {e}"
 
-    if sheet_name not in wb.sheetnames:
-        return f"sheet '{sheet_name}' not found in workbook"
-
-    ws = wb[sheet_name]
-
-    # Sum cell values
-    cell_refs = [c.strip() for c in cells_str.split(",") if c.strip()]
-    total = D(0)
-    for cell_ref in cell_refs:
-        cell = ws[cell_ref]
-        val = cell.value
-        if val is None:
-            continue
-        try:
-            total += D(str(val))
-        except Exception as e:
-            return f"cell {cell_ref} value={val!r} not numeric: {e}"
-
-    # Compare with stored amount_thousands (exact Decimal comparison)
     try:
-        stored_d = D(str(stored_amount))
-    except Exception as e:
-        return f"stored amount_thousands={stored_amount!r} not numeric: {e}"
+        if sheet_name not in wb.sheetnames:
+            return f"sheet '{sheet_name}' not found in workbook"
 
-    if total != stored_d:
-        return (f"cell sum mismatch: cells={cell_refs} sum={total}"
-                f" stored={stored_d}")
+        ws = wb[sheet_name]
 
-    return None
+        # Sum cell values
+        cell_refs = [c.strip() for c in cells_str.split(",") if c.strip()]
+        total = D(0)
+        for cell_ref in cell_refs:
+            cell = ws[cell_ref]
+            val = cell.value
+            if val is None:
+                continue
+            try:
+                total += D(str(val))
+            except Exception as e:
+                return f"cell {cell_ref} value={val!r} not numeric: {e}"
+
+        # Compare with stored amount_thousands (exact Decimal comparison)
+        try:
+            stored_d = D(str(stored_amount))
+        except Exception as e:
+            return f"stored amount_thousands={stored_amount!r} not numeric: {e}"
+
+        if total != stored_d:
+            return (f"cell sum mismatch: cells={cell_refs} sum={total}"
+                    f" stored={stored_d}")
+
+        return None
+    finally:
+        wb.close()
 
 
 def _verify_lda(row: tuple, idx: dict) -> str | None:
@@ -378,7 +386,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         try:
             return {
                 r[0] for r in con.execute(
-                    f"select {col} from read_parquet('{path}')"
+                    f"select {col} from read_parquet('{_sql_path(path)}')"
                 ).fetchall()
                 if r[0] is not None
             }
@@ -388,7 +396,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     def _parquet_count(path: Path) -> int:
         if not path.exists():
             return 0
-        return duckdb.sql(f"select count(*) from read_parquet('{path}')").fetchone()[0]
+        return duckdb.sql(f"select count(*) from read_parquet('{_sql_path(path)}')").fetchone()[0]
 
     def _parquet_ids_where(path: Path, col: str, where: str) -> set[str]:
         if not path.exists():
@@ -397,7 +405,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         try:
             return {
                 r[0] for r in con.execute(
-                    f"select {col} from read_parquet('{path}') where {where}"
+                    f"select {col} from read_parquet('{_sql_path(path)}') where {where}"
                 ).fetchall()
                 if r[0] is not None
             }
@@ -407,8 +415,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # ---- Load citation rows by kind ----
     con = duckdb.connect()
     try:
-        all_cit = con.execute(f"select * from read_parquet('{cit_pq}')").fetchall()
-        cit_cols = [d[0] for d in con.execute(f"describe select * from read_parquet('{cit_pq}')").fetchall()]
+        all_cit = con.execute(f"select * from read_parquet('{_sql_path(cit_pq)}')").fetchall()
+        cit_cols = [d[0] for d in con.execute(f"describe select * from read_parquet('{_sql_path(cit_pq)}')").fetchall()]
     finally:
         con.close()
 
@@ -435,17 +443,17 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         try:
             resolved_ids = {
                 r[0] for r in con.execute(
-                    f"select fact_id from read_parquet('{details_pq}')"
+                    f"select fact_id from read_parquet('{_sql_path(details_pq)}')"
                     " where resolution in ('unique','ambiguous_first')"
                 ).fetchall()
                 if r[0] is not None
             }
             unresolved_count = con.execute(
-                f"select count(*) from read_parquet('{details_pq}')"
+                f"select count(*) from read_parquet('{_sql_path(details_pq)}')"
                 " where resolution = 'unresolved'"
             ).fetchone()[0]
             zero_count = con.execute(
-                f"select count(*) from read_parquet('{details_pq}')"
+                f"select count(*) from read_parquet('{_sql_path(details_pq)}')"
                 " where resolution = 'zero_amount'"
             ).fetchone()[0]
         finally:
@@ -525,7 +533,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         try:
             lda_mart_rows = con.execute(
                 f"select filing_uuid, pe_bli, matched_term"
-                f" from read_parquet('{lda_pq}')"
+                f" from read_parquet('{_sql_path(lda_pq)}')"
             ).fetchall()
         finally:
             con.close()
@@ -613,7 +621,7 @@ def coverage_report5b1(site_dir: Path) -> dict:
         con = duckdb.connect()
         try:
             rows = con.execute(
-                f"select resolution, count(*) from read_parquet('{details_pq}')"
+                f"select resolution, count(*) from read_parquet('{_sql_path(details_pq)}')"
                 " group by resolution order by resolution"
             ).fetchall()
         finally:

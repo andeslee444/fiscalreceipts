@@ -35,6 +35,8 @@ from pathlib import Path
 
 def canonical_amount(amount) -> str:
     """Canonical 3-decimal string for identity hashing: '280.494', '-1.200', '0.000'."""
+    if amount is None:
+        raise ValueError("canonical_amount: amount is None")
     return f"{Decimal(amount):.3f}"
 
 
@@ -134,9 +136,6 @@ def export_site(
     # -----------------------------------------------------------------------
     # 2. Postgres typed exports
     # -----------------------------------------------------------------------
-    skipped_unresolved = 0
-    skipped_zero_amount = 0
-
     with psycopg.connect(dsn) as pg:
         # ---- 2a. jbook_details.parquet ----
         rows_details = pg.execute(
@@ -186,6 +185,12 @@ def export_site(
         )
         dataset_counts["jbook_details"] = len(detail_rows)
 
+        # Compute skip counters from the same resolution values written to the parquet.
+        # This ensures manifest and parquet agree by construction (the integrity gate
+        # catches post-export tampering). resolution is the last element (index 12).
+        skipped_unresolved = sum(1 for r in detail_rows if r[12] == "unresolved")
+        skipped_zero_amount = sum(1 for r in detail_rows if r[12] == "zero_amount")
+
         # ---- 2b. jbook_narratives.parquet ----
         rows_narr = pg.execute(
             """
@@ -232,6 +237,7 @@ def export_site(
 
         bl_rows = []
         bl_excluded = 0
+        bl_excluded_null_amount = 0
         for row in all_bl:
             (exhibit, fiscal_year, account, account_title, organization,
              budget_activity, budget_activity_title, pe_bli, title,
@@ -243,6 +249,9 @@ def export_site(
             if document_sha256 is None:
                 bl_excluded += 1
                 continue
+            if amount_thousands is None:
+                bl_excluded_null_amount += 1
+                continue
             fid = fact_id_workbook(
                 document_sha256, exhibit, fiscal_year, account,
                 organization, budget_activity, pe_bli, amount_type,
@@ -252,12 +261,14 @@ def export_site(
                 int(fiscal_year) if fiscal_year is not None else None,
                 account, account_title, organization, budget_activity,
                 budget_activity_title, pe_bli, title, amount_type,
-                float(amount_thousands) if amount_thousands is not None else None,
+                float(amount_thousands),
                 "USD thousands", document_sha256, source_sheet, source_cells,
             ))
 
         if bl_excluded:
             print(f"budget_lines.parquet: excluded {bl_excluded} rows lacking source_document_id (pre-backfill)")
+        if bl_excluded_null_amount:
+            print(f"budget_lines.parquet: excluded {bl_excluded_null_amount} rows with NULL amount_thousands")
 
         _write_typed_parquet(
             data_dir / "budget_lines.parquet",
@@ -296,13 +307,11 @@ def export_site(
         fp_lower = file_path.lower()
         if fp_lower.endswith(".pdf"):
             dest = pdfs_dir / f"{sha256}.pdf"
-            if not dest.exists() or dest.stat().st_size != src.stat().st_size:
-                shutil.copyfile(src, dest)
+            _copy_if_needed(src, dest, sha256)
             n_pdfs += 1
         elif fp_lower.endswith(".xlsx"):
             dest = wb_dir / f"{sha256}.xlsx"
-            if not dest.exists() or dest.stat().st_size != src.stat().st_size:
-                shutil.copyfile(src, dest)
+            _copy_if_needed(src, dest, sha256)
             n_workbooks += 1
 
     # -----------------------------------------------------------------------
@@ -334,11 +343,7 @@ def export_site(
              amount_text, page_number, x0, x1, top_pt, bottom_pt,
              page_width, page_height, resolution, candidate_pages,
              source_url, downloaded_at) in prov_rows:
-            if resolution == "zero_amount":
-                skipped_zero_amount += 1
-                continue
-            if resolution == "unresolved":
-                skipped_unresolved += 1
+            if resolution in ("zero_amount", "unresolved"):
                 continue
             # Only unique/ambiguous_first
             fid = fact_id_jbook(doc_sha, pe_bli, project_number, scenario, amount_millions)
@@ -381,7 +386,7 @@ def export_site(
             None,  # resolution
             source_sheet,
             source_cells,
-            float(amount_thousands) if amount_thousands is not None else None,
+            float(amount_thousands),
             document_sha256,
             None,  # hosted_pdf_url
             None,  # official_url — populated below
@@ -520,8 +525,26 @@ def export_site(
 
 
 # ---------------------------------------------------------------------------
-# Internal helper
+# Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _copy_if_needed(src: Path, dest: Path, expected_sha256: str) -> None:
+    """Copy src to dest unless dest already exists with matching size AND sha256.
+
+    Size is checked first (cheap). If sizes match, sha256 of dest is verified
+    against the DB-stored expected_sha256; a content mismatch forces a re-copy.
+    """
+    if dest.exists():
+        if dest.stat().st_size != src.stat().st_size:
+            shutil.copyfile(src, dest)
+        else:
+            # Same size — verify content integrity via sha256
+            actual_sha = hashlib.sha256(dest.read_bytes()).hexdigest()
+            if actual_sha != expected_sha256:
+                shutil.copyfile(src, dest)
+    else:
+        shutil.copyfile(src, dest)
 
 
 def _write_typed_parquet(path: Path, columns: list[tuple[str, str]], rows: list) -> None:

@@ -42,13 +42,15 @@ def _write_parquet(path: Path, col_defs: str, rows: list[tuple]) -> None:
     """Write a typed parquet via duckdb create-table + executemany."""
     path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect()
-    con.execute(f"create table _t ({col_defs})")
-    if rows:
-        placeholders = ", ".join("?" for _ in rows[0])
-        con.executemany(f"insert into _t values ({placeholders})", rows)
-    path_str = str(path).replace("'", "''")
-    con.execute(f"copy _t to '{path_str}' (format parquet, compression zstd)")
-    con.close()
+    try:
+        con.execute(f"create table _t ({col_defs})")
+        if rows:
+            placeholders = ", ".join("?" for _ in rows[0])
+            con.executemany(f"insert into _t values ({placeholders})", rows)
+        path_str = str(path).replace("'", "''")
+        con.execute(f"copy _t to '{path_str}' (format parquet, compression zstd)")
+    finally:
+        con.close()
 
 
 def _make_workbook(path: Path, sheet_name: str = "Exhibit R-1") -> None:
