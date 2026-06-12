@@ -1,0 +1,223 @@
+#!/usr/bin/env node
+/**
+ * screenshots.mjs — Task 10 visual gate harness.
+ *
+ * Captures 6 states × 3 viewports (390/768/1440px wide) = 18 screenshots.
+ * Output: GovBudget/docs/superpowers/reviews/5b2-visual/
+ *
+ * States:
+ *   1. home
+ *   2. program with citation panel open
+ *   3. program with receipts mode ON
+ *   4. company page
+ *   5. /data/ page
+ *   6. search palette open (⌘K)
+ *
+ * Usage: node scripts/screenshots.mjs [baseUrl]
+ * Default baseUrl: http://127.0.0.1:4173
+ */
+
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { chromium } from "playwright";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const siteRoot = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(siteRoot, "..");
+const outDir = path.resolve(
+  repoRoot,
+  "docs",
+  "superpowers",
+  "reviews",
+  "5b2-visual"
+);
+const jsonDir = path.resolve(repoRoot, "data", "site", "json");
+
+const BASE_URL = process.argv[2] ?? "http://127.0.0.1:4173";
+const VIEWPORTS = [390, 768, 1440];
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function getSampleProgram() {
+  const programs = readJson(path.join(jsonDir, "programs.json"));
+  const citations = readJson(path.join(jsonDir, "citations.json"));
+  const programDetailsDir = path.join(jsonDir, "program_details");
+  // Find first program with a clickable jbook_pdf citation
+  for (const p of programs.sort((a, b) => a.pe_bli.localeCompare(b.pe_bli))) {
+    const detPath = path.join(programDetailsDir, `${p.pe_bli}.json`);
+    if (!fs.existsSync(detPath)) continue;
+    try {
+      const det = readJson(detPath);
+      for (const d of det.details || []) {
+        if (d.fact_id && citations[d.fact_id]?.kind === "jbook_pdf") {
+          return { pbl: p.pe_bli, factId: d.fact_id };
+        }
+      }
+    } catch {
+      // skip
+    }
+  }
+  return { pbl: programs[0]?.pe_bli ?? "0601101E", factId: null };
+}
+
+function getSampleCompany() {
+  const entities = readJson(path.join(jsonDir, "entities_top.json"));
+  return entities[0]?.slug ?? "lockheed-martin";
+}
+
+async function capture(page, filePath, label) {
+  await page.screenshot({ path: filePath, fullPage: false });
+  console.log(`  ✓ ${label} → ${path.relative(repoRoot, filePath)}`);
+}
+
+async function main() {
+  console.log("screenshots.mjs — capturing 6 states × 3 viewports");
+  console.log(`base URL: ${BASE_URL}`);
+  console.log(`output: ${outDir}`);
+  console.log("");
+
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const { pbl: samplePbl, factId: sampleFactId } = getSampleProgram();
+  const sampleCompany = getSampleCompany();
+
+  const browser = await chromium.launch({ headless: true });
+
+  for (const width of VIEWPORTS) {
+    console.log(`\n── viewport ${width}px ──`);
+    const context = await browser.newContext({
+      viewport: { width, height: Math.round(width * 0.75) },
+      javaScriptEnabled: true,
+    });
+
+    // ── 1. Home ────────────────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle", timeout: 30000 });
+      await capture(page, path.join(outDir, `home-${width}.png`), `home-${width}`);
+      await page.close();
+    }
+
+    // ── 2. Program with panel open ─────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/program/${samplePbl}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      if (sampleFactId) {
+        const el = await page.$(`[data-fact-id="${sampleFactId}"]`).catch(() => null);
+        if (el) {
+          await el.click();
+          await page
+            .waitForSelector('[data-testid="citation-panel"]', { timeout: 8000 })
+            .catch(() => null);
+          await page.waitForTimeout(1000);
+        }
+      }
+      await capture(
+        page,
+        path.join(outDir, `program-panel-${width}.png`),
+        `program-panel-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 3. Program with receipts mode ON ────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/program/${samplePbl}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      let toggle = await page.$('[data-testid="receipts-toggle"]').catch(() => null);
+      if (!toggle) {
+        try {
+          const loc = page.getByLabel(/receipts/i).first();
+          await loc.waitFor({ timeout: 2000 });
+          toggle = loc;
+        } catch { /* not found */ }
+      }
+      if (toggle) {
+        await toggle.click();
+        await page.waitForTimeout(500);
+      }
+      await capture(
+        page,
+        path.join(outDir, `program-receipts-${width}.png`),
+        `program-receipts-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 4. Company page ────────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/company/${sampleCompany}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `company-${width}.png`),
+        `company-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 5. /data/ page ─────────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/data/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `data-${width}.png`),
+        `data-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 6. Search palette open ─────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle", timeout: 30000 });
+      const trigger = await page
+        .$('[data-testid="search-trigger"]')
+        .catch(() => null);
+      if (trigger) {
+        await trigger.click();
+      } else {
+        await page.keyboard.press("Meta+k");
+      }
+      await page
+        .waitForSelector(
+          'input[placeholder*="search" i], [data-testid="search-input"]',
+          { timeout: 5000 }
+        )
+        .catch(() => null);
+      await page.waitForTimeout(500);
+      await capture(
+        page,
+        path.join(outDir, `search-open-${width}.png`),
+        `search-open-${width}`
+      );
+      await page.close();
+    }
+
+    await context.close();
+  }
+
+  await browser.close();
+  console.log(`\n✅  18 screenshots saved to ${outDir}`);
+}
+
+main().catch((e) => {
+  console.error("screenshots: error:", e);
+  process.exit(1);
+});

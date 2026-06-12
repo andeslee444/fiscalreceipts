@@ -3,6 +3,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { SITE_URL } from "@/lib/site";
 
+export const dynamic = "force-static";
+
 function jsonDir(): string {
   return join(process.cwd(), "..", "data", "site", "json");
 }

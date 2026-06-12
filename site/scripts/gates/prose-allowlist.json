@@ -1,0 +1,17 @@
+[
+  {
+    "pattern": "$0",
+    "pages": ["*"],
+    "reason": "Zero-dollar literal used as a display placeholder for zero_amount facts without a monetary value"
+  },
+  {
+    "pattern": "$293.1M",
+    "pages": ["*"],
+    "reason": "Example citation value used in methodology page prose"
+  },
+  {
+    "pattern": "currency examples",
+    "pages": ["/methodology/"],
+    "reason": "Methodology page may reference currency format examples in explanatory prose"
+  }
+]

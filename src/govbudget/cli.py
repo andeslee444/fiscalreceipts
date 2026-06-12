@@ -865,6 +865,17 @@ def cmd_export_site(args) -> None:
     )
 
 
+def cmd_verify_phase5b2(args) -> None:
+    """Run the phase 5B-2 gate suite via `npm --prefix site run verify`."""
+    repo_root = Path(__file__).resolve().parents[3]
+    site_dir = repo_root / "site"
+    result = subprocess.run(
+        ["npm", "--prefix", str(site_dir), "run", "verify"],
+        cwd=str(repo_root),
+    )
+    sys.exit(result.returncode)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -933,6 +944,12 @@ def main(argv=None) -> None:
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
     v5b1.set_defaults(func=cmd_verify_phase5b1)
+
+    v5b2 = sub.add_parser(
+        "verify-phase5b2",
+        help="phase 5B-2 acceptance gates (site render, citations, a11y, search, perf)",
+    )
+    v5b2.set_defaults(func=cmd_verify_phase5b2)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(

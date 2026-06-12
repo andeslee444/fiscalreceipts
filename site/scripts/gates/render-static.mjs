@@ -1,0 +1,233 @@
+/**
+ * gate 2 — render_static_gate
+ *
+ * Parses EVERY out/**\/\*.html (via node-html-parser):
+ *
+ * (a) POSITIVE: every [data-amount] matches exactly one of the three Cite states:
+ *       A: data-fact-id={id} where id resolves in citations.json
+ *       B: data-citation-kind="xml-path" AND data-xml-path is non-empty
+ *       C: data-uncited="true"
+ *     Any element with data-amount that matches none → FAIL.
+ *
+ * (b) NEGATIVE: text nodes containing currency pattern
+ *       $[\d,]+(\.\d+)?\s*[BMK]?  (comma-grouped dollars)
+ *     OUTSIDE [data-amount] subtrees → FAIL (listing page + snippet).
+ *     Exceptions: content inside <script>, <style>, JSON-LD <script> tags.
+ *     Allowlist (prose-allowlist.json) consulted for known prose mentions.
+ */
+
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { parse } from "node-html-parser";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const siteRoot = path.resolve(__dirname, "..", "..");
+const outDir = path.resolve(siteRoot, "out");
+const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
+const allowlistPath = path.resolve(__dirname, "prose-allowlist.json");
+
+// Currency pattern: $X,XXX(.XX)? optionally followed by B/M/K
+// Must be in a text node (not a URL/href)
+const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[BMK]?/g;
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function* walkHtmlFiles(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      yield* walkHtmlFiles(fullPath);
+    } else if (entry.name.endsWith(".html")) {
+      yield fullPath;
+    }
+  }
+}
+
+/** Check if a string looks like JSON (for JSON-LD detection) */
+function looksLikeJson(s) {
+  return s.trim().startsWith("{") || s.trim().startsWith("[");
+}
+
+export async function runRenderStaticGate() {
+  const errors = [];
+  const notes = [];
+
+  // ── Load citations ────────────────────────────────────────────────────────
+  const citations = readJson(path.join(jsonDir, "citations.json"));
+  const citationKeys = new Set(Object.keys(citations));
+
+  // ── Load prose allowlist ──────────────────────────────────────────────────
+  let allowlist = [];
+  try {
+    allowlist = readJson(allowlistPath);
+  } catch {
+    // allowlist is optional
+  }
+  const allowedPatterns = allowlist.map((e) => e.pattern);
+
+  // ── Collect all HTML files ────────────────────────────────────────────────
+  const htmlFiles = [...walkHtmlFiles(outDir)];
+  notes.push(`scanning ${htmlFiles.length} HTML files`);
+
+  let positiveErrors = 0;
+  let negativeErrors = 0;
+  const positiveFailures = [];
+  const negativeFailures = [];
+
+  for (const filePath of htmlFiles) {
+    const relPath = path.relative(outDir, filePath);
+    let html;
+    try {
+      html = fs.readFileSync(filePath, "utf8");
+    } catch {
+      errors.push(`failed to read ${relPath}`);
+      continue;
+    }
+
+    let root;
+    try {
+      root = parse(html, { comment: false });
+    } catch (e) {
+      errors.push(`failed to parse ${relPath}: ${e.message}`);
+      continue;
+    }
+
+    // ── (a) Positive: data-amount elements ──────────────────────────────────
+    const amountEls = root.querySelectorAll("[data-amount]");
+    for (const el of amountEls) {
+      const factId = el.getAttribute("data-fact-id");
+      const citationKind = el.getAttribute("data-citation-kind");
+      const xmlPath = el.getAttribute("data-xml-path");
+      const uncited = el.getAttribute("data-uncited");
+
+      let stateMatch = false;
+
+      // State A: data-fact-id resolves in citations.json
+      if (factId) {
+        if (citationKeys.has(factId)) {
+          stateMatch = true;
+        } else {
+          positiveErrors++;
+          positiveFailures.push({
+            file: relPath,
+            issue: `data-fact-id="${factId}" not found in citations.json`,
+          });
+          continue;
+        }
+      }
+
+      // State B: data-citation-kind="xml-path" with non-empty data-xml-path
+      if (!stateMatch && citationKind === "xml-path") {
+        if (xmlPath && xmlPath.trim() !== "") {
+          stateMatch = true;
+        } else {
+          positiveErrors++;
+          positiveFailures.push({
+            file: relPath,
+            issue: `data-citation-kind="xml-path" but data-xml-path is empty/missing`,
+          });
+          continue;
+        }
+      }
+
+      // State C: data-uncited="true"
+      if (!stateMatch && uncited === "true") {
+        stateMatch = true;
+      }
+
+      if (!stateMatch) {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue: `[data-amount] matches no valid cite state (no fact-id, no xml-path, no uncited)`,
+          attrs: el.rawAttrs?.slice(0, 200),
+        });
+      }
+    }
+
+    // ── (b) Negative: currency patterns outside [data-amount] ──────────────
+    // Strip <script> and <style> content from the raw HTML before parsing
+    // to avoid false positives from JS literals, JSON-LD, CSS values.
+    const strippedHtml = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+
+    let stripped;
+    try {
+      stripped = parse(strippedHtml, { comment: false });
+    } catch {
+      stripped = root; // fallback to original on parse error
+    }
+
+    // Walk text nodes and check for currency patterns not inside [data-amount]
+    function walkText(node, insideAmount) {
+      if (node.nodeType === 3) {
+        // text node
+        const text = node.rawText || "";
+        if (!insideAmount) {
+          const matches = text.match(CURRENCY_RE);
+          if (matches) {
+            for (const m of matches) {
+              // Check allowlist
+              const allowed = allowedPatterns.some((p) => m.includes(p) || p.includes(m));
+              if (!allowed) {
+                negativeErrors++;
+                const snippet = text.trim().slice(0, 120);
+                negativeFailures.push({
+                  file: relPath,
+                  match: m,
+                  snippet,
+                });
+                if (negativeFailures.length >= 50) return; // cap
+              }
+            }
+          }
+        }
+        return;
+      }
+      const isAmount = node.getAttribute && node.getAttribute("data-amount") !== null;
+      const nowInside = insideAmount || isAmount;
+      if (node.childNodes) {
+        for (const child of node.childNodes) {
+          walkText(child, nowInside);
+          if (negativeFailures.length >= 50) return;
+        }
+      }
+    }
+    walkText(stripped, false);
+  }
+
+  // ── Summary ───────────────────────────────────────────────────────────────
+  if (positiveErrors > 0) {
+    errors.push(
+      `${positiveErrors} [data-amount] elements fail Cite-state contract:`
+    );
+    for (const f of positiveFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}${f.attrs ? ` [${f.attrs}]` : ""}`);
+    }
+    if (positiveFailures.length > 10) {
+      errors.push(`  ... and ${positiveFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(`positive scan: all [data-amount] elements match Cite-state contract ✓`);
+  }
+
+  if (negativeErrors > 0) {
+    errors.push(
+      `${negativeErrors} currency patterns found OUTSIDE [data-amount] (first 10):`
+    );
+    for (const f of negativeFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: "${f.match}" in "${f.snippet}"`);
+    }
+    if (negativeFailures.length > 10) {
+      errors.push(`  ... and ${negativeFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(`negative scan: no unattributed currency patterns ✓`);
+  }
+
+  return { pass: errors.length === 0, errors, notes };
+}
