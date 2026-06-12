@@ -1,5 +1,9 @@
 -- Column order is load-bearing: fct_award_transactions UNION ALLs this model
 -- positionally with its sibling staging model. Keep both lists identical.
+-- New columns (recon §D, added 2026-06-12):
+--   col 17: usaspending_permalink  — raw permalink from USAspending bulk download
+--   col 18: award_unique_key       — alias of assistance_award_unique_key (assistance)
+--                                    or contract_award_unique_key (contracts)
 select
     assistance_transaction_unique_key as transaction_key,
     'assistance' as award_type,
@@ -19,5 +23,9 @@ select
     primary_place_of_performance_state_name as pop_state,
     prime_award_transaction_place_of_performance_cd_current as pop_district,
     -- award_id_piid: null-cast in assistance; real column in contracts (SAME position both files)
-    cast(null as varchar) as award_id_piid
+    cast(null as varchar) as award_id_piid,
+    -- usaspending_permalink: real column in assistance; null-cast in contracts (SAME position both files)
+    usaspending_permalink,
+    -- award_unique_key: assistance_award_unique_key here; contract_award_unique_key in sibling (SAME position both files)
+    assistance_award_unique_key as award_unique_key
 from {{ source('lake', 'assistance') }}

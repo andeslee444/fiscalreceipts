@@ -84,6 +84,39 @@ models:
         description: "Number of distinct filings in which this lobbyist appears."
       - name: revolving_door
         description: "True when covered_position is non-empty and not N/A — indicating disclosed prior executive or legislative branch service. Reflects the statutory LDA disclosure; no further inference."
+  - name: fct_feed_events
+    description: "Anomaly feed events for the /feed page. Four event types: yoy_swing (big YoY budget swings), zeroed_fy2026 (programs with FY2025 budget zeroed in FY2026), concentration_shift (HHI computed per program/year), new_entrant (families first appearing in FY2024+). Junk row pe_bli='9999999999' is filtered. Thresholds per recon §A."
+    columns:
+      - name: event_type
+        data_tests: [not_null]
+        description: "One of: yoy_swing, zeroed_fy2026, concentration_shift, new_entrant"
+      - name: headline_value
+        data_tests: [not_null]
+        description: "Primary numeric value; semantics vary by event_type (fy2026_total for yoy_swing/zeroed; HHI for concentration_shift; total_obligation for new_entrant)"
+      - name: comparison_value
+        data_tests: [not_null]
+        description: "Secondary numeric value for context (fy2025_total; 0; matched_dollars; first_fy as double)"
+      - name: units
+        data_tests: [not_null]
+        description: "Unit label: thousands_usd | hhi_dollars | dollars"
+  - name: fct_district_programs
+    description: "High-confidence dollar grain per (pop_district, pe_bli). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. 267 rows, 106 districts, 17 programs (per recon §B)."
+    columns:
+      - name: pop_district
+        data_tests: [not_null]
+      - name: pe_bli
+        data_tests: [not_null]
+      - name: total_obligation
+        description: "Sum of all transaction obligations for this (district, program) combination. Positive and negative values possible (de-obligations)."
+  - name: fct_family_obligations_by_year
+    description: "Total obligations per (family_key, fiscal_year) via entity_xwalk. entity_xwalk is UNIQUE on recipient_uei — no fan-out. Covers 94.2% of total award dollars. Expected ~365,457 rows (per recon §B)."
+    columns:
+      - name: family_key
+        data_tests: [not_null]
+      - name: fiscal_year
+        data_tests: [not_null]
+      - name: total_obligation
+        description: "Sum of obligation values (can be negative due to de-obligations)"
   - name: fct_state_per_capita
     description: "Cross-jurisdiction cost-per-capita comparable for CA and CT. Grain: (jurisdiction, comparable_category, fiscal_year). Only rows where BOTH CA and CT have spend for the same (comparable_category, fiscal_year) are included."
     columns:

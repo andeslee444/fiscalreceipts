@@ -11,7 +11,8 @@ CONTRACT_COLS = (
     "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
     "awarding_agency_name, awarding_sub_agency_name, naics_code, "
     "product_or_service_code, primary_place_of_performance_state_code, "
-    "prime_award_transaction_place_of_performance_cd_current, award_id_piid"
+    "prime_award_transaction_place_of_performance_cd_current, award_id_piid, "
+    "usaspending_permalink, contract_award_unique_key"
 )
 
 ENTITY_XWALK_COLS = (
@@ -71,18 +72,19 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
-        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001'),"
-        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null)"
+        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1'),"
+        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null)"
         f") t({CONTRACT_COLS})",
     )
     write_parquet(
         data_dir / "parquet/assistance/fy=2017",
         "select * from (values "
-        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND','MD-04')"
+        "('A1','2017-02-01','5000','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','MARYLAND','MD-04','https://www.usaspending.gov/award/ASST_NON_A1','ASUK1')"
         ") t(assistance_transaction_unique_key, action_date, federal_action_obligation, "
         "recipient_uei, recipient_name, recipient_parent_uei, recipient_parent_name, "
         "awarding_agency_name, awarding_sub_agency_name, primary_place_of_performance_state_name, "
-        "prime_award_transaction_place_of_performance_cd_current)",
+        "prime_award_transaction_place_of_performance_cd_current, "
+        "usaspending_permalink, assistance_award_unique_key)",
     )
     # entity_xwalk fixture — one row, all 8 columns
     entities = data_dir / "parquet/entities"
@@ -229,3 +231,29 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     assert con.sql(
         "select revolving_door from dim_lobbyists where name='JOHN SMITH'"
     ).fetchone()[0] is False
+    # Phase 5B-3 new mart assertions
+    # fct_feed_events: the fixture has no yoy_swing or new_entrant thresholds met
+    # (only 1 budget row at 280494 thousands, no |pct_change|>=50 since only 1 FY).
+    # The model must exist and be queryable; row count >= 0.
+    assert con.sql("select count(*) from fct_feed_events").fetchone()[0] >= 0
+    # fct_district_programs: the fixture contracts have CA-52 district + award HR001124C0001
+    # which matches the high-confidence jbook_award. Expect >= 1 row.
+    assert con.sql("select count(*) from fct_district_programs").fetchone()[0] >= 1
+    # uniqueness on (pop_district, pe_bli) — no duplicates allowed
+    assert con.sql(
+        "select count(*) from ("
+        "  select pop_district, pe_bli from fct_district_programs"
+        "  group by 1,2 having count(*) > 1"
+        ")"
+    ).fetchone()[0] == 0
+    # fct_family_obligations_by_year: UEI1 → ACME PARENT family; 3 transactions across fiscal years
+    assert con.sql("select count(*) from fct_family_obligations_by_year").fetchone()[0] >= 1
+    # stg_contracts / stg_assistance now carry usaspending_permalink + award_unique_key
+    assert con.sql(
+        "select usaspending_permalink from fct_award_transactions"
+        " where transaction_key='K1'"
+    ).fetchone()[0] == 'https://www.usaspending.gov/award/CONT_AWD_HR001124C0001'
+    assert con.sql(
+        "select award_unique_key from fct_award_transactions"
+        " where transaction_key='A1'"
+    ).fetchone()[0] == 'ASUK1'
