@@ -129,22 +129,18 @@ async function main() {
     // ── 3. Program with receipts mode ON ────────────────────────────────────
     {
       const page = await context.newPage();
+      // Set receipts-mode in localStorage before navigating so it loads ON
       await page.goto(`${BASE_URL}/program/${samplePbl}/`, {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: 30000,
       });
-      let toggle = await page.$('[data-testid="receipts-toggle"]').catch(() => null);
-      if (!toggle) {
-        try {
-          const loc = page.getByLabel(/receipts/i).first();
-          await loc.waitFor({ timeout: 2000 });
-          toggle = loc;
-        } catch { /* not found */ }
-      }
-      if (toggle) {
-        await toggle.click();
-        await page.waitForTimeout(500);
-      }
+      // Activate receipts mode via localStorage (works at any viewport width)
+      await page.evaluate(() => {
+        try { window.localStorage.setItem("receipts-mode", "1"); } catch { /* ignore */ }
+      });
+      // Reload to pick up the localStorage value
+      await page.reload({ waitUntil: "networkidle", timeout: 30000 });
+      await page.waitForTimeout(300);
       await capture(
         page,
         path.join(outDir, `program-receipts-${width}.png`),

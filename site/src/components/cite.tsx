@@ -168,18 +168,23 @@ export function Cite({ value, units, factId, xmlPath, className }: CiteProps) {
       aria-label={`${display} — citation tier pending`}
     >
       {display}
-      <span
-        className={[
-          "ml-0.5 text-muted-foreground",
-          receiptsOn ? "after:content-['uncited']" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        title="citation tier pending — see methodology"
-        aria-hidden="true"
-      >
-        ⁂{receiptsOn && <span className="ml-0.5 text-[10px]">uncited</span>}
-      </span>
+      {receiptsOn ? (
+        <span
+          className="ml-0.5 inline-flex items-baseline whitespace-nowrap rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"
+          title="citation tier pending — see methodology"
+          aria-hidden="true"
+        >
+          ⁂ uncited
+        </span>
+      ) : (
+        <span
+          className="ml-0.5 text-muted-foreground"
+          title="citation tier pending — see methodology"
+          aria-hidden="true"
+        >
+          ⁂
+        </span>
+      )}
     </span>
   );
 }

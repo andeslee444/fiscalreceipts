@@ -1,0 +1,99 @@
+"use client";
+
+/**
+ * MobileNav — collapsible hamburger menu for viewports below md breakpoint.
+ *
+ * Renders:
+ *   - A hamburger button (☰) that opens a full-width disclosure panel
+ *   - Nav links: Programs / Companies / Data / Methodology
+ *   - ReceiptsToggle inside the mobile menu
+ *
+ * Usage in layout.tsx:
+ *   <MobileNav /> inside <ReceiptsProvider>
+ */
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { ReceiptsToggle } from "@/components/receipts-toggle";
+
+const NAV_LINKS = [
+  { href: "/programs/", label: "Programs" },
+  { href: "/companies/", label: "Companies" },
+  { href: "/data/", label: "Data" },
+  { href: "/methodology/", label: "Methodology" },
+];
+
+export function MobileNav() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Hamburger trigger */}
+      <button
+        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={open}
+        aria-controls="mobile-nav-panel"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+      >
+        {open ? (
+          /* X icon */
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="4" y1="4" x2="16" y2="16" />
+            <line x1="16" y1="4" x2="4" y2="16" />
+          </svg>
+        ) : (
+          /* Hamburger icon */
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="6" x2="17" y2="6" />
+            <line x1="3" y1="10" x2="17" y2="10" />
+            <line x1="3" y1="14" x2="17" y2="14" />
+          </svg>
+        )}
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          id="mobile-nav-panel"
+          className="absolute left-0 top-14 w-full border-b border-border bg-background/98 backdrop-blur z-30 px-4 py-3 flex flex-col gap-3 shadow-md"
+          aria-label="Mobile navigation"
+        >
+          <nav className="flex flex-col gap-1" aria-label="Main navigation">
+            {NAV_LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="border-t border-border pt-2">
+            <ReceiptsToggle />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

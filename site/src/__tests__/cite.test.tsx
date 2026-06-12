@@ -250,13 +250,19 @@ describe("Cite three-state contract", () => {
       expect(container.textContent).not.toContain("#f456789f");
     });
 
-    it("State C shows 'uncited' label when receipts ON", () => {
+    it("State C shows a single 'uncited' chip when receipts ON", () => {
       const { container } = render(
         <ReceiptsContext.Provider value={{ receiptsOn: true }}>
           <Cite value={100} units="USD millions" />
         </ReceiptsContext.Provider>,
       );
+      // Single chip contains both ⁂ and 'uncited' text
       expect(container.textContent).toContain("uncited");
+      // Exactly one aria-hidden span (the chip) — not two
+      const chips = container.querySelectorAll('[aria-hidden="true"]');
+      expect(chips.length).toBe(1);
+      expect(chips[0].textContent).toContain("⁂");
+      expect(chips[0].textContent).toContain("uncited");
     });
   });
 });

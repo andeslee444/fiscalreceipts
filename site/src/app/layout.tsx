@@ -6,6 +6,7 @@ import "./globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { ReceiptsProvider, ReceiptsToggle } from "@/components/receipts-toggle";
 import { CommandPalette, SearchTriggerButton } from "@/components/search/command-palette";
+import { MobileNav } from "@/components/mobile-nav";
 import { websiteJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 // Read built_at from site_meta.json at build time
@@ -54,31 +55,58 @@ export default function RootLayout({
 
           {/* ── Site Header ── */}
           <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-            <div className="container mx-auto flex h-14 items-center px-4 gap-6">
-              <Link href="/" className="font-semibold text-foreground hover:text-primary">
+            <div className="container mx-auto flex h-14 items-center px-4 gap-4 min-w-0">
+              {/* Brand — always visible */}
+              <Link
+                href="/"
+                className="font-semibold text-foreground hover:text-primary shrink-0 truncate max-w-[9rem] sm:max-w-none"
+              >
                 {SITE_NAME}
               </Link>
 
-              <nav className="flex items-center gap-4 text-sm" aria-label="Main navigation">
-                <Link href="/programs/" className="text-muted-foreground hover:text-foreground transition-colors">
+              {/* Desktop nav — hidden below md */}
+              <nav
+                className="hidden md:flex items-center gap-4 text-sm"
+                aria-label="Main navigation"
+              >
+                <Link
+                  href="/programs/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
                   Programs
                 </Link>
-                <Link href="/companies/" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link
+                  href="/companies/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
                   Companies
                 </Link>
-                <Link href="/data/" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link
+                  href="/data/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
                   Data
                 </Link>
-                <Link href="/methodology/" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link
+                  href="/methodology/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
                   Methodology
                 </Link>
               </nav>
 
-              {/* Search trigger and receipts toggle */}
-              <div className="ml-auto flex items-center gap-2">
+              {/* Right-side controls */}
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {/* Search trigger — always visible */}
                 <SearchTriggerButton />
-                {/* Receipts toggle (Task 3) */}
-                <ReceiptsToggle />
+                {/* Receipts toggle — desktop only (also in mobile menu) */}
+                <span className="hidden md:flex">
+                  <ReceiptsToggle />
+                </span>
+                {/* Mobile hamburger — visible below md */}
+                <span className="relative flex md:hidden">
+                  <MobileNav />
+                </span>
               </div>
             </div>
           </header>
