@@ -99,7 +99,9 @@ function flattenGroups(groups: GroupedResults): FlatItem[] {
     url: r.url,
     label: r.title,
     labelHtml: r.titleHtml,
-    sub: r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
+    sub: r.kind === "alias"
+      ? "Alias"
+      : r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
     kind: r.kind,
   }));
 }
@@ -377,7 +379,13 @@ export function CommandPalette() {
   const t1Programs = tier1Items.filter((i) => i.kind === "program");
   const t1Companies = tier1Items.filter((i) => i.kind === "company" && !bestMatchIds.has(i.id));
   const t1Agencies = tier1Items.filter((i) => i.kind === "agency" && !bestMatchIds.has(i.id));
-  const t1Pages = tier1Items.filter((i) => i.kind === "page");
+  // Everything that isn't a program/company/agency renders under "Pages" —
+  // covers kinds "page", "static", "feed", "district" and "alias" emitted by
+  // export_site's search_quick.json (an exact-kind check here would silently
+  // drop those docs).
+  const t1Pages = tier1Items.filter(
+    (i) => i.kind !== "program" && i.kind !== "company" && i.kind !== "agency",
+  );
 
   const activeItemId = displayItems[activeIdx]
     ? optionId(activeIdx)

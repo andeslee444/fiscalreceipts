@@ -777,6 +777,25 @@ def cmd_influence(args) -> None:
     print(f"influence pull: mentions -> {mentions_path}")
 
 
+def cmd_dossiers(args) -> None:
+    """Phase 5B-3 dossier pipeline (Task 7a: research fetcher)."""
+    if args.dossiers_action == "fetch":
+        from govbudget.dossiers.research import fetch_research
+
+        summary = fetch_research(
+            config.DUCKDB_PATH,
+            snapshots_dir=config.RESEARCH_DIR / "snapshots",
+            aliases_csv=config.ROOT / "data-seeds" / "search_aliases.csv",
+            limit=args.limit,
+        )
+        print(
+            f"dossiers fetch: {summary['feeds_fetched']} feeds,"
+            f" {summary['items_seen']} items, {summary['matches']} matches,"
+            f" {summary['snapshots']} snapshots"
+            f" -> {config.RESEARCH_DIR / 'snapshots'}"
+        )
+
+
 def cmd_build(args) -> None:
     import os
 
@@ -995,6 +1014,19 @@ def main(argv=None) -> None:
         ),
     )
     inf_restamp.set_defaults(func=cmd_influence_restamp)
+
+    dos = sub.add_parser("dossiers", help="phase 5B-3 dossier research pipeline")
+    dos_sub = dos.add_subparsers(dest="dossiers_action", required=True)
+    dos_fetch = dos_sub.add_parser(
+        "fetch",
+        help="pull verified RSS feeds, match top-50 programs, snapshot matching"
+             " articles (robots-honoring, <=1 req/s/host)",
+    )
+    dos_fetch.add_argument(
+        "--limit", type=int, default=None,
+        help="max article snapshots to fetch (smoke runs); default: no cap",
+    )
+    dos_fetch.set_defaults(func=cmd_dossiers)
 
     args = p.parse_args(argv)
     args.func(args)

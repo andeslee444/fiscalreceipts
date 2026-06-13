@@ -122,6 +122,32 @@ cases:
     tier: quick
     note: "Typo: 'boeng' → boeing (1 missing char)"
 
+  # ── Alias cases (data-seeds/search_aliases.csv — Task 7a) ──────────────────
+  - query: "JASSM"
+    expect_url_top3: "/program/0603000D8Z/"
+    tier: quick
+    note: "Alias: JASSM → Joint Munitions Advanced Technology (term absent from program title; cited via LDA filing)"
+
+  - query: "Golden Dome"
+    expect_url_top3: "/program/0603892C/"
+    tier: quick
+    note: "Alias: Golden Dome → AEGIS BMD (J-book: 'SM-3 Block IIA is required for Golden Dome for America')"
+
+  - query: "Armed Overwatch"
+    expect_url_top3: "/program/1160403BB/"
+    tier: quick
+    note: "Alias: Armed Overwatch → SOCOM Aviation Systems (project inside the PE; term absent from title)"
+
+  - query: "Ghostrider"
+    expect_url_top3: "/program/2012C130J/"
+    tier: quick
+    note: "Alias: Ghostrider → AC/MC-130J (AC-130J Ghostrider nickname from line-item description)"
+
+  - query: "drones"
+    expect_url_top3: "/program/0608776D8Z/"
+    tier: quick
+    note: "Alias: drones → DIU Fielding (congressional add 'AI ISR Drones')"
+
   # ── Deep tier (pagefind narrative search) ──────────────────────────────────
   - query: "Perceptually-Enabled Task Guidance augmented reality"
     expect_url_top5: "/program/0601101E/"

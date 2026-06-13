@@ -1967,6 +1967,31 @@ def _write_all_sidecars(
             "url": f"/district/{pop_district}/",
         })
 
+    # Alias docs (Task 7a) — curated, cited nicknames/acronyms from
+    # data-seeds/search_aliases.csv. Emitted as standalone quick docs
+    # {kind:'alias', title: term, url: target_url}: the site's quick-search
+    # groups every non-program/company/agency kind under "Pages"
+    # (site/src/lib/search.ts), so no MiniSearch field-config change is
+    # needed — the alias term is the doc title, which is already indexed.
+    import csv as _csv
+
+    from govbudget.config import ROOT as _ROOT
+
+    aliases_csv = _ROOT / "data-seeds" / "search_aliases.csv"
+    if aliases_csv.exists():
+        with aliases_csv.open(newline="", encoding="utf-8") as _fh:
+            for _row in _csv.DictReader(_fh):
+                _term = (_row.get("term") or "").strip()
+                _target = (_row.get("target_url") or "").strip()
+                if not _term or not _target:
+                    continue
+                search_docs.append({
+                    "id": f"alias:{_term.lower().replace(' ', '-')}",
+                    "kind": "alias",
+                    "title": _term,
+                    "url": _target,
+                })
+
     _write_json(json_dir / "search_quick.json", {"docs": search_docs})
     n_files += 1
 

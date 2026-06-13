@@ -12,7 +12,18 @@
 
 import MiniSearch from "minisearch";
 
-export type SearchDocKind = "program" | "company" | "agency" | "page";
+// "static", "feed", "district" and "alias" are emitted by export_site's
+// search_quick.json; everything that isn't program/company/agency groups
+// under "pages" (see quickSearch below).
+export type SearchDocKind =
+  | "program"
+  | "company"
+  | "agency"
+  | "page"
+  | "static"
+  | "feed"
+  | "district"
+  | "alias";
 
 export interface SearchDoc {
   id: string;
