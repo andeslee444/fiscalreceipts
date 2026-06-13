@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import type { ProgramRow } from "@/lib/data";
+import type { HeroCategory, ProgramRow } from "@/lib/data";
+import { CategoryHero } from "@/components/hero";
 
 /**
  * ProgramHeader — title, org link, exhibit_family badge, fully_reconciled badge, pe_bli mono.
  * Server component.
+ *
+ * Top-50 dossier pages (category present in categories.json) additionally get
+ * a subtle CategoryHero background layer behind the header text (Task 8a);
+ * all other program pages are unchanged (no hero markup at all).
  */
 
 interface ProgramHeaderProps {
   program: ProgramRow;
+  /** Hero category for top-50 pages; null/undefined → no hero layer. */
+  category?: HeroCategory | null;
 }
 
 /** Human-friendly label for exhibit_family values. */
@@ -28,16 +35,21 @@ function exhibitFamilyLabel(family: string): string {
   }
 }
 
-export function ProgramHeader({ program }: ProgramHeaderProps) {
+export function ProgramHeader({ program, category }: ProgramHeaderProps) {
   const { title, org, exhibit_family, fully_reconciled, pe_bli } = program;
 
   return (
-    <div className="mb-6">
-      <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
+    <div className={category ? "relative mb-6 -mx-3 px-3 py-3" : "mb-6"}>
+      {/* Background hero layer — rendered FIRST so the header text paints on
+          top in DOM order (no z-index juggling); aria-hidden + pointer-events
+          none keep it purely decorative. */}
+      {category && <CategoryHero category={category} />}
+
+      <h1 className="relative text-2xl font-bold text-foreground leading-tight mb-2">
         {title}
       </h1>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="relative flex flex-wrap items-center gap-2 text-sm">
         {/* Org link */}
         <Link
           href={`/agency/${encodeURIComponent(org)}/`}

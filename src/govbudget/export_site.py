@@ -2082,6 +2082,12 @@ def _write_all_sidecars(
     )
     n_files += 1
 
+    # ------------------------------------------------------------------ #
+    # 16. categories.json (Task 8a — top-50 hero categories)              #
+    # ------------------------------------------------------------------ #
+    _emit_categories_sidecar(json_dir=json_dir)
+    n_files += 1
+
     return n_files
 
 
@@ -3047,6 +3053,42 @@ def _emit_gao_overlays_sidecar(
         "agencies": agencies,
         "agency_code_by_org": agency_code_by_org,
     })
+
+
+def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = None) -> None:
+    """Emit json/categories.json (Task 8a — category hero animations).
+
+    A flat {pe_bli: category} mapping copied from the committed taxonomy seed
+    data-seeds/program_categories.csv (authored in Task 7a; gated by
+    dossier_gate's categories check). Membership in this mapping IS the
+    site's top-50 test: program pages render a category hero background only
+    for pe_blis present here ('default' rows get the static flow motif, no
+    animation). Rationale/source_ref columns stay in the seed — the site only
+    needs the category.
+
+    Categories outside the gate enum are skipped defensively (the dossier
+    gate is the loud enforcement point; the sidecar must never ship an
+    unknown motif key to the site).
+    """
+    import csv as _csv
+
+    from govbudget.dossiers.gate import CATEGORY_ENUM
+
+    if categories_csv is None:
+        from govbudget.config import ROOT as _ROOT
+
+        categories_csv = _ROOT / "data-seeds" / "program_categories.csv"
+
+    mapping: dict[str, str] = {}
+    if categories_csv.exists():
+        with categories_csv.open(newline="", encoding="utf-8") as fh:
+            for row in _csv.DictReader(fh):
+                pe_bli = (row.get("pe_bli") or "").strip()
+                category = (row.get("category") or "").strip()
+                if pe_bli and category in CATEGORY_ENUM:
+                    mapping[pe_bli] = category
+
+    _write_json(json_dir / "categories.json", mapping)
 
 
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:

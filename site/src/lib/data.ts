@@ -8,8 +8,15 @@ import "server-only";
  * All exports are cached via module-level memo (loaded once per build process).
  */
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+
+import {
+  parseDossier,
+  validateDossierCitations,
+  type DossierFile,
+  type SnapshotMeta,
+} from "./dossier";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -725,6 +732,110 @@ export function getGaoOverlayForOrg(
   if (!overlay) return null;
   if (overlay.high_risk_areas.length === 0 && !overlay.improper) return null;
   return { agencyCode, overlay };
+}
+
+// ── categories.json (Task 8a — top-50 hero categories) ───────────────────────
+
+export type HeroCategory =
+  | "drones"
+  | "hypersonics"
+  | "space"
+  | "shipbuilding"
+  | "cyber"
+  | "default";
+
+let _categories: Record<string, HeroCategory> | null | undefined;
+
+/**
+ * pe_bli → category mapping for the top-50 dossier programs (from
+ * data-seeds/program_categories.csv via export-site). Membership here IS the
+ * top-50 test: only these program pages get a hero background.
+ * Null when the sidecar has not been exported (no heroes — graceful).
+ */
+export function getCategories(): Record<string, HeroCategory> | null {
+  if (_categories !== undefined) return _categories;
+  getSiteMeta();
+  try {
+    _categories = readJson<Record<string, HeroCategory>>("categories.json");
+  } catch {
+    _categories = null;
+  }
+  return _categories;
+}
+
+// ── dossiers/{pe_bli}.json (Task 8a — gated dossiers, cited-or-absent) ───────
+
+const _dossiers = new Map<string, DossierFile | null>();
+
+/**
+ * Load + re-verify a GATED dossier for a program page.
+ *
+ * - File absent (the normal case until the live batch lands): returns null —
+ *   the page renders no dossier section (zero placeholder text).
+ * - File present but structurally invalid OR citing a fact_id that does not
+ *   resolve in citations.json OR a url that is not a cached research
+ *   snapshot: THROWS a loud build error. The Python dossier gate should have
+ *   rejected it; the site must not render ungated content silently.
+ */
+export function getDossier(peBli: string): DossierFile | null {
+  if (_dossiers.has(peBli)) return _dossiers.get(peBli)!;
+  getSiteMeta();
+  const full = join(jsonDir(), "dossiers", `${peBli}.json`);
+  if (!existsSync(full)) {
+    _dossiers.set(peBli, null);
+    return null;
+  }
+  // NO try/catch around parse/validate — malformed or ungated dossiers must
+  // fail the build loudly, not degrade to "no dossier".
+  const raw = JSON.parse(readFileSync(full, "utf8")) as unknown;
+  const file = parseDossier(raw, peBli);
+  validateDossierCitations(
+    file,
+    new Set(Object.keys(getCitations())),
+    new Set(Object.keys(getSnapshotMeta())),
+  );
+  _dossiers.set(peBli, file);
+  return file;
+}
+
+// ── research snapshots index (url → {title, retrieved_at}) ───────────────────
+
+let _snapshotMeta: Record<string, SnapshotMeta> | undefined;
+
+/**
+ * url → snapshot metadata from data/research/snapshots/index.json (committed
+ * research cache). Used to validate dossier url citations and to render the
+ * url-chip tooltip ("title — retrieved YYYY-MM-DD"). Empty when the index
+ * is absent (then any url-citing dossier fails validation, by design).
+ */
+export function getSnapshotMeta(): Record<string, SnapshotMeta> {
+  if (_snapshotMeta !== undefined) return _snapshotMeta;
+  const full = join(
+    process.cwd(),
+    "..",
+    "data",
+    "research",
+    "snapshots",
+    "index.json",
+  );
+  const meta: Record<string, SnapshotMeta> = {};
+  try {
+    const index = JSON.parse(readFileSync(full, "utf8")) as {
+      snapshots?: { url?: string; title?: string; retrieved_at?: string }[];
+    };
+    for (const snap of index.snapshots ?? []) {
+      if (snap.url) {
+        meta[snap.url] = {
+          retrieved_at: snap.retrieved_at ?? null,
+          title: snap.title ?? null,
+        };
+      }
+    }
+  } catch {
+    // index absent — empty map
+  }
+  _snapshotMeta = meta;
+  return _snapshotMeta;
 }
 
 // ── filings_index.json ────────────────────────────────────────────────────────

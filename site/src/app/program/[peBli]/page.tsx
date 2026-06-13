@@ -6,9 +6,13 @@ import {
   getProgramDetails,
   getEntityTopByFamilyKey,
   getGaoOverlayForOrg,
+  getCategories,
+  getDossier,
+  getSnapshotMeta,
   collectCitationsWithInputs,
 } from "@/lib/data";
 import type { JbookPdfCitation } from "@/lib/data";
+import { dossierFactIds } from "@/lib/dossier";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
@@ -18,6 +22,7 @@ import {
   getFlowData,
 } from "@/components/follow-the-dollar";
 import { ProgramHeader } from "@/components/program-header";
+import { ProgramDossier } from "@/components/program-dossier";
 import { ProgramFigures } from "@/components/program-figures";
 import { ProgramBudgetLines } from "@/components/program-budget-lines";
 import { ProgramNarratives } from "@/components/program-narratives";
@@ -175,6 +180,16 @@ export default async function ProgramPage({
   // agency oversight section when the program's org has overlays.
   const gao = getGaoOverlayForOrg(program.org);
 
+  // ── Dossier + category hero (Task 8a — top-50 pages only) ─────────────────
+  // getDossier returns null when no dossier file exists (cited-or-absent:
+  // zero placeholder text) and THROWS on ungated content (loud build error).
+  // Its fact_ids join the page slice so fact chips open the citation panel.
+  const dossier = getDossier(peBli);
+  if (dossier) {
+    pageFactIds.push(...dossierFactIds(dossier));
+  }
+  const category = getCategories()?.[peBli] ?? null;
+
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
   return (
@@ -189,8 +204,8 @@ export default async function ProgramPage({
         ]}
       />
 
-      {/* Header */}
-      <ProgramHeader program={program} />
+      {/* Header — top-50 pages get a category hero background (Task 8a) */}
+      <ProgramHeader program={program} category={category} />
 
       {/* GAO oversight badge — agency-level risk context (Task 6b) */}
       {gao && (
@@ -210,6 +225,12 @@ export default async function ProgramPage({
 
       {/* Budget figures + sparkline */}
       <ProgramFigures program={program} />
+
+      {/* Program dossier — GATED dossiers only, cited-or-absent (Task 8a).
+          No dossier file → no section, zero placeholder text. */}
+      {dossier && (
+        <ProgramDossier dossier={dossier} snapshotMeta={getSnapshotMeta()} />
+      )}
 
       {/* Budget line items (workbook-cited) */}
       <ProgramBudgetLines budgetLines={details.budget_lines} />
