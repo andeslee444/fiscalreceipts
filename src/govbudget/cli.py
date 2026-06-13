@@ -778,7 +778,7 @@ def cmd_influence(args) -> None:
 
 
 def cmd_dossiers(args) -> None:
-    """Phase 5B-3 dossier pipeline (Task 7a: research fetcher)."""
+    """Phase 5B-3 dossier pipeline (7a: fetch; 7b: submit/collect/gate)."""
     if args.dossiers_action == "fetch":
         from govbudget.dossiers.research import fetch_research
 
@@ -794,6 +794,60 @@ def cmd_dossiers(args) -> None:
             f" {summary['snapshots']} snapshots"
             f" -> {config.RESEARCH_DIR / 'snapshots'}"
         )
+    elif args.dossiers_action == "submit":
+        from govbudget.dossiers.batch import submit
+
+        summary = submit(
+            duckdb_path=config.DUCKDB_PATH,
+            site_json_dir=config.SITE_DIR / "json",
+            snapshots_dir=config.RESEARCH_DIR / "snapshots",
+            categories_csv=config.ROOT / "data-seeds" / "program_categories.csv",
+            raw_dir=config.RESEARCH_DIR / "dossiers-raw",
+            cost_cap=args.cost_cap,
+            limit=args.limit,
+        )
+        print(
+            f"dossiers submit: batch {summary['batch_id']}"
+            f" ({summary['requests']} requests,"
+            f" est ${summary['estimated_usd']:.2f}) — run `dossiers collect`"
+            " once the batch ends"
+        )
+    elif args.dossiers_action == "collect":
+        from govbudget.dossiers.batch import collect
+
+        summary = collect(
+            raw_dir=config.RESEARCH_DIR / "dossiers-raw",
+            out_dir=config.SITE_DIR / "json" / "dossiers",
+            poll_interval=args.poll_interval,
+        )
+        if not summary["ok"]:
+            sys.exit(1)
+    elif args.dossiers_action == "gate":
+        from govbudget.dossiers.gate import (
+            dim_programs_pe_set,
+            dossier_gate,
+            pre_batch_check,
+            print_gate,
+        )
+        from govbudget.dossiers.research import top50
+
+        programs = top50(config.DUCKDB_PATH)
+        dim_pe = dim_programs_pe_set(config.DUCKDB_PATH)
+        if args.pre:
+            res = pre_batch_check([p[0] for p in programs], dim_pe)
+            status = "PASS" if res["ok"] else f"FAIL (missing: {res['missing']})"
+            print(f"dossier gate --pre: {res['count']} pe_blis ∈ dim_programs: {status}")
+            sys.exit(0 if res["ok"] else 1)
+        res = dossier_gate(
+            config.SITE_DIR / "json" / "dossiers",
+            config.SITE_DIR / "json" / "citations.json",
+            config.RESEARCH_DIR / "snapshots" / "index.json",
+            config.ROOT / "data-seeds" / "program_categories.csv",
+            programs,
+            dim_programs_pe=dim_pe,
+        )
+        print_gate(res)
+        sys.exit(0 if res["ok"] else 1)
 
 
 def cmd_build(args) -> None:
@@ -1027,6 +1081,41 @@ def main(argv=None) -> None:
         help="max article snapshots to fetch (smoke runs); default: no cap",
     )
     dos_fetch.set_defaults(func=cmd_dossiers)
+    dos_submit = dos_sub.add_parser(
+        "submit",
+        help="estimate (Batch rates, count_tokens), cost-gate, and create the"
+             " top-50 dossier batch; batch_id -> data/research/dossiers-raw/",
+    )
+    dos_submit.add_argument(
+        "--limit", type=int, default=50,
+        help="number of programs to submit (smoke runs use 2); default 50",
+    )
+    dos_submit.add_argument(
+        "--cost-cap", type=float, default=50.0,
+        help="abort without creating a batch when the estimate exceeds this"
+             " (USD); raising it above $50 is the operator confirmation",
+    )
+    dos_submit.set_defaults(func=cmd_dossiers)
+    dos_collect = dos_sub.add_parser(
+        "collect",
+        help="poll the submitted batch, archive raw results (committed),"
+             " write parsed dossiers to data/site/json/dossiers/",
+    )
+    dos_collect.add_argument(
+        "--poll-interval", type=float, default=60.0,
+        help="seconds between batch status polls; default 60",
+    )
+    dos_collect.set_defaults(func=cmd_dossiers)
+    dos_gate = dos_sub.add_parser(
+        "gate",
+        help="cited-or-absent dossier gate (zero unresolvable citations,"
+             " >=80%% warehouse-cited corpus-wide, categories cover top-50)",
+    )
+    dos_gate.add_argument(
+        "--pre", action="store_true",
+        help="run only the pre-batch assertion (top-50 pe_blis ∈ dim_programs)",
+    )
+    dos_gate.set_defaults(func=cmd_dossiers)
 
     args = p.parse_args(argv)
     args.func(args)
