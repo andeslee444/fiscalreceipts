@@ -25,6 +25,10 @@ interface AgencyRow {
 interface DistrictIndexRow {
   pop_district: string;
 }
+interface FilingIndexRow {
+  filing_uuid: string;
+  has_mentions: boolean;
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE_URL.replace(/\/$/, "");
@@ -120,6 +124,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // sidecars not yet generated
   }
 
+  // ── Filing pages ──────────────────────────────────────────────────────────
+  // Zero-mention filings are noindex (Task 6a policy) — only the index page
+  // and filings WITH program mentions belong in the sitemap.
+  let filingPages: MetadataRoute.Sitemap = [];
+  try {
+    const filingsIndex = readJson<{ filings: FilingIndexRow[] }>(
+      "filings_index.json",
+    );
+    filingPages = [
+      {
+        url: `${base}/filings/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      },
+      ...filingsIndex.filings
+        .filter((f) => f.has_mentions)
+        .map((f) => ({
+          url: `${base}/filing/${f.filing_uuid}/`,
+          lastModified: now,
+          changeFrequency: "yearly" as const,
+          priority: 0.4,
+        })),
+    ];
+  } catch {
+    // sidecars not yet generated
+  }
+
   return [
     ...staticPages,
     ...programPages,
@@ -127,5 +159,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...agencyPages,
     ...feedPages,
     ...districtPages,
+    ...filingPages,
   ];
 }

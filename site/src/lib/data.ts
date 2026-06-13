@@ -626,6 +626,86 @@ export function getDistrictDetail(popDistrict: string): DistrictDetail {
   return detail;
 }
 
+// ── filings_index.json ────────────────────────────────────────────────────────
+
+export interface FilingIndexRow {
+  client_name: string | null;
+  filing_type: string | null;
+  filing_uuid: string;
+  filing_year: string | null;
+  /** True when the filing mentions ≥1 tracked program — drives noindex policy. */
+  has_mentions: boolean;
+  mention_count: number;
+  registrant_name: string | null;
+}
+
+export interface FilingsIndex {
+  filings: FilingIndexRow[];
+  total: number;
+}
+
+let _filingsIndex: FilingsIndex | null = null;
+
+export function getFilingsIndex(): FilingsIndex {
+  if (_filingsIndex) return _filingsIndex;
+  getSiteMeta();
+  _filingsIndex = readJson<FilingsIndex>("filings_index.json");
+  return _filingsIndex;
+}
+
+// ── filings/{uuid}.json ───────────────────────────────────────────────────────
+
+export interface FilingHeader {
+  client_name: string | null;
+  /** Non-null IFF expenses_usd is non-null (state A or "not reported"). */
+  expenses_fact_id: string | null;
+  expenses_usd: number | null;
+  filing_period: string | null;
+  filing_type: string | null;
+  filing_uuid: string;
+  filing_year: string | null;
+  /** Non-null IFF income_usd is non-null (state A or "not reported"). */
+  income_fact_id: string | null;
+  income_usd: number | null;
+  registrant_name: string | null;
+  /** LDA JSON API URL — humanLdaUrl() derives the human filing page. */
+  url: string;
+}
+
+export interface FilingActivity {
+  description: string | null;
+  issue_code: string | null;
+  issue_display: string | null;
+}
+
+export interface FilingLobbyist {
+  /** Non-empty → revolving-door badge (prior covered government position). */
+  covered_position: string | null;
+  name: string;
+}
+
+export interface FilingMention {
+  description_snippet: string | null;
+  matched_term: string | null;
+  pe_bli: string;
+  program_title: string | null;
+  /** Null when pe_bli has no program page (plain-text mention). */
+  program_url: string | null;
+}
+
+export interface FilingDetail {
+  activities: FilingActivity[];
+  filing: FilingHeader;
+  lobbyists: FilingLobbyist[];
+  mentions: FilingMention[];
+}
+
+export function getFilingDetail(uuid: string): FilingDetail {
+  getSiteMeta();
+  // No memo map: 4,258 filings are each read exactly once during SSG.
+  return readJson<FilingDetail>(`filings/${uuid}.json`);
+}
+
 // ── Type guards ───────────────────────────────────────────────────────────────
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {

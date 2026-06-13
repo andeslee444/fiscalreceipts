@@ -545,3 +545,63 @@ class TestFeedDerivedCitationKey:
             "derived|feed|concentration_shift|X|2024|hhi".encode()
         ).hexdigest()[:16]
         assert fid == expected
+
+
+class TestFeedFiguresCited:
+    """Regression: every dollar/HHI feed figure must be citable (live-schema fix).
+
+    fct_feed_events has NO hhi/matched_dollars columns — concentration values
+    live in headline_value/comparison_value.  The derived builder must read
+    those (a naive select threw and silently dropped every feed citation,
+    leaving /feed state-C for a dataset off the uncited ledger).  new_entrant
+    dollar figures get their own derived rows.
+    """
+
+    def _derived_rows(self, tmp_path):
+        from govbudget.export_site import _build_derived_citation_rows
+
+        db_path = _make_duckdb_with_feed(tmp_path)
+        return _build_derived_citation_rows(
+            duckdb_path=db_path, bl_rows=[], citation_rows=[]
+        )
+
+    def test_concentration_rows_emitted_from_live_schema(self, tmp_path):
+        rows = self._derived_rows(tmp_path)
+        fids = {r[0] for r in rows}
+        # fixture: ('concentration_shift', '0601101E', …, 5000.0, 3000000.0, …, 2024, …)
+        hhi_fid = fact_id_derived("feed", "concentration_shift|0601101E|2024", "hhi")
+        dollars_fid = fact_id_derived(
+            "feed", "concentration_shift|0601101E|2024", "matched_dollars"
+        )
+        assert hhi_fid in fids
+        assert dollars_fid in fids
+        hhi_row = next(r for r in rows if r[0] == hhi_fid)
+        assert hhi_row[23] == "5000.000"  # recorded_value = headline_value
+
+    def test_new_entrant_rows_emitted(self, tmp_path):
+        rows = self._derived_rows(tmp_path)
+        ne_fid = fact_id_derived("feed", "new_entrant|ACME LLC", "total_obligation")
+        ne_row = next((r for r in rows if r[0] == ne_fid), None)
+        assert ne_row is not None
+        assert ne_row[2] == "USD"
+        assert ne_row[23] == "2000000.000"  # recorded_value = headline_value
+        # Recompute-safe shape: formula non-empty, not a budget_lines sum
+        assert ne_row[20]
+        assert not ne_row[20].startswith("sum(budget_lines")
+
+    def test_new_entrant_figure_fact_id_wired(self, tmp_path):
+        db_path = _make_duckdb_with_feed(tmp_path)
+        json_dir = tmp_path / "json"
+        json_dir.mkdir()
+        ne_fid = fact_id_derived("feed", "new_entrant|ACME LLC", "total_obligation")
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_feed_sidecar(
+                json_dir=json_dir, con=con, prog_titles={},
+                cited_fact_ids={ne_fid},
+            )
+        finally:
+            con.close()
+        data = json.loads((json_dir / "feed.json").read_text())
+        new_e = [c for c in data["cards"] if c["event_type"] == "new_entrant"]
+        assert new_e[0]["figure_fact_id"] == ne_fid

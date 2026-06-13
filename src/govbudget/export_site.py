@@ -135,7 +135,10 @@ _MART_NAMES = [
 # Citation tiers — datasets that have a citation kind in this export
 # (derived rows cover fct_budget_trajectory, dim_programs, fct_program_concentration,
 #  fct_improper_exposure, fct_state_per_capita, dim_entities, fct_influence;
-#  usaspending rows cover fct_family_obligations_by_year, fct_district_programs)
+#  usaspending rows cover fct_family_obligations_by_year, fct_district_programs;
+#  lda_filings is the influence-stage parquet behind the /filing sidecars —
+#  filing income/expenses amounts cite the filing-level kind='lda_filing'
+#  rows minted by _build_filing_lda_citation_rows)
 _CITED_DATASETS = {
     "jbook_details",
     "budget_lines",
@@ -149,7 +152,30 @@ _CITED_DATASETS = {
     "fct_influence",
     "fct_family_obligations_by_year",
     "fct_district_programs",
+    "lda_filings",
 }
+
+
+def _stage_parquet_path(duckdb_path, stage: str, filename: str):
+    """Resolve a staged parquet (influence/oversight) next to the DuckDB file.
+
+    Layouts probed in order:
+      1. {duckdb_dir}/parquet/{stage}/{filename}            (test fixtures)
+      2. {duckdb_dir}/../parquet/{stage}/{filename}         (live: data/duckdb + data/parquet)
+      3. {duckdb_dir}/../data/parquet/{stage}/{filename}    (legacy fallback)
+
+    Returns the first existing Path, or None.
+    """
+    base = Path(duckdb_path).parent
+    candidates = [
+        base / "parquet" / stage / filename,
+        base.parent / "parquet" / stage / filename,
+        base.parent / "data" / "parquet" / stage / filename,
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -1003,11 +1029,10 @@ def _build_derived_citation_rows(
 
         # Probe oversight parquet for paymentaccuracy source URLs
         oversight_urls: dict[str, str] = {}
-        oversight_pq = duckdb_path.parent / "parquet" / "oversight" / "improper_payments.parquet"
-        if not oversight_pq.exists():
-            # Try alternative location
-            oversight_pq = duckdb_path.parent.parent / "data" / "parquet" / "oversight" / "improper_payments.parquet"
-        if oversight_pq.exists():
+        oversight_pq = _stage_parquet_path(
+            duckdb_path, "oversight", "improper_payments.parquet"
+        )
+        if oversight_pq is not None:
             try:
                 url_rows = _duckdb.sql(
                     f"select agency_code, source_url from read_parquet('{oversight_pq}')"
@@ -1157,10 +1182,10 @@ def _build_derived_citation_rows(
 
         # Probe lda_filings parquet for filing API URLs grouped by family_key + filing_year
         lda_urls_index: dict[tuple, list[str]] = {}
-        lda_filings_pq = duckdb_path.parent / "parquet" / "influence" / "lda_filings.parquet"
-        if not lda_filings_pq.exists():
-            lda_filings_pq = duckdb_path.parent.parent / "data" / "parquet" / "influence" / "lda_filings.parquet"
-        if lda_filings_pq.exists():
+        lda_filings_pq = _stage_parquet_path(
+            duckdb_path, "influence", "lda_filings.parquet"
+        )
+        if lda_filings_pq is not None:
             try:
                 # Check if family_key column exists
                 cols_check = _duckdb.sql(
@@ -1207,9 +1232,14 @@ def _build_derived_citation_rows(
         # new_entrant has no figure citation (first_fy is a year label, not a dollar amount).
         # For concentration_shift: emit a per-pe_bli-year derived row for the HHI figure.
         # The mart uses (pe_bli, fiscal_year) tuples; the citation key mirrors that.
+        # Live mart columns: headline_value carries the HHI, comparison_value
+        # carries the matched dollars (there are NO hhi/matched_dollars columns
+        # — a naive select against them throws and silently drops every feed
+        # citation, leaving the /feed page in state C for a dataset that is
+        # off the uncited ledger).
         try:
             feed_conc_rows = con.execute(
-                "select pe_bli, fiscal_year, hhi, matched_dollars"
+                "select pe_bli, fiscal_year, headline_value, comparison_value"
                 " from fct_feed_events"
                 " where event_type = 'concentration_shift'"
             ).fetchall()
@@ -1241,6 +1271,38 @@ def _build_derived_citation_rows(
                     f"{fe_dollars:.3f}",
                     built_at,
                 ))
+
+        # new_entrant total dollars — surface='feed', key='new_entrant|{family_key}',
+        # metric='total_obligation'.  Without this row the /feed card renders a
+        # state-C dollar figure for a dataset that is off the uncited ledger.
+        try:
+            feed_ne_rows = con.execute(
+                "select family_key, headline_value, comparison_value"
+                " from fct_feed_events"
+                " where event_type = 'new_entrant'"
+            ).fetchall()
+        except Exception:
+            feed_ne_rows = []
+
+        for ne_family, ne_total, ne_first_fy in feed_ne_rows:
+            if ne_family is None or ne_total is None:
+                continue
+            fid_ne = fact_id_derived("feed", f"new_entrant|{ne_family}", "total_obligation")
+            first_fy_str = str(int(ne_first_fy)) if ne_first_fy is not None else "?"
+            rows.append(_null_derived_row(
+                fid_ne, "derived", "USD",
+                f"sum(fct_award_transactions.obligation) across family UEIs"
+                f" via entity_xwalk (new entrant: first award FY{first_fy_str},"
+                f" $1M floor)",
+                "[]",
+                f"{ne_total:.3f}",
+                built_at,
+                query_body=(
+                    "select sum(t.obligation) from fct_award_transactions t"
+                    " join entity_xwalk x on t.recipient_uei=x.recipient_uei"
+                    f" where x.family_key='{ne_family}'"
+                ),
+            ))
 
     finally:
         con.close()
@@ -1868,6 +1930,7 @@ def _write_all_sidecars(
         {"id": "s:about", "kind": "static", "title": "About", "url": "/about/"},
         {"id": "s:feed", "kind": "static", "title": "Anomaly Feed", "url": "/feed/"},
         {"id": "s:district", "kind": "static", "title": "Congressional Districts", "url": "/district/"},
+        {"id": "s:filings", "kind": "static", "title": "Lobbying Filings", "url": "/filings/"},
     ]
     search_docs.extend(static_pages)
 
@@ -1970,6 +2033,18 @@ def _write_all_sidecars(
         cited_fact_ids=_cited_fact_ids,
     )
     n_files += n_dist
+
+    # ------------------------------------------------------------------ #
+    # 14. filings/{uuid}.json + filings_index.json (Task 6a)             #
+    # ------------------------------------------------------------------ #
+    n_filings = _emit_filing_sidecars(
+        json_dir=json_dir,
+        duckdb_path=duckdb_path,
+        lob_rows=lob_rows,
+        prog_titles=prog_titles,
+        cited_fact_ids=_cited_fact_ids,
+    )
+    n_files += n_filings
 
     return n_files
 
@@ -2167,16 +2242,12 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
     Covers the 4,258 LDA filings so /filing pages render state A for amounts.
     """
     import duckdb as _duckdb
-    from pathlib import Path as _Path
 
     rows: list[tuple] = []
 
-    # Find the lda_filings parquet
-    duckdb_path = _Path(duckdb_path)
-    lda_pq = duckdb_path.parent / "parquet" / "influence" / "lda_filings.parquet"
-    if not lda_pq.exists():
-        lda_pq = duckdb_path.parent.parent / "data" / "parquet" / "influence" / "lda_filings.parquet"
-    if not lda_pq.exists():
+    # Find the lda_filings parquet (test + live layouts)
+    lda_pq = _stage_parquet_path(duckdb_path, "influence", "lda_filings.parquet")
+    if lda_pq is None:
         return rows
 
     try:
@@ -2447,7 +2518,14 @@ def _emit_feed_sidecar(
             headline_text = f"{fk_display} new defense contractor (first award FY{fy_str}, {_fmt_dollars(headline_value)} total)"
             figure_value = headline_value  # total_obligation
             figure_units = "dollars"
-            figure_fact_id = None  # no citation for year label; total_obl too broad
+            # Cited via the feed new_entrant derived row (total family
+            # obligations) — the figure is a dollar amount and must not render
+            # state C (fct_feed_events is off the uncited ledger).
+            figure_fact_id = None
+            if family_key:
+                fid_cand = fact_id_derived("feed", f"new_entrant|{family_key}", "total_obligation")
+                if fid_cand in cited_fact_ids:
+                    figure_fact_id = fid_cand
 
         else:
             headline_text = f"{event_type}: {pe_bli or family_key}"
@@ -2612,6 +2690,217 @@ def _emit_district_sidecars(
         "total_districts": len(index_records),
     }
     _write_json(dist_dir / "index.json", index_obj)
+    n_written += 1
+
+    return n_written
+
+
+def _parse_usd(raw) -> float | None:
+    """Parse an LDA amount varchar ('50000', '', None) to float, else None.
+
+    Mirrors the truthy-string condition used by _build_filing_lda_citation_rows
+    so a filing amount renders on-site IFF its citation row was emitted.
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _emit_filing_sidecars(
+    *,
+    json_dir: Path,
+    duckdb_path,
+    lob_rows: list,
+    prog_titles: dict,
+    cited_fact_ids: set,
+) -> int:
+    """Emit filings/{uuid}.json (4,258) + filings_index.json (Task 6a).
+
+    Per-filing file:
+      {filing: {filing_uuid, url, client_name, registrant_name, filing_year,
+                filing_period, filing_type, income_usd, expenses_usd,
+                income_fact_id, expenses_fact_id},
+       activities: [{issue_code, issue_display, description}],
+       lobbyists:  [{name, covered_position}],
+       mentions:   [{pe_bli, program_title, matched_term, description_snippet,
+                     program_url}]}
+
+    Index file: {filings: [{filing_uuid, client_name, registrant_name,
+                            filing_year, filing_type, has_mentions,
+                            mention_count}], total}
+
+    Amount invariant (binding for the /filing page Cite contract): income_usd /
+    expenses_usd are non-null IFF the corresponding fact_id_lda_filing row is
+    in the citation set — the page renders state A for non-null amounts and a
+    plain "not reported" (no data-amount span) for nulls.
+
+    mentions.program_url links only when pe_bli has a program page
+    (pe_bli in dim_programs); otherwise null (plain-text mention).
+
+    Returns number of files written (0 when the lda parquets are absent).
+    """
+    import duckdb as _duckdb
+
+    lda_pq = _stage_parquet_path(duckdb_path, "influence", "lda_filings.parquet")
+    if lda_pq is None:
+        return 0
+    act_pq = _stage_parquet_path(duckdb_path, "influence", "lda_activities.parquet")
+    lob_pq = _stage_parquet_path(duckdb_path, "influence", "lda_lobbyists.parquet")
+
+    try:
+        filing_rows = _duckdb.sql(
+            f"select filing_uuid, url, client_name, registrant_name,"
+            f" filing_year, filing_period, filing_type, income_usd, expenses_usd"
+            f" from read_parquet('{lda_pq}')"
+        ).fetchall()
+    except Exception:
+        return 0
+
+    # Activities per filing_uuid
+    activities_by_uuid: dict[str, list] = {}
+    if act_pq is not None:
+        try:
+            for fu, issue_code, issue_display, description in _duckdb.sql(
+                f"select filing_uuid, issue_code, issue_display, description"
+                f" from read_parquet('{act_pq}')"
+            ).fetchall():
+                if not fu:
+                    continue
+                activities_by_uuid.setdefault(fu, []).append({
+                    "description": description,
+                    "issue_code": issue_code,
+                    "issue_display": issue_display,
+                })
+        except Exception:
+            pass
+
+    # Lobbyists per filing_uuid (exact-duplicate rows collapsed, order kept)
+    lobbyists_by_uuid: dict[str, list] = {}
+    if lob_pq is not None:
+        try:
+            seen_lobbyists: set[tuple] = set()
+            for fu, name, covered_position in _duckdb.sql(
+                f"select filing_uuid, name, covered_position"
+                f" from read_parquet('{lob_pq}')"
+            ).fetchall():
+                if not fu or not name:
+                    continue
+                key = (fu, name, covered_position or "")
+                if key in seen_lobbyists:
+                    continue
+                seen_lobbyists.add(key)
+                lobbyists_by_uuid.setdefault(fu, []).append({
+                    "covered_position": covered_position,
+                    "name": name,
+                })
+        except Exception:
+            pass
+
+    # Mentions per filing_uuid from the already-fetched fct_program_lobbying rows.
+    # lob_rows cols: (filing_uuid, pe_bli, program_title, matched_term,
+    #                 description_snippet, filing_url, client_name, family_key,
+    #                 filing_year)
+    mentions_by_uuid: dict[str, list] = {}
+    for r in lob_rows:
+        (filing_uuid, pe_bli, program_title, matched_term,
+         description_snippet, _filing_url, _client_name, _family_key,
+         _filing_year) = r
+        if not filing_uuid or not pe_bli:
+            continue
+        mentions_by_uuid.setdefault(filing_uuid, []).append({
+            "description_snippet": description_snippet,
+            "matched_term": matched_term,
+            "pe_bli": pe_bli,
+            "program_title": prog_titles.get(pe_bli, program_title),
+            "program_url": (
+                f"/program/{pe_bli}/" if pe_bli in prog_titles else None
+            ),
+        })
+
+    filings_dir = json_dir / "filings"
+    filings_dir.mkdir(exist_ok=True)
+
+    n_written = 0
+    index_rows: list[dict] = []
+
+    for (filing_uuid, url, client_name, registrant_name, filing_year,
+         filing_period, filing_type, income_raw, expenses_raw) in filing_rows:
+        if not filing_uuid:
+            continue
+
+        income_usd = _parse_usd(income_raw)
+        expenses_usd = _parse_usd(expenses_raw)
+
+        income_fid = fact_id_lda_filing(filing_uuid, "income")
+        expenses_fid = fact_id_lda_filing(filing_uuid, "expenses")
+        income_fact_id = (
+            income_fid
+            if (income_usd is not None and income_fid in cited_fact_ids)
+            else None
+        )
+        expenses_fact_id = (
+            expenses_fid
+            if (expenses_usd is not None and expenses_fid in cited_fact_ids)
+            else None
+        )
+        # Enforce the value⟺fact_id pairing (state A or "not reported", never C)
+        if income_fact_id is None:
+            income_usd = None
+        if expenses_fact_id is None:
+            expenses_usd = None
+
+        mentions = mentions_by_uuid.get(filing_uuid, [])
+
+        obj = {
+            "activities": activities_by_uuid.get(filing_uuid, []),
+            "filing": {
+                "client_name": client_name,
+                "expenses_fact_id": expenses_fact_id,
+                "expenses_usd": expenses_usd,
+                "filing_period": filing_period,
+                "filing_type": filing_type,
+                "filing_uuid": filing_uuid,
+                "filing_year": filing_year,
+                "income_fact_id": income_fact_id,
+                "income_usd": income_usd,
+                "registrant_name": registrant_name,
+                "url": url or f"https://lda.senate.gov/api/v1/filings/{filing_uuid}/",
+            },
+            "lobbyists": lobbyists_by_uuid.get(filing_uuid, []),
+            "mentions": mentions,
+        }
+        _write_json(filings_dir / f"{filing_uuid}.json", obj)
+        n_written += 1
+
+        index_rows.append({
+            "client_name": client_name,
+            "filing_type": filing_type,
+            "filing_uuid": filing_uuid,
+            "filing_year": filing_year,
+            "has_mentions": len(mentions) > 0,
+            "mention_count": len(mentions),
+            "registrant_name": registrant_name,
+        })
+
+    # Deterministic index order: mentions-first, then year desc, then client
+    index_rows.sort(
+        key=lambda r: (
+            not r["has_mentions"],
+            -(int(r["filing_year"]) if str(r["filing_year"] or "").isdigit() else 0),
+            (r["client_name"] or "").lower(),
+            r["filing_uuid"],
+        )
+    )
+    _write_json(json_dir / "filings_index.json", {
+        "filings": index_rows,
+        "total": len(index_rows),
+    })
     n_written += 1
 
     return n_written
