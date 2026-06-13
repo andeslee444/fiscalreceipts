@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getFilingsIndex } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { FilingsTable } from "@/components/filings-table";
 
@@ -16,9 +17,7 @@ export const metadata: Metadata = {
       "Senate LDA lobbying filings cross-referenced against tracked defense programs.",
     url: `${SITE_URL}/filings/`,
     siteName: SITE_NAME,
-    images: [
-      { url: `${SITE_URL}/og-default-filing.png`, width: 1200, height: 630 },
-    ],
+    images: coreOgImages("filings-index"),
   },
 };
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
       "How GovBudget collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
     url: `${SITE_URL}/methodology/`,
     siteName: SITE_NAME,
+    images: coreOgImages("methodology"),
   },
 };
 

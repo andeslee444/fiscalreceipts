@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: `About — ${SITE_NAME}`,
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
       "Corrections policy, data transparency, and the correlational-not-causal disclaimer.",
     url: `${SITE_URL}/about/`,
     siteName: SITE_NAME,
+    images: coreOgImages("about"),
   },
 };
 

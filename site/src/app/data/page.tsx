@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSiteMeta } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Explorer } from "@/components/explorer";
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
       "Explore DoD budget, lobbying, and awards data with SQL — queries run entirely in your browser via DuckDB-WASM.",
     url: `${SITE_URL}/data/`,
     siteName: SITE_NAME,
+    images: coreOgImages("data"),
   },
 };
 

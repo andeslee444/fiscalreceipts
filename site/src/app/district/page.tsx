@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getDistrictIndex, getSiteMeta, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
       "Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk.",
     url: `${SITE_URL}/district/`,
     siteName: SITE_NAME,
+    images: coreOgImages("district-index"),
   },
 };
 

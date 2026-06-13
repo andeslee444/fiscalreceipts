@@ -6,3 +6,5 @@ public/duckdb/
 public/pdf.worker.min.mjs
 public/json-lite/
 test-results/
+public/og/
+.lighthouseci/

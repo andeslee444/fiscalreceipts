@@ -8,6 +8,7 @@ import {
   collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
       "Every defense R&D and procurement program element — budget figures, awarded contracts, and lobbying filings — all traceable to their source documents.",
     url: `${SITE_URL}/`,
     siteName: SITE_NAME,
+    images: coreOgImages("home"),
   },
 };
 

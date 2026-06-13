@@ -9,6 +9,7 @@ import {
   collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { agencyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -39,6 +40,7 @@ export async function generateMetadata({
       description: `${agency.program_count} program elements for ${org}.`,
       url: canonical,
       siteName: SITE_NAME,
+      images: agencyOgImages(org),
     },
   };
 }

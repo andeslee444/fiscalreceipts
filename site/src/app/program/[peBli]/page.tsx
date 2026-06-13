@@ -14,6 +14,7 @@ import {
 import type { JbookPdfCitation } from "@/lib/data";
 import { dossierFactIds } from "@/lib/dossier";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { programOgImages } from "@/lib/og";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -94,6 +95,7 @@ export async function generateMetadata({
       description,
       url: canonicalUrl,
       siteName: SITE_NAME,
+      images: programOgImages(peBli),
     },
   };
 }

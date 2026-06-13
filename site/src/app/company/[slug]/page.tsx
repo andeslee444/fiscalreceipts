@@ -8,6 +8,7 @@ import {
   collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { companyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -38,6 +39,7 @@ export async function generateMetadata({
       description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
       url: canonical,
       siteName: SITE_NAME,
+      images: companyOgImages(slug),
     },
   };
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getFeed, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
       "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
     url: `${SITE_URL}/feed/`,
     siteName: SITE_NAME,
+    images: coreOgImages("feed"),
   },
 };
 

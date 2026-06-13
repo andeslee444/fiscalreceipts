@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSiteMeta } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { DownloadCards } from "@/components/download-cards";
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
       "Bulk Parquet exports with full provenance metadata — budget, awards, entities, lobbying, citations.",
     url: `${SITE_URL}/downloads/`,
     siteName: SITE_NAME,
+    images: coreOgImages("downloads"),
   },
 };
 
