@@ -114,3 +114,40 @@
     transition-timing-function: ease;
   }
 }
+
+/* ── Follow-the-dollar flow animation (Task 6b) ─────────────────────────────
+   Compositor-only motion: small dots translate along straight edge paths via
+   transform keyframes (per-edge distance through --flow-dx/--flow-dy custom
+   properties). stroke-dashoffset is paint-side, NOT compositor-safe — do not
+   animate it here (recon §H). Reduced motion: animations killed AND dots
+   hidden so they do not pile up at edge origins. */
+@keyframes flow-dot-travel {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(var(--flow-dx, 0px), var(--flow-dy, 0px), 0);
+    opacity: 0;
+  }
+}
+
+.flow-dot {
+  animation: flow-dot-travel var(--flow-dur, 3.6s) linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-anim * {
+    animation: none !important;
+  }
+  .flow-anim .flow-dot {
+    display: none;
+  }
+}

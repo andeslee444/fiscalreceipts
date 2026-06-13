@@ -819,9 +819,14 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     checks["citation_distinctness"] = distinctness_ok
 
     # ---- LDA checks ----
+    # kind='lda_filing' rows come from TWO emitters (both must re-derive):
+    #   1. mention grain — fact_id_lda(filing_uuid, pe_bli, matched_term)
+    #      from fct_program_lobbying rows
+    #   2. filing-amount grain (Task 2b/6a) — fact_id_lda_filing(uuid, role)
+    #      for non-null income/expenses, re-derived from the filings sidecars
     lda_pq = site_dir / "data" / "fct_program_lobbying.parquet"
     if lda_pq.exists() and lda_cit_ids:
-        from govbudget.export_site import fact_id_lda
+        from govbudget.export_site import fact_id_lda, fact_id_lda_filing
 
         con = duckdb.connect()
         try:
@@ -832,17 +837,39 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         finally:
             con.close()
 
-        # Recompute fact_ids from the mart
+        # Recompute mention-grain fact_ids from the mart
         mart_fids = {
             fact_id_lda(r[0], r[1], r[2])
             for r in lda_mart_rows
             if r[0] and r[1] and r[2]
         }
-        lda_not_in_mart = lda_cit_ids - mart_fids
+
+        # Recompute filing-amount fact_ids from the filings sidecars (the
+        # sidecar carries the amount IFF its citation row was emitted)
+        filing_fids: set[str] = set()
+        filings_dir = site_dir / "json" / "filings"
+        if filings_dir.is_dir():
+            import json as _json
+
+            for fp in filings_dir.glob("*.json"):
+                try:
+                    filing = _json.loads(fp.read_text()).get("filing", {})
+                except Exception:
+                    continue
+                f_uuid = filing.get("filing_uuid")
+                if not f_uuid:
+                    continue
+                if filing.get("income_usd") is not None:
+                    filing_fids.add(fact_id_lda_filing(f_uuid, "income"))
+                if filing.get("expenses_usd") is not None:
+                    filing_fids.add(fact_id_lda_filing(f_uuid, "expenses"))
+
+        lda_not_in_mart = lda_cit_ids - mart_fids - filing_fids
         if lda_not_in_mart:
             failures.append(
                 f"lda: {len(lda_not_in_mart)} lda_filing citation fact_id(s) "
-                f"not re-derivable from fct_program_lobbying: {sorted(lda_not_in_mart)[:5]}"
+                f"not re-derivable from fct_program_lobbying or the filings "
+                f"sidecars: {sorted(lda_not_in_mart)[:5]}"
             )
         checks["lda_fact_ids_in_mart"] = len(lda_not_in_mart) == 0
     else:

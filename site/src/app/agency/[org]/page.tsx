@@ -5,6 +5,7 @@ import {
   getAgencies,
   getAgencyMap,
   getPrograms,
+  getGaoOverlayForOrg,
   collectCitationsWithInputs,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -62,13 +63,20 @@ export default async function AgencyPage({
 
   const pageUrl = `${SITE_URL}/agency/${org}/`;
 
+  // GAO oversight overlay (Task 6b) — high-risk areas + improper exposure
+  const gao = getGaoOverlayForOrg(org);
+
   // Citation slice: agency derived sums (+ their inputs so derived-card
-  // chips are clickable) + per-program FY24 jbook fact_ids.
+  // chips are clickable) + per-program FY24 jbook fact_ids + the improper
+  // exposure derived fact_id (oversight section).
   const pageFactIds: string[] = [];
   if (agency.fy2024_fact_id_derived) pageFactIds.push(agency.fy2024_fact_id_derived);
   if (agency.fy2026_fact_id_derived) pageFactIds.push(agency.fy2026_fact_id_derived);
   for (const p of agencyPrograms) {
     if (p.fy2024_fact_id) pageFactIds.push(p.fy2024_fact_id);
+  }
+  if (gao?.overlay.improper?.fact_id) {
+    pageFactIds.push(gao.overlay.improper.fact_id);
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
@@ -134,6 +142,79 @@ export default async function AgencyPage({
             .
           </p>
         </div>
+
+        {/* GAO oversight overlay (Task 6b) */}
+        {gao && (
+          <section id="oversight" className="mb-8">
+            <h2 className="text-xl font-semibold mb-1">Oversight</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              GAO oversight context for the parent department (
+              {gao.agencyCode}) — {org} is a {gao.agencyCode} component.
+            </p>
+
+            {gao.overlay.high_risk_areas.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold mb-2">
+                  GAO high-risk areas ({gao.agencyCode})
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {gao.overlay.high_risk_areas.map((area) => (
+                    <a
+                      key={area.area_title}
+                      href={area.area_url ?? area.source_url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={area.notes ?? undefined}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+                    >
+                      <span aria-hidden="true">⚠</span>
+                      {area.area_title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* fact_id guard: the figure renders ONLY when its derived
+                citation resolves — fct_improper_exposure is off the uncited
+                ledger, so a state-C span here would fail the render gate. */}
+            {gao.overlay.improper && gao.overlay.improper.fact_id && (
+              <div className="rounded-lg border border-border bg-card p-4 max-w-xl">
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
+                  Estimated improper-payment exposure ({gao.agencyCode}
+                  {gao.overlay.improper.latest_fiscal_year
+                    ? `, FY${gao.overlay.improper.latest_fiscal_year}`
+                    : ""}
+                  )
+                </p>
+                <p className="text-2xl font-bold tabular-nums">
+                  <Cite
+                    value={gao.overlay.improper.derived_improper_amount_usd}
+                    units="USD"
+                    dataset="fct_improper_exposure"
+                    factId={gao.overlay.improper.fact_id}
+                  />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {gao.overlay.improper.weighted_rate_pct != null && (
+                    <>
+                      Weighted improper-payment rate{" "}
+                      {gao.overlay.improper.weighted_rate_pct.toFixed(2)}%
+                    </>
+                  )}
+                  {gao.overlay.improper.program_count != null && (
+                    <>
+                      {" "}
+                      across {gao.overlay.improper.program_count} reported
+                      programs (paymentaccuracy.gov). Click the figure for the
+                      derivation and source.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Programs list */}
         <section>

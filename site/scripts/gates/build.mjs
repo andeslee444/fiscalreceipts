@@ -168,12 +168,26 @@ export async function runBuildGate() {
       // sidecars not generated — only count the base /district/ page if it exists
       // but since the route needs params, it won't be in the sitemap when count=0.
     }
-    // Expected: static(7) + feed(1) + district pages + programs + companies + agencies
+    // Compute filing page count from sidecar (Task 6a): /filings/ index +
+    // ONLY mention-bearing filings (zero-mention filings are noindex and
+    // deliberately excluded from the sitemap).
+    let filingPageCount = 0;
+    try {
+      const filingsIndex = readJson(path.join(jsonDir, "filings_index.json"));
+      const withMentions = (filingsIndex.filings ?? []).filter(
+        (f) => f.has_mentions
+      ).length;
+      filingPageCount = 1 + withMentions;
+    } catch {
+      // sidecars not generated — no filing URLs expected
+    }
+    // Expected: static(7) + feed(1) + district pages + filing pages + programs + companies + agencies
     // static(7) = /, /programs/, /companies/, /data/, /downloads/, /methodology/, /about/
-    const expectedTotal = 7 + 1 + districtPageCount + programCount + companyCount + agencyCount;
+    const expectedTotal =
+      7 + 1 + districtPageCount + filingPageCount + programCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
       errors.push(
-        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${programCount} programs + ${companyCount} companies + ${agencyCount} agencies)`
+        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${programCount} programs + ${companyCount} companies + ${agencyCount} agencies)`
       );
     } else {
       notes.push(`sitemap: ${sitemapCount} URLs ✓`);

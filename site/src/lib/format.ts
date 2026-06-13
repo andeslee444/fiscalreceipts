@@ -82,6 +82,27 @@ export function formatAmount(value: number, units: AmountUnits): string {
 }
 
 /**
+ * Compact amount WITHOUT the '$' sign — for SVG diagram labels only.
+ *
+ * The render-static currency gate flags `$X[.X][BMK]` text outside
+ * [data-amount] spans. Flow-diagram node labels are illustrative (the cited
+ * figures live in the table below the SVG), so they are deliberately
+ * formatted without '$' to stay outside the currency regex (Task 6b binding
+ * decision — preferred over widening the prose allowlist).
+ *
+ * Examples:
+ *   formatAmountNoCurrency(619_000_000, 'USD')        → "619.0M"
+ *   formatAmountNoCurrency(335_700, 'USD thousands')  → "335.7M"
+ *   formatAmountNoCurrency(1_234_567_890, 'USD')      → "1.23B"
+ */
+export function formatAmountNoCurrency(
+  value: number,
+  units: AmountUnits,
+): string {
+  return formatAmount(value, units).replace(/\$/g, "");
+}
+
+/**
  * Exact title attribute value for screen-reader and tooltip use.
  * Shows the exact source value with its units label.
  *

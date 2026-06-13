@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   getPrograms,
   getProgramDetails,
   getEntityTopByFamilyKey,
+  getGaoOverlayForOrg,
   collectCitationsWithInputs,
 } from "@/lib/data";
 import type { JbookPdfCitation } from "@/lib/data";
@@ -11,6 +13,10 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import {
+  FollowTheDollar,
+  getFlowData,
+} from "@/components/follow-the-dollar";
 import { ProgramHeader } from "@/components/program-header";
 import { ProgramFigures } from "@/components/program-figures";
 import { ProgramBudgetLines } from "@/components/program-budget-lines";
@@ -155,6 +161,20 @@ export default async function ProgramPage({
     }
   }
 
+  // Follow-the-dollar (Task 6b): only the 17 crosswalked programs have a
+  // flows sidecar. The cited per-district table needs the (district, pe_bli)
+  // USAspending fact_ids in the page slice.
+  const flowData = getFlowData(peBli);
+  if (flowData) {
+    for (const row of flowData.districtRows) {
+      if (row.factId) pageFactIds.push(row.factId);
+    }
+  }
+
+  // GAO oversight overlay badge (Task 6b) — compact chip linking to the
+  // agency oversight section when the program's org has overlays.
+  const gao = getGaoOverlayForOrg(program.org);
+
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
   return (
@@ -172,6 +192,22 @@ export default async function ProgramPage({
       {/* Header */}
       <ProgramHeader program={program} />
 
+      {/* GAO oversight badge — agency-level risk context (Task 6b) */}
+      {gao && (
+        <div className="-mt-4 mb-6">
+          <Link
+            href={`/agency/${program.org}/#oversight`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+            title={`GAO oversight context for ${gao.agencyCode} — high-risk areas and improper-payment exposure`}
+          >
+            <span aria-hidden="true">⚠</span>
+            GAO oversight: {gao.agencyCode}
+            {gao.overlay.high_risk_areas.length > 0 &&
+              ` — ${gao.overlay.high_risk_areas.length} high-risk area${gao.overlay.high_risk_areas.length !== 1 ? "s" : ""}`}
+          </Link>
+        </div>
+      )}
+
       {/* Budget figures + sparkline */}
       <ProgramFigures program={program} />
 
@@ -186,6 +222,9 @@ export default async function ProgramPage({
 
       {/* Contractor concentration card */}
       <ProgramConcentration hhi={program.hhi} />
+
+      {/* Follow-the-dollar flow — 17 crosswalked programs only (Task 6b) */}
+      {flowData && <FollowTheDollar data={flowData} />}
 
       {/* Awards — capped at 25, client expand */}
       <ProgramAwards

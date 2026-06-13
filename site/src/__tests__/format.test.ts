@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatAmount, exactTitle } from "@/lib/format";
+import { formatAmount, formatAmountNoCurrency, exactTitle } from "@/lib/format";
 
 describe("formatAmount", () => {
   // ── Plan-specified test cases ──────────────────────────────────────────────
@@ -103,5 +103,31 @@ describe("exactTitle", () => {
 
   it("zero value", () => {
     expect(exactTitle(0, "USD millions")).toBe("$0 (USD millions)");
+  });
+});
+
+describe("formatAmountNoCurrency", () => {
+  // SVG flow-diagram labels must stay outside the render gate's currency
+  // regex (\$[\d,]+…) — no '$' may appear in the output (Task 6b).
+  it("strips the dollar sign from compact output", () => {
+    expect(formatAmountNoCurrency(619_000_000, "USD")).toBe("619.0M");
+  });
+
+  it("USD thousands scale to millions label", () => {
+    expect(formatAmountNoCurrency(335_700, "USD thousands")).toBe("335.7M");
+  });
+
+  it("billions with two decimals under 10", () => {
+    expect(formatAmountNoCurrency(1_234_567_890, "USD")).toBe("1.23B");
+  });
+
+  it("negative keeps sign, loses currency", () => {
+    expect(formatAmountNoCurrency(-280.494, "USD millions")).toBe("-280.5M");
+  });
+
+  it("never contains a dollar sign", () => {
+    for (const v of [1, 999, 12_345, 9_999_999, 123_456_789_000]) {
+      expect(formatAmountNoCurrency(v, "USD")).not.toContain("$");
+    }
   });
 });

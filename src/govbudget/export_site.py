@@ -2046,6 +2046,17 @@ def _write_all_sidecars(
     )
     n_files += n_filings
 
+    # ------------------------------------------------------------------ #
+    # 15. gao_overlays.json (Task 6b)                                     #
+    # ------------------------------------------------------------------ #
+    _emit_gao_overlays_sidecar(
+        json_dir=json_dir,
+        duckdb_path=duckdb_path,
+        con=con,
+        cited_fact_ids=_cited_fact_ids,
+    )
+    n_files += 1
+
     return n_files
 
 
@@ -2264,8 +2275,11 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
         # official_url: the filing API URL (starts with https://lda.senate.gov/)
         official_url = url or f"https://lda.senate.gov/api/v1/filings/{filing_uuid}/"
 
+        # Emit IFF the amount parses as a number — the same rule (_parse_usd)
+        # the filings sidecar uses, so citation rows and sidecar amounts are
+        # paired by construction (verify-phase5b1 lda set-invariant).
         # Income row
-        if income_usd and str(income_usd).strip():
+        if _parse_usd(income_usd) is not None:
             fid = fact_id_lda_filing(filing_uuid, "income")
             rows.append((
                 fid, "lda_filing", "USD",
@@ -2287,7 +2301,7 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
             ))
 
         # Expenses row
-        if expenses_usd and str(expenses_usd).strip():
+        if _parse_usd(expenses_usd) is not None:
             fid = fact_id_lda_filing(filing_uuid, "expenses")
             rows.append((
                 fid, "lda_filing", "USD",
@@ -2904,6 +2918,110 @@ def _emit_filing_sidecars(
     n_written += 1
 
     return n_written
+
+
+# Parent department for every org in the J-book corpus.  dim_programs.org
+# values (DARPA, MDA, SOCOM, OSD, …) are all Department of Defense components
+# — the corpus is DoD RDT&E budget justification books.  GAO high-risk areas
+# and paymentaccuracy.gov improper-payment programs key on the department
+# (canonical code 'DOD' per govbudget.agency_codes.canonical_agency).
+_SITE_ORG_PARENT_AGENCY = "DOD"
+
+
+def _emit_gao_overlays_sidecar(
+    *,
+    json_dir: Path,
+    duckdb_path,
+    con,
+    cited_fact_ids: set,
+) -> None:
+    """Emit json/gao_overlays.json (Task 6b).
+
+    Shape:
+      {agency_code_by_org: {org: 'DOD', …},
+       agencies: {DOD: {high_risk_areas: [{area_title, area_url, notes,
+                                           source_url}],
+                        improper: {agency_code, program_count,
+                                   derived_improper_amount_usd,
+                                   weighted_rate_pct, latest_fiscal_year,
+                                   fact_id} | null}}}
+
+    high_risk_areas come from the oversight module's joined output
+    (high_risk.parquet — GAO area titles mapped to canonical agency codes via
+    data-seeds/gao_high_risk_agency_map.csv); improper figures from
+    fct_improper_exposure with the derived-tier fact_id attached only when it
+    resolves in the citation set.
+    """
+    import duckdb as _duckdb
+
+    # Site orgs → parent agency code
+    try:
+        orgs = [r[0] for r in con.execute(
+            "select distinct org from dim_programs order by org"
+        ).fetchall() if r[0]]
+    except Exception:
+        orgs = []
+
+    agency_code_by_org = {org: _SITE_ORG_PARENT_AGENCY for org in orgs}
+    referenced_codes = sorted(set(agency_code_by_org.values()))
+
+    # High-risk areas (joined output of src/govbudget/oversight/high_risk.py)
+    areas_by_code: dict[str, list] = {}
+    hr_pq = _stage_parquet_path(duckdb_path, "oversight", "high_risk.parquet")
+    if hr_pq is not None:
+        try:
+            for (area_title, area_url, agency_code, mapped, notes,
+                 source_url) in _duckdb.sql(
+                f"select area_title, area_url, agency_code, mapped, notes,"
+                f" source_url from read_parquet('{hr_pq}')"
+            ).fetchall():
+                if mapped != "true" or not agency_code:
+                    continue
+                areas_by_code.setdefault(agency_code, []).append({
+                    "area_title": area_title,
+                    "area_url": area_url,
+                    "notes": notes,
+                    "source_url": source_url,
+                })
+        except Exception:
+            pass
+
+    # Improper-payment exposure per agency code
+    improper_by_code: dict[str, dict] = {}
+    try:
+        improper_rows = con.execute(
+            "select agency_code, program_count, derived_improper_amount_usd,"
+            " weighted_rate_pct, latest_fiscal_year from fct_improper_exposure"
+        ).fetchall()
+    except Exception:
+        improper_rows = []
+
+    for (agency_code, program_count, derived_amount, rate,
+         latest_fy) in improper_rows:
+        if not agency_code or derived_amount is None:
+            continue
+        fid = fact_id_derived("improper", agency_code, "derived_improper_amount_usd")
+        improper_by_code[agency_code] = {
+            "agency_code": agency_code,
+            "derived_improper_amount_usd": float(derived_amount),
+            "fact_id": fid if fid in cited_fact_ids else None,
+            "latest_fiscal_year": int(latest_fy) if latest_fy is not None else None,
+            "program_count": int(program_count) if program_count is not None else None,
+            "weighted_rate_pct": float(rate) if rate is not None else None,
+        }
+
+    agencies = {
+        code: {
+            "high_risk_areas": areas_by_code.get(code, []),
+            "improper": improper_by_code.get(code),
+        }
+        for code in referenced_codes
+    }
+
+    _write_json(json_dir / "gao_overlays.json", {
+        "agencies": agencies,
+        "agency_code_by_org": agency_code_by_org,
+    })
 
 
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:

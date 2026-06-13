@@ -626,6 +626,107 @@ export function getDistrictDetail(popDistrict: string): DistrictDetail {
   return detail;
 }
 
+// ── flows/{pe_bli}.json ───────────────────────────────────────────────────────
+
+export interface FlowAward {
+  confidence: "high";
+  /** pop district with state prefix, e.g. 'CO-05'. */
+  district: string | null;
+  /** Transaction-sum dollars for this award (illustrative in the SVG; the
+   *  CITED dollars are the per-district mart rows below the diagram). */
+  dollars: number | null;
+  family_slug: string;
+  piid: string;
+  recipient_name: string;
+}
+
+export interface FlowSidecar {
+  awards: FlowAward[];
+  header: {
+    /** FY2026 trajectory total, USD thousands (nullable). */
+    fy2026_total: number | null;
+    org: string | null;
+    pe_bli: string;
+    title: string | null;
+  };
+}
+
+const _flows = new Map<string, FlowSidecar | null>();
+
+/**
+ * Flow sidecar for a crosswalked program — null when the program has no
+ * flows/{pe_bli}.json (only the 17 crosswalked programs have one).
+ */
+export function getFlow(peBli: string): FlowSidecar | null {
+  if (_flows.has(peBli)) return _flows.get(peBli)!;
+  getSiteMeta();
+  let flow: FlowSidecar | null = null;
+  try {
+    flow = readJson<FlowSidecar>(`flows/${peBli}.json`);
+  } catch {
+    flow = null;
+  }
+  _flows.set(peBli, flow);
+  return flow;
+}
+
+// ── gao_overlays.json ─────────────────────────────────────────────────────────
+
+export interface GaoHighRiskArea {
+  area_title: string;
+  area_url: string | null;
+  notes: string | null;
+  source_url: string | null;
+}
+
+export interface GaoImproperExposure {
+  agency_code: string;
+  derived_improper_amount_usd: number;
+  /** Derived-tier citation fact_id (nullable when uncited). */
+  fact_id: string | null;
+  latest_fiscal_year: number | null;
+  program_count: number | null;
+  weighted_rate_pct: number | null;
+}
+
+export interface GaoAgencyOverlay {
+  high_risk_areas: GaoHighRiskArea[];
+  improper: GaoImproperExposure | null;
+}
+
+export interface GaoOverlays {
+  agencies: Record<string, GaoAgencyOverlay>;
+  agency_code_by_org: Record<string, string>;
+}
+
+let _gaoOverlays: GaoOverlays | null | undefined;
+
+/** GAO overlays sidecar — null when not exported (overlay sections hidden). */
+export function getGaoOverlays(): GaoOverlays | null {
+  if (_gaoOverlays !== undefined) return _gaoOverlays;
+  getSiteMeta();
+  try {
+    _gaoOverlays = readJson<GaoOverlays>("gao_overlays.json");
+  } catch {
+    _gaoOverlays = null;
+  }
+  return _gaoOverlays;
+}
+
+/** Overlay for one site org (agency page / program badge), or null. */
+export function getGaoOverlayForOrg(
+  org: string,
+): { agencyCode: string; overlay: GaoAgencyOverlay } | null {
+  const overlays = getGaoOverlays();
+  if (!overlays) return null;
+  const agencyCode = overlays.agency_code_by_org[org];
+  if (!agencyCode) return null;
+  const overlay = overlays.agencies[agencyCode];
+  if (!overlay) return null;
+  if (overlay.high_risk_areas.length === 0 && !overlay.improper) return null;
+  return { agencyCode, overlay };
+}
+
 // ── filings_index.json ────────────────────────────────────────────────────────
 
 export interface FilingIndexRow {
