@@ -194,7 +194,10 @@ export default function FeedPage() {
                       ({section_cards.length})
                     </span>
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  {/* data-source-text="methodology" — description text contains
+                      threshold dollar amounts ($50M, $5M, $1M) that are
+                      methodology prose, not site-computed figures. */}
+                  <p className="text-sm text-muted-foreground mt-1" data-source-text="methodology">
                     {meta.description}
                   </p>
                 </div>

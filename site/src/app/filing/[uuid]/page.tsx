@@ -234,11 +234,12 @@ export default async function FilingPage({ params }: Props) {
                       <Link
                         href={m.program_url}
                         className="font-medium text-primary hover:underline"
+                        data-program-name
                       >
                         {m.program_title ?? m.pe_bli}
                       </Link>
                     ) : (
-                      <span className="font-medium">
+                      <span className="font-medium" data-program-name>
                         {m.program_title ?? m.pe_bli}
                       </span>
                     )}

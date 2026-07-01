@@ -1,17 +1,24 @@
 #!/usr/bin/env node
 /**
- * screenshots.mjs — Task 10 visual gate harness.
+ * screenshots.mjs — visual gate harness for phases 5B-2 and 5B-3.
  *
- * Captures 6 states × 3 viewports (390/768/1440px wide) = 18 screenshots.
- * Output: GovBudget/docs/superpowers/reviews/5b2-visual/
+ * Captures 11 states × 3 viewports (390/768/1440px wide) = 33 screenshots.
+ * Output: GovBudget/docs/superpowers/reviews/5b3-visual/
  *
- * States:
+ * Phase 5B-2 states:
  *   1. home
  *   2. program with citation panel open
  *   3. program with receipts mode ON
  *   4. company page
  *   5. /data/ page
  *   6. search palette open (⌘K)
+ *
+ * Phase 5B-3 states (new):
+ *   7.  feed page (/feed/)
+ *   8.  district index (/district/)
+ *   9.  district detail (/district/VA-08/)
+ *   10. filing page (first filing with mentions)
+ *   11. program with dossier hero (top-50 category program)
  *
  * Usage: node scripts/screenshots.mjs [baseUrl]
  * Default baseUrl: http://127.0.0.1:4173
@@ -30,7 +37,7 @@ const outDir = path.resolve(
   "docs",
   "superpowers",
   "reviews",
-  "5b2-visual"
+  "5b3-visual"
 );
 const jsonDir = path.resolve(repoRoot, "data", "site", "json");
 
@@ -68,13 +75,58 @@ function getSampleCompany() {
   return entities[0]?.slug ?? "lockheed-martin";
 }
 
+function getSampleDistrict() {
+  try {
+    const index = readJson(path.join(jsonDir, "districts", "index.json"));
+    const districts = index.districts ?? [];
+    // Prefer a district likely to have data (Virginia, California)
+    const preferred = districts.find(
+      (d) => d.pop_district === "VA-08" || d.pop_district === "CA-30"
+    );
+    return (preferred ?? districts[0])?.pop_district ?? "VA-08";
+  } catch {
+    return "VA-08";
+  }
+}
+
+function getSampleFilingWithMentions() {
+  try {
+    const index = readJson(path.join(jsonDir, "filings_index.json"));
+    const withMentions = (index.filings ?? []).filter((f) => f.has_mentions);
+    return withMentions[0]?.filing_uuid ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getTop50Program() {
+  try {
+    const categoriesCsv = path.resolve(
+      repoRoot,
+      "data-seeds",
+      "program_categories.csv"
+    );
+    if (!fs.existsSync(categoriesCsv)) return null;
+    const lines = fs.readFileSync(categoriesCsv, "utf8").split("\n");
+    const header = lines[0] ?? "";
+    const peIdx = header.split(",").findIndex((h) =>
+      h.trim().toLowerCase().startsWith("pe")
+    );
+    if (peIdx < 0) return null;
+    const first = lines[1]?.split(",")[peIdx]?.trim();
+    return first ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function capture(page, filePath, label) {
   await page.screenshot({ path: filePath, fullPage: false });
   console.log(`  ✓ ${label} → ${path.relative(repoRoot, filePath)}`);
 }
 
 async function main() {
-  console.log("screenshots.mjs — capturing 6 states × 3 viewports");
+  console.log("screenshots.mjs — capturing 11 states × 3 viewports");
   console.log(`base URL: ${BASE_URL}`);
   console.log(`output: ${outDir}`);
   console.log("");
@@ -83,6 +135,9 @@ async function main() {
 
   const { pbl: samplePbl, factId: sampleFactId } = getSampleProgram();
   const sampleCompany = getSampleCompany();
+  const sampleDistrict = getSampleDistrict();
+  const sampleFilingUuid = getSampleFilingWithMentions();
+  const top50Pbl = getTop50Program() ?? samplePbl;
 
   const browser = await chromium.launch({ headless: true });
 
@@ -206,11 +261,87 @@ async function main() {
       await page.close();
     }
 
+    // ── 7. Feed page ────────────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/feed/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `feed-${width}.png`),
+        `feed-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 8. District index ──────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/district/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `district-index-${width}.png`),
+        `district-index-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 9. District detail ─────────────────────────────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/district/${sampleDistrict}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `district-detail-${width}.png`),
+        `district-detail-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 10. Filing page (with mentions) ────────────────────────────────────
+    if (sampleFilingUuid) {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/filing/${sampleFilingUuid}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `filing-${width}.png`),
+        `filing-${width}`
+      );
+      await page.close();
+    }
+
+    // ── 11. Dossier hero program (top-50 category) ─────────────────────────
+    {
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}/program/${top50Pbl}/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      await capture(
+        page,
+        path.join(outDir, `program-hero-${width}.png`),
+        `program-hero-${width}`
+      );
+      await page.close();
+    }
+
     await context.close();
   }
 
   await browser.close();
-  console.log(`\n✅  18 screenshots saved to ${outDir}`);
+  const screenshotCount = sampleFilingUuid ? 33 : 30;
+  console.log(`\n  ${screenshotCount} screenshots saved to ${outDir}`);
 }
 
 main().catch((e) => {

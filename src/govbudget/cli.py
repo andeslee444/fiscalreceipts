@@ -956,6 +956,13 @@ def cmd_verify_phase5b2(args) -> None:
     sys.exit(result.returncode)
 
 
+def cmd_verify_phase5b3(args) -> None:
+    """Run the phase 5B-3 gate suite: dossier_gate + npm verify (gates 1-12)."""
+    from govbudget.verify_phase5b3 import cmd_verify_phase5b3 as _run
+
+    _run(args)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1039,6 +1046,12 @@ def main(argv=None) -> None:
         help="phase 5B-2 acceptance gates (site render, citations, a11y, search, perf)",
     )
     v5b2.set_defaults(func=cmd_verify_phase5b2)
+
+    v5b3 = sub.add_parser(
+        "verify-phase5b3",
+        help="phase 5B-3 acceptance gates (dossier artifacts + feed/district/filing/og/animation gates)",
+    )
+    v5b3.set_defaults(func=cmd_verify_phase5b3)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(

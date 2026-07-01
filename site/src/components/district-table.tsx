@@ -3,21 +3,10 @@
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import type { DistrictIndexRow } from "@/lib/data";
+import { formatAmount } from "@/lib/format";
 
 type SortKey = "pop_district" | "pop_state" | "program_count" | "total_linkable_dollars";
 type SortDir = "asc" | "desc";
-
-interface Props {
-  districts: DistrictIndexRow[];
-}
-
-function formatCompact(usd: number): string {
-  const abs = Math.abs(usd);
-  if (abs >= 1e9) return `$${(usd / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `$${(usd / 1e6).toFixed(0)}M`;
-  if (abs >= 1e3) return `$${(usd / 1e3).toFixed(0)}K`;
-  return `$${usd.toFixed(0)}`;
-}
 
 interface SortHeaderProps {
   label: string;
@@ -57,6 +46,10 @@ function SortHeader({
       </span>
     </th>
   );
+}
+
+interface Props {
+  districts: DistrictIndexRow[];
 }
 
 export function DistrictTable({ districts }: Props) {
@@ -192,9 +185,21 @@ export function DistrictTable({ districts }: Props) {
                     {d.program_count}
                   </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {d.total_linkable_dollars > 0
-                      ? formatCompact(d.total_linkable_dollars)
-                      : "—"}
+                    {d.total_linkable_dollars > 0 ? (
+                      // dim_geography is the uncited geography totals dataset —
+                      // district-index linkable totals are geography aggregates
+                      // with no individual fact_id (state C, uncited).
+                      <span
+                        data-amount
+                        data-uncited="true"
+                        data-dataset="dim_geography"
+                        title={`$${d.total_linkable_dollars.toLocaleString("en-US")} USD`}
+                      >
+                        {formatAmount(d.total_linkable_dollars, "USD")}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}

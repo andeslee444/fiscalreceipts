@@ -1,5 +1,6 @@
 import type { ProgramTrajectory, ProgramTrajectoryFactIds } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { formatAmountNoCurrency } from "@/lib/format";
 
 /**
  * TrajectorySpark — inline SVG sparkline from trajectory data.
@@ -143,7 +144,7 @@ export function TrajectorySpark({
                 output and causing React hydration error #418. <desc> is unaffected
                 and is the correct SVG element for shape-level descriptions anyway. */}
             <desc>
-              {p.label}: ${(p.v / 1000).toFixed(1)}M (USD thousands)
+              {p.label}: {formatAmountNoCurrency(p.v, "USD thousands")} (USD thousands)
             </desc>
           </circle>
         ))}

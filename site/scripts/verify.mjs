@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * verify.mjs — gate suite orchestrator for phase 5B-2.
+ * verify.mjs — gate suite orchestrator for phases 5B-2 and 5B-3.
  *
  * Starts one local server (port 4173), runs gates 1-6 in order,
  * then spawns npx lhci autorun as gate 7.
+ * Phase 5B-3 gates 8-12 run statically (no server needed).
  *
  * Output format: `gate N name: ...details → PASS` / `gate N name: ...details → FAIL`
  * Exit: 0 if all gates pass, 1 otherwise.
@@ -24,6 +25,12 @@ import { runRenderLiveGate } from "./gates/render-live.mjs";
 import { runClickthroughGate } from "./gates/clickthrough.mjs";
 import { runSearchGate } from "./gates/search.mjs";
 import { runA11yGate } from "./gates/a11y.mjs";
+// Phase 5B-3 gates (static — no server required)
+import { runFeedGate } from "./gates/feed.mjs";
+import { runDistrictGate } from "./gates/district.mjs";
+import { runFilingGate } from "./gates/filing.mjs";
+import { runOgGate } from "./gates/og.mjs";
+import { runAnimationGate } from "./gates/animation.mjs";
 
 const PORT = 4173;
 
@@ -66,7 +73,7 @@ function runLhci() {
 }
 
 async function main() {
-  console.log("=== verify-phase5b2 ===");
+  console.log("=== verify-phase5b2+5b3 ===");
   console.log(`site root: ${siteRoot}`);
   console.log("");
 
@@ -130,6 +137,38 @@ async function main() {
   const g7Pass = await runLhci();
   gateResults.push({ n: 7, name: "perf", pass: g7Pass });
   console.log(`gate 7 perf: lhci autorun → ${g7Pass ? "PASS" : "FAIL"}`);
+
+  // ── Phase 5B-3 static gates (no server needed) ────────────────────────────
+
+  // ── Gate 8: feed ──────────────────────────────────────────────────────────
+  console.log("\n--- gate 8 feed ---");
+  const g8 = await runFeedGate();
+  gateResults.push({ n: 8, name: "feed", pass: g8.pass });
+  printGate(8, "feed", g8);
+
+  // ── Gate 9: district ─────────────────────────────────────────────────────
+  console.log("\n--- gate 9 district ---");
+  const g9 = await runDistrictGate();
+  gateResults.push({ n: 9, name: "district", pass: g9.pass });
+  printGate(9, "district", g9);
+
+  // ── Gate 10: filing ──────────────────────────────────────────────────────
+  console.log("\n--- gate 10 filing ---");
+  const g10 = await runFilingGate();
+  gateResults.push({ n: 10, name: "filing", pass: g10.pass });
+  printGate(10, "filing", g10);
+
+  // ── Gate 11: og ──────────────────────────────────────────────────────────
+  console.log("\n--- gate 11 og ---");
+  const g11 = await runOgGate();
+  gateResults.push({ n: 11, name: "og", pass: g11.pass });
+  printGate(11, "og", g11);
+
+  // ── Gate 12: animation ───────────────────────────────────────────────────
+  console.log("\n--- gate 12 animation ---");
+  const g12 = await runAnimationGate();
+  gateResults.push({ n: 12, name: "animation", pass: g12.pass });
+  printGate(12, "animation", g12);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

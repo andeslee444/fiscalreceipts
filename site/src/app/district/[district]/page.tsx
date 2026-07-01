@@ -56,8 +56,6 @@ export default async function DistrictDetailPage({ params }: Props) {
   const citationsSlice = collectCitations(pageFactIds);
 
   const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
-  const totalCitedM = detail.total_cited_dollars / 1_000_000;
-  const totalLinkableM = detail.total_linkable_dollars / 1_000_000;
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -105,7 +103,13 @@ export default async function DistrictDetailPage({ params }: Props) {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums">
-                ${totalLinkableM.toFixed(0)}M
+                {/* dim_geography is the uncited geography totals dataset —
+                    these aggregate totals have no individual fact_id */}
+                <Cite
+                  value={detail.total_linkable_dollars}
+                  units="USD"
+                  dataset="dim_geography"
+                />
               </p>
               <p className="text-muted-foreground text-xs mt-1">
                 linkable obligations
@@ -113,7 +117,11 @@ export default async function DistrictDetailPage({ params }: Props) {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums">
-                ${totalCitedM.toFixed(0)}M
+                <Cite
+                  value={detail.total_cited_dollars}
+                  units="USD"
+                  dataset="dim_geography"
+                />
               </p>
               <p className="text-muted-foreground text-xs mt-1">
                 cited (USAspending)

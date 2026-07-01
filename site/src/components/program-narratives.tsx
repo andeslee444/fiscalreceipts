@@ -67,8 +67,12 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
         Program Narratives
       </h2>
 
-      {/* data-pagefind-body wraps main content for Pagefind indexing */}
-      <div data-pagefind-body>
+      {/* data-pagefind-body wraps main content for Pagefind indexing.
+          data-source-text="narrative" signals that this subtree contains
+          quoted source text (J-book prose) — the render-static gate skips
+          currency patterns inside elements carrying data-source-text, since
+          dollar strings here are block-cited at the xml_path level. */}
+      <div data-pagefind-body data-source-text="narrative">
         {/* Primary narratives (mission, description, justification) */}
         {primary.map((n, i) => (
           <div key={i} className="mb-6">

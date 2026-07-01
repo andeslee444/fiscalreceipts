@@ -201,6 +201,17 @@ export async function runRenderStaticGate() {
     }
 
     // Walk text nodes and check for currency patterns not inside [data-amount]
+    //
+    // Skip conditions (in addition to [data-amount]):
+    //   - data-source-text: element contains quoted source text (e.g. J-book
+    //     narrative prose), block-cited at the xml_path level — dollar strings
+    //     are from the source document, not site-computed figures.
+    //   - data-program-name: element renders a program title label (e.g.
+    //     "ORDNANCE ITEMS <$5M") — the dollar string is part of the official
+    //     program name, not a site-computed figure.
+    //   - <head>: page metadata (title, meta descriptions) may contain program
+    //     names or descriptions with dollar strings; these are not rendered
+    //     figure text and should not be scanned.
     function walkText(node, insideAmount) {
       if (node.nodeType === 3) {
         // text node
@@ -227,8 +238,17 @@ export async function runRenderStaticGate() {
         }
         return;
       }
-      const isAmount = node.getAttribute && node.getAttribute("data-amount") !== null;
-      const nowInside = insideAmount || isAmount;
+      // node-html-parser returns `undefined` (NOT null) for missing
+      // attributes — a strict `!== null` check is ALWAYS true, which made
+      // every element count as data-amount and the negative currency scan
+      // vacuous. Loose `!= null` matches both null and undefined.
+      const isAmount = node.getAttribute && node.getAttribute("data-amount") != null;
+      // Skip subtrees containing quoted source text (narrative prose, program names)
+      // or the <head> element (page metadata is not rendered figure text).
+      const isSourceText = node.getAttribute && node.getAttribute("data-source-text") != null;
+      const isProgramName = node.getAttribute && node.getAttribute("data-program-name") != null;
+      const isHead = node.tagName && node.tagName.toLowerCase() === "head";
+      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead;
       if (node.childNodes) {
         for (const child of node.childNodes) {
           walkText(child, nowInside);
