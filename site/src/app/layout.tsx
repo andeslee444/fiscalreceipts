@@ -66,6 +66,7 @@ export default function RootLayout({
 
               {/* Desktop nav — hidden below md */}
               <nav
+                data-site-nav
                 className="hidden md:flex items-center gap-4 text-sm"
                 aria-label="Main navigation"
               >

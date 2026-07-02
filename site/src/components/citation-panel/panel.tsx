@@ -330,6 +330,8 @@ function CitationBody({ citation }: { citation: Citation }) {
 
 // ── CopyFootnoteButton — copy a quotable footnote to the clipboard ──────────
 
+type CopyState = "idle" | "copied" | "failed";
+
 function CopyFootnoteButton({
   citation,
   factId,
@@ -337,7 +339,7 @@ function CopyFootnoteButton({
   citation: Citation;
   factId: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clear the transient-state timer on unmount.
@@ -357,15 +359,34 @@ function CopyFootnoteButton({
     const text = formatFootnote(
       footnoteInputFromCitation(citation, factId, { url, label }),
     );
+    if (timerRef.current) clearTimeout(timerRef.current);
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
+      setCopyState("copied");
+      timerRef.current = setTimeout(() => setCopyState("idle"), 2000);
     } catch {
-      // Clipboard unavailable (permissions/insecure context) — no-op.
+      // Clipboard unavailable (permissions/insecure context).
+      setCopyState("failed");
+      timerRef.current = setTimeout(() => setCopyState("idle"), 2000);
     }
   }, [citation, factId]);
+
+  // Icon swaps outside the live region; label text swaps inside it.
+  const icon =
+    copyState === "copied" ? (
+      <Check className="h-3 w-3 shrink-0 text-green-600" aria-hidden="true" />
+    ) : copyState === "failed" ? (
+      <Copy className="h-3 w-3 shrink-0 text-destructive" aria-hidden="true" />
+    ) : (
+      <Copy className="h-3 w-3 shrink-0" aria-hidden="true" />
+    );
+
+  const label =
+    copyState === "copied"
+      ? "Copied ✓"
+      : copyState === "failed"
+        ? "Copy failed"
+        : "Copy as footnote";
 
   return (
     <button
@@ -375,17 +396,9 @@ function CopyFootnoteButton({
       className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
       aria-label="Copy this citation as a formatted footnote"
     >
-      {copied ? (
-        <>
-          <Check className="h-3 w-3 shrink-0 text-green-600" aria-hidden="true" />
-          <span aria-live="polite">Copied ✓</span>
-        </>
-      ) : (
-        <>
-          <Copy className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>Copy as footnote</span>
-        </>
-      )}
+      {icon}
+      {/* Always-mounted live region: screen readers announce state changes. */}
+      <span aria-live="polite">{label}</span>
     </button>
   );
 }

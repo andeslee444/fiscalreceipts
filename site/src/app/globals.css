@@ -246,7 +246,7 @@
 @media print {
   header,
   footer,
-  nav,
+  [data-site-nav],
   .skip-to-content,
   [data-search-trigger],
   [data-citation-panel],
