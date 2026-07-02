@@ -34,16 +34,26 @@ export async function runFilingGate() {
     return { pass: true, errors, notes };
   }
 
-  // ── Load filings index sidecar ─────────────────────────────────────────────
-  let filingsIndex = null;
+  // ── Load filings index sidecar (REQUIRED) ─────────────────────────────────
+  // Missing or unloadable filings_index.json is a hard FAIL — we cannot
+  // derive noindex expectations or validate mention counts without it.
+  const filingsIndexPath = path.join(jsonDir, "filings_index.json");
+  if (!fs.existsSync(filingsIndexPath)) {
+    errors.push(
+      `filing_gate: filings_index.json not found at ${filingsIndexPath} — cannot validate noindex expectations`
+    );
+    return { pass: false, errors, notes };
+  }
+  let filingsIndex;
   let indexedFilings = [];
   try {
-    filingsIndex = JSON.parse(
-      fs.readFileSync(path.join(jsonDir, "filings_index.json"), "utf8")
-    );
+    filingsIndex = JSON.parse(fs.readFileSync(filingsIndexPath, "utf8"));
     indexedFilings = filingsIndex.filings ?? [];
-  } catch {
-    notes.push("filings_index.json not found — using page count only");
+  } catch (e) {
+    errors.push(
+      `filing_gate: filings_index.json unloadable: ${e.message} — cannot validate noindex expectations`
+    );
+    return { pass: false, errors, notes };
   }
 
   // ── (a) Filing page count ───────────────────────────────────────────────────
@@ -108,20 +118,39 @@ export async function runFilingGate() {
 
     const pageRoot = parse(pageHtml, { comment: false });
 
-    // (b) noindex check for zero-mention filings
-    const hasMentions = mentionMap.get(uuid);
-    if (hasMentions === false) {
+    // (b) noindex check — derive expectation the same way the page does:
+    //     load the per-filing detail JSON and check mentions.length === 0.
+    //     Fall back to the index has_mentions flag if the detail JSON is absent.
+    const filingDetailPath = path.join(jsonDir, "filings", `${uuid}.json`);
+    let expectNoindex = false;
+    if (fs.existsSync(filingDetailPath)) {
+      try {
+        const detail = JSON.parse(fs.readFileSync(filingDetailPath, "utf8"));
+        expectNoindex = (detail.mentions ?? []).length === 0;
+      } catch {
+        // detail JSON parse error — fall back to index
+        expectNoindex = mentionMap.get(uuid) === false;
+      }
+    } else {
+      // No detail JSON: fall back to index has_mentions
+      expectNoindex = mentionMap.get(uuid) === false;
+    }
+
+    if (expectNoindex) {
       noindexExpected++;
       const robotsMeta = pageRoot.querySelectorAll('meta[name="robots"]');
-      const isNoindex = robotsMeta.some((m) => {
-        const content = m.getAttribute("content") ?? "";
-        return content.includes("noindex");
-      });
+      const robotsContent = robotsMeta.map(
+        (m) => m.getAttribute("content") ?? ""
+      );
+      const isNoindex = robotsContent.some((c) => c.includes("noindex"));
       if (isNoindex) {
         noindexOk++;
       } else {
         errors.push(
-          `filing/${uuid}: zero-mention filing is missing robots noindex meta`
+          `filing/${uuid}: zero-mention filing missing robots noindex meta` +
+            (robotsContent.length > 0
+              ? ` (found: ${robotsContent.join(", ")})`
+              : " (no robots meta found)")
         );
       }
     }

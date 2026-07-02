@@ -70,9 +70,16 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
       {/* data-pagefind-body wraps main content for Pagefind indexing.
           data-source-text="narrative" signals that this subtree contains
           quoted source text (J-book prose) — the render-static gate skips
-          currency patterns inside elements carrying data-source-text, since
-          dollar strings here are block-cited at the xml_path level. */}
-      <div data-pagefind-body data-source-text="narrative">
+          currency patterns inside elements carrying data-source-text.
+          data-xml-path provides the block-level citation anchor (first
+          narrative's xml_path from the J-book XML source), satisfying the
+          constraint that every data-source-text element must also carry
+          data-xml-path. */}
+      <div
+        data-pagefind-body
+        data-source-text="narrative"
+        data-xml-path={sorted[0]?.xml_path ?? ""}
+      >
         {/* Primary narratives (mission, description, justification) */}
         {primary.map((n, i) => (
           <div key={i} className="mb-6">

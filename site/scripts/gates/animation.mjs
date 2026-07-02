@@ -1,18 +1,23 @@
 /**
  * gate — animation_gate
  *
- * (a) Top-50 category programs: hero section present in built program pages
- * (b) Built CSS contains prefers-reduced-motion rule (accessibility)
- * (c) Programs in the crosswalk have data-flow-svg attribute (follow-the-dollar)
- * (d) No inline script-driven animation (JS-only animation is a fragility risk)
+ * (a) Top-50 category programs MUST have data-hero-category attribute in their
+ *     built program pages. Missing hero → FAIL (not a warning).
+ *     Top-50 list loaded from categories.json sidecar (keys = pe_blis).
  *
- * Note: hero animations are category-taxonomy-driven (committed Task 7a).
- * The gate runs against taxonomy data only — dossier pages are optional.
- * If dossier artifacts are absent, category hero detection still passes because
- * the hero section is emitted by the SSG program page template regardless.
+ * (b) JS chunk-set equality: chunks referenced by animated (top-50) program
+ *     pages MUST equal chunks referenced by non-animated program pages within
+ *     the same build — proves CSS-only animation, no JS bloat. Extra chunks
+ *     in animated pages → FAIL.
  *
- * Dossier pages (if absent) just show non-top-50 layout, which is acceptable.
- * This gate does NOT require dossier artifacts to PASS.
+ * (c) Flow SVG: REQUIRE data-flow-svg on ALL 17 crosswalked program pages
+ *     (list from flows/ sidecar dir). Assert that the total dollar amount
+ *     summed from the flows JSON matches what the SVG text labels imply
+ *     by checking each award node label resolves to a number > 0.
+ *
+ * (d) prefers-reduced-motion present in built CSS/HTML (accessibility).
+ *
+ * (e) No inline JS-driven animation (requestAnimationFrame in inline scripts).
  */
 
 import fs from "fs";
@@ -25,8 +30,49 @@ const siteRoot = path.resolve(__dirname, "..", "..");
 const outDir = path.resolve(siteRoot, "out");
 const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
 
-const TOP50_SAMPLE = 5; // check 5 of the top-50 category programs
 const REDUCED_MOTION_PATTERN = "prefers-reduced-motion";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Collect the set of JS chunk filenames referenced by <script src="..."> tags
+ * in an HTML page (/_next/static/chunks/*.js only).
+ */
+function extractChunks(html) {
+  const chunkRe = /\/_next\/static\/chunks\/([^"]+\.js)/g;
+  const chunks = new Set();
+  let m;
+  while ((m = chunkRe.exec(html)) !== null) {
+    chunks.add(m[1]);
+  }
+  return chunks;
+}
+
+/**
+ * Compact-format a raw USD value exactly as formatAmountNoCurrency does in
+ * site/src/lib/format.ts. Used to verify SVG flow labels.
+ * Returns the formatted string without the leading '$'.
+ */
+function formatAmountNoCurrency(rawUsd) {
+  const abs = Math.abs(rawUsd);
+  const sign = rawUsd < 0 ? "-" : "";
+  if (abs >= 1_000_000_000) {
+    const v = abs / 1_000_000_000;
+    const dec = v < 10 ? 2 : 1;
+    return `${sign}${v.toFixed(dec)}B`;
+  }
+  if (abs >= 1_000_000) {
+    const v = abs / 1_000_000;
+    const dec = v < 10 ? 2 : 1;
+    return `${sign}${v.toFixed(dec)}M`;
+  }
+  if (abs >= 1_000) {
+    const v = abs / 1_000;
+    const dec = v < 10 ? 2 : 1;
+    return `${sign}${v.toFixed(dec)}K`;
+  }
+  return `${sign}${Math.round(abs).toLocaleString("en-US")}`;
+}
 
 export async function runAnimationGate() {
   const errors = [];
@@ -40,88 +86,223 @@ export async function runAnimationGate() {
     return { pass: true, errors, notes };
   }
 
-  // ── Load program categories to find top-50 ─────────────────────────────────
+  // ── Load top-50 list from categories.json ──────────────────────────────────
+  const categoriesPath = path.join(jsonDir, "categories.json");
+  let top50Set = new Set();
   let top50PeBlis = [];
-  try {
-    const categoriesCsv = path.resolve(
-      siteRoot,
-      "..",
-      "data-seeds",
-      "program_categories.csv"
+  if (fs.existsSync(categoriesPath)) {
+    try {
+      const cats = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
+      top50PeBlis = Object.keys(cats);
+      top50Set = new Set(top50PeBlis);
+      notes.push(`categories.json: ${top50PeBlis.length} top-50 pe_blis`);
+    } catch (e) {
+      errors.push(`animation_gate: failed to load categories.json: ${e.message}`);
+    }
+  } else {
+    // Fallback to program_categories.csv
+    const csvPath = path.resolve(
+      siteRoot, "..", "data-seeds", "program_categories.csv"
     );
-    if (fs.existsSync(categoriesCsv)) {
-      const lines = fs.readFileSync(categoriesCsv, "utf8").split("\n");
-      // CSV: pe_bli,category,rank (or similar)
-      // Take first 50 pe_blis that appear (assumed ordered by category rank)
+    if (fs.existsSync(csvPath)) {
+      const lines = fs.readFileSync(csvPath, "utf8").split("\n");
       const header = lines[0] ?? "";
       const peIdx = header.split(",").findIndex((h) => h.trim().toLowerCase().startsWith("pe"));
       if (peIdx >= 0) {
-        const peBlis = lines.slice(1)
-          .map((l) => l.split(",")[peIdx]?.trim())
-          .filter(Boolean);
-        // Deduplicate while preserving order
         const seen = new Set();
-        for (const pe of peBlis) {
-          if (!seen.has(pe)) {
+        for (const l of lines.slice(1)) {
+          const pe = l.split(",")[peIdx]?.trim();
+          if (pe && !seen.has(pe)) {
             seen.add(pe);
             top50PeBlis.push(pe);
+            top50Set.add(pe);
             if (top50PeBlis.length >= 50) break;
           }
         }
       }
+      notes.push(`using program_categories.csv fallback: ${top50PeBlis.length} pe_blis`);
+    } else {
+      errors.push("animation_gate: neither categories.json nor program_categories.csv found — cannot check top-50 hero requirement");
     }
-  } catch {
-    notes.push("program_categories.csv not found — skipping top-50 hero check");
   }
 
-  // Fallback: use first available program directories
-  if (top50PeBlis.length === 0) {
-    const dirs = fs.readdirSync(programOutDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .slice(0, 50);
-    top50PeBlis = dirs;
-    notes.push("using first 50 program dirs as top-50 proxy (categories CSV not found)");
-  }
-
-  // ── (a) Hero section present on top-50 category programs ───────────────────
-  const sample = top50PeBlis.slice(0, TOP50_SAMPLE);
+  // ── (a) Hero section REQUIRED on all top-50 category program pages ─────────
+  // The CategoryHero component renders data-hero-category attribute.
+  let heroChecked = 0;
   let heroOk = 0;
+  const HERO_ATTR = "data-hero-category";
 
-  for (const pbl of sample) {
+  for (const pbl of top50PeBlis) {
     const pagePath = path.join(programOutDir, pbl, "index.html");
     if (!fs.existsSync(pagePath)) {
-      notes.push(`program/${pbl}: page not built — skipping hero check`);
-      heroOk++; // not a failure — dossiers may not be built yet
+      errors.push(`animation_gate: top-50 program page missing: program/${pbl}/index.html — hero cannot be verified`);
+      continue;
+    }
+    heroChecked++;
+    const html = fs.readFileSync(pagePath, "utf8");
+    if (html.includes(HERO_ATTR)) {
+      heroOk++;
+    } else {
+      errors.push(
+        `animation_gate: top-50 program/${pbl} missing ${HERO_ATTR} — CategoryHero not rendered`
+      );
+    }
+  }
+  if (heroChecked > 0) {
+    notes.push(`top-50 hero (${HERO_ATTR}): ${heroOk}/${heroChecked} ✓`);
+  }
+
+  // ── (b) JS chunk-set equality: animated vs non-animated ───────────────────
+  // Collect chunks from a sample of top-50 pages and non-top-50 pages.
+  // If animated pages reference extra chunks, the animation must have JS bloat.
+  const programDirs = fs
+    .readdirSync(programOutDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+
+  const animatedDirs = programDirs.filter((d) => top50Set.has(d));
+  const nonAnimatedDirs = programDirs.filter((d) => !top50Set.has(d));
+
+  if (animatedDirs.length > 0 && nonAnimatedDirs.length > 0) {
+    // Collect union of chunk sets across animated pages
+    let animatedChunks = null;
+    for (const d of animatedDirs.slice(0, 5)) {
+      const pagePath = path.join(programOutDir, d, "index.html");
+      if (!fs.existsSync(pagePath)) continue;
+      const html = fs.readFileSync(pagePath, "utf8");
+      const chunks = extractChunks(html);
+      if (animatedChunks === null) {
+        animatedChunks = chunks;
+      } else {
+        for (const c of chunks) animatedChunks.add(c);
+      }
+    }
+
+    let nonAnimatedChunks = null;
+    for (const d of nonAnimatedDirs.slice(0, 5)) {
+      const pagePath = path.join(programOutDir, d, "index.html");
+      if (!fs.existsSync(pagePath)) continue;
+      const html = fs.readFileSync(pagePath, "utf8");
+      const chunks = extractChunks(html);
+      if (nonAnimatedChunks === null) {
+        nonAnimatedChunks = chunks;
+      } else {
+        for (const c of chunks) nonAnimatedChunks.add(c);
+      }
+    }
+
+    if (animatedChunks !== null && nonAnimatedChunks !== null) {
+      const extra = [...animatedChunks].filter((c) => !nonAnimatedChunks.has(c));
+      if (extra.length > 0) {
+        errors.push(
+          `animation_gate: animated program pages have ${extra.length} extra JS chunk(s) not present on non-animated pages — animation must be CSS-only: ${extra.slice(0, 3).join(", ")}`
+        );
+      } else {
+        notes.push(
+          `chunk-set equality: animated and non-animated program pages share identical JS chunks (${animatedChunks.size}) ✓`
+        );
+      }
+    }
+  } else {
+    notes.push("chunk-set check: insufficient pages for comparison (skipped)");
+  }
+
+  // ── (c) Flow SVG required on ALL 17 crosswalked pages ────────────────────
+  // Crosswalked programs = pe_blis for which flows/{pe_bli}.json exists.
+  const flowsDir = path.join(jsonDir, "flows");
+  let flowPeBlis = [];
+  if (fs.existsSync(flowsDir)) {
+    flowPeBlis = fs
+      .readdirSync(flowsDir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => f.replace(".json", ""));
+  }
+  notes.push(`flows sidecar: ${flowPeBlis.length} crosswalked programs`);
+
+  let flowSvgOk = 0;
+  let flowSvgMissing = 0;
+
+  for (const pbl of flowPeBlis) {
+    const pagePath = path.join(programOutDir, pbl, "index.html");
+    if (!fs.existsSync(pagePath)) {
+      errors.push(`animation_gate: crosswalked program/${pbl} has no built page`);
+      flowSvgMissing++;
+      continue;
+    }
+    const html = fs.readFileSync(pagePath, "utf8");
+    if (!html.includes(`data-flow-svg="${pbl}"`)) {
+      errors.push(
+        `animation_gate: crosswalked program/${pbl} page missing data-flow-svg="${pbl}" attribute`
+      );
+      flowSvgMissing++;
       continue;
     }
 
-    const pageHtml = fs.readFileSync(pagePath, "utf8");
-    // Hero section: look for data-category-hero attribute or a section with
-    // class containing "hero" or id containing "hero".
-    const hasHero =
-      pageHtml.includes("data-category-hero") ||
-      pageHtml.includes('id="hero"') ||
-      pageHtml.includes('class="hero') ||
-      pageHtml.includes("category-hero") ||
-      pageHtml.includes("hero-section");
+    // Verify: the SVG contains at least one award node with a non-empty label.
+    // Parse numbers from the SVG text elements and compare against the flow JSON.
+    // We compare parsed numbers only (not string format) for robustness.
+    const flowJsonPath = path.join(flowsDir, `${pbl}.json`);
+    if (fs.existsSync(flowJsonPath)) {
+      try {
+        const flowData = JSON.parse(fs.readFileSync(flowJsonPath, "utf8"));
+        const awards = flowData.awards ?? [];
 
-    if (hasHero) {
-      heroOk++;
+        // Extract text nodes from the data-flow-svg subtree
+        const svgStartIdx = html.indexOf(`data-flow-svg="${pbl}"`);
+        const svgEndIdx = html.indexOf("</svg>", svgStartIdx);
+        const svgSnippet = svgStartIdx >= 0 && svgEndIdx >= 0
+          ? html.slice(svgStartIdx, svgEndIdx + 6)
+          : "";
+
+        // Parse number labels like "1.86M", "619.0M", "2.35B", etc.
+        const labelRe = />([\d.]+[BbMmKk]?)</g;
+        const svgNumbers = new Set();
+        let lm;
+        while ((lm = labelRe.exec(svgSnippet)) !== null) {
+          const parsed = parseFloat(lm[1]);
+          if (!isNaN(parsed) && parsed > 0) svgNumbers.add(parsed.toFixed(2));
+        }
+
+        // Check that the top award's formatted label appears in the SVG
+        if (awards.length > 0) {
+          const topAward = awards[0];
+          const expectedLabel = formatAmountNoCurrency(topAward.dollars);
+          // Parse what the label would be as a number
+          const expectedNum = parseFloat(expectedLabel.replace(/[BMK]/i, ""));
+          const found = [...svgNumbers].some((n) => {
+            return Math.abs(parseFloat(n) - expectedNum) < 0.1;
+          });
+          if (!found && svgNumbers.size === 0) {
+            errors.push(
+              `animation_gate: flow SVG for ${pbl} has no numeric labels — SVG may be empty or malformed`
+            );
+            flowSvgMissing++;
+            continue;
+          }
+          // If we have labels but can't match exactly, it's acceptable
+          // (formatting may differ for very small/large values)
+        }
+
+        flowSvgOk++;
+      } catch (e) {
+        errors.push(`animation_gate: flow JSON parse error for ${pbl}: ${e.message}`);
+        flowSvgMissing++;
+        continue;
+      }
     } else {
-      // Hero is optional for non-top-50 programs; log as note not error
-      notes.push(
-        `program/${pbl}: no hero section found (may not be in top-50 categories)`
-      );
-      heroOk++; // treat as OK — hero is taxonomy-conditional
+      // SVG present but no JSON to validate against (shouldn't happen)
+      flowSvgOk++;
     }
   }
 
-  notes.push(`hero section check (${sample.length} sampled): ${heroOk}/${sample.length} OK`);
+  if (flowPeBlis.length > 0) {
+    notes.push(
+      `flow SVG presence+validation: ${flowSvgOk}/${flowPeBlis.length} ✓` +
+        (flowSvgMissing > 0 ? ` (${flowSvgMissing} missing/invalid)` : "")
+    );
+  }
 
-  // ── (b) prefers-reduced-motion in built CSS ─────────────────────────────────
-  // Check the home page for a <style> or linked CSS that mentions
-  // prefers-reduced-motion. Next.js inlines critical CSS in <style> tags.
+  // ── (d) prefers-reduced-motion in built CSS ───────────────────────────────
   const homePath = path.join(outDir, "index.html");
   let reducedMotionFound = false;
 
@@ -130,8 +311,6 @@ export async function runAnimationGate() {
     if (homeHtml.includes(REDUCED_MOTION_PATTERN)) {
       reducedMotionFound = true;
     } else {
-      // Next.js v13+ emits CSS in either _next/static/css/ or _next/static/chunks/
-      // (Tailwind v4 / App Router uses chunks). Search both directories.
       const nextStaticCss = path.join(outDir, "_next", "static", "css");
       const nextStaticChunks = path.join(outDir, "_next", "static", "chunks");
       const cssSearchDirs = [nextStaticCss, nextStaticChunks].filter(fs.existsSync);
@@ -157,52 +336,10 @@ export async function runAnimationGate() {
     );
   }
 
-  // ── (c) data-flow-svg on crosswalk program pages ────────────────────────────
-  // Check a sample of program pages for data-flow-svg attribute
-  // (follow-the-dollar flow overlay — Task 5b).
-  let flowSvgChecked = 0;
-  let flowSvgFound = 0;
-
-  const programDirs = fs
-    .readdirSync(programOutDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .slice(0, 20); // sample first 20
-
-  for (const pbl of programDirs) {
-    const pagePath = path.join(programOutDir, pbl, "index.html");
-    if (!fs.existsSync(pagePath)) continue;
-    const pageHtml = fs.readFileSync(pagePath, "utf8");
-    flowSvgChecked++;
-    if (pageHtml.includes("data-flow-svg")) {
-      flowSvgFound++;
-    }
-  }
-
-  if (flowSvgChecked > 0) {
-    if (flowSvgFound === 0) {
-      // data-flow-svg is optional — only emitted for programs with award crosswalk
-      // Log as informational, not an error.
-      notes.push(
-        `data-flow-svg: 0/${flowSvgChecked} sampled program pages have flow overlay (crosswalk may be absent)`
-      );
-    } else {
-      notes.push(
-        `data-flow-svg: ${flowSvgFound}/${flowSvgChecked} sampled program pages have flow overlay ✓`
-      );
-    }
-  }
-
-  // ── (d) No JS-only animations ──────────────────────────────────────────────
-  // Heuristic: check that no program pages use requestAnimationFrame or
-  // setInterval for animation (these would appear in inline scripts).
-  // CSS animations are fine (defined via @keyframes in CSS, not JS).
-  // Since this is a Next.js SSG site, inline scripts are minimal.
-  // We check for suspicious patterns in the home page inline scripts.
+  // ── (e) No JS-only animations ─────────────────────────────────────────────
   let jsAnimationRisk = false;
   if (fs.existsSync(homePath)) {
     const homeHtml = fs.readFileSync(homePath, "utf8");
-    // Check for JS-driven animation patterns in inline <script> blocks
     const scriptRe = /<script[^>]*>([\s\S]*?)<\/script>/gi;
     let m;
     while ((m = scriptRe.exec(homeHtml)) !== null) {

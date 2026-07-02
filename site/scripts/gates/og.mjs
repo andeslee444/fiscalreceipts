@@ -16,6 +16,12 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
+
+// pngjs is in devDependencies; load via createRequire since this gate is ESM
+// but pngjs ships as CJS.
+const _require = createRequire(import.meta.url);
+const { PNG } = _require("pngjs");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -27,6 +33,9 @@ const EXPECTED_HEIGHT = 630;
 const MIN_FILE_SIZE = 10 * 1024; // 10KB
 const SAMPLE_PROGRAMS = 10;
 const SAMPLE_AGENCIES = 5;
+
+/** Minimum fraction of pixels that must differ from the dominant background color. */
+const MIN_PIXEL_DIVERSITY = 0.05; // 5%
 
 // PNG header: bytes 0-7 = \x89PNG\r\n\x1a\n
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -74,14 +83,63 @@ function checkPng(filePath) {
   return result;
 }
 
+/**
+ * Decode a PNG file and return the fraction of pixels that differ from
+ * the dominant background color (most frequent RGBA value in the first row).
+ * Returns null if decode fails.
+ */
+async function pixelDiversityRatio(filePath) {
+  return new Promise((resolve) => {
+    try {
+      const buf = fs.readFileSync(filePath);
+      const png = new PNG();
+      png.parse(buf, (err, data) => {
+        if (err) return resolve(null);
+        const { width, height, data: pixels } = data;
+        const total = width * height;
+        if (total === 0) return resolve(null);
+
+        // Find dominant color in the first row (background proxy)
+        const colorCount = new Map();
+        for (let x = 0; x < width; x++) {
+          const idx = x * 4;
+          const key = `${pixels[idx]},${pixels[idx+1]},${pixels[idx+2]},${pixels[idx+3]}`;
+          colorCount.set(key, (colorCount.get(key) ?? 0) + 1);
+        }
+        let dominantColor = null;
+        let maxCount = 0;
+        for (const [key, count] of colorCount) {
+          if (count > maxCount) { maxCount = count; dominantColor = key; }
+        }
+        if (!dominantColor) return resolve(null);
+        const [r, g, b, a] = dominantColor.split(",").map(Number);
+
+        // Count pixels that differ from dominant color by more than a small threshold
+        let different = 0;
+        for (let i = 0; i < total; i++) {
+          const pi = i * 4;
+          const dr = Math.abs(pixels[pi] - r);
+          const dg = Math.abs(pixels[pi+1] - g);
+          const db = Math.abs(pixels[pi+2] - b);
+          const da = Math.abs(pixels[pi+3] - a);
+          if (dr + dg + db + da > 10) different++;
+        }
+        resolve(different / total);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
 export async function runOgGate() {
   const errors = [];
   const notes = [];
 
-  // Gracefully handle missing public/og/ (pre-build)
+  // Missing public/og/ is a hard FAIL — OG images are required for sharing.
   if (!fs.existsSync(ogDir)) {
-    notes.push("public/og/ not found — OG images not yet generated (SKIP)");
-    return { pass: true, errors, notes };
+    errors.push(`og_gate: public/og/ directory not found at ${ogDir} — OG image pipeline has not run`);
+    return { pass: false, errors, notes };
   }
 
   const allOgFiles = fs.readdirSync(ogDir).filter((f) => f.endsWith(".png"));
@@ -109,22 +167,35 @@ export async function runOgGate() {
     notes.push(`core OG PNGs: ${coreFiles.join(", ")} ✓`);
   }
 
-  // ── (b) Program OG samples ─────────────────────────────────────────────────
+  // ── (b) Program OG samples — header validity + pixel diversity floor ───────
   const programOgFiles = allOgFiles.filter((f) => f.startsWith("program-"));
   const programSample = programOgFiles.slice(0, SAMPLE_PROGRAMS);
 
   let programOk = 0;
   for (const f of programSample) {
-    const result = checkPng(path.join(ogDir, f));
-    if (result.ok) {
-      programOk++;
-    } else {
+    const filePath = path.join(ogDir, f);
+    const result = checkPng(filePath);
+    if (!result.ok) {
       errors.push(`og_gate: program OG ${f}: ${result.error}`);
+      continue;
     }
+    // Pixel diversity floor: ≥5% of pixels must differ from background
+    const diversity = await pixelDiversityRatio(filePath);
+    if (diversity === null) {
+      errors.push(`og_gate: program OG ${f}: failed to decode PNG for pixel diversity check`);
+      continue;
+    }
+    if (diversity < MIN_PIXEL_DIVERSITY) {
+      errors.push(
+        `og_gate: program OG ${f}: only ${(diversity * 100).toFixed(1)}% pixel diversity (< ${MIN_PIXEL_DIVERSITY * 100}% floor) — image appears blank`
+      );
+      continue;
+    }
+    programOk++;
   }
   if (programSample.length > 0) {
     notes.push(
-      `program OG sample (${programSample.length}): ${programOk}/${programSample.length} valid ✓`
+      `program OG sample (${programSample.length}): ${programOk}/${programSample.length} valid with ≥${MIN_PIXEL_DIVERSITY * 100}% pixel diversity ✓`
     );
   } else {
     notes.push("program OG files: none found (dossier pipeline may not have run)");

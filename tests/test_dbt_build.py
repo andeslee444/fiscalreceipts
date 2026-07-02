@@ -257,3 +257,51 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select award_unique_key from fct_award_transactions"
         " where transaction_key='A1'"
     ).fetchone()[0] == 'ASUK1'
+    # Finding 4: entity_xwalk.recipient_uei uniqueness guard
+    # The dbt unique test in schema.yml gates the build. To prove that a duplicate
+    # UEI would double-count obligation totals (motivating the guard), verify the
+    # fixture has exactly 1 row for UEI1 in entity_xwalk — no fan-out.
+    assert con.sql(
+        "select count(*) from entity_xwalk where recipient_uei='UEI1'"
+    ).fetchone()[0] == 1, "entity_xwalk must have exactly 1 row per UEI (duplicate would double-count)"
+
+
+def test_entity_xwalk_duplicate_uei_would_double_count(tmp_path):
+    """Prove that a duplicate recipient_uei in entity_xwalk fans-out obligation totals.
+
+    This test documents WHY the dbt unique test matters: without the guard a
+    single award joins twice, doubling the reported obligation.
+    The test does NOT run dbt — it directly verifies the SQL fan-out behaviour.
+    """
+    import duckdb
+
+    # Single award transaction: UEI1 → $1000
+    con = duckdb.connect()
+    con.execute(
+        "create table awards as "
+        "select 'UEI1' as recipient_uei, 1000.0 as obligation"
+    )
+    # Duplicate UEI in xwalk (two rows for same UEI1)
+    con.execute(
+        "create table xwalk_with_dup as "
+        "select 'UEI1' as recipient_uei, 'FAM_A' as family_key union all "
+        "select 'UEI1' as recipient_uei, 'FAM_A' as family_key"
+    )
+    # This join fans-out: 1 award × 2 xwalk rows = doubled total
+    doubled = con.execute(
+        "select sum(a.obligation) from awards a join xwalk_with_dup x "
+        "on a.recipient_uei = x.recipient_uei"
+    ).fetchone()[0]
+    assert doubled == 2000.0, f"duplicate UEI causes double-count: got {doubled}"
+
+    # With unique UEI (correct state): total is 1000
+    con.execute(
+        "create table xwalk_unique as "
+        "select 'UEI1' as recipient_uei, 'FAM_A' as family_key"
+    )
+    correct = con.execute(
+        "select sum(a.obligation) from awards a join xwalk_unique x "
+        "on a.recipient_uei = x.recipient_uei"
+    ).fetchone()[0]
+    assert correct == 1000.0, f"unique UEI gives correct total: got {correct}"
+    con.close()

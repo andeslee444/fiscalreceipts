@@ -886,6 +886,7 @@ class TestCitationDistinctnessCheck:
 
 
 from govbudget.export_site import fact_id_derived
+from govbudget.verify_phase5b1 import _verify_derived
 
 
 def _make_derived_row(fid: str, formula: str, inputs_json: str,
@@ -1101,3 +1102,135 @@ class TestDerivedIntegrityGate:
         assert result["checks"].get("derived_formula_and_value") is False, (
             f"expected fail for null formula: {result}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Finding 1: derived sum recompute via budget_lines.parquet
+# Tests call _verify_derived directly to avoid sampling workbook-kind rows
+# that would require real xlsx files.
+# ---------------------------------------------------------------------------
+
+
+def _make_derived_row_tuple(fid: str, formula: str, inputs_json: str,
+                            recorded_value: str) -> tuple:
+    """24-element derived citation row (same layout as _CIT_COL_DEFS)."""
+    return (fid, "derived", "USD thousands", None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, "2026-06-12T00:00:00+00:00",
+            formula, inputs_json, None, recorded_value)
+
+
+def _build_cit_idx() -> dict:
+    """Return col_idx matching _CIT_COL_DEFS order."""
+    cols = [
+        "fact_id", "kind", "units", "amount_text",
+        "page_number", "x0", "x1", "top_pt", "bottom_pt",
+        "page_width", "page_height", "resolution",
+        "sheet", "cells", "amount_thousands",
+        "sha256", "hosted_pdf_url", "official_url",
+        "xml_path", "retrieved_at",
+        "formula", "inputs", "query_body", "recorded_value",
+    ]
+    return {name: i for i, name in enumerate(cols)}
+
+
+class TestDerivedSumViabudgetLines:
+    """Rule 4c: sum(budget_lines) resolved via budget_lines.parquet when
+    workbook inputs carry recorded_value=None.
+
+    Tests call _verify_derived directly to avoid the workbook-kind
+    xlsx requirement that would be triggered by citation_gate5b1 sampling.
+    """
+
+    def _make_all_cits(self, *rows: tuple) -> list[tuple]:
+        return list(rows)
+
+    def test_sum_via_budget_lines_correct_passes(self):
+        """Derived sum with inputs whose recorded_value=None but
+        budget_lines.parquet (fid_to_bl_amount) carries amount_thousands → PASS."""
+        import json as _json
+        fid_a = "aaaa000011110000"
+        fid_b = "bbbb000022220000"
+        fid_sum = "cccc000033330000"
+
+        # Simulated citations: workbook rows with recorded_value=None
+        cit_a = _make_derived_row_tuple(fid_a, "workbook-formula", "[]", None)
+        # Override kind to workbook and recorded_value to None (already None above)
+        cit_a_as_wb = list(cit_a)
+        cit_a_as_wb[1] = "workbook"  # kind
+        cit_a_as_wb[23] = None       # recorded_value
+        cit_b_as_wb = list(_make_derived_row_tuple(fid_b, "workbook-formula", "[]", None))
+        cit_b_as_wb[1] = "workbook"
+        cit_b_as_wb[23] = None
+
+        idx = _build_cit_idx()
+        all_cits = [tuple(cit_a_as_wb), tuple(cit_b_as_wb)]
+
+        # budget_lines lookup carries the actual amounts
+        fid_to_bl = {fid_a: "3000.0", fid_b: "629.0"}
+
+        # Derived row summing the two
+        derived_row = _make_derived_row_tuple(
+            fid_sum,
+            "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
+            _json.dumps([fid_a, fid_b]),
+            "3629.0",
+        )
+
+        result = _verify_derived(derived_row, idx, all_cits, idx, fid_to_bl)
+        assert result is None, f"correct sum via budget_lines should PASS: {result}"
+
+    def test_sum_via_budget_lines_tampered_recorded_value_fails(self):
+        """Derived sum with wrong recorded_value → FAIL 'mismatch'."""
+        import json as _json
+        fid_a = "aaaa000011110000"
+        fid_b = "bbbb000022220000"
+        fid_sum = "cccc000033330000"
+
+        idx = _build_cit_idx()
+        cit_a = list(_make_derived_row_tuple(fid_a, "wb", "[]", None))
+        cit_a[1] = "workbook"; cit_a[23] = None
+        cit_b = list(_make_derived_row_tuple(fid_b, "wb", "[]", None))
+        cit_b[1] = "workbook"; cit_b[23] = None
+        all_cits = [tuple(cit_a), tuple(cit_b)]
+
+        fid_to_bl = {fid_a: "3000.0", fid_b: "629.0"}
+
+        derived_row = _make_derived_row_tuple(
+            fid_sum,
+            "sum(budget_lines.amount_thousands where amount_type=fy_2025_total)",
+            _json.dumps([fid_a, fid_b]),
+            "9999.0",  # WRONG — should be 3629
+        )
+        result = _verify_derived(derived_row, idx, all_cits, idx, fid_to_bl)
+        assert result is not None, "tampered recorded_value should FAIL"
+        assert "mismatch" in result, f"expected 'mismatch' in: {result}"
+
+    def test_sum_unresolvable_inputs_fails(self):
+        """Inputs absent from both citations.recorded_value and
+        budget_lines.amount_thousands → FAIL 'unresolvable'."""
+        import json as _json
+        fid_a = "aaaa000011110000"
+        fid_b = "bbbb000022220000"
+        fid_sum = "cccc000033330000"
+
+        idx = _build_cit_idx()
+        # Citations present but recorded_value=None
+        cit_a = list(_make_derived_row_tuple(fid_a, "wb", "[]", None))
+        cit_a[1] = "workbook"; cit_a[23] = None
+        cit_b = list(_make_derived_row_tuple(fid_b, "wb", "[]", None))
+        cit_b[1] = "workbook"; cit_b[23] = None
+        all_cits = [tuple(cit_a), tuple(cit_b)]
+
+        # Empty budget_lines — truly unresolvable
+        fid_to_bl: dict = {}
+
+        derived_row = _make_derived_row_tuple(
+            fid_sum,
+            "sum(budget_lines.amount_thousands where amount_type=fy_2025_total)",
+            _json.dumps([fid_a, fid_b]),
+            "1000.0",
+        )
+        result = _verify_derived(derived_row, idx, all_cits, idx, fid_to_bl)
+        assert result is not None, "unresolvable inputs should FAIL"
+        assert "unresolvable" in result, f"expected 'unresolvable' in: {result}"

@@ -782,15 +782,18 @@ def _build_derived_citation_rows(
         #   fy2025_total    → fy_2025_total  (may also be fy_2025_enacted; both appended)
         #   fy2026_total    → fy_2026_total  (may also be fy_2026_request)
         #   fy2526_change   → derived difference; inputs = union of fy2025/fy2026 inputs
+        # These must match the dbt fct_budget_trajectory pivot exactly so that
+        # sum(inputs) == recorded_value. The dbt model uses only fy_2025_total and
+        # fy_2026_total (not enacted/request alternatives), so we follow suit here.
         _METRIC_TO_AMOUNT_TYPES: dict[str, list[str]] = {
             "fy2024_actuals": ["fy_2024_actuals"],
-            "fy2025_total":   ["fy_2025_total", "fy_2025_enacted"],
-            "fy2026_total":   ["fy_2026_total", "fy_2026_request"],
+            "fy2025_total":   ["fy_2025_total"],
+            "fy2026_total":   ["fy_2026_total"],
         }
         _METRIC_FORMULA: dict[str, str] = {
             "fy2024_actuals": "sum(budget_lines.amount_thousands where amount_type=fy_2024_actuals)",
-            "fy2025_total":   "sum(budget_lines.amount_thousands where amount_type in (fy_2025_total, fy_2025_enacted))",
-            "fy2026_total":   "sum(budget_lines.amount_thousands where amount_type in (fy_2026_total, fy_2026_request))",
+            "fy2025_total":   "sum(budget_lines.amount_thousands where amount_type=fy_2025_total)",
+            "fy2026_total":   "sum(budget_lines.amount_thousands where amount_type=fy_2026_total)",
             "fy2526_change":  "fy2026_total - fy2025_total",
         }
         # Formula used when no budget_lines inputs can be joined (org/type mismatch):
@@ -1544,10 +1547,10 @@ def _write_all_sidecars(
     if narr_pq.exists():
         import duckdb as _duckdb2
         narr_rows = _duckdb2.sql(
-            f"select pe_bli, kind, title, body from read_parquet('{narr_pq}')"
+            f"select pe_bli, kind, title, body, xml_path from read_parquet('{narr_pq}')"
         ).fetchall()
-        for pe_bli, kind, title, body in narr_rows:
-            narr_by_pe[pe_bli].append({"kind": kind, "title": title, "body": body})
+        for pe_bli, kind, title, body, xml_path in narr_rows:
+            narr_by_pe[pe_bli].append({"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""})
 
     # dim_entities top-200 (ordered by total_obligation desc)
     entity_rows = con.execute(

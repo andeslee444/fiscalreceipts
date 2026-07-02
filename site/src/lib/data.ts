@@ -154,6 +154,9 @@ export interface ProgramNarrative {
   body: string;
   kind: string;
   title: string;
+  /** xml_path of this narrative row in the J-book XML source. Used for
+   *  data-xml-path on the data-source-text container (block-level citation). */
+  xml_path?: string;
 }
 
 export interface ProgramBudgetLine {

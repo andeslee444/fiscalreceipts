@@ -166,6 +166,28 @@ def citation_gate5b1(
     # Ensure we cap at sample_size total
     sample = sample[:sample_size]
 
+    # ── Load budget_lines.parquet once for derived-sum recompute ────────────
+    # Workbook citations carry recorded_value=None; their value lives in
+    # amount_thousands.  The derived sum rule (4c) needs to resolve input
+    # fact_ids through budget_lines when recorded_value is absent.
+    fid_to_bl_amount: dict[str, str] = {}
+    bl_pq = site_dir / "data" / "budget_lines.parquet"
+    if bl_pq.exists():
+        try:
+            import duckdb as _duckdb
+            _con = _duckdb.connect()
+            try:
+                bl_rows = _con.execute(
+                    f"select fact_id, amount_thousands from read_parquet('{_sql_path(bl_pq)}')"
+                ).fetchall()
+            finally:
+                _con.close()
+            for _fid, _amt in bl_rows:
+                if _fid is not None and _amt is not None:
+                    fid_to_bl_amount[_fid] = str(_amt)
+        except Exception:
+            pass  # fail gracefully; _verify_derived will FAIL individual rows
+
     failures: list[tuple[str, str]] = []
 
     for row in sample:
@@ -179,7 +201,7 @@ def citation_gate5b1(
         elif kind == "lda_filing":
             reason = _verify_lda(row, col_idx)
         elif kind == "derived":
-            reason = _verify_derived(row, col_idx, all_cits, col_idx)
+            reason = _verify_derived(row, col_idx, all_cits, col_idx, fid_to_bl_amount)
         elif kind == "usaspending":
             reason = _verify_usaspending(row, col_idx)
         elif kind == "state_soql":
@@ -357,6 +379,7 @@ def _verify_derived(
     idx: dict,
     all_cits: list[tuple],
     cit_idx: dict,
+    fid_to_bl_amount: "dict[str, str] | None" = None,
 ) -> str | None:
     """Verify a derived citation.
 
@@ -437,27 +460,41 @@ def _verify_derived(
                     return f"derived difference recompute error: {e}"
 
         # Rule 4c: sum formula over fact_id inputs
+        # Workbook citations carry recorded_value=None; resolve their value via
+        # fid_to_bl_amount (budget_lines.parquet fact_id→amount_thousands).
+        # If an input is still unresolvable after both lookups → FAIL (never skip).
         elif formula.startswith("sum(budget_lines") and len(inputs) > 0:
+            _bl = fid_to_bl_amount or {}
             values = []
+            unresolvable = []
             for inp_fid in inputs:
                 rv = fid_to_rv.get(inp_fid)
-                if rv is not None:
+                if rv is None:
+                    rv = _bl.get(inp_fid)
+                if rv is None:
+                    unresolvable.append(inp_fid)
+                else:
                     try:
                         values.append(D(rv))
-                    except Exception:
-                        pass
-            if values:
-                try:
-                    expected_sum = sum(values, D(0))
-                    actual = D(recorded_value)
-                    if abs(actual - expected_sum) > D("0.001"):
-                        return (
-                            f"derived sum recompute mismatch: "
-                            f"sum({len(values)} inputs)={expected_sum} "
-                            f"but recorded_value={recorded_value}"
-                        )
-                except Exception as e:
-                    return f"derived sum recompute error: {e}"
+                    except Exception as e:
+                        return f"derived sum input {inp_fid} not numeric: {e}"
+            if unresolvable:
+                return (
+                    f"derived inputs unresolvable: fact_ids not found in "
+                    f"citations.recorded_value or budget_lines.amount_thousands: "
+                    f"{unresolvable[:3]}"
+                )
+            try:
+                expected_sum = sum(values, D(0))
+                actual = D(recorded_value)
+                if abs(actual - expected_sum) > D("0.001"):
+                    return (
+                        f"derived sum recompute mismatch: "
+                        f"sum({len(values)} inputs)={expected_sum} "
+                        f"but recorded_value={recorded_value}"
+                    )
+            except Exception as e:
+                return f"derived sum recompute error: {e}"
 
     # URL inputs or empty inputs: shape check only (no network, no arithmetic)
     # Just confirm recorded_value is a parseable number or non-empty string

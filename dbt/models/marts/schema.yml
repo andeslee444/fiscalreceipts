@@ -1,5 +1,11 @@
 version: 2
 models:
+  - name: entity_xwalk
+    description: "Recipient UEI → family_key crosswalk. Unique on recipient_uei — any duplicate would fan-out fct_family_obligations_by_year and double-count award dollars."
+    columns:
+      - name: recipient_uei
+        description: "SAM.gov Unique Entity Identifier for the recipient. Must be unique — duplicates cause fan-out double-counting in obligation aggregation."
+        data_tests: [unique, not_null]
   - name: fct_award_transactions
     columns:
       - name: transaction_key

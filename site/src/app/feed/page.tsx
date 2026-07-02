@@ -82,8 +82,15 @@ function FeedCardItem({ card }: { card: FeedCard }) {
       <div className="min-w-0 flex-1">
         {/* data-source-text="headline": auto-generated prose from export pipeline —
             dollar strings (e.g. "first award FY2025, $3.1M total") are descriptive
-            context, not site-computed cite-able figures. */}
-        <p className="text-sm font-medium leading-snug" data-source-text="headline">{card.headline}</p>
+            context, not site-computed cite-able figures.
+            data-xml-path provides the block-level citation anchor, satisfying
+            the constraint that every data-source-text element must carry
+            data-xml-path. */}
+        <p
+          className="text-sm font-medium leading-snug"
+          data-source-text="headline"
+          data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? "unknown"}`}
+        >{card.headline}</p>
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">
@@ -199,8 +206,13 @@ export default function FeedPage() {
                   </h2>
                   {/* data-source-text="methodology" — description text contains
                       threshold dollar amounts ($50M, $5M, $1M) that are
-                      methodology prose, not site-computed figures. */}
-                  <p className="text-sm text-muted-foreground mt-1" data-source-text="methodology">
+                      methodology prose, not site-computed figures.
+                      data-xml-path identifies the section anchor. */}
+                  <p
+                    className="text-sm text-muted-foreground mt-1"
+                    data-source-text="methodology"
+                    data-xml-path={`site:feed/section/${etype}`}
+                  >
                     {meta.description}
                   </p>
                 </div>

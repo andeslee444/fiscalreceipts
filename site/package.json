@@ -43,6 +43,7 @@
     "node-html-parser": "^7.1.0",
     "pagefind": "1.5.2",
     "playwright": "^1.50",
+    "pngjs": "^7.0.0",
     "satori": "^0.26.0",
     "shadcn": "^3.8.4",
     "tailwindcss": "^4",

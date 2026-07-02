@@ -106,6 +106,30 @@ export async function runRenderStaticGate() {
       continue;
     }
 
+    // ── (a0) data-source-text constraint: every data-source-text element must
+    //        carry a non-empty data-xml-path AND contain NO [data-amount]
+    //        descendants (computed figures may not hide inside source text).
+    const sourceTextEls = root.querySelectorAll("[data-source-text]");
+    for (const stEl of sourceTextEls) {
+      const xmlPath = stEl.getAttribute("data-xml-path");
+      if (!xmlPath || xmlPath.trim() === "") {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue: `[data-source-text] element missing data-xml-path (block-level citation required)`,
+          attrs: stEl.rawAttrs?.slice(0, 200),
+        });
+      }
+      const amountDescendants = stEl.querySelectorAll("[data-amount]");
+      if (amountDescendants.length > 0) {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue: `[data-source-text] subtree contains ${amountDescendants.length} [data-amount] descendant(s) — computed figures may not be nested inside source text`,
+        });
+      }
+    }
+
     // ── (a) Positive: data-amount elements ──────────────────────────────────
     const amountEls = root.querySelectorAll("[data-amount]");
     for (const el of amountEls) {
