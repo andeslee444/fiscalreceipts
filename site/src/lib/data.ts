@@ -8,7 +8,7 @@ import "server-only";
  * All exports are cached via module-level memo (loaded once per build process).
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 import {
@@ -976,4 +976,54 @@ export function isStateSoql(c: Citation): c is StateSoqlCitation {
 
 export function isStateFile(c: Citation): c is StateFileCitation {
   return c.kind === "state_file";
+}
+
+// ── Coverage count helpers (Phase 5C) ─────────────────────────────────────────
+
+/** Number of crosswalked flow sidecars (programs with high-confidence budget→award links). */
+export function getFlowsCount(): number {
+  const flowsDir = join(jsonDir(), "flows");
+  if (!existsSync(flowsDir)) return 0;
+  return readdirSync(flowsDir).filter((f) => f.endsWith(".json")).length;
+}
+
+/** Total number of program pages (from programs.json length). */
+export function getProgramsCount(): number {
+  return getPrograms().length;
+}
+
+/** Number of dossier sidecars present (gated, cited-or-absent research files). */
+export function getDossierCount(): number {
+  const dossiersDir = join(jsonDir(), "dossiers");
+  if (!existsSync(dossiersDir)) return 0;
+  return readdirSync(dossiersDir).filter((f) => f.endsWith(".json")).length;
+}
+
+/** Number of company pages (top entity profiles). */
+export function getCompaniesCount(): number {
+  return getEntitiesTop().length;
+}
+
+/** Number of company profiles that have at least one award row. */
+export function getCompaniesWithAwardsCount(): number {
+  const entityDetailsDir = join(jsonDir(), "entity_details");
+  if (!existsSync(entityDetailsDir)) return 0;
+  const files = readdirSync(entityDetailsDir).filter((f) => f.endsWith(".json"));
+  let count = 0;
+  for (const f of files) {
+    try {
+      const data = JSON.parse(readFileSync(join(entityDetailsDir, f), "utf8")) as {
+        awards?: unknown[];
+      };
+      if (Array.isArray(data.awards) && data.awards.length > 0) count++;
+    } catch {
+      // skip malformed files
+    }
+  }
+  return count;
+}
+
+/** Number of congressional districts with linked defense dollars. */
+export function getDistrictsCount(): number {
+  return getDistrictIndex().districts.length;
 }
