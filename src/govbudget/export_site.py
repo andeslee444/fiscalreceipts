@@ -2675,26 +2675,15 @@ def _emit_feed_sidecar(
     # the raw PE code. Every trajectory row is built exclusively from TITLED
     # detail rows in fct_budget_lines (title IS NOT NULL), so a title is
     # resolvable for 100% of pe_bli feed events.
-    # Deterministic choice per pe_bli: the title of the detail row with the
-    # largest fy_2024_actuals amount (fy_2024_actuals is the most-populated
-    # detail amount_type — 1,836 titled rows vs 974 for fy_2025_total);
-    # pe_blis with no fy_2024_actuals rows (and ties) fall back to the
-    # alphabetically-first title. Title resolution ONLY affects display text —
-    # program_url stays emitted as-is and the site keeps gating links on
-    # programs.json page existence (G1 dead-link contract).
+    # Resolution comes from the dim_pe_titles mart — the single source for
+    # the deterministic largest-fy24-detail-row rule (alphabetical tiebreak);
+    # see dbt/models/marts/dim_pe_titles.sql for the documented rule.
+    # Title resolution ONLY affects display text — program_url stays emitted
+    # as-is and the site keeps gating links on programs.json page existence
+    # (G1 dead-link contract).
     try:
         bl_title_rows = con.execute(
-            "select pe_bli, title from ("
-            "  select pe_bli, title,"
-            "         row_number() over ("
-            "           partition by pe_bli"
-            "           order by (case when amount_type = 'fy_2024_actuals'"
-            "                          then amount_thousands end) desc nulls last,"
-            "                    title asc"
-            "         ) as rn"
-            "  from fct_budget_lines"
-            "  where pe_bli is not null and title is not null"
-            ") where rn = 1"
+            "select pe_bli, title from dim_pe_titles"
         ).fetchall()
     except Exception:
         bl_title_rows = []
@@ -2708,7 +2697,7 @@ def _emit_feed_sidecar(
          fiscal_year, units, detail_json) in feed_rows:
 
         # Compose headline text — dim_programs title first (matches the
-        # program page heading when one exists), fct_budget_lines detail-row
+        # program page heading when one exists), dim_pe_titles canonical
         # title as fallback for trajectory-only pe_blis.
         program_title = ""
         if pe_bli:

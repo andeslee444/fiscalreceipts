@@ -18,6 +18,15 @@ models:
     columns:
       - name: pe_bli
         data_tests: [not_null]
+  - name: dim_pe_titles
+    description: "Canonical display title per pe_bli, resolved from titled detail rows in fct_budget_lines. Deterministic rule: largest fy_2024_actuals detail row's title; no-fy24/tie fallback is the alphabetically-first title. Single source for program-title resolution (feed exporter consumes this); covers every trajectory pe_bli, unlike dim_programs (R-2/P-40 only)."
+    columns:
+      - name: pe_bli
+        data_tests: [unique, not_null]
+        description: "Program element / budget line identifier. Unique — exactly one canonical title per pe_bli."
+      - name: title
+        data_tests: [not_null]
+        description: "Canonical program title (detail-row title, never an R-1 rollup NULL)."
   - name: fct_program_concentration
     columns:
       - name: pe_bli

@@ -237,6 +237,11 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     # (only 1 budget row at 280494 thousands, no |pct_change|>=50 since only 1 FY).
     # The model must exist and be queryable; row count >= 0.
     assert con.sql("select count(*) from fct_feed_events").fetchone()[0] >= 0
+    # dim_pe_titles (backlog #14): canonical title per pe_bli from titled
+    # detail rows — the fixture's single titled budget_lines row must resolve.
+    assert con.sql(
+        "select title from dim_pe_titles where pe_bli='0601101E'"
+    ).fetchone()[0] == 'DEFENSE RESEARCH'
     # fct_district_programs: the fixture contracts have CA-52 district + award HR001124C0001
     # which matches the high-confidence jbook_award. Expect >= 1 row.
     assert con.sql("select count(*) from fct_district_programs").fetchone()[0] >= 1
