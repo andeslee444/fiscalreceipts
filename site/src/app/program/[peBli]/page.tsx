@@ -447,7 +447,7 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
       {/* WHO GETS IT — top recipient family + cited program obligations from
           the concentration sidecar; honest absence otherwise. */}
       <AnswerItem label="Who gets it" testId="answer-who">
-        {hhi ? (
+        {hhi && hhi.program_dollars_fact_id ? (
           <>
             <span className="font-medium">{hhi.top_family}</span>
             <span className="text-muted-foreground">

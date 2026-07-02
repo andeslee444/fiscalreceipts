@@ -18,6 +18,10 @@
  *
  * Stagger: pass the item's list index — the transition delay steps by 60ms,
  * capped at 5 steps (300ms) so long lists don't crawl.
+ *
+ * Observer: module-level singleton shared across all <Reveal> instances.
+ * One IntersectionObserver + Map<Element, callback> instead of one-per-mount.
+ * Created lazily on first client use; guarded against SSR.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -31,6 +35,40 @@ export function staggerDelayMs(index: number): number {
 }
 
 type RevealState = "static" | "armed" | "revealed";
+
+// ---------------------------------------------------------------------------
+// Module-level shared observer
+// ---------------------------------------------------------------------------
+
+/** Callbacks keyed by the element they watch. */
+const registry = new Map<Element, () => void>();
+
+/** Lazily-created singleton — undefined until first client mount. */
+let sharedObserver: IntersectionObserver | undefined;
+
+function getObserver(): IntersectionObserver | undefined {
+  if (typeof window === "undefined") return undefined;
+  if (!sharedObserver) {
+    sharedObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const cb = registry.get(entry.target);
+            if (cb) {
+              cb();
+              sharedObserver!.unobserve(entry.target);
+              registry.delete(entry.target);
+            }
+          }
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0 },
+    );
+  }
+  return sharedObserver;
+}
+
+// ---------------------------------------------------------------------------
 
 export function Reveal({
   children,
@@ -55,20 +93,17 @@ export function Reveal({
     if (rect.top < window.innerHeight && rect.bottom > 0) return;
 
     setState("armed");
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setState("revealed");
-            io.disconnect();
-          }
-        }
-      },
-      // Trigger slightly before the element fully enters the viewport.
-      { rootMargin: "0px 0px -8% 0px", threshold: 0 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+
+    const observer = getObserver();
+    if (!observer) return;
+
+    registry.set(el, () => setState("revealed"));
+    observer.observe(el);
+
+    return () => {
+      observer.unobserve(el);
+      registry.delete(el);
+    };
   }, []);
 
   const classes = [
