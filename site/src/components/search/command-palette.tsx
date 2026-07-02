@@ -448,6 +448,12 @@ export function CommandPalette() {
           </svg>
           <input
             ref={inputRef}
+            // Focus synchronously on mount (the palette only mounts when
+            // open). The deferred focus effect above is not enough by itself:
+            // keystrokes typed immediately after the palette opens (fast
+            // users, personas gate) landed before its setTimeout(0) fired and
+            // were silently swallowed by document.body.
+            autoFocus
             role="combobox"
             aria-expanded={true}
             aria-controls={listboxId}

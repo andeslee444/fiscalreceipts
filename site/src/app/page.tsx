@@ -5,6 +5,7 @@ import {
   getPrograms,
   getAgencies,
   getFeed,
+  getReceiptMomentFact,
   collectCitationsWithInputs,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
@@ -54,10 +55,15 @@ export default function HomePage() {
     )
     .slice(0, 5);
 
-  // Citation slice: mover change fact_ids (+ their peer inputs so the
-  // derived-card chips are clickable) + agency FY24 derived fact_ids
-  // + feed teaser fact_ids.
+  // Receipt moment: the largest FY2024-actuals figure with a jbook_pdf
+  // citation — the panel renders the actual PDF page + highlight (Goal 1).
+  const receiptFact = getReceiptMomentFact();
+
+  // Citation slice: receipt-moment jbook_pdf fact_id + mover change fact_ids
+  // (+ their peer inputs so the derived-card chips are clickable) + agency
+  // FY24 derived fact_ids + feed teaser fact_ids.
   const pageFactIds: string[] = [];
+  if (receiptFact) pageFactIds.push(receiptFact.fact_id);
   for (const p of topMovers) {
     if (p.trajectory_fact_ids?.fy2526_change) {
       pageFactIds.push(p.trajectory_fact_ids.fy2526_change);
@@ -70,11 +76,6 @@ export default function HomePage() {
     if (card.figure_fact_id) pageFactIds.push(card.figure_fact_id);
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
-
-  // Receipt moment: the single biggest FY25→26 mover, rendered above the
-  // fold with its existing derived citation (fact_id already in the slice).
-  const receiptMover =
-    topMovers.find((p) => p.trajectory_fact_ids?.fy2526_change) ?? null;
 
   // Finding lede: the top feed event as a one-line finding in the hero.
   // Falls back to the static subtitle when the feed sidecar is empty
@@ -170,13 +171,13 @@ export default function HomePage() {
       {/* ── Receipt moment + persona row ─────────────────────────────────── */}
       <section className="bg-background border-b border-border pb-10 md:pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
-          {receiptMover && (
+          {receiptFact && (
             <ReceiptMoment
-              peBli={receiptMover.pe_bli}
-              title={receiptMover.title}
-              org={receiptMover.org}
-              change={receiptMover.trajectory!.fy2526_change!}
-              factId={receiptMover.trajectory_fact_ids!.fy2526_change!}
+              peBli={receiptFact.pe_bli}
+              title={receiptFact.title}
+              org={receiptFact.org}
+              amountMillions={receiptFact.amount_millions}
+              factId={receiptFact.fact_id}
             />
           )}
 

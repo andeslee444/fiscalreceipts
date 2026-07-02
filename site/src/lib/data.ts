@@ -579,6 +579,85 @@ export function collectCitationsWithInputs(factIds: string[]): CitationsMap {
   return result;
 }
 
+// ── Receipt moment (home page, Phase 5C Goal 1) ──────────────────────────────
+
+export interface ReceiptMomentFact {
+  pe_bli: string;
+  title: string;
+  org: string;
+  /** FY2024-actuals amount, USD millions (J-book detail row units). */
+  amount_millions: number;
+  /** jbook_pdf citation fact_id — resolves in citations.json (kind guaranteed). */
+  fact_id: string;
+  /** PDF page the amount is printed on (from the jbook_pdf citation). */
+  page_number: number;
+}
+
+/** J-book detail scenario whose column is FY2024 actuals (FY2026 J-books). */
+const RECEIPT_FY24_SCENARIO = "PriorYear";
+
+/** Bound the detail-file scan — the top program yields in practice. */
+const RECEIPT_SCAN_CAP = 20;
+
+let _receiptMomentFact: ReceiptMomentFact | null | undefined;
+
+/**
+ * The home page's "receipt moment" figure: the LARGEST FY2024-actuals amount
+ * whose citation is kind=jbook_pdf — a figure literally printed on a J-book
+ * PDF page, so the citation panel opens the page render with the amber
+ * highlight (spec Goal 1: "the page it's printed on").
+ *
+ * Selection (build time, memoized): iterate programs sorted by FY24 dollars
+ * descending, load each program's details, and return the largest
+ * FY24-actuals (scenario "PriorYear") jbook_pdf-cited row of the FIRST
+ * program that has one — typically the first program. The scan is hard-capped
+ * at RECEIPT_SCAN_CAP detail files. Null when no candidate exists (the home
+ * page then renders no receipt moment — G4 fails loudly).
+ */
+export function getReceiptMomentFact(): ReceiptMomentFact | null {
+  if (_receiptMomentFact !== undefined) return _receiptMomentFact;
+  const citations = getCitations();
+
+  // FY24 dollars in USD thousands (trajectory) or millions × 1000 (rollup) —
+  // whichever is known; programs with neither are excluded.
+  const fy24Thousands = (p: ProgramRow): number => {
+    const t = p.trajectory?.fy2024_actuals ?? null;
+    const m =
+      p.fy2024_actual_millions != null ? p.fy2024_actual_millions * 1000 : null;
+    return Math.max(t ?? -Infinity, m ?? -Infinity);
+  };
+
+  const ranked = getPrograms()
+    .filter((p) => fy24Thousands(p) > 0)
+    .sort((a, b) => fy24Thousands(b) - fy24Thousands(a))
+    .slice(0, RECEIPT_SCAN_CAP);
+
+  for (const p of ranked) {
+    let best: { row: ProgramDetailRow; page_number: number } | null = null;
+    for (const row of getProgramDetails(p.pe_bli).details) {
+      if (row.scenario !== RECEIPT_FY24_SCENARIO || !row.fact_id) continue;
+      const citation = citations[row.fact_id];
+      if (!citation || citation.kind !== "jbook_pdf") continue;
+      if (!best || row.amount_millions > best.row.amount_millions) {
+        best = { row, page_number: citation.page_number };
+      }
+    }
+    if (best) {
+      _receiptMomentFact = {
+        pe_bli: p.pe_bli,
+        title: p.title,
+        org: p.org,
+        amount_millions: best.row.amount_millions,
+        fact_id: best.row.fact_id,
+        page_number: best.page_number,
+      };
+      return _receiptMomentFact;
+    }
+  }
+  _receiptMomentFact = null;
+  return _receiptMomentFact;
+}
+
 // ── feed.json ─────────────────────────────────────────────────────────────────
 
 export interface FeedCard {

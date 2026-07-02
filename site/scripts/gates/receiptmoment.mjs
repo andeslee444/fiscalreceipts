@@ -12,17 +12,13 @@
  *    (fresh context = fresh localStorage), gone after clicking Dismiss and
  *    reloading.
  * 3. Click the receipt moment's cite → [data-testid="citation-panel"] visible
- *    with REAL citation content within ≤ 2 clicks total (expected: 1):
+ *    with a REAL PDF receipt within ≤ 2 clicks total (expected: 1):
  *      - a rendered PDF canvas (jbook_pdf citations), OR
- *      - [data-degraded="pdf"] (asset bundle unreachable), OR
- *      - [data-testid="derived-card"] with its formula (derived citations).
- *    ADAPTATION (documented per plan): the receipt moment reuses the top
- *    mover's EXISTING trajectory citation, which is kind=derived
- *    (fy2026_total − fy2025_total). Its honest "real panel" content is the
- *    derived card — formula, recorded value, input chips — not a PDF page
- *    render. The plan's canvas/degraded-pdf alternatives are still accepted
- *    should the underlying fact kind ever become jbook_pdf. No spinner or
- *    empty panel is accepted.
+ *      - [data-degraded="pdf"] (asset bundle unreachable — G3 contract).
+ *    The receipt moment features the largest FY2024-actuals figure with a
+ *    jbook_pdf citation (getReceiptMomentFact), so the spec Goal 1 contract
+ *    ("the citation panel with the PDF page + highlight") is asserted
+ *    literally — a derived card, spinner, or empty panel is NOT accepted.
  * 4. 390×844, fresh context: fold assert repeated (click leg once is enough
  *    per plan; the coach mark is md+ only so it is not asserted on mobile).
  *
@@ -60,7 +56,9 @@ async function assertAboveFold(page, viewport, errors, notes) {
 }
 
 /**
- * Wait for real citation content inside the open panel.
+ * Wait for the real PDF receipt inside the open panel: a rendered PDF canvas,
+ * or the explicit degraded-pdf fallback when the asset bundle is unreachable.
+ * A derived card is NOT accepted — the receipt moment's fact is jbook_pdf.
  * Returns a string describing what was found, or null on timeout.
  */
 async function waitForPanelContent(page, timeoutMs = 10000) {
@@ -77,12 +75,6 @@ async function waitForPanelContent(page, timeoutMs = 10000) {
 
     const degraded = await page.$('[data-degraded="pdf"]');
     if (degraded && (await degraded.isVisible())) return '[data-degraded="pdf"] fallback';
-
-    const derived = await page.$('[data-testid="derived-card"]');
-    if (derived && (await derived.isVisible())) {
-      const text = await derived.innerText();
-      if (/formula/i.test(text)) return "derived card (formula + inputs)";
-    }
 
     await page.waitForTimeout(200);
   }
