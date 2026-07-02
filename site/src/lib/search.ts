@@ -140,6 +140,10 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
 
   const ms = await buildIndex();
   const queryNorm = query.trim().toLowerCase();
+  // District code pattern: two uppercase letters + hyphen + digits (e.g. "CO-05")
+  const districtCodeRe = /^[A-Z]{2}-\d{2}$/;
+  const isDistrictQuery = districtCodeRe.test(query.trim().toUpperCase());
+
   const raw = ms.search(query).map((r) => {
     const titleLow = (r.title as string).toLowerCase();
     // Exact match boost: agency or company whose title exactly matches the query
@@ -154,6 +158,14 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
       // If the title and query are within 2 chars of each other, it's likely an agency match
       if (Math.abs(queryLen - titleLen) <= 2 && (titleLow.startsWith(queryNorm.slice(0, 3)) || queryNorm.startsWith(titleLow.slice(0, 3)))) {
         return { ...r, score: 5000 };
+      }
+    }
+    // District code boost: when the query looks like a district code (e.g. "CO-05"),
+    // boost the matching district doc so it surfaces above programs/companies.
+    if (isDistrictQuery && r.kind === "district") {
+      const peBli = ((r as Record<string, unknown>).pe_bli as string | undefined) ?? "";
+      if (peBli.toUpperCase() === query.trim().toUpperCase()) {
+        return { ...r, score: 8000 };
       }
     }
     return r;

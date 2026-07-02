@@ -1929,7 +1929,7 @@ def _write_all_sidecars(
         {"id": "s:methodology", "kind": "static", "title": "Methodology", "url": "/methodology/"},
         {"id": "s:about", "kind": "static", "title": "About", "url": "/about/"},
         {"id": "s:feed", "kind": "static", "title": "Anomaly Feed", "url": "/feed/"},
-        {"id": "s:district", "kind": "static", "title": "Congressional Districts", "url": "/district/"},
+        {"id": "s:district", "kind": "page", "title": "Congressional Districts — defense spending by district", "url": "/district/"},
         {"id": "s:filings", "kind": "static", "title": "Lobbying Filings", "url": "/filings/"},
     ]
     search_docs.extend(static_pages)
@@ -1957,13 +1957,37 @@ def _write_all_sidecars(
         ).fetchall()
     except Exception:
         dist_keys_rows = []
+    # Build state abbreviation → full name lookup for richer district titles
+    _STATE_NAMES: dict[str, str] = {
+        "AK": "Alaska", "AL": "Alabama", "AR": "Arkansas", "AZ": "Arizona",
+        "CA": "California", "CO": "Colorado", "CT": "Connecticut",
+        "DC": "District of Columbia", "DE": "Delaware", "FL": "Florida",
+        "GA": "Georgia", "HI": "Hawaii", "IA": "Iowa", "ID": "Idaho",
+        "IL": "Illinois", "IN": "Indiana", "KS": "Kansas", "KY": "Kentucky",
+        "LA": "Louisiana", "MA": "Massachusetts", "MD": "Maryland",
+        "ME": "Maine", "MI": "Michigan", "MN": "Minnesota", "MO": "Missouri",
+        "MS": "Mississippi", "MT": "Montana", "NC": "North Carolina",
+        "ND": "North Dakota", "NE": "Nebraska", "NH": "New Hampshire",
+        "NJ": "New Jersey", "NM": "New Mexico", "NV": "Nevada",
+        "NY": "New York", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon",
+        "PA": "Pennsylvania", "PR": "Puerto Rico", "RI": "Rhode Island",
+        "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee",
+        "TX": "Texas", "UT": "Utah", "VA": "Virginia", "VT": "Vermont",
+        "WA": "Washington", "WI": "Wisconsin", "WV": "West Virginia",
+        "WY": "Wyoming",
+    }
     for pop_state, pop_district in dist_keys_rows:
         if not pop_district:
             continue
+        state_name = _STATE_NAMES.get(pop_state or "", pop_state or "")
         search_docs.append({
             "id": f"district:{pop_district}",
             "kind": "district",
-            "title": f"District {pop_district}",
+            # pe_bli carries the district code so MiniSearch's pe_bli field
+            # gives an exact-match boost (same field used for program codes).
+            "pe_bli": pop_district,
+            "org": state_name,
+            "title": f"{pop_district} — {state_name} congressional district defense spending",
             "url": f"/district/{pop_district}/",
         })
 

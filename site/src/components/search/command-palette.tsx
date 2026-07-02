@@ -353,10 +353,24 @@ export function CommandPalette() {
   const optionId = (i: number) => `${uid}-opt-${i}`;
 
   // Best matches: agencies and companies whose title exactly or near-exactly
-  // matches the query. Rendered first in the DOM (before Programs) so they
+  // matches the query. Also district docs when query matches a district code
+  // (e.g. "CO-05"). Rendered first in the DOM (before Programs) so they
   // appear in the gate's top-3/top-5 result selectors and are visually prominent.
   const queryNormPalette = query.trim().toLowerCase();
+  // District code pattern: two letters + hyphen + digits (e.g. "CO-05", "VA-08")
+  const districtCodePatternPalette = /^[a-z]{2}-\d{2}$/i;
   const isBestMatch = (item: FlatItem): boolean => {
+    // District exact-code match: e.g. query="CO-05" and item.kind="district"
+    // Check via URL: /district/CO-05/ matches query "co-05"
+    if (item.kind === "district" && districtCodePatternPalette.test(queryNormPalette)) {
+      const expectedUrl = `/district/${queryNormPalette.toUpperCase()}/`;
+      if (item.url === expectedUrl) return true;
+    }
+    // District index page: surface /district/ when query contains "district"
+    // so "congressional districts defense" navigates to the index immediately.
+    if (item.url === "/district/" && queryNormPalette.includes("district")) {
+      return true;
+    }
     if (item.kind !== "agency" && item.kind !== "company") return false;
     const titleLow = item.label.toLowerCase();
     if (titleLow === queryNormPalette) return true;

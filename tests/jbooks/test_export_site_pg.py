@@ -174,6 +174,21 @@ def _make_test_duckdb(db_path: Path) -> None:
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
     con.execute("insert into dim_geography values ('VA','VA-08',150,5000000.0)")
 
+    # fct_district_programs (optional mart; provides district search docs + district sidecars)
+    con.execute(
+        "create table fct_district_programs ("
+        "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+        "  program_title varchar, organization varchar,"
+        "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+        "  total_obligation double"
+        ")"
+    )
+    con.execute(
+        "insert into fct_district_programs values"
+        " ('CO', 'CO-05', '0601101E', 'Defense Research Sciences', 'DARPA', 10, 4, 2, 1500000.0),"
+        " ('VA', 'VA-08', '0601101E', 'Defense Research Sciences', 'DARPA', 15, 5, 3, 5000000.0)"
+    )
+
     # 11. fct_state_per_capita  (live cols: jurisdiction,comparable_category,fiscal_year varchar,total_amount_usd,population,amount_per_capita,pop_year_used,spend_source_url,pop_source_url,coverage_note)
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.execute("insert into fct_state_per_capita values ('CA','Education','2025',5000000000.0,39500000,126.58,2020,'https://example.com/spend','https://example.com/pop','full state')")
@@ -1193,6 +1208,7 @@ def test_search_quick_json_schema(pg_dsn, tmp_path):
     assert "program" in kinds, "no program docs in search_quick"
     assert "agency" in kinds, "no agency docs in search_quick"
     assert "static" in kinds, "no static docs in search_quick"
+    assert "district" in kinds, "no district docs in search_quick (kind='district' required for /district/{code}/ navigation)"
 
     # Program docs have required fields
     prog_docs = [d for d in docs if d["kind"] == "program"]
@@ -1203,6 +1219,24 @@ def test_search_quick_json_schema(pg_dsn, tmp_path):
     assert "pe_bli" in pd_
     assert "org" in pd_
     assert "dollars" in pd_  # nullable OK
+
+    # District docs: each must contain district code in title and url
+    dist_docs = [d for d in docs if d["kind"] == "district"]
+    assert dist_docs, "district docs missing from search_quick"
+    for dd in dist_docs:
+        assert dd["url"].startswith("/district/"), f"district doc url wrong: {dd['url']!r}"
+        # Extract district code from url (e.g. /district/CO-05/ → CO-05)
+        code = dd["url"].strip("/").split("/")[-1]
+        assert code in dd["title"], (
+            f"district code {code!r} not found in title {dd['title']!r} — "
+            "users typing a code must be able to find the district page"
+        )
+    # /district/ index page must be present (kind:'page') and contain 'defense' for search
+    dist_index = [d for d in docs if d["url"] == "/district/"]
+    assert dist_index, "/district/ index page missing from search_quick"
+    assert any("defense" in d["title"].lower() for d in dist_index), (
+        "/district/ index entry must contain 'defense' in title for 'congressional districts defense' search"
+    )
 
 
 def test_site_meta_json(pg_dsn, tmp_path):
