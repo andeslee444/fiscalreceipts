@@ -14,7 +14,8 @@ Produces (5B-1):
 
 Produces (5B-2 sidecars):
   out_dir/json/programs.json
-  out_dir/json/program_details/{pe_bli}.json  (326 files)
+  out_dir/json/program_details/{pe_bli}.json  (one per program page:
+      dim_programs rows + trajectory-only feed programs, backlog #17)
   out_dir/json/entities_top.json
   out_dir/json/entity_details/{slug}.json     (top-200 entities)
   out_dir/json/agencies.json
@@ -1414,6 +1415,91 @@ def _build_derived_citation_rows(
 # ---------------------------------------------------------------------------
 
 
+def _trajectory_only_feed_programs(con, existing_pe_blis: set) -> list[tuple]:
+    """Synthesize dim_programs-shaped rows for feed PEs without a page (backlog #17).
+
+    fct_feed_events references pe_blis that exist in fct_budget_trajectory but
+    not in dim_programs (which requires R-2/P-40 J-book detail). Those feed
+    cards used to dead-end. This helper returns rows in the EXACT shape of the
+    dim_programs sidecar query so the sidecar writer can treat them uniformly:
+
+        (pe_bli, org, exhibit_family, title, project_count,
+         fy2024_actual_millions, fully_reconciled)
+
+    Honesty contract:
+    - title comes from dim_pe_titles (the single deterministic title mart);
+      titleless pe_blis are SKIPPED loudly — a page without an h1 would be
+      broken, and inventing a title violates cited-or-absent.
+    - pe_blis without any fct_budget_trajectory row are skipped (no figures
+      to render; the feed card stays linkless via the site's programs.json
+      gate — honest degradation, not a dead link).
+    - project_count=0, fy2024_actual_millions=None, fully_reconciled=False:
+      there is NO J-book detail behind these pages. The page renders the
+      trajectory figures (whose derived citations are already emitted for
+      every trajectory row) and empty states everywhere else.
+    - exhibit_family derived from fct_budget_lines exhibits for the pe_bli
+      (majority P-* → 'procurement', else 'rdte' — mirrors dim_programs
+      exhibit_family vocabulary).
+    - Deterministic: one row per pe_bli (largest fy2026_total wins when a
+      pe_bli spans orgs — none do as of FY2026; org ascending tiebreak),
+      ordered by pe_bli.
+    """
+    try:
+        rows = con.execute(
+            """
+            with feed_pes as (
+                select distinct pe_bli from fct_feed_events
+                where pe_bli is not null
+            ),
+            traj as (
+                select t.pe_bli, t.organization,
+                       row_number() over (
+                           partition by t.pe_bli
+                           order by t.fy2026_total desc nulls last,
+                                    t.organization
+                       ) as rn
+                from fct_budget_trajectory t
+                join feed_pes f on f.pe_bli = t.pe_bli
+            ),
+            fam as (
+                select pe_bli,
+                       case when sum(case when exhibit like 'P%' then 1 else 0 end)
+                                 > sum(case when exhibit like 'R%' then 1 else 0 end)
+                            then 'procurement' else 'rdte' end as exhibit_family
+                from fct_budget_lines
+                where pe_bli in (select pe_bli from feed_pes)
+                group by pe_bli
+            )
+            select tr.pe_bli, tr.organization,
+                   coalesce(fam.exhibit_family, 'rdte') as exhibit_family,
+                   ttl.title
+            from traj tr
+            left join fam on fam.pe_bli = tr.pe_bli
+            left join dim_pe_titles ttl on ttl.pe_bli = tr.pe_bli
+            where tr.rn = 1
+            order by tr.pe_bli
+            """
+        ).fetchall()
+    except Exception as exc:
+        # Loud, not silent: missing marts mean the feed sidecar itself would
+        # be empty too — nothing to synthesize.
+        print(f"trajectory-only programs: mart query failed ({exc}); skipping")
+        return []
+
+    synth: list[tuple] = []
+    for pe_bli, org, exhibit_family, title in rows:
+        if pe_bli in existing_pe_blis:
+            continue
+        if not title:
+            print(
+                f"trajectory-only programs: SKIP {pe_bli} — no dim_pe_titles row"
+                " (page would have no title; cited-or-absent)"
+            )
+            continue
+        synth.append((pe_bli, org, exhibit_family, title, 0, None, False))
+    return synth
+
+
 def _emit_json_sidecars(
     *,
     out_dir: Path,
@@ -1556,6 +1642,25 @@ def _write_all_sidecars(
         "select pe_bli, org, exhibit_family, title, project_count,"
         " fy2024_actual_millions, fully_reconciled from dim_programs"
     ).fetchall()
+
+    # Trajectory-only feed programs (backlog #17): feed events reference
+    # pe_blis that live in fct_budget_trajectory but not dim_programs (no
+    # R-2/P-40 J-book detail). Synthesize program rows for them so they get
+    # pages: title from dim_pe_titles, figures from the trajectory mart
+    # (derived trajectory citations are already emitted for every trajectory
+    # row), honest absences everywhere else. These rows join programs.json /
+    # program_details / search docs ONLY — agencies.json and the derived
+    # agency-sum citation rows stay dim_programs-scoped by construction
+    # (their orgs — A/N/F service workbook codes — have no agency pages).
+    synth_prog_rows = _trajectory_only_feed_programs(
+        con, {r[0] for r in prog_rows}
+    )
+    all_prog_rows = prog_rows + synth_prog_rows
+    if synth_prog_rows:
+        print(
+            f"programs.json: +{len(synth_prog_rows)} trajectory-only feed programs"
+            f" (total {len(all_prog_rows)})"
+        )
 
     # fct_budget_trajectory → keyed by (pe_bli, organization)
     traj_rows = con.execute(
@@ -1739,9 +1844,12 @@ def _write_all_sidecars(
                 "confidence": confidence,
             })
 
-    # dim_programs set for linked_programs computation
+    # Program-page title set for linked_programs / feed / district / filing
+    # link resolution. Includes trajectory-only feed programs: membership in
+    # this dict == "a /program/{pe_bli}/ page exists", the same contract the
+    # site enforces via programs.json (G1 dead-link gate).
     prog_titles: dict[str, str] = {}
-    for r in prog_rows:
+    for r in all_prog_rows:
         prog_titles[r[0]] = r[3]  # pe_bli → title
 
     # ------------------------------------------------------------------ #
@@ -1777,7 +1885,7 @@ def _write_all_sidecars(
         return out
 
     programs_list = []
-    for r in prog_rows:
+    for r in all_prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
         translated = _workbook_org(org)
         traj = traj_index.get((pe_bli, translated))
@@ -1812,7 +1920,7 @@ def _write_all_sidecars(
     det_dir = json_dir / "program_details"
     det_dir.mkdir(exist_ok=True)
 
-    all_pe_blis = {r[0] for r in prog_rows}
+    all_pe_blis = {r[0] for r in all_prog_rows}
     for pe_bli in all_pe_blis:
         obj = {
             "awards": awards_by_pe.get(pe_bli, []),
@@ -1896,6 +2004,11 @@ def _write_all_sidecars(
     # ------------------------------------------------------------------ #
 
     # Compute per-org: program_count, fy2024 total, fy2026 sum
+    # dim_programs rows ONLY (not the synthesized trajectory-only programs):
+    # the derived agency-sum citation rows in _build_derived_citation_rows
+    # iterate dim_programs, and these sidecar sums must recompute identically.
+    # The synthesized programs' orgs (A/N/F service workbook codes) have no
+    # agency pages — the site renders their org as plain text, not a link.
     from collections import Counter
     org_prog_count: Counter = Counter()
     org_fy2024_millions: dict[str, float] = {}
@@ -1986,8 +2099,10 @@ def _write_all_sidecars(
 
     search_docs: list[dict] = []
 
-    # Program docs
-    for r in prog_rows:
+    # Program docs (includes trajectory-only feed programs — every entry here
+    # has a /program/{pe_bli}/ page because programs.json is the
+    # generateStaticParams source)
+    for r in all_prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
         translated = _workbook_org(org)
         traj = traj_index.get((pe_bli, translated))
@@ -2131,12 +2246,14 @@ def _write_all_sidecars(
     # 9. site_meta.json                                                  #
     # ------------------------------------------------------------------ #
 
-    # Compute counts for the meta file
+    # Compute counts for the meta file. counts.programs is the PAGE count
+    # (programs.json length, incl. trajectory-only feed programs) — the home
+    # stats band links it to /programs/, which lists exactly these entries.
     meta_counts = {
         "agencies": len(org_prog_count),
         "citations": len(citation_rows),
         "companies": len(entity_rows),
-        "programs": len(prog_rows),
+        "programs": len(programs_list),
     }
 
     site_meta = {
