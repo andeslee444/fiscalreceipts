@@ -21,10 +21,11 @@
  * The Dialog is rendered via a portal so it doesn't clip inside containers.
  */
 
-import React, { useCallback, useContext, useState } from "react";
-import { X, ExternalLink } from "lucide-react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { X, ExternalLink, Copy, Check } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
+import { formatFootnote, footnoteInputFromCitation } from "./footnote";
 import {
   isJbookPdf,
   isWorkbook,
@@ -185,12 +186,17 @@ function CitationPanelDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        {/* Overlay — semi-transparent, closes panel on click */}
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        {/* Overlay — semi-transparent, closes panel on click.
+            data-citation-panel: print stylesheet hides panel chrome. */}
+        <DialogPrimitive.Overlay
+          data-citation-panel
+          className="fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        />
 
         {/* Panel — right-side sheet */}
         <DialogPrimitive.Content
           data-testid="citation-panel"
+          data-citation-panel
           className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-background shadow-xl outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right duration-200"
           aria-label="Citation details"
         >
@@ -256,19 +262,24 @@ function CitationPanelDialog({
                 </p>
               )}
 
-              {/* Official source link */}
-              {citation.official_url && (
-                <a
-                  href={citation.official_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">Official source</span>
-                  <span className="sr-only">(opens in new tab)</span>
-                </a>
-              )}
+              {/* Official source link + copy-as-footnote (Phase 5C Task 9) */}
+              <div className="flex items-center gap-4">
+                {citation.official_url && (
+                  <a
+                    href={citation.official_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">Official source</span>
+                    <span className="sr-only">(opens in new tab)</span>
+                  </a>
+                )}
+                {factId && (
+                  <CopyFootnoteButton citation={citation} factId={factId} />
+                )}
+              </div>
 
               {/* fact_id short — debugging aid */}
               {/* Note: muted-foreground/60 fails WCAG AA contrast; use muted-foreground at full opacity */}
@@ -314,6 +325,68 @@ function CitationBody({ citation }: { citation: Citation }) {
     <p className="text-sm text-muted-foreground">
       Unknown citation kind.
     </p>
+  );
+}
+
+// ── CopyFootnoteButton — copy a quotable footnote to the clipboard ──────────
+
+function CopyFootnoteButton({
+  citation,
+  factId,
+}: {
+  citation: Citation;
+  factId: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the transient-state timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    // Canonical permalink: origin + pathname (no hash/query).
+    const url = `${window.location.origin}${window.location.pathname}`;
+    // Human label from the page title, trimmed of site-name suffixes
+    // ("{Program} — FY2026 Budget… | GovBudget" → "{Program}").
+    const label =
+      document.title.split(" | ")[0].split(" — ")[0].trim() || null;
+    const text = formatFootnote(
+      footnoteInputFromCitation(citation, factId, { url, label }),
+    );
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable (permissions/insecure context) — no-op.
+    }
+  }, [citation, factId]);
+
+  return (
+    <button
+      type="button"
+      data-testid="copy-footnote"
+      onClick={handleCopy}
+      className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      aria-label="Copy this citation as a formatted footnote"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 shrink-0 text-green-600" aria-hidden="true" />
+          <span aria-live="polite">Copied ✓</span>
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>Copy as footnote</span>
+        </>
+      )}
+    </button>
   );
 }
 

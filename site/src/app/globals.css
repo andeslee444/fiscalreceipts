@@ -238,3 +238,33 @@
     animation: none !important;
   }
 }
+
+/* ── Print one-pager (Phase 5C Task 9) ──────────────────────────────────────
+   Hill-staffer one-pager: hide chrome (header/footer/nav, search trigger,
+   receipts toggle, citation panel), flatten links, and reveal the
+   [data-print-only] byline that program pages render hidden. */
+@media print {
+  header,
+  footer,
+  nav,
+  .skip-to-content,
+  [data-search-trigger],
+  [data-citation-panel],
+  [data-receipts-toggle] {
+    display: none !important;
+  }
+
+  main {
+    margin: 0;
+    padding: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  [data-print-only] {
+    display: block !important;
+  }
+}

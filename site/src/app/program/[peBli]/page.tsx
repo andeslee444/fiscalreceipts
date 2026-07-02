@@ -9,6 +9,7 @@ import {
   getCategories,
   getDossier,
   getSnapshotMeta,
+  getSiteMeta,
   collectCitationsWithInputs,
 } from "@/lib/data";
 import type { JbookPdfCitation } from "@/lib/data";
@@ -206,6 +207,19 @@ export default async function ProgramPage({
           { label: program.title },
         ]}
       />
+
+      {/* Print-only byline (Phase 5C Task 9) — hidden on screen, revealed by
+          the @media print stylesheet ([data-print-only] → display:block). */}
+      <p data-print-only className="hidden text-xs text-muted-foreground mb-4">
+        Printed from {SITE_URL}/program/{peBli}/ — data as of{" "}
+        {new Date(getSiteMeta().built_at).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+        . Every figure is citation-backed; see the page online for per-number
+        provenance.
+      </p>
 
       {/* Header — top-50 pages get a category hero background (Task 8a) */}
       <ProgramHeader program={program} category={category} />
