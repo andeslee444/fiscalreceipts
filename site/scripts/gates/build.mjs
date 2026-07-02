@@ -60,6 +60,88 @@ export async function runBuildGate() {
     return { pass: false, errors, notes };
   }
 
+  // ── Build staleness check ─────────────────────────────────────────────────
+  // out/.build-meta.json is written by scripts/write-build-meta.mjs (postbuild).
+  // Gate verifies: (a) marker exists, (b) git HEAD matches, (c) marker mtime is
+  // newer than the newest watched source file — catches stale out/ after src edits.
+  {
+    const markerPath = path.join(outDir, ".build-meta.json");
+    if (!fileExists(markerPath)) {
+      errors.push(
+        "out/.build-meta.json missing — out/ was not produced by a complete build " +
+          "(re-run `npm run build`)"
+      );
+    } else {
+      let marker;
+      try {
+        marker = readJson(markerPath);
+      } catch (e) {
+        errors.push(`out/.build-meta.json is corrupt: ${e.message}`);
+        marker = null;
+      }
+      if (marker) {
+        // (b) git HEAD check
+        let currentHead = "unknown";
+        try {
+          const { execSync } = await import("child_process");
+          currentHead = execSync("git rev-parse HEAD", {
+            cwd: siteRoot,
+            encoding: "utf8",
+            stdio: ["pipe", "pipe", "pipe"],
+          }).trim();
+        } catch {
+          // non-fatal if git unavailable
+        }
+        if (
+          currentHead !== "unknown" &&
+          marker.git_head !== "unknown" &&
+          currentHead !== marker.git_head
+        ) {
+          errors.push(
+            `out/.build-meta.json git_head mismatch: built from ${marker.git_head.slice(0, 8)}, ` +
+              `current HEAD is ${currentHead.slice(0, 8)} — re-run \`npm run build\``
+          );
+        } else {
+          notes.push(`build-meta git_head: ${marker.git_head.slice(0, 8)} ✓`);
+        }
+
+        // (c) mtime freshness: marker mtime must be newer than source max mtime.
+        // This catches the "touched src file after build" failure mode.
+        const markerMtime = fs.statSync(markerPath).mtimeMs;
+        function maxMtimeGate(dirOrFile) {
+          if (!fs.existsSync(dirOrFile)) return 0;
+          const st = fs.lstatSync(dirOrFile);
+          if (!st.isDirectory()) return st.mtimeMs;
+          let mx = st.mtimeMs;
+          for (const entry of fs.readdirSync(dirOrFile, { withFileTypes: true })) {
+            if (["node_modules", ".next", "out"].includes(entry.name)) continue;
+            mx = Math.max(mx, maxMtimeGate(path.join(dirOrFile, entry.name)));
+          }
+          return mx;
+        }
+        const watchedPaths = [
+          path.join(siteRoot, "src"),
+          path.join(siteRoot, "public"),
+          path.join(siteRoot, "package.json"),
+          path.join(siteRoot, "next.config.ts"),
+          path.join(siteRoot, "tsconfig.json"),
+          path.join(siteRoot, "postcss.config.mjs"),
+        ];
+        const sourceMax = Math.max(...watchedPaths.map(maxMtimeGate));
+        if (markerMtime < sourceMax) {
+          const staleBy = ((sourceMax - markerMtime) / 1000).toFixed(1);
+          errors.push(
+            `out/ is stale: a source file is ${staleBy}s newer than out/.build-meta.json ` +
+              `(source_max=${new Date(sourceMax).toISOString()}, ` +
+              `marker=${new Date(markerMtime).toISOString()}) — re-run \`npm run build\``
+          );
+        } else {
+          notes.push("build freshness: out/ is newer than all watched source files ✓");
+        }
+      }
+    }
+  }
+
   // ── Program pages ────────────────────────────────────────────────────────
   const programOut = path.join(outDir, "program");
   if (!dirExists(programOut)) {

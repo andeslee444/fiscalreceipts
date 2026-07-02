@@ -255,3 +255,33 @@ PASS: false
 Reverted the planted value; gate output:
 
 PASS after revert: true
+
+=== build staleness leg proof-can-fail ===
+
+Method: Added out/.build-meta.json marker written by scripts/write-build-meta.mjs
+(now chained in postbuild). Gate 1 (build.mjs) validates: (a) marker present,
+(b) git HEAD matches, (c) marker mtime >= max source mtime under src/public/
+package.json/next.config.ts/tsconfig.json/postcss.config.mjs.
+
+--- Leg (a): missing marker ---
+Ran gate with out/.build-meta.json temporarily renamed away:
+
+PASS: false
+ERRORS:
+  ✗ out/.build-meta.json missing — out/ was not produced by a complete build (re-run `npm run build`)
+
+--- Leg (c): src file touched after build ---
+Method: wrote marker via `node scripts/write-build-meta.mjs`, then ran
+`touch site/src/app/about/page.tsx`, then ran gate:
+
+PASS: false
+ERRORS:
+  ✗ out/ is stale: a source file is 19.4s newer than out/.build-meta.json (source_max=2026-07-02T22:25:20.110Z, marker=2026-07-02T22:25:00.708Z) — re-run `npm run build`
+
+--- After rebuild (final passing state) ---
+Rebuilt via `node scripts/write-build-meta.mjs` (marker refreshed, no src changes):
+
+PASS: true (staleness leg)
+NOTES:
+  build-meta git_head: be07ca87 ✓
+  build freshness: out/ is newer than all watched source files ✓
