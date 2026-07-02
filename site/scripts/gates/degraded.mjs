@@ -98,20 +98,16 @@ export async function runDegradedGate({ baseUrl }) {
   // Collect console errors per page
   const consoleErrors = [];
 
-  // Set up asset blackhole on every new page
-  context.on("page", (page) => {
-    page.route("**/assets/**", (route) => route.abort()).catch(() => {});
-    page.on("console", (msg) => {
-      if (msg.type() === "error" && !isAllowedConsoleError(msg)) {
-        consoleErrors.push(msg.text());
-      }
-    });
-  });
-
   try {
     // ── Check 1: /data/ → engine start → [data-degraded="explorer"] ──────────
     {
       const page = await context.newPage();
+      await page.route("**/assets/**", (route) => route.abort());
+      page.on("console", (msg) => {
+        if (msg.type() === "error" && !isAllowedConsoleError(msg)) {
+          consoleErrors.push(msg.text());
+        }
+      });
       try {
         await page.goto(`${baseUrl}/data/`, { waitUntil: "networkidle", timeout: 30000 });
 
@@ -150,6 +146,12 @@ export async function runDegradedGate({ baseUrl }) {
     // ── Check 2: /downloads/ → [data-degraded="downloads"] ──────────────────
     {
       const page = await context.newPage();
+      await page.route("**/assets/**", (route) => route.abort());
+      page.on("console", (msg) => {
+        if (msg.type() === "error" && !isAllowedConsoleError(msg)) {
+          consoleErrors.push(msg.text());
+        }
+      });
       try {
         await page.goto(`${baseUrl}/downloads/`, { waitUntil: "networkidle", timeout: 30000 });
 
@@ -177,6 +179,12 @@ export async function runDegradedGate({ baseUrl }) {
     // ── Check 3: flow program jbook_pdf citation → [data-degraded="pdf"] ─────
     if (flowInfo) {
       const page = await context.newPage();
+      await page.route("**/assets/**", (route) => route.abort());
+      page.on("console", (msg) => {
+        if (msg.type() === "error" && !isAllowedConsoleError(msg)) {
+          consoleErrors.push(msg.text());
+        }
+      });
       try {
         await page.goto(`${baseUrl}/program/${flowInfo.slug}/`, {
           waitUntil: "networkidle",

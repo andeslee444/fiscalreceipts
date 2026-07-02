@@ -169,7 +169,7 @@ export async function runLinkgraphGate() {
   if (!fs.existsSync(programDir)) {
     errors.push("out/program/ missing — build incomplete");
   } else {
-    const slugs = fs.readdirSync(programDir).slice(0, 400);
+    const slugs = fs.readdirSync(programDir).sort().slice(0, 400);
     let checked = 0, missing = 0;
     for (const slug of slugs) {
       if (checked >= 5) break;
