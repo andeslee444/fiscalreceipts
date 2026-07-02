@@ -387,6 +387,7 @@
     select population from fct_state_per_capita where jurisdiction = 'CT' limit 1
   expected_answer: '3675069'
   expected_citation_kind: source_url
+  url_column: pop_source_url
   notes: 'Census population used; source: census.gov'
 - id: q038
   question: What is the total value of all DoD contracts (award type = contract) in

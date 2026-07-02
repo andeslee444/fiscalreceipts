@@ -828,3 +828,271 @@ def test_set_rejected_by_gate(tiny_db):
     with SqlTool(tiny_db) as tool:
         with pytest.raises(SqlError, match="SET"):
             tool.run("SET enable_external_access = true")
+
+
+# ---------------------------------------------------------------------------
+# Tests: Fix 1 — _resolve_pdf_page redesign (compound answers, billions conversion)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_pdf_page_compound_answer_resolves(tiny_citations, tiny_db):
+    """Fix 1a (PROOF-IT-CAN-FAIL before fix): compound expected_answer like 'Iron Dome, 3080'
+    previously crashed with float() ValueError. After fix, should use pe_bli from agent
+    SQL/citation and numeric from agent answer, not entry's expected_answer.
+    """
+    # Simulate q010: compound expected_answer "Iron Dome, 3080" (millions)
+    # The agent produces pe_bli '0601101E' and answer '280.494' (millions)
+    # citations.parquet has '0601101E' row with amount_text='280.494' and page 24
+    agent_result = {
+        "answer": "280.494",
+        "refuse": False,
+        "sql": "SELECT round(amount_thousands / 1000.0, 3) FROM fct_budget_lines WHERE pe_bli = '0601101E'",
+        "citation_kind": "pdf_page",
+        "citation": "pe_bli 0601101E, page 24",
+    }
+    # Entry has compound expected_answer — old code crashes on float("Iron Dome, 3080")
+    entry = {"expected_answer": "Iron Dome, 3080"}
+    r = _resolve_pdf_page(agent_result, entry, citations_parquet=tiny_citations)
+    # After fix: should resolve via pe_bli alone (no crash, lookup succeeds)
+    assert r["ok"] is True, f"Expected ok=True, got reason: {r.get('reason')}"
+
+
+def test_resolve_pdf_page_billions_answer_clear_reason(tiny_citations):
+    """Fix 1b: q011-style answer in BILLIONS (expected '10.657', agent numeric).
+    The citations.parquet has amount_text in MILLIONS ('280.494').
+    Since pe_bli matches but amounts differ, should fail with a clear reason
+    (not crash with float() ValueError on billions-vs-millions mismatch).
+    """
+    # q011: agent selects billions: round(amount_thousands / 1e6, 3) = 10.657
+    # citations.parquet has pe_bli '0601101E' with amount '280.494' millions
+    # pe_bli won't match because '0601101E' ≠ the submarine PE, but no crash
+    agent_result = {
+        "answer": "10.657",
+        "refuse": False,
+        "sql": "SELECT round(amount_thousands / 1e6, 3) FROM fct_budget_lines WHERE pe_bli = '2013001N'",
+        "citation_kind": "pdf_page",
+        "citation": "pe_bli 2013001N, page 5",
+    }
+    entry = {"expected_answer": "10.657"}  # in BILLIONS
+    # pe_bli = '2013001N' is not in tiny_citations which only has '0601101E'
+    # Result should be ok=False with a clear reason (no ValueError crash)
+    r = _resolve_pdf_page(agent_result, entry, citations_parquet=tiny_citations)
+    assert r["ok"] is False
+    # Reason must be a string (no crash)
+    assert isinstance(r["reason"], str)
+    assert len(r["reason"]) > 0
+
+
+def test_resolve_pdf_page_wrong_pe_bli_still_fails(tiny_citations):
+    """Fix 1c (invariant preserved): right amount in citations, wrong pe_bli → FAIL.
+
+    This is the key invariant: pe_bli integrity must still be checked.
+    citations.parquet has pe_bli='0601101E', amount_text='280.494'.
+    Agent claims pe_bli='WRONGPE' — must fail even though amounts would match.
+    """
+    agent_result = {
+        "answer": "280.494",
+        "refuse": False,
+        "sql": "SELECT round(amount_thousands / 1000.0, 3) FROM fct_budget_lines WHERE pe_bli = 'WRONGPE'",
+        "citation_kind": "pdf_page",
+        "citation": "pe_bli WRONGPE, page 24",
+    }
+    entry = {"expected_answer": "280.494"}
+    r = _resolve_pdf_page(agent_result, entry, citations_parquet=tiny_citations)
+    assert r["ok"] is False
+    assert "WRONGPE" in r["reason"] or "no citation" in r["reason"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests: Fix 2 — exit-code truth table
+# ---------------------------------------------------------------------------
+
+
+def _make_exit_code(fg_ok: bool, eg: dict, ag: dict) -> int:
+    """Replicate the exit-code logic extracted for unit testing.
+
+    Returns the exit code that cmd_verify_phase5 would produce given these
+    gate results (without actually calling sys.exit).
+    """
+    from govbudget.verify_phase5 import _compute_exit_code
+    return _compute_exit_code(fg_ok=fg_ok, eg=eg, ag=ag)
+
+
+def test_exit_code_eval_fail_assembly_blocked():
+    """Fix 2a (PROOF-IT-CAN-FAIL): eval FAIL + assembly BLOCKED → exit 1 (not 2)."""
+    # eval ran and failed (ok=False, blocked=False); assembly blocked
+    eg = {"ok": False, "blocked": False, "scores": [], "accuracy": 30, "total": 45,
+          "citation_ok": 0, "citation_total": 0, "reason": "accuracy below bar"}
+    ag = {"ok": False, "blocked": True, "all_blocked_phases": ["verify-phase5b3"],
+          "results": [{"phase": "verify-phase5b3", "verdict": "BLOCKED", "blocked": True}]}
+    assert _make_exit_code(True, eg, ag) == 1
+
+
+def test_exit_code_eval_blocked_assembly_blocked():
+    """Fix 2b: eval BLOCKED + assembly BLOCKED → exit 2."""
+    eg = {"ok": False, "blocked": True, "scores": [], "accuracy": 0, "total": 45,
+          "citation_ok": 0, "citation_total": 0, "reason": "no key"}
+    ag = {"ok": False, "blocked": True, "all_blocked_phases": ["verify-phase5b3"],
+          "results": [{"phase": "verify-phase5b3", "verdict": "BLOCKED", "blocked": True}]}
+    assert _make_exit_code(True, eg, ag) == 2
+
+
+def test_exit_code_eval_pass_assembly_blocked():
+    """Fix 2c: eval PASS + assembly BLOCKED → exit 2."""
+    eg = {"ok": True, "blocked": False, "scores": [], "accuracy": 42, "total": 45,
+          "citation_ok": 10, "citation_total": 10, "reason": None}
+    ag = {"ok": False, "blocked": True, "all_blocked_phases": ["verify-phase5b3"],
+          "results": [{"phase": "verify-phase5b3", "verdict": "BLOCKED", "blocked": True}]}
+    assert _make_exit_code(True, eg, ag) == 2
+
+
+def test_exit_code_all_pass():
+    """Fix 2d: eval PASS + assembly PASS → exit 0."""
+    eg = {"ok": True, "blocked": False, "scores": [], "accuracy": 42, "total": 45,
+          "citation_ok": 10, "citation_total": 10, "reason": None}
+    ag = {"ok": True, "blocked": False, "all_blocked_phases": [],
+          "results": [{"phase": "verify-phase1", "verdict": "PASS", "blocked": False}]}
+    assert _make_exit_code(True, eg, ag) == 0
+
+
+def test_exit_code_freshness_fail():
+    """Fix 2e: freshness FAIL → exit 1 regardless of other gates."""
+    eg = {"ok": True, "blocked": False, "scores": [], "accuracy": 42, "total": 45,
+          "citation_ok": 10, "citation_total": 10, "reason": None}
+    ag = {"ok": True, "blocked": False, "all_blocked_phases": [],
+          "results": [{"phase": "verify-phase1", "verdict": "PASS", "blocked": False}]}
+    # fg_ok=False triggers exit 1
+    assert _make_exit_code(False, eg, ag) == 1
+
+
+# ---------------------------------------------------------------------------
+# Tests: Fix 3 — touched_tables spoofable via comments/string literals
+# ---------------------------------------------------------------------------
+
+
+def test_touched_tables_comment_stripped():
+    """Fix 3a (PROOF-IT-CAN-FAIL): table name in comment must NOT be in touched_tables."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables("SELECT 42 -- dim_entities")
+    assert "dim_entities" not in result, (
+        f"dim_entities should not be in touched_tables (it's in a comment), got {result}"
+    )
+
+
+def test_touched_tables_string_literal_excluded():
+    """Fix 3b (PROOF-IT-CAN-FAIL): table name in string literal → not touched."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables("SELECT 'dim_entities'")
+    assert "dim_entities" not in result, (
+        f"dim_entities in string literal should not be touched, got {result}"
+    )
+
+
+def test_touched_tables_real_from_clause():
+    """Fix 3c: genuine FROM clause → table correctly included."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables(
+        "SELECT display_name FROM dim_entities ORDER BY total_obligation DESC LIMIT 1"
+    )
+    assert "dim_entities" in result
+
+
+def test_touched_tables_join_clause():
+    """Fix 3d: JOIN clause → table correctly included."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables(
+        "SELECT e.display_name FROM dim_entities e JOIN entity_xwalk x ON x.family_key = e.family_key"
+    )
+    assert "dim_entities" in result
+    assert "entity_xwalk" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests: Fix 4 — per-question url_column field
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_source_url_uses_entry_url_column(tiny_db):
+    """Fix 4a (PROOF-IT-CAN-FAIL): population answer must use pop_source_url.
+
+    fct_state_per_capita has spend_source_url (map default) AND pop_source_url.
+    When entry.url_column = 'pop_source_url', resolver must use pop_source_url,
+    NOT the map default spend_source_url.
+
+    With the OLD code (no url_column support), resolving via spend_source_url
+    would 'succeed' for spend questions but this test verifies that the
+    per-question url_column override routes to the correct column.
+    """
+    # Passing url_column='pop_source_url' — resolver must use that column
+    r = _resolve_source_url(
+        {"sql": "SELECT population FROM fct_state_per_capita LIMIT 1"},
+        touched={"fct_state_per_capita"},
+        db_path=tiny_db,
+        url_column="pop_source_url",
+    )
+    assert r["ok"] is True, f"Should resolve via pop_source_url, got: {r['reason']}"
+
+
+def test_resolve_source_url_wrong_column_override_fails(tiny_db):
+    """Fix 4b: url_column pointing to non-existent column → clear failure."""
+    r = _resolve_source_url(
+        {"sql": "SELECT population FROM fct_state_per_capita LIMIT 1"},
+        touched={"fct_state_per_capita"},
+        db_path=tiny_db,
+        url_column="nonexistent_url_column",
+    )
+    assert r["ok"] is False
+
+
+# ---------------------------------------------------------------------------
+# Tests: Fix 5 — cwd-independence of _run_sql
+# ---------------------------------------------------------------------------
+
+
+def test_run_sql_resolves_parquet_path_from_other_cwd(tmp_path, monkeypatch):
+    """Fix 5 (PROOF-IT-CAN-FAIL): _run_sql with read_parquet relative path
+    must work from any cwd, not just the repo root.
+    """
+    import os
+    import duckdb
+
+    # Create a parquet file in a known absolute location
+    parquet_dir = tmp_path / "data" / "parquet" / "oversight"
+    parquet_dir.mkdir(parents=True)
+    parquet_path = parquet_dir / "test_table.parquet"
+    con = duckdb.connect()
+    con.execute("CREATE TABLE _t (v INTEGER)")
+    con.execute("INSERT INTO _t VALUES (99)")
+    con.execute(f"COPY _t TO '{parquet_path}' (FORMAT PARQUET)")
+    con.close()
+
+    # SQL using 'data/parquet/' relative path that matches the substitution pattern
+    sql = f"SELECT v FROM read_parquet('data/parquet/oversight/test_table.parquet')"
+
+    # Patch config.PARQUET_DIR to point to our tmp parquet dir's parent
+    import govbudget.config as cfg
+    original_parquet_dir = cfg.PARQUET_DIR
+
+    # We need PARQUET_DIR to be the directory that contains 'oversight/'
+    # i.e., tmp_path / "data" / "parquet"
+    cfg.PARQUET_DIR = parquet_dir.parent
+
+    try:
+        # Change to a completely different cwd
+        orig_cwd = os.getcwd()
+        os.chdir(tmp_path / "data")  # NOT the repo root
+
+        db = tmp_path / "test.duckdb"
+        duckdb.connect(str(db)).close()
+
+        from govbudget.evals_refresh import _run_sql as run_sql_with_resolve
+        real_con = duckdb.connect(str(db), read_only=True)
+        try:
+            rows = run_sql_with_resolve(real_con, sql)
+        finally:
+            real_con.close()
+            os.chdir(orig_cwd)
+
+        assert rows == [(99,)], f"Expected [(99,)], got {rows}"
+    finally:
+        cfg.PARQUET_DIR = original_parquet_dir

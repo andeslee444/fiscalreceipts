@@ -147,3 +147,30 @@ def test_nonrefuse_entries_have_no_expected_refuse_class(entries):
         assert "expected_refuse_class" not in entry, (
             f"Entry {eid}: non-REFUSE entry must not include 'expected_refuse_class'"
         )
+
+
+# Fix 4: url_column field validation
+VALID_URL_COLUMNS = {"spend_source_url", "pop_source_url", "source_url"}
+
+
+def test_url_column_field_when_present_is_valid(entries):
+    """Fix 4: optional url_column field, when present, must be a known URL column name."""
+    for entry in entries:
+        url_col = entry.get("url_column")
+        if url_col is None:
+            continue  # optional field — absent is fine
+        eid = entry.get("id", "<unknown>")
+        assert url_col in VALID_URL_COLUMNS, (
+            f"Entry {eid}: url_column={url_col!r} not in {VALID_URL_COLUMNS}"
+        )
+
+
+def test_q037_has_pop_source_url_column(entries):
+    """Fix 4 (PROOF-IT-CAN-FAIL): q037 (CT population) must use pop_source_url,
+    not the map default spend_source_url. Requires url_column='pop_source_url'.
+    """
+    q037 = next((e for e in entries if e["id"] == "q037"), None)
+    assert q037 is not None, "q037 not found in eval set"
+    assert q037.get("url_column") == "pop_source_url", (
+        f"q037 must have url_column='pop_source_url', got {q037.get('url_column')!r}"
+    )

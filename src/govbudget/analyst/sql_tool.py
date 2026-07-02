@@ -13,7 +13,8 @@ Security model
    - must start with SELECT or WITH (allowing CTEs)
    - deny ATTACH, COPY, INSTALL, LOAD, PRAGMA, SET keywords
 5. Row cap: 200 rows maximum.
-6. Timeout: 30 seconds (enforced via DuckDB connection parameter).
+6. Timeout: post-hoc elapsed check; runaway queries complete first
+   (read-only, 200-row cap bounds output).
 
 Returns rows + touched_tables (derived from EXPLAIN AST — the set of table
 names in the query that intersect the set of known warehouse tables).
@@ -120,12 +121,26 @@ def _gate(sql: str) -> None:
 def _extract_touched_tables(sql: str) -> set[str]:
     """Heuristically extract table names in the query that are known tables.
 
-    Uses a simple regex over identifiers — conservative but avoids running a
-    second DuckDB query and failing on the sandbox-locked connection.
+    Strips comments first (reusing the same logic as _gate) so that table
+    names appearing only in comments or string literals are not counted.
+    Only identifiers appearing directly after FROM or JOIN keywords are
+    considered — this prevents spoofing via comment tokens or string literals.
     """
-    # Extract all word tokens from the sql (identifiers, keywords)
-    tokens = set(re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", sql))
-    return tokens & KNOWN_TABLES
+    # Strip comments (same approach as _gate)
+    stripped = re.sub(r"--[^\n]*", " ", sql)
+    stripped = re.sub(r"/\*.*?\*/", " ", stripped, flags=re.DOTALL)
+    # Remove string literals to avoid 'dim_entities' in quoted strings
+    stripped = re.sub(r"'[^']*'", " ", stripped)
+    stripped = re.sub(r'"[^"]*"', " ", stripped)
+
+    # Only count identifiers that follow FROM or JOIN keywords
+    # (?:from|join)\s+([a-zA-Z_]\w*) — captures the table name token
+    touched: set[str] = set()
+    for m in re.finditer(r"(?:from|join)\s+([a-zA-Z_]\w*)", stripped, re.IGNORECASE):
+        name = m.group(1)
+        if name in KNOWN_TABLES:
+            touched.add(name)
+    return touched
 
 
 # ---------------------------------------------------------------------------

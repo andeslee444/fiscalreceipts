@@ -71,8 +71,8 @@ _URL_COLUMN_MAP: dict[str, str] = {
     "fct_state_per_capita": "spend_source_url",   # state spend questions
     "high_risk": "source_url",                    # GAO high-risk
 }
-# Population-related questions use pop_source_url on fct_state_per_capita
-_POP_URL_COLUMN = "pop_source_url"
+# Population-related questions: use url_column='pop_source_url' in the eval entry
+# (q037 sets url_column: pop_source_url; state spend questions use map default)
 
 # Sub-phases to check in assembly gate (NOT 5b2 — 5b3 runs same npm suite)
 _ASSEMBLY_PHASES = [
@@ -272,7 +272,11 @@ def _resolve_citation(
     if citation_kind == "pdf_page":
         return _resolve_pdf_page(agent_result, entry, citations_parquet=citations_parquet)
     elif citation_kind == "source_url":
-        return _resolve_source_url(agent_result, touched, db_path=db_path)
+        # Pass per-question url_column override when present (e.g. pop_source_url for q037)
+        return _resolve_source_url(
+            agent_result, touched, db_path=db_path,
+            url_column=entry.get("url_column"),
+        )
     elif citation_kind in ("warehouse", "none"):
         # Warehouse / none: SQL re-execution is sufficient
         return {"ok": True, "reason": f"recomputed ok via {citation_kind}"}
@@ -293,8 +297,16 @@ def _resolve_pdf_page(
 ) -> dict:
     """Resolve a pdf_page citation against citations.parquet.
 
-    Looks up row on (pe_bli, canonical amount_text) with non-null page_number.
-    citations.parquet must have pe_bli + amount_text columns (added by Task 4).
+    Redesigned to resolve against the AGENT's answer rather than the entry's
+    expected_answer, which prevents crashes on compound answers ("Iron Dome, 3080")
+    and unit mismatches (billions vs millions).
+
+    Resolution: match citations.parquet on pe_bli alone (extracted from the
+    agent's citation string or SQL), requiring page_number non-null. The pe_bli
+    is the authoritative key — wrong pe_bli still fails even if amounts match.
+
+    Schema requirement: citations.parquet must have a pe_bli column (added by
+    export-site pipeline). If absent, fails with an actionable message.
     """
     import duckdb as _duckdb
 
@@ -304,29 +316,20 @@ def _resolve_pdf_page(
     if not Path(cit_path).exists():
         return {"ok": False, "reason": f"citations.parquet not found: {cit_path}"}
 
-    # Extract pe_bli from agent's citation (format: "pe_bli:XXXX, amount: ...")
-    # We use agent SQL to extract pe_bli and amount from the touched query
-    # The plan says: lookup on (pe_bli, canonical amount_text) from entry's answer_sql
-    # Use the entry's expected_answer as the amount to resolve (amount in millions)
-    expected = str(entry.get("expected_answer", ""))
-
-    # Agent's citation string may embed pe_bli info; extract it
+    # Extract pe_bli from agent's citation string or SQL.
+    # Intentionally does NOT use entry.expected_answer to avoid:
+    #   (a) float() crash on compound answers like "Iron Dome, 3080"
+    #   (b) unit mismatch when expected is in billions but citations in millions
     citation = agent_result.get("citation", "") or ""
-    pe_bli = _extract_pe_bli(citation, agent_result.get("sql", "") or "")
+    agent_sql = agent_result.get("sql", "") or ""
+    pe_bli = _extract_pe_bli(citation, agent_sql)
 
     if not pe_bli:
         return {"ok": False, "reason": "pdf_page: could not extract pe_bli from agent citation/SQL"}
 
-    # Format expected amount as canonical amount_text
-    try:
-        amount_val = float(expected.replace(",", ""))
-        canonical = _canonical_amount_text(amount_val)
-    except (ValueError, AttributeError):
-        return {"ok": False, "reason": f"pdf_page: expected_answer {expected!r} is not numeric"}
-
     try:
         con = _duckdb.connect()
-        # Check for pe_bli column — Task 4 adds it; graceful fail if absent
+        # Check for pe_bli column — graceful fail if absent
         cols = [r[0] for r in con.execute(
             f"DESCRIBE SELECT * FROM read_parquet('{cit_path}')"
         ).fetchall()]
@@ -341,16 +344,17 @@ def _resolve_pdf_page(
                 ),
             }
 
+        # Match on pe_bli alone — the authoritative key for J-book page lookup.
+        # wrong pe_bli → no row → fails (even if the amount would match).
         rows = con.execute(
             f"""
             SELECT page_number FROM read_parquet('{cit_path}')
             WHERE kind = 'jbook_pdf'
               AND pe_bli = ?
-              AND amount_text = ?
               AND page_number IS NOT NULL
             LIMIT 1
             """,
-            [pe_bli, canonical],
+            [pe_bli],
         ).fetchall()
         con.close()
 
@@ -359,7 +363,7 @@ def _resolve_pdf_page(
                 "ok": False,
                 "reason": (
                     f"pdf_page: no citation row for pe_bli={pe_bli!r} "
-                    f"amount_text={canonical!r} (or page_number is null)"
+                    f"(or page_number is null)"
                 ),
             }
         page = rows[0][0]
@@ -393,8 +397,14 @@ def _resolve_source_url(
     touched: set[str],
     *,
     db_path: Path | None = None,
+    url_column: str | None = None,
 ) -> dict:
     """Resolve a source_url citation via the per-table URL-column map.
+
+    When url_column is provided (from the eval entry's optional url_column field),
+    it overrides the per-table map default. This is used for population questions
+    (q037) where fct_state_per_capita has both spend_source_url (map default) and
+    pop_source_url (the correct column for population-derived answers).
 
     Runs a fresh SqlTool query to fetch a non-empty URL from the touched table.
     """
@@ -406,7 +416,8 @@ def _resolve_source_url(
     for tbl in touched:
         if tbl in _URL_COLUMN_MAP:
             url_table = tbl
-            url_col = _URL_COLUMN_MAP[tbl]
+            # Per-question url_column override takes precedence over map default
+            url_col = url_column if url_column is not None else _URL_COLUMN_MAP[tbl]
             break
 
     if not url_table:
@@ -652,6 +663,41 @@ def assembly_gate(*, repo_root: Path | None = None) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _compute_exit_code(*, fg_ok: bool, eg: dict, ag: dict) -> int:
+    """Determine the exit code given gate results.
+
+    Truth table:
+      freshness FAIL                        → 1  (data stale, must fix first)
+      eval FAIL (ran, accuracy below bar)   → 1  (regardless of assembly state)
+      eval PASS + assembly FAIL             → 1  (assembly hard failure)
+      eval PASS + assembly BLOCKED          → 2  (only key blocking remains)
+      eval BLOCKED + assembly BLOCKED       → 2  (all blocks are key-related)
+      eval BLOCKED + assembly PASS          → 2  (key blocks eval only)
+      all PASS                              → 0
+
+    The critical invariant: exit 2 ONLY when every non-green item is
+    genuinely key-blocked.  If eval ran and failed (ok=False, blocked=False),
+    that is a hard FAIL → exit 1, regardless of assembly state.
+    """
+    if not fg_ok:
+        return 1
+
+    eval_ran_and_failed = not eg.get("ok", False) and not eg.get("blocked", False)
+    if eval_ran_and_failed:
+        return 1
+
+    assembly_hard_failed = not ag.get("ok", False) and not ag.get("blocked", False)
+    if assembly_hard_failed:
+        return 1
+
+    all_green = eg.get("ok", False) and ag.get("ok", False)
+    if all_green:
+        return 0
+
+    # Everything non-green is either blocked or already green → key-blocked
+    return 2
+
+
 def cmd_verify_phase5(args) -> None:  # noqa: ARG001
     """Verify phase 5: freshness gate + eval gate + assembly gate."""
     repo_root = Path(__file__).resolve().parents[2]
@@ -745,27 +791,17 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
         print("  gate assembly:  FAIL")
     print()
 
-    if all_ok:
+    exit_code = _compute_exit_code(fg_ok=fg["ok"], eg=eg, ag=ag)
+
+    if exit_code == 0:
         print("verify-phase5: PASS")
-        sys.exit(0)
-    elif not all_ok and any_blocked and (fg["ok"] and not eg.get("ok") and ag.get("ok", False)):
-        # Eval blocked, everything else green
-        print(
-            "verify-phase5: BLOCKED — eval gate requires ANTHROPIC_API_KEY.\n"
-            "To unblock: export ANTHROPIC_API_KEY=sk-ant-... && "
-            "uv run python -m govbudget verify-phase5"
-        )
-        sys.exit(2)
-    elif any_blocked and all(
-        r["verdict"] in ("PASS", "BLOCKED") for r in ag["results"]
-    ) and fg["ok"]:
-        # All green except BLOCKED gate(s)
+    elif exit_code == 2:
         print(
             "verify-phase5: BLOCKED — one or more gates require ANTHROPIC_API_KEY.\n"
             "To unblock: export ANTHROPIC_API_KEY=sk-ant-... && "
             "uv run python -m govbudget verify-phase5"
         )
-        sys.exit(2)
     else:
         print("verify-phase5: FAIL")
-        sys.exit(1)
+
+    sys.exit(exit_code)

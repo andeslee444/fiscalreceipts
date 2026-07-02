@@ -176,3 +176,46 @@ def test_dml_rejected_before_execution(empty_db):
     with SqlTool(empty_db) as tool:
         with pytest.raises(SqlError, match="DML"):
             tool.run("DELETE FROM my_table")
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: touched_tables must be extracted from comment-stripped sql
+# ---------------------------------------------------------------------------
+
+
+def test_extract_touched_tables_ignores_comment_token():
+    """Fix 3 (PROOF-IT-CAN-FAIL): table name in -- comment must NOT appear in result."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables("SELECT 42 -- dim_entities")
+    assert "dim_entities" not in result, (
+        f"Comment token must not contribute to touched_tables, got {result}"
+    )
+
+
+def test_extract_touched_tables_ignores_string_literal():
+    """Fix 3 (PROOF-IT-CAN-FAIL): table name in string literal → not touched."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables("SELECT 'dim_entities'")
+    assert "dim_entities" not in result, (
+        f"String literal must not contribute to touched_tables, got {result}"
+    )
+
+
+def test_extract_touched_tables_from_clause():
+    """Fix 3: genuine FROM clause → table correctly included."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables(
+        "SELECT display_name FROM dim_entities ORDER BY total_obligation DESC LIMIT 1"
+    )
+    assert "dim_entities" in result
+
+
+def test_extract_touched_tables_join_clause():
+    """Fix 3: JOIN clause → table correctly included."""
+    from govbudget.analyst.sql_tool import _extract_touched_tables
+    result = _extract_touched_tables(
+        "SELECT e.display_name FROM dim_entities e "
+        "JOIN entity_xwalk x ON x.family_key = e.family_key"
+    )
+    assert "dim_entities" in result
+    assert "entity_xwalk" in result

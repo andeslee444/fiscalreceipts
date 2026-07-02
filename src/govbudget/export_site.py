@@ -655,6 +655,8 @@ def export_site(
         "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "datasets": final_counts,
         "citations": cit_by_kind,
+        "pdf_count": n_pdfs,
+        "workbook_count": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
         "skipped_zero_amount": skipped_zero_amount,
         "uncited_datasets": uncited,
@@ -2058,6 +2060,10 @@ def _write_all_sidecars(
         # datasets dict from manifest — single source of truth for per-dataset row counts.
         # The site build reads this for data-driven download card descriptions.
         "datasets": manifest.get("datasets", {}),
+        # pdf_count and workbook_count come from manifest so the site can render
+        # accurate "34 PDFs / 3 workbooks" labels without hard-coded literals.
+        "pdf_count": manifest.get("pdf_count", 0),
+        "workbook_count": manifest.get("workbook_count", 0),
         "pdf_base_url": manifest.get("pdf_base_url"),
         "schema_version": manifest.get("schema_version", 1),
         "skipped_unresolved": manifest.get("skipped_unresolved", 0),

@@ -50,6 +50,10 @@ export interface SiteMeta {
   counts: SiteMetaCounts;
   /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */
   datasets?: Record<string, number>;
+  /** Number of J-book PDFs copied into the site bundle (from manifest.pdf_count). */
+  pdf_count?: number;
+  /** Number of workbook (Excel) files copied into the site bundle. */
+  workbook_count?: number;
   pdf_base_url: string;
   schema_version: number;
   skipped_unresolved: number;

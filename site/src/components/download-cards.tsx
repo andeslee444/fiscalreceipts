@@ -19,10 +19,11 @@ function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[]
   const citLabel = citCount > 0
     ? `${citCount.toLocaleString("en-US")} source citations`
     : "Source citations";
+  const programCount = datasetsRowCounts["dim_programs"] ?? 326;
   return [
     {
       name: "dim_programs",
-      description: "326 DoD R&D and procurement program elements with metadata.",
+      description: `${programCount.toLocaleString("en-US")} DoD R&D and procurement program elements with metadata.`,
       parquetPath: "/data/dim_programs.parquet",
     },
     {
@@ -104,9 +105,15 @@ function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[]
 export function DownloadCards({
   builtAt,
   datasets = {},
+  pdfCount,
+  workbookCount,
 }: {
   builtAt: string;
   datasets?: Record<string, number>;
+  /** Number of J-book PDFs in the bundle (from site_meta.pdf_count). */
+  pdfCount?: number;
+  /** Number of workbook files in the bundle (from site_meta.workbook_count). */
+  workbookCount?: number;
 }) {
   const assetUrl = useAssetUrl();
   const DATASETS = buildDatasets(datasets);
@@ -184,10 +191,10 @@ export function DownloadCards({
             and LDA filing UUIDs
           </li>
           <li>
-            <code>pdfs/</code> — 34 SHA-named J-book PDFs (~149 MB total)
+            <code>pdfs/</code> — {pdfCount ?? 34} SHA-named J-book PDFs (~149 MB total)
           </li>
           <li>
-            <code>workbooks/</code> — 3 R-1/P-1 Excel rollup files
+            <code>workbooks/</code> — {workbookCount ?? 3} R-1/P-1 Excel rollup files
           </li>
         </ul>
       </div>

@@ -32,17 +32,6 @@ CORS_SCRIPT = LAUNCH_DIR / "cors_live_test.sh"
 # ---------------------------------------------------------------------------
 
 
-def _run_rewrite(url: str, tmp_site: Path) -> subprocess.CompletedProcess:
-    """Run rewrite-config.mjs with a temp site/public dir."""
-    env = {**os.environ, "REPO_ROOT_OVERRIDE": str(tmp_site)}
-    return subprocess.run(
-        ["node", str(REWRITE_SCRIPT), url],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-
-
 def _setup_temp_site(tmp_path: Path) -> tuple[Path, Path]:
     """Create a minimal site/ tree under tmp_path that rewrite-config expects."""
     public_dir = tmp_path / "site" / "public"

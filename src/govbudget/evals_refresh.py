@@ -31,6 +31,11 @@ from govbudget import config
 EVAL_PATH = Path(__file__).resolve().parents[2] / "evals" / "phase5_questions.yaml"
 REFUSE_SENTINEL = "REFUSE"
 
+# Relative path prefix used in answer_sql for oversight/state parquets.
+# Substituted with the absolute PARQUET_DIR path before execution so that
+# _run_sql works correctly regardless of the process's working directory.
+_RELATIVE_PARQUET_PREFIX = "data/parquet/"
+
 
 # ---------------------------------------------------------------------------
 # Canonical formatter
@@ -62,9 +67,24 @@ def _canonicalize(rows: list[tuple]) -> str:
 # Core execution
 # ---------------------------------------------------------------------------
 
+def _resolve_parquet_paths(sql: str) -> str:
+    """Replace relative 'data/parquet/' prefixes with the absolute PARQUET_DIR path.
+
+    answer_sql entries use relative read_parquet('data/parquet/...') paths that
+    are only valid when the process's cwd is the repo root. This substitution
+    makes execution cwd-independent by converting to absolute paths.
+    """
+    absolute_prefix = str(config.PARQUET_DIR) + "/"
+    return sql.replace(_RELATIVE_PARQUET_PREFIX, absolute_prefix)
+
+
 def _run_sql(con: duckdb.DuckDBPyConnection, sql: str) -> list[tuple]:
-    """Execute answer_sql and return rows."""
-    return con.execute(sql).fetchall()
+    """Execute answer_sql and return rows.
+
+    Resolves relative read_parquet('data/parquet/...') paths to absolute paths
+    so the query works regardless of the process's current working directory.
+    """
+    return con.execute(_resolve_parquet_paths(sql)).fetchall()
 
 
 def _load_yaml() -> list[dict]:

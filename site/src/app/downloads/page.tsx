@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   },
 };
 
-function buildDatasets(citationCount: number) {
+function buildDatasets(citationCount: number, programCount: number) {
   return [
     {
       name: "DoD Program Elements (dim_programs)",
       description:
-        "All 326 defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.",
+        `All ${programCount.toLocaleString("en-US")} defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.`,
       url: "/downloads/",
       encodingFormat: "application/vnd.apache.parquet",
     },
@@ -79,7 +79,8 @@ function buildDatasets(citationCount: number) {
 export default function DownloadsPage() {
   const meta = getSiteMeta();
 
-  const datasets = buildDatasets(meta.counts.citations);
+  const programCount = (meta.datasets ?? {})["dim_programs"] ?? 326;
+  const datasets = buildDatasets(meta.counts.citations, programCount);
   const datasetsLd = datasets.map((d) =>
     datasetJsonLd({
       ...d,
@@ -115,7 +116,12 @@ export default function DownloadsPage() {
           </p>
         </div>
         <AssetConfigProvider>
-          <DownloadCards builtAt={meta.built_at} datasets={meta.datasets ?? {}} />
+          <DownloadCards
+            builtAt={meta.built_at}
+            datasets={meta.datasets ?? {}}
+            pdfCount={meta.pdf_count}
+            workbookCount={meta.workbook_count}
+          />
         </AssetConfigProvider>
       </div>
     </>
