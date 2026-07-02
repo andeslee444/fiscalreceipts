@@ -8,12 +8,15 @@
  * Per plan:
  *   - matched_term chip
  *   - snippet + …
- *   - human filing link via humanLdaUrl(filing_url)
+ *   - internal /filing/{uuid}/ link (every mention has a filing page) with
+ *     the canonical lda.senate.gov link alongside (Phase 5C Goal 2 —
+ *     data-filing-mention contract on each row wrapper)
  *   - client_name links to /company/{slug}/ ONLY when family_key is in linkableKeys set
  *   - else plain text
  */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { ProgramDetails } from "@/lib/data";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
@@ -72,7 +75,7 @@ function MentionRow({
     : "";
 
   return (
-    <div className="border-b border-border/50 py-3">
+    <div data-filing-mention className="border-b border-border/50 py-3">
       <div className="flex flex-wrap items-start gap-2 mb-1">
         {/* Client name */}
         <span className="font-medium text-foreground text-sm">
@@ -105,17 +108,25 @@ function MentionRow({
         )}
       </p>
 
-      {/* Filing link */}
-      {humanUrl && (
-        <a
-          href={humanUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline mt-1 inline-block"
+      {/* Filing links — internal filing page + canonical LDA source */}
+      <div className="mt-1 flex items-center gap-3 text-xs">
+        <Link
+          href={`/filing/${mention.filing_uuid}/`}
+          className="text-primary hover:underline"
         >
-          View filing ↗
-        </a>
-      )}
+          View filing &rarr;
+        </Link>
+        {humanUrl && (
+          <a
+            href={humanUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground underline decoration-dotted hover:text-foreground"
+          >
+            lda.senate.gov ↗
+          </a>
+        )}
+      </div>
     </div>
   );
 }

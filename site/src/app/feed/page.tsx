@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getFeed, collectCitations } from "@/lib/data";
+import {
+  getFeed,
+  getEntityTopByFamilyKey,
+  collectCitations,
+} from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -73,12 +77,26 @@ function groupByEventType(cards: FeedCard[]): Map<string, FeedCard[]> {
   return map;
 }
 
-function FeedCardItem({ card }: { card: FeedCard }) {
+function FeedCardItem({
+  card,
+  companySlug,
+}: {
+  card: FeedCard;
+  /**
+   * /company/{slug}/ slug when the card's family_key has a page in the
+   * top-200 entity index; null otherwise. new_entrant cards without a page
+   * carry data-no-company-page on the wrapper (G1 link-graph contract).
+   */
+  companySlug: string | null;
+}) {
   const isConcentration = card.event_type === "concentration_shift";
   const isNewEntrant = card.event_type === "new_entrant";
 
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-muted/60 transition-colors">
+    <div
+      className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-muted/60 transition-colors"
+      {...(isNewEntrant && !companySlug ? { "data-no-company-page": "" } : {})}
+    >
       <div className="min-w-0 flex-1">
         {/* data-source-text="headline": auto-generated prose from export pipeline —
             dollar strings (e.g. "first award FY2025, $3.1M total") are descriptive
@@ -107,8 +125,17 @@ function FeedCardItem({ card }: { card: FeedCard }) {
           </div>
         )}
         {card.family_key && !card.pe_bli && (
-          <p className="mt-1 text-xs text-muted-foreground font-mono">
-            {card.family_key}
+          <p className="mt-1 text-xs font-mono">
+            {companySlug ? (
+              <Link
+                href={`/company/${companySlug}/`}
+                className="text-primary underline decoration-dotted hover:decoration-solid"
+              >
+                {card.family_key}
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">{card.family_key}</span>
+            )}
           </p>
         )}
       </div>
@@ -166,6 +193,11 @@ export default function FeedPage() {
   const { cards, total } = getFeed();
   const grouped = groupByEventType(cards);
 
+  // family_key → company slug lookup (SSG) from the same top-200 entity
+  // index the companies page uses. Families outside the top 200 have no
+  // company page — their cards get data-no-company-page instead of a link.
+  const entityByFamilyKey = getEntityTopByFamilyKey();
+
   // Collect all fact_ids on this page
   const pageFactIds: string[] = [];
   for (const card of cards) {
@@ -221,6 +253,12 @@ export default function FeedPage() {
                     <FeedCardItem
                       key={`${card.event_type}-${card.pe_bli ?? card.family_key ?? i}`}
                       card={card}
+                      companySlug={
+                        card.family_key
+                          ? (entityByFamilyKey.get(card.family_key)?.slug ??
+                            null)
+                          : null
+                      }
                     />
                   ))}
                 </div>

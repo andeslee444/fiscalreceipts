@@ -290,7 +290,11 @@ export default async function CompanyPage({
             {details.mentions.slice(0, 50).map((m, i) => {
               const humanUrl = humanLdaUrl(m.filing_url);
               return (
-                <div key={`${m.filing_uuid}-${i}`} className="px-5 py-3">
+                <div
+                  key={`${m.filing_uuid}-${i}`}
+                  data-filing-mention
+                  className="px-5 py-3"
+                >
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <Link
                       href={`/program/${m.pe_bli}/`}
@@ -311,18 +315,22 @@ export default async function CompanyPage({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {humanUrl ? (
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <Link
+                      href={`/filing/${m.filing_uuid}/`}
+                      className="text-primary hover:underline"
+                    >
+                      View filing &rarr;
+                    </Link>
+                    {humanUrl && (
                       <a
                         href={humanUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline hover:text-foreground"
+                        className="underline decoration-dotted hover:text-foreground"
                       >
-                        View LDA filing ↗
+                        lda.senate.gov ↗
                       </a>
-                    ) : (
-                      <span>LDA filing (no link available)</span>
                     )}
                   </div>
                 </div>
