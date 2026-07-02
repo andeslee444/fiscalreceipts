@@ -6,6 +6,7 @@ import {
   getPrograms,
   getProgramDetails,
   getEntityTopByFamilyKey,
+  getAgencies,
   getGaoOverlayForOrg,
   getCategories,
   getDossier,
@@ -224,8 +225,15 @@ export default async function ProgramPage({
         provenance.
       </p>
 
-      {/* Header — top-50 pages get a category hero background (Task 8a) */}
-      <ProgramHeader program={program} category={category} />
+      {/* Header — top-50 pages get a category hero background (Task 8a).
+          orgHasPage gates the org link: trajectory-only feed programs
+          (backlog #17) carry service workbook orgs (A/N/F/DHA) that have no
+          agency pages — plain text instead of a dead link. */}
+      <ProgramHeader
+        program={program}
+        category={category}
+        orgHasPage={getAgencies().some((a) => a.org === program.org)}
+      />
 
       {/* Above-the-fold answer strip (Phase 5C Task 10, Goal 5) — what it
           is / what changed / who gets it, directly under the header. The G6

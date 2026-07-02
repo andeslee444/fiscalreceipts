@@ -15,7 +15,8 @@
  * public/og/*.png paths (plan decision, Task 8b).
  *
  * Card set:
- *   - program-{pe_bli}.png   (326) title, org + PE, FY26 figure, tagline
+ *   - program-{pe_bli}.png   (one per programs.json entry) title, org + PE,
+ *                            FY26 figure, tagline
  *   - company-{slug}.png     (200) display_name, obligations
  *   - agency-{org}.png       (~20) org, program count, FY26 total
  *   - 8 core pages           home/feed/district-index/downloads/methodology/

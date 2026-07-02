@@ -2,7 +2,8 @@
  * gate 1 — build_gate (mechanical checks on out/)
  *
  * Checks:
- * - program pages == programs.json count (326)
+ * - program pages == programs.json count (data-driven: dim_programs +
+ *   trajectory-only feed programs)
  * - agency pages == distinct orgs from agencies.json
  * - company pages == 200 (entities_top.json count)
  * - core pages present (/, /programs, /companies, /data, /downloads, /methodology, /about)

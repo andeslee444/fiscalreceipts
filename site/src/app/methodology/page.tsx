@@ -441,8 +441,11 @@ export default function MethodologyPage() {
             <p>
               Dossiers exist for {dossiers.numerator} of{" "}
               {dossiers.denominator} programs, selected by ranking FY2026
-              requested dollars — the top 50 by money at stake, not by
-              editorial judgment. Every dossier sentence must carry a
+              requested dollars among programs with full J-book (R-2/P-40)
+              detail — the {dossiers.numerator} largest by money at stake,
+              not by editorial judgment. Program pages that exist only
+              through budget-trajectory data (no J-book detail book) are
+              outside the ranking pool. Every dossier sentence must carry a
               resolvable citation or the build fails
               (&ldquo;cited-or-absent&rdquo;), so programs without a dossier
               show a one-line note instead of unsourced prose. Coverage grows

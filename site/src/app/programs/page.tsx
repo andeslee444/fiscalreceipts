@@ -6,15 +6,19 @@ import { CoverageNote } from "@/components/coverage-note";
 import { ProgramsTable } from "@/components/programs-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
+// Data-driven page count (programs.json length) — never a hardcoded literal.
+// Evaluated at build time (SSG); includes the trajectory-only feed programs
+// added by backlog #17.
+const PROGRAM_COUNT = getPrograms().length;
+const PROGRAMS_DESCRIPTION = `Browse all ${PROGRAM_COUNT} DoD R&D and procurement program elements with FY2024 actuals and FY2026 budget figures.`;
+
 export const metadata: Metadata = {
   title: `All Programs — ${SITE_NAME}`,
-  description:
-    "Browse all 326 DoD R&D and procurement program elements with FY2024 actuals and FY2026 budget figures.",
+  description: PROGRAMS_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/programs/` },
   openGraph: {
     title: `All Programs — ${SITE_NAME}`,
-    description:
-      "Browse all 326 DoD R&D and procurement program elements with FY2024 actuals and FY2026 budget figures.",
+    description: PROGRAMS_DESCRIPTION,
     url: `${SITE_URL}/programs/`,
     siteName: SITE_NAME,
   },

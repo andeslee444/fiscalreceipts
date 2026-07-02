@@ -7,6 +7,12 @@ import { CategoryHero } from "@/components/hero";
  * ProgramHeader — title, org link, exhibit_family badge, fully_reconciled badge, pe_bli mono.
  * Server component.
  *
+ * The org links to /agency/{org}/ ONLY when the page passes orgHasPage
+ * (computed from agencies.json, the agency generateStaticParams source).
+ * Trajectory-only feed programs (backlog #17) carry service workbook org
+ * codes (A/N/F/DHA) with no agency pages — those render the org as plain
+ * text, never a dead link (G1 contract).
+ *
  * Top-50 dossier pages (category present in categories.json) additionally get
  * a subtle CategoryHero background layer behind the header text (Task 8a);
  * all other program pages are unchanged (no hero markup at all).
@@ -16,6 +22,12 @@ interface ProgramHeaderProps {
   program: ProgramRow;
   /** Hero category for top-50 pages; null/undefined → no hero layer. */
   category?: HeroCategory | null;
+  /**
+   * Whether /agency/{org}/ exists as a built page. The program page computes
+   * this from agencies.json; defaults to true (all dim_programs orgs have
+   * agency pages — only synthesized trajectory-only programs don't).
+   */
+  orgHasPage?: boolean;
 }
 
 /** Human-friendly label for exhibit_family values. */
@@ -35,7 +47,11 @@ function exhibitFamilyLabel(family: string): string {
   }
 }
 
-export function ProgramHeader({ program, category }: ProgramHeaderProps) {
+export function ProgramHeader({
+  program,
+  category,
+  orgHasPage = true,
+}: ProgramHeaderProps) {
   const { title, org, exhibit_family, fully_reconciled, pe_bli } = program;
 
   return (
@@ -52,13 +68,17 @@ export function ProgramHeader({ program, category }: ProgramHeaderProps) {
       </h1>
 
       <div className="relative flex flex-wrap items-center gap-2 text-sm">
-        {/* Org link */}
-        <Link
-          href={`/agency/${encodeURIComponent(org)}/`}
-          className="text-primary hover:underline font-medium"
-        >
-          {org}
-        </Link>
+        {/* Org link — only when the agency page exists (see doc comment) */}
+        {orgHasPage ? (
+          <Link
+            href={`/agency/${encodeURIComponent(org)}/`}
+            className="text-primary hover:underline font-medium"
+          >
+            {org}
+          </Link>
+        ) : (
+          <span className="font-medium text-foreground">{org}</span>
+        )}
 
         <span className="text-muted-foreground/50" aria-hidden="true">
           ·

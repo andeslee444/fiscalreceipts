@@ -75,8 +75,8 @@ export function getCoverage(id: CoverageId): Coverage {
         id,
         numerator: num,
         denominator: den,
-        note: `Research dossiers exist for ${num} of ${den} programs — the top-50 programs by FY2026 request, ranked by dollar value.`,
-        emptyNote: `No research dossier for this program — dossiers cover ${num} of ${den} programs, ranked by FY2026 requested dollars.`,
+        note: `Research dossiers exist for ${num} of ${den} programs — the ${num} largest fully J-book-detailed programs by FY2026 request.`,
+        emptyNote: `No research dossier for this program — dossiers cover ${num} of ${den} programs, the largest fully J-book-detailed lines by FY2026 requested dollars.`,
         anchor: "/methodology/#coverage-dossiers",
         linkText: "why no dossier here? →",
       };
