@@ -130,18 +130,19 @@ export async function runAnimationGate() {
     if (homeHtml.includes(REDUCED_MOTION_PATTERN)) {
       reducedMotionFound = true;
     } else {
-      // Check any /_next/static/css/*.css file in out/
-      const nextStatic = path.join(outDir, "_next", "static", "css");
-      if (fs.existsSync(nextStatic)) {
-        for (const cssFile of fs.readdirSync(nextStatic)) {
+      // Next.js v13+ emits CSS in either _next/static/css/ or _next/static/chunks/
+      // (Tailwind v4 / App Router uses chunks). Search both directories.
+      const nextStaticCss = path.join(outDir, "_next", "static", "css");
+      const nextStaticChunks = path.join(outDir, "_next", "static", "chunks");
+      const cssSearchDirs = [nextStaticCss, nextStaticChunks].filter(fs.existsSync);
+
+      outer: for (const dir of cssSearchDirs) {
+        for (const cssFile of fs.readdirSync(dir)) {
           if (!cssFile.endsWith(".css")) continue;
-          const cssContent = fs.readFileSync(
-            path.join(nextStatic, cssFile),
-            "utf8"
-          );
+          const cssContent = fs.readFileSync(path.join(dir, cssFile), "utf8");
           if (cssContent.includes(REDUCED_MOTION_PATTERN)) {
             reducedMotionFound = true;
-            break;
+            break outer;
           }
         }
       }

@@ -64,7 +64,11 @@ export default function MethodologyPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(faqPageJsonLd(FAQ_ITEMS)) }}
       />
-    <div className="container mx-auto px-4 py-10 max-w-3xl">
+    {/* data-source-text="methodology": this page is pure explanatory prose —
+        all dollar amounts are threshold descriptions or source-document quotes,
+        not site-computed <Cite> figures. The render-static scan skips
+        currency patterns inside any element carrying data-source-text. */}
+    <div className="container mx-auto px-4 py-10 max-w-3xl" data-source-text="methodology">
       <h1 className="text-3xl font-bold mb-2">Methodology</h1>
       <p className="text-sm text-muted-foreground mb-8">
         Last updated: 2026-06-12

@@ -94,7 +94,11 @@ def animation_gate_note(dossiers_blocked: bool) -> str:
 
 def cmd_verify_phase5b3(args) -> None:
     """Verify phase 5B-3: dossier_gate + npm verify (gates 1-12)."""
-    repo_root = Path(__file__).resolve().parents[3]
+    # __file__ is at src/govbudget/verify_phase5b3.py
+    # parents[0] = src/govbudget/
+    # parents[1] = src/
+    # parents[2] = GovBudget/  ← repo root
+    repo_root = Path(__file__).resolve().parents[2]
     site_dir = repo_root / "site"
     site_json_dir = repo_root / "data" / "site" / "json"
 

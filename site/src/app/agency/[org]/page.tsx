@@ -234,6 +234,7 @@ export default async function AgencyPage({
                   <Link
                     href={`/program/${p.pe_bli}/`}
                     className="font-medium hover:underline text-foreground"
+                    data-program-name
                   >
                     {p.title}
                   </Link>

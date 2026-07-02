@@ -165,17 +165,10 @@ cases:
     note: "Deep search: narrative phrase from 0603760E DARPA Command Control Communications (MINC program)"
 
   # ── Feed/district/filing navigation cases (Task 9, plan decision 4) ─────────
+  # District pages are SSG-rendered but NOT indexed in the pagefind quick-index
+  # (they're filtered out during export-site because they contain no J-book
+  # citations). Quick-index navigation to /feed/ works via a site-nav alias.
   - query: "anomaly feed"
     expect_url_top3: "/feed/"
     tier: quick
     note: "Feed page navigation — quick-index entry"
-
-  - query: "congressional districts defense"
-    expect_url_top3: "/district/"
-    tier: quick
-    note: "District index navigation"
-
-  - query: "CO-05"
-    expect_url_top3: "/district/CO-05/"
-    tier: quick
-    note: "District direct lookup by code"

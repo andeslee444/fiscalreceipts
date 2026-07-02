@@ -264,7 +264,7 @@ export default async function CompanyPage({
                 <span className="font-mono text-muted-foreground">
                   {lp.pe_bli}
                 </span>
-                <span className="truncate max-w-[200px]">{lp.title}</span>
+                <span className="truncate max-w-[200px]" data-program-name>{lp.title}</span>
               </Link>
             ))}
             {details.linked_programs.length > 20 && (
@@ -295,6 +295,7 @@ export default async function CompanyPage({
                     <Link
                       href={`/program/${m.pe_bli}/`}
                       className="font-medium text-sm hover:underline"
+                      data-program-name
                     >
                       {m.program_title}
                     </Link>

@@ -45,7 +45,9 @@ export function ProgramHeader({ program, category }: ProgramHeaderProps) {
           none keep it purely decorative. */}
       {category && <CategoryHero category={category} />}
 
-      <h1 className="relative text-2xl font-bold text-foreground leading-tight mb-2">
+      {/* data-program-name: program titles are official names from J-books;
+          some contain "$5M" thresholds that are part of the program identifier. */}
+      <h1 className="relative text-2xl font-bold text-foreground leading-tight mb-2" data-program-name>
         {title}
       </h1>
 

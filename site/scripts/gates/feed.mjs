@@ -108,10 +108,26 @@ export async function runFeedGate() {
   }
 
   // ── (e) Junk sentinel absent ────────────────────────────────────────────────
-  if (html.includes("9999999999")) {
-    errors.push('feed: sentinel PE/BLI "9999999999" found in page content — junk data leaking');
+  // Check for the junk PE/BLI "9999999999" as a 10-digit program code in
+  // rendered text content, not in React server payload JSON (which may contain
+  // this sequence as a floating-point value like "9999.99999999999").
+  // We parse the DOM and look in text nodes only (skipping script/style).
+  const junkInText = root.querySelectorAll("*").some((el) => {
+    if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return false;
+    // Check direct text children only
+    for (const child of el.childNodes || []) {
+      if (child.nodeType === 3) {
+        const text = child.rawText || "";
+        // Match the 10-digit sentinel as a standalone pe_bli string
+        if (/\b9999999999\b/.test(text)) return true;
+      }
+    }
+    return false;
+  });
+  if (junkInText) {
+    errors.push('feed: sentinel PE/BLI "9999999999" found in rendered text — junk data leaking');
   } else {
-    notes.push('feed: junk sentinel "9999999999" absent ✓');
+    notes.push('feed: junk sentinel "9999999999" absent from rendered text ✓');
   }
 
   return { pass: errors.length === 0, errors, notes };

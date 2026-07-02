@@ -80,7 +80,10 @@ function FeedCardItem({ card }: { card: FeedCard }) {
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-muted/60 transition-colors">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-snug">{card.headline}</p>
+        {/* data-source-text="headline": auto-generated prose from export pipeline —
+            dollar strings (e.g. "first award FY2025, $3.1M total") are descriptive
+            context, not site-computed cite-able figures. */}
+        <p className="text-sm font-medium leading-snug" data-source-text="headline">{card.headline}</p>
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">
