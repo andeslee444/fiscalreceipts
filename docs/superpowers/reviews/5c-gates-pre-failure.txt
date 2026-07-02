@@ -75,3 +75,167 @@ NOTES: [ 'scanned 99 source files', 'arbitrary duration-[...] scan: clean ✓', 
 --- G7 motion_gate — clean tree after revert ---
 PASS: true
 NOTES: [ 'scanned 98 source files', 'ms-literal scan: clean ✓', 'arbitrary duration-[...] scan: clean ✓', 'built-in duration-<digits> scan: clean ✓ (exempt: src/components/ui/dialog.tsx)', 'motion tokens declared ✓', 'prefers-reduced-motion collapse present ✓' ]
+
+=== G1 dead-link leg proof-can-fail ===
+
+--- G1 linkgraph_gate leg (d) — dead internal links, run BEFORE the feed fix ---
+Method: extended linkgraph.mjs with leg (d): on /, /feed/ and /district/
+built HTML, every internal href^="/" must resolve to an existing out/ path
+(index.html for page URLs, the file itself for extension URLs; #anchors on
+existing pages allowed). Run against the out/ built before the feed-page fix:
+136 yoy_swing/zeroed_fy2026 cards carried "view program →" links to
+/program/{pe_bli}/ pages that exist only in the trajectory mart, not in
+programs.json — 404 dead ends. No defect planted; this is the real pre-fix
+failure the leg was built to catch.
+
+PASS: false
+NOTES: [
+ "/district/ linked from chrome/home ✓",
+ "/filings/ linked from chrome/home ✓",
+ "/feed/ linked from chrome/home ✓",
+ "/downloads/ linked from chrome/home ✓",
+ "BFS covered 1015 URLs",
+ "feed new_entrant: 20 cards all linked/opted-out ✓",
+ "home stats: 4 all linked ✓",
+ "filing mentions: 5 pages sampled, all internally linked ✓",
+ "dead links on /: 0 of 53 internal hrefs ✓",
+ "dead links on /district/: 0 of 121 internal hrefs ✓"
+]
+ERRORS:
+  ✗ dead links on /feed/: 136 internal href(s) resolve to no built page (136 unique target(s); first: /program/0101213F/, /program/0101221N/, /program/0203735A/, /program/0204202N/, /program/0207133F/, /program/0207253F/, /program/0207410F/, /program/0207606F/, /program/0208006F/, /program/0305206F/)
+  ✗   dead link on /feed/: /program/0101213F/
+  ✗   dead link on /feed/: /program/0101221N/
+  ✗   dead link on /feed/: /program/0203735A/
+  ✗   dead link on /feed/: /program/0204202N/
+  ✗   dead link on /feed/: /program/0207133F/
+  ✗   dead link on /feed/: /program/0207253F/
+  ✗   dead link on /feed/: /program/0207410F/
+  ✗   dead link on /feed/: /program/0207606F/
+  ✗   dead link on /feed/: /program/0208006F/
+  ✗   dead link on /feed/: /program/0305206F/
+  ✗   dead link on /feed/: /program/0401132F/
+  ✗   dead link on /feed/: /program/0401221F/
+  ✗   dead link on /feed/: /program/0602144A/
+  ✗   dead link on /feed/: /program/0602145A/
+  ✗   dead link on /feed/: /program/0602147A/
+  ✗   dead link on /feed/: /program/0602148A/
+  ✗   dead link on /feed/: /program/0602750N/
+  ✗   dead link on /feed/: /program/0602787A/
+  ✗   dead link on /feed/: /program/0603032F/
+  ✗   dead link on /feed/: /program/0603115DHA/
+  ✗   dead link on /feed/: /program/0603119A/
+  ✗   dead link on /feed/: /program/0603128N/
+  ✗   dead link on /feed/: /program/0603465A/
+  ✗   dead link on /feed/: /program/0603466A/
+  ✗   dead link on /feed/: /program/0603561N/
+  ✗   dead link on /feed/: /program/0603564N/
+  ✗   dead link on /feed/: /program/0603598N/
+  ✗   dead link on /feed/: /program/0603635M/
+  ✗   dead link on /feed/: /program/0603639A/
+  ✗   dead link on /feed/: /program/0603673N/
+  ✗   dead link on /feed/: /program/0603680F/
+  ✗   dead link on /feed/: /program/0603734N/
+  ✗   dead link on /feed/: /program/0604003F/
+  ✗   dead link on /feed/: /program/0604007F/
+  ✗   dead link on /feed/: /program/0604009F/
+  ✗   dead link on /feed/: /program/0604015F/
+  ✗   dead link on /feed/: /program/0604019A/
+  ✗   dead link on /feed/: /program/0604028N/
+  ✗   dead link on /feed/: /program/0604029N/
+  ✗   dead link on /feed/: /program/0604114A/
+  ✗   dead link on /feed/: /program/0604121A/
+  ✗   dead link on /feed/: /program/0604183F/
+  ✗   dead link on /feed/: /program/0604231N/
+  ✗   dead link on /feed/: /program/0604282N/
+  ✗   dead link on /feed/: /program/0604283F/
+  ✗   dead link on /feed/: /program/0604320M/
+  ✗   dead link on /feed/: /program/0604503N/
+  ✗   dead link on /feed/: /program/0604504N/
+  ✗   dead link on /feed/: /program/0604668F/
+  ✗   dead link on /feed/: /program/0604710A/
+  ✗   dead link on /feed/: /program/0604741A/
+  ✗   dead link on /feed/: /program/0604756N/
+  ✗   dead link on /feed/: /program/0604757N/
+  ✗   dead link on /feed/: /program/0604759F/
+  ✗   dead link on /feed/: /program/0604808A/
+  ✗   dead link on /feed/: /program/0604818A/
+  ✗   dead link on /feed/: /program/0605052A/
+  ✗   dead link on /feed/: /program/0605148A/
+  ✗   dead link on /feed/: /program/0605180N/
+  ✗   dead link on /feed/: /program/0605212M/
+  ✗   dead link on /feed/: /program/0605238F/
+  ✗   dead link on /feed/: /program/0605285N/
+  ✗   dead link on /feed/: /program/0605457A/
+  ✗   dead link on /feed/: /program/0605512N/
+  ✗   dead link on /feed/: /program/0605831F/
+  ✗   dead link on /feed/: /program/0605976F/
+  ✗   dead link on /feed/: /program/0607136A/
+  ✗   dead link on /feed/: /program/0708083D/
+  ✗   dead link on /feed/: /program/1203109SF/
+  ✗   dead link on /feed/: /program/1203154SF/
+  ✗   dead link on /feed/: /program/1203155SF/
+  ✗   dead link on /feed/: /program/1203940SF/
+  ✗   dead link on /feed/: /program/1206446SF/
+  ✗   dead link on /feed/: /program/1206458SF/
+  ✗   dead link on /feed/: /program/1206853SF/
+  ✗   dead link on /feed/: /program/1206857SF/
+  ✗   dead link on /feed/: /program/0203802A/
+  ✗   dead link on /feed/: /program/0204228N/
+  ✗   dead link on /feed/: /program/0205412A/
+  ✗   dead link on /feed/: /program/0205620N/
+  ✗   dead link on /feed/: /program/0207227F/
+  ✗   dead link on /feed/: /program/0207418F/
+  ✗   dead link on /feed/: /program/0207444F/
+  ✗   dead link on /feed/: /program/0207448F/
+  ✗   dead link on /feed/: /program/0207573F/
+  ✗   dead link on /feed/: /program/0303004F/
+  ✗   dead link on /feed/: /program/0303141A/
+  ✗   dead link on /feed/: /program/0304270A/
+  ✗   dead link on /feed/: /program/0305015F/
+  ✗   dead link on /feed/: /program/0305220F/
+  ✗   dead link on /feed/: /program/0408011F/
+  ✗   dead link on /feed/: /program/0602181A/
+  ✗   dead link on /feed/: /program/0602201F/
+  ✗   dead link on /feed/: /program/0602792N/
+  ✗   dead link on /feed/: /program/0603270F/
+  ✗   dead link on /feed/: /program/0603327A/
+  ✗   dead link on /feed/: /program/0603553N/
+  ✗   dead link on /feed/: /program/0603562N/
+  ✗   dead link on /feed/: /program/0603801A/
+  ✗   dead link on /feed/: /program/0603801N/
+  ✗   dead link on /feed/: /program/0604004F/
+  ✗   dead link on /feed/: /program/0604014N/
+  ✗   dead link on /feed/: /program/0604020A/
+  ✗   dead link on /feed/: /program/0604025F/
+  ✗   dead link on /feed/: /program/0604030N/
+  ✗   dead link on /feed/: /program/0604032F/
+  ✗   dead link on /feed/: /program/0604101A/
+  ✗   dead link on /feed/: /program/0604103A/
+  ✗   dead link on /feed/: /program/0604113A/
+  ✗   dead link on /feed/: /program/0604214M/
+  ✗   dead link on /feed/: /program/0604386A/
+  ✗   dead link on /feed/: /program/0604445F/
+  ✗   dead link on /feed/: /program/0604518N/
+  ✗   dead link on /feed/: /program/0604562N/
+  ✗   dead link on /feed/: /program/0604633A/
+  ✗   dead link on /feed/: /program/0604641A/
+  ✗   dead link on /feed/: /program/0604642A/
+  ✗   dead link on /feed/: /program/0604822A/
+  ✗   dead link on /feed/: /program/0605117F/
+  ✗   dead link on /feed/: /program/0605164F/
+  ✗   dead link on /feed/: /program/0605205A/
+  ✗   dead link on /feed/: /program/0605206A/
+  ✗   dead link on /feed/: /program/0605216A/
+  ✗   dead link on /feed/: /program/0605242A/
+  ✗   dead link on /feed/: /program/0605247A/
+  ✗   dead link on /feed/: /program/0605450A/
+  ✗   dead link on /feed/: /program/0605516M/
+  ✗   dead link on /feed/: /program/0605804N/
+  ✗   dead link on /feed/: /program/0605827F/
+  ✗   dead link on /feed/: /program/0605828F/
+  ✗   dead link on /feed/: /program/0605832F/
+  ✗   dead link on /feed/: /program/0607139A/
+  ✗   dead link on /feed/: /program/0607143A/
+  ✗   dead link on /feed/: /program/0607313A/
+  ✗   dead link on /feed/: /program/1203176F/
+  ✗   dead link on /feed/: /program/1203873SF/

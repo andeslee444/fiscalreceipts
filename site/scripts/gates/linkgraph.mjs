@@ -15,6 +15,11 @@
  *     - home stats band: every [data-stat] element is (or contains) an <a>.
  *     - sampled program pages with lobbying mentions: every
  *       [data-filing-mention] contains an <a href^="/filing/">.
+ * (d) No dead links: on / (home), /feed/ and /district/, every internal
+ *     href^="/" must resolve to an existing out/ path — page URLs need
+ *     index.html present; file URLs (extension) need the file present.
+ *     #anchors on existing pages are allowed (fragment is stripped before
+ *     resolution); pure same-page "#..." anchors are skipped.
  */
 import fs from "fs";
 import path from "path";
@@ -190,6 +195,50 @@ export async function runLinkgraphGate() {
       errors.push(`program pages: ${missing} filing mention(s) without internal /filing/ link`);
     } else {
       notes.push(`filing mentions: ${checked} pages sampled, all internally linked ✓`);
+    }
+  }
+
+  // ── (d) dead links: /, /feed/, /district/ ──
+  // Every internal href^="/" must resolve to an existing out/ path. Page URLs
+  // resolve to {out}/{path}/index.html; file URLs (with extension) resolve to
+  // the file itself. Fragments/queries are stripped first, so #anchors on
+  // existing pages are allowed; pure same-page "#..." anchors never enter the
+  // loop (they don't start with "/").
+  for (const pageUrl of ["/", "/feed/", "/district/"]) {
+    const pagePath = htmlPathFor(pageUrl);
+    if (!fs.existsSync(pagePath)) {
+      errors.push(`dead-link scan: ${pageUrl} not built (${pagePath} missing)`);
+      continue;
+    }
+    const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+    const deadByTarget = new Map();
+    let internal = 0;
+    for (const a of root.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href") ?? "";
+      if (!href.startsWith("/")) continue;
+      internal++;
+      const target = href.split("#")[0].split("?")[0];
+      if (target === "") continue; // fragment/query on the page itself
+      const isFile = /\.[a-z0-9]+$/i.test(target);
+      const resolved = isFile
+        ? path.join(outDir, ...target.split("/").filter(Boolean))
+        : htmlPathFor(target);
+      if (!fs.existsSync(resolved)) {
+        deadByTarget.set(target, (deadByTarget.get(target) ?? 0) + 1);
+      }
+    }
+    const deadCount = [...deadByTarget.values()].reduce((a, b) => a + b, 0);
+    if (deadCount > 0) {
+      const sample = [...deadByTarget.keys()].slice(0, 10).join(", ");
+      errors.push(
+        `dead links on ${pageUrl}: ${deadCount} internal href(s) resolve to no built page ` +
+        `(${deadByTarget.size} unique target(s); first: ${sample})`
+      );
+      for (const [target, count] of deadByTarget) {
+        errors.push(`  dead link on ${pageUrl}: ${target}${count > 1 ? ` x${count}` : ""}`);
+      }
+    } else {
+      notes.push(`dead links on ${pageUrl}: 0 of ${internal} internal hrefs ✓`);
     }
   }
 

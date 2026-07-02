@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   getFeed,
   getEntityTopByFamilyKey,
+  getPrograms,
   collectCitations,
   feedDisplayHeadline,
 } from "@/lib/data";
@@ -82,6 +83,7 @@ function groupByEventType(cards: FeedCard[]): Map<string, FeedCard[]> {
 function FeedCardItem({
   card,
   companySlug,
+  hasProgramPage,
 }: {
   card: FeedCard;
   /**
@@ -90,6 +92,14 @@ function FeedCardItem({
    * carry data-no-company-page on the wrapper (G1 link-graph contract).
    */
   companySlug: string | null;
+  /**
+   * Whether /program/{pe_bli}/ exists in the static export (pe_bli present
+   * in programs.json, the generateStaticParams source). Feed events come
+   * from the trajectory mart, which covers more pe_blis than the programs
+   * index — cards for those extra pe_blis keep the code text but get no
+   * "view program" link (G1 dead-link contract).
+   */
+  hasProgramPage: boolean;
 }) {
   const isConcentration = card.event_type === "concentration_shift";
   const isNewEntrant = card.event_type === "new_entrant";
@@ -120,7 +130,7 @@ function FeedCardItem({
             <span className="font-mono text-xs text-muted-foreground">
               {card.pe_bli}
             </span>
-            {card.program_url && (
+            {card.program_url && hasProgramPage && (
               <Link
                 href={card.program_url}
                 className="text-xs text-primary underline decoration-dotted hover:decoration-solid"
@@ -204,6 +214,12 @@ export default function FeedPage() {
   // company page — their cards get data-no-company-page instead of a link.
   const entityByFamilyKey = getEntityTopByFamilyKey();
 
+  // pe_blis that actually have a /program/{pe_bli}/ page — programs.json is
+  // the generateStaticParams source for program pages. Feed events come from
+  // the trajectory mart, which covers pe_blis outside this set; linking those
+  // would 404 in the static export (G1 dead-link contract).
+  const programPeBlis = new Set(getPrograms().map((p) => p.pe_bli));
+
   // Collect all fact_ids on this page
   const pageFactIds: string[] = [];
   for (const card of cards) {
@@ -269,6 +285,9 @@ export default function FeedPage() {
                             ? (entityByFamilyKey.get(card.family_key)?.slug ??
                               null)
                             : null
+                        }
+                        hasProgramPage={
+                          card.pe_bli != null && programPeBlis.has(card.pe_bli)
                         }
                       />
                     </Reveal>
