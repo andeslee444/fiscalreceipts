@@ -9,9 +9,11 @@
  * in localStorage["receipts-intro-seen"], so it appears at most once per
  * browser. Mounted on the home page only.
  *
- * md+ only: below md the receipts toggle sits inside the hamburger menu, so a
- * callout pointing at the header would reference an invisible control (and
- * overlap the hero heading on small screens).
+ * xl+ only: below md the receipts toggle sits inside the hamburger menu, so a
+ * callout pointing at the header would reference an invisible control. Between
+ * md and xl the fixed right-4 callout overlaps the centered hero heading
+ * (visual-judge D3 finding at 768: it covered "Federal defense spen…"), so it
+ * renders only at xl+ where the callout clears the max-w-4xl hero column.
  *
  * SSR-safe: renders nothing on the server and on first client paint; the
  * localStorage read happens in a mount effect (functional-updater form, same
@@ -53,7 +55,7 @@ export function ReceiptsIntro() {
     <aside
       data-testid="receipts-intro"
       role="status"
-      className="hidden md:block fixed right-4 top-16 z-30 w-64 rounded-lg border border-border bg-card p-3 shadow-lg"
+      className="hidden xl:block fixed right-4 top-16 z-30 w-64 rounded-lg border border-border bg-card p-3 shadow-lg"
     >
       <p className="text-xs leading-5 text-muted-foreground">
         <span className="font-semibold text-foreground">Receipts mode</span>{" "}

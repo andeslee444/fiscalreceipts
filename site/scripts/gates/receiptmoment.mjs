@@ -20,7 +20,7 @@
  *    ("the citation panel with the PDF page + highlight") is asserted
  *    literally — a derived card, spinner, or empty panel is NOT accepted.
  * 4. 390×844, fresh context: fold assert repeated (click leg once is enough
- *    per plan; the coach mark is md+ only so it is not asserted on mobile).
+ *    per plan; the coach mark is xl+ only so it is not asserted on mobile).
  *
  * Export: runReceiptMomentGate({ baseUrl }) → { pass, errors, notes }
  */

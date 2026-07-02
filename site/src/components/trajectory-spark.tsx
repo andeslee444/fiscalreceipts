@@ -15,9 +15,13 @@ import { formatAmountNoCurrency } from "@/lib/format";
  */
 
 const SVG_WIDTH = 120;
-const SVG_HEIGHT = 36;
+// Height includes a reserved LABEL_BAND strip below the baseline so the
+// FY24/FY25/FY26 year labels never crowd or overlap the data points
+// (visual-judge D3 finding: labels were cramped/clipped at 390px).
+const SVG_HEIGHT = 46;
 const POINT_R = 3;
 const PADDING = 6;
+const LABEL_BAND = 10;
 
 interface TrajectorySparkProps {
   trajectory: ProgramTrajectory | null;
@@ -68,9 +72,10 @@ export function TrajectorySpark({
 
   // Map data → SVG coordinates
   // x: evenly spaced among defined points
-  // y: inverted (SVG y=0 is top)
+  // y: inverted (SVG y=0 is top); chart area sits above the label band
   const innerW = SVG_WIDTH - PADDING * 2;
-  const innerH = SVG_HEIGHT - PADDING * 2;
+  const innerH = SVG_HEIGHT - PADDING * 2 - LABEL_BAND;
+  const chartBottom = PADDING + innerH;
 
   function toX(idx: number): number {
     return PADDING + (idx / Math.max(defined.length - 1, 1)) * innerW;
@@ -115,9 +120,9 @@ export function TrajectorySpark({
         {/* Baseline */}
         <line
           x1={PADDING}
-          y1={SVG_HEIGHT - PADDING}
+          y1={chartBottom}
           x2={SVG_WIDTH - PADDING}
-          y2={SVG_HEIGHT - PADDING}
+          y2={chartBottom}
           stroke="#e5e7eb"
           strokeWidth="1"
         />
@@ -148,19 +153,32 @@ export function TrajectorySpark({
             </desc>
           </circle>
         ))}
-        {/* Year labels */}
-        {points.map((p) => (
-          <text
-            key={`label-${p.label}`}
-            x={p.x}
-            y={SVG_HEIGHT - 1}
-            textAnchor="middle"
-            fontSize="7"
-            fill="#9ca3af"
-          >
-            {p.label}
-          </text>
-        ))}
+        {/* Year labels — inside the reserved band below the baseline. The
+            first/last labels anchor start/end so they never clip at the SVG
+            edges (middle-anchored text at x=PADDING spilled outside the
+            viewBox and was cut off). */}
+        {points.map((p, i) => {
+          const isFirst = i === 0;
+          const isLast = i === points.length - 1;
+          return (
+            <text
+              key={`label-${p.label}`}
+              x={
+                isFirst
+                  ? Math.max(p.x - POINT_R, 1)
+                  : isLast
+                    ? Math.min(p.x + POINT_R, SVG_WIDTH - 1)
+                    : p.x
+              }
+              y={SVG_HEIGHT - 2}
+              textAnchor={isFirst ? "start" : isLast ? "end" : "middle"}
+              fontSize="8"
+              fill="#9ca3af"
+            >
+              {p.label}
+            </text>
+          );
+        })}
       </svg>
 
       {/* Compact year/value legend — Cite-wrapped (dataset fct_budget_trajectory) */}

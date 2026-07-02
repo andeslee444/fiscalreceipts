@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DistrictIndexRow } from "@/lib/data";
-import { formatAmount } from "@/lib/format";
+import { districtDisplayLabel, formatAmount } from "@/lib/format";
 
 type SortKey = "pop_district" | "pop_state" | "program_count" | "total_linkable_dollars";
 type SortDir = "asc" | "desc";
 
 interface SortHeaderProps {
   label: string;
+  /** Compact label swapped in below the sm breakpoint (narrow columns). */
+  shortLabel?: string;
   colKey: SortKey;
   sortKey: SortKey;
   sortDir: SortDir;
@@ -19,6 +21,7 @@ interface SortHeaderProps {
 
 function SortHeader({
   label,
+  shortLabel,
   colKey,
   sortKey,
   sortDir,
@@ -29,7 +32,7 @@ function SortHeader({
   return (
     <th
       className={[
-        "px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide",
+        "py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
         "cursor-pointer select-none hover:text-foreground transition-colors",
         className,
       ]
@@ -40,7 +43,14 @@ function SortHeader({
         active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
       }
     >
-      {label}
+      {shortLabel ? (
+        <>
+          <span className="sm:hidden">{shortLabel}</span>
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
       <span className="ml-1 opacity-50" aria-hidden="true">
         {active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
       </span>
@@ -56,6 +66,26 @@ export function DistrictTable({ districts }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("total_linkable_dollars");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [stateFilter, setStateFilter] = useState<string>("");
+
+  // Horizontal-scroll affordance: the table has a min-width wider than a
+  // 390px viewport, so it scrolls inside the wrapper below. Show a right-edge
+  // fade while more columns remain off-screen to the right.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () =>
+      setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   const uniqueStates = useMemo(
     () =>
@@ -127,8 +157,12 @@ export function DistrictTable({ districts }: Props) {
         </span>
       </div>
 
-      <div className="rounded-lg border border-border overflow-hidden bg-card">
-        <div className="overflow-x-auto">
+      <div className="relative rounded-lg border border-border overflow-hidden bg-card">
+        <div ref={scrollRef} className="overflow-x-auto">
+          {/* Cells are whitespace-nowrap, so the table's min width is its
+              content width — when that exceeds the viewport (narrow phones)
+              the wrapper scrolls horizontally instead of clipping values,
+              and the fade below signals the overflow. */}
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
@@ -138,13 +172,18 @@ export function DistrictTable({ districts }: Props) {
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  className="px-3 sm:px-4"
                 />
+                {/* State column hides below sm — the district code already
+                    carries the state prefix (CO-05), and dropping it keeps
+                    the LINKABLE $ column on-screen at 390px. */}
                 <SortHeader
                   label="State"
                   colKey="pop_state"
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSort={handleSort}
+                  className="px-3 sm:px-4 hidden sm:table-cell"
                 />
                 <SortHeader
                   label="Programs"
@@ -152,15 +191,16 @@ export function DistrictTable({ districts }: Props) {
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  className="text-right"
+                  className="px-3 sm:px-4 text-right"
                 />
                 <SortHeader
                   label="Linkable dollars"
+                  shortLabel="Linkable $"
                   colKey="total_linkable_dollars"
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  className="text-right"
+                  className="pl-3 pr-4 sm:pl-4 sm:pr-6 text-right"
                 />
               </tr>
             </thead>
@@ -170,21 +210,31 @@ export function DistrictTable({ districts }: Props) {
                   key={d.pop_district}
                   className="hover:bg-muted/40 transition-colors"
                 >
-                  <td className="px-4 py-3 font-mono">
+                  {/* No nowrap here: long special labels ("DC (undistricted)")
+                      may wrap on narrow phones so the dollar column stays
+                      fully on-screen; plain codes ("CO-05") never wrap. */}
+                  <td className="px-3 sm:px-4 py-3 font-mono">
                     <Link
                       href={`/district/${d.pop_district}/`}
                       className="text-primary hover:underline"
+                      title={
+                        districtDisplayLabel(d.pop_district) !== d.pop_district
+                          ? d.pop_district
+                          : undefined
+                      }
                     >
-                      {d.pop_district}
+                      {/* Special codes (00/90/98/99) render a plain-language
+                          label; the URL keeps the raw pop_district code. */}
+                      {districtDisplayLabel(d.pop_district)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-3 sm:px-4 py-3 text-muted-foreground hidden sm:table-cell">
                     {d.pop_state}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="px-3 sm:px-4 py-3 text-right tabular-nums">
                     {d.program_count}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
+                  <td className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap">
                     {d.total_linkable_dollars > 0 ? (
                       // dim_geography is the uncited geography totals dataset —
                       // district-index linkable totals are geography aggregates
@@ -206,6 +256,14 @@ export function DistrictTable({ districts }: Props) {
             </tbody>
           </table>
         </div>
+        {/* Right-edge fade — visible only while the table can scroll further
+            right (mobile affordance; disappears at the end of the scroll). */}
+        {canScrollRight && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-card to-transparent"
+          />
+        )}
       </div>
     </div>
   );
