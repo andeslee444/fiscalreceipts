@@ -962,6 +962,19 @@ def cmd_verify_phase5b3(args) -> None:
     _run(args)
 
 
+def cmd_evals(args) -> None:
+    """Phase 5B-4 eval refresh / check commands."""
+    from govbudget.evals_refresh import cmd_evals_check, cmd_evals_refresh
+
+    if args.evals_action == "refresh":
+        cmd_evals_refresh(args)
+    elif args.evals_action == "check":
+        cmd_evals_check(args)
+    else:
+        print(f"unknown evals action: {args.evals_action}", file=sys.stderr)
+        sys.exit(2)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="govbudget")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1080,6 +1093,12 @@ def main(argv=None) -> None:
         ),
     )
     inf_restamp.set_defaults(func=cmd_influence_restamp)
+
+    ev = sub.add_parser("evals", help="phase 5B-4 eval refresh/check pipeline")
+    ev_sub = ev.add_subparsers(dest="evals_action", required=True)
+    ev_sub.add_parser("refresh", help="re-run answer_sql, update expected_answer in-place")
+    ev_sub.add_parser("check", help="check expected_answer freshness; exit 1 if stale")
+    ev.set_defaults(func=cmd_evals)
 
     dos = sub.add_parser("dossiers", help="phase 5B-3 dossier research pipeline")
     dos_sub = dos.add_subparsers(dest="dossiers_action", required=True)

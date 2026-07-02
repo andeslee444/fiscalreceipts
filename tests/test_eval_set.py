@@ -21,6 +21,9 @@ DML_KEYWORDS = {"insert", "update", "delete", "copy", "create", "drop", "alter",
 
 VALID_CITATION_KINDS = {"warehouse", "pdf_page", "filing_uuid", "source_url"}
 
+# Binding enum for REFUSE reason classes (plan rev-2)
+VALID_REFUSE_CLASSES = {"data_not_ingested", "structurally_absent", "classified"}
+
 
 @pytest.fixture(scope="module")
 def entries():
@@ -117,3 +120,30 @@ def test_nonrefuse_entries_have_answer_sql(entries):
             assert "answer_sql" in entry, (
                 f"Entry {entry['id']}: non-REFUSE entry must include answer_sql"
             )
+
+
+def test_refuse_entries_have_expected_refuse_class(entries):
+    """Every REFUSE entry must carry expected_refuse_class in the binding enum."""
+    for entry in entries:
+        if entry.get("expected_answer") != "REFUSE":
+            continue
+        eid = entry.get("id", "<unknown>")
+        assert "expected_refuse_class" in entry, (
+            f"Entry {eid}: REFUSE entries must include 'expected_refuse_class'"
+        )
+        cls = entry["expected_refuse_class"]
+        assert cls in VALID_REFUSE_CLASSES, (
+            f"Entry {eid}: expected_refuse_class={cls!r} not in "
+            f"{VALID_REFUSE_CLASSES}"
+        )
+
+
+def test_nonrefuse_entries_have_no_expected_refuse_class(entries):
+    """Non-REFUSE entries must not carry expected_refuse_class (would be confusing)."""
+    for entry in entries:
+        if entry.get("expected_answer") == "REFUSE":
+            continue
+        eid = entry.get("id", "<unknown>")
+        assert "expected_refuse_class" not in entry, (
+            f"Entry {eid}: non-REFUSE entry must not include 'expected_refuse_class'"
+        )
