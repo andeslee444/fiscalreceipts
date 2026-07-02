@@ -11,6 +11,8 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { ReceiptMoment } from "@/components/receipt-moment";
+import { ReceiptsIntro } from "@/components/receipts-intro";
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} — Federal Defense Budget, Contracts & Lobbying`,
@@ -67,29 +69,65 @@ export default function HomePage() {
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
+  // Receipt moment: the single biggest FY25→26 mover, rendered above the
+  // fold with its existing derived citation (fact_id already in the slice).
+  const receiptMover =
+    topMovers.find((p) => p.trajectory_fact_ids?.fy2526_change) ?? null;
+
+  // Finding lede: the top feed event as a one-line finding in the hero.
+  // Falls back to the static subtitle when the feed sidecar is empty
+  // (same guard the teaser uses).
+  const lede = feedTeaser.length > 0 ? feedTeaser[0] : null;
+
   return (
     <CitationPanelProvider citations={citationsSlice}>
     <div>
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="bg-background border-b border-border py-16 md:py-24">
+      {/* One-time dismissible receipts-mode coach mark (home only) */}
+      <ReceiptsIntro />
+
+      {/* ── Hero (compact — keeps the receipt moment above the fold) ─────── */}
+      <section className="bg-background pt-10 pb-8 md:pt-14 md:pb-10">
         <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
             Federal defense spending,{" "}
             <span className="text-primary">fully cited</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Every budget figure, contract award, and lobbying dollar is linked
-            back to its exact source document — J-book XML, USAspending
-            archive, or LDA Senate filing. No number without a receipt.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {lede ? (
+            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+              <span aria-hidden="true">⚡ </span>
+              {lede.program_url ? (
+                <Link
+                  href={lede.program_url}
+                  className="text-foreground hover:underline"
+                >
+                  {lede.headline}
+                </Link>
+              ) : (
+                <span className="text-foreground">{lede.headline}</span>
+              )}
+              {" — "}
+              <Link
+                href="/feed/"
+                className="text-primary underline decoration-dotted hover:decoration-solid whitespace-nowrap"
+              >
+                see the feed &rarr;
+              </Link>
+            </p>
+          ) : (
+            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+              Every budget figure, contract award, and lobbying dollar is
+              linked back to its exact source document. No number without a
+              receipt.
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               data-search-trigger
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-8 py-3 text-base font-semibold hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
               aria-label="Open search"
             >
               <svg
-                className="w-5 h-5"
+                className="w-4 h-4"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -103,7 +141,7 @@ export default function HomePage() {
             </button>
             <Link
               href="/programs/"
-              className="inline-flex items-center justify-center rounded-lg border border-border bg-card text-foreground px-8 py-3 text-base font-semibold hover:bg-muted transition-colors"
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-card text-foreground px-6 py-2.5 text-sm font-semibold hover:bg-muted transition-colors"
             >
               Browse all programs
             </Link>
@@ -111,25 +149,70 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Stats band ───────────────────────────────────────────────────── */}
+      {/* ── Receipt moment + persona row ─────────────────────────────────── */}
+      <section className="bg-background border-b border-border pb-10 md:pb-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          {receiptMover && (
+            <ReceiptMoment
+              peBli={receiptMover.pe_bli}
+              title={receiptMover.title}
+              org={receiptMover.org}
+              change={receiptMover.trajectory!.fy2526_change!}
+              factId={receiptMover.trajectory_fact_ids!.fy2526_change!}
+            />
+          )}
+
+          {/* Persona row — route the three primary jobs, no insider nouns */}
+          <div
+            data-testid="persona-row"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"
+          >
+            <PersonaCard
+              href="/programs/"
+              title="Verify a number"
+              description="Pick any program, click a figure, and see the exact source page it comes from."
+            />
+            <PersonaCard
+              href="/district/"
+              title="See what a district builds"
+              description="Defense dollars mapped to the congressional districts where the work happens."
+            />
+            <PersonaCard
+              href="/feed/"
+              title="Track who's winning"
+              description="New contractors, big budget swings, and concentration signals — every build."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats band (every stat links to its surface) ─────────────────── */}
       <section className="border-b border-border bg-muted/40 py-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <StatCard
               value={meta.counts.programs.toLocaleString("en-US")}
               label="program elements"
+              href="/programs/"
+              stat="programs"
             />
             <StatCard
               value={meta.counts.citations.toLocaleString("en-US")}
               label="source citations"
+              href="/methodology/#verification"
+              stat="citations"
             />
             <StatCard
               value={meta.counts.companies.toLocaleString("en-US")}
               label="contractor families"
+              href="/companies/"
+              stat="companies"
             />
             <StatCard
               value={meta.counts.agencies.toLocaleString("en-US")}
               label="defense agencies"
+              href="#agencies"
+              stat="agencies"
             />
           </div>
         </div>
@@ -199,7 +282,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Agency grid ──────────────────────────────────────────────────── */}
-      <section className="py-12">
+      <section id="agencies" className="py-12 scroll-mt-16">
         <div className="container mx-auto px-4 max-w-5xl">
           <h2 className="text-2xl font-bold mb-2">Browse by agency</h2>
           <p className="text-sm text-muted-foreground mb-6">
@@ -308,13 +391,59 @@ export default function HomePage() {
   );
 }
 
-function StatCard({ value, label }: { value: string; label: string }) {
+function StatCard({
+  value,
+  label,
+  href,
+  stat,
+}: {
+  value: string;
+  label: string;
+  href: string;
+  stat: string;
+}) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-3xl md:text-4xl font-bold text-foreground tabular-nums">
+    <Link
+      href={href}
+      data-stat={stat}
+      className="group flex flex-col items-center rounded-lg px-3 py-2 hover:bg-muted/60 transition-colors"
+    >
+      <span className="text-3xl md:text-4xl font-bold text-foreground tabular-nums group-hover:text-primary transition-colors">
         {value}
       </span>
-      <span className="text-sm text-muted-foreground mt-1">{label}</span>
-    </div>
+      <span className="text-sm text-muted-foreground mt-1">
+        {label}
+        <span
+          aria-hidden="true"
+          className="inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          &rarr;
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function PersonaCard({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors"
+    >
+      <span className="text-sm font-semibold text-foreground group-hover:underline">
+        {title} <span aria-hidden="true">&rarr;</span>
+      </span>
+      <span className="mt-1 text-xs text-muted-foreground leading-5">
+        {description}
+      </span>
+    </Link>
   );
 }

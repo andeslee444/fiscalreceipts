@@ -211,7 +211,10 @@ export default function MethodologyPage() {
 
       {/* §3 ─────────────────────────────────────────────────────────── */}
       <section id="3" className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">3. How we verify</h2>
+        {/* #verification — anchor target for the home page's citations stat */}
+        <h2 id="verification" className="text-xl font-semibold mb-4 scroll-mt-16">
+          3. How we verify
+        </h2>
         <div className="space-y-4 text-muted-foreground leading-7">
           <div>
             <h3 className="font-semibold text-foreground mb-1">
