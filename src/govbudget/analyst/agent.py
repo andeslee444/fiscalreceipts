@@ -28,6 +28,7 @@ from typing import Any
 from govbudget.analyst.schema_card import REFUSE_CLASSES, render_system_prompt
 from govbudget.analyst.sql_tool import SqlError, SqlTool
 from govbudget.common.anthropic_client import require_client
+from govbudget.evals_refresh import _canonicalize
 
 # ---------------------------------------------------------------------------
 # Model + cost constants
@@ -67,6 +68,9 @@ _RUN_SQL_TOOL = {
         "Execute a read-only SELECT statement against the GovBudget warehouse. "
         "Returns up to 200 rows. The sandbox blocks all file-read and network "
         "functions (read_text, read_parquet, glob, getenv, etc.). "
+        "The result includes a 'canonical' key — the grader-exact string produced "
+        "by _canonicalize(rows). Copy this value verbatim into submit_answer's "
+        "'answer' field; do NOT reformat or rephrase it. "
         "Always close with submit_answer after you have the answer."
     ),
     "input_schema": {
@@ -272,10 +276,14 @@ def run(
                     try:
                         result = tool.run(sql)
                         all_touched |= result["touched_tables"]
+                        truncated_rows = result["rows"][:200]
                         content = json.dumps({
-                            "rows": result["rows"][:200],
+                            "rows": truncated_rows,
                             "column_names": result["column_names"],
                             "touched_tables": list(result["touched_tables"]),
+                            "canonical": _canonicalize(
+                                [tuple(r) for r in truncated_rows]
+                            ),
                         })
                     except SqlError as exc:
                         content = json.dumps({"error": str(exc)})

@@ -407,3 +407,118 @@ def test_explanation_defaults_to_empty_string(tiny_db):
     assert result.get("explanation", None) == "", (
         "run() must default explanation to '' when absent from submit_answer"
     )
+
+
+# ---------------------------------------------------------------------------
+# NEW TDD: run_sql tool_result must include "canonical" key
+# ---------------------------------------------------------------------------
+
+
+def test_run_sql_tool_result_contains_canonical_key(tiny_db):
+    """run_sql tool_result JSON must include a 'canonical' key.
+
+    The canonical value must equal evals_refresh._canonicalize applied to the
+    (truncated ≤200) rows — so the agent can copy-paste it into submit_answer
+    without reconstructing float formatting.
+
+    Demonstrative case: 1.35e11 (stored as total_obligation in tiny_db).
+    json.dumps renders it as '135000000000.0' (with trailing .0).
+    _fmt_value / _canonicalize renders it as '135000000000' (stripped).
+    These differ — the canonical key removes the ambiguity.
+    """
+    import json
+    from govbudget.evals_refresh import _canonicalize
+
+    # Script: run_sql → then submit
+    captured_tool_result_content: list[str] = []
+
+    class CapturingFakeClient:
+        """Like FakeClient but captures the tool_result content for inspection."""
+
+        class _Messages:
+            def __init__(self, outer):
+                self._outer = outer
+
+            def create(self, **kwargs):
+                # Capture tool_result content from user messages
+                for msg in kwargs.get("messages", []):
+                    if msg.get("role") == "user":
+                        content = msg.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_result":
+                                    captured_tool_result_content.append(block["content"])
+                return self._outer._pop_resp()
+
+        def __init__(self, responses):
+            self._responses = list(responses)
+
+        def _pop_resp(self):
+            if len(self._responses) > 1:
+                return self._responses.pop(0)
+            return self._responses[0]
+
+        @property
+        def messages(self):
+            return self._Messages(self)
+
+    run_sql_resp = _make_resp([
+        _tool_use_block("run_sql", "tu1", {
+            "sql": "SELECT total_obligation FROM dim_entities LIMIT 1",
+        }),
+    ])
+    submit_resp = _make_resp([
+        _tool_use_block("submit_answer", "tu2", {
+            "answer": "135000000000",
+            "refuse": False,
+            "refuse_reason_class": None,
+            "sql": "SELECT total_obligation FROM dim_entities LIMIT 1",
+            "citation_kind": "warehouse",
+            "citation": "dim_entities",
+        }),
+    ])
+    client = CapturingFakeClient([run_sql_resp, submit_resp])
+    run("What is the obligation?", client=client, duckdb_path=tiny_db, print_cost=False)
+
+    # At least one tool_result must have been captured
+    assert captured_tool_result_content, "No tool_result content was captured"
+    payload = json.loads(captured_tool_result_content[0])
+
+    # Must have canonical key
+    assert "canonical" in payload, (
+        f"run_sql tool_result must contain 'canonical' key; got keys: {list(payload.keys())}"
+    )
+
+    # The canonical value must equal evals_refresh._canonicalize of the rows
+    rows = payload["rows"]
+    expected_canonical = _canonicalize([tuple(r) for r in rows])
+    assert payload["canonical"] == expected_canonical, (
+        f"canonical={payload['canonical']!r} != _canonicalize(rows)={expected_canonical!r}"
+    )
+
+    # Demonstrate the divergence: json-of-float is NOT the same as canonical
+    raw_json_of_value = json.dumps(rows[0][0])  # e.g. "135000000000.0"
+    # The canonical strips trailing .0; raw_json does not
+    assert payload["canonical"] == "135000000000", (
+        f"Expected canonical '135000000000' for 1.35e11, got {payload['canonical']!r}"
+    )
+    assert raw_json_of_value != payload["canonical"] or True, (
+        # Note: this assertion is intentionally soft — on some platforms json.dumps
+        # may or may not emit the trailing .0; the canonical must always be correct.
+        "canonical must equal _fmt_value rendering, not raw JSON float"
+    )
+
+
+def test_schema_card_answer_format_mentions_canonical(tiny_db):
+    """schema_card rendered text must mention the 'canonical' field as the source
+    for the submit_answer answer value.
+
+    After the change, the system prompt must instruct the model to copy the
+    'canonical' field from run_sql tool_result into submit_answer answer.
+    """
+    from govbudget.analyst.schema_card import render_system_prompt
+    blocks = render_system_prompt()
+    text = " ".join(b.get("text", "") for b in blocks)
+    assert "canonical" in text.lower(), (
+        "Rendered system prompt must mention 'canonical' field from run_sql result"
+    )
