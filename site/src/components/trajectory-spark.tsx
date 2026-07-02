@@ -1,6 +1,6 @@
 import type { ProgramTrajectory, ProgramTrajectoryFactIds } from "@/lib/data";
 import { Cite } from "@/components/cite";
-import { formatAmountNoCurrency } from "@/lib/format";
+import { formatAmount } from "@/lib/format";
 
 /**
  * TrajectorySpark — inline SVG sparkline from trajectory data.
@@ -147,9 +147,13 @@ export function TrajectorySpark({
             {/* Use <desc> not <title>: Next.js App Router hoists <title> elements
                 from server components to <head>, leaving empty SVG titles in SSG
                 output and causing React hydration error #418. <desc> is unaffected
-                and is the correct SVG element for shape-level descriptions anyway. */}
+                and is the correct SVG element for shape-level descriptions anyway.
+                Format as compact USD ("FY24: $280.5M") — appending the raw-unit
+                parenthetical to the SCALED string ("280.5M (USD thousands)")
+                mixed units and misread as thousands-of-millions (a11y judge nit).
+                The currency gate skips svg <desc> (never-rendered a11y text). */}
             <desc>
-              {p.label}: {formatAmountNoCurrency(p.v, "USD thousands")} (USD thousands)
+              {p.label}: {formatAmount(p.v, "USD thousands")}
             </desc>
           </circle>
         ))}

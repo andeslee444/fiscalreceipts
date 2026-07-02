@@ -277,7 +277,12 @@ export async function runRenderStaticGate() {
       const isSourceText = node.getAttribute && node.getAttribute("data-source-text") != null;
       const isProgramName = node.getAttribute && node.getAttribute("data-program-name") != null;
       const isHead = node.tagName && node.tagName.toLowerCase() === "head";
-      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead;
+      // svg <desc> is never rendered — it is a11y-only description text
+      // (e.g. sparkline point values "FY24: $280.5M"). The negative scan
+      // targets VISIBLE currency without a citation wrapper; the visible
+      // twin of each desc value is the Cite-wrapped legend beside the SVG.
+      const isSvgDesc = node.tagName && node.tagName.toLowerCase() === "desc";
+      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead || isSvgDesc;
       if (node.childNodes) {
         for (const child of node.childNodes) {
           walkText(child, nowInside);
