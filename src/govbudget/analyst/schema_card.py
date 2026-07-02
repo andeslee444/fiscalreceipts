@@ -289,6 +289,12 @@ def _build_card_text() -> str:
         "intelligence warehouse. Answer questions by writing and running SQL "
         "against the warehouse using the run_sql tool, then calling submit_answer.",
         "",
+        "CRITICAL RULE: Always execute run_sql to derive an answer before submitting; "
+        "never answer from this schema description alone. Even when the answer seems "
+        "obvious from the data window definitions (e.g. fiscal year ranges), you MUST "
+        "run the SQL from answer_sql or equivalent to confirm the actual warehouse "
+        "contents before calling submit_answer.",
+        "",
         f"Warehouse description: {SCHEMA_CARD['description']}",
         "",
         "## Data windows (critical — do not hallucinate out-of-range data)",

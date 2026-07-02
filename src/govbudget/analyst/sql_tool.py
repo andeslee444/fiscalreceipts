@@ -5,9 +5,19 @@ Security model
 1. Connect to the warehouse read-only.
 2. Materialise oversight parquets as TEMP TABLEs (so the agent can query them
    by table name instead of path; must happen BEFORE the sandbox is locked).
-3. Execute ``SET enable_external_access = false`` — this disables all DuckDB
-   file-system and network functions (read_text, read_parquet, read_csv,
-   read_json, glob, getenv, etc.) for the remainder of the connection's life.
+3. Apply scoped filesystem sandbox (DuckDB 1.5.3):
+   a. ``SET allowed_directories = ['<data/parquet>']`` — registers the parquet
+      directory as ALWAYS accessible even when external access is otherwise off.
+   b. ``SET enable_external_access = false`` — disables all file-system and
+      network functions (read_text, read_parquet, read_csv, read_json, glob,
+      getenv, etc.) except for paths matching allowed_directories.
+   c. ``SET lock_configuration = true`` — makes all config immutable for the
+      session, preventing any subsequent SET from re-enabling access.
+
+   Result: mart VIEWs backed by read_parquet('<data/parquet>/...') work; any
+   path outside data/parquet raises "Permission Error: file system operations
+   are disabled by configuration".
+
 4. Enforce a statement gate (belt-and-braces):
    - exactly one statement
    - must start with SELECT or WITH (allowing CTEs)
@@ -148,7 +158,18 @@ def _extract_touched_tables(sql: str) -> set[str]:
 # ---------------------------------------------------------------------------
 
 def _make_sandboxed_connection(duckdb_path: Path) -> duckdb.DuckDBPyConnection:
-    """Open a read-only connection and lock down external access."""
+    """Open a read-only connection and lock down external access.
+
+    Order of operations is critical:
+      1. Materialise oversight parquets as TEMP TABLEs while external access
+         is still unrestricted (they live in data/parquet, but the in-memory
+         copy means the locked sandbox never needs to re-read them).
+      2. Register the parquet directory as the ONLY allowed filesystem prefix.
+      3. Disable all external access — paths inside allowed_directories remain
+         reachable (so mart VIEWs over read_parquet() keep working), everything
+         else raises a Permission Error.
+      4. Lock configuration — no subsequent SET can widen the sandbox.
+    """
     con = duckdb.connect(str(duckdb_path), read_only=True)
 
     # Step 2: materialise oversight parquets BEFORE locking external access
@@ -161,8 +182,18 @@ def _make_sandboxed_connection(duckdb_path: Path) -> duckdb.DuckDBPyConnection:
                 f"SELECT * FROM read_parquet('{parquet_path}')"
             )
 
-    # Step 3: disable ALL external access (file reads, network, getenv, glob)
+    # Step 3a: register the parquet directory as the ONLY allowed prefix.
+    # allowed_directories paths remain accessible even when enable_external_access
+    # is false (DuckDB 1.5.3 docs: "ALWAYS allowed to be queried").
+    con.execute(f"SET allowed_directories = ['{parquet_dir}']")
+
+    # Step 3b: disable ALL external access except allowed_directories.
+    # Mart VIEWs backed by read_parquet('<parquet_dir>/...') still work;
+    # read_text, getenv, glob, and any path outside parquet_dir are blocked.
     con.execute("SET enable_external_access = false")
+
+    # Step 3c: lock config — prevents any subsequent SET from widening the sandbox.
+    con.execute("SET lock_configuration = true")
 
     return con
 

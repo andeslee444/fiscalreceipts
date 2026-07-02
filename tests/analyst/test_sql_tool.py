@@ -219,3 +219,155 @@ def test_extract_touched_tables_join_clause():
     )
     assert "dim_entities" in result
     assert "entity_xwalk" in result
+
+
+# ---------------------------------------------------------------------------
+# Scoped sandbox regression tests (allowed_directories + lock_configuration)
+# These are the tests that were MISSING and caused the silent regression:
+# mocked tests passed because fixtures create in-DB tables, not parquet-backed
+# views. These tests use real parquet files inside/outside allowed dirs.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def parquet_backed_db(tmp_path):
+    """A DuckDB whose VIEW reads a parquet file inside an allowed directory.
+
+    This is the critical regression fixture: it mirrors the real warehouse
+    structure (mart VIEWs → read_parquet) rather than plain tables. The old
+    test_sandbox_rejects_* tests used empty_db (plain tables), which passed
+    even when enable_external_access=false broke parquet-backed views.
+    """
+    # Create the allowed parquet directory
+    allowed_dir = tmp_path / "parquet"
+    allowed_dir.mkdir()
+
+    # Write a tiny parquet file inside the allowed dir
+    inside_parquet = allowed_dir / "test_mart.parquet"
+    builder = duckdb.connect(":memory:")
+    builder.execute(f"COPY (SELECT 99 AS answer) TO '{inside_parquet}' (FORMAT PARQUET)")
+    builder.close()
+
+    # Write a parquet file OUTSIDE the allowed dir (simulates a secrets file)
+    outside_parquet = tmp_path / "evil.parquet"
+    builder2 = duckdb.connect(":memory:")
+    builder2.execute(f"COPY (SELECT 'secret' AS data) TO '{outside_parquet}' (FORMAT PARQUET)")
+    builder2.close()
+
+    # Build the warehouse db with a VIEW over the inside parquet
+    db = tmp_path / "warehouse.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(
+        f"CREATE VIEW mart_view AS SELECT * FROM read_parquet('{inside_parquet}')"
+    )
+    con.close()
+
+    return {
+        "db": db,
+        "allowed_dir": allowed_dir,
+        "inside_parquet": inside_parquet,
+        "outside_parquet": outside_parquet,
+    }
+
+
+def test_parquet_backed_view_works_through_sandbox(parquet_backed_db):
+    """REGRESSION: parquet-backed mart VIEW must return rows through SqlTool.
+
+    This is the test that was missing: the old sandbox set
+    enable_external_access=false without first registering allowed_directories,
+    which broke mart VIEWs over read_parquet(). This test would have caught it.
+    """
+    db_path = parquet_backed_db["db"]
+    allowed_dir = parquet_backed_db["allowed_dir"]
+
+    # Monkey-patch the parquet_dir resolution inside _make_sandboxed_connection
+    # by passing a db path whose grandparent / "parquet" == our allowed_dir.
+    # We do this by placing the db at allowed_dir/../duckdb/warehouse.duckdb
+    # which is the real layout: data/duckdb/warehouse.duckdb → data/parquet
+    duckdb_dir = allowed_dir.parent / "duckdb"
+    duckdb_dir.mkdir()
+    import shutil
+    canonical_db = duckdb_dir / "warehouse.duckdb"
+    shutil.copy(str(db_path), str(canonical_db))
+
+    with SqlTool(canonical_db) as tool:
+        result = tool.run("SELECT answer FROM mart_view")
+
+    assert result["rows"] == [[99]], (
+        f"Parquet-backed mart view must return rows through sandbox; got {result['rows']}"
+    )
+
+
+def test_sandbox_blocks_read_parquet_outside_allowed_dir(parquet_backed_db):
+    """REGRESSION: read_parquet() outside allowed_directories must be blocked.
+
+    With the old sandbox (enable_external_access=false, no allowed_directories),
+    this would also be blocked — but for the wrong reason. With the new sandbox,
+    this verifies that the allowlist properly restricts access outside data/parquet.
+    """
+    db_path = parquet_backed_db["db"]
+    allowed_dir = parquet_backed_db["allowed_dir"]
+    outside_parquet = parquet_backed_db["outside_parquet"]
+
+    duckdb_dir = allowed_dir.parent / "duckdb"
+    duckdb_dir.mkdir(exist_ok=True)
+    import shutil
+    canonical_db = duckdb_dir / "warehouse.duckdb"
+    if not canonical_db.exists():
+        shutil.copy(str(db_path), str(canonical_db))
+
+    with SqlTool(canonical_db) as tool:
+        with pytest.raises(SqlError, match="execution"):
+            tool.run(f"SELECT * FROM read_parquet('{outside_parquet}')")
+
+
+def test_sandbox_blocks_read_text_outside_allowed_dir(tmp_path, parquet_backed_db):
+    """REGRESSION: read_text() on a file outside data/parquet must be blocked.
+
+    This specifically tests the evals-file threat: the agent must not be able
+    to read question/answer pairs from evals/ to cheat evaluations.
+    """
+    db_path = parquet_backed_db["db"]
+    allowed_dir = parquet_backed_db["allowed_dir"]
+
+    # Create a fake evals file outside the allowed dir
+    evals_file = tmp_path / "evals" / "questions.yaml"
+    evals_file.parent.mkdir()
+    evals_file.write_text("- id: q001\n  answer: SECRET\n")
+
+    duckdb_dir = allowed_dir.parent / "duckdb"
+    duckdb_dir.mkdir(exist_ok=True)
+    import shutil
+    canonical_db = duckdb_dir / "warehouse.duckdb"
+    if not canonical_db.exists():
+        shutil.copy(str(db_path), str(canonical_db))
+
+    with SqlTool(canonical_db) as tool:
+        with pytest.raises(SqlError, match="execution"):
+            tool.run(f"SELECT * FROM read_text('{evals_file}')")
+
+
+def test_lock_configuration_prevents_widening_sandbox(parquet_backed_db):
+    """REGRESSION: lock_configuration must prevent any SET from widening the sandbox.
+
+    After SqlTool opens a connection, the config is locked. A direct Python
+    con.execute('SET allowed_directories = ...') on the same connection must
+    raise an error — not silently succeed and grant wider access.
+    """
+    db_path = parquet_backed_db["db"]
+    allowed_dir = parquet_backed_db["allowed_dir"]
+
+    duckdb_dir = allowed_dir.parent / "duckdb"
+    duckdb_dir.mkdir(exist_ok=True)
+    import shutil
+    canonical_db = duckdb_dir / "warehouse.duckdb"
+    if not canonical_db.exists():
+        shutil.copy(str(db_path), str(canonical_db))
+
+    tool = SqlTool(canonical_db)
+    try:
+        # Attempt to widen the sandbox via direct connection access
+        # (simulates a compromised code path that bypasses the gate)
+        with pytest.raises(Exception, match="(?i)(lock|configuration|cannot change)"):
+            tool._con.execute("SET allowed_directories = ['/']")
+    finally:
+        tool.close()

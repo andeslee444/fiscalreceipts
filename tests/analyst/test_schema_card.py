@@ -136,6 +136,22 @@ def test_render_mentions_unit_traps():
     assert "THOUSANDS" in text or "thousands" in text
 
 
+def test_render_has_run_sql_preamble():
+    """Rendered system prompt must contain the 'always run_sql' preamble rule.
+
+    This guards against the q040 failure mode: the agent answered from the
+    data_windows schema description without running SQL. The preamble must
+    explicitly require run_sql before submit_answer.
+    """
+    blocks = render_system_prompt()
+    text = " ".join(b.get("text", "") for b in blocks)
+    assert "run_sql" in text, "Rendered prompt must mention run_sql tool"
+    assert "never answer from this schema description alone" in text or \
+           "Always execute run_sql" in text, (
+        "Rendered prompt must contain the 'always execute run_sql' preamble rule"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Drift test: schema card tables vs live information_schema
 # (skipped when DuckDB warehouse is absent)
