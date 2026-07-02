@@ -1,4 +1,5 @@
 import React from "react";
+import { storyBeats } from "@/lib/motion";
 
 /**
  * NetworkHero — 'cyber' category motif (Task 8a).
@@ -59,7 +60,7 @@ export function NetworkHero() {
           className="hero-net-node"
           style={{
             animationDelay: `${n.delay}s`,
-            animationDuration: `${n.dur}s`,
+            animationDuration: storyBeats(n.dur),
           }}
         />
       ))}

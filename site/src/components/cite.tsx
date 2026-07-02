@@ -141,6 +141,9 @@ export function Cite({
         title={title}
         className={[
           "cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid",
+          // Shared motion-system hover raise (globals.css .interactive-raise,
+          // Phase 5C Task 11) — inline-block so transform applies to the span.
+          "interactive-raise",
           "text-foreground",
           className,
         ]

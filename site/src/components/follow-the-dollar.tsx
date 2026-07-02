@@ -240,7 +240,8 @@ export function FollowTheDollar({ data }: Props) {
                     {
                       "--flow-dx": `${x2 - x1}px`,
                       "--flow-dy": `${y2 - y1}px`,
-                      animationDelay: `${(i % 6) * 0.6}s`,
+                      // Dots launch one story beat apart (Task 11 tokens).
+                      animationDelay: `calc(var(--motion-story) * ${i % 6})`,
                     } as React.CSSProperties
                   }
                 />

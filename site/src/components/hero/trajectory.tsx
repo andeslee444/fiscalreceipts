@@ -1,4 +1,5 @@
 import React from "react";
+import { storyBeats } from "@/lib/motion";
 
 /**
  * TrajectoryHero — 'hypersonics' category motif (Task 8a).
@@ -56,7 +57,7 @@ export function TrajectoryHero() {
           className="hero-streak"
           style={{
             animationDelay: `${s.delay}s`,
-            animationDuration: `${s.dur}s`,
+            animationDuration: storyBeats(s.dur),
           }}
         />
       ))}

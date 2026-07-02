@@ -50,7 +50,7 @@ export function ReceiptMoment({
   return (
     <div
       data-testid="receipt-moment"
-      className="rounded-xl border border-border bg-card px-5 py-5 md:px-8 md:py-6"
+      className="rounded-xl border border-border bg-card px-5 py-5 md:px-8 md:py-6 interactive-raise"
     >
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
         Biggest {TRAJECTORY_FY_LABEL} swing in the defense budget

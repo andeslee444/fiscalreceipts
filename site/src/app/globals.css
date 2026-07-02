@@ -43,9 +43,26 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* Motion system (Phase 5C Task 11): route Tailwind's built-in transition
+     utilities (transition-colors, transition-opacity, …) through the motion
+     tokens so the whole utility scale rides one system. */
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--ease-standard);
 }
 
 :root {
+  /* ── Motion tokens (Phase 5C Task 11, Goal 6) ─────────────────────────────
+     SOURCE OF TRUTH for all durations/easings on the site. The JS mirror is
+     src/lib/motion.ts (MOTION). The G7 motion gate (scripts/gates/motion.mjs)
+     forbids ms literals anywhere else in src. */
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --motion-story: 600ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -106,13 +123,125 @@
   left: 0;
 }
 
-/* Smooth transitions for interactive elements */
+/* Smooth transitions for interactive elements — token-driven (Task 11) */
 @layer base {
   a, button, [role="button"] {
     transition-property: color, background-color, border-color, opacity;
-    transition-duration: 150ms;
-    transition-timing-function: ease;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-standard);
   }
+}
+
+/* ── Motion utilities (Phase 5C Task 11) ────────────────────────────────────
+   Token-duration helpers for components that declare their own
+   transition-property (pair with Tailwind's transition-* utilities). */
+.t-fast {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+}
+.t-base {
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--ease-standard);
+}
+.t-slow {
+  transition-duration: var(--motion-slow);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Shared hover treatment for interactive cards and cite chips: a subtle
+   compositor-only raise. Inline elements (cite spans) need inline-block for
+   transform to apply. */
+.interactive-raise {
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+.interactive-raise:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px oklch(0 0 0 / 0.08);
+}
+span.interactive-raise {
+  display: inline-block;
+}
+span.interactive-raise:hover {
+  box-shadow: none; /* raise only — a shadowed number reads as a button */
+}
+
+/* Scroll-triggered once-reveal (components/reveal.tsx). The .reveal class is
+   applied only after hydration for below-viewport elements — SSR/no-JS
+   renders content visible. Compositor-only: opacity + transform. */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--motion-slow) var(--ease-decelerate),
+    transform var(--motion-slow) var(--ease-decelerate);
+}
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Citation panel slide-in/out + overlay fade (Radix sheet). Keyframes are
+   required (not transitions) so Radix can defer unmount until the close
+   animation finishes. Compositor-only: transform + opacity. */
+@keyframes panel-slide-in {
+  from {
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes panel-slide-out {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.citation-panel-sheet[data-state="open"] {
+  animation: panel-slide-in var(--motion-slow) var(--ease-decelerate);
+}
+.citation-panel-sheet[data-state="closed"] {
+  animation: panel-slide-out var(--motion-base) var(--ease-accelerate);
+}
+.citation-panel-overlay[data-state="open"] {
+  animation: overlay-fade-in var(--motion-slow) var(--ease-standard);
+}
+.citation-panel-overlay[data-state="closed"] {
+  animation: overlay-fade-out var(--motion-base) var(--ease-standard);
+}
+
+/* PDF page container crossfade — canvas fades in when the render completes
+   (citation-panel/pdf-view.tsx swaps .is-ready). */
+.pdf-page-fade {
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-standard);
+}
+.pdf-page-fade.is-ready {
+  opacity: 1;
 }
 
 /* ── Follow-the-dollar flow animation (Task 6b) ─────────────────────────────
@@ -139,7 +268,9 @@
 }
 
 .flow-dot {
-  animation: flow-dot-travel var(--flow-dur, 3.6s) linear infinite;
+  /* 6 story beats ≈ 3.6s per edge traversal (Task 11: token multiple) */
+  animation: flow-dot-travel var(--flow-dur, calc(var(--motion-story) * 6))
+    linear infinite;
   will-change: transform;
 }
 
@@ -204,30 +335,61 @@
   }
 }
 
+/* Hero motif durations are fallbacks expressed as story-token multiples
+   (Task 11); each motif node overrides per-node with a MOTION-derived
+   calc() inline style for organic variance. */
 .hero-swarm-dot {
-  animation: hero-drift 7s ease-in-out infinite alternate;
+  animation: hero-drift calc(var(--motion-story) * 12) ease-in-out infinite
+    alternate;
   will-change: transform;
 }
 
 .hero-streak {
-  animation: hero-rise 5.5s linear infinite;
+  animation: hero-rise calc(var(--motion-story) * 9) linear infinite;
   will-change: transform;
 }
 
 .hero-star {
-  animation: hero-twinkle 4s ease-in-out infinite;
+  animation: hero-twinkle calc(var(--motion-story) * 6.5) ease-in-out infinite;
 }
 
 .hero-wave {
-  animation: hero-sway 8s ease-in-out infinite alternate;
+  animation: hero-sway calc(var(--motion-story) * 13) ease-in-out infinite
+    alternate;
   will-change: transform;
 }
 
 .hero-net-node {
-  animation: hero-net-pulse 4.5s ease-in-out infinite;
+  animation: hero-net-pulse calc(var(--motion-story) * 7.5) ease-in-out
+    infinite;
 }
 
+/* ── Reduced motion (Phase 5C Task 11) ──────────────────────────────────────
+   All motion collapses: tokens → 1ms, plus a universal duration collapse for
+   anything not on the tokens (built-in utilities, third-party styles).
+   Reveals are neutralized outright so content is VISIBLE, never parked at
+   opacity 0. The hero/flow rules below additionally kill the infinite
+   ambient loops and hide flow dots so they don't pile up at edge origins. */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-base: 1ms;
+    --motion-slow: 1ms;
+    --motion-story: 1ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .interactive-raise:hover {
+    transform: none;
+  }
   .flow-anim * {
     animation: none !important;
   }

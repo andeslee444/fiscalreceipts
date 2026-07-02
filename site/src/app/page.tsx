@@ -14,6 +14,7 @@ import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { ReceiptMoment } from "@/components/receipt-moment";
 import { ReceiptsIntro } from "@/components/receipts-intro";
+import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} — Federal Defense Budget, Contracts & Lobbying`,
@@ -179,33 +180,40 @@ export default function HomePage() {
             />
           )}
 
-          {/* Persona row — route the three primary jobs, no insider nouns */}
+          {/* Persona row — route the three primary jobs, no insider nouns.
+              Staggered reveal on scroll (mobile: below the fold). */}
           <div
             data-testid="persona-row"
             className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"
           >
-            <PersonaCard
-              href="/programs/"
-              title="Verify a number"
-              description="Pick any program, click a figure, and see the exact source page it comes from."
-            />
-            <PersonaCard
-              href="/district/"
-              title="See what a district builds"
-              description="Defense dollars mapped to the congressional districts where the work happens."
-            />
-            <PersonaCard
-              href="/feed/"
-              title="Track who's winning"
-              description="New contractors, big budget swings, and concentration signals — every build."
-            />
+            <Reveal index={0} className="h-full">
+              <PersonaCard
+                href="/programs/"
+                title="Verify a number"
+                description="Pick any program, click a figure, and see the exact source page it comes from."
+              />
+            </Reveal>
+            <Reveal index={1} className="h-full">
+              <PersonaCard
+                href="/district/"
+                title="See what a district builds"
+                description="Defense dollars mapped to the congressional districts where the work happens."
+              />
+            </Reveal>
+            <Reveal index={2} className="h-full">
+              <PersonaCard
+                href="/feed/"
+                title="Track who's winning"
+                description="New contractors, big budget swings, and concentration signals — every build."
+              />
+            </Reveal>
           </div>
         </div>
       </section>
 
       {/* ── Stats band (every stat links to its surface) ─────────────────── */}
       <section className="border-b border-border bg-muted/40 py-10">
-        <div className="container mx-auto px-4">
+        <Reveal className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <StatCard
               value={meta.counts.programs.toLocaleString("en-US")}
@@ -232,12 +240,12 @@ export default function HomePage() {
               stat="agencies"
             />
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Top movers ───────────────────────────────────────────────────── */}
       <section className="py-12 border-b border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <Reveal className="container mx-auto px-4 max-w-5xl">
           <h2 className="text-2xl font-bold mb-2">Largest {TRAJECTORY_FY_LABEL} changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 and FY2026
@@ -295,12 +303,12 @@ export default function HomePage() {
             </Link>
             .
           </p>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Agency grid ──────────────────────────────────────────────────── */}
       <section id="agencies" className="py-12 scroll-mt-16">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <Reveal className="container mx-auto px-4 max-w-5xl">
           <h2 className="text-2xl font-bold mb-2">Browse by agency</h2>
           <p className="text-sm text-muted-foreground mb-6">
             {agencies.length} defense agencies — click to see all program
@@ -314,7 +322,7 @@ export default function HomePage() {
                 // name links; the FY24 sum is a sibling Cite (derived citation).
                 <div
                   key={agency.org}
-                  className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors"
+                  className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
                 >
                   <Link
                     href={`/agency/${agency.org}/`}
@@ -340,13 +348,13 @@ export default function HomePage() {
                 </div>
               ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Feed teaser ──────────────────────────────────────────────────── */}
       {feedTeaser.length > 0 && (
         <section className="py-12 border-b border-border">
-          <div className="container mx-auto px-4 max-w-5xl">
+          <Reveal className="container mx-auto px-4 max-w-5xl">
             <div className="flex items-baseline justify-between mb-2">
               <h2 className="text-2xl font-bold">Anomaly Feed</h2>
               <Link
@@ -394,13 +402,13 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
         </section>
       )}
 
       {/* ── Trust anchor ─────────────────────────────────────────────────── */}
       <section className="border-t border-border bg-muted/30 py-10">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
+        <Reveal className="container mx-auto px-4 max-w-3xl text-center">
           <p className="text-muted-foreground text-sm">
             All figures are cited to their exact source document, page, or API
             endpoint. Numbers flagged ⁂ are from datasets where citation tier
@@ -410,7 +418,7 @@ export default function HomePage() {
             </Link>
             . Correlation is shown, not causation.
           </p>
-        </div>
+        </Reveal>
       </section>
     </div>
     </CitationPanelProvider>
@@ -432,7 +440,7 @@ function StatCard({
     <Link
       href={href}
       data-stat={stat}
-      className="group flex flex-col items-center rounded-lg px-3 py-2 hover:bg-muted/60 transition-colors"
+      className="group flex flex-col items-center rounded-lg px-3 py-2 hover:bg-muted/60 transition-colors interactive-raise"
     >
       <span className="text-3xl md:text-4xl font-bold text-foreground tabular-nums group-hover:text-primary transition-colors">
         {value}
@@ -462,7 +470,7 @@ function PersonaCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors"
+      className="group flex h-full flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
     >
       <span className="text-sm font-semibold text-foreground group-hover:underline">
         {title} <span aria-hidden="true">&rarr;</span>

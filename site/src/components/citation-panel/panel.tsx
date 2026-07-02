@@ -187,17 +187,22 @@ function CitationPanelDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         {/* Overlay — semi-transparent, closes panel on click.
-            data-citation-panel: print stylesheet hides panel chrome. */}
+            data-citation-panel: print stylesheet hides panel chrome.
+            citation-panel-overlay: token-driven fade keyframes (globals.css,
+            Phase 5C Task 11 — replaced inert tw-animate classes). */}
         <DialogPrimitive.Overlay
           data-citation-panel
-          className="fixed inset-0 z-50 bg-black/30 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+          className="citation-panel-overlay fixed inset-0 z-50 bg-black/30"
         />
 
-        {/* Panel — right-side sheet */}
+        {/* Panel — right-side sheet. citation-panel-sheet: slide-in/out
+            keyframes on var(--motion-slow)/var(--motion-base) tokens
+            (globals.css) — Radix waits for the close animation before
+            unmounting. */}
         <DialogPrimitive.Content
           data-testid="citation-panel"
           data-citation-panel
-          className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-background shadow-xl outline-none data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:slide-in-from-right duration-200"
+          className="citation-panel-sheet fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-background shadow-xl outline-none"
           aria-label="Citation details"
         >
           {/* Accessible title (visually hidden if we use our own heading) */}

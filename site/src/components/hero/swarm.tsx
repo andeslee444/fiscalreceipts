@@ -1,4 +1,5 @@
 import React from "react";
+import { storyBeats } from "@/lib/motion";
 
 /**
  * SwarmHero — 'drones' category motif (Task 8a).
@@ -44,7 +45,7 @@ export function SwarmHero() {
           className="hero-swarm-dot"
           style={{
             animationDelay: `${d.delay}s`,
-            animationDuration: `${d.dur}s`,
+            animationDuration: storyBeats(d.dur),
           }}
         />
       ))}

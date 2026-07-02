@@ -1,4 +1,5 @@
 import React from "react";
+import { storyBeats } from "@/lib/motion";
 
 /**
  * ConstellationHero — 'space' category motif (Task 8a).
@@ -65,7 +66,7 @@ export function ConstellationHero() {
           className="hero-star"
           style={{
             animationDelay: `${s.delay}s`,
-            animationDuration: `${s.dur}s`,
+            animationDuration: storyBeats(s.dur),
           }}
         />
       ))}

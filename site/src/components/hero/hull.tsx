@@ -1,4 +1,5 @@
 import React from "react";
+import { storyBeats } from "@/lib/motion";
 
 /**
  * HullHero — 'shipbuilding' category motif (Task 8a).
@@ -80,7 +81,7 @@ export function HullHero() {
           className="hero-wave"
           style={{
             animationDelay: `${w.delay}s`,
-            animationDuration: `${w.dur}s`,
+            animationDuration: storyBeats(w.dur),
           }}
         />
       ))}

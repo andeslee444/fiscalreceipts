@@ -36,6 +36,7 @@ import { runLinkgraphGate } from "./gates/linkgraph.mjs";
 import { runCoverageGate } from "./gates/coverage.mjs";
 import { runDegradedGate } from "./gates/degraded.mjs";
 import { runAnswerfoldGate } from "./gates/answerfold.mjs";
+import { runMotionGate } from "./gates/motion.mjs";
 
 const PORT = 4173;
 
@@ -198,6 +199,12 @@ async function main() {
   const g14 = await runCoverageGate();
   gateResults.push({ n: 14, name: "coverage", pass: g14.pass });
   printGate(14, "coverage", g14);
+
+  // ── Gate 17: motion (Phase 5C — G7, static) ──────────────────────────────
+  console.log("\n--- gate 17 motion ---");
+  const g17 = await runMotionGate();
+  gateResults.push({ n: 17, name: "motion", pass: g17.pass });
+  printGate(17, "motion", g17);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

@@ -10,6 +10,7 @@ import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
+import { Reveal } from "@/components/reveal";
 import type { FeedCard } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -248,18 +249,24 @@ export default function FeedPage() {
                     {meta.description}
                   </p>
                 </div>
+                {/* Card list — staggered once-reveal on scroll (Task 11);
+                    the Reveal wrapper divs are the divide-y children. */}
                 <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
                   {section_cards.map((card, i) => (
-                    <FeedCardItem
+                    <Reveal
                       key={`${card.event_type}-${card.pe_bli ?? card.family_key ?? i}`}
-                      card={card}
-                      companySlug={
-                        card.family_key
-                          ? (entityByFamilyKey.get(card.family_key)?.slug ??
-                            null)
-                          : null
-                      }
-                    />
+                      index={i}
+                    >
+                      <FeedCardItem
+                        card={card}
+                        companySlug={
+                          card.family_key
+                            ? (entityByFamilyKey.get(card.family_key)?.slug ??
+                              null)
+                            : null
+                        }
+                      />
+                    </Reveal>
                   ))}
                 </div>
               </section>

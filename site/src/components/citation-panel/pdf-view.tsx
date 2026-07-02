@@ -258,12 +258,18 @@ export function PdfView({ citation }: PdfViewProps) {
           </div>
         )}
 
-        {/* Canvas */}
+        {/* Canvas — crossfades in when the render completes (.pdf-page-fade
+            tokens in globals.css, Phase 5C Task 11). display:none while
+            loading keeps the skeleton's min-height in charge of layout. */}
         <canvas
           ref={canvasRef}
-          className="block w-full"
+          className={
+            viewState === "ready"
+              ? "block w-full pdf-page-fade is-ready"
+              : "block w-full pdf-page-fade"
+          }
           style={{
-            display: viewState === "ready" ? "block" : "none",
+            display: viewState === "error" ? "none" : "block",
           }}
           aria-label={`Budget justification PDF page ${citation.page_number}`}
         />
