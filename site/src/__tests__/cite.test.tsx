@@ -143,13 +143,17 @@ describe("Cite three-state contract", () => {
       expect(el).not.toHaveAttribute("data-uncited");
     });
 
-    it("shows the xml path in a chip", () => {
+    it("shows a human 'XML' chip label by default — never the raw path", () => {
       const path = "ProgramElement[0]/Project[4]";
       const { container } = render(
         <Cite value={0} units="USD millions" dataset="test_dataset" xmlPath={path} />,
       );
-      // The chip span inside should show the path text
-      expect(container.textContent).toContain(path);
+      // Raw anchor paths read like template errors to visitors; the chip shows
+      // a human label. The full path stays in data-xml-path + the tooltip.
+      expect(container.textContent).toContain("XML");
+      expect(container.textContent).not.toContain(path);
+      const chip = container.querySelector("[data-amount] span[title]");
+      expect(chip?.getAttribute("title")).toContain(path);
     });
 
     it("factId takes precedence over xmlPath (A wins)", () => {
