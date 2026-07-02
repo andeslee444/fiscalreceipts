@@ -215,18 +215,17 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Remaining launch items
 
-- **GitHub repo push** — awaiting user decision; repo exists empty at
-  github.com/andeslee444/govbudget.
+- **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
+  synced to github.com/andeslee444/govbudget via subtree split (re-sync per phase).
 - **R2 assets** ✅ DONE 2026-07-02 — 52 objects / 154 MiB at
   `assets.fiscalreceipts.com`; PDF panel, explorer, and downloads verified at
   full fidelity in production browser.  CORS live test 7/7 PASS.
-- **Domain** — DECIDED: `fiscalreceipts.com`.  Assets subdomain (`assets.`)
-  already live.  Remaining: add `fiscalreceipts.com` to Vercel project + DNS
-  CNAME + rebuild with `NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com` +
-  OG/sitemap refresh + CORS policy already covers the new origin (step 4b done).
-- **`NEXT_PUBLIC_SITE_URL`** — must be updated to `https://fiscalreceipts.com`
-  in Vercel env before canonical meta and OG card URLs resolve correctly on the
-  custom domain.
+- **Domain** ✅ DONE 2026-07-02 — site LIVE at `https://fiscalreceipts.com`
+  (apex A 76.76.21.21 DNS-only, www 308-redirect via Vercel API, canonicals/
+  sitemap/OG on the domain, receipt moment verified in production browser).
+  `govbudget.vercel.app` remains as an alias.
+- **`NEXT_PUBLIC_SITE_URL`** ✅ DONE 2026-07-02 — baked into the production
+  build (`https://fiscalreceipts.com`); 3,750 sitemap URLs on the domain.
 
 ## Standing constraints (unchanged, every phase)
 
