@@ -208,6 +208,8 @@ def citation_gate5b1(
             reason = _verify_state_soql(row, col_idx)
         elif kind == "state_file":
             reason = _verify_state_file(row, col_idx)
+        elif kind == "jbook_narrative":
+            reason = _verify_jbook_narrative(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -633,6 +635,37 @@ def _verify_state_file(row: tuple, idx: dict) -> str | None:
     return None
 
 
+def _verify_jbook_narrative(row: tuple, idx: dict) -> str | None:
+    """Verify a jbook_narrative citation (shape-only).
+
+    Rules:
+    1. sha256 must be present (the document fingerprint).
+    2. xml_path must be non-empty and start with 'ProgramElement[' or 'LineItem['.
+    3. official_url must be non-empty (the document's source_url).
+    """
+    sha = row[idx.get("sha256", -1)] if "sha256" in idx else None
+    xml_path = row[idx.get("xml_path", -1)] if "xml_path" in idx else None
+    official_url = row[idx.get("official_url", -1)] if "official_url" in idx else None
+
+    if not sha:
+        return "jbook_narrative: sha256 is null or empty"
+
+    if not xml_path:
+        return "jbook_narrative: xml_path is null or empty — narrative not locatable"
+
+    # xml_path must start with a known J-book anchor prefix
+    if not (xml_path.startswith("ProgramElement[") or xml_path.startswith("LineItem[")):
+        return (
+            f"jbook_narrative: xml_path does not start with 'ProgramElement[' or "
+            f"'LineItem[': {xml_path!r}"
+        )
+
+    if not official_url:
+        return "jbook_narrative: official_url is null or empty"
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 2: integrity_gate5b1
 # ---------------------------------------------------------------------------
@@ -721,6 +754,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     usaspending_cit_ids: set[str] = set()
     state_soql_cit_ids: set[str] = set()
     state_file_cit_ids: set[str] = set()
+    jbook_narrative_cit_ids: set[str] = set()
 
     for row in all_cit:
         kind = row[cidx["kind"]]
@@ -739,6 +773,8 @@ def integrity_gate5b1(site_dir: Path) -> dict:
             state_soql_cit_ids.add(fid)
         elif kind == "state_file":
             state_file_cit_ids.add(fid)
+        elif kind == "jbook_narrative":
+            jbook_narrative_cit_ids.add(fid)
 
     # ---- jbook checks ----
     details_pq = site_dir / "data" / "jbook_details.parquet"
@@ -834,7 +870,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
     for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending",
-                 "state_soql", "state_file"):
+                 "state_soql", "state_file", "jbook_narrative"):
         con = duckdb.connect()
         try:
             row = con.execute(
@@ -1029,6 +1065,48 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["state_file_url_and_value"] = len(file_failures) == 0
     else:
         checks["state_file_url_and_value"] = True
+
+    # ---- jbook_narrative checks ----
+    # For each jbook_narrative citation:
+    #   - sha256 must be present
+    #   - xml_path must be non-empty and start with a known J-book anchor
+    #   - official_url must be non-empty
+    # Additionally every jbook_narrative citation fact_id must appear in
+    # jbook_narratives.parquet (no orphan citations).
+    if jbook_narrative_cit_ids:
+        narr_pq = site_dir / "data" / "jbook_narratives.parquet"
+        narr_failures: list[str] = []
+        for row in all_cit:
+            if row[cidx["kind"]] != "jbook_narrative":
+                continue
+            fid = row[cidx["fact_id"]]
+            sha = row[cidx["sha256"]] if "sha256" in cidx else None
+            xml_path = row[cidx["xml_path"]] if "xml_path" in cidx else None
+            official_url = row[cidx["official_url"]] if "official_url" in cidx else None
+            if not sha:
+                narr_failures.append(f"jbook_narrative {fid}: sha256 is null")
+            if not xml_path:
+                narr_failures.append(f"jbook_narrative {fid}: xml_path is null/empty")
+            elif not (xml_path.startswith("ProgramElement[") or xml_path.startswith("LineItem[")):
+                narr_failures.append(
+                    f"jbook_narrative {fid}: xml_path does not start with "
+                    f"'ProgramElement[' or 'LineItem[': {xml_path!r}"
+                )
+            if not official_url:
+                narr_failures.append(f"jbook_narrative {fid}: official_url is null/empty")
+        # Orphan check: every citation fact_id must exist in jbook_narratives.parquet
+        narr_fact_ids = _parquet_ids(narr_pq) if narr_pq.exists() else set()
+        orphan_narr = jbook_narrative_cit_ids - narr_fact_ids
+        if orphan_narr:
+            narr_failures.append(
+                f"jbook_narrative: {len(orphan_narr)} orphan citation fact_id(s) not in "
+                f"jbook_narratives.parquet: {sorted(orphan_narr)[:5]}"
+            )
+        if narr_failures:
+            failures.extend(narr_failures[:5])
+        checks["jbook_narrative_shape"] = len(narr_failures) == 0
+    else:
+        checks["jbook_narrative_shape"] = True
 
     # ---- Manifest rowcount check ----
     if man_path.exists():

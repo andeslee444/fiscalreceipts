@@ -38,6 +38,7 @@ export type {
   UsaspendingCitation,
   StateSoqlCitation,
   StateFileCitation,
+  JbookNarrativeCitation,
 } from "@/lib/data";
 
 // ── Type guards (defined here so client components can import them
@@ -52,6 +53,7 @@ import type {
   UsaspendingCitation,
   StateSoqlCitation,
   StateFileCitation,
+  JbookNarrativeCitation,
 } from "@/lib/data";
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -80,6 +82,10 @@ export function isStateSoql(c: Citation): c is StateSoqlCitation {
 
 export function isStateFile(c: Citation): c is StateFileCitation {
   return c.kind === "state_file";
+}
+
+export function isJbookNarrative(c: Citation): c is JbookNarrativeCitation {
+  return c.kind === "jbook_narrative";
 }
 
 // ── Derived-citation input helpers ───────────────────────────────────────────

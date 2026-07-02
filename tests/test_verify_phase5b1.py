@@ -23,6 +23,7 @@ from openpyxl import Workbook
 from govbudget.export_site import (
     fact_id_jbook,
     fact_id_lda,
+    fact_id_narrative,
     fact_id_workbook,
 )
 from govbudget.verify_phase5b1 import (
@@ -1256,3 +1257,236 @@ class TestDerivedSumViabudgetLines:
         result = _verify_derived(derived_row, idx, all_cits, idx, fid_to_bl)
         assert result is not None, "unresolvable inputs should FAIL"
         assert "unresolvable" in result, f"expected 'unresolvable' in: {result}"
+
+
+# ---------------------------------------------------------------------------
+# jbook_narrative citation kind
+# ---------------------------------------------------------------------------
+
+_NARR_SHA = "a" * 64  # fake valid sha256 hex
+_NARR_PE = "0204WARSYS"
+_NARR_KIND = "overview"
+_NARR_XMLPATH = "ProgramElement[0]/Narrative[0]"
+_NARR_URL = "https://example.mil/fy2026_justification.pdf"
+
+
+def _make_narrative_cit_row(
+    fid: str | None = None,
+    *,
+    sha: str = _NARR_SHA,
+    xml_path: str = _NARR_XMLPATH,
+    official_url: str = _NARR_URL,
+) -> tuple:
+    """Build a 27-element citation tuple for kind='jbook_narrative'."""
+    fid = fid or fact_id_narrative(sha, _NARR_PE, _NARR_KIND, xml_path)
+    return (
+        fid, "jbook_narrative", None,  # fact_id, kind, units
+        None, None, None, None, None, None, None, None,  # amount_text + bbox
+        None,   # resolution
+        None,   # sheet
+        None,   # cells
+        None,   # amount_thousands
+        sha,    # sha256
+        None,   # hosted_pdf_url
+        official_url,
+        xml_path,
+        None,   # retrieved_at
+        None, None, None, None,  # formula, inputs, query_body, recorded_value
+        _NARR_PE, None, None,   # pe_bli, scenario, amount_type
+    )
+
+
+def _build_narr_cit_idx() -> dict:
+    """Build column-index dict matching _CIT_COL_DEFS order."""
+    cols = [
+        "fact_id", "kind", "units", "amount_text", "page_number",
+        "x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height",
+        "resolution", "sheet", "cells", "amount_thousands",
+        "sha256", "hosted_pdf_url", "official_url", "xml_path", "retrieved_at",
+        "formula", "inputs", "query_body", "recorded_value",
+        "pe_bli", "scenario", "amount_type",
+    ]
+    return {name: i for i, name in enumerate(cols)}
+
+
+class TestFactIdNarrative:
+    def test_stable_and_16hex(self):
+        fid = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        assert len(fid) == 16
+        assert all(c in "0123456789abcdef" for c in fid)
+        assert fid == fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+
+    def test_differs_by_sha(self):
+        a = fact_id_narrative("a" * 64, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        b = fact_id_narrative("b" * 64, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        assert a != b
+
+    def test_differs_by_pe_bli(self):
+        a = fact_id_narrative(_NARR_SHA, "0204WARSYS", _NARR_KIND, _NARR_XMLPATH)
+        b = fact_id_narrative(_NARR_SHA, "0604384BP", _NARR_KIND, _NARR_XMLPATH)
+        assert a != b
+
+    def test_differs_by_kind(self):
+        a = fact_id_narrative(_NARR_SHA, _NARR_PE, "overview", _NARR_XMLPATH)
+        b = fact_id_narrative(_NARR_SHA, _NARR_PE, "accomplishments", _NARR_XMLPATH)
+        assert a != b
+
+    def test_differs_by_xml_path(self):
+        a = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, "ProgramElement[0]/Narrative[0]")
+        b = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, "ProgramElement[0]/Narrative[1]")
+        assert a != b
+
+
+class TestVerifyJbookNarrative:
+    """Unit tests for _verify_jbook_narrative shape rules."""
+
+    def _call(self, row, idx=None):
+        from govbudget.verify_phase5b1 import _verify_jbook_narrative
+        return _verify_jbook_narrative(row, idx or _build_narr_cit_idx())
+
+    def test_valid_passes(self):
+        row = _make_narrative_cit_row()
+        assert self._call(row) is None
+
+    def test_missing_sha_fails(self):
+        row = list(_make_narrative_cit_row())
+        row[_build_narr_cit_idx()["sha256"]] = None
+        assert self._call(tuple(row)) is not None
+
+    def test_empty_xml_path_fails(self):
+        """Empty xml_path must FAIL — narrative is not locatable."""
+        row = list(_make_narrative_cit_row())
+        row[_build_narr_cit_idx()["xml_path"]] = ""
+        result = self._call(tuple(row))
+        assert result is not None
+        assert "xml_path" in result
+
+    def test_null_xml_path_fails(self):
+        row = list(_make_narrative_cit_row())
+        row[_build_narr_cit_idx()["xml_path"]] = None
+        assert self._call(tuple(row)) is not None
+
+    def test_xml_path_bad_prefix_fails(self):
+        """xml_path that doesn't start with ProgramElement[ or LineItem[ → FAIL."""
+        row = _make_narrative_cit_row(xml_path="SomeOtherElement[0]/Narrative[0]")
+        result = self._call(row)
+        assert result is not None
+        assert "ProgramElement[" in result or "LineItem[" in result
+
+    def test_xml_path_program_element_passes(self):
+        row = _make_narrative_cit_row(xml_path="ProgramElement[5]/Narrative[2]")
+        assert self._call(row) is None
+
+    def test_xml_path_line_item_passes(self):
+        row = _make_narrative_cit_row(xml_path="LineItem[0]/Narrative[1]")
+        assert self._call(row) is None
+
+    def test_missing_official_url_fails(self):
+        row = _make_narrative_cit_row(official_url="")
+        result = self._call(row)
+        assert result is not None
+        assert "official_url" in result
+
+
+class TestJbookNarrativeCitationGate:
+    """citation_gate5b1 treats jbook_narrative as a verifiable kind."""
+
+    def _write_narr_site(self, site: Path, rows: list | None = None) -> None:
+        if rows is None:
+            rows = [_make_narrative_cit_row()]
+        (site / "citations").mkdir(parents=True, exist_ok=True)
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, rows)
+
+    def test_valid_narrative_citation_passes_gate(self, tmp_path):
+        site = tmp_path / "site"
+        self._write_narr_site(site)
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"failures: {result['failures']}"
+        assert result["sampled"] == 1
+
+    def test_empty_xml_path_fails_gate(self, tmp_path):
+        """Narrative citation with empty xml_path → gate FAIL (not locatable)."""
+        site = tmp_path / "site"
+        row = list(_make_narrative_cit_row())
+        row[_build_narr_cit_idx()["xml_path"]] = ""
+        self._write_narr_site(site, [tuple(row)])
+        result = citation_gate5b1(site)
+        assert result["ok"] is False
+        assert len(result["failures"]) >= 1
+
+    def test_bad_xml_path_prefix_fails_gate(self, tmp_path):
+        """Narrative with xml_path not starting ProgramElement[ or LineItem[ → FAIL."""
+        site = tmp_path / "site"
+        row = _make_narrative_cit_row(xml_path="BadPrefix[0]/Narrative[0]")
+        self._write_narr_site(site, [row])
+        result = citation_gate5b1(site)
+        assert result["ok"] is False
+
+
+class TestJbookNarrativeIntegrityCheck:
+    """integrity_gate5b1 jbook_narrative_shape check."""
+
+    def _write_narr_site_with_parquet(
+        self,
+        site: Path,
+        cit_rows: list | None = None,
+        narr_parquet_rows: list | None = None,
+    ) -> None:
+        """Build a minimal site with jbook_narrative citations and jbook_narratives.parquet."""
+        fid = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        if cit_rows is None:
+            cit_rows = [_make_narrative_cit_row(fid)]
+        if narr_parquet_rows is None:
+            narr_parquet_rows = [
+                (fid, _NARR_PE, None, _NARR_KIND, "Narrative title",
+                 "Narrative body text.", _NARR_XMLPATH, "ARMY", 2026, _NARR_SHA),
+            ]
+
+        (site / "citations").mkdir(parents=True, exist_ok=True)
+        _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, cit_rows)
+
+        (site / "data").mkdir(parents=True, exist_ok=True)
+        _write_parquet(
+            site / "data" / "jbook_narratives.parquet",
+            "fact_id varchar, pe_bli varchar, project_number varchar,"
+            " kind varchar, title varchar, body varchar, xml_path varchar,"
+            " org varchar, fiscal_year integer, document_sha256 varchar",
+            narr_parquet_rows,
+        )
+
+    def test_valid_passes_integrity(self, tmp_path):
+        site = tmp_path / "site"
+        self._write_narr_site_with_parquet(site)
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("jbook_narrative_shape") is True, result
+
+    def test_orphan_narrative_citation_fails(self, tmp_path):
+        """Citation fact_id not in jbook_narratives.parquet → integrity FAIL."""
+        site = tmp_path / "site"
+        orphan_fid = "dead000000000000"
+        cit_rows = [_make_narrative_cit_row(orphan_fid)]
+        # jbook_narratives.parquet has a DIFFERENT fact_id
+        real_fid = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        narr_rows = [
+            (real_fid, _NARR_PE, None, _NARR_KIND, "Title", "Body",
+             _NARR_XMLPATH, "ARMY", 2026, _NARR_SHA),
+        ]
+        self._write_narr_site_with_parquet(site, cit_rows, narr_rows)
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("jbook_narrative_shape") is False
+        assert any("orphan" in f for f in result["failures"])
+
+    def test_missing_official_url_fails_integrity(self, tmp_path):
+        """jbook_narrative citation with null official_url → integrity FAIL."""
+        site = tmp_path / "site"
+        fid = fact_id_narrative(_NARR_SHA, _NARR_PE, _NARR_KIND, _NARR_XMLPATH)
+        row = list(_make_narrative_cit_row(fid))
+        row[_build_narr_cit_idx()["official_url"]] = None
+        cit_rows = [tuple(row)]
+        narr_rows = [
+            (fid, _NARR_PE, None, _NARR_KIND, "Title", "Body",
+             _NARR_XMLPATH, "ARMY", 2026, _NARR_SHA),
+        ]
+        self._write_narr_site_with_parquet(site, cit_rows, narr_rows)
+        result = integrity_gate5b1(site)
+        assert result["checks"].get("jbook_narrative_shape") is False

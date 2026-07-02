@@ -331,7 +331,8 @@ export type CitationKind =
   | "derived"
   | "usaspending"
   | "state_soql"
-  | "state_file";
+  | "state_file"
+  | "jbook_narrative";
 
 export interface CitationBase {
   kind: CitationKind;
@@ -477,6 +478,24 @@ export interface StateFileCitation extends CitationBase, NonDocumentCitationFiel
   retrieved_at: string;
 }
 
+/**
+ * jbook_narrative — J-book narrative text (program descriptions, project
+ * narratives, accomplishments, plans).  Minted one-per-row from
+ * detail_narratives; sha256 identifies the source document; xml_path is the
+ * J-book XML locator; official_url is the document's hosted source URL.
+ *
+ * Null fields: all page/bbox/sheet/amount fields are null.
+ */
+export interface JbookNarrativeCitation extends CitationBase, NonDocumentCitationFields {
+  kind: "jbook_narrative";
+  sha256: string;
+  xml_path: string;
+  official_url: string;
+  /** Amount fields not applicable for narrative citations. */
+  amount_text: null;
+  amount_thousands: null;
+}
+
 export type Citation =
   | JbookPdfCitation
   | WorkbookCitation
@@ -484,7 +503,8 @@ export type Citation =
   | DerivedCitation
   | UsaspendingCitation
   | StateSoqlCitation
-  | StateFileCitation;
+  | StateFileCitation
+  | JbookNarrativeCitation;
 
 export type CitationsMap = Record<string, Citation>;
 

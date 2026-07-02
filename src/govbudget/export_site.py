@@ -114,6 +114,18 @@ def fact_id_state_file(jurisdiction: str, comparable_category: str, fiscal_year:
     return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
+def fact_id_narrative(document_sha256: str, pe_bli: str, kind: str, xml_path: str) -> str:
+    """Canonical identity for a jbook_narrative citation.
+
+    sha256 of 'jbook_narrative|{document_sha256}|{pe_bli}|{kind}|{xml_path}', hexdigest[:16].
+    xml_path is the J-book XML locator (e.g. 'ProgramElement[5]/Narrative[0]');
+    the combination of (document_sha256, pe_bli, kind, xml_path) is unique per
+    narrative row in detail_narratives.
+    """
+    key = f"jbook_narrative|{document_sha256}|{pe_bli}|{kind}|{xml_path}"
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
@@ -141,6 +153,7 @@ _MART_NAMES = [
 #  rows minted by _build_filing_lda_citation_rows)
 _CITED_DATASETS = {
     "jbook_details",
+    "jbook_narratives",
     "budget_lines",
     "fct_program_lobbying",
     "fct_budget_trajectory",
@@ -303,22 +316,31 @@ def export_site(
             """
         ).fetchall()
 
+        # Compute fact_id for each narrative row (jbook_narrative kind).
+        # xml_path is the J-book XML locator and is required for uniqueness.
+        # Rows with null xml_path cannot be uniquely identified and are skipped
+        # for citation emission (they still appear in the parquet without fact_id).
+        narr_rows_with_fid = []
+        for pe_bli, pn, kind, title, body, xml_path, org, fy, sha in rows_narr:
+            fid = fact_id_narrative(sha, pe_bli, kind, xml_path or "") if xml_path else None
+            narr_rows_with_fid.append((
+                fid, pe_bli, pn, kind, title, body, xml_path, org,
+                int(fy) if fy is not None else None, sha,
+            ))
+
         _write_typed_parquet(
             data_dir / "jbook_narratives.parquet",
             columns=[
+                ("fact_id", "varchar"),
                 ("pe_bli", "varchar"), ("project_number", "varchar"),
                 ("kind", "varchar"), ("title", "varchar"),
                 ("body", "varchar"), ("xml_path", "varchar"),
                 ("org", "varchar"),
                 ("fiscal_year", "integer"), ("document_sha256", "varchar"),
             ],
-            rows=[
-                (pe_bli, pn, kind, title, body, xml_path, org,
-                 int(fy) if fy is not None else None, sha)
-                for pe_bli, pn, kind, title, body, xml_path, org, fy, sha in rows_narr
-            ],
+            rows=narr_rows_with_fid,
         )
-        dataset_counts["jbook_narratives"] = len(rows_narr)
+        dataset_counts["jbook_narratives"] = len(narr_rows_with_fid)
 
         # ---- 2c. budget_lines.parquet (only rows with source_document_id) ----
         all_bl = pg.execute(
@@ -596,6 +618,46 @@ def export_site(
     # --- 4g. State citation tier (CT state_soql + CA state_file) ---
     state_citation_rows = _build_state_citation_rows(duckdb_path=duckdb_path)
     citation_rows.extend(state_citation_rows)
+
+    # --- 4h. jbook_narrative citations ---
+    # One citation row per jbook_narratives row that has a non-null xml_path.
+    # official_url = the document's source_url (dedup on sha256, lowest id wins).
+    # retrieved_at = the document's downloaded_at.
+    # All page/bbox/sheet fields are None; xml_path carries the locator.
+    with psycopg.connect(dsn) as pg_narr:
+        narr_doc_lookup = {
+            r[0]: (r[1], r[2])
+            for r in pg_narr.execute(
+                """
+                select distinct on (sha256) sha256, source_url, downloaded_at
+                from jbook_documents
+                where sha256 is not null
+                order by sha256, id
+                """
+            ).fetchall()
+        }
+
+    for (fid, pe_bli, pn, kind, title, body, xml_path, org, fy, sha) in narr_rows_with_fid:
+        if fid is None or not xml_path:
+            continue  # skip rows without a resolvable xml_path
+        src_url, dl_at = narr_doc_lookup.get(sha, (None, None))
+        official_url = src_url or None
+        ret_at = dl_at.isoformat() if dl_at else None
+        citation_rows.append((
+            fid, "jbook_narrative", None,  # fact_id, kind, units
+            None, None, None, None, None, None, None, None,  # amount_text + bbox
+            None,   # resolution
+            None,   # sheet
+            None,   # cells
+            None,   # amount_thousands
+            sha,    # sha256 (document fingerprint for integrity check)
+            None,   # hosted_pdf_url
+            official_url,  # official_url
+            xml_path,      # xml_path (J-book XML locator)
+            ret_at,        # retrieved_at
+            None, None, None, None,  # formula, inputs, query_body, recorded_value
+            pe_bli, None, None,  # pe_bli, scenario, amount_type
+        ))
 
     # Write citations.parquet
     _write_typed_parquet(
@@ -1560,15 +1622,22 @@ def _write_all_sidecars(
     # we need to re-read from the written parquet or store them in memory.
     # Since narratives come from a separate Postgres query, we read the
     # already-written parquet file.
+    # fact_id is included so that dossier bundles can cite narrative rows.
     narr_by_pe: dict[str, list] = defaultdict(list)
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
         import duckdb as _duckdb2
         narr_rows = _duckdb2.sql(
-            f"select pe_bli, kind, title, body, xml_path from read_parquet('{narr_pq}')"
+            f"select fact_id, pe_bli, kind, title, body, xml_path from read_parquet('{narr_pq}')"
         ).fetchall()
-        for pe_bli, kind, title, body, xml_path in narr_rows:
-            narr_by_pe[pe_bli].append({"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""})
+        for narr_fid, pe_bli, kind, title, body, xml_path in narr_rows:
+            entry: dict = {"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""}
+            # Only attach fact_id when the citation row was emitted (xml_path non-null,
+            # sha256 matched a document row). The _cited_fact_ids set is the authoritative
+            # membership check — if fact_id resolves there, the model can cite it.
+            if narr_fid and narr_fid in _cited_fact_ids:
+                entry["fact_id"] = narr_fid
+            narr_by_pe[pe_bli].append(entry)
 
     # dim_entities top-200 (ordered by total_obligation desc)
     entity_rows = con.execute(

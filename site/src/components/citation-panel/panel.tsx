@@ -33,6 +33,7 @@ import {
   isUsaspending,
   isStateSoql,
   isStateFile,
+  isJbookNarrative,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { AssetConfigProvider } from "@/components/asset-config";
@@ -42,6 +43,7 @@ import { LdaCard } from "./lda-card";
 import { DerivedCard } from "./derived-card";
 import { UsaspendingCard } from "./usaspending-card";
 import { StateCard } from "./state-card";
+import { JbookNarrativeCard } from "./jbook-narrative-card";
 
 // ── CitationPanelProvider ─────────────────────────────────────────────────────
 
@@ -147,6 +149,8 @@ function kindLabel(citation: Citation): string {
       return "State Open Data Query";
     case "state_file":
       return "State Source File";
+    case "jbook_narrative":
+      return "J-book Narrative";
   }
 }
 
@@ -165,6 +169,8 @@ function kindBadgeClass(citation: Citation): string {
     case "state_soql":
     case "state_file":
       return "bg-teal-100 text-teal-800";
+    case "jbook_narrative":
+      return "bg-amber-100 text-amber-800";
   }
 }
 
@@ -299,6 +305,9 @@ function CitationBody({ citation }: { citation: Citation }) {
   }
   if (isStateSoql(citation) || isStateFile(citation)) {
     return <StateCard citation={citation} />;
+  }
+  if (isJbookNarrative(citation)) {
+    return <JbookNarrativeCard citation={citation} />;
   }
   // Should never reach here — exhaustive guard
   return (

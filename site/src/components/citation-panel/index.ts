@@ -5,3 +5,4 @@ export { LdaCard } from "./lda-card";
 export { DerivedCard } from "./derived-card";
 export { UsaspendingCard } from "./usaspending-card";
 export { StateCard } from "./state-card";
+export { JbookNarrativeCard } from "./jbook-narrative-card";
