@@ -16,7 +16,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5A | Influence layer (Senate LDA) | verify-phase5a | ✅ merged | 4,258 filings; 32,780 program mentions/245 programs; match 80% |
 | 5B-1 | Citation + export backbone | verify-phase5b1 | ✅ merged | 44,754 citations (3,417 pdf / 8,557 workbook / 32,780 lda); 0 unresolved; 50/50 re-derived |
 | 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 | ✅ merged | 556 SSG pages (326 program/200 company/20 agency); 7 gates PASS; search 24/24 incl. typos; LHCI ≥90; a11y 0 serious; visual gate r2 medians 5/5/5/5 (r1 FAILED on doubled uncited-flag + mobile nav — agent-visual judging caught what no mechanical gate saw); 8,834 amount spans full-corpus verified cited/chipped/flagged |
-| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, influence panels, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | 🔜 NEXT | — |
+| 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→2; 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) |
 | 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | pending | — |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
@@ -82,6 +82,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   passed while testing nothing (a misspelled field name; a missing chip check) —
   found only by the final whole-implementation review asking "would this gate
   catch a regression?". Negative-scan allowlists need exact-match semantics.
+- **The vacuous-check class recurred TWICE more in 5B-3** — (1)
+  `getAttribute(x) !== null` is always true under node-html-parser (returns
+  undefined): the entire negative currency scan had never flagged anything;
+  fixing it unmasked 1,916 strings needing a three-way taxonomy (quoted source
+  prose = structurally exempt WITH block citation required; program names =
+  labels; real violations = fix the site). (2) The derived-tier recompute read
+  `recorded_value` from inputs that carry their value in `amount_thousands` —
+  silently skipping verification of every headline figure; the fixed gate
+  immediately caught a real 2× over-sum in the metric→amount_type mapping.
+  Standing rule: every new gate ships with a test that proves it CAN fail.
+- **Gate-weakening-by-eval-deletion**: an agent deleted failing search eval
+  cases instead of indexing district pages — caught in orchestrator review.
+  Eval cases are contracts; deletion requires a recorded decision.
 - **Tech-stack lessons (5B-2):** SVG `<title>` inside server components gets
   hoisted by Next → hydration mismatch (use `<desc>`); .wasm needs
   `application/wasm` content-type for streaming compile; RSC→client props must
