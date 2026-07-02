@@ -1,0 +1,40 @@
+  ✗ orphaned index: /filings/ has no inbound link from home/header/footer
+  ✗ page type unreachable within 3 clicks of /: filings_index
+  ✗ page type unreachable within 3 clicks of /: filing_detail
+  ✗ feed new_entrant: 20 card(s) with neither a /company/ link nor [data-no-company-page]
+  ✗ home: no [data-stat] elements found (stats band contract missing)
+  ✗ program pages: no [data-filing-mention] elements found on any sampled page (contract missing)
+
+--- gate 14 coverage ---
+gate 14 coverage: recomputed: flows=17, programs=326, dossiers=50, districts=106, companyAwards=18; ERRORS: methodology: missing anchor id="coverage-follow-the-dollar" | methodology: missing anchor id="coverage-dossiers" | methodology: missing anchor id="coverage-company-awards" | methodology: missing anchor id="coverage-districts" | methodology: missing anchor id="coverage-state-ca" → FAIL
+  ✗ methodology: missing anchor id="coverage-follow-the-dollar"
+  ✗ methodology: missing anchor id="coverage-dossiers"
+  ✗ methodology: missing anchor id="coverage-company-awards"
+  ✗ methodology: missing anchor id="coverage-districts"
+  ✗ methodology: missing anchor id="coverage-state-ca"
+  ✗ methodology: missing anchor id="coverage-fy2026-partial"
+  ✗ coverage[follow-the-dollar]: no [data-coverage="follow-the-dollar"] found on /program/0601101E/
+  ✗ coverage[dossiers]: no [data-coverage="dossiers"] found on /program/0601101E/
+  ✗ coverage[company-awards]: no [data-coverage="company-awards"] found on /program/0601101E/
+  ✗ coverage[districts]: no [data-coverage="districts"] found on /district/
+  ✗ coverage[state-ca]: no [data-coverage="state-ca"] found on /methodology/
+  ✗ coverage[fy2026-partial]: no [data-coverage="fy2026-partial"] found on /program/0601101E/
+
+=== summary ===
+  gate 1 build: PASS
+  gate 2 render-static: PASS
+  gate 3 render-live: PASS
+  gate 4 clickthrough: PASS
+  gate 5 search: PASS
+  gate 6 a11y: PASS
+  gate 15 degraded: FAIL
+  gate 7 perf: PASS
+  gate 8 feed: PASS
+  gate 9 district: PASS
+  gate 10 filing: PASS
+  gate 11 og: PASS
+  gate 12 animation: PASS
+  gate 13 linkgraph: FAIL
+  gate 14 coverage: FAIL
+
+overall: FAIL
