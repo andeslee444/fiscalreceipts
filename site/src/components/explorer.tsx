@@ -249,9 +249,10 @@ LIMIT 50
 export function Explorer({ datasets }: ExplorerProps) {
   const assetUrl = useAssetUrl();
 
-  // Engine state
+  // Engine state — "degraded" means the asset bundle is unreachable
+  // (probe HEAD request failed), as opposed to a generic engine error.
   const [engineState, setEngineState] = React.useState<
-    "idle" | "loading" | "ready" | "error"
+    "idle" | "loading" | "ready" | "error" | "degraded"
   >("idle");
   const [engineError, setEngineError] = React.useState<string | null>(null);
   const dbRef = React.useRef<AsyncDuckDB | null>(null);
@@ -285,13 +286,33 @@ export function Explorer({ datasets }: ExplorerProps) {
    */
   async function ensureEngine(): Promise<AsyncDuckDB | null> {
     if (dbRef.current) return dbRef.current;
-    if (engineState === "error") return null;
+    if (engineState === "error" || engineState === "degraded") return null;
 
     setEngineState("loading");
+
+    // assetUrl('') → `${assetBase}` (the raw base, e.g. "/assets" or "https://r2.example.com")
+    const assetBase = assetUrl("").replace(/\/$/, "") || "/assets";
+
+    // Reachability probe — the asset bundle (parquet files) may not be
+    // attached to this deployment. registerFileURL() is lazy (no fetch until
+    // the first query), so probe the first dataset with a HEAD request up
+    // front and surface an explicit degraded state instead of a spinner or
+    // an empty table (Phase 5C G3 contract).
+    try {
+      const probeName = datasets[0]?.name ?? "budget_lines";
+      const probe = await fetch(`${assetBase}/data/${probeName}.parquet`, {
+        method: "HEAD",
+      });
+      if (!probe.ok) {
+        throw new Error(`asset probe returned HTTP ${probe.status}`);
+      }
+    } catch {
+      setEngineState("degraded");
+      return null;
+    }
+
     try {
       const db = await getDuckDB();
-      // assetUrl('') → `${assetBase}` (the raw base, e.g. "/assets" or "https://r2.example.com")
-      const assetBase = assetUrl("").replace(/\/$/, "") || "/assets";
       await registerDatasets(db, assetBase);
       dbRef.current = db;
       setEngineState("ready");
@@ -378,8 +399,26 @@ export function Explorer({ datasets }: ExplorerProps) {
         </div>
       )}
 
+      {engineState === "degraded" && (
+        <div
+          data-degraded="explorer"
+          role="alert"
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          Data files are unavailable in this deployment — the explorer needs
+          the asset bundle. You can still browse every cited number on the
+          site.{" "}
+          <a href="/downloads/" className="underline hover:opacity-80">
+            About the data files &rarr;
+          </a>
+        </div>
+      )}
+
       {engineState === "error" && (
-        <div className="rounded-lg border border-destructive p-4 bg-destructive/10">
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive p-4 bg-destructive/10"
+        >
           <p className="text-sm font-medium text-destructive">
             Engine failed to load
           </p>

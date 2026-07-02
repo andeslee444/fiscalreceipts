@@ -114,6 +114,15 @@ export default function DownloadsPage() {
             </a>
             ).
           </p>
+          <p className="text-muted-foreground text-sm mt-2">
+            Schemas &amp; data dictionary: every Parquet file embeds its
+            column schema (readable via DuckDB <code>DESCRIBE</code>), and
+            the{" "}
+            <a href="/data/" className="underline hover:text-foreground">
+              data explorer
+            </a>{" "}
+            lists each dataset with row counts and column descriptions.
+          </p>
         </div>
         <AssetConfigProvider>
           <DownloadCards

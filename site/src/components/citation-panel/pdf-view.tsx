@@ -227,9 +227,16 @@ export function PdfView({ citation }: PdfViewProps) {
           </div>
         )}
 
-        {/* Error state — never fake success */}
+        {/* Error state — never fake success.
+            data-degraded="pdf": Phase 5C G3 contract — when the hosted PDF
+            asset is unreachable the panel surfaces an explicit degraded
+            state instead of a spinner. */}
         {viewState === "error" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
+          <div
+            data-degraded="pdf"
+            role="alert"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center"
+          >
             <AlertCircle
               className="h-8 w-8 text-destructive"
               aria-hidden="true"

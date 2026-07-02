@@ -2,8 +2,15 @@
 
 /**
  * Dataset download cards — uses useAssetUrl() to resolve runtime asset base.
+ *
+ * Degraded mode (Phase 5C G3): on mount a HEAD probe checks
+ * {assetBase}/citations/citations.parquet. When the asset bundle is not
+ * attached to the deployment, an explicit banner (data-degraded="downloads")
+ * renders above the cards and the cards dim with aria-disabled — no dead
+ * download links pretending to work.
  */
 
+import React from "react";
 import { useAssetUrl } from "@/components/asset-config";
 
 interface DatasetCard {
@@ -118,6 +125,26 @@ export function DownloadCards({
   const assetUrl = useAssetUrl();
   const DATASETS = buildDatasets(datasets);
 
+  // Asset-bundle reachability: null = probing, true = reachable, false = not.
+  // Probe re-runs if the runtime asset base changes (config.json resolution).
+  const [assetsAvailable, setAssetsAvailable] = React.useState<boolean | null>(
+    null,
+  );
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(assetUrl("/citations/citations.parquet"), { method: "HEAD" })
+      .then((r) => {
+        if (!cancelled) setAssetsAvailable(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetsAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assetUrl]);
+  const degraded = assetsAvailable === false;
+
   const builtDate = builtAt
     ? new Date(builtAt).toLocaleDateString("en-US", {
         year: "numeric",
@@ -128,6 +155,18 @@ export function DownloadCards({
 
   return (
     <div>
+      {degraded && (
+        <div
+          data-degraded="downloads"
+          role="alert"
+          className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          Download files are not attached to this deployment yet — they ship
+          from object storage. Checksums and schemas below still describe the
+          bundle.
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground mb-6">
         Bundle built: <time dateTime={builtAt}>{builtDate}</time>. Files are
         in Apache Parquet format, readable with DuckDB, pandas, R
@@ -139,7 +178,13 @@ export function DownloadCards({
         {DATASETS.map((ds) => (
           <div
             key={ds.name}
-            className="rounded-lg border border-border bg-card p-4 flex flex-col gap-2"
+            {...(degraded ? { "aria-disabled": true } : {})}
+            className={[
+              "rounded-lg border border-border bg-card p-4 flex flex-col gap-2",
+              degraded ? "opacity-50" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <div className="flex items-start justify-between gap-2">
               <span className="font-mono text-sm font-semibold text-foreground">
@@ -156,7 +201,13 @@ export function DownloadCards({
             </p>
             <a
               href={assetUrl(ds.parquetPath)}
-              className="mt-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              {...(degraded ? { "aria-disabled": true, tabIndex: -1 } : {})}
+              className={[
+                "mt-auto inline-flex items-center gap-1 text-xs text-primary hover:underline",
+                degraded ? "pointer-events-none" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               download
             >
               <svg

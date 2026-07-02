@@ -57,26 +57,26 @@ type PagefindMod = {
   } | null>;
 };
 
-let pagefindMod: PagefindMod | null = null;
-let pagefindLoading = false;
+// Shared promise so concurrent callers await the SAME import instead of the
+// second caller getting a spurious null while the first is still loading.
+// Resolves null when the pagefind bundle is missing (dev) or fails to load —
+// callers surface the data-degraded="deep-search" hint in that case.
+let pagefindPromise: Promise<PagefindMod | null> | null = null;
 
-async function loadPagefind(): Promise<PagefindMod | null> {
-  if (pagefindMod) return pagefindMod;
-  if (pagefindLoading) return null;
-  pagefindLoading = true;
-  try {
+function loadPagefind(): Promise<PagefindMod | null> {
+  if (!pagefindPromise) {
     // turbopackIgnore tells Turbopack to skip bundling this dynamic import.
     // The file only exists after `npm run build` (postbuild pagefind step).
-    // In dev (next dev) this 404s — the catch returns null.
+    // In dev (next dev) this 404s — the catch resolves null.
     // Fallback if magic comment regresses:
     //   const mod = await new Function('s', 'return import(s)')('/pagefind/pagefind.js');
-    const mod = await import(/* turbopackIgnore: true */ "/pagefind/pagefind.js" as string);
-    pagefindMod = mod as PagefindMod;
-    return pagefindMod;
-  } catch {
-    // Dev stub — pagefind not built yet
-    return null;
+    pagefindPromise = import(
+      /* turbopackIgnore: true */ "/pagefind/pagefind.js" as string
+    )
+      .then((mod) => mod as PagefindMod)
+      .catch(() => null);
   }
+  return pagefindPromise;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -153,6 +153,9 @@ function useTier1(query: string) {
 function useTier2(query: string) {
   const [items, setItems] = useState<FlatItem[]>([]);
   const [loading, setLoading] = useState(false);
+  // True once loadPagefind() resolved null (dev / missing bundle) — the
+  // results panel shows a quiet data-degraded="deep-search" hint (G3 Task 12).
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -179,7 +182,12 @@ function useTier2(query: string) {
       try {
         const pf = await loadPagefind();
         if (!pf || cancelled) {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            startTransition(() => {
+              setUnavailable(true);
+              setLoading(false);
+            });
+          }
           return;
         }
         const search = await pf.debouncedSearch(trimmed);
@@ -217,7 +225,7 @@ function useTier2(query: string) {
     };
   }, [query]);
 
-  return { items, loading };
+  return { items, loading, unavailable };
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -233,7 +241,11 @@ export function CommandPalette() {
   const uid = useId();
 
   const tier1Items = useTier1(query);
-  const { items: tier2Items, loading: loading2 } = useTier2(query);
+  const {
+    items: tier2Items,
+    loading: loading2,
+    unavailable: deepUnavailable,
+  } = useTier2(query);
 
   const openPalette = useCallback(() => {
     setOpen(true);
@@ -597,6 +609,21 @@ export function CommandPalette() {
                 </>
               )}
             </>
+          )}
+
+          {/* Deep-search degraded hint — Pagefind init failed or bundle
+              missing (dev / stripped deployment). Quiet row, G3 Task 12. */}
+          {deepUnavailable && query.trim().length >= 3 && (
+            <li
+              role="option"
+              aria-selected="false"
+              aria-disabled="true"
+              data-degraded="deep-search"
+              className="px-4 py-2 text-xs text-muted-foreground"
+            >
+              Deep document search unavailable here — quick search still
+              works.
+            </li>
           )}
 
           {/* Tier-2 pagefind results */}
