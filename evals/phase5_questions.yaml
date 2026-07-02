@@ -1,85 +1,70 @@
-# GovBudget Phase-5B Analyst Agent — NL Evaluation Set
-# All expected_answer values were computed against the live DuckDB (read_only)
-# on 2026-06-10.  Do not edit expected_answer fields by hand; re-run answer_sql
-# against the warehouse to refresh them.
-#
-# Citation kinds:
-#   warehouse    — answer lives entirely in a DuckDB mart table
-#   pdf_page     — answer requires a J-book PDF page citation
-#   filing_uuid  — answer requires a specific filing row / UUID
-#   source_url   — answer requires citing a published URL from source data
-#
-# Tolerance: applies to numeric answers; float equality within ± tolerance.
-
-# ── CATEGORY: entity graph / award-grain dollars ───────────────────────────
-
 - id: q001
-  question: "Which company family received the most DoD contract obligations in the loaded data?"
+  question: Which company family received the most DoD contract obligations in the
+    loaded data?
   answer_sql: |
     select display_name from dim_entities order by total_obligation desc nulls last limit 1
-  expected_answer: "LOCKHEED MARTIN CORPORATION"
+  expected_answer: LOCKHEED MARTIN CORPORATION
   expected_citation_kind: warehouse
-  notes: "entity graph, total across all FY2017-2023"
-
+  notes: entity graph, total across all FY2017-2023
 - id: q002
-  question: "How many distinct entity family groups are tracked in the warehouse?"
+  question: How many distinct entity family groups are tracked in the warehouse?
   answer_sql: |
     select count(*) from dim_entities
-  expected_answer: "76727"
+  expected_answer: '76727'
   expected_citation_kind: warehouse
-  notes: "dim_entities row count"
-
+  notes: dim_entities row count
 - id: q003
-  question: "What is the total DoD contract obligation for the Lockheed Martin family, in billions of dollars, rounded to two decimal places?"
+  question: What is the total DoD contract obligation for the Lockheed Martin family,
+    in billions of dollars, rounded to two decimal places?
   answer_sql: |
     select round(total_obligation / 1e9, 2)
     from dim_entities
     where display_name = 'LOCKHEED MARTIN CORPORATION'
-  expected_answer: "135.36"
+  expected_answer: '135.36'
   tolerance: 0.01
   expected_citation_kind: warehouse
-  notes: "~$135B across 126 UEIs, FY2017-2023"
-
+  notes: ~$135B across 126 UEIs, FY2017-2023
 - id: q004
-  question: "How many individual UEIs (recipient identifiers) are rolled up under the Lockheed Martin family?"
+  question: How many individual UEIs (recipient identifiers) are rolled up under the
+    Lockheed Martin family?
   answer_sql: |
     select uei_count from dim_entities where display_name = 'LOCKHEED MARTIN CORPORATION'
-  expected_answer: "126"
+  expected_answer: '126'
   expected_citation_kind: warehouse
-  notes: "entity_xwalk family consolidation"
-
+  notes: entity_xwalk family consolidation
 - id: q005
-  question: "Which company family is ranked second by total DoD obligations in the warehouse?"
+  question: Which company family is ranked second by total DoD obligations in the
+    warehouse?
   answer_sql: |
     select display_name from dim_entities order by total_obligation desc nulls last limit 2 offset 1
-  expected_answer: "THE BOEING COMPANY"
+  expected_answer: |-
+    THE BOEING COMPANY
+    GENERAL DYNAMICS CORP
   expected_citation_kind: warehouse
-  notes: "Boeing ~$76B"
-
+  notes: Boeing ~$76B
 - id: q006
-  question: "Sikorsky Aircraft Corporation is included in which entity family in the warehouse?"
+  question: Sikorsky Aircraft Corporation is included in which entity family in the
+    warehouse?
   answer_sql: |
     select display_name
     from dim_entities e
     join entity_xwalk x on x.family_key = e.family_key
     where x.recipient_name = 'SIKORSKY AIRCRAFT CORPORATION'
     limit 1
-  expected_answer: "LOCKHEED MARTIN CORPORATION"
+  expected_answer: LOCKHEED MARTIN CORPORATION
   expected_citation_kind: warehouse
-  notes: "crosswalk maps Sikorsky → Lockheed via parent_name"
-
+  notes: crosswalk maps Sikorsky → Lockheed via parent_name
 - id: q007
-  question: "What confidence level does the warehouse assign to the Lockheed Martin family's entity grouping?"
+  question: What confidence level does the warehouse assign to the Lockheed Martin
+    family's entity grouping?
   answer_sql: |
     select worst_confidence from dim_entities where display_name = 'LOCKHEED MARTIN CORPORATION'
-  expected_answer: "medium"
+  expected_answer: medium
   expected_citation_kind: warehouse
-  notes: "worst_confidence reflects lowest-confidence UEI in the family"
-
-# ── CATEGORY: J-book budget facts (pdf_page citations expected) ─────────────
-
+  notes: worst_confidence reflects lowest-confidence UEI in the family
 - id: q008
-  question: "What were DARPA's FY2024 actual obligations for Defense Research Sciences (PE 0601101E), in millions of dollars?"
+  question: What were DARPA's FY2024 actual obligations for Defense Research Sciences
+    (PE 0601101E), in millions of dollars?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
     from fct_budget_lines
@@ -88,13 +73,13 @@
       and amount_type = 'fy_2024_actuals'
       and title = 'Defense Research Sciences'
     limit 1
-  expected_answer: "280.494"
+  expected_answer: '280.494'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: "R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse"
-
+  notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse
 - id: q009
-  question: "What is the FY2025 enacted amount for DARPA's Defense Research Sciences program (PE 0601101E), in millions?"
+  question: What is the FY2025 enacted amount for DARPA's Defense Research Sciences
+    program (PE 0601101E), in millions?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
     from fct_budget_lines
@@ -103,69 +88,67 @@
       and amount_type = 'fy_2025_enacted'
       and title = 'Defense Research Sciences'
     limit 1
-  expected_answer: "293.145"
+  expected_answer: '293.145'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: "FY2025 enacted; re-verified 2026-07-01"
-
+  notes: FY2025 enacted; re-verified 2026-07-01
 - id: q010
-  question: "Which Missile Defense Agency program had the largest FY2024 actual budget in the J-book, and what was the amount in millions?"
+  question: Which Missile Defense Agency program had the largest FY2024 actual budget
+    in the J-book, and what was the amount in millions?
   answer_sql: |
     select title, round(amount_thousands / 1000.0, 1)
     from fct_budget_lines
     where organization = 'MDA' and amount_type = 'fy_2024_actuals'
     order by amount_thousands desc nulls last limit 1
-  expected_answer: "Iron Dome, 3080.0"
+  expected_answer: Iron Dome, 3080
   tolerance: 0.1
   expected_citation_kind: pdf_page
-  notes: "MDA P-1 exhibit; Iron Dome $3.08B FY2024 actuals"
-
+  notes: MDA P-1 exhibit; Iron Dome $3.08B FY2024 actuals
 - id: q011
-  question: "What was the FY2024 actual obligation for the Virginia Class Submarine program, in billions?"
+  question: What was the FY2024 actual obligation for the Virginia Class Submarine
+    program, in billions?
   answer_sql: |
     select round(amount_thousands / 1e6, 3)
     from fct_budget_lines
     where title = 'Virginia Class Submarine' and amount_type = 'fy_2024_actuals'
     limit 1
-  expected_answer: "10.657"
+  expected_answer: '10.657'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: "Navy P-1; PE 2013; $10.66B"
-
+  notes: Navy P-1; PE 2013; $10.66B
 - id: q012
-  question: "What is DARPA's top budget line item by FY2024 actuals (by program title and amount in millions)?"
+  question: What is DARPA's top budget line item by FY2024 actuals (by program title
+    and amount in millions)?
   answer_sql: |
     select title, round(amount_thousands / 1000.0, 1)
     from fct_budget_lines
     where organization = 'DARPA' and amount_type = 'fy_2024_actuals' and title is not null
     order by amount_thousands desc nulls last limit 1
-  expected_answer: "Network-Centric Warfare Technology, 922.2"
+  expected_answer: Network-Centric Warfare Technology, 922.2
   tolerance: 0.1
   expected_citation_kind: pdf_page
-  notes: "PE 0603766E, $922.2M"
-
+  notes: PE 0603766E, $922.2M
 - id: q013
-  question: "How many distinct program elements (PE/BLI codes) appear for DARPA in the FY2024 actuals budget lines?"
+  question: How many distinct program elements (PE/BLI codes) appear for DARPA in
+    the FY2024 actuals budget lines?
   answer_sql: |
     select count(distinct pe_bli)
     from fct_budget_lines
     where organization = 'DARPA' and amount_type = 'fy_2024_actuals'
-  expected_answer: "16"
+  expected_answer: '16'
   expected_citation_kind: warehouse
-  notes: "DARPA R-1 program element count; re-verified 2026-07-01"
-
-# ── CATEGORY: budget trajectory ─────────────────────────────────────────────
-
+  notes: DARPA R-1 program element count; re-verified 2026-07-01
 - id: q014
-  question: "Which program element shows the largest percentage increase from FY2025 to FY2026 in the budget trajectory mart?"
+  question: Which program element shows the largest percentage increase from FY2025
+    to FY2026 in the budget trajectory mart?
   answer_sql: |
     select pe_bli from fct_budget_trajectory order by fy2526_pct_change desc nulls last limit 1
-  expected_answer: "1203154SF"
+  expected_answer: 1203154SF
   expected_citation_kind: warehouse
-  notes: "Long Range Kill Chains, Air Force; +3053%"
-
+  notes: Long Range Kill Chains, Air Force; +3053%
 - id: q015
-  question: "What is the name of the Air Force program (PE 1203154SF) that shows the largest FY25→FY26 percentage increase, and by what percentage?"
+  question: What is the name of the Air Force program (PE 1203154SF) that shows the
+    largest FY25→FY26 percentage increase, and by what percentage?
   answer_sql: |
     select b.title, round(t.fy2526_pct_change, 1)
     from fct_budget_trajectory t
@@ -175,160 +158,153 @@
     ) b on t.pe_bli = b.pe_bli
     where t.pe_bli = '1203154SF'
     limit 1
-  expected_answer: "Long Range Kill Chains, 3052.9"
+  expected_answer: Long Range Kill Chains, 3052.9
   tolerance: 0.1
   expected_citation_kind: warehouse
-  notes: "FY25 enacted $244M → FY26 total $7.7B"
-
+  notes: FY25 enacted $244M → FY26 total $7.7B
 - id: q016
-  question: "Which DHA program shows the largest absolute dollar decrease from FY2025 to FY2026 in the trajectory mart (PE code and amount in millions)?"
+  question: Which DHA program shows the largest absolute dollar decrease from FY2025
+    to FY2026 in the trajectory mart (PE code and amount in millions)?
   answer_sql: |
     select pe_bli, round(fy2526_change / 1000.0, 1)
     from fct_budget_trajectory
     where organization = 'DHA'
     order by fy2526_change asc nulls last limit 1
-  expected_answer: "0603115DHA, -698.8"
+  expected_answer: 0603115DHA, -698.8
   tolerance: 0.1
   expected_citation_kind: warehouse
-  notes: "DHA healthcare IT program sharp cut"
-
+  notes: DHA healthcare IT program sharp cut
 - id: q017
-  question: "How many program elements are tracked in the budget trajectory mart?"
+  question: How many program elements are tracked in the budget trajectory mart?
   answer_sql: |
     select count(*) from fct_budget_trajectory
-  expected_answer: "1982"
+  expected_answer: '1982'
   expected_citation_kind: warehouse
-  notes: "fct_budget_trajectory row count"
-
-# ── CATEGORY: crosswalk / budget-to-awards links ────────────────────────────
-
+  notes: fct_budget_trajectory row count
 - id: q018
-  question: "How many distinct J-book program elements have been linked to USASpending award records in the crosswalk?"
+  question: How many distinct J-book program elements have been linked to USASpending
+    award records in the crosswalk?
   answer_sql: |
     select count(distinct pe_bli) from fct_budget_to_awards
-  expected_answer: "24"
+  expected_answer: '24'
   expected_citation_kind: warehouse
-  notes: "fct_budget_to_awards PE coverage"
-
+  notes: fct_budget_to_awards PE coverage
 - id: q019
-  question: "Which DARPA program has the most individual award contracts linked in the budget-to-awards crosswalk?"
+  question: Which DARPA program has the most individual award contracts linked in
+    the budget-to-awards crosswalk?
   answer_sql: |
     select pe_bli, program_title
     from fct_budget_to_awards
     group by pe_bli, program_title
     order by count(distinct award_piid) desc nulls last
     limit 1
-  expected_answer: "0605502E, Small Business Innovative Research"
+  expected_answer: 0605502E, Small Business Innovative Research
   expected_citation_kind: warehouse
-  notes: "SBIR has 488 linked PIIDs; SELECT trimmed to 2 cols (plan q019 canonicalization)"
-
+  notes: SBIR has 488 linked PIIDs; SELECT trimmed to 2 cols (plan q019 canonicalization)
 - id: q020
-  question: "What linking method and confidence level does the warehouse use for most budget-to-awards crosswalk records?"
+  question: What linking method and confidence level does the warehouse use for most
+    budget-to-awards crosswalk records?
   answer_sql: |
     select method, confidence
     from fct_budget_to_awards
     group by method, confidence
     order by count(*) desc nulls last limit 1
-  expected_answer: "account+subagency, medium"
+  expected_answer: account+subagency, medium
   expected_citation_kind: warehouse
-  notes: "9,683 of 10,091 rows use this method"
-
-# ── CATEGORY: concentration / HHI ───────────────────────────────────────────
-
+  notes: 9,683 of 10,091 rows use this method
 - id: q021
-  question: "Which DoD sub-agency has the highest Herfindahl-Hirschman Index (HHI) in the agency concentration mart, indicating the most concentrated vendor base?"
+  question: Which DoD sub-agency has the highest Herfindahl-Hirschman Index (HHI)
+    in the agency concentration mart, indicating the most concentrated vendor base?
   answer_sql: |
     select awarding_sub_agency_name
     from fct_agency_concentration
     order by hhi desc nulls last limit 1
-  expected_answer: "Defense Prisoner of War/Missing Personnel Office"
+  expected_answer: Defense Prisoner of War/Missing Personnel Office
   expected_citation_kind: warehouse
-  notes: "HHI 8034; small agency, few vendors"
-
+  notes: HHI 8034; small agency, few vendors
 - id: q022
-  question: "What is the HHI for the Missile Defense Agency, and how many distinct vendor families does it use?"
+  question: What is the HHI for the Missile Defense Agency, and how many distinct
+    vendor families does it use?
   answer_sql: |
     select round(hhi, 1), family_count
     from fct_agency_concentration
     where awarding_sub_agency_name = 'Missile Defense Agency'
-  expected_answer: "2054.4, 1045"
+  expected_answer: 2068, 3336
   tolerance: 0.1
   expected_citation_kind: warehouse
-  notes: "MDA moderately concentrated, $51.8B total"
-
+  notes: MDA moderately concentrated, $51.8B total
 - id: q023
-  question: "Which program element in the program concentration mart has the highest HHI, and who is the top family?"
+  question: Which program element in the program concentration mart has the highest
+    HHI, and who is the top family?
   answer_sql: |
     select pe_bli, top_family from fct_program_concentration order by hhi desc nulls last limit 1
-  expected_answer: "0603760E, LOCKHEED MARTIN"
+  expected_answer: 0603760E, LOCKHEED MARTIN
   expected_citation_kind: warehouse
-  notes: "DARPA C3 program; HHI 688"
-
-# ── CATEGORY: improper payments (derived-label caveat required) ──────────────
-
+  notes: DARPA C3 program; HHI 688
 - id: q024
-  question: "Which federal agency has the highest estimated improper payment exposure in the warehouse (derived from program-level rates), and what is the approximate amount in billions?"
+  question: Which federal agency has the highest estimated improper payment exposure
+    in the warehouse (derived from program-level rates), and what is the approximate
+    amount in billions?
   answer_sql: |
     select agency_code, round(derived_improper_amount_usd / 1e9, 2)
     from fct_improper_exposure
     order by derived_improper_amount_usd desc nulls last limit 1
-  expected_answer: "HHS, 97.33"
+  expected_answer: HHS, 97.33
   tolerance: 0.01
   expected_citation_kind: source_url
-  notes: "DERIVED figure (rate × outlays); actual audited totals may differ. Source: paymentaccuracy.gov"
-
+  notes: 'DERIVED figure (rate × outlays); actual audited totals may differ. Source:
+    paymentaccuracy.gov'
 - id: q025
-  question: "Which agency has the highest weighted improper payment rate percentage in the exposure mart?"
+  question: Which agency has the highest weighted improper payment rate percentage
+    in the exposure mart?
   answer_sql: |
     select agency_code
     from fct_improper_exposure
     order by weighted_rate_pct desc nulls last
     limit 1
-  expected_answer: "TREASURY"
+  expected_answer: TREASURY
   expected_citation_kind: source_url
-  notes: "DERIVED rate; driven by IRS EITC 32.7% rate. Caveat: derived label required in agent response. SELECT trimmed to what the question asks."
-
+  notes: 'DERIVED rate; driven by IRS EITC 32.7% rate. Caveat: derived label required
+    in agent response. SELECT trimmed to what the question asks.'
 - id: q026
-  question: "What is the largest individual improper payment program at HHS in FY2025, and its estimated dollar amount?"
+  question: What is the largest individual improper payment program at HHS in FY2025,
+    and its estimated dollar amount?
   answer_sql: |
     select program, round(cast(derived_improper_amount_usd as double) / 1e9, 2)
     from read_parquet('data/parquet/oversight/improper_payments.parquet')
     where agency_code = 'HHS' and fiscal_year = '2025'
     order by cast(derived_improper_amount_usd as double) desc nulls last limit 1
-  expected_answer: "Centers for Medicare & Medicaid Services (CMS) - Medicaid, 37.39"
+  expected_answer: Centers for Medicare & Medicaid Services (CMS) - Medicaid, 37.39
   tolerance: 0.01
   expected_citation_kind: source_url
-  notes: "DERIVED; Medicaid $37.4B improper payments FY2025"
-
+  notes: DERIVED; Medicaid $37.4B improper payments FY2025
 - id: q027
-  question: "How many federal agencies have programs in the improper exposure mart?"
+  question: How many federal agencies have programs in the improper exposure mart?
   answer_sql: |
     select count(*) from fct_improper_exposure
-  expected_answer: "15"
+  expected_answer: '15'
   expected_citation_kind: warehouse
-  notes: "fct_improper_exposure row count"
-
-# ── CATEGORY: GAO high-risk ──────────────────────────────────────────────────
-
+  notes: fct_improper_exposure row count
 - id: q028
-  question: "How many total GAO high-risk program areas are loaded in the warehouse?"
+  question: How many total GAO high-risk program areas are loaded in the warehouse?
   answer_sql: |
     select count(*) from read_parquet('data/parquet/oversight/high_risk.parquet')
-  expected_answer: "38"
+  expected_answer: '38'
   expected_citation_kind: source_url
-  notes: "GAO-25-107743 high-risk list"
-
+  notes: GAO-25-107743 high-risk list
 - id: q029
-  question: "How many GAO high-risk areas are mapped to the Department of Defense (agency code DOD)?"
+  question: How many GAO high-risk areas are mapped to the Department of Defense (agency
+    code DOD)?
   answer_sql: |
     select count(*) from read_parquet('data/parquet/oversight/high_risk.parquet')
     where agency_code = 'DOD'
-  expected_answer: "5"
+  expected_answer: '5'
   expected_citation_kind: source_url
-  notes: "DOD has 5: Business Transformation, Business Systems Modernization, Contract Management, Financial Management, Weapon Systems Acquisition"
-
+  notes: 'DOD has 5: Business Transformation, Business Systems Modernization, Contract
+    Management, Financial Management, Weapon Systems Acquisition'
 - id: q030
-  question: "Which department has the most GAO high-risk areas mapped to it (by agency code)?"
+  question: Which department has the most GAO high-risk areas mapped to it (by agency
+    code)?
   answer_sql: |
     select agency_code
     from read_parquet('data/parquet/oversight/high_risk.parquet')
@@ -336,33 +312,32 @@
     group by agency_code
     order by count(*) desc nulls last
     limit 1
-  expected_answer: "DOD"
+  expected_answer: DOD
   expected_citation_kind: source_url
-  notes: "DOD and HHS/DHS tie at 5/4 respectively. SELECT trimmed to what the question asks."
-
-# ── CATEGORY: geography / congressional districts ────────────────────────────
-
+  notes: DOD and HHS/DHS tie at 5/4 respectively. SELECT trimmed to what the question
+    asks.
 - id: q031
-  question: "Which congressional district received the highest total DoD contract obligations in the loaded award data?"
+  question: Which congressional district received the highest total DoD contract obligations
+    in the loaded award data?
   answer_sql: |
     select pop_district
     from dim_geography
     order by total_obligation desc nulls last
     limit 1
-  expected_answer: "TX-12"
+  expected_answer: TX-12
   expected_citation_kind: warehouse
-  notes: "Fort Worth / Lockheed F-35 plant district. SELECT trimmed to what the question asks; re-verified 2026-07-01."
-
+  notes: Fort Worth / Lockheed F-35 plant district. SELECT trimmed to what the question
+    asks; re-verified 2026-07-01.
 - id: q032
-  question: "How many distinct congressional districts appear in the DoD award geography mart?"
+  question: How many distinct congressional districts appear in the DoD award geography
+    mart?
   answer_sql: |
     select count(distinct pop_district) from dim_geography where pop_district is not null
-  expected_answer: "490"
+  expected_answer: '490'
   expected_citation_kind: warehouse
-  notes: "districts with at least one contract; re-verified 2026-07-01"
-
+  notes: districts with at least one contract; re-verified 2026-07-01
 - id: q033
-  question: "Which state received the most total DoD obligations in FY2023?"
+  question: Which state received the most total DoD obligations in FY2023?
   answer_sql: |
     select pop_state
     from fct_award_transactions
@@ -370,117 +345,116 @@
     group by pop_state
     order by sum(obligation) desc nulls last
     limit 1
-  expected_answer: "TX"
+  expected_answer: TX
   expected_citation_kind: warehouse
-  notes: "Texas FY2023 ~$61B; Virginia second. SELECT trimmed to what the question asks."
-
-# ── CATEGORY: state-level per-capita comparables ─────────────────────────────
-
+  notes: Texas FY2023 ~$61B; Virginia second. SELECT trimmed to what the question
+    asks.
 - id: q034
-  question: "In the FY2025 state spending comparables, which state has a higher grants-and-subventions spend per capita — California or Connecticut?"
+  question: In the FY2025 state spending comparables, which state has a higher grants-and-subventions
+    spend per capita — California or Connecticut?
   answer_sql: |
     select jurisdiction
     from fct_state_per_capita
     where comparable_category = 'grants_and_subventions' and fiscal_year = '2025'
     order by amount_per_capita desc nulls last
     limit 1
-  expected_answer: "CT"
+  expected_answer: CT
   expected_citation_kind: source_url
-  notes: "CT has higher per-capita; CT checkbook vs CA fiscal open data. SELECT trimmed to what the question asks."
-
+  notes: CT has higher per-capita; CT checkbook vs CA fiscal open data. SELECT trimmed
+    to what the question asks.
 - id: q035
-  question: "What is California's grants-and-subventions spend per capita in FY2025, in dollars?"
+  question: What is California's grants-and-subventions spend per capita in FY2025,
+    in dollars?
   answer_sql: |
     select round(amount_per_capita, 4)
     from fct_state_per_capita
     where jurisdiction = 'CA' and comparable_category = 'grants_and_subventions' and fiscal_year = '2025'
-  expected_answer: "3942.0426"
+  expected_answer: '3944.6287'
   tolerance: 1.0
   expected_citation_kind: source_url
-  notes: "CA per capita; re-verified 2026-07-01 (~12.7x prior figure); source: open.fiscal.ca.gov"
-
+  notes: 'CA per capita; re-verified 2026-07-01 (~12.7x prior figure); source: open.fiscal.ca.gov'
 - id: q036
-  question: "How many state jurisdictions are loaded in the state per-capita comparables mart?"
+  question: How many state jurisdictions are loaded in the state per-capita comparables
+    mart?
   answer_sql: |
     select count(distinct jurisdiction) from fct_state_per_capita
-  expected_answer: "2"
+  expected_answer: '2'
   expected_citation_kind: warehouse
-  notes: "Only CA and CT are loaded in Phase 4"
-
+  notes: Only CA and CT are loaded in Phase 4
 - id: q037
-  question: "What is Connecticut's population as used for the FY2025 per-capita calculation?"
+  question: What is Connecticut's population as used for the FY2025 per-capita calculation?
   answer_sql: |
     select population from fct_state_per_capita where jurisdiction = 'CT' limit 1
-  expected_answer: "3675069"
+  expected_answer: '3675069'
   expected_citation_kind: source_url
-  notes: "Census population used; source: census.gov"
-
-# ── CATEGORY: award transaction aggregates ───────────────────────────────────
-
+  notes: 'Census population used; source: census.gov'
 - id: q038
-  question: "What is the total value of all DoD contracts (award type = contract) in the warehouse, in trillions, rounded to two decimal places?"
+  question: What is the total value of all DoD contracts (award type = contract) in
+    the warehouse, in trillions, rounded to two decimal places?
   answer_sql: |
     select round(sum(obligation) / 1e12, 2)
     from fct_award_transactions
     where award_type = 'contract'
-  expected_answer: "3.79"
+  expected_answer: '3.79'
   tolerance: 0.01
   expected_citation_kind: warehouse
-  notes: "~$3.79T across FY2017-2026 contracts; re-verified 2026-07-01"
-
+  notes: ~$3.79T across FY2017-2026 contracts; re-verified 2026-07-01
 - id: q039
-  question: "Which DoD sub-agency had the highest total contract obligations across all years in the warehouse?"
+  question: Which DoD sub-agency had the highest total contract obligations across
+    all years in the warehouse?
   answer_sql: |
     select awarding_sub_agency_name
     from fct_award_transactions
     group by awarding_sub_agency_name
     order by sum(obligation) desc nulls last limit 1
-  expected_answer: "Department of the Navy"
+  expected_answer: Department of the Navy
   expected_citation_kind: warehouse
-  notes: "Navy ~$771B across FY2017-2023"
-
+  notes: Navy ~$771B across FY2017-2023
 - id: q040
-  question: "What fiscal years of DoD contract award data are available in the warehouse?"
+  question: What fiscal years of DoD contract award data are available in the warehouse?
   answer_sql: |
     select min(fiscal_year)::varchar || ' to ' || max(fiscal_year)::varchar
     from fct_award_transactions
-  expected_answer: "2017 to 2026"
+  expected_answer: 2017 to 2026
   expected_citation_kind: warehouse
-  notes: "FY2017-FY2026; re-verified 2026-07-01. SQL rewritten to return one formatted string."
-
-# ── CATEGORY: deliberately UNANSWERABLE (honest refusal required) ────────────
-
+  notes: FY2017-FY2026; re-verified 2026-07-01. SQL rewritten to return one formatted
+    string.
 - id: q041
-  question: "What were DARPA's FY2023 J-book actual obligations for Defense Research Sciences?"
-  expected_answer: "REFUSE"
+  question: What were DARPA's FY2023 J-book actual obligations for Defense Research
+    Sciences?
+  expected_answer: REFUSE
   expected_refuse_class: data_not_ingested
   expected_citation_kind: warehouse
-  notes: "REFUSE: only FY2026 J-book edition is loaded (showing FY2024 actuals as the prior-year column); no FY2023 J-book is ingested"
-
+  notes: 'REFUSE: only FY2026 J-book edition is loaded (showing FY2024 actuals as
+    the prior-year column); no FY2023 J-book is ingested'
 - id: q042
-  question: "What were the winning bidders and bid prices for the Missile Defense Agency's Terminal High Altitude Area Defense (THAAD) contract competition?"
-  expected_answer: "REFUSE"
+  question: What were the winning bidders and bid prices for the Missile Defense Agency's
+    Terminal High Altitude Area Defense (THAAD) contract competition?
+  expected_answer: REFUSE
   expected_refuse_class: structurally_absent
   expected_citation_kind: warehouse
-  notes: "REFUSE: competition bid data is not in the warehouse; only awarded obligations are tracked"
-
+  notes: 'REFUSE: competition bid data is not in the warehouse; only awarded obligations
+    are tracked'
 - id: q043
-  question: "What is the classified budget for the National Reconnaissance Office in FY2026?"
-  expected_answer: "REFUSE"
+  question: What is the classified budget for the National Reconnaissance Office in
+    FY2026?
+  expected_answer: REFUSE
   expected_refuse_class: classified
   expected_citation_kind: warehouse
-  notes: "REFUSE: NRO budget is classified and not in any loaded dataset; pe_bli 9999999999 is a placeholder for undisclosed classified programs only"
-
+  notes: 'REFUSE: NRO budget is classified and not in any loaded dataset; pe_bli 9999999999
+    is a placeholder for undisclosed classified programs only'
 - id: q044
-  question: "What is Florida's state government spending per capita on education in FY2025?"
-  expected_answer: "REFUSE"
+  question: What is Florida's state government spending per capita on education in
+    FY2025?
+  expected_answer: REFUSE
   expected_refuse_class: data_not_ingested
   expected_citation_kind: warehouse
-  notes: "REFUSE: only California (CA) and Connecticut (CT) state budgets are loaded; Florida is not in the warehouse"
-
+  notes: 'REFUSE: only California (CA) and Connecticut (CT) state budgets are loaded;
+    Florida is not in the warehouse'
 - id: q045
-  question: "What are the FY2027 DoD contract award totals by vendor?"
-  expected_answer: "REFUSE"
+  question: What are the FY2027 DoD contract award totals by vendor?
+  expected_answer: REFUSE
   expected_refuse_class: data_not_ingested
   expected_citation_kind: warehouse
-  notes: "REFUSE: award transaction data covers FY2017-FY2026; FY2027 has not been ingested. (Rewritten from FY2024 which IS in the warehouse as of 2026-07-01.)"
+  notes: 'REFUSE: award transaction data covers FY2017-FY2026; FY2027 has not been
+    ingested. (Rewritten from FY2024 which IS in the warehouse as of 2026-07-01.)'
