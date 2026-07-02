@@ -947,11 +947,10 @@ def cmd_export_site(args) -> None:
 
 def cmd_verify_phase5b2(args) -> None:
     """Run the phase 5B-2 gate suite via `npm --prefix site run verify`."""
-    repo_root = Path(__file__).resolve().parents[3]
-    site_dir = repo_root / "site"
+    site_dir = config.ROOT / "site"
     result = subprocess.run(
         ["npm", "--prefix", str(site_dir), "run", "verify"],
-        cwd=str(repo_root),
+        cwd=str(config.ROOT),
     )
     sys.exit(result.returncode)
 
