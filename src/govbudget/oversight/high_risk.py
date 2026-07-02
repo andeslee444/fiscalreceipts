@@ -6,8 +6,9 @@ Page structure (verified from live site, June 2026):
     in the GAO-25-107743 report PDF hosted on files.gao.gov
   - One additional link ('This table') points to a PDF table and is excluded
 
-Parquet columns (all varchar): area_title, area_url, agency_code, mapped,
-notes, source_url.
+Parquet columns (typed at ingestion — backlog #11): area_title varchar,
+area_url varchar, agency_code varchar, mapped boolean, notes varchar,
+source_url varchar.
 """
 from __future__ import annotations
 
@@ -108,8 +109,9 @@ def build_high_risk(
 ) -> Path:
     """Scrape GAO high-risk index, left-join agency map, write parquet.
 
-    Parquet columns (all varchar): area_title, area_url, agency_code,
-    mapped, notes, source_url.
+    Parquet columns (typed at ingestion): area_title varchar,
+    area_url varchar, agency_code varchar, mapped boolean, notes varchar,
+    source_url varchar.
     """
     r = client.get(GAO_URL, follow_redirects=True)
     r.raise_for_status()
@@ -127,7 +129,7 @@ def build_high_risk(
         raw_code = mapping.get("agency_code", "")
         agency_code = canonical_agency(raw_code) or ""
         notes = mapping.get("notes", "")
-        mapped = "true" if agency_code else "false"
+        mapped = bool(agency_code)
         rows.append((
             title,
             area["area_url"],
@@ -138,7 +140,7 @@ def build_high_risk(
         ))
 
     # Report mapping coverage
-    n_mapped = sum(1 for r in rows if r[3] == "true")
+    n_mapped = sum(1 for r in rows if r[3])
     pct = n_mapped / len(rows) * 100 if rows else 0
     print(f"high_risk: {n_mapped}/{len(rows)} areas mapped ({pct:.1f}%)")
     if pct < 80:
@@ -155,7 +157,7 @@ def build_high_risk(
         con.execute(
             "create table _hr ("
             "area_title varchar, area_url varchar, agency_code varchar,"
-            "mapped varchar, notes varchar, source_url varchar)"
+            "mapped boolean, notes varchar, source_url varchar)"
         )
         con.executemany("insert into _hr values (?,?,?,?,?,?)", rows)
         con.execute(

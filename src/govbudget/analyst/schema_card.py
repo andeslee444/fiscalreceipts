@@ -40,7 +40,7 @@ URL_COLUMN_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 SCHEMA_CARD: dict = {
-    "version": "5b4.2",
+    "version": "5b4.3",
     "description": (
         "GovBudget warehouse — DoD J-book budget facts (FY2026 edition only), "
         "USASpending award transactions (FY2017-FY2026), entity family crosswalk, "
@@ -309,18 +309,19 @@ SCHEMA_CARD: dict = {
             "key_columns": {
                 "agency_code": "Agency code",
                 "program": "Program name",
-                "fiscal_year": "Fiscal year string",
+                "fiscal_year": "Fiscal year (INTEGER)",
                 "derived_improper_amount_usd": (
-                    "DERIVED USD — stored as VARCHAR, CAST to DOUBLE before use"
+                    "DERIVED USD estimate (DOUBLE; NOT an audited figure)"
                 ),
                 "source_url": "URL to paymentaccuracy.gov source (use for citations)",
             },
             "notes": [
-                "ALL columns are stored as VARCHAR strings — including "
-                "rate_pct, derived_improper_amount_usd and outlays_usd. "
-                "CAST(... AS DOUBLE) before any ORDER BY, comparison, or "
-                "arithmetic; ordering the raw strings is lexicographic and "
-                "returns the wrong rows.",
+                "Numeric columns are natively typed: fiscal_year is INTEGER; "
+                "rate_pct, derived_improper_amount_usd, unknown_rate_pct and "
+                "outlays_usd are DOUBLE. ORDER BY and comparisons work "
+                "naturally — no CAST needed (the historical all-VARCHAR "
+                "lexicographic-sort trap is gone; a legacy CAST(... AS DOUBLE) "
+                "is a harmless no-op).",
             ],
         },
         "high_risk": {
@@ -328,6 +329,7 @@ SCHEMA_CARD: dict = {
             "key_columns": {
                 "area_name": "Program area name",
                 "agency_code": "Mapped agency code",
+                "mapped": "BOOLEAN — true when the area is mapped to an agency_code",
                 "source_url": "URL to GAO report (use for citations)",
             },
             "notes": [

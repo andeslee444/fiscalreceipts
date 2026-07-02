@@ -194,10 +194,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
-11. **Type oversight parquets properly:** improper_payments and related oversight
+11. **Type oversight parquets properly:** ~~improper_payments and related oversight
     tables are all-VARCHAR from CSV ingestion, forcing CAST everywhere and inviting
     lexicographic-sort bugs (root cause of several 5B-4 SEMANTIC failures). Migrate
-    to typed columns at the staging layer.
+    to typed columns at the staging layer.~~ **DONE 2026-07-02:** loaders now write
+    typed columns at ingestion (fiscal_year INTEGER, rate/amount columns DOUBLE,
+    high_risk.mapped BOOLEAN); parquets retyped in place value-identically
+    (fct_improper_exposure checksum unchanged); dbt try_casts dropped; schema card
+    updated (trap note replaced — legacy CASTs are harmless no-ops).
 12. **Build gate for stale/failed `site/out`:** verify gates should detect that
     the SSG output is absent or from a failed build before running npm verify gates
     — currently a broken build silently causes gate false-passes against stale HTML.

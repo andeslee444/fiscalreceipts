@@ -10,9 +10,10 @@ Page structure (verified from live site, June 2026):
   - FY labels also appear in <div class="usa-card__body"> containing
     "FY YYYY improper payment estimates"
 
-Output parquet columns (all varchar): program, agency_name, agency_code,
-fiscal_year, rate_pct, derived_improper_amount_usd, unknown_rate_pct,
-outlays_usd, source_url.
+Output parquet columns (typed at ingestion — backlog #11):
+  program varchar, agency_name varchar, agency_code varchar,
+  fiscal_year integer, rate_pct double, derived_improper_amount_usd double,
+  unknown_rate_pct double, outlays_usd double, source_url varchar.
 
 agency_code is canonicalized via canonical_agency() at write time.
 
@@ -59,15 +60,15 @@ def discover_program_urls(client: httpx.Client, index_url: str) -> list[str]:
     return urls
 
 
-def _parse_dollar_millions(text: str) -> str | None:
-    """Parse '$41,256 M' -> '41256000000' (integer USD, as string)."""
+def _parse_dollar_millions(text: str) -> int | None:
+    """Parse '$41,256 M' -> 41256000000 (native integer USD)."""
     m = _AMOUNT_RE.search(text)
     if not m:
         return None
     raw = m.group(1).replace(",", "")
     try:
         millions = float(raw)
-        return str(round(millions * _MILLION))
+        return round(millions * _MILLION)
     except ValueError:
         return None
 
@@ -77,18 +78,19 @@ def parse_program_page(html: str, url: str) -> dict:
 
     Returns dict with keys:
       program, agency_name, agency_code, source_url,
-      fy_rows: list[dict] where each has fiscal_year, rate_pct,
-               derived_improper_amount_usd, unknown_rate_pct,
-               outlays_usd, source_url.
+      fy_rows: list[dict] where each has fiscal_year (int), rate_pct (float),
+               derived_improper_amount_usd (int | None),
+               unknown_rate_pct (float | None), outlays_usd (int),
+               source_url (str).
 
     agency_code is extracted from the URL slug prefix (e.g. hhs-, ssa-, dow-).
 
     rate_pct is the IMPROPER payment rate from data-improper attribute on the
     canvas element (precise float, not rounded display text).
 
-    derived_improper_amount_usd is DERIVED: outlays * data-improper / 100.
+    derived_improper_amount_usd is DERIVED: round(outlays * data-improper / 100).
 
-    unknown_rate_pct is from data-unknown attribute (0 if absent or zero);
+    unknown_rate_pct is from data-unknown attribute (0.0 if present and zero);
     set to None if neither data-unknown nor (accuracy + improper) sum to 100
     and the attribute is absent.
     """
@@ -116,7 +118,7 @@ def parse_program_page(html: str, url: str) -> dict:
 
     # --- Pass 1: outlays per FY from metrics-summary cards ---
     # Each card has data-year and contains "$X M" and "FY YYYY outlays"
-    outlays_by_fy: dict[str, str] = {}
+    outlays_by_fy: dict[str, int] = {}
     for card in tree.css("div.metrics-summary"):
         # Use data-year attribute when present for precise FY
         fy: str | None = card.attributes.get("data-year")
@@ -165,7 +167,7 @@ def parse_program_page(html: str, url: str) -> dict:
             continue
 
         try:
-            unknown_rate: str | None = str(float(canvas.attributes.get("data-unknown", "")))
+            unknown_rate: float | None = float(canvas.attributes.get("data-unknown", ""))
         except (ValueError, TypeError):
             unknown_rate = None
 
@@ -173,15 +175,16 @@ def parse_program_page(html: str, url: str) -> dict:
         if outlays_usd is None:
             continue
 
-        # Derived amount: outlays * improper_rate / 100
+        # Derived amount: round(outlays * improper_rate / 100)
+        derived_improper_amount_usd: int | None
         try:
-            derived_improper_amount_usd = str(round(int(outlays_usd) * improper_rate / 100))
-        except (ValueError, ZeroDivisionError):
-            derived_improper_amount_usd = ""
+            derived_improper_amount_usd = round(outlays_usd * improper_rate / 100)
+        except (ValueError, OverflowError):
+            derived_improper_amount_usd = None
 
         fy_rows.append({
-            "fiscal_year": fy,
-            "rate_pct": str(improper_rate),
+            "fiscal_year": int(fy),
+            "rate_pct": improper_rate,
             "derived_improper_amount_usd": derived_improper_amount_usd,
             "unknown_rate_pct": unknown_rate,
             "outlays_usd": outlays_usd,
@@ -204,9 +207,10 @@ def scrape_payment_accuracy(
 ) -> Path:
     """Scrape all program pages and write improper_payments.parquet.
 
-    Columns (all varchar): program, agency_name, agency_code, fiscal_year,
-    rate_pct, derived_improper_amount_usd, unknown_rate_pct, outlays_usd,
-    source_url.
+    Columns are TYPED at ingestion (backlog #11 — no all-VARCHAR trap):
+      program varchar, agency_name varchar, agency_code varchar,
+      fiscal_year integer, rate_pct double, derived_improper_amount_usd double,
+      unknown_rate_pct double, outlays_usd double, source_url varchar.
 
     agency_code is canonicalized at write time via canonical_agency().
     derived_improper_amount_usd is DERIVED (outlays × data-improper rate);
@@ -250,8 +254,8 @@ def scrape_payment_accuracy(
         con.execute(
             "create table _ip ("
             "program varchar, agency_name varchar, agency_code varchar,"
-            "fiscal_year varchar, rate_pct varchar, derived_improper_amount_usd varchar,"
-            "unknown_rate_pct varchar, outlays_usd varchar, source_url varchar)"
+            "fiscal_year integer, rate_pct double, derived_improper_amount_usd double,"
+            "unknown_rate_pct double, outlays_usd double, source_url varchar)"
         )
         con.executemany("insert into _ip values (?,?,?,?,?,?,?,?,?)", rows)
         con.execute(

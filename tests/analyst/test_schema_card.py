@@ -208,14 +208,21 @@ def test_budget_to_awards_grain_and_count_note():
     assert "join" in notes.lower()
 
 
-def test_improper_payments_varchar_cast_note():
-    """improper_payments TEMP TABLE must warn that all columns are VARCHAR and
-    require a CAST before ordering (lexicographic-order trap)."""
+def test_improper_payments_typed_columns_note():
+    """improper_payments is natively typed since backlog #11 (ingestion writes
+    INTEGER fiscal_year + DOUBLE rates/amounts). The card must say ORDER BY
+    works naturally and must NOT resurrect the all-VARCHAR CAST-trap warning
+    (a stale warning would push the agent to write needless CASTs)."""
     info = SCHEMA_CARD["tables"]["improper_payments"]
     notes = " ".join(info.get("notes", []))
-    assert "VARCHAR" in notes
-    assert "CAST" in notes
-    assert "lexicographic" in notes.lower()
+    assert "INTEGER" in notes
+    assert "DOUBLE" in notes
+    assert "no-op" in notes  # legacy CASTs documented as harmless
+    # The old trap wording must be gone
+    assert "ALL columns are stored as VARCHAR" not in notes
+    key_cols = info["key_columns"]
+    assert "INTEGER" in key_cols["fiscal_year"]
+    assert "DOUBLE" in key_cols["derived_improper_amount_usd"]
 
 
 # ---------------------------------------------------------------------------

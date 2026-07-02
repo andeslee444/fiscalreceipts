@@ -104,26 +104,27 @@ def make_lake(data_dir: Path):
         "select * from (values ('2017-10-31','Department of Defense','1000')) "
         "t(record_date, classification_desc, current_month_gross_outly_amt)",
     )
-    # oversight fixtures for new efficiency marts
+    # oversight fixtures for new efficiency marts — typed schema (backlog #11):
+    # fiscal_year INTEGER, rate/amount columns DOUBLE, mapped BOOLEAN
     oversight = data_dir / "parquet/oversight"
     oversight.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"copy (select * from (values "
-        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS','2023','7.66','31700000000','0.0','413900000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
-        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS','2022','6.26','25740000000','0.0','411300000000','https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
-        f"('SNAP','Department of Agriculture','USDA','2023','5.74','5060000000','0.0','88100000000','https://paymentaccuracy.gov/program/usda-snap'),"
-        f"('SNAP','Department of Agriculture','USDA','2022','4.71','3970000000','0.0','84300000000','https://paymentaccuracy.gov/program/usda-snap'),"
-        f"('Earned Income Tax Credit','Department of the Treasury','TREASURY','2023','34.02','21900000000','0.0','64400000000','https://paymentaccuracy.gov/program/treasury-eitc')"
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS',2023,7.66,31700000000.0,0.0,413900000000.0,'https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('Medicare Fee-for-Service','Department of Health and Human Services','HHS',2022,6.26,25740000000.0,0.0,411300000000.0,'https://paymentaccuracy.gov/program/hhs-medicare-ffs'),"
+        f"('SNAP','Department of Agriculture','USDA',2023,5.74,5060000000.0,0.0,88100000000.0,'https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('SNAP','Department of Agriculture','USDA',2022,4.71,3970000000.0,0.0,84300000000.0,'https://paymentaccuracy.gov/program/usda-snap'),"
+        f"('Earned Income Tax Credit','Department of the Treasury','TREASURY',2023,34.02,21900000000.0,0.0,64400000000.0,'https://paymentaccuracy.gov/program/treasury-eitc')"
         f") t(program, agency_name, agency_code, fiscal_year, rate_pct, derived_improper_amount_usd, unknown_rate_pct, outlays_usd, source_url))"
         f" to '{oversight}/improper_payments.parquet' (format parquet)"
     )
     duckdb.sql(
         f"copy (select * from (values "
-        f"('DOD Contract Management','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-contract','DOD','true','DoD contract management','https://www.gao.gov/high-risk-list'),"
-        f"('DOD Weapon Systems Acquisition','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-weapons','DOD','true','DoD weapons programs','https://www.gao.gov/high-risk-list'),"
-        f"('Medicare/Medicaid','https://files.gao.gov/reports/GAO-25-107743/index.html#medicare','HHS','true','CMS programs','https://www.gao.gov/high-risk-list'),"
-        f"('Enforcement of Tax Laws','https://files.gao.gov/reports/GAO-25-107743/index.html#tax','TREASURY','true','IRS enforcement','https://www.gao.gov/high-risk-list'),"
-        f"('Unmapped Area','https://files.gao.gov/reports/GAO-25-107743/index.html#unmapped','','false','no clear agency','https://www.gao.gov/high-risk-list')"
+        f"('DOD Contract Management','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-contract','DOD',true,'DoD contract management','https://www.gao.gov/high-risk-list'),"
+        f"('DOD Weapon Systems Acquisition','https://files.gao.gov/reports/GAO-25-107743/index.html#dod-weapons','DOD',true,'DoD weapons programs','https://www.gao.gov/high-risk-list'),"
+        f"('Medicare/Medicaid','https://files.gao.gov/reports/GAO-25-107743/index.html#medicare','HHS',true,'CMS programs','https://www.gao.gov/high-risk-list'),"
+        f"('Enforcement of Tax Laws','https://files.gao.gov/reports/GAO-25-107743/index.html#tax','TREASURY',true,'IRS enforcement','https://www.gao.gov/high-risk-list'),"
+        f"('Unmapped Area','https://files.gao.gov/reports/GAO-25-107743/index.html#unmapped','',false,'no clear agency','https://www.gao.gov/high-risk-list')"
         f") t(area_title, area_url, agency_code, mapped, notes, source_url))"
         f" to '{oversight}/high_risk.parquet' (format parquet)"
     )

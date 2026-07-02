@@ -63,22 +63,23 @@ def _make_gao_fixture(tmp_path: Path) -> tuple[Path, object]:
     )
     con.close()
 
+    # mapped is BOOLEAN since backlog #11 (typed at ingestion)
     _write_parquet(
         tmp_path / "parquet" / "oversight" / "high_risk.parquet",
         "area_title varchar, area_url varchar, agency_code varchar,"
-        " mapped varchar, notes varchar, source_url varchar",
+        " mapped boolean, notes varchar, source_url varchar",
         [
             ("DOD Contract Management",
              "https://files.gao.gov/reports/GAO-25-107743/index.html#_Toc1",
-             "DOD", "true", "Defense contract management",
+             "DOD", True, "Defense contract management",
              "https://www.gao.gov/high-risk-list"),
             ("DOD Weapon Systems Acquisition",
              "https://files.gao.gov/reports/GAO-25-107743/index.html#_Toc2",
-             "DOD", "true", "MDAPs",
+             "DOD", True, "MDAPs",
              "https://www.gao.gov/high-risk-list"),
             ("Medicare Program & Improper Payments",
              "https://files.gao.gov/reports/GAO-25-107743/index.html#_Toc3",
-             "HHS", "true", "CMS",
+             "HHS", True, "CMS",
              "https://www.gao.gov/high-risk-list"),
         ],
     )

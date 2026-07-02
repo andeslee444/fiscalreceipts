@@ -34,7 +34,11 @@ def make_oversight_fixtures(
     n_areas: int = 35,
     mapped_count: int = 30,
 ) -> tuple[Path, Path]:
-    """Write minimal improper_payments and high_risk parquet fixtures."""
+    """Write minimal improper_payments and high_risk parquet fixtures.
+
+    Mirrors the typed ingestion schema (backlog #11): fiscal_year INTEGER,
+    rate/amount columns DOUBLE, mapped BOOLEAN.
+    """
     ip_path = tmp_path / "improper_payments.parquet"
     hr_path = tmp_path / "high_risk.parquet"
 
@@ -42,8 +46,8 @@ def make_oversight_fixtures(
     ip_rows = []
     for i in range(n_programs):
         ip_rows.append(
-            f"('Program{i}','Agency{i % 5}','ag{i % 5}','2023',"
-            f"'5.0','1000000','0.0','20000000','https://paymentaccuracy.gov/program/p{i}')"
+            f"('Program{i}','Agency{i % 5}','ag{i % 5}',2023,"
+            f"5.0,1000000.0,0.0,20000000.0,'https://paymentaccuracy.gov/program/p{i}')"
         )
     ip_sql = ",".join(ip_rows)
     write_parquet(
@@ -61,7 +65,7 @@ def make_oversight_fixtures(
             code = ""
             mapped = "false"
         hr_rows.append(
-            f"('Area{i}','https://gao.gov/area{i}','{code}','{mapped}',"
+            f"('Area{i}','https://gao.gov/area{i}','{code}',{mapped},"
             f"'notes','https://www.gao.gov/high-risk-list')"
         )
     hr_sql = ",".join(hr_rows)
@@ -251,13 +255,13 @@ class TestTraceGate3:
         db_path = make_duckdb_with_marts(tmp_path)
         _, hr_path = make_oversight_fixtures(tmp_path)
 
-        # Add DOD-mapped areas to the fixture
+        # Add DOD-mapped areas to the fixture (mapped is BOOLEAN)
         hr_path.unlink(missing_ok=True)
         write_parquet(
             hr_path,
-            "('DOD Weapon Systems','https://gao.gov/area1','DOD','true','dod notes','https://www.gao.gov/high-risk-list'),"
-            "('DOD Financial Mgmt','https://gao.gov/area2','DOD','true','dod notes','https://www.gao.gov/high-risk-list'),"
-            "('Other HHS','https://gao.gov/area3','HHS','true','hhs notes','https://www.gao.gov/high-risk-list')",
+            "('DOD Weapon Systems','https://gao.gov/area1','DOD',true,'dod notes','https://www.gao.gov/high-risk-list'),"
+            "('DOD Financial Mgmt','https://gao.gov/area2','DOD',true,'dod notes','https://www.gao.gov/high-risk-list'),"
+            "('Other HHS','https://gao.gov/area3','HHS',true,'hhs notes','https://www.gao.gov/high-risk-list')",
             "area_title, area_url, agency_code, mapped, notes, source_url",
         )
         result = trace_gate3(db_path, hr_path)
@@ -281,7 +285,7 @@ class TestTraceGate3:
         hr_path = tmp_path / "hr.parquet"
         write_parquet(
             hr_path,
-            "('DOD Weapon Systems','https://gao.gov/area1','DOD','true','dod notes','https://www.gao.gov/high-risk-list')",
+            "('DOD Weapon Systems','https://gao.gov/area1','DOD',true,'dod notes','https://www.gao.gov/high-risk-list')",
             "area_title, area_url, agency_code, mapped, notes, source_url",
         )
         result = trace_gate3(db_path, hr_path)

@@ -3198,12 +3198,15 @@ def _emit_gao_overlays_sidecar(
     hr_pq = _stage_parquet_path(duckdb_path, "oversight", "high_risk.parquet")
     if hr_pq is not None:
         try:
+            # mapped is BOOLEAN since backlog #11; cast keeps legacy
+            # varchar 'true'/'false' parquets working identically.
             for (area_title, area_url, agency_code, mapped, notes,
                  source_url) in _duckdb.sql(
-                f"select area_title, area_url, agency_code, mapped, notes,"
+                f"select area_title, area_url, agency_code,"
+                f" cast(mapped as boolean) as mapped, notes,"
                 f" source_url from read_parquet('{hr_pq}')"
             ).fetchall():
-                if mapped != "true" or not agency_code:
+                if not mapped or not agency_code:
                     continue
                 areas_by_code.setdefault(agency_code, []).append({
                     "area_title": area_title,

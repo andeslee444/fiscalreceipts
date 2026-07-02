@@ -1,14 +1,16 @@
 -- fct_improper_exposure: per agency_code from improper_payments oversight data.
 -- Uses the latest fiscal_year row-set per program, then aggregates to agency level.
 -- Joins agency spending from fct_award_transactions where sub-agency names match.
+-- Source columns are typed at ingestion (fiscal_year INTEGER, rate/amount
+-- columns DOUBLE — backlog #11), so no try_cast is needed here.
 with ip_parsed as (
     select
         agency_code,
         program,
-        try_cast(fiscal_year as integer) as fiscal_year,
-        try_cast(rate_pct as double) as rate_pct,
-        try_cast(derived_improper_amount_usd as double) as derived_improper_amount_usd,
-        try_cast(outlays_usd as double) as outlays_usd,
+        fiscal_year,
+        rate_pct,
+        derived_improper_amount_usd,
+        outlays_usd,
         source_url
     from {{ source('oversight', 'improper_payments') }}
     where agency_code is not null and agency_code <> ''
