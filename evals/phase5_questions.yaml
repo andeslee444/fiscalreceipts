@@ -62,7 +62,7 @@
   notes: worst_confidence reflects lowest-confidence UEI in the family
 - id: q008
   question: What were DARPA's FY2024 actual obligations for Defense Research Sciences
-    (PE 0601101E), in millions of dollars?
+    (PE 0601101E), in millions of dollars, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
     from fct_budget_lines
@@ -77,7 +77,7 @@
   notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse
 - id: q009
   question: What is the FY2025 enacted amount for DARPA's Defense Research Sciences
-    program (PE 0601101E), in millions?
+    program (PE 0601101E), in millions, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
     from fct_budget_lines
@@ -104,7 +104,7 @@
   notes: MDA P-1 exhibit; Iron Dome $3.08B FY2024 actuals
 - id: q011
   question: What was the FY2024 actual obligation for the Virginia Class Submarine
-    program, in billions?
+    program, in billions, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1e6, 3)
     from fct_budget_lines
@@ -116,7 +116,7 @@
   notes: Navy P-1; PE 2013; $10.66B
 - id: q012
   question: What is DARPA's top budget line item by FY2024 actuals (by program title
-    and amount in millions)?
+    and amount in millions, to one decimal place)?
   answer_sql: |
     select title, round(amount_thousands / 1000.0, 1)
     from fct_budget_lines
@@ -146,7 +146,8 @@
   notes: Long Range Kill Chains, Air Force; +3053%
 - id: q015
   question: What is the name of the Air Force program (PE 1203154SF) that shows the
-    largest FY25→FY26 percentage increase, and by what percentage?
+    largest FY25→FY26 percentage increase, and by what percentage, to one decimal
+    place?
   answer_sql: |
     select b.title, round(t.fy2526_pct_change, 1)
     from fct_budget_trajectory t
@@ -162,7 +163,8 @@
   notes: FY25 enacted $244M → FY26 total $7.7B
 - id: q016
   question: Which DHA program shows the largest absolute dollar decrease from FY2025
-    to FY2026 in the trajectory mart (PE code and amount in millions)?
+    to FY2026 in the trajectory mart (PE code and amount in millions, to one decimal
+    place)?
   answer_sql: |
     select pe_bli, round(fy2526_change / 1000.0, 1)
     from fct_budget_trajectory
@@ -188,8 +190,9 @@
   expected_citation_kind: warehouse
   notes: fct_budget_to_awards PE coverage
 - id: q019
-  question: Which DARPA program has the most individual award contracts linked in
-    the budget-to-awards crosswalk?
+  question: Which DARPA program has the most individual award contracts (distinct
+    award PIIDs) linked in the budget-to-awards crosswalk? Identify it by PE code
+    and program title.
   answer_sql: |
     select pe_bli, program_title
     from fct_budget_to_awards
@@ -201,7 +204,8 @@
   notes: SBIR has 488 linked PIIDs; SELECT trimmed to 2 cols (plan q019 canonicalization)
 - id: q020
   question: What linking method and confidence level does the warehouse use for most
-    budget-to-awards crosswalk records?
+    budget-to-awards crosswalk records? Report only the method and the confidence
+    level.
   answer_sql: |
     select method, confidence
     from fct_budget_to_awards
@@ -221,8 +225,8 @@
   expected_citation_kind: warehouse
   notes: HHI 8034; small agency, few vendors
 - id: q022
-  question: What is the HHI for the Missile Defense Agency, and how many distinct
-    vendor families does it use?
+  question: What is the HHI for the Missile Defense Agency (to one decimal place),
+    and how many distinct vendor families does it use?
   answer_sql: |
     select round(hhi, 1), family_count
     from fct_agency_concentration
@@ -242,7 +246,7 @@
 - id: q024
   question: Which federal agency has the highest estimated improper payment exposure
     in the warehouse (derived from program-level rates), and what is the approximate
-    amount in billions?
+    amount in billions, to two decimal places?
   answer_sql: |
     select agency_code, round(derived_improper_amount_usd / 1e9, 2)
     from fct_improper_exposure
@@ -266,7 +270,7 @@
     in agent response. SELECT trimmed to what the question asks.'
 - id: q026
   question: What is the largest individual improper payment program at HHS in FY2025,
-    and its estimated dollar amount?
+    and its estimated dollar amount in billions, to two decimal places?
   answer_sql: |
     select program, round(cast(derived_improper_amount_usd as double) / 1e9, 2)
     from read_parquet('data/parquet/oversight/improper_payments.parquet')

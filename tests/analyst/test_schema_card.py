@@ -113,7 +113,7 @@ def test_schema_card_has_answer_shape_rules():
 
 
 def test_schema_card_has_final_sql_rules():
-    """SCHEMA_CARD must carry determinism + display-precision rules."""
+    """SCHEMA_CARD must carry determinism + precision rules."""
     rules = SCHEMA_CARD.get("final_sql_rules")
     assert isinstance(rules, list) and rules, "final_sql_rules missing/empty"
     text = " ".join(rules)
@@ -126,6 +126,36 @@ def test_schema_card_has_final_sql_rules():
     assert "millions" in text and "billions" in text
     # submitted SQL must return exactly the answer rows
     assert "exactly the answer rows" in text
+
+
+def test_final_sql_rules_default_full_canonical_precision():
+    """Precision default must be full canonical precision (copy the canonical
+    field verbatim); rounding is applied ONLY when the question explicitly
+    states a precision — no per-unit display-precision guesswork."""
+    text = " ".join(SCHEMA_CARD["final_sql_rules"])
+    assert "full canonical precision" in text
+    assert "verbatim" in text
+    # rounding is conditional on the question stating a precision
+    assert "explicitly states" in text
+    assert "ONLY" in text
+
+
+def test_final_sql_rules_no_per_unit_rounding_guesswork():
+    """The old per-unit display-precision defaults (e.g. 'millions → ROUND(x, 1)',
+    'billions → ROUND(x, 2)') must NOT reappear — they made the agent round
+    answers the question never asked to round."""
+    text = " ".join(SCHEMA_CARD["final_sql_rules"])
+    assert not re.search(r"(millions|billions|percentages|HHI)\s*→\s*ROUND", text), (
+        "per-unit rounding defaults must not be reintroduced"
+    )
+    assert "Display precision when an answer pairs" not in text
+
+
+def test_final_sql_rules_unit_naming_does_not_imply_rounding():
+    """Naming a unit ('in millions') mandates conversion but must NOT imply
+    rounding on its own."""
+    text = " ".join(SCHEMA_CARD["final_sql_rules"])
+    assert "does NOT imply rounding" in text
 
 
 def test_render_contains_shape_and_final_sql_sections():

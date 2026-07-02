@@ -40,7 +40,7 @@ URL_COLUMN_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 SCHEMA_CARD: dict = {
-    "version": "5b4.1",
+    "version": "5b4.2",
     "description": (
         "GovBudget warehouse — DoD J-book budget facts (FY2026 edition only), "
         "USASpending award transactions (FY2017-FY2026), entity family crosswalk, "
@@ -77,8 +77,9 @@ SCHEMA_CARD: dict = {
         "multiple.",
     ],
 
-    # Rules ensuring the submitted SQL re-executes to the same answer and uses
-    # the house display precision.
+    # Rules ensuring the submitted SQL re-executes to the same answer. The
+    # precision default is full canonical precision; rounding happens only
+    # when the question explicitly states a precision.
     "final_sql_rules": [
         "The grader re-executes the submitted sql on a fresh connection and "
         "requires canonicalize(rows) == answer character-for-character. Always "
@@ -88,21 +89,22 @@ SCHEMA_CARD: dict = {
         "Never leave a raw float SUM()/AVG() over a large table in the final "
         "SELECT list: parallel aggregation makes the trailing decimals vary "
         "between executions, so the grader's re-run will not reproduce your "
-        "value. Keep such aggregates in ORDER BY only; if the question asks for "
-        "the aggregated amount itself, wrap it in ROUND(..., 2) (or the display "
-        "precision below).",
+        "value. Keep such aggregates in ORDER BY only; when the question asks "
+        "for the aggregated amount itself it states a unit and precision — "
+        "convert the unit first, then ROUND to the stated precision (rounding "
+        "after unit conversion is stable across runs).",
         "When ranking, add a deterministic tiebreaker to ORDER BY "
         "(e.g. ORDER BY metric DESC, id) so ties cannot reorder between runs.",
         "Unit conversion is MANDATORY when the question names a unit ('in "
         "millions', 'in billions', 'per capita', 'percentage') — never answer "
-        "in raw full dollars when a display unit is named.",
-        "Display precision when an answer pairs an identifier with a converted "
-        "quantity (multi-column answers are matched as exact strings): amounts "
-        "in millions → ROUND(x, 1); amounts in billions → ROUND(x, 2); "
-        "percentages → ROUND(x, 1); index values such as HHI → ROUND(x, 1). A "
-        "precision stated in the question overrides these defaults. A single "
-        "bare-number answer may keep the natural conversion output (numeric "
-        "tolerance applies to scalars).",
+        "in raw full dollars when a display unit is named. Naming a unit alone "
+        "does NOT imply rounding: convert the unit and keep the full converted "
+        "value unless the question also states a precision.",
+        "Precision default: submit the full canonical precision — copy the "
+        "canonical field verbatim; do not round, truncate, or reformat values "
+        "on your own. Round ONLY when the question explicitly states a "
+        "precision or rounding (e.g. 'to one decimal place', 'rounded to two "
+        "decimal places'); then ROUND to exactly what it asks.",
         "Compute superlatives inside the single mart that owns the quantity at "
         "its documented grain; avoid joins that change the row grain — they "
         "multiply rows and corrupt counts and sums.",
@@ -417,7 +419,7 @@ def _build_card_text() -> str:
 
     lines += [
         "",
-        "## FINAL SQL RULES (determinism + display precision)",
+        "## FINAL SQL RULES (determinism + precision)",
     ]
     for rule in SCHEMA_CARD["final_sql_rules"]:
         lines.append(f"  - {rule}")
