@@ -37,6 +37,8 @@ import { runCoverageGate } from "./gates/coverage.mjs";
 import { runDegradedGate } from "./gates/degraded.mjs";
 import { runAnswerfoldGate } from "./gates/answerfold.mjs";
 import { runMotionGate } from "./gates/motion.mjs";
+import { runReceiptMomentGate } from "./gates/receiptmoment.mjs";
+import { runPersonasGate } from "./gates/personas.mjs";
 
 const PORT = 4173;
 
@@ -144,6 +146,18 @@ async function main() {
     const g16 = await runAnswerfoldGate({ baseUrl: BASE_URL });
     gateResults.push({ n: 16, name: "answerfold", pass: g16.pass });
     printGate(16, "answerfold", g16);
+
+    // ── Gate 18: receiptmoment (Phase 5C — G4, live) ──────────────────────
+    console.log("\n--- gate 18 receiptmoment ---");
+    const g18 = await runReceiptMomentGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 18, name: "receiptmoment", pass: g18.pass });
+    printGate(18, "receiptmoment", g18);
+
+    // ── Gate 19: personas (Phase 5C — G5, live) ───────────────────────────
+    console.log("\n--- gate 19 personas ---");
+    const g19 = await runPersonasGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 19, name: "personas", pass: g19.pass });
+    printGate(19, "personas", g19);
   } finally {
     // Stop the server before LHCI (LHCI serves its own static dist)
     await serverHandle.close();
