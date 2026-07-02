@@ -31,6 +31,9 @@ import { runDistrictGate } from "./gates/district.mjs";
 import { runFilingGate } from "./gates/filing.mjs";
 import { runOgGate } from "./gates/og.mjs";
 import { runAnimationGate } from "./gates/animation.mjs";
+// Phase 5C gates
+import { runLinkgraphGate } from "./gates/linkgraph.mjs";
+import { runCoverageGate } from "./gates/coverage.mjs";
 
 const PORT = 4173;
 
@@ -169,6 +172,18 @@ async function main() {
   const g12 = await runAnimationGate();
   gateResults.push({ n: 12, name: "animation", pass: g12.pass });
   printGate(12, "animation", g12);
+
+  // ── Gate 13: linkgraph (Phase 5C — G1) ───────────────────────────────────
+  console.log("\n--- gate 13 linkgraph ---");
+  const g13 = await runLinkgraphGate();
+  gateResults.push({ n: 13, name: "linkgraph", pass: g13.pass });
+  printGate(13, "linkgraph", g13);
+
+  // ── Gate 14: coverage (Phase 5C — G2) ────────────────────────────────────
+  console.log("\n--- gate 14 coverage ---");
+  const g14 = await runCoverageGate();
+  gateResults.push({ n: 14, name: "coverage", pass: g14.pass });
+  printGate(14, "coverage", g14);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");
