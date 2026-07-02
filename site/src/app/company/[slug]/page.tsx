@@ -6,6 +6,8 @@ import {
   getEntityTopMap,
   getEntityDetails,
   collectCitationsWithInputs,
+  getCompaniesWithAwardsCount,
+  getCompaniesCount,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { companyOgImages } from "@/lib/og";
@@ -366,7 +368,7 @@ export default async function CompanyPage({
             </p>
             <p className="mt-2 text-xs">
               The crosswalk mart contains R&amp;D performers, not primes.
-              Approximately 18 of the top-200 contractor families have
+              Approximately {getCompaniesWithAwardsCount()} of the top-{getCompaniesCount()} contractor families have
               award links in the current dataset. A family-level awards mart
               is on the roadmap.
             </p>

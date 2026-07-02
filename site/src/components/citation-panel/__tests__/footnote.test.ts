@@ -70,4 +70,55 @@ describe("formatFootnote", () => {
     expect(s).toContain("Senate LDA filing");
     expect(s).toContain("govbudget.vercel.app/filing/some-uuid/");
   });
+
+  it("formats a state_soql citation with the SoQL endpoint URL", () => {
+    const s = formatFootnote({
+      kind: "state_soql", factId: "aabb112233445566",
+      label: "CT defense obligations FY2024",
+      amountText: "4,321,000 USD",
+      officialUrl: "https://data.ct.gov/resource/abcd-1234.json?$query=SELECT+SUM(amount)+WHERE+fiscal_year=2024",
+      retrievedAt: "2026-06-15",
+      url: "https://govbudget.vercel.app/state/CT/",
+    });
+    expect(s).toContain("state open-data query");
+    expect(s).toContain("data.ct.gov");
+    expect(s).toContain("retrieved 2026-06-15");
+    expect(s).toContain("govbudget.vercel.app/state/CT/");
+    expect(s).not.toContain("null");
+    expect(s).not.toContain("undefined");
+  });
+
+  it("formats a state_file citation with the pointer URL", () => {
+    const s = formatFootnote({
+      kind: "state_file", factId: "ccdd334455667788",
+      label: "CA Open Fi$Cal defense obligations FY2025",
+      amountText: "9,876,543 USD",
+      officialUrl: "https://fiscal.ca.gov/track-spending/",
+      retrievedAt: "2026-06-20",
+      url: "https://govbudget.vercel.app/state/CA/",
+    });
+    expect(s).toContain("state source file");
+    expect(s).toContain("fiscal.ca.gov");
+    expect(s).toContain("retrieved 2026-06-20");
+    expect(s).toContain("govbudget.vercel.app/state/CA/");
+    expect(s).not.toContain("null");
+    expect(s).not.toContain("undefined");
+  });
+
+  it("formats a jbook_narrative citation with the document title", () => {
+    const s = formatFootnote({
+      kind: "jbook_narrative", factId: "eeff556677889900",
+      label: "PE 0601101E — Program Description",
+      docTitle: "FY2026 RDT&E Defense-Wide Vol 1.pdf",
+      sha256: "cafef00d",
+      retrievedAt: "2026-06-11",
+      url: "https://govbudget.vercel.app/program/0601101E/",
+    });
+    expect(s).toContain("FY2026 RDT&E Defense-Wide Vol 1.pdf");
+    expect(s).toContain("sha256:cafef00d");
+    expect(s).toContain("retrieved 2026-06-11");
+    expect(s).toContain("govbudget.vercel.app/program/0601101E/");
+    expect(s).not.toContain("null");
+    expect(s).not.toContain("undefined");
+  });
 });

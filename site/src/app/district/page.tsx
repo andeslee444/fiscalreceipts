@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDistrictIndex, getSiteMeta, collectCitations } from "@/lib/data";
+import { getDistrictIndex, collectCitations, getFlowsCount, getProgramsCount } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -9,10 +9,12 @@ import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
 import { DistrictTable } from "@/components/district-table";
 
+const _flowsCount = getFlowsCount();
+const _programsCount = getProgramsCount();
+
 export const metadata: Metadata = {
   title: `Congressional Districts — ${SITE_NAME}`,
-  description:
-    "Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk (17 of 326 programs currently linkable).",
+  description: `Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk (${_flowsCount} of ${_programsCount} programs currently linkable).`,
   alternates: { canonical: `${SITE_URL}/district/` },
   openGraph: {
     title: `Congressional Districts — ${SITE_NAME}`,
@@ -26,7 +28,6 @@ export const metadata: Metadata = {
 
 export default function DistrictIndexPage() {
   const index = getDistrictIndex();
-  const meta = getSiteMeta();
 
   // Citation slice for geo grand total (stays state C / uncited)
   // No fact_ids here — geo total is uncited (dim_geography on uncited ledger).
@@ -50,7 +51,7 @@ export default function DistrictIndexPage() {
           <h1 className="text-3xl font-bold mb-2">Congressional Districts</h1>
           <p className="text-muted-foreground mb-2">
             {index.total_districts} districts with linkable defense obligations
-            — 17 of {meta.counts.programs} programs currently crosswalkable
+            — {_flowsCount} of {_programsCount} programs currently crosswalkable
             (DARPA budget-to-award crosswalk covers{" "}
             <Link
               href="/program/0601101E/"
@@ -65,7 +66,7 @@ export default function DistrictIndexPage() {
           {/* Coverage disclaimer */}
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-4">
             <strong>Coverage note:</strong> District data reflects only{" "}
-            high-confidence award crosswalk links. 309 of 326 programs have no
+            high-confidence award crosswalk links. {_programsCount - _flowsCount} of {_programsCount} programs have no
             district-level linkage yet — crosswalk extension is on the
             roadmap.
           </div>
