@@ -18,6 +18,7 @@ import { programOgImages } from "@/lib/og";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CoverageNote } from "@/components/coverage-note";
 import {
   FollowTheDollar,
   getFlowData,
@@ -229,9 +230,13 @@ export default async function ProgramPage({
       <ProgramFigures program={program} />
 
       {/* Program dossier — GATED dossiers only, cited-or-absent (Task 8a).
-          No dossier file → no section, zero placeholder text. */}
-      {dossier && (
+          No dossier file → a one-line coverage note explains the absence
+          (Phase 5C: empty sections explain absence instead of disappearing).
+          Never placeholder prose — the note is the only ungated text. */}
+      {dossier ? (
         <ProgramDossier dossier={dossier} snapshotMeta={getSnapshotMeta()} />
+      ) : (
+        <CoverageNote id="dossiers" empty className="mt-8" />
       )}
 
       {/* Budget line items (workbook-cited) */}
@@ -246,14 +251,22 @@ export default async function ProgramPage({
       {/* Contractor concentration card */}
       <ProgramConcentration hhi={program.hhi} />
 
-      {/* Follow-the-dollar flow — 17 crosswalked programs only (Task 6b) */}
-      {flowData && <FollowTheDollar data={flowData} />}
+      {/* Follow-the-dollar flow — crosswalked programs only (Task 6b).
+          Programs without a flow sidecar get a one-line coverage note
+          explaining the absence (Phase 5C Task 8). */}
+      {flowData ? (
+        <FollowTheDollar data={flowData} />
+      ) : (
+        <CoverageNote id="follow-the-dollar" empty className="mt-8" />
+      )}
 
-      {/* Awards — capped at 25, client expand */}
+      {/* Awards — capped at 25, client expand. The company-awards scope
+          note is server-rendered here and passed down (client boundary). */}
       <ProgramAwards
         initialAwards={initialAwards}
         totalCount={details.awards.length}
         peBli={peBli}
+        scopeNote={<CoverageNote id="company-awards" />}
       />
 
       {/* Lobbying mentions — capped at 25, client expand */}

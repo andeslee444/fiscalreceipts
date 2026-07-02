@@ -32,4 +32,15 @@ describe("coverage manifest", () => {
     const c = getCoverage("follow-the-dollar");
     expect(c.note).toContain("17 of 420");
   });
+
+  it("empty-state notes carry the same interpolated counts", () => {
+    // Empty-state variants must satisfy the same G2 number check as the
+    // standard notes (the representative flow page may lack a dossier).
+    expect(getCoverage("follow-the-dollar").emptyNote).toContain("17 of 420");
+    expect(getCoverage("dossiers").emptyNote).toContain("50 of 420");
+    // Surfaces that always render have no empty-state variant.
+    expect(getCoverage("districts").emptyNote).toBeNull();
+    expect(getCoverage("state-ca").emptyNote).toBeNull();
+    expect(getCoverage("fy2026-partial").emptyNote).toBeNull();
+  });
 });

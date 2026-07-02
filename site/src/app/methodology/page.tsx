@@ -3,6 +3,8 @@ import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { getCoverage } from "@/lib/coverage";
+import { CoverageNote } from "@/components/coverage-note";
 
 export const metadata: Metadata = {
   title: `Methodology — ${SITE_NAME}`,
@@ -58,6 +60,13 @@ const FAQ_ITEMS = [
 ];
 
 export default function MethodologyPage() {
+  // Coverage & limits counts — interpolated at build time from the same data
+  // sidecars the surfaces use (never hardcoded; the G2 gate recomputes them).
+  const ftd = getCoverage("follow-the-dollar");
+  const dossiers = getCoverage("dossiers");
+  const companyAwards = getCoverage("company-awards");
+  const districts = getCoverage("districts");
+
   return (
     <>
       <script
@@ -205,6 +214,7 @@ export default function MethodologyPage() {
               states&apos; classification systems are published alongside the
               data.
             </p>
+            <CoverageNote id="state-ca" className="mt-2" />
           </div>
         </div>
       </section>
@@ -386,6 +396,120 @@ export default function MethodologyPage() {
             any particular award.
           </li>
         </ul>
+      </section>
+
+      {/* §coverage ──────────────────────────────────────────────────────
+          Coverage & limits (Phase 5C, Task 8). One anchored block per
+          coverage id — each block is the "why →" target for the inline
+          <CoverageNote> rendered on the surface it describes. Counts are
+          interpolated at build time; the G2 gate recomputes them from the
+          data sidecars and fails the build if they drift. */}
+      <section id="coverage" className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Coverage &amp; limits</h2>
+        <p className="text-muted-foreground leading-7 mb-5">
+          Several surfaces on this site are deliberately partial: we show a
+          link only when we can defend it, and we say so where the data
+          renders instead of burying the caveat here. Each block below is the
+          &ldquo;why&rdquo; behind one of those inline scope notes.
+        </p>
+
+        <div className="space-y-6 text-muted-foreground leading-7">
+          <section id="coverage-follow-the-dollar" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Follow the dollar — {ftd.numerator} of {ftd.denominator} programs
+            </h3>
+            <p>
+              The follow-the-dollar view draws a budget line&apos;s path to
+              specific awards, recipient families, and districts. That link is
+              an inference (§4): we render the flow only for the
+              high-confidence crosswalk tier, where the award&apos;s federal
+              account matches the budget line&apos;s appropriation and
+              program-title keywords overlap substantially. Today that covers{" "}
+              {ftd.numerator} of {ftd.denominator} programs, concentrated in
+              DARPA lines whose account structure makes matching reliable.
+              Program pages outside the crosswalk say so in place of the flow
+              — absence of a diagram means we could not defend the link, not
+              that no money moved.
+            </p>
+          </section>
+
+          <section id="coverage-dossiers" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Research dossiers — {dossiers.numerator} of{" "}
+              {dossiers.denominator} programs
+            </h3>
+            <p>
+              Dossiers exist for {dossiers.numerator} of{" "}
+              {dossiers.denominator} programs, selected by ranking FY2026
+              requested dollars — the top 50 by money at stake, not by
+              editorial judgment. Every dossier sentence must carry a
+              resolvable citation or the build fails
+              (&ldquo;cited-or-absent&rdquo;), so programs without a dossier
+              show a one-line note instead of unsourced prose. Coverage grows
+              as the research pipeline is run against more programs.
+            </p>
+          </section>
+
+          <section id="coverage-company-awards" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Company award linkage — {companyAwards.numerator} of{" "}
+              {companyAwards.denominator} profiled companies
+            </h3>
+            <p>
+              Company profiles cover the top {companyAwards.denominator}{" "}
+              contractor families by DoD obligations. Award rows on those
+              profiles come from the budget→award crosswalk, which currently
+              contains R&amp;D performers rather than primes — so only{" "}
+              {companyAwards.numerator} of {companyAwards.denominator}{" "}
+              profiled companies show linked awards. The remaining profiles
+              still carry obligation totals and lobbying activity; a
+              family-level awards mart is on the roadmap.
+            </p>
+          </section>
+
+          <section id="coverage-districts" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              District lens — {districts.numerator} of 435 districts
+            </h3>
+            <p>
+              {districts.numerator} of 435 congressional districts appear in
+              the district lens. A district gets a page only when at least one
+              high-confidence budget→award link places obligated dollars
+              there — a consequence of the crosswalk&apos;s current{" "}
+              {ftd.numerator}-program scope, not evidence that other districts
+              receive no defense money. District totals therefore understate
+              true defense spending everywhere they appear.
+            </p>
+          </section>
+
+          <section id="coverage-state-ca" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              California — FY2025 only
+            </h3>
+            <p>
+              California figures come from CA Open Fi$Cal and cover FY2025
+              only — the state publishes on a lag and prior years have not
+              been ingested yet. Connecticut (OpenCheckbook) is the only other
+              state in the pilot. Cross-state comparisons rely on our
+              published category mappings and should be treated as
+              directional, not exact.
+            </p>
+          </section>
+
+          <section id="coverage-fy2026-partial" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              FY2026 is a partial year
+            </h3>
+            <p>
+              FY2026 does not close until September 30, 2026, and USAspending
+              reports awards on a rolling basis — any FY2026 award total shown
+              is a partial-year figure that will grow. FY2026 budget figures
+              are the requested amounts from the FY2026 J-books, not enacted
+              appropriations. Comparing partial FY2026 award totals against
+              complete prior years will always understate FY2026.
+            </p>
+          </section>
+        </div>
       </section>
 
       {/* §feed ───────────────────────────────────────────────────────── */}

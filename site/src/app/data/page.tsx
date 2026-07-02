@@ -4,6 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CoverageNote } from "@/components/coverage-note";
 import { Explorer } from "@/components/explorer";
 import type { DatasetName } from "@/lib/duckdb";
 
@@ -227,6 +228,8 @@ export default function DataPage() {
           </a>
           .
         </p>
+        {/* CA state-data scope note — fct_state_per_capita covers FY2025 only */}
+        <CoverageNote id="state-ca" className="mt-1" />
       </section>
 
       {/* Interactive explorer — client-only, lazy-init */}

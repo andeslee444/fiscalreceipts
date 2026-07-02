@@ -12,6 +12,7 @@ import { companyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { CoverageNote } from "@/components/coverage-note";
 import { humanLdaUrl } from "@/lib/citations";
 
 export const dynamicParams = false;
@@ -347,7 +348,9 @@ export default async function CompanyPage({
 
       {/* ── Awards section ───────────────────────────────────────────────── */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-3">Budget-Linked Awards</h2>
+        <h2 className="text-xl font-semibold mb-1">Budget-Linked Awards</h2>
+        {/* Scope note — G2 contract (data-coverage="company-awards") */}
+        <CoverageNote id="company-awards" className="mb-3" />
         {details.awards.length === 0 ? (
           <div className="rounded-lg border border-border bg-muted/30 px-5 py-6 text-sm text-muted-foreground">
             <p>

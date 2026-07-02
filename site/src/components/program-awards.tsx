@@ -20,6 +20,12 @@ interface ProgramAwardsProps {
   totalCount: number;
   /** pe_bli for client-side fetch */
   peBli: string;
+  /**
+   * Server-rendered coverage/scope note (e.g. <CoverageNote id="company-awards">)
+   * shown under the heading. Passed as a node because CoverageNote is a
+   * server component and this table is a client component.
+   */
+  scopeNote?: React.ReactNode;
 }
 
 function ConfidenceBadge({ confidence }: { confidence: string }) {
@@ -57,6 +63,7 @@ export function ProgramAwards({
   initialAwards,
   totalCount,
   peBli,
+  scopeNote,
 }: ProgramAwardsProps) {
   const [expanded, setExpanded] = useState(false);
   const [allAwards, setAllAwards] = useState<ProgramAward[] | null>(null);
@@ -99,6 +106,7 @@ export function ProgramAwards({
       >
         Related Awards
       </h2>
+      {scopeNote && <div className="mb-2">{scopeNote}</div>}
       {hasMore && !expanded && (
         <p className="text-xs text-muted-foreground mb-3">
           Showing {initialAwards.length} of {totalCount}{" "}award records

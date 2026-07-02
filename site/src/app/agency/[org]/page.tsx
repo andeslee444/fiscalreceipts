@@ -13,6 +13,7 @@ import { agencyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { CoverageNote } from "@/components/coverage-note";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const dynamicParams = false;
@@ -143,6 +144,8 @@ export default async function AgencyPage({
             </Link>
             .
           </p>
+          {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
+          <CoverageNote id="fy2026-partial" className="mt-2" />
         </div>
 
         {/* GAO oversight overlay (Task 6b) */}

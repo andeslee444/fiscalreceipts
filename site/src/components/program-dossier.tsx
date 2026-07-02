@@ -7,6 +7,7 @@ import {
   type DossierFile,
 } from "@/lib/dossier";
 import { DossierFactChip, DossierUrlChip } from "@/components/dossier-chips";
+import { CoverageNote } from "@/components/coverage-note";
 
 /**
  * ProgramDossier (Task 8a) — renders a GATED dossier's four sections:
@@ -41,10 +42,12 @@ export function ProgramDossier({ dossier, snapshotMeta }: ProgramDossierProps) {
       data-dossier={dossier.pe_bli}
     >
       <h2 className="text-xl font-semibold mb-1">Program dossier</h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-muted-foreground mb-1">
         Every sentence below carries its citation — warehouse figures open the
         citation panel, news claims link the cached source.
       </p>
+      {/* Scope note — G2 contract (data-coverage="dossiers") */}
+      <CoverageNote id="dossiers" className="mb-4" />
 
       <div className="space-y-5">
         {sections.map((key) => (

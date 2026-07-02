@@ -5,6 +5,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
+import { CoverageNote } from "@/components/coverage-note";
 
 // No fallback pages beyond what generateStaticParams returns (SSG export).
 export const dynamicParams = false;
@@ -87,6 +88,8 @@ export default async function DistrictDetailPage({ params }: Props) {
             {detail.program_count !== 1 ? "s" : ""} via high-confidence
             USAspending crosswalk.
           </p>
+          {/* Scope note — same coverage contract as the district index */}
+          <CoverageNote id="districts" className="mt-1" />
 
           {/* Summary stats */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">

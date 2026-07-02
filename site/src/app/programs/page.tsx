@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPrograms, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CoverageNote } from "@/components/coverage-note";
 import { ProgramsTable } from "@/components/programs-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
@@ -59,6 +60,8 @@ export default function ProgramsPage() {
           FY26 figures carry derived workbook citations. Underlined figures
           open their source citation.
         </p>
+        {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
+        <CoverageNote id="fy2026-partial" className="mt-2" />
       </div>
       <ProgramsTable programs={sorted} orgs={orgs} />
     </div>

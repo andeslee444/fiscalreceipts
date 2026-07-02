@@ -8,6 +8,7 @@ import {
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
 import { Cite } from "@/components/cite";
+import { CoverageNote } from "@/components/coverage-note";
 
 /**
  * FollowTheDollar (Task 6b) — server-rendered SVG flow for the 17
@@ -177,10 +178,12 @@ export function FollowTheDollar({ data }: Props) {
   return (
     <section className="mt-8 pt-6 border-t border-border" id="follow-the-dollar">
       <h2 className="text-xl font-semibold mb-1">Follow the dollar</h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-muted-foreground mb-1">
         Appropriation → program element → top high-confidence awards →
         recipient families → congressional districts.
       </p>
+      {/* Scope note — G2 contract (data-coverage="follow-the-dollar") */}
+      <CoverageNote id="follow-the-dollar" className="mb-4" />
 
       <div className="flow-anim overflow-x-auto rounded-lg border border-border bg-card p-3">
         <svg

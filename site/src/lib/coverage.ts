@@ -35,6 +35,14 @@ export interface Coverage {
   numerator: number | null;
   denominator: number | null;
   note: string; // full rendered sentence, numbers interpolated
+  /**
+   * Empty-state variant for surfaces that are ABSENT on a given page
+   * (e.g. a program page with no flow sidecar / no dossier). Numbers are
+   * interpolated here too so the G2 number check holds no matter which
+   * variant a representative page renders. Null where an empty state
+   * cannot occur (the surface always renders).
+   */
+  emptyNote: string | null;
   anchor: string; // /methodology/#coverage-<id>
 }
 
@@ -48,6 +56,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: num,
         denominator: den,
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
+        emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
         anchor: "/methodology/#coverage-follow-the-dollar",
       };
     }
@@ -59,6 +68,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: num,
         denominator: den,
         note: `Research dossiers exist for ${num} of ${den} programs — the top-50 programs by FY2026 request, ranked by dollar value.`,
+        emptyNote: `No research dossier for this program — dossiers cover ${num} of ${den} programs, ranked by FY2026 requested dollars.`,
         anchor: "/methodology/#coverage-dossiers",
       };
     }
@@ -70,6 +80,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: num,
         denominator: den,
         note: `Award linkage is shown for ${num} of ${den} profiled companies — only high-confidence USASpending matches are included.`,
+        emptyNote: null,
         anchor: "/methodology/#coverage-company-awards",
       };
     }
@@ -81,6 +92,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: num,
         denominator: den,
         note: `${num} of 435 congressional districts have high-confidence linked defense dollars.`,
+        emptyNote: null,
         anchor: "/methodology/#coverage-districts",
       };
     }
@@ -90,6 +102,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: null,
         denominator: null,
         note: "California data covers FY2025 only — CA Open Fi$Cal updates on a lag; prior years not yet ingested.",
+        emptyNote: null,
         anchor: "/methodology/#coverage-state-ca",
       };
     }
@@ -99,6 +112,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: null,
         denominator: null,
         note: "FY2026 award data is a partial year — USASpending awards are reported on a rolling basis and the fiscal year does not close until September 30.",
+        emptyNote: null,
         anchor: "/methodology/#coverage-fy2026-partial",
       };
     }

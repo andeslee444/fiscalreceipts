@@ -6,6 +6,7 @@ import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
+import { CoverageNote } from "@/components/coverage-note";
 import { DistrictTable } from "@/components/district-table";
 
 export const metadata: Metadata = {
@@ -59,6 +60,8 @@ export default function DistrictIndexPage() {
             </Link>{" "}
             and related programs).
           </p>
+          {/* Scope note — G2 contract (data-coverage="districts") */}
+          <CoverageNote id="districts" className="mb-3" />
           {/* Coverage disclaimer */}
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-4">
             <strong>Coverage note:</strong> District data reflects only{" "}

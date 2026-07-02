@@ -1,5 +1,6 @@
 import { Cite } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
+import { CoverageNote } from "@/components/coverage-note";
 import type { ProgramRow } from "@/lib/data";
 
 /**
@@ -145,6 +146,10 @@ export function ProgramFigures({ program }: ProgramFiguresProps) {
           />
         </div>
       )}
+
+      {/* FY2026 partial-year scope note — G2 contract
+          (data-coverage="fy2026-partial") */}
+      <CoverageNote id="fy2026-partial" className="mt-3" />
     </section>
   );
 }
