@@ -962,6 +962,13 @@ def cmd_verify_phase5b3(args) -> None:
     _run(args)
 
 
+def cmd_verify_phase5(args) -> None:
+    """Run the phase 5 gate suite: freshness + eval (BLOCKED w/o key) + assembly."""
+    from govbudget.verify_phase5 import cmd_verify_phase5 as _run
+
+    _run(args)
+
+
 def cmd_analyst(args) -> None:
     """Run the text-to-SQL analyst agent on a single question."""
     from govbudget.analyst.agent import run
@@ -1084,6 +1091,12 @@ def main(argv=None) -> None:
         help="phase 5B-3 acceptance gates (dossier artifacts + feed/district/filing/og/animation gates)",
     )
     v5b3.set_defaults(func=cmd_verify_phase5b3)
+
+    v5 = sub.add_parser(
+        "verify-phase5",
+        help="phase 5 assembly: freshness gate + eval gate (BLOCKED w/o key) + sub-phase assembly",
+    )
+    v5.set_defaults(func=cmd_verify_phase5)
 
     st = sub.add_parser("states", help="phase 4 state/local pilot ingestion")
     st.add_argument(
