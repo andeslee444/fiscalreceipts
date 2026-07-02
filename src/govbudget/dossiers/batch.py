@@ -439,14 +439,14 @@ this pipeline end-to-end without a key.)"""
 
 
 def require_client(client=None):
-    """Return a usable Anthropic client or die loudly (decision 6)."""
-    if client is not None:
-        return client
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit(_NO_KEY_MESSAGE)
-    from anthropic import Anthropic
+    """Return a usable Anthropic client or die loudly (decision 6).
 
-    return Anthropic()
+    Delegates to govbudget.common.anthropic_client.require_client, passing
+    the dossier-specific _NO_KEY_MESSAGE verbatim.
+    """
+    from govbudget.common.anthropic_client import require_client as _rc
+
+    return _rc(client, message=_NO_KEY_MESSAGE)
 
 
 # --------------------------------------------------------------------------
