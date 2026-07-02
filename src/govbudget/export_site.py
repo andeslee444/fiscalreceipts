@@ -843,9 +843,16 @@ def _build_derived_citation_rows(
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
     #   organization, budget_activity, budget_activity_title, pe_bli, title,
     #   amount_type, amount_thousands, units, document_sha256, source_sheet, source_cells)
+    # Detail rows only (title IS NOT NULL): budget_lines carries both detail
+    # rows and R-1 rollup rows (title IS NULL) for the same
+    # (pe_bli, org, amount_type); fct_budget_trajectory pivots detail rows only,
+    # so including rollup fact_ids here would make sum(inputs) exceed the
+    # recorded trajectory value and fail the derived-sum recompute gate.
     bl_key_to_fid: dict[tuple, list[str]] = {}
     for r in bl_rows:
-        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, _, bl_amt_type, _, _, _, _, _ = r
+        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, bl_title, bl_amt_type, _, _, _, _, _ = r
+        if bl_title is None:
+            continue
         k = (bl_pe, bl_org, bl_amt_type)
         bl_key_to_fid.setdefault(k, []).append(fid_bl)
 
