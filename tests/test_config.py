@@ -27,3 +27,35 @@ def test_research_dir_defined_and_absolute():
     rdir = str(config.RESEARCH_DIR)
     assert rdir.endswith("data/research") or rdir.endswith("data\\research"), \
         f"RESEARCH_DIR should be ROOT/data/research, got: {rdir}"
+
+
+def test_load_env_file(tmp_path, monkeypatch):
+    from govbudget.config import _load_env_file
+
+    env = tmp_path / ".env"
+    env.write_text(
+        "# comment line\n"
+        "\n"
+        "ANTHROPIC_API_KEY=sk-ant-test-123\n"
+        'QUOTED_VALUE="hello world"\n'
+        "ALREADY_SET=from-file\n"
+        "not a valid line\n"
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("QUOTED_VALUE", raising=False)
+    monkeypatch.setenv("ALREADY_SET", "from-environment")
+
+    _load_env_file(env)
+
+    import os
+
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-test-123"
+    assert os.environ["QUOTED_VALUE"] == "hello world"
+    # real environment always wins — never overridden by the file
+    assert os.environ["ALREADY_SET"] == "from-environment"
+
+
+def test_load_env_file_missing_is_noop(tmp_path):
+    from govbudget.config import _load_env_file
+
+    _load_env_file(tmp_path / "does-not-exist.env")  # must not raise

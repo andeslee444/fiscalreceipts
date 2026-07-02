@@ -2,6 +2,30 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_env_file(path: Path) -> None:
+    """Populate os.environ from a KEY=VALUE .env file (gitignored).
+
+    Real environment variables always win — a key already present in
+    os.environ is never overridden. Blank lines and '#' comments are
+    skipped; values may be wrapped in single or double quotes.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_env_file(ROOT / ".env")
+
 DATA_DIR = Path(os.environ.get("GOVBUDGET_DATA", ROOT / "data")).resolve()
 RAW_DIR = DATA_DIR / "raw"
 PARQUET_DIR = DATA_DIR / "parquet"
