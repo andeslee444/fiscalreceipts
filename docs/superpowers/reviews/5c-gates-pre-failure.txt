@@ -38,3 +38,40 @@ gate 14 coverage: recomputed: flows=17, programs=326, dossiers=50, districts=106
   gate 14 coverage: FAIL
 
 overall: FAIL
+
+=== G6/G7 proof-can-fail (planted defects, reverted) ===
+
+--- G6 answerfold_gate — deliberately-impossible viewport (height=200px) ---
+Method: ran answerfold logic via inline Playwright script against built static
+files (file:// URLs), viewport overridden to 1440x200 to guarantee below-fold
+failure. Defect was never committed; no source files modified.
+
+PASS: false
+ERRORS:
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201ARMOWT: [data-testid="answer-what"] below the fold — bottom=382px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201ARMOWT: [data-testid="answer-changed"] below the fold — bottom=418px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201ARMOWT: [data-testid="answer-who"] below the fold — bottom=454px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MANISR: [data-testid="answer-what"] below the fold — bottom=382px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MANISR: [data-testid="answer-changed"] below the fold — bottom=418px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MANISR: [data-testid="answer-who"] below the fold — bottom=454px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MC12: [data-testid="answer-what"] below the fold — bottom=382px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MC12: [data-testid="answer-changed"] below the fold — bottom=418px >= viewport 200px
+  ✗ 1440x200(DEFECT-VIEWPORT) program/0201MC12: [data-testid="answer-who"] below the fold — bottom=454px >= viewport 200px
+NOTES: [ '1440x200(DEFECT-VIEWPORT): 0/3 pages pass' ]
+
+--- G7 motion_gate — planted ms literal + built-in duration + non-compositor keyframes ---
+Method: (a) added const with "transition-duration: 250ms" and "duration-300"
+string to src/app/about/page.tsx; (b) created src/app/_defect-plant.css with
+@keyframes slide-left-DEFECT { from { left: 0; ... } to { left: 100px; ... } }.
+Both plants immediately reverted after capture.
+
+PASS: false
+ERRORS:
+  ✗ motion_gate: src/app/_defect-plant.css @keyframes slide-left-DEFECT animates non-compositor property [left] — only transform/opacity/filter allowed
+  ✗ motion_gate: src/app/about/page.tsx declares ms literal(s) [250ms] — use var(--motion-*) tokens (globals.css) or MOTION (lib/motion.ts)
+  ✗ motion_gate: src/app/about/page.tsx uses built-in Tailwind duration class(es) [duration-300] — built-in classes don't map to the token scale; use var(--motion-*) or MOTION constants, or add to BUILTIN_DURATION_EXEMPT only if file is shadcn-generated
+NOTES: [ 'scanned 99 source files', 'arbitrary duration-[...] scan: clean ✓', 'motion tokens declared ✓', 'prefers-reduced-motion collapse present ✓' ]
+
+--- G7 motion_gate — clean tree after revert ---
+PASS: true
+NOTES: [ 'scanned 98 source files', 'ms-literal scan: clean ✓', 'arbitrary duration-[...] scan: clean ✓', 'built-in duration-<digits> scan: clean ✓ (exempt: src/components/ui/dialog.tsx)', 'motion tokens declared ✓', 'prefers-reduced-motion collapse present ✓' ]

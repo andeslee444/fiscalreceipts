@@ -4,19 +4,26 @@
  * Static scan enforcing the single motion system (spec Goal 6). The rule this
  * gate enforces:
  *
- *   Every duration in site/src comes from the motion tokens declared in
+ *   Every duration in site/src must come from the motion tokens declared in
  *   globals.css (--motion-fast/base/slow/story + --ease-standard/decelerate/
- *   accelerate) or their JS mirror (src/lib/motion.ts). Tailwind's BUILT-IN
- *   duration scale classes (duration-150/200/300) map onto the token scale
- *   and are tolerated, but arbitrary values (duration-[...]) are not, and no
- *   component may declare its own `<N>ms` literal.
+ *   accelerate) or their JS mirror (src/lib/motion.ts).
+ *
+ *   Built-in Tailwind duration scale classes (duration-150, duration-200,
+ *   duration-300, etc.) are NOT equivalent to these tokens — for example
+ *   duration-200 = 200 ms, while the closest token is --motion-fast (150 ms)
+ *   or --motion-base (220 ms). They are banned unless the file is listed in
+ *   BUILTIN_DURATION_EXEMPT below. Arbitrary values (duration-[...]) are
+ *   banned unconditionally. No component may declare its own `<N>ms` literal.
  *
  * Checks:
  * 1. NO `\d+ms` duration literals in site/src **source code** (.ts/.tsx/.css)
  *    outside the allowlist (globals.css declares the tokens; lib/motion.ts
  *    mirrors them for JS consumers). Comments are stripped before scanning so
  *    prose like "TBT < 300ms" doesn't false-positive.
- * 2. NO `duration-[` arbitrary Tailwind duration values anywhere in src.
+ * 2a. NO `duration-[` arbitrary Tailwind duration values anywhere in src.
+ * 2b. NO built-in `duration-<digits>` Tailwind classes anywhere in src
+ *    UNLESS the file is listed in BUILTIN_DURATION_EXEMPT (shadcn-generated
+ *    files that import no motion-sensitive code are the only expected entries).
  * 3. globals.css declares ALL motion tokens in :root AND contains a
  *    prefers-reduced-motion block that collapses the duration tokens to 1ms
  *    plus the universal animation/transition-duration collapse.
@@ -40,6 +47,19 @@ const srcDir = path.resolve(siteRoot, "src");
 
 /** Files allowed to declare raw ms literals (relative to site/). */
 const MS_LITERAL_ALLOWLIST = ["src/app/globals.css", "src/lib/motion.ts"];
+
+/**
+ * Files allowed to use built-in Tailwind duration-<digits> classes (relative
+ * to site/). Only shadcn-generated files that are imported nowhere in the
+ * hand-authored codebase qualify — they are not part of our motion system and
+ * migrating them would require forking the component.
+ *
+ * Before adding to this list, confirm the file is shadcn-generated and that
+ * no hand-authored code re-exports or wraps the class names in question.
+ */
+const BUILTIN_DURATION_EXEMPT = [
+  "src/components/ui/dialog.tsx", // shadcn-generated, imported nowhere, pre-5C
+];
 
 /** Required :root motion tokens (check 3). */
 const REQUIRED_TOKENS = [
@@ -143,8 +163,10 @@ export async function runMotionGate() {
   notes.push(`scanned ${files.length} source files`);
 
   const msLiteralRe = /\b\d+(?:\.\d+)?ms\b/g;
+  const builtinDurationRe = /\bduration-\d+\b/g;
   let literalViolations = 0;
   let arbitraryViolations = 0;
+  let builtinDurationViolations = 0;
 
   for (const file of files) {
     const rel = path.relative(siteRoot, file);
@@ -163,12 +185,26 @@ export async function runMotionGate() {
       }
     }
 
-    // ── (2) arbitrary Tailwind duration values ──────────────────────────────
+    // ── (2a) arbitrary Tailwind duration values ─────────────────────────────
     if (code.includes("duration-[")) {
       arbitraryViolations++;
       errors.push(
         `motion_gate: ${rel} uses arbitrary Tailwind duration value (duration-[...]) — use the token scale`
       );
+    }
+
+    // ── (2b) built-in Tailwind duration-<digits> classes ────────────────────
+    // Built-in classes (duration-75/100/150/200/300/500/700/1000) do NOT map
+    // onto our token scale — e.g. duration-200=200ms vs --motion-fast=150ms
+    // vs --motion-base=220ms. All uses outside BUILTIN_DURATION_EXEMPT fail.
+    if (!BUILTIN_DURATION_EXEMPT.includes(rel)) {
+      const matches = code.match(builtinDurationRe);
+      if (matches) {
+        builtinDurationViolations += matches.length;
+        errors.push(
+          `motion_gate: ${rel} uses built-in Tailwind duration class(es) [${[...new Set(matches)].join(", ")}] — built-in classes don't map to the token scale; use var(--motion-*) or MOTION constants, or add to BUILTIN_DURATION_EXEMPT only if file is shadcn-generated`
+        );
+      }
     }
 
     // ── (4) compositor-only @keyframes, site-wide ───────────────────────────
@@ -188,6 +224,7 @@ export async function runMotionGate() {
 
   if (literalViolations === 0) notes.push("ms-literal scan: clean ✓");
   if (arbitraryViolations === 0) notes.push("arbitrary duration-[...] scan: clean ✓");
+  if (builtinDurationViolations === 0) notes.push("built-in duration-<digits> scan: clean ✓ (exempt: " + BUILTIN_DURATION_EXEMPT.join(", ") + ")");
 
   // ── (3) globals.css tokens + prefers-reduced-motion collapse ─────────────
   const globalsPath = path.join(srcDir, "app", "globals.css");
