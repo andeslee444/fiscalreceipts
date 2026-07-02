@@ -600,6 +600,80 @@ class TestCollect:
             collect(raw_dir=tmp_path, out_dir=tmp_path)
         assert "ANTHROPIC_API_KEY" in str(exc.value)
 
+    # --- Citation membership checks at collect time ---
+
+    def _cit_refs(self, tmp_path: Path, *, snap_url: str | None):
+        """Write citations.json + snapshots/index.json; return paths."""
+        citations_path = tmp_path / "citations.json"
+        citations_path.write_text(json.dumps({"traj26fact": {}, "hhifact": {},
+                                               "blfact": {}, "feedfact": {},
+                                               "detfact0": {}, "traj25fact": {},
+                                               "dollarsfact": {}, "traj26fact2": {}}))
+        snap_dir = tmp_path / "snapshots"
+        snap_dir.mkdir(exist_ok=True)
+        snaps = []
+        if snap_url:
+            snaps.append({"sha256": SHA, "url": snap_url,
+                          "retrieved_at": "2026-06-01T00:00:00Z",
+                          "title": "T", "pe_bli": PE, "matched_term": "t"})
+        (snap_dir / "index.json").write_text(json.dumps({"snapshots": snaps}))
+        return citations_path, snap_dir / "index.json"
+
+    def test_collect_rejects_anchor_url_when_refs_present(self, tmp_path, capsys):
+        """PROOF-IT-CAN-FAIL: anchor-as-url rejected at collect time when refs exist."""
+        raw, out = tmp_path / "raw", tmp_path / "out"
+        self._meta(raw)
+        citations_path, snapshots_index = self._cit_refs(tmp_path, snap_url=None)
+
+        # Dossier with anchor url citation
+        bad = _valid_dossier(url_claims=0)
+        bad["recent_developments"]["claims"] = [
+            {"text": "Broken.", "citation": {"url": "ProgramElement[0]"}}
+        ]
+        client = FakeClient(results_items=[_succeeded(PE, bad)])
+        summary = collect(raw_dir=raw, out_dir=out, client=client,
+                          citations_path=citations_path,
+                          snapshots_index=snapshots_index)
+
+        assert summary["ok"] is False
+        assert summary["failed"][0]["pe_bli"] == PE
+        assert "citations:" in summary["failed"][0]["reason"]
+        assert "ProgramElement[0]" in summary["failed"][0]["reason"]
+        assert not (out / f"{PE}.json").exists()
+        out_text = capsys.readouterr().out
+        assert "REJECTED" in out_text
+
+    def test_collect_accepts_valid_refs_when_refs_present(self, tmp_path):
+        """When all citations resolve, dossier is written normally."""
+        raw, out = tmp_path / "raw", tmp_path / "out"
+        self._meta(raw)
+        citations_path, snapshots_index = self._cit_refs(tmp_path, snap_url=SNAP_URL)
+
+        good = _valid_dossier(url_claims=1)  # uses SNAP_URL
+        client = FakeClient(results_items=[_succeeded(PE, good)])
+        summary = collect(raw_dir=raw, out_dir=out, client=client,
+                          citations_path=citations_path,
+                          snapshots_index=snapshots_index)
+
+        assert summary["ok"] is True
+        assert summary["succeeded"] == [PE]
+        assert (out / f"{PE}.json").exists()
+
+    def test_collect_shape_only_when_refs_absent(self, tmp_path):
+        """When reference files are absent, shape-only validation (no membership)."""
+        raw, out = tmp_path / "raw", tmp_path / "out"
+        self._meta(raw)
+        # No citations_path / snapshots_index provided
+        bad = _valid_dossier(url_claims=0)
+        bad["recent_developments"]["claims"] = [
+            {"text": "Anchor.", "citation": {"url": "ProgramElement[0]"}}
+        ]
+        client = FakeClient(results_items=[_succeeded(PE, bad)])
+        # Without reference files, anchor url passes (shape is valid)
+        summary = collect(raw_dir=raw, out_dir=out, client=client)
+        assert summary["ok"] is True
+        assert summary["succeeded"] == [PE]
+
 
 # ---------------------------------------------------------------------------
 # validate_dossier
@@ -847,3 +921,148 @@ def test_submit_pe_blis_filter_unknown_aborts(monkeypatch, tmp_path):
             client=object(),
             pe_blis=["NOT_A_REAL_PE"],
         )
+
+
+# ---------------------------------------------------------------------------
+# verify_phase5b3: PROOF-IT-CAN-FAIL for the real dossier gate
+# ---------------------------------------------------------------------------
+# These tests exercise the wiring in verify_phase5b3._run_real_gate via the
+# underlying govbudget.dossiers.gate.dossier_gate function directly.
+# The exact bug: url='ProgramElement[0]' is an xml anchor, not a snapshot URL.
+# The vacuous file-presence gate passed it; the real gate must fail it.
+
+
+def _make_verify_fixture(tmp_path: Path, *, snap_url: str | None = None):
+    """Minimal fixture that mirrors the real data layout."""
+    dossier_dir = tmp_path / "dossiers"
+    dossier_dir.mkdir(parents=True)
+    citations_dir = tmp_path
+    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir.mkdir()
+    categories_csv = tmp_path / "program_categories.csv"
+
+    fact_ids = {"real-fact-abc": {"kind": "derived"}}
+    (citations_dir / "citations.json").write_text(json.dumps(fact_ids))
+
+    # snapshot index: optionally contains the test URL
+    if snap_url is not None:
+        snap_sha = "aa" * 32
+        (snapshots_dir / "index.json").write_text(json.dumps({"snapshots": [
+            {"sha256": snap_sha, "url": snap_url,
+             "retrieved_at": "2026-06-01T00:00:00Z",
+             "title": "Test snapshot", "pe_bli": PE, "matched_term": "test"},
+        ]}))
+    else:
+        (snapshots_dir / "index.json").write_text(json.dumps({"snapshots": []}))
+
+    categories_csv.write_text(
+        "pe_bli,category,rationale,source_ref\n"
+        f"{PE},default,broad portfolio,ProgramElement[5]\n"
+    )
+
+    return SimpleNamespace(
+        dossier_dir=dossier_dir,
+        citations=citations_dir / "citations.json",
+        snapshots_index=snapshots_dir / "index.json",
+        categories=categories_csv,
+        top50=[(PE, "Test Program", "DARPA", 100.0)],
+        dim_pe={PE},
+    )
+
+
+def _anchor_dossier():
+    """Dossier where one claim cites url='ProgramElement[0]' (xml anchor, not snapshot)."""
+    return {
+        "pe_bli": PE, "model": MODEL, "collected_at": "2026-06-01T00:00:00Z",
+        "dossier": {
+            "what_it_is": {"claims": [
+                {"text": "A real claim.", "citation": {"fact_id": "real-fact-abc"}},
+                # The bug: model hallucinated an xml anchor as a url citation
+                {"text": "A broken claim.", "citation": {"url": "ProgramElement[0]"}},
+            ]},
+            "why_it_matters": {"claims": [
+                {"text": "Real.", "citation": {"fact_id": "real-fact-abc"}},
+                {"text": "Real2.", "citation": {"fact_id": "real-fact-abc"}},
+                {"text": "Real3.", "citation": {"fact_id": "real-fact-abc"}},
+            ]},
+            "players": {"claims": [
+                {"text": "Real.", "citation": {"fact_id": "real-fact-abc"}},
+            ]},
+            "recent_developments": {"claims": []},
+        },
+    }
+
+
+class TestVerifyPhase5b3DossierGate:
+    """Proof-it-can-fail: url='ProgramElement[0]' fails gate; real URL passes."""
+
+    def test_anchor_url_fails_gate(self, tmp_path):
+        """PROOF-IT-CAN-FAIL: xml anchor as url → gate FAIL listing the citation."""
+        fx = _make_verify_fixture(tmp_path, snap_url=None)
+        (fx.dossier_dir / f"{PE}.json").write_text(json.dumps(_anchor_dossier()))
+
+        result = dossier_gate(
+            fx.dossier_dir, fx.citations, fx.snapshots_index,
+            fx.categories, fx.top50, dim_programs_pe=fx.dim_pe,
+        )
+
+        assert not result["ok"], "Gate must FAIL when url is an xml anchor"
+        check = result["checks"]["citations_resolvable"]
+        assert not check["ok"]
+        bad = check["unresolved"]
+        assert len(bad) >= 1
+        offending = bad[0]
+        assert offending["pe_bli"] == PE
+        assert offending["section"] == "what_it_is"
+        assert offending["url"] == "ProgramElement[0]"
+
+    def test_real_snapshot_url_passes_gate(self, tmp_path):
+        """PROOF-IT-CAN-PASS: the same claim with a real snapshot URL passes."""
+        real_url = "https://www.defensenews.com/test-article/"
+        fx = _make_verify_fixture(tmp_path, snap_url=real_url)
+
+        # Build the dossier but replace the anchor url with the real snapshot url
+        doc = _anchor_dossier()
+        doc["dossier"]["what_it_is"]["claims"][1]["citation"]["url"] = real_url
+        (fx.dossier_dir / f"{PE}.json").write_text(json.dumps(doc))
+
+        result = dossier_gate(
+            fx.dossier_dir, fx.citations, fx.snapshots_index,
+            fx.categories, fx.top50, dim_programs_pe=fx.dim_pe,
+        )
+
+        assert result["checks"]["citations_resolvable"]["ok"], (
+            f"citations_resolvable should PASS with a real snapshot url; "
+            f"unresolved={result['checks']['citations_resolvable'].get('unresolved')}"
+        )
+
+    def test_blocked_path_unchanged(self, tmp_path):
+        """BLOCKED path: dossier dir absent → _dossier_blocked returns a BLOCKED dict."""
+        from govbudget.verify_phase5b3 import _dossier_blocked
+        site_json_dir = tmp_path / "site" / "json"
+        site_json_dir.mkdir(parents=True)
+        # dossiers/ subdir does NOT exist
+        result = _dossier_blocked(site_json_dir)
+        assert result is not None
+        assert result["blocked"] is True
+        assert result["ok"] is False
+        assert "ANTHROPIC_API_KEY" in result["reason"]
+
+    def test_blocked_path_empty_dir(self, tmp_path):
+        """BLOCKED path: dossiers/ exists but empty → _dossier_blocked returns BLOCKED."""
+        from govbudget.verify_phase5b3 import _dossier_blocked
+        site_json_dir = tmp_path / "site" / "json"
+        (site_json_dir / "dossiers").mkdir(parents=True)
+        result = _dossier_blocked(site_json_dir)
+        assert result is not None
+        assert result["blocked"] is True
+
+    def test_blocked_path_present_dir(self, tmp_path):
+        """When dossiers are present, _dossier_blocked returns None (gate proceeds)."""
+        from govbudget.verify_phase5b3 import _dossier_blocked
+        site_json_dir = tmp_path / "site" / "json"
+        dossiers_dir = site_json_dir / "dossiers"
+        dossiers_dir.mkdir(parents=True)
+        (dossiers_dir / "0601101E.json").write_text("{}")
+        result = _dossier_blocked(site_json_dir)
+        assert result is None

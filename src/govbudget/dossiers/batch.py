@@ -665,6 +665,60 @@ def _first_text(message) -> str | None:
     return None
 
 
+def _load_reference_sets(
+    citations_path: Path | None,
+    snapshots_index: Path | None,
+) -> tuple[set[str] | None, set[str] | None]:
+    """Load fact_ids and snapshot_urls from reference files, or None if absent.
+
+    Returns (fact_ids, snapshot_urls).  Either may be None when the
+    corresponding file does not exist — callers must skip membership checks
+    for None sets (shape-only mode).
+    """
+    fact_ids: set[str] | None = None
+    if citations_path is not None and Path(citations_path).exists():
+        fact_ids = set(_load_json(citations_path).keys())
+
+    snapshot_urls: set[str] | None = None
+    if snapshots_index is not None and Path(snapshots_index).exists():
+        snapshot_urls = {
+            entry["url"]
+            for entry in _load_json(snapshots_index).get("snapshots", [])
+            if entry.get("url")
+        }
+
+    return fact_ids, snapshot_urls
+
+
+def _check_citation_membership(
+    pe_bli: str,
+    dossier: dict,
+    fact_ids: set[str] | None,
+    snapshot_urls: set[str] | None,
+) -> list[str]:
+    """Return reason strings for any unresolvable citations.
+
+    Checks are skipped when the corresponding reference set is None (reference
+    file was absent at collect time).  Mirrors gate.py logic so collect-time
+    failures carry the same reason strings as the gate.
+    """
+    reasons: list[str] = []
+    for section in ALL_SECTIONS:
+        for i, claim in enumerate(dossier.get(section, {}).get("claims", [])):
+            citation = claim.get("citation", {})
+            if "fact_id" in citation:
+                if fact_ids is not None and citation["fact_id"] not in fact_ids:
+                    reasons.append(
+                        f"{section}[{i}] fact_id {citation['fact_id']!r} not in citations.json"
+                    )
+            elif "url" in citation:
+                if snapshot_urls is not None and citation["url"] not in snapshot_urls:
+                    reasons.append(
+                        f"{section}[{i}] url {citation['url']!r} not in snapshots index"
+                    )
+    return reasons
+
+
 def collect(
     *,
     raw_dir: str | Path,
@@ -673,16 +727,40 @@ def collect(
     poll_interval: float = 60.0,
     sleep: Callable[[float], None] = time.sleep,
     max_polls: int = 1440,
+    citations_path: str | Path | None = None,
+    snapshots_index: str | Path | None = None,
 ) -> dict:
     """Poll the batch, archive raw results, write parsed dossiers.
 
     Raw results -> {raw_dir}/{pe_bli}.json (COMMITTED — re-collectable
     without re-paying); parsed dossiers -> {out_dir}/{pe_bli}.json. Errored
     or schema-invalid items are listed loudly and reported in the summary.
+
+    When citations_path and/or snapshots_index are provided (and the files
+    exist), citation membership is validated at collect time: any claim citing
+    a fact_id absent from citations.json, or a url absent from the snapshots
+    index, is rejected with a "citations: ..." reason and the pe_bli is NOT
+    written to out_dir.  This prevents bad dossiers from entering the site.
+    Use `dossiers submit --pe-blis <pe_bli>` to retry individual failures.
+
+    When reference files are absent, only shape validation is performed
+    (backward-compatible behaviour for test environments without live data).
     """
     client = require_client(client)
     raw_dir = Path(raw_dir)
     out_dir = Path(out_dir)
+
+    # Load reference sets once — None when files are absent (shape-only mode)
+    fact_ids, snapshot_urls = _load_reference_sets(
+        Path(citations_path) if citations_path is not None else None,
+        Path(snapshots_index) if snapshots_index is not None else None,
+    )
+    membership_active = fact_ids is not None or snapshot_urls is not None
+    if membership_active:
+        print(
+            f"dossiers collect: citation membership checks active"
+            f" (fact_ids={len(fact_ids or ())}, snapshot_urls={len(snapshot_urls or ())})"
+        )
 
     meta_path = raw_dir / "batch_meta.json"
     if not meta_path.exists():
@@ -747,6 +825,29 @@ def collect(
         if errors:
             failed.append(
                 {"pe_bli": pe_bli, "reason": "schema: " + "; ".join(errors[:5])}
+            )
+            continue
+
+        # Citation membership check (when reference files are present)
+        citation_errors = _check_citation_membership(
+            pe_bli, dossier, fact_ids, snapshot_urls
+        )
+        if citation_errors:
+            print(
+                f"dossiers collect: {pe_bli} REJECTED — {len(citation_errors)}"
+                f" unresolvable citation(s):"
+            )
+            for msg in citation_errors[:20]:
+                print(f"  citations: {msg}")
+            if len(citation_errors) > 20:
+                print(f"  ... and {len(citation_errors) - 20} more")
+            failed.append({
+                "pe_bli": pe_bli,
+                "reason": "citations: " + "; ".join(citation_errors[:5]),
+            })
+            print(
+                f"  Retry: uv run python -m govbudget dossiers submit"
+                f" --pe-blis {pe_bli}"
             )
             continue
 

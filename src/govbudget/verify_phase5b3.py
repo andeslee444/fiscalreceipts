@@ -4,9 +4,18 @@ Gates (CLI: verify-phase5b3):
 
   The verify-phase5b3 command runs the following checks:
 
-  1. dossier_gate — checks that dossier artifacts exist in data/site/json/dossiers/.
-     If artifacts are absent → BLOCKED (live batch requires ANTHROPIC_API_KEY).
-     To generate: uv run python -m govbudget dossiers submit
+  1. dossier_gate — when dossier artifacts are absent → BLOCKED (live batch
+     requires ANTHROPIC_API_KEY). When artifacts are present, calls the REAL
+     govbudget.dossiers.gate.dossier_gate which validates:
+       - every top-50 pe_bli has a dossier file (dossiers_present)
+       - dossier structure is valid (structure)
+       - every fact_id ∈ citations.json keys; every url ∈ cached snapshot URLs
+         (citations_resolvable)
+       - required sections are non-empty (required_sections)
+       - ≥80% corpus-wide claims carry warehouse fact_id citations (warehouse_ratio)
+       - program_categories.csv covers all top-50 pe_blis with a valid enum
+         category and resolvable source_ref (categories)
+     Prints per-check lines and every unresolved citation.
 
   2. npm verify — shells `npm --prefix site run verify`, which runs all gates
      1-12 from site/scripts/verify.mjs (5B-2 gates + new 5B-3 gates 8-12).
@@ -32,12 +41,8 @@ import sys
 from pathlib import Path
 
 
-def dossier_gate(site_json_dir: Path) -> dict:
-    """Check that dossier artifacts exist in data/site/json/dossiers/.
-
-    Returns:
-        dict with keys: ok (bool), blocked (bool), count (int), reason (str)
-    """
+def _dossier_blocked(site_json_dir: Path) -> dict | None:
+    """Return a BLOCKED result dict if dossiers are absent/empty, else None."""
     dossiers_dir = site_json_dir / "dossiers"
 
     if not dossiers_dir.exists():
@@ -63,12 +68,70 @@ def dossier_gate(site_json_dir: Path) -> dict:
             ),
         }
 
-    return {
-        "ok": True,
-        "blocked": False,
-        "count": len(dossier_files),
-        "reason": None,
-    }
+    return None
+
+
+def _run_real_gate(site_json_dir: Path, repo_root: Path) -> dict:
+    """Call the real govbudget.dossiers.gate.dossier_gate with live paths."""
+    from govbudget import config
+    from govbudget.dossiers.gate import dim_programs_pe_set, dossier_gate
+    from govbudget.dossiers.research import top50
+
+    dossier_dir = site_json_dir / "dossiers"
+    citations_path = site_json_dir / "citations.json"
+    snapshots_index = repo_root / "data" / "research" / "snapshots" / "index.json"
+    categories_csv = repo_root / "data-seeds" / "program_categories.csv"
+
+    top50_list = top50(config.DUCKDB_PATH)
+    dim_pe = dim_programs_pe_set(config.DUCKDB_PATH)
+
+    return dossier_gate(
+        dossier_dir,
+        citations_path,
+        snapshots_index,
+        categories_csv,
+        top50_list,
+        dim_programs_pe=dim_pe,
+    )
+
+
+def _print_gate_result(result: dict) -> None:
+    """Print per-check lines and every unresolved citation."""
+    checks = result["checks"]
+    for name, check in checks.items():
+        status = "PASS" if check["ok"] else "FAIL"
+        detail = ""
+        if name == "warehouse_ratio":
+            detail = (
+                f" ({check['warehouse_cited']}/{check['claims']}"
+                f" = {check['ratio']:.1%}, floor {check['floor']:.0%})"
+            )
+        elif name == "dossiers_present":
+            detail = f" ({result['totals']['dossiers']}/{check['expected']} present)"
+        print(f"  dossiers_{name}: {status}{detail}")
+        # List unresolved citations verbosely
+        if name == "citations_resolvable" and not check["ok"]:
+            for item in check.get("unresolved", []):
+                pe = item["pe_bli"]
+                sec = item["section"]
+                idx = item["claim"]
+                if "fact_id" in item:
+                    print(f"    unresolved: {pe} {sec}[{idx}] fact_id={item['fact_id']!r}")
+                else:
+                    print(f"    unresolved: {pe} {sec}[{idx}] url={item['url']!r}")
+        elif name in ("dossiers_present", "structure", "required_sections", "categories"):
+            for key in ("missing", "errors", "empty"):
+                for item in check.get(key, []):
+                    print(f"    {key[:-1] if key.endswith('s') else key}: {item}")
+
+    totals = result.get("totals", {})
+    print(
+        f"  totals: {totals.get('dossiers', '?')} dossiers, "
+        f"{totals.get('claims', '?')} claims, "
+        f"{totals.get('warehouse_cited', '?')} warehouse-cited "
+        f"({totals.get('warehouse_ratio', 0):.1%})"
+    )
+    print(f"gate dossier: → {'PASS' if result['ok'] else 'FAIL'}")
 
 
 def animation_gate_note(dossiers_blocked: bool) -> str:
@@ -108,33 +171,43 @@ def cmd_verify_phase5b3(args) -> None:
 
     gates_ok = True
 
-    # ── Gate dossier: check artifact presence ─────────────────────────────────
+    # ── Gate dossier ──────────────────────────────────────────────────────────
     print("--- gate dossier ---")
-    dg = dossier_gate(site_json_dir)
+    blocked = _dossier_blocked(site_json_dir)
+    dossiers_blocked = blocked is not None
 
-    if dg["blocked"]:
-        print(f"gate dossier: BLOCKED — {dg['reason']}")
+    if blocked is not None:
+        print(f"gate dossier: BLOCKED — {blocked['reason']}")
         gates_ok = False
-    elif dg["ok"]:
-        print(f"gate dossier: {dg['count']} dossier files present → PASS")
+        dg_ok = False
     else:
-        print(f"gate dossier: FAIL — {dg['reason']}")
-        gates_ok = False
+        # Dossiers exist — run the REAL gate
+        try:
+            result = _run_real_gate(site_json_dir, repo_root)
+        except Exception as exc:
+            print(f"gate dossier: ERROR running real gate — {exc}")
+            gates_ok = False
+            dg_ok = False
+        else:
+            _print_gate_result(result)
+            dg_ok = result["ok"]
+            if not dg_ok:
+                gates_ok = False
 
     print()
 
     # ── Animation gate informational note ──────────────────────────────────────
-    note = animation_gate_note(dossiers_blocked=dg["blocked"])
+    note = animation_gate_note(dossiers_blocked=dossiers_blocked)
     print(f"note: {note}")
     print()
 
     # ── npm verify (gates 1-12) ────────────────────────────────────────────────
     print("--- npm verify (gates 1-12) ---")
-    result = subprocess.run(
+    result_npm = subprocess.run(
         ["npm", "--prefix", str(site_dir), "run", "verify"],
         cwd=str(repo_root),
     )
-    npm_ok = result.returncode == 0
+    npm_ok = result_npm.returncode == 0
 
     if not npm_ok:
         gates_ok = False
@@ -142,11 +215,14 @@ def cmd_verify_phase5b3(args) -> None:
     # ── Summary ────────────────────────────────────────────────────────────────
     print()
     print("=== summary ===")
-    print(f"  gate dossier: {'PASS' if dg['ok'] else 'BLOCKED' if dg['blocked'] else 'FAIL'}")
+    if dossiers_blocked:
+        print("  gate dossier: BLOCKED")
+    else:
+        print(f"  gate dossier: {'PASS' if dg_ok else 'FAIL'}")
     print(f"  npm verify:   {'PASS' if npm_ok else 'FAIL'}")
     print()
 
-    if dg["blocked"]:
+    if dossiers_blocked:
         print(
             "verify-phase5b3: BLOCKED — dossier artifacts absent "
             "(phase cannot fully PASS without dossiers).\n"
