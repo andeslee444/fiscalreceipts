@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-06-12 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-07-02 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Phase ledger
@@ -17,7 +17,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5B-1 | Citation + export backbone | verify-phase5b1 | ✅ merged | 44,754 citations (3,417 pdf / 8,557 workbook / 32,780 lda); 0 unresolved; 50/50 re-derived |
 | 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 | ✅ merged | 556 SSG pages (326 program/200 company/20 agency); 7 gates PASS; search 24/24 incl. typos; LHCI ≥90; a11y 0 serious; visual gate r2 medians 5/5/5/5 (r1 FAILED on doubled uncited-flag + mobile nav — agent-visual judging caught what no mechanical gate saw); 8,834 amount spans full-corpus verified cited/chipped/flagged |
 | 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→4 (dim_geography, dim_lobbyists, fct_budget_to_awards, jbook_narratives); 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) |
-| 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | ✅ merged (live eval + dossiers await API key) | Analyst agent (sandboxed text-to-SQL: enable_external_access=false, cached schema card, 8-turn tool loop); eval set drift-corrected (freshness gate); verify-phase5 exit contract 0/2/1; launch tooling (R2 upload/CORS/config-rewrite + LAUNCH.md); 830 pytest/192 vitest; terminal state exit 2 — single unblock: export ANTHROPIC_API_KEY → `govbudget dossiers submit` + `govbudget verify-phase5`. Known softening (backlog): pdf_page eval-citation resolution matches pe_bli-only (accuracy backstops the value) — tighten on first live run |
+| 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | ✅ COMPLETE | Analyst agent (sandboxed text-to-SQL: enable_external_access=false, cached schema card, 8-turn tool loop); eval set drift-corrected (freshness gate); verify-phase5 exits 0; live eval 45/45 accuracy + 40/40 citation resolution (100%) — run artifact data/research/eval-runs/eval-20260702T085924Z.json (2026-07-02); verify-phase1..5b3 + phase5 assembly all PASS; site live at https://govbudget.vercel.app; launch tooling (R2 upload/CORS/config-rewrite + LAUNCH.md); 830 pytest/192 vitest |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -101,6 +101,41 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   be JSON-serializable (no Set); runtime asset config (public/config.json) beats
   env-baked bases — one artifact is both gated and shippable; Turbopack honors
   webpack magic comments (turbopackIgnore) for externals like Pagefind.
+- **Sandbox broke the warehouse (5B-4, 2026-07-02):** `SET enable_external_access=false`
+  (added to stop read_text exfiltration) silently broke every mart query because
+  marts are views over read_parquet — mocked FakeClient tests couldn't see it
+  (fixtures use in-DB tables). Live eval crashed to 5/45 REFUSEs. Fix: DuckDB
+  `allowed_directories` (scoped to the parquet lake) + `enable_external_access=false`
+  + `lock_configuration=true`, with a parquet-backed-view regression test. Lesson:
+  security lockdowns need a live-path smoke test, not just mocked denial tests.
+- **Answer contract invisible to mocked tests (5B-4, 2026-07-02):** first working
+  live run scored 5/45 because the model submitted markdown prose in
+  `submit_answer.answer` while the grader compares exact canonical values — the
+  tool schema never stated the contract. Fixes: explicit canonical-value contract
+  in the tool schema, separate `explanation` field for prose, and run_sql now
+  returns the grader's own `canonical` string so compliance is copy-paste (imports
+  the same `_canonicalize` the grader uses). Lesson: any exact-match grader must
+  publish its canonicalization to the agent as a copyable artifact.
+- **Answer-shape taxonomy — 22 failures classified (5B-4, 2026-07-02):** SHAPE
+  (extra columns/rows vs the question's literal ask), SEMANTIC (wrong
+  table/grain/definition — e.g. pe_bli repeats across organizations; improper_payments
+  temp table is all-VARCHAR so ORDER BY sorts lexicographically), PRECISION
+  (per-question rounding), NONDET (DuckDB parallel float SUM varies run-to-run at
+  trillions scale, ~0.1 variance — disproved the 'ROUND(x,4) makes it reproducible'
+  idea live). Fixes were generic schema-card rules (question-literal shape,
+  deterministic final SELECT, honest data-trap docs) — with an anti-overfit test
+  asserting the card mentions no eval question.
+- **Underspecified-question repair pattern (5B-4, 2026-07-02):** 9 residual
+  failures traced to eval questions not stating the precision/units/shape/
+  metric-definition their own answer_sql embodies. Repair = amend question TEXT
+  only (expected_answer/answer_sql/tolerance untouched), e.g. 'in millions, to
+  three decimal places'. Two eval bugs found and fixed: q005 answer_sql returned
+  ranks 2 AND 3 for a single-answer question (limit 2 offset 1 → limit 1 offset
+  1); q012/q024 pre-emptively clarified. Live-eval trajectory across the loop:
+  5 → 23 → 36 → 45/45.
+- **Eval cost correction (5B-4, 2026-07-02):** a full 45-question live run costs
+  ~$0.40 (sonnet, ~$0.009/question), not the ~$10 earlier estimated — cheap enough
+  to iterate the loop freely.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -132,6 +167,26 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
+11. **Type oversight parquets properly:** improper_payments and related oversight
+    tables are all-VARCHAR from CSV ingestion, forcing CAST everywhere and inviting
+    lexicographic-sort bugs (root cause of several 5B-4 SEMANTIC failures). Migrate
+    to typed columns at the staging layer.
+12. **Build gate for stale/failed `site/out`:** verify gates should detect that
+    the SSG output is absent or from a failed build before running npm verify gates
+    — currently a broken build silently causes gate false-passes against stale HTML.
+13. **Mistral OCR (Document AI) as fallback extractor** for scanned/legacy J-book
+    PDFs — current pipeline is XML-first and doesn't need it; revisit if pre-2015
+    books (scan-only) enter scope.
+
+## Remaining launch items
+
+- **GitHub repo push** — awaiting user decision; repo exists empty at
+  github.com/andeslee444/govbudget.
+- **R2 asset upload + CORS live test** — PDF panel/downloads degrade on live site
+  until R2 is populated and CORS headers are verified end-to-end.
+- **`NEXT_PUBLIC_SITE_URL`** — must be set to production domain in Vercel env
+  before canonical meta and OG card URLs resolve correctly.
+- **Domain decision tabled** — candidates: outlays.us, fiscalreceipts.com.
 
 ## Standing constraints (unchanged, every phase)
 
