@@ -82,6 +82,18 @@ export default function RootLayout({
                   Companies
                 </Link>
                 <Link
+                  href="/district/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Districts
+                </Link>
+                <Link
+                  href="/feed/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Feed
+                </Link>
+                <Link
                   href="/data/"
                   className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
@@ -137,6 +149,9 @@ export default function RootLayout({
                     </time>
                   </span>
                 )}
+                <Link href="/filings/" className="hover:text-foreground transition-colors">
+                  Lobbying filings
+                </Link>
                 <Link href="/methodology/" className="hover:text-foreground transition-colors">
                   Methodology
                 </Link>

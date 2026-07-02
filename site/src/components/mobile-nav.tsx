@@ -5,7 +5,7 @@
  *
  * Renders:
  *   - A hamburger button (☰) that opens a full-width disclosure panel
- *   - Nav links: Programs / Companies / Data / Methodology
+ *   - Nav links: Programs / Companies / Districts / Feed / Data / Methodology
  *   - ReceiptsToggle inside the mobile menu
  *
  * Usage in layout.tsx:
@@ -19,6 +19,8 @@ import { ReceiptsToggle } from "@/components/receipts-toggle";
 const NAV_LINKS = [
   { href: "/programs/", label: "Programs" },
   { href: "/companies/", label: "Companies" },
+  { href: "/district/", label: "Districts" },
+  { href: "/feed/", label: "Feed" },
   { href: "/data/", label: "Data" },
   { href: "/methodology/", label: "Methodology" },
 ];
