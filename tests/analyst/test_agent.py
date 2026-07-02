@@ -314,3 +314,96 @@ def test_agent_sql_gate_denies_set(tiny_db):
     with SqlTool(tiny_db) as tool:
         with pytest.raises(SqlError, match="SET"):
             tool.run("SET enable_external_access = true")
+
+
+# ---------------------------------------------------------------------------
+# NEW: Canonical answer contract (TDD — added for live-model prose bug fix)
+# ---------------------------------------------------------------------------
+
+
+def test_submit_answer_description_contains_canonical_contract():
+    """submit_answer schema 'answer' description must contain the canonical-contract language.
+
+    The live model was submitting verbose markdown prose like
+    'There are **76,727 distinct entity family groups** tracked in...'
+    when the eval expects exact canonical values like '76727'.
+    The schema description must explicitly forbid markdown and prose.
+    """
+    from govbudget.analyst.agent import _SUBMIT_ANSWER_TOOL
+    answer_desc = _SUBMIT_ANSWER_TOOL["input_schema"]["properties"]["answer"]["description"]
+    # Must forbid markdown and prose
+    assert "markdown" in answer_desc.lower(), (
+        "answer description must mention 'markdown' (to forbid it)"
+    )
+    assert "prose" in answer_desc.lower() or "narrative" in answer_desc.lower(), (
+        "answer description must forbid prose/narrative"
+    )
+    # Must mention exact SQL casing
+    assert "casing" in answer_desc.lower() or "case" in answer_desc.lower(), (
+        "answer description must mention DB casing requirement"
+    )
+    # Must mention no thousands separators
+    assert "comma" in answer_desc.lower() or "separator" in answer_desc.lower() or "thousands" in answer_desc.lower(), (
+        "answer description must mention no thousands separators"
+    )
+    # Must state REFUSE keyword for refusals
+    assert "REFUSE" in answer_desc, (
+        "answer description must mention 'REFUSE' sentinel"
+    )
+
+
+def test_submit_answer_has_explanation_field():
+    """submit_answer schema must have an optional 'explanation' field (prose outlet).
+
+    This gives the live model a place to write human-readable prose that won't
+    be scored — so the 'answer' field stays canonical.
+    """
+    from govbudget.analyst.agent import _SUBMIT_ANSWER_TOOL
+    props = _SUBMIT_ANSWER_TOOL["input_schema"]["properties"]
+    assert "explanation" in props, (
+        "submit_answer schema must have an 'explanation' field"
+    )
+    # explanation must NOT be in required (it's optional)
+    required = _SUBMIT_ANSWER_TOOL["input_schema"].get("required", [])
+    assert "explanation" not in required, (
+        "'explanation' must be optional (not in required list)"
+    )
+
+
+def test_explanation_threads_through_run(tiny_db):
+    """explanation field in submit_answer is passed through to run() result dict."""
+    submit_resp = _make_resp([
+        _tool_use_block("submit_answer", "tu1", {
+            "answer": "LOCKHEED MARTIN",
+            "refuse": False,
+            "refuse_reason_class": None,
+            "sql": "SELECT display_name FROM dim_entities LIMIT 1",
+            "citation_kind": "warehouse",
+            "citation": "dim_entities",
+            "explanation": "This is the top contractor by total obligation.",
+        }),
+    ])
+    client = FakeClient([submit_resp])
+    result = run("Which company?", client=client, duckdb_path=tiny_db, print_cost=False)
+    assert "explanation" in result, "run() result must include 'explanation' key"
+    assert result["explanation"] == "This is the top contractor by total obligation."
+
+
+def test_explanation_defaults_to_empty_string(tiny_db):
+    """When explanation is absent from submit_answer, run() returns empty string."""
+    submit_resp = _make_resp([
+        _tool_use_block("submit_answer", "tu1", {
+            "answer": "LOCKHEED MARTIN",
+            "refuse": False,
+            "refuse_reason_class": None,
+            "sql": "SELECT display_name FROM dim_entities LIMIT 1",
+            "citation_kind": "warehouse",
+            "citation": "dim_entities",
+            # no explanation field
+        }),
+    ])
+    client = FakeClient([submit_resp])
+    result = run("Which company?", client=client, duckdb_path=tiny_db, print_cost=False)
+    assert result.get("explanation", None) == "", (
+        "run() must default explanation to '' when absent from submit_answer"
+    )

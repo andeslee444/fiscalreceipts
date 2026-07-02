@@ -152,6 +152,33 @@ def test_render_has_run_sql_preamble():
     )
 
 
+def test_render_has_answer_format_block():
+    """Rendered system prompt must contain an ANSWER FORMAT block with examples.
+
+    The live model was submitting verbose prose instead of bare canonical values.
+    The schema card preamble must have an explicit ANSWER FORMAT block with
+    concrete examples to prevent this.
+    """
+    blocks = render_system_prompt()
+    text = " ".join(b.get("text", "") for b in blocks)
+    # Must have an ANSWER FORMAT section header
+    assert "ANSWER FORMAT" in text, (
+        "Rendered system prompt must contain an 'ANSWER FORMAT' block"
+    )
+    # Must show bare numeric example (no commas)
+    assert "76727" in text, (
+        "ANSWER FORMAT must show bare integer example '76727' (not '76,727' or prose)"
+    )
+    # Must mention no markdown
+    assert "markdown" in text.lower() or "no prose" in text.lower(), (
+        "ANSWER FORMAT must forbid markdown or prose"
+    )
+    # Must show REFUSE example
+    assert "REFUSE" in text, (
+        "ANSWER FORMAT must include REFUSE example"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Drift test: schema card tables vs live information_schema
 # (skipped when DuckDB warehouse is absent)

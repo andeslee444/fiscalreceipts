@@ -95,7 +95,33 @@ _SUBMIT_ANSWER_TOOL = {
             "answer": {
                 "type": "string",
                 "description": (
-                    "The answer text. If refusing, use 'REFUSE' and explain in citation."
+                    "CANONICAL VALUE ONLY — the exact string that your final SQL "
+                    "returns after canonicalization. No markdown, no prose, no "
+                    "narrative sentences, no units label, no $ signs, no thousands "
+                    "separators (commas). Numbers must match what SQL prints: "
+                    "integers as plain digits (e.g. '76727' NOT '76,727'), floats "
+                    "with up to 4 significant decimal places stripped of trailing "
+                    "zeros (e.g. '280.494'). Preserve DB casing exactly — do NOT "
+                    "re-case entity names (e.g. 'LOCKHEED MARTIN CORPORATION' not "
+                    "'Lockheed Martin Corporation'). "
+                    "Formatting rules matching the grader's _canonicalize(): "
+                    "single value → bare scalar; single row multi-column → values "
+                    "joined with ', ' (comma-space); multi-row → one row per line "
+                    "with columns joined by ', ' within each row. "
+                    "The submitted sql is re-executed by the grader and its "
+                    "canonicalized result must equal this answer character-for-character. "
+                    "Therefore sql must SELECT exactly the value(s) that answer the "
+                    "question — no extra columns or rows. "
+                    "When refusing, set answer='REFUSE'."
+                ),
+            },
+            "explanation": {
+                "type": "string",
+                "description": (
+                    "Optional human-readable prose summary of the answer. Write "
+                    "context, units, caveats, or narrative here. This field is NOT "
+                    "scored — it is the prose outlet so the 'answer' field stays "
+                    "as a bare canonical value."
                 ),
             },
             "refuse": {
@@ -111,7 +137,12 @@ _SUBMIT_ANSWER_TOOL = {
             },
             "sql": {
                 "type": ["string", "null"],
-                "description": "The SQL used to derive the answer, or null if refusing.",
+                "description": (
+                    "The SELECT statement used to derive the answer. The grader "
+                    "re-executes this SQL and requires canonicalize(rows) == answer "
+                    "character-for-character. SELECT only the columns/rows that form "
+                    "the answer — no extra columns, no extra rows. Null if refusing."
+                ),
             },
             "citation_kind": {
                 "type": "string",
@@ -265,6 +296,7 @@ def run(
                     print(cost.summary())
                 return {
                     "answer": submitted.get("answer", ""),
+                    "explanation": submitted.get("explanation", ""),
                     "refuse": bool(submitted.get("refuse", False)),
                     "refuse_reason_class": submitted.get("refuse_reason_class"),
                     "sql": submitted.get("sql"),

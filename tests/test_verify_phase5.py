@@ -212,6 +212,35 @@ def test_score_refuse_false_when_expected_refuse():
     assert _score_answer(result, entry) is False
 
 
+def test_score_prose_answer_fails_against_canonical():
+    """PROOF-IT-CAN-FAIL: prose markdown answer scores False against bare canonical value.
+
+    The live model submitted answers like:
+      'There are **76,727 distinct entity family groups** tracked in...'
+    when the eval expects the canonical bare value '76727'.
+    Scoring is exact string equality → prose must score False.
+    This documents the gate behavior that was broken before the contract fix.
+    """
+    # Prose answer with markdown bold and thousands separator — exactly the live bug
+    result = {"answer": "There are **76,727 distinct entity family groups** tracked in the warehouse.", "refuse": False}
+    entry = {"expected_answer": "76727"}
+    assert _score_answer(result, entry) is False, (
+        "Prose markdown answer must score False against canonical bare integer"
+    )
+
+    # Also verify: slightly wrong formatting (thousands comma) → False
+    result2 = {"answer": "76,727", "refuse": False}
+    assert _score_answer(result2, entry) is False, (
+        "Answer with thousands comma '76,727' must score False against '76727'"
+    )
+
+    # And the correct bare canonical value → True
+    result3 = {"answer": "76727", "refuse": False}
+    assert _score_answer(result3, entry) is True, (
+        "Bare canonical integer '76727' must score True"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Tests: _canonical_amount_text
 # ---------------------------------------------------------------------------
