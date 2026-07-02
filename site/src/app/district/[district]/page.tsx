@@ -72,11 +72,8 @@ export default async function DistrictDetailPage({ params }: Props) {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-6">
           <strong>Coverage note:</strong> District data reflects only
           high-confidence award links from the DARPA crosswalk.
-          Geographic totals from{" "}
-          <code className="text-xs bg-amber-200/40 dark:bg-amber-900/40 px-1 rounded">
-            dim_geography
-          </code>{" "}
-          are uncited (⁂) — citation tier pending. Recipients and transaction
+          Geographic totals are derived from award transaction data and are
+          uncited (⁂) — citation tier pending. Recipients and transaction
           counts are from USAspending; no additional verification applied.
         </div>
 

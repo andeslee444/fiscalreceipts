@@ -101,7 +101,7 @@ export function ProgramAwards({
       </h2>
       {hasMore && !expanded && (
         <p className="text-xs text-muted-foreground mb-3">
-          Showing {initialAwards.length} of {totalCount} award records
+          Showing {initialAwards.length} of {totalCount}{" "}award records
           (R&amp;D performer crosswalk — see{" "}
           <a href="/methodology/" className="underline hover:text-foreground">
             methodology

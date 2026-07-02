@@ -342,6 +342,36 @@ async function main() {
     );
   }
 
+  // ── Default filing card (public/og-default-filing.png) ─────────────────────
+  // Rendered through the same satori template so it matches the OG family.
+  // Shared across all 4,258 filing pages (decision 3 — no per-filing render).
+  {
+    const filingCardElement = card({
+      kind: "Lobbying",
+      title: "Lobbying Filing",
+      subtitle: "Senate LDA disclosure — activities, lobbyists, program mentions",
+      figure: null,
+      figureLabel: null,
+      tagline: TAGLINE,
+    });
+    const filingDest = path.join(siteDir, "public", "og-default-filing.png");
+    const filingStale =
+      FORCE ||
+      !fs.existsSync(filingDest) ||
+      fs.statSync(filingDest).mtimeMs <= staleBefore;
+    if (filingStale) {
+      const svg = await satori(filingCardElement, SATORI_OPTS);
+      const png = new Resvg(svg, { fitTo: { mode: "width", value: 1200 } })
+        .render()
+        .asPng();
+      fs.writeFileSync(filingDest, png);
+      rendered += 1;
+      console.log("  ↳ og-default-filing.png regenerated via satori template");
+    } else {
+      skipped += 1;
+    }
+  }
+
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   const total = rendered + skipped;
   console.log(

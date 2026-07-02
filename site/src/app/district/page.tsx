@@ -104,9 +104,8 @@ export default function DistrictIndexPage() {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Dollars are from high-confidence USAspending award links only.
-          Geography grand total (⁂) is from{" "}
-          <code className="text-xs bg-muted px-1 rounded">dim_geography</code>{" "}
-          — citation tier pending. See{" "}
+          Geography grand total (⁂) is from award transaction data —
+          citation tier pending. See{" "}
           <Link href="/methodology/" className="underline hover:text-foreground">
             methodology
           </Link>

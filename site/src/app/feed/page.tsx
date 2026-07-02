@@ -175,7 +175,7 @@ export default function FeedPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Anomaly Feed</h1>
           <p className="text-muted-foreground">
-            {total} automated signals across {grouped.size} event types.
+            {total}{" "}automated signals across{" "}{grouped.size}{" "}event types.
             Figures carry citations — click an underlined value to inspect the
             source. &ldquo;Why?&rdquo; links explain each signal type and its
             threshold.

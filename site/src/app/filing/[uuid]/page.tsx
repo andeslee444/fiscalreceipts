@@ -253,7 +253,7 @@ export default async function FilingPage({ params }: Props) {
                     )}
                   </div>
                   {m.description_snippet && (
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground line-clamp-3 overflow-hidden">
                       {m.description_snippet}
                     </p>
                   )}
