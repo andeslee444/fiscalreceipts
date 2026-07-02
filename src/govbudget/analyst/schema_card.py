@@ -40,7 +40,7 @@ URL_COLUMN_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 SCHEMA_CARD: dict = {
-    "version": "5b4",
+    "version": "5b4.1",
     "description": (
         "GovBudget warehouse — DoD J-book budget facts (FY2026 edition only), "
         "USASpending award transactions (FY2017-FY2026), entity family crosswalk, "
@@ -48,6 +48,65 @@ SCHEMA_CARD: dict = {
         "improper-payment derived estimates, GAO high-risk areas, "
         "CA and CT state spending per-capita comparables."
     ),
+
+    # Generic rules mapping question phrasing → the exact SELECT shape.
+    # The grader compares the answer string exactly, so returning anything the
+    # question did not literally ask for is scored wrong.
+    "answer_shape_rules": [
+        "Return ONLY what the question literally asks — no extra columns, no "
+        "extra rows.",
+        "'Which/what X …?' with a superlative (most, highest, largest, second, "
+        "top) → SELECT the identifying column(s) only, ORDER BY the ranking "
+        "metric, LIMIT 1 (use OFFSET for ordinal ranks like 'second' — still "
+        "one row). The metric belongs in ORDER BY — do NOT put it in the "
+        "SELECT list unless the question also asks for the amount.",
+        "'How much / how many …?' → a single number, nothing else.",
+        "'Which is higher/larger, A or B?' → the single winning identifier: "
+        "filter to the two candidates, ORDER BY the metric DESC, LIMIT 1 — not "
+        "both rows, not the metric values.",
+        "'Which X …, and what/who is Y?' → exactly the asked-for items, in the "
+        "order the question asks them — nothing else.",
+        "Coverage/availability range questions ('what years / what period … "
+        "available') → one formatted range string, e.g. "
+        "select min(col)::varchar || ' to ' || max(col)::varchar — not one row "
+        "per value.",
+        "Counting questions ('how many X …') → count(*) when X is the table's "
+        "grain (one row per X); use count(distinct col) only when the question "
+        "says 'distinct'/'unique' or X is coarser than the table's grain.",
+        "Answer multiple quantities only when the question explicitly asks for "
+        "multiple.",
+    ],
+
+    # Rules ensuring the submitted SQL re-executes to the same answer and uses
+    # the house display precision.
+    "final_sql_rules": [
+        "The grader re-executes the submitted sql on a fresh connection and "
+        "requires canonicalize(rows) == answer character-for-character. Always "
+        "run your FINAL sql through run_sql as your last query and copy its "
+        "'canonical' value; the submitted sql must return exactly the answer "
+        "rows — never a broader row set than your answer string contains.",
+        "Never leave a raw float SUM()/AVG() over a large table in the final "
+        "SELECT list: parallel aggregation makes the trailing decimals vary "
+        "between executions, so the grader's re-run will not reproduce your "
+        "value. Keep such aggregates in ORDER BY only; if the question asks for "
+        "the aggregated amount itself, wrap it in ROUND(..., 2) (or the display "
+        "precision below).",
+        "When ranking, add a deterministic tiebreaker to ORDER BY "
+        "(e.g. ORDER BY metric DESC, id) so ties cannot reorder between runs.",
+        "Unit conversion is MANDATORY when the question names a unit ('in "
+        "millions', 'in billions', 'per capita', 'percentage') — never answer "
+        "in raw full dollars when a display unit is named.",
+        "Display precision when an answer pairs an identifier with a converted "
+        "quantity (multi-column answers are matched as exact strings): amounts "
+        "in millions → ROUND(x, 1); amounts in billions → ROUND(x, 2); "
+        "percentages → ROUND(x, 1); index values such as HHI → ROUND(x, 1). A "
+        "precision stated in the question overrides these defaults. A single "
+        "bare-number answer may keep the natural conversion output (numeric "
+        "tolerance applies to scalars).",
+        "Compute superlatives inside the single mart that owns the quantity at "
+        "its documented grain; avoid joins that change the row grain — they "
+        "multiply rows and corrupt counts and sums.",
+    ],
 
     "refuse_guidance": {
         "enum": list(REFUSE_CLASSES),
@@ -119,10 +178,20 @@ SCHEMA_CARD: dict = {
                 "FY2026 edition only — no FY2023 or earlier actuals.",
                 "District-level breakdowns are high-confidence only.",
                 "Negative obligations exist (contract modifications/de-obligations).",
+                "A single pe_bli can appear on MULTIPLE rows for the same "
+                "amount_type: across exhibits (P-1, P-1R, R-1) and across "
+                "rollup vs detail account codes — a rollup-account row with "
+                "NULL title can carry the SAME amount as the titled detail "
+                "row. NEVER SUM rows to get one program's amount; filter "
+                "precisely (single exhibit, title IS NOT NULL) and read a "
+                "single row.",
             ],
         },
         "fct_budget_trajectory": {
-            "description": "Pre-computed FY2025→FY2026 budget change mart.",
+            "description": (
+                "Pre-computed FY2025→FY2026 budget change mart. Grain: one row "
+                "per tracked program line (pe_bli × organization)."
+            ),
             "key_columns": {
                 "pe_bli": "Program element identifier",
                 "organization": "DoD component",
@@ -131,6 +200,13 @@ SCHEMA_CARD: dict = {
                 "fy2526_change": "Absolute change (thousands)",
                 "fy2526_pct_change": "Percentage change",
             },
+            "notes": [
+                "pe_bli codes are NOT globally unique — procurement line "
+                "numbers repeat across organizations/accounts, so "
+                "count(distinct pe_bli) undercounts the tracked program "
+                "lines. The mart's grain (its row count) is the number of "
+                "tracked program lines.",
+            ],
         },
         "fct_award_transactions": {
             "description": "USASpending DoD contract + assistance transactions.",
@@ -191,7 +267,10 @@ SCHEMA_CARD: dict = {
             },
         },
         "fct_budget_to_awards": {
-            "description": "Budget-to-awards crosswalk linking PE/BLI to USASpending.",
+            "description": (
+                "Budget-to-awards crosswalk linking PE/BLI to USASpending. "
+                "Grain: one row per (pe_bli, award_piid) link."
+            ),
             "key_columns": {
                 "pe_bli": "Program element",
                 "program_title": "Program title from J-book",
@@ -199,6 +278,12 @@ SCHEMA_CARD: dict = {
                 "method": "Linking method (e.g. account+subagency)",
                 "confidence": "Link confidence (high|medium|low)",
             },
+            "notes": [
+                "Count linked award contracts per program with "
+                "count(distinct award_piid) INSIDE this table. Do NOT join "
+                "out to fct_award_transactions to count awards — that table "
+                "is transaction-grain and multiplies rows.",
+            ],
         },
         "fct_improper_exposure": {
             "description": "DERIVED improper payment exposure by agency (rate × outlays).",
@@ -223,9 +308,18 @@ SCHEMA_CARD: dict = {
                 "agency_code": "Agency code",
                 "program": "Program name",
                 "fiscal_year": "Fiscal year string",
-                "derived_improper_amount_usd": "DERIVED USD",
+                "derived_improper_amount_usd": (
+                    "DERIVED USD — stored as VARCHAR, CAST to DOUBLE before use"
+                ),
                 "source_url": "URL to paymentaccuracy.gov source (use for citations)",
             },
+            "notes": [
+                "ALL columns are stored as VARCHAR strings — including "
+                "rate_pct, derived_improper_amount_usd and outlays_usd. "
+                "CAST(... AS DOUBLE) before any ORDER BY, comparison, or "
+                "arithmetic; ordering the raw strings is lexicographic and "
+                "returns the wrong rows.",
+            ],
         },
         "high_risk": {
             "description": "TEMP TABLE — GAO high-risk program areas.",
@@ -315,6 +409,20 @@ def _build_card_text() -> str:
         "The submitted sql is re-executed by the grader; canonicalize(rows) must equal",
         "answer character-for-character. SELECT only the columns/rows that form the answer.",
         "Use the 'explanation' field for human-readable prose, caveats, or units — it is NOT scored.",
+        "",
+        "## QUESTION SHAPE (what to SELECT — answers are scored by exact string match)",
+    ]
+    for rule in SCHEMA_CARD["answer_shape_rules"]:
+        lines.append(f"  - {rule}")
+
+    lines += [
+        "",
+        "## FINAL SQL RULES (determinism + display precision)",
+    ]
+    for rule in SCHEMA_CARD["final_sql_rules"]:
+        lines.append(f"  - {rule}")
+
+    lines += [
         "",
         f"Warehouse description: {SCHEMA_CARD['description']}",
         "",

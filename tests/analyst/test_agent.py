@@ -509,6 +509,94 @@ def test_run_sql_tool_result_contains_canonical_key(tiny_db):
     )
 
 
+def test_run_sql_tool_result_row_cap_warning(tmp_path):
+    """When a query hits the 200-row cap, the run_sql tool_result must carry a
+    'warning' key telling the model the canonical value covers only the
+    truncated rows and must not be submitted as a final answer. Small results
+    must NOT carry the warning.
+    """
+    import json
+    from govbudget.analyst.sql_tool import ROW_CAP
+
+    # DB with more rows than the cap
+    db = tmp_path / "big.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "CREATE TABLE dim_entities AS "
+        "SELECT 'FAMILY ' || i AS display_name, i * 1.0 AS total_obligation "
+        f"FROM range({ROW_CAP + 50}) t(i)"
+    )
+    con.close()
+
+    captured: list[str] = []
+
+    class CapturingFakeClient:
+        class _Messages:
+            def __init__(self, outer):
+                self._outer = outer
+
+            def create(self, **kwargs):
+                for msg in kwargs.get("messages", []):
+                    if msg.get("role") == "user":
+                        content = msg.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_result":
+                                    captured.append(block["content"])
+                return self._outer._pop_resp()
+
+        def __init__(self, responses):
+            self._responses = list(responses)
+
+        def _pop_resp(self):
+            if len(self._responses) > 1:
+                return self._responses.pop(0)
+            return self._responses[0]
+
+        @property
+        def messages(self):
+            return self._Messages(self)
+
+    broad_sql = "SELECT display_name FROM dim_entities"
+    narrow_sql = "SELECT display_name FROM dim_entities LIMIT 1"
+    responses = [
+        _make_resp([_tool_use_block("run_sql", "tu1", {"sql": broad_sql})]),
+        _make_resp([_tool_use_block("run_sql", "tu2", {"sql": narrow_sql})]),
+        _make_resp([
+            _tool_use_block("submit_answer", "tu3", {
+                "answer": "FAMILY 0",
+                "refuse": False,
+                "refuse_reason_class": None,
+                "sql": narrow_sql,
+                "citation_kind": "warehouse",
+                "citation": "dim_entities",
+            }),
+        ]),
+    ]
+    run("Which family?", client=CapturingFakeClient(responses),
+        duckdb_path=db, print_cost=False)
+
+    # captured accumulates per create() call (later calls re-see earlier
+    # tool_results in the message history): first entry is the broad query's
+    # result, last entry is the narrow query's result.
+    assert len(captured) >= 2, "expected two run_sql tool_results"
+    broad_payload = json.loads(captured[0])
+    narrow_payload = json.loads(captured[-1])
+
+    # Broad query hit the cap → warning present, rows truncated to ROW_CAP
+    assert "warning" in broad_payload, (
+        f"row-cap warning missing; keys: {list(broad_payload.keys())}"
+    )
+    assert len(broad_payload["rows"]) == ROW_CAP
+    assert "canonical" in broad_payload["warning"] or "canonical" in broad_payload
+    assert "narrower" in broad_payload["warning"], (
+        "warning must direct the model to write a narrower final query"
+    )
+
+    # Narrow query under the cap → no warning
+    assert "warning" not in narrow_payload
+
+
 def test_schema_card_answer_format_mentions_canonical(tiny_db):
     """schema_card rendered text must mention the 'canonical' field as the source
     for the submit_answer answer value.

@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from govbudget.analyst.schema_card import REFUSE_CLASSES, render_system_prompt
-from govbudget.analyst.sql_tool import SqlError, SqlTool
+from govbudget.analyst.sql_tool import ROW_CAP, SqlError, SqlTool
 from govbudget.common.anthropic_client import require_client
 from govbudget.evals_refresh import _canonicalize
 
@@ -71,6 +71,10 @@ _RUN_SQL_TOOL = {
         "The result includes a 'canonical' key — the grader-exact string produced "
         "by _canonicalize(rows). Copy this value verbatim into submit_answer's "
         "'answer' field; do NOT reformat or rephrase it. "
+        "If the 200-row cap is hit, the result carries a 'warning' key: the rows "
+        "(and 'canonical') cover only the first 200 rows and MUST NOT be "
+        "submitted as a final answer — issue a narrower query whose full result "
+        "is exactly the answer rows. "
         "Always close with submit_answer after you have the answer."
     ),
     "input_schema": {
@@ -276,15 +280,26 @@ def run(
                     try:
                         result = tool.run(sql)
                         all_touched |= result["touched_tables"]
-                        truncated_rows = result["rows"][:200]
-                        content = json.dumps({
+                        truncated_rows = result["rows"][:ROW_CAP]
+                        payload = {
                             "rows": truncated_rows,
                             "column_names": result["column_names"],
                             "touched_tables": list(result["touched_tables"]),
                             "canonical": _canonicalize(
                                 [tuple(r) for r in truncated_rows]
                             ),
-                        })
+                        }
+                        if len(result["rows"]) >= ROW_CAP:
+                            payload["warning"] = (
+                                f"row cap ({ROW_CAP}) reached — the result (and "
+                                "'canonical') covers only the first "
+                                f"{ROW_CAP} rows and the full query result may "
+                                "be larger. Do NOT submit this canonical value "
+                                "or this SQL as the final answer; write a "
+                                "narrower query whose complete result is "
+                                "exactly the answer rows."
+                            )
+                        content = json.dumps(payload)
                     except SqlError as exc:
                         content = json.dumps({"error": str(exc)})
                     tool_results.append({

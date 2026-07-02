@@ -94,6 +94,101 @@ def test_fct_improper_exposure_has_url_column_note():
 
 
 # ---------------------------------------------------------------------------
+# Answer shape + final SQL rules (generic — no eval-question specifics)
+# ---------------------------------------------------------------------------
+
+def test_schema_card_has_answer_shape_rules():
+    """SCHEMA_CARD must carry generic question-shape rules."""
+    rules = SCHEMA_CARD.get("answer_shape_rules")
+    assert isinstance(rules, list) and rules, "answer_shape_rules missing/empty"
+    text = " ".join(rules)
+    # 'Which X' questions → identifier only, metric in ORDER BY not SELECT
+    assert "ORDER BY" in text and "LIMIT 1" in text
+    # 'Which is higher, A or B' → single winner
+    assert "higher" in text.lower()
+    # range/coverage questions → single 'min to max' string
+    assert "' to '" in text or "min to max" in text.lower()
+    # counting questions → count(*) at grain vs count(distinct)
+    assert "count(*)" in text and "count(distinct" in text
+
+
+def test_schema_card_has_final_sql_rules():
+    """SCHEMA_CARD must carry determinism + display-precision rules."""
+    rules = SCHEMA_CARD.get("final_sql_rules")
+    assert isinstance(rules, list) and rules, "final_sql_rules missing/empty"
+    text = " ".join(rules)
+    # nondeterministic float aggregation rule (observed live: parallel SUM
+    # varies in trailing decimals across runs)
+    assert "ROUND" in text and ("parallel" in text.lower() or "vary" in text.lower())
+    # deterministic tiebreaker rule
+    assert "tiebreaker" in text.lower()
+    # mandatory unit conversion when the question names a unit
+    assert "millions" in text and "billions" in text
+    # submitted SQL must return exactly the answer rows
+    assert "exactly the answer rows" in text
+
+
+def test_render_contains_shape_and_final_sql_sections():
+    """Rendered prompt must include the QUESTION SHAPE and FINAL SQL sections."""
+    blocks = render_system_prompt()
+    text = " ".join(b.get("text", "") for b in blocks)
+    assert "QUESTION SHAPE" in text
+    assert "FINAL SQL RULES" in text
+    for rule in SCHEMA_CARD["answer_shape_rules"]:
+        assert rule in text, f"answer_shape_rule not rendered: {rule[:60]!r}"
+    for rule in SCHEMA_CARD["final_sql_rules"]:
+        assert rule in text, f"final_sql_rule not rendered: {rule[:60]!r}"
+
+
+def test_rules_do_not_mention_eval_questions():
+    """Generic-rules guard: shape/precision rules must not embed eval-question
+    ids or question-specific answers (no overfitting)."""
+    text = " ".join(
+        SCHEMA_CARD["answer_shape_rules"] + SCHEMA_CARD["final_sql_rules"]
+    )
+    assert not re.search(r"\bq0\d\d\b", text), "rules must not reference eval ids"
+    for leaked in ("LOCKHEED", "BOEING", "TX-12", "Navy", "DARPA", "Medicaid"):
+        assert leaked not in text, f"rules must not embed answer-specific term {leaked!r}"
+
+
+def test_budget_lines_duplicate_row_note():
+    """fct_budget_lines must document the duplicate-row / never-SUM trap
+    (same pe_bli+amount_type appears on rollup and detail rows)."""
+    notes = " ".join(SCHEMA_CARD["tables"]["fct_budget_lines"].get("notes", []))
+    assert "MULTIPLE rows" in notes or "multiple rows" in notes.lower()
+    assert "NEVER SUM" in notes or "never sum" in notes.lower()
+
+
+def test_budget_trajectory_grain_note():
+    """fct_budget_trajectory must document its grain and pe_bli non-uniqueness."""
+    info = SCHEMA_CARD["tables"]["fct_budget_trajectory"]
+    assert "grain" in info["description"].lower()
+    notes = " ".join(info.get("notes", []))
+    assert "count(distinct pe_bli)" in notes
+    assert "not globally unique" in notes.lower()
+
+
+def test_budget_to_awards_grain_and_count_note():
+    """fct_budget_to_awards must document its link grain and how to count
+    linked contracts (distinct award_piid, no grain-changing joins)."""
+    info = SCHEMA_CARD["tables"]["fct_budget_to_awards"]
+    assert "grain" in info["description"].lower()
+    notes = " ".join(info.get("notes", []))
+    assert "count(distinct award_piid)" in notes
+    assert "join" in notes.lower()
+
+
+def test_improper_payments_varchar_cast_note():
+    """improper_payments TEMP TABLE must warn that all columns are VARCHAR and
+    require a CAST before ordering (lexicographic-order trap)."""
+    info = SCHEMA_CARD["tables"]["improper_payments"]
+    notes = " ".join(info.get("notes", []))
+    assert "VARCHAR" in notes
+    assert "CAST" in notes
+    assert "lexicographic" in notes.lower()
+
+
+# ---------------------------------------------------------------------------
 # render_system_prompt()
 # ---------------------------------------------------------------------------
 
