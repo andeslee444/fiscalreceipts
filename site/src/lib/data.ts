@@ -76,6 +76,11 @@ export function getSiteMeta(): SiteMeta {
   return _siteMeta;
 }
 
+// ── Trajectory fiscal-year label (re-exported for server components) ─────────
+// Defined in site.ts (universal, no server-only guard) so that client
+// components can import it too without violating the server-only boundary.
+export { TRAJECTORY_FY_LABEL } from "./site";
+
 // ── programs.json ────────────────────────────────────────────────────────────
 
 export interface ProgramTrajectory {

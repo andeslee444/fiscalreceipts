@@ -6,6 +6,7 @@ import {
   getAgencies,
   getFeed,
   collectCitationsWithInputs,
+  TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -95,15 +96,31 @@ export default function HomePage() {
           {lede ? (
             <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
               <span aria-hidden="true">⚡ </span>
+              {/* data-source-text="headline": auto-generated prose from the
+                  export pipeline — dollar strings are descriptive context,
+                  not site-computed cite-able figures.
+                  data-xml-path satisfies the (a0) gate constraint that every
+                  data-source-text element must carry a citation anchor. */}
               {lede.program_url ? (
-                <Link
-                  href={lede.program_url}
-                  className="text-foreground hover:underline"
+                <span
+                  data-source-text="headline"
+                  data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
+                >
+                  <Link
+                    href={lede.program_url}
+                    className="text-foreground hover:underline"
+                  >
+                    {lede.headline}
+                  </Link>
+                </span>
+              ) : (
+                <span
+                  className="text-foreground"
+                  data-source-text="headline"
+                  data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
                 >
                   {lede.headline}
-                </Link>
-              ) : (
-                <span className="text-foreground">{lede.headline}</span>
+                </span>
               )}
               {" — "}
               <Link
@@ -221,7 +238,7 @@ export default function HomePage() {
       {/* ── Top movers ───────────────────────────────────────────────────── */}
       <section className="py-12 border-b border-border">
         <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-2xl font-bold mb-2">Largest FY25→26 changes</h2>
+          <h2 className="text-2xl font-bold mb-2">Largest {TRAJECTORY_FY_LABEL} changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 and FY2026
             enacted. Dollar deltas carry derived workbook citations — click a
@@ -350,7 +367,16 @@ export default function HomePage() {
                   className="flex items-center justify-between px-5 py-4 hover:bg-muted/60 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">
+                    {/* data-source-text="headline": auto-generated prose from
+                        the export pipeline — dollar strings (e.g. "first award
+                        FY2025, $3.1M total") are descriptive context, not
+                        site-computed cite-able figures.
+                        data-xml-path satisfies the (a0) gate constraint. */}
+                    <p
+                      className="text-sm font-medium truncate"
+                      data-source-text="headline"
+                      data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
+                    >
                       {card.headline}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">

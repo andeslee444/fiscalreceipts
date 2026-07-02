@@ -24,6 +24,7 @@ import {
   type QueryResult,
   type DatasetName,
 } from "@/lib/duckdb";
+import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 import type { AsyncDuckDB } from "@duckdb/duckdb-wasm";
 
 // ── Dataset metadata ──────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ LIMIT 50
           `),
         },
         {
-          label: "Biggest movers FY25→FY26",
+          label: `Biggest movers ${TRAJECTORY_FY_LABEL}`,
           sql: t(`
 SELECT pe_bli, org,
        fy2526_change,

@@ -19,6 +19,7 @@
 import { useContext } from "react";
 import Link from "next/link";
 import { Cite, CitationPanelContext } from "@/components/cite";
+import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
 export interface ReceiptMomentProps {
   /** Program element / budget line item id (links to the program page). */
@@ -52,7 +53,7 @@ export function ReceiptMoment({
       className="rounded-xl border border-border bg-card px-5 py-5 md:px-8 md:py-6"
     >
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-        Biggest FY25→26 swing in the defense budget
+        Biggest {TRAJECTORY_FY_LABEL} swing in the defense budget
       </p>
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="min-w-0">
