@@ -36,10 +36,8 @@
   question: Which company family is ranked second by total DoD obligations in the
     warehouse?
   answer_sql: |
-    select display_name from dim_entities order by total_obligation desc nulls last limit 2 offset 1
-  expected_answer: |-
-    THE BOEING COMPANY
-    GENERAL DYNAMICS CORP
+    select display_name from dim_entities order by total_obligation desc nulls last limit 1 offset 1
+  expected_answer: THE BOEING COMPANY
   expected_citation_kind: warehouse
   notes: Boeing ~$76B
 - id: q006
