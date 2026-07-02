@@ -48,6 +48,8 @@ export interface SiteMetaCounts {
 export interface SiteMeta {
   built_at: string;
   counts: SiteMetaCounts;
+  /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */
+  datasets?: Record<string, number>;
   pdf_base_url: string;
   schema_version: number;
   skipped_unresolved: number;

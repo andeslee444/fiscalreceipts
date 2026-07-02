@@ -10,7 +10,9 @@
  * - sitemap URL count == emitted pages AND every URL starts with SITE_URL origin
  * - robots.txt present
  * - llms.txt contains /methodology/, /downloads/, ≥1 /program/ URL
- * - citations.json key count == manifest citation total (44,754)
+ * - citations.json key count == manifest citation total (from site_meta.json, data-driven)
+ * - download cards: citations.parquet href == /citations/citations.parquet (not /data/)
+ * - stale-literal check: built downloads page must NOT contain hardcoded "44,754"
  */
 
 import fs from "fs";
@@ -266,6 +268,35 @@ export async function runBuildGate() {
       );
     } else {
       notes.push(`citations.json: ${citationKeys} keys == ${citationTotal} total ✓`);
+    }
+  }
+
+  // ── Download-href check ───────────────────────────────────────────────────
+  // The built downloads page must use /citations/citations.parquet (not /data/).
+  const downloadsHtml = path.join(outDir, "downloads", "index.html");
+  if (!fileExists(downloadsHtml)) {
+    errors.push("out/downloads/index.html not found — cannot check download hrefs");
+  } else {
+    const dlContent = fs.readFileSync(downloadsHtml, "utf8");
+    // Verify the citations parquet link points to /citations/ not /data/
+    if (dlContent.includes("/data/citations.parquet")) {
+      errors.push(
+        "downloads page contains stale href /data/citations.parquet — should be /citations/citations.parquet"
+      );
+    } else if (dlContent.includes("citations.parquet")) {
+      notes.push("download href: citations.parquet points to /citations/ ✓");
+    } else {
+      // Could be asset-URL-resolved at runtime; don't error, just note
+      notes.push("download href: citations.parquet not found in static HTML (runtime asset URL)");
+    }
+
+    // Stale-literal check: must NOT contain hardcoded "44,754"
+    if (dlContent.includes("44,754")) {
+      errors.push(
+        "downloads page contains stale literal \"44,754\" — counts must be data-driven from site_meta.json"
+      );
+    } else {
+      notes.push("stale-literal check: no hardcoded \"44,754\" in downloads page ✓");
     }
   }
 

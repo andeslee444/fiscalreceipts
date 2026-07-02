@@ -480,6 +480,9 @@ def export_site(
                 None,     # xml_path
                 ret_at,   # retrieved_at
                 None, None, None, None,  # formula, inputs, query_body, recorded_value
+                pe_bli,   # pe_bli (jbook_pdf only — enables pdf_page citation resolution)
+                scenario, # scenario
+                None,     # amount_type (jbook_pdf rows use scenario, not amount_type)
             ))
 
     # --- 4b. workbook citations ---
@@ -504,6 +507,9 @@ def export_site(
             None,  # xml_path
             None,  # retrieved_at — populated below
             None, None, None, None,  # formula, inputs, query_body, recorded_value
+            pe_bli,      # pe_bli (workbook rows carry pe_bli too)
+            None,        # scenario (not applicable for workbook)
+            amount_type, # amount_type (workbook rows carry amount_type)
         ))
 
     # Populate official_url and retrieved_at for workbook citations
@@ -523,7 +529,8 @@ def export_site(
              top_pt, bottom_pt, page_width, page_height, resolution,
              sheet, cells, amount_thousands, sha256, hosted_pdf_url,
              official_url, xml_path, retrieved_at,
-             formula, inputs, query_body, recorded_value) = row
+             formula, inputs, query_body, recorded_value,
+             row_pe_bli, row_scenario, row_amount_type) = row
             if kind == "workbook" and sha256 in doc_lookup:
                 src_url, dl_at = doc_lookup[sha256]
                 official_url = src_url
@@ -534,6 +541,7 @@ def export_site(
                 sheet, cells, amount_thousands, sha256, hosted_pdf_url,
                 official_url, xml_path, retrieved_at,
                 formula, inputs, query_body, recorded_value,
+                row_pe_bli, row_scenario, row_amount_type,
             ))
         citation_rows = updated
 
@@ -566,6 +574,7 @@ def export_site(
             None,  # xml_path
             None,  # retrieved_at
             None, None, None, None,  # formula, inputs, query_body, recorded_value
+            pe_bli, None, None,  # pe_bli, scenario, amount_type
         ))
 
     # --- 4d. Derived citations (computed/formula figures on rendered surfaces) ---
@@ -607,6 +616,10 @@ def export_site(
             # Derived-tier columns (nullable for all other kinds)
             ("formula", "varchar"), ("inputs", "varchar"),
             ("query_body", "varchar"), ("recorded_value", "varchar"),
+            # pdf_page resolution columns (Task 5B-4): enable eval citation resolution
+            ("pe_bli", "varchar"),       # populated for jbook_pdf + workbook + lda_filing kinds
+            ("scenario", "varchar"),     # populated for jbook_pdf only
+            ("amount_type", "varchar"),  # populated for workbook only
         ],
         rows=citation_rows,
     )
@@ -696,7 +709,7 @@ def _null_derived_row(fid: str, kind: str, units: str | None,
                       formula: str, inputs: str, recorded_value: str | None,
                       retrieved_at: str | None,
                       query_body: str | None = None) -> tuple:
-    """Build a 24-element citation row for kind='derived'."""
+    """Build a 27-element citation row for kind='derived' (includes pe_bli/scenario/amount_type)."""
     return (
         fid, kind, units,
         None,   # amount_text
@@ -714,6 +727,9 @@ def _null_derived_row(fid: str, kind: str, units: str | None,
         inputs,
         query_body,
         recorded_value,
+        None,   # pe_bli
+        None,   # scenario
+        None,   # amount_type
     )
 
 
@@ -1838,14 +1854,16 @@ def _write_all_sidecars(
     #                      x0, x1, top_pt, bottom_pt, page_width, page_height,
     #                      resolution, sheet, cells, amount_thousands, sha256,
     #                      hosted_pdf_url, official_url, xml_path, retrieved_at,
-    #                      formula, inputs, query_body, recorded_value)
+    #                      formula, inputs, query_body, recorded_value,
+    #                      pe_bli, scenario, amount_type)
     citations_dict: dict[str, dict] = {}
     for row in citation_rows:
         (fid, kind, units, amount_text, page_number, x0, x1,
          top_pt, bottom_pt, page_width, page_height, resolution,
          sheet, cells, amount_thousands, sha256, hosted_pdf_url,
          official_url, xml_path, retrieved_at,
-         formula, inputs, query_body, recorded_value) = row
+         formula, inputs, query_body, recorded_value,
+         row_pe_bli, row_scenario, row_amount_type) = row
         citations_dict[fid] = {
             "amount_text": amount_text,
             "amount_thousands": amount_thousands,
@@ -2037,6 +2055,9 @@ def _write_all_sidecars(
     site_meta = {
         "built_at": manifest.get("built_at"),
         "counts": meta_counts,
+        # datasets dict from manifest — single source of truth for per-dataset row counts.
+        # The site build reads this for data-driven download card descriptions.
+        "datasets": manifest.get("datasets", {}),
         "pdf_base_url": manifest.get("pdf_base_url"),
         "schema_version": manifest.get("schema_version", 1),
         "skipped_unresolved": manifest.get("skipped_unresolved", 0),
@@ -2139,7 +2160,7 @@ USASPENDING_ENDPOINT_ALLOWLIST = {
 def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
                           units: str | None,
                           official_url: str | None = None) -> tuple:
-    """Build a 24-element citation row for kind='usaspending'."""
+    """Build a 27-element citation row for kind='usaspending' (includes pe_bli/scenario/amount_type)."""
     return (
         fid, "usaspending", units,
         None,   # amount_text
@@ -2157,6 +2178,9 @@ def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
         None,   # inputs
         query_body,
         recorded_value,
+        None,   # pe_bli
+        None,   # scenario
+        None,   # amount_type
     )
 
 
@@ -2356,6 +2380,9 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
                 None,   # inputs
                 None,   # query_body
                 str(income_usd).strip(),  # recorded_value
+                None,   # pe_bli
+                None,   # scenario
+                None,   # amount_type
             ))
 
         # Expenses row
@@ -2378,6 +2405,9 @@ def _build_filing_lda_citation_rows(*, duckdb_path) -> list[tuple]:
                 None,
                 None,
                 str(expenses_usd).strip(),
+                None,   # pe_bli
+                None,   # scenario
+                None,   # amount_type
             ))
 
     return rows
@@ -2481,6 +2511,9 @@ def _build_state_citation_rows(*, duckdb_path) -> list[tuple]:
                 None,   # inputs
                 None,   # query_body
                 recorded_value,
+                None,   # pe_bli
+                None,   # scenario
+                None,   # amount_type
             ))
 
         elif jurisdiction == "CA":
@@ -2502,6 +2535,9 @@ def _build_state_citation_rows(*, duckdb_path) -> list[tuple]:
                 None,   # inputs
                 None,   # query_body
                 recorded_value,
+                None,   # pe_bli
+                None,   # scenario
+                None,   # amount_type
             ))
 
     return rows

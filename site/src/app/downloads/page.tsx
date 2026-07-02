@@ -22,62 +22,65 @@ export const metadata: Metadata = {
   },
 };
 
-const DATASETS = [
-  {
-    name: "DoD Program Elements (dim_programs)",
-    description:
-      "All 326 defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "J-book Details (jbook_details)",
-    description:
-      "Project-level cost detail rows extracted from DoD J-book XML attachments with XML paths and provenance.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "Budget Lines (budget_lines)",
-    description:
-      "Workbook-cited budget line items with cell-level provenance from R-1 and P-1 Excel rollups.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "Federal Awards (fct_budget_to_awards)",
-    description:
-      "USAspending award transactions linked to DoD program elements via budget account crosswalk.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "Entity Graph (dim_entities)",
-    description:
-      "Top contractor families with SAM.gov entity registration data, UEI counts, and confidence tiers.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "LDA Lobbying (fct_influence)",
-    description:
-      "Senate LDA lobbying filings linked to DoD programs, with filing UUIDs and client family keys.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-  {
-    name: "Citation Index (citations)",
-    description:
-      "44,754-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.",
-    url: "/downloads/",
-    encodingFormat: "application/vnd.apache.parquet",
-  },
-];
+function buildDatasets(citationCount: number) {
+  return [
+    {
+      name: "DoD Program Elements (dim_programs)",
+      description:
+        "All 326 defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "J-book Details (jbook_details)",
+      description:
+        "Project-level cost detail rows extracted from DoD J-book XML attachments with XML paths and provenance.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "Budget Lines (budget_lines)",
+      description:
+        "Workbook-cited budget line items with cell-level provenance from R-1 and P-1 Excel rollups.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "Federal Awards (fct_budget_to_awards)",
+      description:
+        "USAspending award transactions linked to DoD program elements via budget account crosswalk.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "Entity Graph (dim_entities)",
+      description:
+        "Top contractor families with SAM.gov entity registration data, UEI counts, and confidence tiers.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "LDA Lobbying (fct_influence)",
+      description:
+        "Senate LDA lobbying filings linked to DoD programs, with filing UUIDs and client family keys.",
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+    {
+      name: "Citation Index (citations)",
+      description:
+        `${citationCount.toLocaleString("en-US")}-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.`,
+      url: "/downloads/",
+      encodingFormat: "application/vnd.apache.parquet",
+    },
+  ];
+}
 
 export default function DownloadsPage() {
   const meta = getSiteMeta();
 
-  const datasetsLd = DATASETS.map((d) =>
+  const datasets = buildDatasets(meta.counts.citations);
+  const datasetsLd = datasets.map((d) =>
     datasetJsonLd({
       ...d,
       dateModified: meta.built_at,
@@ -112,7 +115,7 @@ export default function DownloadsPage() {
           </p>
         </div>
         <AssetConfigProvider>
-          <DownloadCards builtAt={meta.built_at} />
+          <DownloadCards builtAt={meta.built_at} datasets={meta.datasets ?? {}} />
         </AssetConfigProvider>
       </div>
     </>

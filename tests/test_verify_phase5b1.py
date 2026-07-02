@@ -64,7 +64,8 @@ _CIT_COL_DEFS = (
     " sheet varchar, cells varchar, amount_thousands double,"
     " sha256 varchar, hosted_pdf_url varchar, official_url varchar,"
     " xml_path varchar, retrieved_at varchar,"
-    " formula varchar, inputs varchar, query_body varchar, recorded_value varchar"
+    " formula varchar, inputs varchar, query_body varchar, recorded_value varchar,"
+    " pe_bli varchar, scenario varchar, amount_type varchar"
 )
 
 
@@ -138,7 +139,8 @@ def _make_site_with_jbook_pdf(
           f"https://cdn.example/pdfs/{sha}.pdf#page={page_n}",
           f"https://example.mil/darpa.pdf#page={page_n}",
           None, None,
-          None, None, None, None)],  # formula, inputs, query_body, recorded_value
+          None, None, None, None,  # formula, inputs, query_body, recorded_value
+          None, None, None)],  # pe_bli, scenario, amount_type
     )
 
     return sha, page_n, hit
@@ -182,7 +184,8 @@ def _make_site_with_workbook(site_dir: Path) -> tuple[str, str]:
           None, None, None, None, None, None, None,
           "Exhibit R-1", "J2", 280494.0,
           sha, None, "https://example.mil/r1.xlsx", None, None,
-          None, None, None, None)],  # formula, inputs, query_body, recorded_value
+          None, None, None, None,  # formula, inputs, query_body, recorded_value
+          None, None, None)],  # pe_bli, scenario, amount_type
     )
 
     return sha, fid
@@ -217,7 +220,8 @@ def _make_site_with_lda(site_dir: Path) -> tuple[str, str]:
           None, None, None, None, None, None, None,
           None, None, None,
           None, None, filing_url, None, None,
-          None, None, None, None)],  # formula, inputs, query_body, recorded_value
+          None, None, None, None,  # formula, inputs, query_body, recorded_value
+          None, None, None)],  # pe_bli, scenario, amount_type
     )
 
     return filing_uuid, fid
@@ -322,7 +326,8 @@ class TestCitationGate:
               f"https://cdn.example/pdfs/{sha}.pdf#page={page_n}",
               f"https://example.mil/darpa.pdf#page={page_n}",
               None, None,
-              None, None, None, None)],
+              None, None, None, None,
+              None, None, None)],
         )
         _write_manifest(site, citations={"jbook_pdf": 1})
 
@@ -347,7 +352,8 @@ class TestCitationGate:
               None, None, None, None, None, None, None,
               "Exhibit R-1", "J2", 999999.0,   # WRONG amount
               sha, None, "https://example.mil/r1.xlsx", None, None,
-              None, None, None, None)],
+              None, None, None, None,
+              None, None, None)],
         )
         _write_manifest(site, citations={"workbook": 1})
 
@@ -368,7 +374,8 @@ class TestCitationGate:
               None, None, None, None, None, None, None,
               None, None, None,
               None, None, "https://not-lda.example.com/f/1", None, None,
-              None, None, None, None)],
+              None, None, None, None,
+              None, None, None)],
         )
         _write_manifest(site, citations={"lda_filing": 1})
 
@@ -389,7 +396,8 @@ class TestCitationGate:
               None, None, None, None, None, None, None,
               None, None, None,
               None, None, "https://lda.senate.gov/filings/no-uuid-here/", None, None,
-              None, None, None, None)],
+              None, None, None, None,
+              None, None, None)],
         )
         _write_manifest(site, citations={"lda_filing": 1})
 
@@ -453,6 +461,7 @@ class TestStratifiedSampling:
                 f"https://example.mil/darpa.pdf#page={hit['page_number']}",
                 None, None,
                 None, None, None, None,  # formula, inputs, query_body, recorded_value
+                None, None, None,        # pe_bli, scenario, amount_type
             ))
 
         # 2 workbook rows
@@ -465,6 +474,7 @@ class TestStratifiedSampling:
                 "Exhibit R-1", "J2", 280494.0,
                 sha_wb, None, "https://example.mil/r1.xlsx", None, None,
                 None, None, None, None,  # formula, inputs, query_body, recorded_value
+                None, None, None,        # pe_bli, scenario, amount_type
             ))
 
         # 2 lda_filing rows (use a real UUID so the UUID check passes)
@@ -478,6 +488,7 @@ class TestStratifiedSampling:
                 None, None, None,
                 None, None, f"https://lda.senate.gov/filings/{real_uuid}/", None, None,
                 None, None, None, None,  # formula, inputs, query_body, recorded_value
+                None, None, None,        # pe_bli, scenario, amount_type
             ))
 
         all_rows = jbook_rows + wb_rows + lda_rows
@@ -613,17 +624,20 @@ class TestIntegrityGate:
              f"https://cdn.example/pdfs/{sha_pdf}.pdf#page={page_n}",
              f"https://example.mil/darpa.pdf#page={page_n}",
              None, None,
-             None, None, None, None),  # formula, inputs, query_body, recorded_value
+             None, None, None, None,  # formula, inputs, query_body, recorded_value
+             None, None, None),       # pe_bli, scenario, amount_type
             (fid_wb, "workbook", "USD thousands", None, None,
              None, None, None, None, None, None, None,
              "Exhibit R-1", "J2", 280494.0,
              sha_wb, None, "https://example.mil/r1.xlsx", None, None,
-             None, None, None, None),  # formula, inputs, query_body, recorded_value
+             None, None, None, None,  # formula, inputs, query_body, recorded_value
+             None, None, None),       # pe_bli, scenario, amount_type
             (fid_lda, "lda_filing", None, None, None,
              None, None, None, None, None, None, None,
              None, None, None,
              None, None, "https://lda.senate.gov/filings/uuid-001/", None, None,
-             None, None, None, None),  # formula, inputs, query_body, recorded_value
+             None, None, None, None,  # formula, inputs, query_body, recorded_value
+             None, None, None),       # pe_bli, scenario, amount_type
         ]
         _write_parquet(
             site_dir / "citations" / "citations.parquet",
@@ -678,7 +692,8 @@ class TestIntegrityGate:
                      f"https://cdn.example/pdfs/{sha}.pdf#page={hit['page_number']}",
                      "https://example.mil/darpa.pdf#page=1",
                      None, None,
-                     None, None, None, None)  # formula, inputs, query_body, recorded_value
+                     None, None, None, None,  # formula, inputs, query_body, recorded_value
+                     None, None, None)        # pe_bli, scenario, amount_type
         _write_parquet(cit_pq, _CIT_COL_DEFS, existing + [extra_row])
 
         result = integrity_gate5b1(site)
@@ -740,7 +755,8 @@ class TestIntegrityGate:
                  None, None, None, None, None, None, None,
                  "Sheet1", "A1", 100.0,
                  ids["sha_wb"], None, "https://example.mil/r1.xlsx", None, None,
-                 None, None, None, None)  # formula, inputs, query_body, recorded_value
+                 None, None, None, None,  # formula, inputs, query_body, recorded_value
+                 None, None, None)        # pe_bli, scenario, amount_type
         _write_parquet(
             cit_pq,
             _CIT_COL_DEFS,
@@ -829,7 +845,8 @@ class TestCitationDistinctnessCheck:
         return (fid, "lda_filing", None, None, None,
                 None, None, None, None, None, None, None,
                 None, None, None, None, None, url, None, None,
-                None, None, None, None)  # formula, inputs, query_body, recorded_value
+                None, None, None, None,  # formula, inputs, query_body, recorded_value
+                None, None, None)        # pe_bli, scenario, amount_type
 
     def test_duplicated_lda_fact_id_fails(self, tmp_path):
         """citations.parquet with the same lda_filing fact_id twice → FAIL."""
@@ -892,11 +909,12 @@ from govbudget.verify_phase5b1 import _verify_derived
 def _make_derived_row(fid: str, formula: str, inputs_json: str,
                       recorded_value: str, units: str = "USD thousands",
                       retrieved_at: str = "2026-06-12T00:00:00+00:00") -> tuple:
-    """Build a 24-element derived citation row."""
+    """Build a 27-element derived citation row (includes pe_bli/scenario/amount_type)."""
     return (fid, "derived", units, None,
             None, None, None, None, None, None, None, None,
             None, None, None, None, None, None, None, retrieved_at,
-            formula, inputs_json, None, recorded_value)
+            formula, inputs_json, None, recorded_value,
+            None, None, None)  # pe_bli, scenario, amount_type
 
 
 class TestFactIdDerived:
@@ -972,7 +990,8 @@ class TestDerivedCitationGate:
         row = (fid, "derived", "HHI", None,
                None, None, None, None, None, None, None, None,
                None, None, None, None, None, None, None, "2026-06-12T00:00:00",
-               "sum(share_pct^2) where obligation>0", "[]", None, None)  # recorded_value=None
+               "sum(share_pct^2) where obligation>0", "[]", None, None,
+               None, None, None)  # recorded_value=None; pe_bli, scenario, amount_type
         _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
         _write_manifest(site)
 
@@ -1094,7 +1113,8 @@ class TestDerivedIntegrityGate:
         row = (fid, "derived", "USD", None,
                None, None, None, None, None, None, None, None,
                None, None, None, None, None, None, None, "2026-06-12",
-               None, "[]", None, "5000000.000")  # formula=None
+               None, "[]", None, "5000000.000",
+               None, None, None)  # formula=None; pe_bli, scenario, amount_type
         _write_parquet(site / "citations" / "citations.parquet", _CIT_COL_DEFS, [row])
         _write_manifest(site)
 
@@ -1113,11 +1133,12 @@ class TestDerivedIntegrityGate:
 
 def _make_derived_row_tuple(fid: str, formula: str, inputs_json: str,
                             recorded_value: str) -> tuple:
-    """24-element derived citation row (same layout as _CIT_COL_DEFS)."""
+    """27-element derived citation row (same layout as _CIT_COL_DEFS)."""
     return (fid, "derived", "USD thousands", None,
             None, None, None, None, None, None, None, None,
             None, None, None, None, None, None, None, "2026-06-12T00:00:00+00:00",
-            formula, inputs_json, None, recorded_value)
+            formula, inputs_json, None, recorded_value,
+            None, None, None)  # pe_bli, scenario, amount_type
 
 
 def _build_cit_idx() -> dict:
@@ -1130,6 +1151,7 @@ def _build_cit_idx() -> dict:
         "sha256", "hosted_pdf_url", "official_url",
         "xml_path", "retrieved_at",
         "formula", "inputs", "query_body", "recorded_value",
+        "pe_bli", "scenario", "amount_type",
     ]
     return {name: i for i, name in enumerate(cols)}
 

@@ -181,7 +181,7 @@ const llmsTxt = [
   `Every program element, award, and lobbying figure is citation-backed: J-book PDF`,
   `page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.`,
   `The site covers 326 DoD R&D and procurement program elements across 20 agencies,`,
-  `200 top contractor families, and 44,754 source citations from FY2017 onward.`,
+  `200 top contractor families, and ${(meta.counts?.citations ?? meta.datasets?.citations ?? 0).toLocaleString("en-US")} source citations from FY2017 onward.`,
   ``,
   `## Core routes`,
   ``,

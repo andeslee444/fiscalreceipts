@@ -522,7 +522,7 @@ class TestFilingLdaCitationRows:
         inc_fid = fact_id_lda_filing(self._UUID1, "income")
         row = next(r for r in rows if r[0] == inc_fid)
 
-        assert len(row) == 24, f"expected 24-element tuple, got {len(row)}"
+        assert len(row) == 27, f"expected 27-element tuple, got {len(row)}"
         assert row[1] == "lda_filing", f"kind should be lda_filing, got {row[1]}"
         official_url = row[17]  # index 17 = official_url
         assert official_url and "lda.senate.gov" in official_url, \
