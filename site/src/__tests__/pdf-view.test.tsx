@@ -113,7 +113,8 @@ describe("PdfView — ranged transport + cache", () => {
         url: "/assets/pdfs/sha-transport.pdf", // fragment stripped, default base
         rangeChunkSize: 262144,
         disableAutoFetch: true,
-        disableStream: false,
+        // true, or PDF.js streams the whole file alongside range requests
+        disableStream: true,
       }),
     );
   });

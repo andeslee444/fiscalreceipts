@@ -109,9 +109,15 @@ function getCachedDocument(
     url,
     // Ranged transport: fetch only the byte ranges the target page needs
     // instead of streaming the whole file (some J-books are >30 MB).
+    //
+    // disableStream MUST be true: PDF.js only cancels its initial full GET
+    // (which otherwise streams the ENTIRE file to completion, in parallel
+    // with the range requests) when streaming is disabled — measured on the
+    // 31 MB J-book: stream enabled ≈ full file + chunk overlap transferred;
+    // stream disabled ≈ only the target page's chunks.
     rangeChunkSize: RANGE_CHUNK_SIZE,
     disableAutoFetch: true,
-    disableStream: false,
+    disableStream: true,
   });
 
   const entry: DocCacheEntry = {
