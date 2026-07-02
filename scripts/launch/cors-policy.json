@@ -1,0 +1,9 @@
+[
+  {
+    "AllowedOrigins": ["https://REPLACE_WITH_SITE_URL"],
+    "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+    "AllowedHeaders": ["range", "origin", "content-type", "accept"],
+    "ExposeHeaders": ["content-range", "accept-ranges", "content-length"],
+    "MaxAgeSeconds": 3600
+  }
+]
