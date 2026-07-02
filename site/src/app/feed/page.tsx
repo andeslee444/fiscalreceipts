@@ -192,12 +192,15 @@ function FeedCardItem({
           </span>
         )}
         <div className="mt-1">
+          {/* Slightly larger + higher-contrast than muted-foreground
+              (visual-judge nit: "why?" was easy to miss). href keeps the
+              /methodology/#feed-{type} anchor the feed gate greps for. */}
           <Link
             href={card.why_url}
-            className="text-xs text-muted-foreground underline decoration-dotted hover:decoration-solid"
+            className="text-[13px] text-foreground/70 underline decoration-dotted hover:text-foreground hover:decoration-solid"
             title="Why am I seeing this?"
           >
-            why?
+            why flagged?
           </Link>
         </div>
       </div>

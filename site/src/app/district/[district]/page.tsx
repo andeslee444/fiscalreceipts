@@ -79,8 +79,9 @@ export default async function DistrictDetailPage({ params }: Props) {
           ]}
         />
 
-        {/* Disclaimer banner */}
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-6">
+        {/* Disclaimer banner — roomier padding + line-height at mobile
+            (visual-judge nit: text felt cramped at 390px). */}
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-6">
           <strong>Coverage note:</strong> District data reflects only
           high-confidence award links from the DARPA crosswalk.
           Geographic totals are derived from award transaction data and are

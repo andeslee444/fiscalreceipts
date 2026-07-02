@@ -63,8 +63,9 @@ export default function DistrictIndexPage() {
           </p>
           {/* Scope note — G2 contract (data-coverage="districts") */}
           <CoverageNote id="districts" className="mb-3" />
-          {/* Coverage disclaimer */}
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200 mb-4">
+          {/* Coverage disclaimer — roomier padding + line-height at mobile
+              (visual-judge nit: text felt cramped at 390px). */}
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-4">
             <strong>Coverage note:</strong> District data reflects only{" "}
             high-confidence award crosswalk links. {_programsCount - _flowsCount} of {_programsCount} programs have no
             district-level linkage yet — crosswalk extension is on the
