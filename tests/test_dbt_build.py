@@ -96,8 +96,8 @@ def make_lake(data_dir: Path):
     )
     write_parquet(
         data_dir / "parquet/subawards/fy=2017",
-        "select * from (values ('K1','250.0','2017-05-01','SUEI1','GAMMA SUB')) "
-        "t(prime_award_unique_key, subaward_amount, subaward_action_date, subawardee_uei, subawardee_name)",
+        "select * from (values ('K1','250.0','1000.0','2017-05-01','SUEI1','GAMMA SUB')) "
+        "t(prime_award_unique_key, subaward_amount, prime_award_amount, subaward_action_date, subawardee_uei, subawardee_name)",
     )
     write_parquet(
         data_dir / "parquet/mts_outlays",
@@ -257,6 +257,19 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select award_unique_key from fct_award_transactions"
         " where transaction_key='A1'"
     ).fetchone()[0] == 'ASUK1'
+    # Subaward outlier guard: stg_subawards must expose is_amount_suspect flag.
+    # The fixture has 1 clean row (subaward 250 <= prime 1000), so is_amount_suspect=False.
+    suspect_count = con.sql(
+        "select count(*) from stg_subawards where is_amount_suspect = true"
+    ).fetchone()[0]
+    assert suspect_count == 0, (
+        f"fixture has no suspect rows but got {suspect_count} — guard is misfiring"
+    )
+    clean_count = con.sql(
+        "select count(*) from stg_subawards where is_amount_suspect = false"
+    ).fetchone()[0]
+    assert clean_count == 1, f"expected 1 clean subaward row, got {clean_count}"
+
     # Finding 4: entity_xwalk.recipient_uei uniqueness guard
     # The dbt unique test in schema.yml gates the build. To prove that a duplicate
     # UEI would double-count obligation totals (motivating the guard), verify the
