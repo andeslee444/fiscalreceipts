@@ -688,6 +688,34 @@ export function getFeed(): FeedSidecar {
   return _feed;
 }
 
+// pe_bli → title lookup for feedDisplayHeadline (memoized once per build).
+let _programTitleByPeBli: Map<string, string> | null = null;
+
+/**
+ * Display headline for a feed card (V3 journey legibility).
+ *
+ * The export pipeline builds yoy_swing / zeroed_fy2026 headlines that LEAD
+ * with the raw PE/BLI code ("0101213F increased 79% FY25→26"). When the
+ * programs index has a human title for that code, swap the code for the
+ * title — the code is demoted to the card's secondary metadata line, which
+ * already renders it. Cards whose pe_bli has no title (or whose headline
+ * doesn't lead with the code) keep the sidecar headline verbatim — honest
+ * fallback, never invent a name. Display-only: feed.json is unchanged.
+ */
+export function feedDisplayHeadline(card: FeedCard): string {
+  if (!card.pe_bli || !card.headline.startsWith(card.pe_bli)) {
+    return card.headline;
+  }
+  if (!_programTitleByPeBli) {
+    _programTitleByPeBli = new Map(
+      getPrograms().map((p) => [p.pe_bli, p.title]),
+    );
+  }
+  const title = _programTitleByPeBli.get(card.pe_bli);
+  if (!title) return card.headline;
+  return `${title}${card.headline.slice(card.pe_bli.length)}`;
+}
+
 // ── districts/index.json ──────────────────────────────────────────────────────
 
 export interface DistrictIndexRow {

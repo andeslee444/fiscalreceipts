@@ -404,7 +404,7 @@ export default function MethodologyPage() {
           <CoverageNote> rendered on the surface it describes. Counts are
           interpolated at build time; the G2 gate recomputes them from the
           data sidecars and fails the build if they drift. */}
-      <section id="coverage" className="mb-10">
+      <section id="coverage" className="mb-10 scroll-mt-16">
         <h2 className="text-xl font-semibold mb-4">Coverage &amp; limits</h2>
         <p className="text-muted-foreground leading-7 mb-5">
           Several surfaces on this site are deliberately partial: we show a

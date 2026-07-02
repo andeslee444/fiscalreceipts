@@ -4,6 +4,7 @@ import {
   getFeed,
   getEntityTopByFamilyKey,
   collectCitations,
+  feedDisplayHeadline,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -106,11 +107,14 @@ function FeedCardItem({
             data-xml-path provides the block-level citation anchor, satisfying
             the constraint that every data-source-text element must carry
             data-xml-path. */}
+        {/* Headline leads with the program title when the programs index has
+            one (feedDisplayHeadline); the raw PE/BLI code is demoted to the
+            metadata line below. */}
         <p
           className="text-sm font-medium leading-snug"
           data-source-text="headline"
           data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? "unknown"}`}
-        >{card.headline}</p>
+        >{feedDisplayHeadline(card)}</p>
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">

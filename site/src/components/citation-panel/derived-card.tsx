@@ -20,6 +20,7 @@ import React, { useContext } from "react";
 import { ExternalLink } from "lucide-react";
 import type { DerivedCitation } from "@/lib/data";
 import { parseDerivedInputs } from "@/lib/citations";
+import { usdEquivalence } from "@/lib/format";
 import { CitationPanelContext } from "@/components/cite";
 
 interface DerivedCardProps {
@@ -55,6 +56,17 @@ export function DerivedCard({ citation }: DerivedCardProps) {
             {citation.units}
           </span>
         )}
+        {/* Compact-USD equivalence for ≥$1B millions values — recorded value
+            stays primary, equivalence is parenthetical. */}
+        {(() => {
+          const eq = usdEquivalence(
+            Number(citation.recorded_value),
+            citation.units,
+          );
+          return eq ? (
+            <span className="ml-1.5 text-xs text-muted-foreground">({eq})</span>
+          ) : null;
+        })()}
       </div>
 
       {/* Formula */}

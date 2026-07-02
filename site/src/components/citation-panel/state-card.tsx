@@ -20,6 +20,7 @@
 import React from "react";
 import { ExternalLink } from "lucide-react";
 import type { StateSoqlCitation, StateFileCitation } from "@/lib/data";
+import { usdEquivalence } from "@/lib/format";
 
 interface StateCardProps {
   citation: StateSoqlCitation | StateFileCitation;
@@ -50,6 +51,17 @@ export function StateCard({ citation }: StateCardProps) {
             {citation.units}
           </span>
         )}
+        {/* Compact-USD equivalence for ≥$1B millions values — recorded value
+            stays primary, equivalence is parenthetical. */}
+        {(() => {
+          const eq = usdEquivalence(
+            Number(citation.recorded_value),
+            citation.units,
+          );
+          return eq ? (
+            <span className="ml-1.5 text-xs text-muted-foreground">({eq})</span>
+          ) : null;
+        })()}
       </div>
 
       {/* SoQL / pointer link — prominent action */}

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatAmount, formatAmountNoCurrency, exactTitle } from "@/lib/format";
+import {
+  formatAmount,
+  formatAmountNoCurrency,
+  exactTitle,
+  usdEquivalence,
+  districtDisplayLabel,
+} from "@/lib/format";
 
 describe("formatAmount", () => {
   // ── Plan-specified test cases ──────────────────────────────────────────────
@@ -129,5 +135,55 @@ describe("formatAmountNoCurrency", () => {
     for (const v of [1, 999, 12_345, 9_999_999, 123_456_789_000]) {
       expect(formatAmountNoCurrency(v, "USD")).not.toContain("$");
     }
+  });
+});
+
+describe("usdEquivalence", () => {
+  it("USD millions ≥ 1000 → compact equivalence", () => {
+    // Judge finding: card says $3.08B, panel said "3,080.000 USD millions"
+    expect(usdEquivalence(3080, "USD millions")).toBe("= $3.08B");
+  });
+
+  it("USD millions < 1000 → null (already legible)", () => {
+    expect(usdEquivalence(280.494, "USD millions")).toBeNull();
+  });
+
+  it("non-millions units → null (scoped to the unit-mismatch case)", () => {
+    expect(usdEquivalence(3_080_000_000, "USD")).toBeNull();
+    expect(usdEquivalence(3_080_000, "USD thousands")).toBeNull();
+    expect(usdEquivalence(9716, "hhi")).toBeNull();
+    expect(usdEquivalence(1234, null)).toBeNull();
+  });
+
+  it("non-finite recorded values → null", () => {
+    expect(usdEquivalence(Number("not-a-number"), "USD millions")).toBeNull();
+  });
+
+  it("negative ≥$1B magnitude keeps the sign", () => {
+    expect(usdEquivalence(-1500, "USD millions")).toBe("= -$1.50B");
+  });
+});
+
+describe("districtDisplayLabel", () => {
+  it("numbered districts pass through unchanged", () => {
+    expect(districtDisplayLabel("TX-12")).toBe("TX-12");
+    expect(districtDisplayLabel("CA-11")).toBe("CA-11");
+  });
+
+  it("00 → at-large", () => {
+    expect(districtDisplayLabel("AK-00")).toBe("AK (at-large)");
+    expect(districtDisplayLabel("DE-00")).toBe("DE (at-large)");
+    expect(districtDisplayLabel("VT-00")).toBe("VT (at-large)");
+  });
+
+  it("90/98/99 → undistricted", () => {
+    expect(districtDisplayLabel("DC-98")).toBe("DC (undistricted)");
+    expect(districtDisplayLabel("CA-90")).toBe("CA (undistricted)");
+    expect(districtDisplayLabel("NY-99")).toBe("NY (undistricted)");
+  });
+
+  it("unrecognized shapes pass through untouched", () => {
+    expect(districtDisplayLabel("PR-98X")).toBe("PR-98X");
+    expect(districtDisplayLabel("undefined")).toBe("undefined");
   });
 });

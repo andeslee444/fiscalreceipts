@@ -7,6 +7,7 @@ import {
   getFeed,
   getReceiptMomentFact,
   collectCitationsWithInputs,
+  feedDisplayHeadline,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -91,7 +92,7 @@ export default function HomePage() {
       {/* ── Hero (compact — keeps the receipt moment above the fold) ─────── */}
       <section className="bg-background pt-10 pb-8 md:pt-14 md:pb-10">
         <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-balance text-foreground mb-4">
             Federal defense spending,{" "}
             <span className="text-primary">fully cited</span>
           </h1>
@@ -112,7 +113,7 @@ export default function HomePage() {
                     href={lede.program_url}
                     className="text-foreground hover:underline"
                   >
-                    {lede.headline}
+                    {feedDisplayHeadline(lede)}
                   </Link>
                 </span>
               ) : (
@@ -121,8 +122,19 @@ export default function HomePage() {
                   data-source-text="headline"
                   data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
                 >
-                  {lede.headline}
+                  {feedDisplayHeadline(lede)}
                 </span>
+              )}
+              {/* Plain-language gloss for the HHI insider stat (site-authored
+                  prose, so it sits OUTSIDE the data-source-text span). The
+                  2,500 threshold matches the methodology's HHI bands. */}
+              {lede.figure_units === "hhi" && lede.figure_value !== null && (
+                <>
+                  {" — "}
+                  {lede.figure_value >= 2500
+                    ? "a near-monopoly concentration score"
+                    : "a high supplier-concentration score"}
+                </>
               )}
               {" — "}
               <Link
@@ -241,6 +253,18 @@ export default function HomePage() {
               stat="agencies"
             />
           </div>
+          {/* Coverage qualifier — the four totals above span datasets with
+              different coverage (crosswalk, dossiers, districts, …). */}
+          <p className="mt-5 text-center text-xs text-muted-foreground">
+            Coverage varies by dataset —{" "}
+            <Link
+              href="/methodology/#coverage"
+              className="underline hover:text-foreground"
+            >
+              see methodology
+            </Link>
+            .
+          </p>
         </Reveal>
       </section>
 
@@ -386,7 +410,7 @@ export default function HomePage() {
                       data-source-text="headline"
                       data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
                     >
-                      {card.headline}
+                      {feedDisplayHeadline(card)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {card.event_type.replace(/_/g, " ")}

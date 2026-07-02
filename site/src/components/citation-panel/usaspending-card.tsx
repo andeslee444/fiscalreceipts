@@ -17,6 +17,7 @@ import React from "react";
 import { ExternalLink } from "lucide-react";
 import type { UsaspendingCitation } from "@/lib/data";
 import { prettyQueryBody, usaspendingUrlKind } from "@/lib/citations";
+import { usdEquivalence } from "@/lib/format";
 
 interface UsaspendingCardProps {
   citation: UsaspendingCitation;
@@ -48,6 +49,17 @@ export function UsaspendingCard({ citation }: UsaspendingCardProps) {
             {citation.units}
           </span>
         )}
+        {/* Compact-USD equivalence for ≥$1B millions values — recorded value
+            stays primary, equivalence is parenthetical. */}
+        {(() => {
+          const eq = usdEquivalence(
+            Number(citation.recorded_value),
+            citation.units,
+          );
+          return eq ? (
+            <span className="ml-1.5 text-xs text-muted-foreground">({eq})</span>
+          ) : null;
+        })()}
       </div>
 
       {/* Search-hash permalink — prominent action when present */}

@@ -28,6 +28,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { AlertCircle, ExternalLink } from "lucide-react";
 import type { JbookPdfCitation } from "@/lib/data";
 import { pdfHighlightRect } from "@/lib/citations";
+import { usdEquivalence } from "@/lib/format";
 import { useAssetUrl } from "@/components/asset-config";
 
 // ── PDF.js lazy import ───────────────────────────────────────────────────────
@@ -182,7 +183,10 @@ export function PdfView({ citation }: PdfViewProps) {
 
   return (
     <div className="space-y-3">
-      {/* Amount + units — prominent */}
+      {/* Amount + units — prominent. The recorded amount_text stays primary;
+          usdEquivalence adds a compact-USD parenthetical for ≥$1B millions
+          values (e.g. "3,080.000 USD millions (= $3.08B)") so the panel
+          reconciles with the surface card's compact figure. */}
       {citation.amount_text && (
         <div>
           <span className="text-xl font-semibold tabular-nums">
@@ -193,6 +197,17 @@ export function PdfView({ citation }: PdfViewProps) {
               {citation.units}
             </span>
           )}
+          {(() => {
+            const eq = usdEquivalence(
+              Number(citation.amount_text.replace(/,/g, "")),
+              citation.units,
+            );
+            return eq ? (
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                ({eq})
+              </span>
+            ) : null;
+          })()}
         </div>
       )}
 

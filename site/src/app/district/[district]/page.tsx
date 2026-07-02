@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getDistrictIndex, getDistrictDetail, collectCitations } from "@/lib/data";
+import { districtDisplayLabel } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -58,6 +59,15 @@ export default async function DistrictDetailPage({ params }: Props) {
 
   const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
 
+  // Special pop_district codes (00 at-large, 90/98/99 undistricted) render a
+  // plain-language label instead of the raw code — display only; the URL and
+  // sidecar data keep the raw code (e.g. /district/DC-98/).
+  const displayLabel = districtDisplayLabel(district);
+  const isSpecialCode = displayLabel !== district;
+  const heading = isSpecialCode
+    ? displayLabel
+    : `District ${district}${stateLabel}`;
+
   return (
     <CitationPanelProvider citations={citationsSlice}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -65,7 +75,7 @@ export default async function DistrictDetailPage({ params }: Props) {
           items={[
             { label: "Home", href: "/" },
             { label: "Districts", href: "/district/" },
-            { label: `District ${district}${stateLabel}` },
+            { label: heading },
           ]}
         />
 
@@ -80,8 +90,12 @@ export default async function DistrictDetailPage({ params }: Props) {
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-1">
-            District {district}
-            {stateLabel}
+            {heading}
+            {isSpecialCode && (
+              <span className="ml-3 align-middle font-mono text-sm font-normal text-muted-foreground">
+                {district}
+              </span>
+            )}
           </h1>
           <p className="text-muted-foreground text-sm">
             {detail.program_count} linked program

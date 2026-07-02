@@ -103,6 +103,49 @@ export function formatAmountNoCurrency(
 }
 
 /**
+ * Parenthetical compact-USD equivalence for citation-panel amount displays.
+ *
+ * The panel keeps the RECORDED value primary (honesty: what the source says),
+ * but "3,080.000 USD millions" is hard to reconcile with the "$3.08B" shown
+ * on the surface card. When units are "USD millions" and the value is ≥ 1,000
+ * (i.e. ≥ $1B), return the compact equivalence — e.g. "= $3.08B" — for the
+ * caller to render as a muted parenthetical. Null otherwise (no clutter for
+ * values already legible in millions).
+ */
+export function usdEquivalence(
+  value: number,
+  units: string | null,
+): string | null {
+  if (units !== "USD millions") return null;
+  if (!Number.isFinite(value) || Math.abs(value) < 1_000) return null;
+  return `= ${formatAmount(value, "USD millions")}`;
+}
+
+/**
+ * Display label for USAspending place-of-performance district codes.
+ *
+ * USAspending/FPDS uses special two-digit codes for records that cannot be
+ * tied to a numbered congressional district:
+ *   - "00"        → at-large state (single seat: AK-00, DE-00, VT-00)
+ *   - "90"        → spread across multiple districts (legacy statewide code)
+ *   - "98" / "99" → undistricted / statewide records (e.g. DC-98)
+ *
+ * This is a DISPLAY-ONLY mapping: pop_district codes in the data sidecars and
+ * the /district/{code}/ URLs are unchanged. Numbered districts pass through
+ * as-is ("TX-12" → "TX-12").
+ */
+export function districtDisplayLabel(popDistrict: string): string {
+  const m = /^([A-Z]{2})-(\d{2})$/.exec(popDistrict);
+  if (!m) return popDistrict;
+  const [, state, num] = m;
+  if (num === "00") return `${state} (at-large)`;
+  if (num === "90" || num === "98" || num === "99") {
+    return `${state} (undistricted)`;
+  }
+  return popDistrict;
+}
+
+/**
  * Exact title attribute value for screen-reader and tooltip use.
  * Shows the exact source value with its units label.
  *
