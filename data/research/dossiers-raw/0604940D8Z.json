@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0604940D8Z",
+ "batch_id": "msgbatch_01HtXP2rN3tHLngcyQejQgMj",
+ "collected_at": "2026-07-02T05:33:32.576209+00:00",
+ "message": {
+  "id": "msg_019kB8urvVYJT9kUgyxjW7Fh",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Central Test and Evaluation Investment Program (CTEIP) develops high-priority test and evaluation (T&E) capabilities for joint or multi-Service requirements across the Department of Defense.\",\"citation\":{\"fact_id\":\"67b669565905e96d\"}},{\"text\":\"CTEIP investments cover critical technology areas including Hypersonics, Directed Energy, Cyber, Electronic Warfare, Nuclear Effects, Space, Autonomy, and Multi-Domain Operations.\",\"citation\":{\"fact_id\":\"784f46f4b4b71b62\"}},{\"text\":\"The program uses a 'corporate investment approach' to combine T&E needs from Service, Defense, and other Government agencies in order to maximize joint efforts and avoid unwarranted duplication of test capabilities.\",\"citation\":{\"fact_id\":\"7c16c7f5224f124a\"}},{\"text\":\"CTEIP evaluates and selects proposals that align to national strategic guidance and USD(R&E) — Under Secretary of Defense for Research and Engineering — priorities, provide the greatest return on investment, and promote joint solutions to fill test capability gaps.\",\"citation\":{\"fact_id\":\"95aa7b72156ccb7b\"}},{\"text\":\"The program has existed since its inception in FY 1990.\",\"citation\":{\"fact_id\":\"9a4352d17fc3dd83\"}},{\"text\":\"The program is managed by the Office of the Secretary of Defense (OSD) and funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"6e946386e2d80de7\"}},{\"text\":\"In FY2024, CTEIP work included initiating development of a new hypersonic ground test complex with private industry to address growing demand for aerodynamic, aerothermal, and propulsion test needs.\",\"citation\":{\"fact_id\":\"89444471301743fd\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"CTEIP investments are intended to ensure test capabilities keep pace with U.S. and adversary technical advances as well as with quickly changing threats.\",\"citation\":{\"fact_id\":\"67b669565905e96d\"}},{\"text\":\"The program aims to increase efficiency and reduce the cost of testing on the Department of Defense's major ranges and test facilities by sharing test resources between the test and training communities.\",\"citation\":{\"fact_id\":\"784f46f4b4b71b62\"}},{\"text\":\"For FY2026, the program requested about $542.8 million (shown as $542,773 thousand), down from $805.4 million enacted in FY2025.\",\"citation\":{\"fact_id\":\"8c50a159af11d910\"}},{\"text\":\"That represents a cut of roughly $262.6 million, a 32.61 percent decrease from the prior year — a substantial reduction in the program's funding.\",\"citation\":{\"fact_id\":\"73a80d0315f7ba2f\"}},{\"text\":\"By comparison, actual spending in FY2024 was about $848.2 million (shown as $848,247 thousand), meaning the FY2026 request is well below recent actual levels.\",\"citation\":{\"fact_id\":\"498daf9208f728ca\"}},{\"text\":\"Cumulative program funding across all prior years is reported at roughly $4,675.3 million (about $4.7 billion).\",\"citation\":{\"fact_id\":\"67b669565905e96d\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings in 2024 by Lockheed Martin Corporation referenced matters mentioning the term 'Investment,' including HR 7024, the Tax Relief for American Families and Workers Act of 2024.\",\"citation\":{\"fact_id\":\"023bc6383852614c\"}},{\"text\":\"General Dynamics Corporation reported 2024 lobbying activity referencing 'Investment,' including H.R. 8070 (Service Member Quality of Life Investment Act) and the National Defense Authorization Act for Fiscal Year 2025.\",\"citation\":{\"fact_id\":\"84681dbb8e0d8bf7\"}},{\"text\":\"RTX Corporation and affiliates (formerly Raytheon Technologies) reported 2024 lobbying activity referencing 'Investment,' including H.R. 8070 and the National Defense Authorization Act for Fiscal Year 2025.\",\"citation\":{\"fact_id\":\"6bfc3371c23f4a59\"}},{\"text\":\"General Electric Company reported lobbying filings referencing 'Investment,' including matters related to trade and investment in the United States.\",\"citation\":{\"fact_id\":\"15be376b41bfb677\"}},{\"text\":\"These lobbying mentions reflect only that filings referenced a term matched to this program; they were captured by a keyword match on the word 'Investment' and do not indicate the companies won or influenced any CTEIP funding.\",\"citation\":{\"fact_id\":\"056f37f4d9f562d6\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 14043,
+   "output_tokens": 1659,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

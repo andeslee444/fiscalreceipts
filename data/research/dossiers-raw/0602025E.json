@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0602025E",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01SnyCDHH6SdvVAe6pkXgBiS",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Making, Maintaining, Supply Chain and Logistics (program element 0602025E) is a DARPA (Defense Advanced Research Projects Agency) applied research program.\",\"citation\":{\"fact_id\":\"53371aa835c2278d\"}},{\"text\":\"The program addresses applied research aimed at needed technical innovations involved with preserving a healthy, responsive technology supply chain and its associated logistics, including novel techniques in materials processing and the development of advanced electronics and disruptive microtechnologies.\",\"citation\":{\"fact_id\":\"8909193de2fa4945\"}},{\"text\":\"Prior to FY 2026, efforts in this program element were funded in PE 0602715E (Materials and Biological Technology), PE 0602716E (Electronics Technology), and PE 0602303E (Information & Communications Technology) — meaning this is a consolidated program element.\",\"citation\":{\"fact_id\":\"4e538095ce75c57a\"}},{\"text\":\"One major project, Disruptive Microtechnologies (project MSL-02), continues advancement in microelectronics, including electronic and optoelectronic devices, semiconductor device design and fabrication, and new materials and material structures.\",\"citation\":{\"fact_id\":\"555fafed907d1631\"}},{\"text\":\"Another project, Quantum Technologies (project MQB-01), addresses applied research into emerging technologies and system concepts that exploit or employ quantum technology for quantum computing, networking, and sensing.\",\"citation\":{\"fact_id\":\"5d0ce857ce984f14\"}},{\"text\":\"The Materials Processing Technology project (MSL-01) aims to develop novel materials, fabrication and processing techniques, models, devices and components that increase performance or enable new missions for military platforms manufactured at commercial scales.\",\"citation\":{\"fact_id\":\"a434350dde957d47\"}},{\"text\":\"The Cyber Security project (MSL-04) develops the computing, networking, and cyber security technologies required to protect Department of Defense, U.S. Government, and U.S. civilian information systems and critical infrastructure.\",\"citation\":{\"fact_id\":\"60eba88c8f0fa77f\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's total FY 2026 request is about $1.597 billion (shown as 1,597,049 USD thousands), reflecting a substantial DARPA investment.\",\"citation\":{\"fact_id\":\"8909193de2fa4945\"}},{\"text\":\"That total is made up of a FY 2026 discretionary request of roughly $1.347 billion (1,347,049 USD thousands).\",\"citation\":{\"fact_id\":\"4e538095ce75c57a\"}},{\"text\":\"An additional FY 2026 reconciliation (mandatory) request of $250 million (250,000 USD thousands) is included.\",\"citation\":{\"fact_id\":\"9ac031152f33ed32\"}},{\"text\":\"Within the request, the Disruptive Microtechnologies project accounts for about $369.8 million, the single largest project line.\",\"citation\":{\"fact_id\":\"555fafed907d1631\"}},{\"text\":\"The Quantum Technologies project accounts for about $358.1 million.\",\"citation\":{\"fact_id\":\"5d0ce857ce984f14\"}},{\"text\":\"The Materials Processing Technology project accounts for about $191.4 million.\",\"citation\":{\"fact_id\":\"a434350dde957d47\"}},{\"text\":\"The Cyber Security project accounts for about $140.2 million.\",\"citation\":{\"fact_id\":\"60eba88c8f0fa77f\"}},{\"text\":\"The Quantum Benchmarking Initiative (QBI) FY 2026 request includes $282,000 thousand of discretionary and $250,000 thousand of mandatory (reconciliation) funds for a total of $532,000 thousand, aimed at rigorously evaluating commercial quantum computing activities to prevent strategic surprise.\",\"citation\":{\"fact_id\":\"9ac031152f33ed32\"}}]},\"players\":{\"claims\":[{\"text\":\"Across the program's award history, the leading recipient family by dollars is RAYTHEON, measured over roughly $4.68 billion in program dollars.\",\"citation\":{\"fact_id\":\"5a3b8a1cba0a8bbe\"}},{\"text\":\"Award dollars are spread across 189 recipient families, producing a low concentration score (Herfindahl-Hirschman Index of about 389), which indicates a relatively diverse contractor base overall.\",\"citation\":{\"fact_id\":\"b45aa52df18b0f7c\"}},{\"text\":\"The largest single tracked award, worth about $210.1 million, went to INDYNE, INC. (contract FA251718C8000, Alaska).\",\"citation\":{\"fact_id\":\"5a3b8a1cba0a8bbe\"}},{\"text\":\"Other large awards went to SYSTEM HIGH CORPORATION (about $114.7 million) and CACI TECHNOLOGIES, LLC (about $113.6 million).\",\"citation\":{\"fact_id\":\"5a3b8a1cba0a8bbe\"}},{\"text\":\"Lobbying filings from Lockheed Martin Corporation referenced defense supply chain issues in connection with the FY25 National Defense Authorization Act.\",\"citation\":{\"fact_id\":\"0e6a0c0b283d90d5\"}},{\"text\":\"A 2025 Lockheed Martin filing referenced S 2296 — the National Defense Authorization Act for Fiscal Year 2026 — including issues related to entry of defense supply chain matters.\",\"citation\":{\"fact_id\":\"04eea92ddae3e4b9\"}},{\"text\":\"The Boeing Company reported lobbying on supply chain issues, including commercial and aftermarket operations, in a 2026 filing.\",\"citation\":{\"fact_id\":\"0d69259d509e0574\"}},{\"text\":\"Boeing Company reported lobbying on the FY25 National Defense Authorization Act relating to industrial base and supply chains.\",\"citation\":{\"fact_id\":\"6cc7cdee19716c86\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 39573,
+   "output_tokens": 2035,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

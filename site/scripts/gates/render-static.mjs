@@ -107,16 +107,21 @@ export async function runRenderStaticGate() {
     }
 
     // ── (a0) data-source-text constraint: every data-source-text element must
-    //        carry a non-empty data-xml-path AND contain NO [data-amount]
-    //        descendants (computed figures may not hide inside source text).
+    //        carry a citation anchor — data-xml-path (block-cited narrative
+    //        prose) OR data-cite-fact-id / data-cite-url (claim-cited dossier
+    //        text) — AND contain NO [data-amount] descendants (computed
+    //        figures may not hide inside source text).
     const sourceTextEls = root.querySelectorAll("[data-source-text]");
     for (const stEl of sourceTextEls) {
-      const xmlPath = stEl.getAttribute("data-xml-path");
-      if (!xmlPath || xmlPath.trim() === "") {
+      const anchor =
+        stEl.getAttribute("data-xml-path") ||
+        stEl.getAttribute("data-cite-fact-id") ||
+        stEl.getAttribute("data-cite-url");
+      if (!anchor || anchor.trim() === "") {
         positiveErrors++;
         positiveFailures.push({
           file: relPath,
-          issue: `[data-source-text] element missing data-xml-path (block-level citation required)`,
+          issue: `[data-source-text] element missing citation anchor (data-xml-path, data-cite-fact-id, or data-cite-url required)`,
           attrs: stEl.rawAttrs?.slice(0, 200),
         });
       }

@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-8001PH1000",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_017GdKSmxLVNZctfJHuPyiDm",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"CB Protection & Hazard Mitigation is a procurement program run by the Chemical and Biological Defense Program (CBDP), funded through the Procurement, Defense-Wide account.\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}},{\"text\":\"The program's Protection & Hazard Mitigation (Protect) Portfolio aims to enhance mission performance and provide effective protection against current and emerging threats by rapidly developing and fielding modernized protection capabilities, focusing on advances in materials and systems engineering to defend against a broad range of hazards while reducing operational and logistical burdens in an unknown chemical and biological (CB) threat environment.\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}},{\"text\":\"The program's Mitigate Portfolio preserves combat power by developing and fielding systems that reduce exposure to chemical and biological hazards and that restore combat readiness of critical personnel and platforms, including work on personnel decontamination (such as handling mass casualties and human remains) and materiel decontamination (including sensitive equipment and aircraft).\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program supports operational forces across global, contingency, special operations, counternarcotics, and other high-risk missions that have an immediate need to survive and sustain operations in a chemical and biological threat environment, providing protective equipment and medical countermeasures.\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}},{\"text\":\"In fiscal year 2024, the program recorded actual spending of about $217.3 million (USD thousands: 217,255).\",\"citation\":{\"fact_id\":\"f9011bbedce6fc72\"}},{\"text\":\"For fiscal year 2025, the enacted amount was about $201.0 million (USD thousands: 201,011).\",\"citation\":{\"fact_id\":\"8c4df94b9daeae3f\"}},{\"text\":\"The fiscal year 2026 request is about $213.3 million (USD thousands: 213,330), a rise from the 2025 enacted level.\",\"citation\":{\"fact_id\":\"7810359c47e034a0\"}},{\"text\":\"The fiscal year 2026 request was reduced by $13.200 million for Advisory and Assistance Services to promote efficiencies in alignment with Executive Order 14222, the President's Department of Government Efficiency Cost Efficiency Initiative.\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}},{\"text\":\"The fiscal year 2026 request also reduces discretionary travel funding by $0.360 million to align with Executive Order 14222.\",\"citation\":{\"fact_id\":\"1b8906d2c55697a6\"}}]},\"players\":{\"claims\":[{\"text\":\"Lockheed Martin Corporation reported lobbying filings that referenced the Department of Defense Appropriations Act, 2024, matching the program term \\\"Protection.\\\"\",\"citation\":{\"fact_id\":\"023bc6383852614c\"}},{\"text\":\"Lockheed Martin Corporation reported a lobbying filing referencing the Department of Defense Appropriations Act, 2026, matching the program term \\\"Mitigation.\\\"\",\"citation\":{\"fact_id\":\"002d7f7f516bc2f9\"}},{\"text\":\"RTX Corporation and Affiliates reported lobbying filings referencing the National Defense Authorization Act FY24 and Department of Defense Appropriations Act, matching the term \\\"Protection.\\\"\",\"citation\":{\"fact_id\":\"00eeecd48293fb02\"}},{\"text\":\"RTX Corporation and Affiliates reported a 2026 lobbying filing referencing the National Defense Authorization Act FY26, matching the term \\\"Protection.\\\"\",\"citation\":{\"fact_id\":\"06a10ee597b6622f\"}},{\"text\":\"BAE Systems Inc reported a lobbying filing referencing the Department of Defense Appropriations Act, 2026, matching the term \\\"Protection.\\\"\",\"citation\":{\"fact_id\":\"05bc996f45f91bd2\"}},{\"text\":\"General Electric Company (including subsidiaries) reported lobbying filings on issues related to global intellectual property protection and U.S. patent reform, which matched the term \\\"Protection.\\\"\",\"citation\":{\"fact_id\":\"056f37f4d9f562d6\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 9039,
+   "output_tokens": 1496,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

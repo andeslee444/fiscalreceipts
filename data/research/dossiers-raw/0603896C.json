@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603896C",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_018VcffzA8HfqKxCxruhJqiz",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"C2BMC is the integrating element of the Missile Defense System — a combat-proven operational system that enables the U.S. President, Secretary of Defense, and Combatant Commanders to see the battle develop, dynamically manage networked sensors, and coordinate weapons systems against a diverse range of missile threats.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}},{\"text\":\"Systems linked to C2BMC include Patriot, Terminal High Altitude Area Defense (THAAD), Aegis Ballistic Missile Defense, Aegis Ashore, Ground-based Midcourse Defense (GMD), the Army Integrated Air and Missile Defense Battle Command System, and sensors such as the AN/TPY-2 radar, Sea-Based X-Band Radar, Long Range Discrimination Radar, and Space-Based Infrared System.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}},{\"text\":\"The program is run by the Missile Defense Agency (MDA) and is funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"44df4dbd7791ddd1\"}},{\"text\":\"C2BMC delivers capabilities incrementally with each software build (called a Spiral or Capability Build), each one adding to or enhancing the capability of the previous build — for example, Spiral 8.2 provides Homeland Defense for increased GMD battlespace and improved threat tracking using multiple sensors communicating via Link-16.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}},{\"text\":\"The program is organized into projects including Command & Control, Battle Management, Communications (project MD01), C2BMC Development Support (MX01), C2BMC Test (MT01), Cyber Operations (MC01), and Program-Wide Support (MD40).\",\"citation\":{\"fact_id\":\"4b0acd87fc398bc5\"}},{\"text\":\"Under the MDA's Defense of Guam Program, C2BMC is integrating Missile Defense and Joint systems, establishing a permanent Command Center, and providing communication support throughout the island.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, the total budget request for C2BMC is about $1.067 billion (in USD thousands, $1,067,183).\",\"citation\":{\"fact_id\":\"d24314146cbc5dd5\"}},{\"text\":\"That total is nearly double the roughly $551.8 million enacted for fiscal year 2025 — a jump of about $515.4 million.\",\"citation\":{\"fact_id\":\"a49212c5260c7fea\"}},{\"text\":\"The FY2026 total is split between a $634.183 million discretionary request and a $433 million reconciliation request.\",\"citation\":{\"fact_id\":\"86950f799c22eb3e\"}},{\"text\":\"The reconciliation portion of the FY2026 request totals $433 million (USD thousands).\",\"citation\":{\"fact_id\":\"665674c4dd265658\"}},{\"text\":\"In FY2024, the program spent about $540.2 million (actuals).\",\"citation\":{\"fact_id\":\"9fc6c4a8ba7aff47\"}},{\"text\":\"MDA states that rapidly evolving rogue and peer missile threats have led to a change in national defense policy, and that the President's January 27, 2025 Executive Order established a goal of protecting U.S. citizens, safeguarding critical infrastructure, and securing second-strike capability against missile attack — with the budget submission reflecting changes to meet this evolving mission.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}},{\"text\":\"The C2BMC Command Center provides continuous 24-hours-a-day, 7-days-a-week Ballistic Missile Defense Systems operations, including system and network monitoring and network defense against cyber-attacks.\",\"citation\":{\"fact_id\":\"7175acc175e205c2\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings from Lockheed Martin Corporation in 2024 referenced missile defense matters, described as \\\"F-35 funding, Army Missile Defense.\\\"\",\"citation\":{\"fact_id\":\"0660b6f1a3db335b\"}},{\"text\":\"A 2024 Lockheed Martin filing referenced the Department of Defense Appropriations Act, 2025, matching on the terms \\\"Missile\\\" and \\\"Communications.\\\"\",\"citation\":{\"fact_id\":\"00391cfca9eedb15\"}},{\"text\":\"A 2025 Lockheed Martin filing referenced the Streamlining Procurement for Effective Execution and Delivery and National Defense Authorization Act, matching on the terms \\\"Missile\\\" and \\\"Battle.\\\"\",\"citation\":{\"fact_id\":\"04eea92ddae3e4b9\"}},{\"text\":\"A 2026 Lockheed Martin filing referenced the Department of Defense Appropriations Act, 2026, including issues related to space and missile defense.\",\"citation\":{\"fact_id\":\"002d7f7f516bc2f9\"}},{\"text\":\"Boeing Company filings in 2024 referenced the FY24 Department of Defense Appropriations Act, matching on the terms \\\"Missile\\\" and \\\"Communications.\\\"\",\"citation\":{\"fact_id\":\"005fc74423472220\"}},{\"text\":\"A 2024 Boeing filing referenced FY24 supplemental appropriations and the FY25 Department of Defense Appropriations Act.\",\"citation\":{\"fact_id\":\"0196f789fa9e481e\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 23586,
+   "output_tokens": 1902,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

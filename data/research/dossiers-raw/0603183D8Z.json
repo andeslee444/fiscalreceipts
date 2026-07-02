@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603183D8Z",
+ "batch_id": "msgbatch_01TWVAKNBEKXAyuJ8qY9Fgpq",
+ "collected_at": "2026-07-02T05:57:24.924369+00:00",
+ "message": {
+  "id": "msg_01F1YTM2zBRp4KnqerHmtMNc",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Joint Hypersonic Technology Development & Transition program (budget line 0603183D8Z) is run by the Office of the Secretary of Defense (OSD) and is dedicated to hypersonic technology development and transition through the Joint Hypersonics Transition Office (JHTO).\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"The JHTO, within the Office of the Assistant Secretary of Defense for Science and Technology (ASD(S&T)), was created to establish a university consortium for hypersonics research; support workforce development; expedite testing, evaluation, and acquisition of hypersonic technologies; ensure prototyping demonstration programs integrate advanced technologies; develop strategies, roadmaps, and technology protection measures; and implement a strategy for enhancing the current and future hypersonics workforce.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"The program uses a jointly-developed Hypersonics Science and Technology (S&T) Roadmap to guide internal investments and inform external hypersonics S&T investments, covering capabilities in offensive strike, defense against hypersonics, and reusable hypersonic systems.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"The JHTO established the University Consortium for Applied Hypersonics (UCAH) and solicits research projects — typically 1 to 3 years in duration — across materials, propulsion, navigation, guidance, control, modeling and simulation, aerodynamics, ground testing, algorithms, and planning, and funds summer research internships for undergraduate and graduate students.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"The program funds propulsion S&T projects aimed at closing gaps in hypersonic cruise missiles and enhancing range or payload capacity of boost-glide systems, including solid rocket motor components, Dual-Mode Ramjet/Scramjet propulsion, axial thruster actuators, and improved endothermic fuels.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"The program also funds materials, structures and manufacturing (MSM) S&T work to develop high-temperature materials for hypersonic applications, including alternative ceramic matrix composites, multi-phase monolithic ceramic dielectric materials, and leading edge coatings.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's funding is set to rise dramatically: FY2026 total funding is requested at $650,998 thousand (about $651 million), compared with $56,941 thousand in FY2025 — an increase of $594,057 thousand.\",\"citation\":{\"fact_id\":\"e3142236e1958c84\"}},{\"text\":\"That jump represents a roughly 1,043% year-over-year change from FY2025 to FY2026.\",\"citation\":{\"fact_id\":\"2f8b95695905e81e\"}},{\"text\":\"In FY2024 the program recorded actual spending of $53,148 thousand (about $53 million).\",\"citation\":{\"fact_id\":\"67830efd794caaa1\"}},{\"text\":\"The bulk of the FY2026 increase comes from a reconciliation request of $600,000 thousand, on top of a discretionary request of $50,998 thousand.\",\"citation\":{\"fact_id\":\"c954866fb9b8bb79\"}},{\"text\":\"The discretionary FY2026 request stands at $50,998 thousand, roughly in line with prior-year funding levels before the reconciliation add.\",\"citation\":{\"fact_id\":\"0d29121b7c079909\"}},{\"text\":\"A GovBudget feed event flagged the program as increasing 1,043% from FY25 to FY26, marking it as a notable year-over-year budget swing.\",\"citation\":{\"fact_id\":\"2f8b95695905e81e\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is administered by the Office of the Secretary of Defense (OSD), with funding drawn from the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"3f4ca0c76937ab93\"}},{\"text\":\"A JHTO Systems Engineering Field Activity is hosted at the Naval Surface Warfare Center Crane Division (NSWC Crane) to support systems engineering and integration for hypersonics development and technology transition.\",\"citation\":{\"fact_id\":\"e1edfc3f67893920\"}},{\"text\":\"Lobbying filings by Lockheed Martin Corporation referenced hypersonic-related issues in connection with the Department of Defense Appropriations Act, 2026 (S 2572/HR 4016).\",\"citation\":{\"fact_id\":\"04eea92ddae3e4b9\"}},{\"text\":\"Cerberus Capital Management, L.P. reported lobbying on issues pertaining to hypersonic technologies tied to National Defense Authorization Act and Defense Appropriations legislation.\",\"citation\":{\"fact_id\":\"155431a38b1891be\"}},{\"text\":\"Venus Aerospace reported lobbying on hypersonic funding and programs in House and Senate versions of the FY2024 Defense Appropriations Act.\",\"citation\":{\"fact_id\":\"4073f942455b7a3c\"}},{\"text\":\"Venus Aerospace also reported lobbying on hypersonic issues in the FY26 National Defense Authorization Act (H.R. 3038) and the FY26 Defense Appropriations Act.\",\"citation\":{\"fact_id\":\"7299b133b8f77577\"}},{\"text\":\"Firehawk Aerospace reported lobbying on issues related to additive manufacturing for next-generation rocket propellant technologies in FY26 Defense Appropriations.\",\"citation\":{\"fact_id\":\"0086791ad4ea46c7\"}},{\"text\":\"Honeywell International Inc. reported lobbying that referenced hypersonic issues in connection with Defense Appropriations and National Defense Authorization legislation.\",\"citation\":{\"fact_id\":\"14bd8eb4652d11c2\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 12923,
+   "output_tokens": 2083,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

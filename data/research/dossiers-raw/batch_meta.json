@@ -1,0 +1,14 @@
+{
+ "batch_id": "msgbatch_01C3RhP4UzKFw1hzb56PLYWB",
+ "model": "claude-opus-4-8",
+ "submitted_at": "2026-07-02T06:35:26.611346+00:00",
+ "request_count": 1,
+ "estimated_usd": 0.2425,
+ "pe_blis": [
+  "0603468E"
+ ],
+ "bundle_tokens": {
+  "0603468E": 15888
+ },
+ "trim_stages": {}
+}

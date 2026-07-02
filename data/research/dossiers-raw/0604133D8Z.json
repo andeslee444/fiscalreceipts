@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0604133D8Z",
+ "batch_id": "msgbatch_01TWVAKNBEKXAyuJ8qY9Fgpq",
+ "collected_at": "2026-07-02T05:57:24.924369+00:00",
+ "message": {
+  "id": "msg_018dop1aVbCYu1Kh1dF36b84",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Alpha-1 Development Activities is a program run by the Office of the Secretary of Defense (OSD) and funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"The Alpha-1 program element provides enterprise digital enablers and prototyping efforts to help the Joint force access, develop, and adopt artificial intelligence (AI) in warfighting, readiness, and business use cases more easily, securely, reliably, and responsibly.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"Alpha-1 funding supports AI activities associated with computer vision, generative AI (GenAI), autonomy, and Responsible AI (RAI) adoption, and also includes funding to recruit, train, educate, and enable the DoD workforce to advance AI adoption.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"Specific activities include enterprise data acquisition and labeling, AI development pipelines, testing and evaluation tools and processes, RAI capability development, AI and autonomy modeling and simulation, access to proven and emerging AI models, and associated compute infrastructure costs.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"The program includes an AI & Autonomy Enterprise Enablers project (project number 773).\",\"citation\":{\"fact_id\":\"7c545f49169b5ad2\"}},{\"text\":\"One line of effort, the AI Theater Cloud (AITC), plans, designs, delivers, and supports enterprise-level infrastructure, cloud, and other data-centric capabilities to increase the delivery of data and the speed of decision-making, including in contested, degraded, or austere environments.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"Another effort, Frontier AI, aims to provide available commercial capabilities and lead pilots to accelerate adoption of Frontier AI capabilities through rapid prototyping and rigorous experimentation, partnering with GenAI companies and Combatant Commands.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"The FY 2026 request for Frontier AI includes $320.815 million of discretionary and $124.749 million of mandatory (reconciliation) funding, for a total of $445.564 million.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"The FY 2026 request for Autonomy includes $109.024 million of discretionary and $16.000 million of mandatory (reconciliation) funding, for a total of $125.024 million, with the mandatory funds supporting Integrated Enablers for All-Domain, Attritable Autonomous Systems.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's total funding rose from $53.307 million in FY2025 to $582.570 million in FY2026, an increase of about $529.263 million.\",\"citation\":{\"fact_id\":\"17e9f5bc423fa87b\"}},{\"text\":\"That change amounts to a roughly 993% jump from FY2025 to FY2026, flagged in a year-over-year swing event.\",\"citation\":{\"fact_id\":\"17e9f5bc423fa87b\"}},{\"text\":\"The FY2026 total of $582.570 million reflects a combination of a $441.821 million discretionary request and a $140.749 million reconciliation (mandatory) request.\",\"citation\":{\"fact_id\":\"e8f9b1f6c5ee0e42\"}},{\"text\":\"The reconciliation portion of the FY2026 request totals $140.749 million.\",\"citation\":{\"fact_id\":\"a6bf732b98a3b293\"}},{\"text\":\"The FY2026 total for the program is $582.570 million.\",\"citation\":{\"fact_id\":\"0ec5b077a93914f2\"}},{\"text\":\"In FY2024 the program recorded actual spending of $52.909 million.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"For FY2025 the program was enacted at $53.307 million.\",\"citation\":{\"fact_id\":\"1863aad386ecad35\"}},{\"text\":\"Investing centrally in common enablers is intended to ensure interoperability and drive efficiencies, letting multiple organizations and platforms leverage the capabilities locally in their own use cases.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}},{\"text\":\"AI/ML development in the DoD has a high barrier to entry in terms of cost, certification to operate, workforce expertise, and contracting, and DoD entities often independently solve the same problems with solutions that are not interoperable — Alpha-1 aims to provide shared enterprise services to address this.\",\"citation\":{\"fact_id\":\"3ac0a825fdea8ca6\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Office of the Secretary of Defense (OSD).\",\"citation\":{\"fact_id\":\"0ec5b077a93914f2\"}},{\"text\":\"Lobbying filings referencing the matched term \\\"Activities\\\" included one from Lockheed Martin Corporation in 2024 concerning defense appropriations and authorization bills.\",\"citation\":{\"fact_id\":\"04100b37887ce965\"}},{\"text\":\"Lobbying filings from The Boeing Company in 2024 referenced the matched term \\\"Activities\\\" in connection with commercial activities and FAA matters.\",\"citation\":{\"fact_id\":\"0841e7929b89d012\"}},{\"text\":\"A 2025 filing from Boeing Company referenced monitoring appropriations activity for FY25 and a continuing resolution.\",\"citation\":{\"fact_id\":\"0239a3068f928b74\"}},{\"text\":\"A 2024 filing from RTX Corporation and affiliates (formerly Raytheon Technologies) referenced the Fiscal Year 2025 Department of Defense Appropriations Act.\",\"citation\":{\"fact_id\":\"0636f5d0246492b4\"}},{\"text\":\"BAE Systems Inc filed lobbying reports in 2024 referencing defense appropriations and intelligence authorization legislation.\",\"citation\":{\"fact_id\":\"020d24ee64cba703\"}},{\"text\":\"General Atomics filed lobbying reports in 2024 and 2025 referencing military activities appropriations and authorization bills.\",\"citation\":{\"fact_id\":\"0073855c9bc7b772\"}},{\"text\":\"These lobbying mentions were matched on the generic term \\\"Activities\\\" and largely concern broader defense and appropriations legislation rather than the Alpha-1 program specifically; the references are correlational and do not indicate any of these clients received program funding.\",\"citation\":{\"fact_id\":\"04b283da687d11c3\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 11442,
+   "output_tokens": 2356,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

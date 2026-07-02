@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-MD07",
+ "batch_id": "msgbatch_01WiYGAv1kHEk8YWJ8EmiDdb",
+ "collected_at": "2026-07-02T04:39:09.068065+00:00",
+ "message": {
+  "id": "msg_017xjABHJJMWUZzBk67BF26S",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"THAAD stands for Terminal High Altitude Area Defense, a missile-defense system managed by the Missile Defense Agency (MDA) whose procurement is funded through the Procurement, Defense-Wide account.\",\"citation\":{\"fact_id\":\"447da953d8dbdca6\"}},{\"text\":\"THAAD is an element of the Terminal Defense Segment (TDS) of the Missile Defense System, designed to engage ballistic targets in the late mid-course and terminal phases of their trajectory.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"The THAAD system is comprised of five major components: Interceptors, Launchers, the Army Navy/Transportable Radar Surveillance and Control (AN/TPY-2) radar, the THAAD Fire Control and Communication Tactical Station Group, and Peculiar Support Equipment including a Missile Round Pallet Transportable.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"The AN/TPY-2 radar is a surveillance and targeting sensor that provides data to the THAAD system to execute intercept missions.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"The fiscal year (FY) 2026 request for THAAD Procurement includes $523.1 million of discretionary funding and $317.0 million of mandatory (reconciliation) funding, for a total of $840.1 million.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"The total FY 2026 procurement quantity of 37 consists of 25 THAAD Interceptors funded with discretionary funds and 12 THAAD Interceptors funded with mandatory (reconciliation) funds.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"The 37 THAAD Interceptors are to be combined with Lots 16 (FY 2024) and 17 (FY 2025) in a single contract award, with an estimated unit cost of $12.4 million.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"Total THAAD procurement funding is scheduled to rise sharply, from $216.8 million in FY 2024 actuals to $840.1 million in the FY 2026 total request — roughly a fourfold increase.\",\"citation\":{\"fact_id\":\"10040778fd735a66\"}},{\"text\":\"The FY 2026 total request of $840,125 thousand (about $840.1 million) is the headline figure for this program year.\",\"citation\":{\"fact_id\":\"ff1daad863ba0b87\"}},{\"text\":\"Between the FY 2025 enacted level of $247.0 million and the FY 2026 request, the discretionary portion increase funds additional THAAD Interceptors, growing the quantity from 12 in FY 2025 to 25 in FY 2026.\",\"citation\":{\"fact_id\":\"95e0082c1e044d04\"}},{\"text\":\"The FY 2026 discretionary increase also provides critical Interceptor Obsolescence mitigation, THAAD Battery Ground Component Obsolescence modifications, and the Stockpile Reliability Program.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"MDA states it has successfully used a 'synergy' lot buy approach — awarding a contract with an option for the following fiscal year's funding — to achieve material-cost savings across multiple years, yielding a higher interceptor quantity at a lower average unit price than separate lot buys.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}},{\"text\":\"Interceptor unit costs are driven by the small production quantity, an acquisition strategy meant to minimize supplier production gaps, and the absence of Foreign Military Sales interceptor procurements that could otherwise reduce unit cost.\",\"citation\":{\"fact_id\":\"ae1f0a9e9000ca74\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Missile Defense Agency (MDA).\",\"citation\":{\"fact_id\":\"447da953d8dbdca6\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2195,
+   "inference_geo": "global",
+   "input_tokens": 3251,
+   "output_tokens": 1456,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

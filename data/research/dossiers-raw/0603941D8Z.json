@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603941D8Z",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01W1tnccHF1dUGj85vsUd1NT",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Test & Evaluation Science & Technology (T&E/S&T) is a program run by the Office of the Secretary of Defense (OSD) that seeks out and develops test technologies to keep pace with evolving weapons technologies, funded under Research, Development, Test and Evaluation, Defense-Wide.\",\"citation\":{\"fact_id\":\"1566092bd3541e9f\"}},{\"text\":\"According to the program's mission narrative, the T&E/S&T program exploits new technologies to meet test requirements, expedites the transition of new technologies from the laboratory to the test community, and leverages industry advances in equipment, modeling and simulation, and networking to support testing.\",\"citation\":{\"fact_id\":\"3930e2786af7a513\"}},{\"text\":\"The program funds test infrastructure across cyber, hypersonic, autonomy and space test domains — a multi-domain portfolio in which no single area dominates.\",\"citation\":{\"fact_id\":\"21f910e5d90e38e1\"}},{\"text\":\"One project, High Speed Systems Test (HSST), develops, validates and transitions advanced test technologies for ground test, open-air range flight test, and computational tools for high-speed and hypersonic weapon systems, whose extreme operating environments exceed the capability of today's test assets.\",\"citation\":{\"fact_id\":\"c3a977422268ea66\"}},{\"text\":\"The Multi-Service Advanced Capability for Hypersonics Test Bed (MACH-TB) accelerates delivery of advanced hypersonic and strategic capabilities by leveraging commercial space launch and non-traditional test beds to let the DoD, other federal agencies, industry, and academia affordably and rapidly conduct hypersonic experiments.\",\"citation\":{\"fact_id\":\"1650c8c178bacc00\"}},{\"text\":\"The Electronic Warfare Test (EWT) project develops test technologies to test missile warning systems, hostile fire indicators, infrared countermeasures, and advanced radio-frequency threat sensors that defend military aircraft against threats such as man-portable air defense systems (MANPADS).\",\"citation\":{\"fact_id\":\"586afc98ccd48818\"}},{\"text\":\"The Cyberspace Test Technology (CTT) project develops advanced technologies and methodologies to test the DoD's ability to defend and conduct full-spectrum military operations across cyberspace.\",\"citation\":{\"fact_id\":\"f8804c6276dc96c0\"}},{\"text\":\"The Autonomy and Artificial Intelligence Test (AAIT) project develops test technologies to measure an autonomous system's ability to perceive its environment, process information, make decisions, and act on them — aiming to increase warfighter trust in autonomous systems and AI tools.\",\"citation\":{\"fact_id\":\"3c769879398a944e\"}},{\"text\":\"Other component projects include Spectrum Efficient Technology (SET), Directed Energy Test (DET), C4I & Software Intensive Systems Test (C4T), and Advanced Instrumentation Systems Technology (AIST).\",\"citation\":{\"fact_id\":\"ea700a03643ebb7e\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's total funding rose from $305,722 thousand (about $306 million) in fiscal year 2025 to $1,645,772 thousand (about $1.65 billion) in fiscal year 2026 — an increase of $1,340,050 thousand.\",\"citation\":{\"fact_id\":\"9e82541e212bcd91\"}},{\"text\":\"That represents a 438.32% jump between fiscal years 2025 and 2026, a substantial single-year expansion.\",\"citation\":{\"fact_id\":\"9e82541e212bcd91\"}},{\"text\":\"The fiscal year 2026 total of $1,645,772 thousand combines a discretionary request of $1,095,772 thousand and an additional $550,000 thousand requested through reconciliation.\",\"citation\":{\"fact_id\":\"cbc1ac02b2692ac8\"}},{\"text\":\"The fiscal year 2026 discretionary request alone was $1,095,772 thousand (about $1.1 billion).\",\"citation\":{\"fact_id\":\"9f968092d53857b7\"}},{\"text\":\"A separate $550,000 thousand was requested through reconciliation for fiscal year 2026.\",\"citation\":{\"fact_id\":\"d64737c45b6d48aa\"}},{\"text\":\"In fiscal year 2024 the program recorded actual spending of $415,751 thousand (about $416 million).\",\"citation\":{\"fact_id\":\"1566092bd3541e9f\"}},{\"text\":\"The program's mission narrative frames it as supporting Department priorities to rebuild the military by matching threats to capabilities and to re-establish deterrence by defending the homeland.\",\"citation\":{\"fact_id\":\"3930e2786af7a513\"}},{\"text\":\"The program's own narrative flags that its fiscal year 2026 controls are incorrectly reflected and require corrections, noting that Project 091 (High Speed Systems Test) is understated with a correct control of $579.223 million, Project 098 (Cyberspace Test) is overstated with a correct control of $14.762 million, and Project 112 (MACH-TB) does not reflect an additional $550 million of mandatory funding.\",\"citation\":{\"fact_id\":\"3930e2786af7a513\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is administered by the Office of the Secretary of Defense (OSD).\",\"citation\":{\"fact_id\":\"1566092bd3541e9f\"}},{\"text\":\"In FY24, the High Speed Systems Test project — with SkyRange — supported 3 hypersonic flight tests in 72 hours (one over the Atlantic, one over the Pacific, and one in the continental U.S.) and demonstrated MQ-9 (RangeReaper) data collection.\",\"citation\":{\"fact_id\":\"c3a977422268ea66\"}},{\"text\":\"The Directed Energy Test project's work to optimize dense plasma focus technology supports neutron production rates scalable to a test facility to be developed by the Central Test and Evaluation Investment Program (CTEIP).\",\"citation\":{\"fact_id\":\"c10bcf31cb06cfb8\"}},{\"text\":\"The C4I and Software Intensive Systems Test project transitioned advanced threat submarine modeling and simulation capabilities to the Naval Undersea Warfare Center Weapons Analysis Facility, reducing the number of live in-water runs required for testing torpedo systems.\",\"citation\":{\"fact_id\":\"27c228b76898bc23\"}},{\"text\":\"In FY24, the Space Test project began phase 1 development of a mobile space threat testbed with Lawrence Livermore National Laboratory and started a combined NASA/DoD study to identify upgrades for classified system testing at existing NASA facilities.\",\"citation\":{\"fact_id\":\"586afc98ccd48818\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 19042,
+   "output_tokens": 2322,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

@@ -486,14 +486,15 @@ export interface StateFileCitation extends CitationBase, NonDocumentCitationFiel
  *
  * Null fields: all page/bbox/sheet/amount fields are null.
  */
-export interface JbookNarrativeCitation extends CitationBase, NonDocumentCitationFields {
+export interface JbookNarrativeCitation
+  extends CitationBase,
+    Omit<NonDocumentCitationFields, "sha256" | "xml_path"> {
   kind: "jbook_narrative";
+  // Unlike other non-document kinds, narratives DO carry the source
+  // document's sha and their in-document XML locator.
   sha256: string;
   xml_path: string;
   official_url: string;
-  /** Amount fields not applicable for narrative citations. */
-  amount_text: null;
-  amount_thousands: null;
 }
 
 export type Citation =

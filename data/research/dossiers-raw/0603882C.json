@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603882C",
+ "batch_id": "msgbatch_01TWVAKNBEKXAyuJ8qY9Fgpq",
+ "collected_at": "2026-07-02T05:57:24.924369+00:00",
+ "message": {
+  "id": "msg_015DAnhYeGyVSUx7td7g6NMm",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Ballistic Missile Defense Midcourse Defense Segment (program element 0603882C) is run by the Missile Defense Agency (MDA) and funds the Ground-Based Midcourse Defense (GMD) Weapon System, which provides combatant commands — including U.S. Northern Command (USNORTHCOM) — with a continuously available (24 hours a day, 7 days a week, 365 days a year) homeland-defense weapon system.\",\"citation\":{\"fact_id\":\"6113ddf090007e3b\"}},{\"text\":\"The system uses Ground Based Interceptors, each of which delivers a single kill vehicle to counter allocated threats in space during the midcourse phase of a threat's ballistic trajectory, and MDA is developing a mixed fleet of Ground Based Interceptors and Next Generation Interceptors.\",\"citation\":{\"fact_id\":\"6249d9d91dcae5ec\"}},{\"text\":\"The ground segment includes GMD Fire Control (GFC) nodes at Fort Greely, Alaska, and at the Missile Defense Integration and Operations Center in Colorado Springs, Colorado; the GFC plans midcourse engagements and provides the human-in-control interface to the Warfighter.\",\"citation\":{\"fact_id\":\"2ae597aa10272cc1\"}},{\"text\":\"Beginning in FY 2026, MDA is transferring the budget work for the Ground Based Interceptor and its Service Life Extension Program into a new budget accomplishment called Interceptor Fleet Management, which the agency says yields a net decrease due to efficiencies from the fleet-management approach.\",\"citation\":{\"fact_id\":\"c6d08da6b8948f29\"}},{\"text\":\"The program also funds GMD Cyber Operations, which provides cybersecurity and cyber resiliency to maintain and operate all mission and mission-support systems and to harden the GMD system against cyber-attack.\",\"citation\":{\"fact_id\":\"4e7ca4b6e4f376e1\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program is the U.S. weapon system charged with defending the homeland against long-range ballistic missiles during the midcourse phase, and it is being scaled up in response to a January 27, 2025 Executive Order that set a goal of protecting U.S. citizens, safeguarding critical infrastructure, and securing second-strike capability against missile attack from any adversary.\",\"citation\":{\"fact_id\":\"6113ddf090007e3b\"}},{\"text\":\"In fiscal year 2024 the program spent $866.585 million (listed as $866,585 thousand), giving a sense of the segment's annual scale.\",\"citation\":{\"fact_id\":\"6113ddf090007e3b\"}},{\"text\":\"For fiscal year 2025 the program was enacted at $751.963 million ($751,963 thousand), a step down from the prior year's actual spending.\",\"citation\":{\"fact_id\":\"1403a74c0e06959d\"}},{\"text\":\"The fiscal year 2026 request rises to $825.919 million ($825,919 thousand).\",\"citation\":{\"fact_id\":\"2b36e383eae2cbc4\"}},{\"text\":\"That amounts to a roughly $74 million increase from FY2025 to FY2026, about a 9.84 percent rise.\",\"citation\":{\"fact_id\":\"f0ddc60755455c11\"}},{\"text\":\"Cumulative prior-year investment in the Ground Based Midcourse project (MD08) totals about $9.245 billion, showing the long-running, high-cost nature of the effort.\",\"citation\":{\"fact_id\":\"6249d9d91dcae5ec\"}}]},\"players\":{\"claims\":[{\"text\":\"MDA reported that it completed the transition from The Boeing Company, which had executed as the GMD Program Lead System Integrator, to MDA itself acting as the GMD Weapon System Integrator.\",\"citation\":{\"fact_id\":\"5be35c38f5e46a3e\"}},{\"text\":\"Lobbying filings by Lockheed Martin Corporation referenced missile-related defense issues, including a 2024 filing describing 'F-35 funding, Army Missile Defense.'\",\"citation\":{\"fact_id\":\"0660b6f1a3db335b\"}},{\"text\":\"A 2026 lobbying filing by Lockheed Martin Corporation referenced the Department of Defense Appropriations Act, 2026 (S 2572/HR 4016) including issues related to space and missile defense.\",\"citation\":{\"fact_id\":\"002d7f7f516bc2f9\"}},{\"text\":\"Boeing Company lobbying filings referenced defense appropriations measures, including a 2024 filing citing the FY24 Department of Defense Appropriations Act.\",\"citation\":{\"fact_id\":\"005fc74423472220\"}},{\"text\":\"A 2026 Boeing Company filing referenced the Department of Defense Appropriations Act, 2026 (H.R.4016 & S.2572).\",\"citation\":{\"fact_id\":\"01bfec7dbc6c2604\"}},{\"text\":\"A 2026 Northrop Grumman Corporation filing referenced defense authorization and appropriations measures for fiscal years 2026 and 2027.\",\"citation\":{\"fact_id\":\"0d2a841400d53f8e\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 21282,
+   "output_tokens": 1781,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

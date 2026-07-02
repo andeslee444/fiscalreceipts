@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-1160431BB",
+ "batch_id": "msgbatch_01TWVAKNBEKXAyuJ8qY9Fgpq",
+ "collected_at": "2026-07-02T05:57:24.924369+00:00",
+ "message": {
+  "id": "msg_017VAzEiwyz3PfdCr3xWt7c4",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Warrior Systems is a research-and-development program run by U.S. Special Operations Command (SOCOM) — the military headquarters that oversees special operations forces such as Army Green Berets and Navy SEALs.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"The program funds development, rapid prototyping, testing, and integration of specialized equipment across areas including military information support operations (MISO), weapons, soldier protection and survival, body armor, visual augmentation, lasers, sensors and simulators, communication equipment and electronics, tactical systems development, tactical radio systems, and munitions advanced development.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"Its stated purpose is to give small, highly trained forces equipment that lets them operate across the full spectrum of conflict, including infiltrating by land, sea, and air to conduct unconventional warfare, direct action, or deep reconnaissance in denied areas — which requires that special operations systems remain technologically superior to any threat.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"The budget documents describe the program's funding as split between unclassified and classified elements, with the unclassified share at $225.872 million in FY2024, $183.421 million in FY2025, and $244.472 million in FY2026, and the classified share at $109.507 million, $96.911 million, and $85.592 million respectively.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"GovBudget classifies this as a broad SOCOM Warrior Systems portfolio (covering MISO, weapons, and soldier protection and survival systems), with loitering-munition efforts being a subset rather than the core mission.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"One major project area is Communications Equipment and Electronics Systems, a continuing effort to develop smaller, lighter, more efficient and more robust command, control, communications, and computer (C4) capabilities for special operations forces.\",\"citation\":{\"fact_id\":\"afb57d6eb9319d0c\"}},{\"text\":\"Another project area, Soldier Protection and Survival Systems, funds development, testing, integration, rapid prototyping and evaluation of specialized equipment such as individual survival gear, Multi-Mission Electronic Countermeasures (MM-ECM), and Counter Uncrewed Systems for use in harsh and hostile environments.\",\"citation\":{\"fact_id\":\"0884e5f491fbf495\"}},{\"text\":\"The Munitions Advanced Development project funds advanced engineering, operational system development, and qualification of specialized kinetic and non-kinetic munitions and equipment for special operations forces.\",\"citation\":{\"fact_id\":\"ae03abd2f8044364\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"Warrior Systems is a substantial R&D account: SOCOM actually spent about $335.4 million on it in fiscal year 2024 (figures in USD thousands).\",\"citation\":{\"fact_id\":\"0a8ea6f932f96e8f\"}},{\"text\":\"Funding then dropped to about $280.6 million in fiscal year 2025.\",\"citation\":{\"fact_id\":\"275f52eb6c817e71\"}},{\"text\":\"For fiscal year 2026 the total requested rises to about $330.1 million.\",\"citation\":{\"fact_id\":\"6a49b8c9d151c726\"}},{\"text\":\"That represents an increase of roughly $49.4 million, or about 17.6 percent, from FY2025 to FY2026 — a notable swing back up after the prior-year decline.\",\"citation\":{\"fact_id\":\"5da209604207b5dc\"}},{\"text\":\"The FY2026 total is made up of a discretionary request of about $279.6 million plus a separate reconciliation request of about $50.4 million.\",\"citation\":{\"fact_id\":\"84a82bf97d32c966\"}},{\"text\":\"The program matters because it develops technology intended to keep special operations forces ahead of sophisticated threats — for example, the Counter Uncrewed System (CUxS) effort aims to detect, track, and defeat drone and other uncrewed threats across air, ground, and maritime domains.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}},{\"text\":\"It also funds lifesaving capabilities, such as the Tactical Combat Casualty Care (TCCC) program that provides medical devices, casualty evacuation sets, and brain-health equipment to reduce battlefield losses.\",\"citation\":{\"fact_id\":\"53d32b84e3b361a6\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is owned and managed by U.S. Special Operations Command (SOCOM / USSOCOM), and its budget is drawn from the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"0ec20fb708f6a195\"}},{\"text\":\"The largest single spending area historically is Munitions Advanced Development (project S800), which had accumulated about $188.2 million across all prior years.\",\"citation\":{\"fact_id\":\"ae03abd2f8044364\"}},{\"text\":\"Communications Equipment and Electronics Systems (project S700) had about $153.1 million spent across all prior years.\",\"citation\":{\"fact_id\":\"afb57d6eb9319d0c\"}},{\"text\":\"Soldier Protection and Survival Systems (project S385) had about $125.7 million across all prior years.\",\"citation\":{\"fact_id\":\"0884e5f491fbf495\"}},{\"text\":\"Tactical Radio Systems (project S725) had about $73.4 million across all prior years.\",\"citation\":{\"fact_id\":\"7d4d1872f643c7e1\"}},{\"text\":\"The Military Information Support Operations project (D476) had about $66.4 million across all prior years.\",\"citation\":{\"fact_id\":\"132e052dd7ea8b9c\"}},{\"text\":\"Tactical Systems Development (project S710) had about $48.5 million across all prior years.\",\"citation\":{\"fact_id\":\"f58349fb7c7bff16\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 19350,
+   "output_tokens": 2076,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

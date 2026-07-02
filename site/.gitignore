@@ -8,3 +8,4 @@ public/json-lite/
 test-results/
 public/og/
 .lighthouseci/
+.vercel

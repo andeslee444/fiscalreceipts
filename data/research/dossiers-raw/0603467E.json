@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603467E",
+ "batch_id": "msgbatch_01LejhHAiRSRkYvjntB7LVJX",
+ "collected_at": "2026-07-02T05:45:34.436540+00:00",
+ "message": {
+  "id": "msg_01TFHjDs8AGxnnVUmJMrR4QT",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"DARPA Advanced Technology Development (program element 0603467E) is run by the Defense Advanced Research Projects Agency (DARPA). It funds studies that explore emerging technologies, prototypes, and system concepts for military use, including their potential impact and improvements to military operations, mission utility, and warfighter capability.\",\"citation\":{\"fact_id\":\"5bb28dbd80ce5a83\"}},{\"text\":\"The program addresses advanced technology development in three main areas — Systems; Intelligence, Surveillance and Reconnaissance (ISR); and Sensors — aiming to develop and rapidly mature technologies for current warfare concepts, and to support the transition of DARPA-funded technologies into U.S. national defense capabilities.\",\"citation\":{\"fact_id\":\"12038754130fb6bc\"}},{\"text\":\"The Advanced Systems project (project DAT-01) creates enabling technologies for all-domain operations, from strategic planning to tactical and urban operations, leveraging network, robotic, and information technology to increase force capability, lethality, and responsiveness.\",\"citation\":{\"fact_id\":\"1201c8a9a0fa7613\"}},{\"text\":\"The ISR and Sensors project (project DAT-02) develops technologies to improve surveillance and targeting systems for better battlefield awareness, strike capability, and battle damage assessment, exploiting advances in multispectral target phenomenology, signal processing, and low-cost microelectronics.\",\"citation\":{\"fact_id\":\"38cbbe532147934a\"}},{\"text\":\"The DARPA Advanced Technology Development project (project DAT-06) funds classified DARPA programs reported under Title 10, United States Code, Section 119(a)(1).\",\"citation\":{\"fact_id\":\"12038754130fb6bc\"}},{\"text\":\"The DARPA Advanced Technology Development Support project (project DAT-07) covers non-headquarters management costs across the program element, such as network support, contractor support, program security, and commercial transition services, allocated pro-rata across DARPA's budget activity lines.\",\"citation\":{\"fact_id\":\"0887d5b99d6eae97\"}},{\"text\":\"Before fiscal year 2026, the efforts now in this program element were funded under separate program elements: PE 0603760E (Command, Control and Communications Systems), PE 0603766E (Network-Centric Warfare Technology), and PE 0603767E (Sensor Technology).\",\"citation\":{\"fact_id\":\"daa685f6952ad9ef\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, the total request for this program is about $1.733 billion (listed as 1,733,465 in USD thousands), consolidating work previously spread across several DARPA program elements.\",\"citation\":{\"fact_id\":\"2a2900dcaf8bd11b\"}},{\"text\":\"Of that total, roughly $1.643 billion (1,643,465 in USD thousands) is the fiscal year 2026 discretionary request, with an additional $90 million (90,000 in USD thousands) coming through a reconciliation request.\",\"citation\":{\"fact_id\":\"822edb25db02d987\"}},{\"text\":\"The $90 million reconciliation portion is drawn from a separate budget mechanism than the base discretionary request.\",\"citation\":{\"fact_id\":\"8b9dc56a7f6a5ef2\"}},{\"text\":\"Within the program, the largest single project by dollars is the classified DARPA Advanced Technology Development project (DAT-06) at about $974 million, showing that a majority of the funding supports classified efforts.\",\"citation\":{\"fact_id\":\"12038754130fb6bc\"}},{\"text\":\"The Advanced Systems project (DAT-01) is the next largest at about $445 million, followed by the ISR and Sensors project (DAT-02) at about $132 million and the support project (DAT-07) at about $92 million.\",\"citation\":{\"fact_id\":\"1201c8a9a0fa7613\"}},{\"text\":\"The ISR and Sensors project is budgeted at roughly $132 million for fiscal year 2026.\",\"citation\":{\"fact_id\":\"38cbbe532147934a\"}},{\"text\":\"The support project is budgeted at roughly $92 million for fiscal year 2026.\",\"citation\":{\"fact_id\":\"0887d5b99d6eae97\"}},{\"text\":\"Specific efforts under the program include the ASIMOV program, which develops benchmarks to measure the ethical readiness of future autonomous military systems against the Department of Defense's five Responsible AI Ethical Principles.\",\"citation\":{\"fact_id\":\"1201c8a9a0fa7613\"}}]},\"players\":{\"claims\":[{\"text\":\"Across the historical award family data for this program, spending is spread among roughly 160 recipient families with a concentration score (Herfindahl-Hirschman Index) of about 541, indicating a relatively unconcentrated field of recipients.\",\"citation\":{\"fact_id\":\"4fce527a8e5df484\"}},{\"text\":\"The top recipient family across the program's award history is Raytheon.\",\"citation\":{\"fact_id\":\"4fce527a8e5df484\"}},{\"text\":\"Total program dollars tracked across award families amount to about $3.58 billion.\",\"citation\":{\"fact_id\":\"3b594c81c720df35\"}},{\"text\":\"In 2020, award concentration for the program was much higher, with a Herfindahl-Hirschman Index of about 7,359 — a level indicating that awards were highly concentrated among few recipients that year.\",\"citation\":{\"fact_id\":\"d09ef8a0b28a50a8\"}},{\"text\":\"Recorded recipients of awards linked to the program include Booz Allen Hamilton, The Johns Hopkins University Applied Physics Laboratory, Leidos, Raytheon Company, Lockheed Martin Corporation, Northrop Grumman Systems Corp, SRI International, and the Massachusetts Institute of Technology.\",\"citation\":{\"fact_id\":\"3b594c81c720df35\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 13187,
+   "output_tokens": 2020,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

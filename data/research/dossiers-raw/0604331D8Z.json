@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0604331D8Z",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01SWfc2aXor7HSV6qYFKs3iJ",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Rapid Prototyping Program (RPP) is a cross-domain prototyping portfolio run by the Office of the Secretary of Defense (OSD), funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"19d3de7c2cbaa765\"}},{\"text\":\"RPP supports the rapid development of prototypes within 12-to-24 months (reaching a technology readiness level, or TRL, of 7-9) to address joint urgent needs identified through work with the Joint Staff, Combatant Commands, or Secretary of Defense guidance.\",\"citation\":{\"fact_id\":\"5cc4c1395583f97e\"}},{\"text\":\"The program develops prototypes to deliver capabilities, inform requirements, and bridge the gap between research-and-development activities and fieldable solutions, with the agility to select, fund, and implement projects in the year of execution as new opportunities or threats emerge.\",\"citation\":{\"fact_id\":\"87e1d6c78aa631f0\"}},{\"text\":\"Selected projects generally receive a single year of funding to accelerate transition to the Services' and Agencies' programs of record, while projects deemed critical by the Under Secretary of Defense for Research and Engineering, the Joint Staff, and the Combatant Commands receive higher funding across multiple years.\",\"citation\":{\"fact_id\":\"45014a6cd70128bb\"}},{\"text\":\"In FY 2026, RPP organized its projects into focus areas aligned to specific, persistent capability gaps, including Kill Web Interoperability, Resilient Communications, Sensors and Data Analytics, Collaborative Multi-Domain Autonomy, Contested Logistics/Sustainment, Weapons Kinetic/Non-Kinetic Effects, and Emerging Prototypes and Enablers.\",\"citation\":{\"fact_id\":\"0d35d85056b8cc22\"}},{\"text\":\"One project, Multi-domain Unmanned Secure Integrated Communications (MUSIC), develops and integrates a networked capability to ensure tactical communications in denied and degraded environments; in FY 2024 it demonstrated a minimum viable prototype with a repackaged commercial module and software-defined networking features.\",\"citation\":{\"fact_id\":\"87e1d6c78aa631f0\"}},{\"text\":\"Another project, the Joint Fires Network, aims to connect sensors and weapon systems to remove latency in target-quality data between multi-domain forces; in FY 2024 the effort refined, tested, and demonstrated a federated capability with advanced application integration.\",\"citation\":{\"fact_id\":\"9a70ec9ae23c280e\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's stated goals include modernizing cross-cutting joint technology areas, delivering fieldable end-to-end mission capabilities, and delivering capabilities more quickly than traditional acquisition.\",\"citation\":{\"fact_id\":\"5cc4c1395583f97e\"}},{\"text\":\"RPP develops prototypes intended to reduce technical and integration risk across the military Services and accelerate capabilities to programs of record, aligning selections to strategic guidance and the Under Secretary of Defense for Research and Engineering's critical technology areas.\",\"citation\":{\"fact_id\":\"5cc4c1395583f97e\"}},{\"text\":\"Funding rose sharply: FY 2024 actual spending was about $76.9 million, FY 2025 totaled about $69.5 million, and the FY 2026 total request is about $274.9 million (figures in USD thousands).\",\"citation\":{\"fact_id\":\"4fde060807960609\"}},{\"text\":\"The FY 2026 total of roughly $274.9 million represents an increase of about $205.4 million over FY 2025.\",\"citation\":{\"fact_id\":\"2bf18bb0ae702979\"}},{\"text\":\"The FY 2026 request combines about $235.3 million in discretionary funding with about $39.6 million in reconciliation funding (figures in USD thousands).\",\"citation\":{\"fact_id\":\"2ad25d6978e2bbf0\"}},{\"text\":\"The reconciliation portion of the FY 2026 request is about $39.6 million (USD thousands).\",\"citation\":{\"fact_id\":\"471a93c003f4340f\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Office of the Secretary of Defense (OSD).\",\"citation\":{\"fact_id\":\"14db1b2981ae3041\"}},{\"text\":\"RPP supports the maturation of joint prototypes across the Department, including those developed by the Strategic Capabilities Office (SCO), Defense Innovation Unit (DIU), the Defense Advanced Research Projects Agency (DARPA), and the military Services.\",\"citation\":{\"fact_id\":\"5cc4c1395583f97e\"}},{\"text\":\"Prototype requirements are evaluated under the Office of the Assistant Secretary of Defense for Mission Capabilities' campaign of experimentation, resulting in military utility assessments.\",\"citation\":{\"fact_id\":\"5cc4c1395583f97e\"}},{\"text\":\"Project selection is done in consultation with the Service Science and Technology executives, with critical projects designated by the Under Secretary of Defense for Research and Engineering, the Joint Staff, and the Combatant Commands.\",\"citation\":{\"fact_id\":\"45014a6cd70128bb\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 11439,
+   "output_tokens": 1833,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

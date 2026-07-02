@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0601122E",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01GSYZRB6ir2F5Pv2H6z35fn",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Emerging Opportunities is a DARPA (Defense Advanced Research Projects Agency) basic research program element (0601122E) that funds early-stage scientific study whose goal is long-term national security enhancement through the discovery of new phenomena and exploration of their potential defense applications.\",\"citation\":{\"fact_id\":\"211a5a47d4d5ad3c\"}},{\"text\":\"GovBudget classifies the program as a DARPA basic research portfolio providing long-term technical foundations, with no dominant category.\",\"citation\":{\"fact_id\":\"9e851da51859531d\"}},{\"text\":\"The program supports scientific study in quantum, electronic, mathematical, information, computer, materials, and medical sciences, and also supports innovation and transition planning to increase the likelihood that DARPA-funded technologies take root in the U.S.\",\"citation\":{\"fact_id\":\"06b82f84b0c11eac\"}},{\"text\":\"The largest project, Math and Computer Sciences (project number EMR-01), is requested at about $194.578 million and supports new mathematical and computational algorithms, models, and mechanisms for long-term national security objectives.\",\"citation\":{\"fact_id\":\"9766a959c23f9824\"}},{\"text\":\"The Basic Operational Medical Science project (EMR-04) is requested at about $77.908 million and explores basic research in medical-related information and technology to address warfighter medical care including prevention and treatment of infectious disease.\",\"citation\":{\"fact_id\":\"b7ea80324f5527c5\"}},{\"text\":\"The Disruptive Microtechnologies Sciences project (EMR-02) is requested at about $42.697 million and supports investigations into materials, devices, and architectures such as photonic, quantum, and organic circuits.\",\"citation\":{\"fact_id\":\"a6a87d8942a37a8c\"}},{\"text\":\"The Materials Sciences project (EMR-03) is requested at about $25.149 million and provides fundamental research underpinning the design and optimization of advanced materials, devices, and systems for Defense applications.\",\"citation\":{\"fact_id\":\"ed2615d8c238e734\"}},{\"text\":\"The Emerging Opportunities Support project (EMR-07) is requested at about $20.124 million and covers non-headquarters management costs supporting DARPA functions across the entire program element.\",\"citation\":{\"fact_id\":\"ba7487a0b09773a2\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026 the program requested about $360.456 million (shown in USD thousands as 360,456) in Research, Development, Test and Evaluation, Defense-Wide funding.\",\"citation\":{\"fact_id\":\"211a5a47d4d5ad3c\"}},{\"text\":\"The program's fiscal year 2026 total also stands at about $360.456 million (360,456 USD thousands).\",\"citation\":{\"fact_id\":\"b154f2f7dfe8b4f6\"}},{\"text\":\"Before fiscal year 2026, the efforts in this program element were funded elsewhere — in PE 0601101E (Defense Research Sciences) and PE 0601117E (Basic Operational Medical Science) — meaning the FY2026 line largely consolidates existing work rather than representing entirely new spending.\",\"citation\":{\"fact_id\":\"06b82f84b0c11eac\"}},{\"text\":\"One notable effort, Translating All C To Rust (TRACTOR), aims to automate converting legacy C code to the Rust programming language to eliminate memory safety vulnerabilities such as buffer overflows in mission-critical software.\",\"citation\":{\"fact_id\":\"9766a959c23f9824\"}},{\"text\":\"Another effort, Anesthetics for Battlefield Care (ABC), seeks safe, battlefield-ready anesthetics usable in the field by warfighters with minimal medical training, which could matter when prolonged conflict extends medical evacuation times.\",\"citation\":{\"fact_id\":\"b7ea80324f5527c5\"}}]},\"players\":{\"claims\":[{\"text\":\"Across the historical award family data GovBudget tracks for this program, the top recipient family is Raytheon.\",\"citation\":{\"fact_id\":\"9e851da51859531d\"}},{\"text\":\"GovBudget associates roughly $3.83 billion in program dollars with the award families linked to this program.\",\"citation\":{\"fact_id\":\"b3d47872ab58e073\"}},{\"text\":\"The single largest tracked award went to INDYNE, INC. (piid FA251718C8000), at about $210.1 million, in Alaska's at-large district.\",\"citation\":{\"fact_id\":\"b3d47872ab58e073\"}},{\"text\":\"Other tracked recipients include Georgia Tech Applied Research Corp (about $15.0 million) and Amentum Technology, Inc. (about $10.9 million).\",\"citation\":{\"fact_id\":\"b3d47872ab58e073\"}},{\"text\":\"Lobbying filings from L3Harris Technologies Inc referenced the term \\\"Emerging\\\" in connection with Department of Defense appropriations legislation for 2026.\",\"citation\":{\"fact_id\":\"05306f45d04c13b6\"}},{\"text\":\"A lobbying filing from General Dynamics Corporation referenced the term \\\"Emerging\\\" in connection with the Fiscal Year 2026 Defense Appropriations Act conference bill and report.\",\"citation\":{\"fact_id\":\"0437152a611fdd5e\"}},{\"text\":\"Science Applications International Corporation (SAIC) reported lobbying that referenced the term \\\"Opportunities\\\" regarding funding opportunities from the One Big Beautiful Bill Act and ongoing agency contracts.\",\"citation\":{\"fact_id\":\"46691a86500c9b1f\"}},{\"text\":\"Curry Health Network reported lobbying that referenced the term \\\"Opportunities\\\" regarding funding of local public hospital priorities — a match on a common word rather than evidence of involvement in this DARPA program.\",\"citation\":{\"fact_id\":\"00b5879e60530a8d\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 26001,
+   "output_tokens": 2025,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

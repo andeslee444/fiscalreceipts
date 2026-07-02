@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0607210D8Z",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01UbdtPLN3Stz87hb177M5jE",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Industrial Base Analysis and Sustainment Support (IBAS) program is run by the Office of the Secretary of Defense (OSD) as one component of a broader Department of Defense strategy to strengthen the competitive posture of the Defense Industrial Base (DIB) and secure domestic supply chains.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"IBAS resides within the Manufacturing Capability Expansion and Investment Prioritization (MCEIP) Directorate in the Office of the Assistant Secretary of Defense for Industrial Base Policy, and its investments are used alone and in combination with programs like the Defense Production Act (DPA) Title III to support critical supply chain issues.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"The program was established under 10 United States Code Section 4817, the Industrial Base Fund, to help the United States maintain readiness and surge and sustain production in response to an emergency.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"For fiscal year 2026, IBAS work is executed under Project Code P819, with strategic focus areas covering workforce, critical minerals and materials, castings and forgings, kinetic capabilities, energy storage and batteries, and microelectronics.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"The FY 2026 request includes $273.379 million of discretionary funding and $2,054.991 million of mandatory (reconciliation) funding, for a total of $2,328.370 billion.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"The single project (number 819, \\\"Industrial Base Analysis and Sustainment\\\") is budgeted at $273.379 million for the coming budget year.\",\"citation\":{\"fact_id\":\"9003f07a3f54dd98\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program supports the strategic aims of the 2023 National Defense Industrial Strategy by applying focused investments to monitor the state of the DIB, address urgent operational needs, address supply chain vulnerabilities, and support efforts to expand the DIB.\",\"citation\":{\"fact_id\":\"6ce1109572aa7881\"}},{\"text\":\"Critical minerals and materials are a central concern because nearly every DoD weapons system relies on them, including rare earth elements (REEs), and China accounts for over 60 percent of REE mineral production and over 90 percent of downstream processing.\",\"citation\":{\"fact_id\":\"00aeb18d3148ba82\"}},{\"text\":\"The budget narrative notes that REE dependence poses a serious risk, citing that the F-35 requires over 900 pounds of REEs per plane and Virginia-class submarines require 9,200 pounds per vessel.\",\"citation\":{\"fact_id\":\"00aeb18d3148ba82\"}},{\"text\":\"For energy storage, the narrative reports a nearly 100 percent foreign battery supply chain that limits the DoD's ability to field battery-enabled weapons free of adversary supply chain control.\",\"citation\":{\"fact_id\":\"00aeb18d3148ba82\"}},{\"text\":\"Castings and forgings matter because cast and forged parts are found in 20 percent of the products representing U.S. Gross Domestic Product, and decades of consolidation and offshoring have hollowed out domestic capability.\",\"citation\":{\"fact_id\":\"00aeb18d3148ba82\"}},{\"text\":\"For kinetic capabilities, the FY 2026 primary focus is expanding the hypersonics solid rocket motor and propellant industrial base.\",\"citation\":{\"fact_id\":\"00aeb18d3148ba82\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings from Lockheed Martin Corporation referenced the FY25 National Defense Authorization Act and issues relating to acquisition and the industrial base.\",\"citation\":{\"fact_id\":\"0d79b20e9e49d566\"}},{\"text\":\"A Lockheed Martin filing referenced legislative issues related to defense article sustainment and the Inflation Reduction Act of 2022.\",\"citation\":{\"fact_id\":\"109f638faca5e350\"}},{\"text\":\"A 2025 Lockheed Martin filing referenced the FY26 National Defense Authorization Act and issues relating to acquisition and the industrial base.\",\"citation\":{\"fact_id\":\"0010cfea95c30893\"}},{\"text\":\"A 2026 Lockheed Martin filing referenced the FY27 National Defense Authorization Act and Defense Appropriations along with defense article sustainment.\",\"citation\":{\"fact_id\":\"164a66d1f49b9356\"}},{\"text\":\"The Boeing Company reported lobbying on education and outreach regarding annual defense authorization bills and the defense industrial base in a 2026 filing.\",\"citation\":{\"fact_id\":\"09399b314a4851c1\"}},{\"text\":\"A 2024 Boeing filing referenced the FY25 National Defense Authorization Act and issues related to the industrial base and supply chains.\",\"citation\":{\"fact_id\":\"6cc7cdee19716c86\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 2458,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 2458,
+   "cache_read_input_tokens": 0,
+   "inference_geo": "global",
+   "input_tokens": 14779,
+   "output_tokens": 1765,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

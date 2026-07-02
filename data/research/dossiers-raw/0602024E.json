@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0602024E",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_014Rpm7vEXLMBzQKd6Nnygsn",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Warfighting Performance (program element 0602024E) is an applied-research program run by DARPA, the Defense Advanced Research Projects Agency, focused on developing biologically based materials and biological technologies that make possible a wide range of new military capabilities.\",\"citation\":{\"fact_id\":\"a03d245dc0f758bd\"}},{\"text\":\"The program is organized into three projects. The Biologically Based Materials and Devices project (project number WP-01) develops solutions for critical resource processing, materials development, threat detection, and warfighter resilience to infectious disease, aiming to protect and sustain warfighters and operations in austere conditions.\",\"citation\":{\"fact_id\":\"d8bd642f9dda710d\"}},{\"text\":\"The Biomedical Technology project (project number WP-02) focuses on applied research for medical technologies to maintain warfighter health and performance before, during, and after operations, including biothreat detection, medical countermeasures, and battlefield triage.\",\"citation\":{\"fact_id\":\"9ed54db32e2cf7b7\"}},{\"text\":\"The Warfighting Performance Support project (project number WP-07) contains non-headquarters management costs supporting DARPA functions across the whole program element, such as classified and unclassified network support, contractor support, program security, and building security.\",\"citation\":{\"fact_id\":\"086185ac4deb7042\"}},{\"text\":\"Before fiscal year 2026, the efforts in this program element were funded in two separate DARPA program elements: PE 0602715E (Materials and Biological Technology) and PE 0602115E (Biomedical Technology).\",\"citation\":{\"fact_id\":\"c46d8b1af5157ebb\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, DARPA requested $278.121 million (shown as 278,121 in USD thousands) for the program under the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"a03d245dc0f758bd\"}},{\"text\":\"The full FY2026 total for the program is also $278.121 million (278,121 in USD thousands), matching the discretionary request.\",\"citation\":{\"fact_id\":\"c46d8b1af5157ebb\"}},{\"text\":\"Within that total, the Biomedical Technology project is the largest at $171.89 million, reflecting the program's emphasis on warfighter medical technologies.\",\"citation\":{\"fact_id\":\"9ed54db32e2cf7b7\"}},{\"text\":\"The Biologically Based Materials and Devices project accounts for $90.704 million.\",\"citation\":{\"fact_id\":\"d8bd642f9dda710d\"}},{\"text\":\"The Warfighting Performance Support project, covering management and support costs, accounts for $15.527 million.\",\"citation\":{\"fact_id\":\"086185ac4deb7042\"}},{\"text\":\"One example effort, the Next-Generation Combat Casualty Care program, is investigating whole blood substitutes for traumatic injury that could be deployed on the battlefield in far-forward settings, addressing a leading cause of potentially preventable battlefield casualties.\",\"citation\":{\"fact_id\":\"c46d8b1af5157ebb\"}},{\"text\":\"Another effort, the Environmental Microbes as a Bioengineering Resource (EMBER) program, aims to develop bio-based technologies for domestic supply of Rare Earth Elements critical to the U.S. and Department of Defense.\",\"citation\":{\"fact_id\":\"c46d8b1af5157ebb\"}}]},\"players\":{\"claims\":[{\"text\":\"Across the broader family of related DARPA awards, the largest recipient family is Raytheon, out of 161 recipient families identified.\",\"citation\":{\"fact_id\":\"dd1de60e85ca5730\"}},{\"text\":\"The total program dollars associated with this recipient analysis amount to roughly $3.49 billion.\",\"citation\":{\"fact_id\":\"e941df9e336eabd1\"}},{\"text\":\"A single high-confidence award of about $295,418 (in the units reported) went to L3 Technologies, Inc., located in Utah's 2nd congressional district (UT-02).\",\"citation\":{\"fact_id\":\"e941df9e336eabd1\"}},{\"text\":\"Lobbying filings in 2024 by AECOM referenced the term \\\"Performance\\\" in the context of energy savings performance contracting funding and policy.\",\"citation\":{\"fact_id\":\"033259e497d85df3\"}},{\"text\":\"Lobbying filings by BP America, Inc. in 2024 referenced the term \\\"Performance\\\" in connection with EPA proposed rules on standards of performance for new, reconstructed, and modified sources.\",\"citation\":{\"fact_id\":\"045d3c09baf49e37\"}},{\"text\":\"Honeywell International reported lobbying in 2024 that referenced the term \\\"Performance,\\\" including issues related to energy efficiency in commercial and residential buildings and advanced building controls.\",\"citation\":{\"fact_id\":\"004a74814f79ead1\"}},{\"text\":\"FedEx Corporation filings in 2024 referenced the term \\\"Performance\\\" in connection with the Modern, Clean, and Safe Trucks Act of 2023 and supply chain trucking legislation.\",\"citation\":{\"fact_id\":\"0527f87e12dbcb17\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 17397,
+   "output_tokens": 1782,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

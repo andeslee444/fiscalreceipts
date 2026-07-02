@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-2012C130J",
+ "batch_id": "msgbatch_01WiYGAv1kHEk8YWJ8EmiDdb",
+ "collected_at": "2026-07-02T04:39:09.068065+00:00",
+ "message": {
+  "id": "msg_01TVRkK6A27vBhep1WF3Xptq",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The AC/MC-130J program is a crewed special-operations aircraft modification line run by U.S. Special Operations Command (SOCOM).\",\"citation\":{\"fact_id\":\"41e0193fddc23840\"}},{\"text\":\"It funds the rapid fielding of advanced strike and survivability capabilities for Special Operations Forces (SOF) AC-130J and MC-130J aircraft, which replace the retired AC-130U/H/W and MC-130E/P/H fleets.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"AC-130J \\\"Ghostrider\\\" aircraft perform strike missions, including close air support (CAS), air interdiction, and armed reconnaissance.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"MC-130J \\\"Commando II\\\" aircraft perform special-operations-peculiar mobility missions such as low-level infiltration, exfiltration, and resupply of SOF, plus air refueling for SOF helicopters and tiltrotor aircraft.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"The U.S. Air Force procures and fields the basic C-130J aircraft, common support equipment, and Weapon System Trainers, while USSOCOM modifies those aircraft with mission systems integrated through the Special Mission System.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"Modifications for MC-130J include Airborne Mission Networking (AbMN) to connect into the Department of Defense's Joint All-Domain Command and Control construct, the Silent Knight Radar (SKR) enabling terrain following/terrain avoidance in contested operations, and a defensive countermeasures suite with integrated electronic warfare capability.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"MC-130J aircraft that receive the AbMN, terrain following/avoidance, and radio-frequency countermeasures modifications are designated with the popular name \\\"Combat Talon III.\\\"\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"Beginning in FY 2025, funding transitioned from P-1 Line Item 5000C13000 / C-130 Modifications into this AC/MC-130J line item, because USSOCOM only employs AC/MC-130J aircraft after retiring the remainder of the legacy C-130 fleets in FY 2023.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"Integrating and automating SOF mission systems is described as critical to recapitalizing the retired USSOCOM C-130 fleet, reducing required crew size, and making SOF more lethal, resilient, survivable, agile, and responsive.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"The line item also funds communications security and joint/coalition interoperability efforts, including cryptographic modernization and low-cost modifications to improve reliability, maintainability, mission effectiveness, and safety.\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}},{\"text\":\"For FY 2024, actual spending on the program totaled about $312.9 million (312,921 in USD thousands).\",\"citation\":{\"fact_id\":\"21b60b16d442be44\"}},{\"text\":\"The FY 2025 enacted amount was about $286.3 million (286,263 in USD thousands).\",\"citation\":{\"fact_id\":\"2ff08c1346541aa2\"}},{\"text\":\"The FY 2026 total request drops to about $236.3 million (236,312 in USD thousands), a decline from prior years.\",\"citation\":{\"fact_id\":\"e1f922e8f4b072c3\"}},{\"text\":\"The FY 2026 discretionary request of about $236.3 million and the FY 2026 total request are the same figure.\",\"citation\":{\"fact_id\":\"9b4995dd7c6b9ec1\"}},{\"text\":\"Cumulative funding across all prior years is reported at about $1,352.3 million (1,352.261 in USD millions).\",\"citation\":{\"fact_id\":\"97e890b9d0bdf69d\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is funded through the Procurement, Defense-Wide account and organized under SOCOM.\",\"citation\":{\"fact_id\":\"c83cb28e0f2d5255\"}},{\"text\":\"The USSOCOM Silent Knight Radar program office executed a 3-year Multiyear Procurement contract that stabilized the radar's price from FY 2021 through FY 2023, and awarded a 5-year Multiyear Procurement contract in FY 2024 to maintain a stabilized price, supporting a FY 2024 through FY 2028 procurement for the MC-130J.\",\"citation\":{\"fact_id\":\"907ecd60c9349be4\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2195,
+   "inference_geo": "global",
+   "input_tokens": 3852,
+   "output_tokens": 1698,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

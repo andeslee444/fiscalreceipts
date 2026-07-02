@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603892C",
+ "batch_id": "msgbatch_01WiYGAv1kHEk8YWJ8EmiDdb",
+ "collected_at": "2026-07-02T04:39:09.068065+00:00",
+ "message": {
+  "id": "msg_016FDxPSNUkpu6QA7J7XqWEw",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"AEGIS BMD (Ballistic Missile Defense) is a program run by the Missile Defense Agency (MDA). Its mission is to deliver an operationally effective, supportable ballistic missile defense capability to defend the United States, deployed forces, friends and allies, with evolutionary improvements delivered as part of Missile Defense System upgrades.\",\"citation\":{\"fact_id\":\"7a20766895545ab8\"}},{\"text\":\"The program builds on the existing U.S. Navy Aegis Weapon System (AWS) and Standard Missile (SM) infrastructures to provide a forward-deployable, mobile capability to detect and track ballistic and hypersonic missiles of all ranges, and to destroy short-, medium-, and intermediate-range ballistic missiles in the midcourse phase of flight, and shorter-range missiles in the terminal phase.\",\"citation\":{\"fact_id\":\"7a20766895545ab8\"}},{\"text\":\"GovBudget categorizes this as a missile-defense weapon system rather than shipbuilding, noting Aegis BMD develops the sea-based missile-defense weapon system, not ship construction.\",\"citation\":{\"fact_id\":\"7a20766895545ab8\"}},{\"text\":\"The program is organized into projects including Aegis BMD (project MD09), Aegis BMD SM-3 Development (project MM09), Aegis BMD Development Support (project MX09), Cyber Operations (project MC09), and Program-Wide Support (project MD40).\",\"citation\":{\"fact_id\":\"0fbc8ffb66eb184a\"}},{\"text\":\"The SM-3 Block IB effort modernizes the SM-3 Block IB missile, improving performance and enabling engagement of more sophisticated ballistic missiles and larger raid sizes.\",\"citation\":{\"fact_id\":\"d5e906e613f0af86\"}},{\"text\":\"The SM-3 Block IIA is an upgrade to a 21-inch diameter SM-3 missile that expands battlespace to counter intermediate-range ballistic missiles, and when combined with Aegis BMD 5.1 weapon system modifications provides Engage on Remote capability.\",\"citation\":{\"fact_id\":\"d5e906e613f0af86\"}},{\"text\":\"The program also funds development of the Aegis Weapon System software configuration for the land-based Defense of Guam, including defense against advanced ballistic and hypersonic threats and integration of the Land-Based AN/TPY-6 Radar configuration.\",\"citation\":{\"fact_id\":\"0fbc8ffb66eb184a\"}},{\"text\":\"Program-Wide Support covers non-headquarters management costs supporting MDA functions across the entire Missile Defense System, including government civilians and contract support services; it is allocated on a pro-rata basis across most agency program elements and therefore fluctuates each year.\",\"citation\":{\"fact_id\":\"c762a137ca099103\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program's funding is set to rise sharply: the fiscal year 2026 total request of about $994.4 million is up roughly $345.2 million, or 53.17%, from the fiscal year 2025 total of about $649.3 million.\",\"citation\":{\"fact_id\":\"3f644a97ae5371a8\"}},{\"text\":\"GovBudget's automated feed flagged this year-over-year swing, headlined \\\"AEGIS BMD increased 53% FY25→26.\\\"\",\"citation\":{\"fact_id\":\"3f644a97ae5371a8\"}},{\"text\":\"In fiscal year 2024, the program spent about $601.1 million (actuals) from the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"c01fd8897274b900\"}},{\"text\":\"The fiscal year 2026 total of about $994.4 million combines a discretionary request of about $588.4 million and a reconciliation request of about $406.0 million.\",\"citation\":{\"fact_id\":\"95d38f033e98e66b\"}},{\"text\":\"Part of the reconciliation request is tied to national defense policy: the mission narrative cites a January 27, 2025 Executive Order establishing a goal of protecting U.S. citizens, critical infrastructure, and second-strike capability against missile attack, to which MDA says it is responding by delivering next-generation missile defenses.\",\"citation\":{\"fact_id\":\"d2429766a2db760b\"}},{\"text\":\"The SM-3 Block IIA is described as required for \\\"Golden Dome for America,\\\" enabling a ground-based capability for the SM-3 with increased probability of kill against a larger threat set.\",\"citation\":{\"fact_id\":\"d5e906e613f0af86\"}},{\"text\":\"Across all prior years, cumulative spending on the overall program element is reported at about $6.46 billion (in USD millions).\",\"citation\":{\"fact_id\":\"2a5babe77db58001\"}}]},\"players\":{\"claims\":[{\"text\":\"The Missile Defense Agency (MDA) is the organization responsible for the program.\",\"citation\":{\"fact_id\":\"bcd0117fa5a59cb9\"}},{\"text\":\"The program builds on and coordinates with the U.S. Navy's Aegis Weapon System and Standard Missile infrastructures, including joint MDA/Navy efforts to provide missile-defense capability on Guided Missile Destroyers (DDGs).\",\"citation\":{\"fact_id\":\"0fbc8ffb66eb184a\"}},{\"text\":\"The workforce managing the program includes government, contractor, and Federally Funded Research and Development Center (FFRDC) staff supporting engineering, testing, logistics, acquisition, and other functions.\",\"citation\":{\"fact_id\":\"dfc7ec96a5c9a002\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2195,
+   "inference_geo": "global",
+   "input_tokens": 19906,
+   "output_tokens": 1937,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

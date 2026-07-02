@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603469E",
+ "batch_id": "msgbatch_01V2cPvYvp1vjDgByGzdwjSY",
+ "collected_at": "2026-07-02T05:24:49.252500+00:00",
+ "message": {
+  "id": "msg_01RXERTxa82sdTMPRBThz8J8",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Advanced Enabling Technologies (program element 0603469E) is a research and development program run by the Defense Advanced Research Projects Agency (DARPA), the Pentagon's blue-sky research arm.\",\"citation\":{\"fact_id\":\"2466fd7b3ddf2359\"}},{\"text\":\"The program element focuses on exploiting novel capabilities to address the challenges of the modern physical and cyber battlefields, exploring new concepts across electronics, quantum, photonics, materials, communication, software, artificial intelligence (AI), machine learning (ML), and cyber.\",\"citation\":{\"fact_id\":\"897f22fd7373a08b\"}},{\"text\":\"GovBudget categorizes this as a DARPA enabling-technologies portfolio spanning electronics, quantum, photonics, AI/ML and cyber — multiple domains, none dominant.\",\"citation\":{\"fact_id\":\"897f22fd7373a08b\"}},{\"text\":\"The program is organized into four projects: Advanced Disruptive Microtechnologies (AET-02), Advanced Cyber Systems (AET-03), Advanced C4 Systems (AET-01), and Advanced Enabling Technologies Support (AET-07).\",\"citation\":{\"fact_id\":\"d3419be3f7639272\"}},{\"text\":\"The Advanced Disruptive Microtechnologies project (AET-02) is the largest, requested at about $230.5 million, and supports transition of advanced microsystems including quantum circuits for computation and sensing and integrated photonic-electronic components.\",\"citation\":{\"fact_id\":\"d3419be3f7639272\"}},{\"text\":\"The Advanced Cyber Systems project (AET-03) is requested at about $55.5 million and develops techniques, tools, and frameworks for the full range of cyber operations, creating operational prototypes from applied research.\",\"citation\":{\"fact_id\":\"6d40dd3cf3a1f30b\"}},{\"text\":\"The Advanced C4 Systems project (AET-01) is requested at about $30.9 million and develops technologies for effective communications, information integration, and decision support to U.S. forces.\",\"citation\":{\"fact_id\":\"b2f351afae944e6a\"}},{\"text\":\"The Advanced Enabling Technologies Support project (AET-07) is requested at about $18.7 million and covers non-headquarters management costs such as DARPA network support, program security, and outreach to universities and industry.\",\"citation\":{\"fact_id\":\"3af7fba7aadff8c0\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, the total request for the program is about $345.6 million (in the DARPA Research, Development, Test and Evaluation, Defense-Wide account).\",\"citation\":{\"fact_id\":\"2466fd7b3ddf2359\"}},{\"text\":\"Of that total, about $335.6 million is the discretionary request.\",\"citation\":{\"fact_id\":\"b2aeb2352f1d7015\"}},{\"text\":\"A further $10 million is a mandatory (reconciliation) request tied to a Golden Dome Cybersecurity study, which the budget documents say will be used to conduct vulnerability research aligned to information technology prevalent in Golden Dome command-and-control and data processing nodes.\",\"citation\":{\"fact_id\":\"c39a816577da7f2e\"}},{\"text\":\"The program supports the Next Generation Microelectronics Manufacturing (NGMM) program, which aims to create a domestic capability for research, development, and production of three-dimensional heterogeneously-integrated (3DHI) microelectronics to sustain U.S. leadership in microelectronics manufacturing.\",\"citation\":{\"fact_id\":\"d3419be3f7639272\"}},{\"text\":\"It also funds the Modular Efficient Laser Technology (MELT) program, which will demonstrate a compact, high-power laser tile as a building block for the next generation of scalable high energy laser sources for laser weapon systems, with technology intended for transition to the Army, Air Force, and Navy.\",\"citation\":{\"fact_id\":\"d3419be3f7639272\"}},{\"text\":\"The Space domain Wide Area Tracking & Characterization (Space-WATCH) program under this element aims to enable real-time persistent tracking of objects in low earth orbit, with technology intended to transition to the U.S. Space Force and Space Development Agency.\",\"citation\":{\"fact_id\":\"b2f351afae944e6a\"}},{\"text\":\"Many efforts in this program element were previously funded elsewhere; prior to FY 2026, efforts were funded in PE 0603760E (Command, Control and Communications Systems) and PE 0603739E (Advanced Electronics Technologies).\",\"citation\":{\"fact_id\":\"2466fd7b3ddf2359\"}}]},\"players\":{\"claims\":[{\"text\":\"Across the program's award history the recipient family with the largest share is RAYTHEON, and the award concentration measured by the Herfindahl-Hirschman Index (HHI) is about 494 across 161 recipient families — a relatively low, competitive figure (a higher HHI signals more concentration).\",\"citation\":{\"fact_id\":\"897f22fd7373a08b\"}},{\"text\":\"The historical program dollars total about $3.55 billion across recipients.\",\"citation\":{\"fact_id\":\"c4bff749b139764e\"}},{\"text\":\"Recipients of awards linked to this program include Raytheon Company.\",\"citation\":{\"fact_id\":\"897f22fd7373a08b\"}},{\"text\":\"The Johns Hopkins University Applied Physics Laboratory appears repeatedly among award recipients linked to the program.\",\"citation\":{\"fact_id\":\"c4bff749b139764e\"}},{\"text\":\"The largest tracked awards went to HII Mission Technologies Corp (under the Alion Science and Technology family, district IL-05), totaling roughly $37.4 million and $25.2 million on award FA807518F1597.\",\"citation\":{\"fact_id\":\"897f22fd7373a08b\"}},{\"text\":\"Kudu Dynamics LLC (district VA-11) received about $8.1 million on award HR001118C0062.\",\"citation\":{\"fact_id\":\"c4bff749b139764e\"}},{\"text\":\"Lobbying filings from Lockheed Martin Corporation referenced matters related to the FY2025 continuing appropriations act, with a filing matching the term 'Technologies.'\",\"citation\":{\"fact_id\":\"0376018b1776fe86\"}},{\"text\":\"General Dynamics Corp clients reported lobbying filings referencing defense and homeland security appropriations matters matching the term 'Technologies.'\",\"citation\":{\"fact_id\":\"0a02c9a05511f8d9\"}},{\"text\":\"RTX Corporation and affiliates reported lobbying filings referencing appropriations matters matching the term 'Technologies.'\",\"citation\":{\"fact_id\":\"08dfbf60036ac3fa\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 19408,
+   "output_tokens": 2321,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

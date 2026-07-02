@@ -57,6 +57,14 @@ export function ProgramDossier({ dossier, snapshotMeta }: ProgramDossierProps) {
                 <li
                   key={`${key}-${i}`}
                   className="text-sm leading-relaxed text-foreground"
+                  // Claim text may quote dollar figures from its cited source.
+                  // data-source-text exempts it from the negative currency
+                  // scan; the claim's own citation is the required anchor
+                  // (data-cite-fact-id / data-cite-url — gate-enforced).
+                  data-source-text="dossier-claim"
+                  {...(isFactCitation(claim.citation)
+                    ? { "data-cite-fact-id": claim.citation.fact_id }
+                    : { "data-cite-url": claim.citation.url })}
                 >
                   {claim.text}
                   {isFactCitation(claim.citation) ? (

@@ -4,7 +4,7 @@ GovBudget is a spending-intelligence platform for U.S. federal defense budget da
 Every program element, award, and lobbying figure is citation-backed: J-book PDF
 page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
 The site covers 326 DoD R&D and procurement program elements across 20 agencies,
-200 top contractor families, and 57,045 source citations from FY2017 onward.
+200 top contractor families, and 59,502 source citations from FY2017 onward.
 
 ## Core routes
 

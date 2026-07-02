@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0604250D8Z",
+ "batch_id": "msgbatch_01LejhHAiRSRkYvjntB7LVJX",
+ "collected_at": "2026-07-02T05:45:34.436540+00:00",
+ "message": {
+  "id": "msg_01VXLTbZArX4HGTLbeqgxMFU",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Advanced Innovative Technologies (program element 0604250D8Z) is a research and development program run by the Office of the Secretary of Defense (OSD).\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"The program funds the Strategic Capabilities Office (SCO), which develops, demonstrates, and transitions operationally impactful capabilities and effects to shape and counter emerging threats and increase the lethality of the Joint Force in contested environments.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"The SCO combines innovation with concepts of operation and information management to develop novel capabilities in partnership with the military Services, Defense Agencies, Combatant Commands (CCMDs), the Joint Chiefs of Staff, the Intelligence Community, and the Office of the Secretary of Defense.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"The office maintains a small government workforce and relies on this program to fund additional labor — subject matter experts and programmatic support teams — that centrally manages the SCO prototype development portfolio, which annually supports roughly 25 prototype project teams.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"Many of the program's individual projects — with names such as Asgard, Base Camp, Bedlam, Black Marlin, Epic, Equinox, Galaxian, Gollum and others — are described only briefly because their specific applications and details are classified and available at a higher classification level.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"One project, called Pele, is developing a prototype transportable nuclear microreactor to be demonstrated by FY 2027 that can generate 1-5 megawatts of electric power, is transportable in standard shipping containers, and meets safety, legal, and regulatory requirements to minimize risks of radiation exposure, nuclear proliferation, and environmental impact.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"The Hypervelocity Gun Weapon System (HGWS) project aims to demonstrate cost-effective, large-magazine small-area defense by closing the fire control loop between sensors and prototype projectiles launched from existing families of powder gun cannons.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"Each year, 3.2% of the SCO's extramural research-and-development budget is transferred to the Department's Small Business Innovative Research (SBIR) program to fund small businesses, and an additional 0.45% is transferred to the Small Business Technology Transfer (STTR) program.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"Funding for the program in fiscal year 2024 was about $988.2 million (in thousands of dollars: 988,235), reflecting actual amounts spent.\",\"citation\":{\"fact_id\":\"fd682ed5f4811586\"}},{\"text\":\"For fiscal year 2025, the program's total was about $940.4 million ($940,431 thousand).\",\"citation\":{\"fact_id\":\"2596762e8cf1e0c1\"}},{\"text\":\"For fiscal year 2026, the program's total request rose to about $1.16 billion ($1,163,452 thousand).\",\"citation\":{\"fact_id\":\"e6f4dccd5011a07d\"}},{\"text\":\"That represents an increase of about $223 million ($223,021 thousand) from FY2025 to FY2026, a 23.71% jump.\",\"citation\":{\"fact_id\":\"c5f6e5ec7e79122d\"}},{\"text\":\"The FY2026 total is composed of a $749.5 million discretionary request ($749,452 thousand) plus a $414 million reconciliation request ($414,000 thousand).\",\"citation\":{\"fact_id\":\"4fb9d12bf1e0d172\"}},{\"text\":\"The FY2026 reconciliation portion of the request is $414 million ($414,000 thousand).\",\"citation\":{\"fact_id\":\"f3ddb240c3103673\"}},{\"text\":\"The SCO's FY2026 Pacific Deterrence Initiative (PDI) spending under Exercises, Training, Experimentation, and Innovation includes $639.296 million discretionary and $167.000 million mandatory for a total of $806.296 million — an increase of $150.786 million from FY2025 — with five new capability projects transitioning into execution in FY 2026.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"Across all prior years, the Advanced Innovative Technologies project has drawn about $7.71 billion (7,712.804 in USD millions), showing the sustained scale of the effort over time.\",\"citation\":{\"fact_id\":\"ee659a10b0133d41\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed within the Office of the Secretary of Defense (OSD) and funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"ae4f1bee1cec54e4\"}},{\"text\":\"Lobbying filings by Lockheed Martin Corporation in 2025 referenced this program area, in a filing discussing the Full-Year Continuing Appropriations and Extensions Act, 2025 (HR 1968, P.L. 119-4).\",\"citation\":{\"fact_id\":\"0376018b1776fe86\"}},{\"text\":\"General Dynamics Corp reported lobbying activity referencing this program in a 2024 filing tied to Fiscal Year 2024 Defense Appropriations (HR 4365 / S 2587).\",\"citation\":{\"fact_id\":\"0a02c9a05511f8d9\"}},{\"text\":\"General Dynamics Corp also filed lobbying disclosures referencing this program in 2025 tied to Fiscal Year 2026 Defense Appropriations (HR 4016 / S 2572).\",\"citation\":{\"fact_id\":\"015c4934668b444c\"}},{\"text\":\"General Dynamics Corp reported lobbying referencing this program in a 2026 filing related to Fiscal Year 2027 Defense Appropriations.\",\"citation\":{\"fact_id\":\"00f0e530ed89366d\"}},{\"text\":\"RTX Corporation and Affiliates reported lobbying referencing this program in a 2024 filing discussing H.R. 8774, the Department of Defense Appropriations Act FY25, among other bills.\",\"citation\":{\"fact_id\":\"08dfbf60036ac3fa\"}},{\"text\":\"RTX Corporation and Affiliates also reported lobbying referencing this program in 2025 filings tied to Fiscal Year 2026 appropriations bills.\",\"citation\":{\"fact_id\":\"08db4f6f2621e7a7\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2458,
+   "inference_geo": "global",
+   "input_tokens": 12676,
+   "output_tokens": 2346,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}
