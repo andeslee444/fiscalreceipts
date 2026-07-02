@@ -36,6 +36,8 @@ All gate functions take explicit paths — no config read at module level.
 
 from __future__ import annotations
 
+import datetime as dt
+import json
 import re
 import subprocess
 import sys
@@ -729,6 +731,17 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
     print("--- gate eval ---")
     eg = eval_gate(duckdb_path=duckdb_path, citations_parquet=citations_parquet)
 
+    # Persist per-question results BEFORE any printing — a live eval run costs
+    # real money and must never be lost to a reporting bug.
+    if not eg["blocked"]:
+        runs_dir = config.RESEARCH_DIR / "eval-runs"
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        run_path = runs_dir / (
+            f"eval-{dt.datetime.now(dt.UTC).strftime('%Y%m%dT%H%M%SZ')}.json"
+        )
+        run_path.write_text(json.dumps(eg, indent=2, sort_keys=True, default=str))
+        print(f"gate eval: per-question results -> {run_path}")
+
     if eg["blocked"]:
         print(f"gate eval: BLOCKED — {eg['reason'].splitlines()[0]}")
         any_blocked = True
@@ -739,14 +752,15 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
             f"citation {eg['citation_ok']}/{eg['citation_total']} → PASS"
         )
     else:
-        # Print score details
+        # Print score details. NOTE: dict.get(k, '') returns None when the key
+        # exists with a None value — use `or ''` for optional fields.
         for s in eg["scores"]:
             if not s["correct"] or (s["citation_resolved"] is False):
                 print(
                     f"  {s['id']}: correct={s['correct']} "
                     f"cite={s.get('citation_resolved')} "
-                    f"answer={s['agent_answer'][:60]!r} "
-                    f"({s.get('citation_reason', '')[:60]})"
+                    f"answer={(s.get('agent_answer') or '')[:60]!r} "
+                    f"({(s.get('citation_reason') or '')[:60]})"
                 )
         print(
             f"gate eval: accuracy {eg['accuracy']}/{eg['total']}, "

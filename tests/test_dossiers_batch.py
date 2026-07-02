@@ -820,3 +820,30 @@ class TestBuildRequests:
         assert p["messages"] == [{"role": "user", "content": "BUNDLE"}]
         assert p["output_config"]["format"]["type"] == "json_schema"
         assert p["system"][0]["cache_control"]["ttl"] == "1h"
+
+
+def test_submit_pe_blis_filter_unknown_aborts(monkeypatch, tmp_path):
+    """--pe-blis outside the top-N set must abort loudly, never submit nothing."""
+    import pytest
+
+    from govbudget.dossiers import batch as B
+
+    monkeypatch.setattr(B, "require_client", lambda c=None: object())
+    monkeypatch.setattr(
+        B, "top50", None, raising=False
+    )  # not used directly; patched via research below
+    import govbudget.dossiers.research as R
+
+    monkeypatch.setattr(
+        R, "top50", lambda db, limit=50: [("0601101E", "t", "DARPA", 1.0)]
+    )
+    with pytest.raises(SystemExit, match="not in the"):
+        B.submit(
+            duckdb_path="x",
+            site_json_dir=tmp_path,
+            snapshots_dir=tmp_path,
+            categories_csv=tmp_path / "c.csv",
+            raw_dir=tmp_path,
+            client=object(),
+            pe_blis=["NOT_A_REAL_PE"],
+        )

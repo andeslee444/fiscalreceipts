@@ -805,6 +805,7 @@ def cmd_dossiers(args) -> None:
             raw_dir=config.RESEARCH_DIR / "dossiers-raw",
             cost_cap=args.cost_cap,
             limit=args.limit,
+            pe_blis=args.pe_blis.split(",") if args.pe_blis else None,
         )
         print(
             f"dossiers submit: batch {summary['batch_id']}"
@@ -1162,6 +1163,11 @@ def main(argv=None) -> None:
         "--cost-cap", type=float, default=50.0,
         help="abort without creating a batch when the estimate exceeds this"
              " (USD); raising it above $50 is the operator confirmation",
+    )
+    dos_submit.add_argument(
+        "--pe-blis", default=None,
+        help="comma-separated pe_blis (within the top-N set) to resubmit —"
+             " the retry path for gate-rejected dossiers",
     )
     dos_submit.set_defaults(func=cmd_dossiers)
     dos_collect = dos_sub.add_parser(

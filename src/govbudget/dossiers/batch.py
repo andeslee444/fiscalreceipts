@@ -492,12 +492,17 @@ def submit(
     client=None,
     cost_cap: float = COST_CAP_USD,
     limit: int = 50,
+    pe_blis: list[str] | None = None,
 ) -> dict:
     """Estimate, cost-gate, and create the dossier batch.
 
     Aborts (SystemExit) without creating a batch when the key is missing or
     the estimate exceeds `cost_cap`. On success writes
     {raw_dir}/batch_meta.json and returns {batch_id, requests, estimated_usd}.
+
+    pe_blis: restrict the batch to these programs (must be within the
+    top-`limit` set) — the retry path for individual gate-rejected dossiers.
+    Unknown pe_blis abort loudly rather than silently submitting nothing.
     """
     from govbudget.dossiers.gate import dim_programs_pe_set, pre_batch_check
     from govbudget.dossiers.research import top50
@@ -505,6 +510,15 @@ def submit(
     client = require_client(client)
 
     programs = top50(duckdb_path, limit=limit)
+    if pe_blis is not None:
+        wanted = set(pe_blis)
+        unknown = wanted - {p[0] for p in programs}
+        if unknown:
+            raise SystemExit(
+                "dossiers submit: --pe-blis not in the"
+                f" top-{limit} set: {sorted(unknown)} — ABORTED."
+            )
+        programs = [p for p in programs if p[0] in wanted]
     pre = pre_batch_check([p[0] for p in programs], dim_programs_pe_set(duckdb_path))
     if not pre["ok"]:
         raise SystemExit(
