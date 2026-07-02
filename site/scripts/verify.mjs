@@ -34,6 +34,7 @@ import { runAnimationGate } from "./gates/animation.mjs";
 // Phase 5C gates
 import { runLinkgraphGate } from "./gates/linkgraph.mjs";
 import { runCoverageGate } from "./gates/coverage.mjs";
+import { runDegradedGate } from "./gates/degraded.mjs";
 
 const PORT = 4173;
 
@@ -129,6 +130,12 @@ async function main() {
     const g6 = await runA11yGate(BASE_URL);
     gateResults.push({ n: 6, name: "a11y", pass: g6.pass });
     printGate(6, "a11y", g6);
+
+    // ── Gate 15: degraded (Phase 5C — G3, live) ───────────────────────────
+    console.log("\n--- gate 15 degraded ---");
+    const g15 = await runDegradedGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 15, name: "degraded", pass: g15.pass });
+    printGate(15, "degraded", g15);
   } finally {
     // Stop the server before LHCI (LHCI serves its own static dist)
     await serverHandle.close();
