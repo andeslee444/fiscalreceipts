@@ -2634,10 +2634,13 @@ def _emit_feed_sidecar(
 ) -> None:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
-    Each card: event_type, headline (text), figure, fact_id (cited if available),
-    pe_bli (optional), program_url (optional), why_url (methodology anchor).
+    Each card: event_type, title (resolved program title, null when none),
+    headline (text), figure, fact_id (cited if available), pe_bli (optional),
+    program_url (optional), why_url (methodology anchor).
 
-    Headline text is composed from the mart row fields.
+    Headline text is composed from the mart row fields and LEADS with the
+    resolved program title (raw PE/BLI code only as honest fallback — the
+    site demotes the code to the card's metadata line).
     yoy_swing / zeroed_fy2026 figures cite trajectory derived fact_ids.
     concentration_shift HHI cites feed-surface derived fact_ids.
     new_entrant figure has no citation (year label, not a dollar).
@@ -2657,6 +2660,37 @@ def _emit_feed_sidecar(
     except Exception:
         feed_rows = []
 
+    # Program-title fallback for pe_blis outside dim_programs (prog_titles).
+    # yoy_swing / zeroed_fy2026 events come from fct_budget_trajectory, which
+    # covers more pe_blis than dim_programs — those cards used to lead with
+    # the raw PE code. Every trajectory row is built exclusively from TITLED
+    # detail rows in fct_budget_lines (title IS NOT NULL), so a title is
+    # resolvable for 100% of pe_bli feed events.
+    # Deterministic choice per pe_bli: the title of the detail row with the
+    # largest fy_2024_actuals amount (fy_2024_actuals is the most-populated
+    # detail amount_type — 1,836 titled rows vs 974 for fy_2025_total);
+    # pe_blis with no fy_2024_actuals rows (and ties) fall back to the
+    # alphabetically-first title. Title resolution ONLY affects display text —
+    # program_url stays emitted as-is and the site keeps gating links on
+    # programs.json page existence (G1 dead-link contract).
+    try:
+        bl_title_rows = con.execute(
+            "select pe_bli, title from ("
+            "  select pe_bli, title,"
+            "         row_number() over ("
+            "           partition by pe_bli"
+            "           order by (case when amount_type = 'fy_2024_actuals'"
+            "                          then amount_thousands end) desc nulls last,"
+            "                    title asc"
+            "         ) as rn"
+            "  from fct_budget_lines"
+            "  where pe_bli is not null and title is not null"
+            ") where rn = 1"
+        ).fetchall()
+    except Exception:
+        bl_title_rows = []
+    bl_titles: dict = {r[0]: r[1] for r in bl_title_rows}
+
     _WHY_BASE = "/methodology/#feed"
 
     cards = []
@@ -2664,8 +2698,12 @@ def _emit_feed_sidecar(
          headline_value, comparison_value, pct_change,
          fiscal_year, units, detail_json) in feed_rows:
 
-        # Compose headline text
-        program_title = prog_titles.get(pe_bli, "") if pe_bli else ""
+        # Compose headline text — dim_programs title first (matches the
+        # program page heading when one exists), fct_budget_lines detail-row
+        # title as fallback for trajectory-only pe_blis.
+        program_title = ""
+        if pe_bli:
+            program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
         if event_type == "yoy_swing":
             direction = "increased" if (pct_change or 0) >= 0 else "decreased"
             pct_str = f"{abs(pct_change or 0):.0f}%"
@@ -2734,6 +2772,11 @@ def _emit_feed_sidecar(
             "organization": organization,
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli else None,
+            # Resolved program title (null for family_key-based cards and
+            # unresolvable pe_blis). The headline already leads with this
+            # title — the field exists so the site can key on it without
+            # re-parsing headline text.
+            "title": program_title or None,
             "why_url": f"{_WHY_BASE}-{event_type}",
         }
         cards.append(card)

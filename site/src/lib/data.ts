@@ -671,6 +671,13 @@ export interface FeedCard {
   organization: string | null;
   pe_bli: string | null;
   program_url: string | null;
+  /**
+   * Program title resolved by the export pipeline (dim_programs first,
+   * fct_budget_lines titled detail rows as fallback). Null for
+   * family_key-based cards (new_entrant) and unresolvable pe_blis.
+   * The sidecar headline already LEADS with this title when present.
+   */
+  title: string | null;
   why_url: string;
 }
 
@@ -694,13 +701,16 @@ let _programTitleByPeBli: Map<string, string> | null = null;
 /**
  * Display headline for a feed card (V3 journey legibility).
  *
- * The export pipeline builds yoy_swing / zeroed_fy2026 headlines that LEAD
- * with the raw PE/BLI code ("0101213F increased 79% FY25→26"). When the
- * programs index has a human title for that code, swap the code for the
- * title — the code is demoted to the card's secondary metadata line, which
- * already renders it. Cards whose pe_bli has no title (or whose headline
- * doesn't lead with the code) keep the sidecar headline verbatim — honest
- * fallback, never invent a name. Display-only: feed.json is unchanged.
+ * The export pipeline resolves a program title for every pe_bli event
+ * (card.title) and builds the sidecar headline with that title LEADING —
+ * a title-led headline passes through verbatim (the sidecar title wins;
+ * never prepend it again or the card reads "Title Title increased 79%").
+ *
+ * Defense-in-depth for a code-led headline (only possible when the exporter
+ * could not resolve a title): swap the leading code for card.title first,
+ * then the programs-index title; keep the raw code as the honest fallback —
+ * never invent a name. The code is demoted to the card's secondary metadata
+ * line either way. Display-only: feed.json is unchanged.
  */
 export function feedDisplayHeadline(card: FeedCard): string {
   if (!card.pe_bli || !card.headline.startsWith(card.pe_bli)) {
@@ -711,7 +721,7 @@ export function feedDisplayHeadline(card: FeedCard): string {
       getPrograms().map((p) => [p.pe_bli, p.title]),
     );
   }
-  const title = _programTitleByPeBli.get(card.pe_bli);
+  const title = card.title ?? _programTitleByPeBli.get(card.pe_bli);
   if (!title) return card.headline;
   return `${title}${card.headline.slice(card.pe_bli.length)}`;
 }
