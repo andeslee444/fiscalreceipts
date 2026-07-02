@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,8 +12,10 @@ import {
   getSnapshotMeta,
   getSiteMeta,
   collectCitationsWithInputs,
+  TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
-import type { JbookPdfCitation } from "@/lib/data";
+import type { JbookPdfCitation, ProgramRow } from "@/lib/data";
+import { Cite } from "@/components/cite";
 import { dossierFactIds } from "@/lib/dossier";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { programOgImages } from "@/lib/og";
@@ -224,9 +227,15 @@ export default async function ProgramPage({
       {/* Header — top-50 pages get a category hero background (Task 8a) */}
       <ProgramHeader program={program} category={category} />
 
+      {/* Above-the-fold answer strip (Phase 5C Task 10, Goal 5) — what it
+          is / what changed / who gets it, directly under the header. The G6
+          answerfold gate asserts all three testids sit inside the initial
+          viewport at 1440×900 AND 390×844. */}
+      <AnswerStrip program={program} />
+
       {/* GAO oversight badge — agency-level risk context (Task 6b) */}
       {gao && (
-        <div className="-mt-4 mb-6">
+        <div className="mb-6">
           <Link
             href={`/agency/${program.org}/#oversight`}
             className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
@@ -327,5 +336,139 @@ export default async function ProgramPage({
       })()}
     </div>
     </CitationPanelProvider>
+  );
+}
+
+// ── Above-the-fold answer strip (Phase 5C Task 10, Goal 5) ───────────────────
+// Answers the three reader questions in one compact row directly under the
+// header: WHAT IT IS / WHAT CHANGED / WHO GETS IT.
+//
+//  - Every dollar figure goes through <Cite> (render-static currency scan);
+//    the delta reuses the derived trajectory fact_id the figures grid and the
+//    home movers already cite; the obligations total reuses the concentration
+//    sidecar fact_id.
+//  - Absences are stated honestly ("No award linkage at high confidence")
+//    and the data-testid still renders — the G6 gate asserts presence of all
+//    three [data-testid^="answer-"] elements inside the initial viewport.
+
+/** Plain-language label for exhibit_family values (answer-strip copy). */
+function answerFamilyPlain(family: string): string {
+  switch (family.toLowerCase()) {
+    case "rdte":
+      return "research & development";
+    case "procurement":
+      return "procurement";
+    case "om":
+    case "o&m":
+      return "operations & maintenance";
+    case "milpers":
+      return "military personnel";
+    default:
+      return family.toUpperCase();
+  }
+}
+
+function AnswerItem({
+  label,
+  testId,
+  children,
+}: {
+  label: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <div data-testid={testId} className="min-w-0 px-4 py-2.5 md:py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
+        {label}
+      </div>
+      <div className="text-sm leading-snug text-foreground">{children}</div>
+    </div>
+  );
+}
+
+function AnswerStrip({ program }: { program: ProgramRow }) {
+  const change = program.trajectory?.fy2526_change ?? null;
+  const changeFactId = program.trajectory_fact_ids?.fy2526_change ?? null;
+  const pct = program.trajectory?.fy2526_pct_change ?? null;
+  const hhi = program.hhi;
+
+  return (
+    <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
+      {/* WHAT IT IS — title + org + exhibit family in plain language.
+          data-program-name: official titles may contain dollar strings
+          (e.g. "ORDNANCE ITEMS <$5M") — currency-scan exemption. */}
+      <AnswerItem label="What it is" testId="answer-what">
+        <span data-program-name>{program.title}</span>
+        {" — a "}
+        {answerFamilyPlain(program.exhibit_family)}
+        {" program run by "}
+        {program.org}.
+      </AnswerItem>
+
+      {/* WHAT CHANGED — FY25→26 delta with its existing derived citation. */}
+      <AnswerItem label="What changed" testId="answer-changed">
+        {change !== null && changeFactId ? (
+          <>
+            <span
+              className={
+                change > 0
+                  ? "font-semibold text-emerald-700"
+                  : change < 0
+                    ? "font-semibold text-red-600"
+                    : "font-semibold"
+              }
+            >
+              {change >= 0 ? "+" : ""}
+              <Cite
+                value={change}
+                units="USD thousands"
+                dataset="fct_budget_trajectory"
+                factId={changeFactId}
+              />
+            </span>
+            {pct !== null && (
+              <span className="text-muted-foreground" aria-hidden="true">
+                {" "}
+                ({pct > 0 ? "+" : ""}
+                {pct.toFixed(1)}%)
+              </span>
+            )}
+            <span className="text-muted-foreground"> {TRAJECTORY_FY_LABEL}</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            No {TRAJECTORY_FY_LABEL} comparison — trajectory data incomplete
+            for this line.
+          </span>
+        )}
+      </AnswerItem>
+
+      {/* WHO GETS IT — top recipient family + cited program obligations from
+          the concentration sidecar; honest absence otherwise. */}
+      <AnswerItem label="Who gets it" testId="answer-who">
+        {hhi ? (
+          <>
+            <span className="font-medium">{hhi.top_family}</span>
+            <span className="text-muted-foreground">
+              {" leads "}
+              {hhi.family_count} contractor{" "}
+              {hhi.family_count === 1 ? "family" : "families"} sharing{" "}
+            </span>
+            <Cite
+              value={hhi.program_dollars}
+              units="USD"
+              dataset="fct_program_concentration"
+              factId={hhi.program_dollars_fact_id}
+            />
+            <span className="text-muted-foreground"> in matched awards.</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            No award linkage at high confidence.
+          </span>
+        )}
+      </AnswerItem>
+    </div>
   );
 }

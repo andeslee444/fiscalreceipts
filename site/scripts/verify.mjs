@@ -35,6 +35,7 @@ import { runAnimationGate } from "./gates/animation.mjs";
 import { runLinkgraphGate } from "./gates/linkgraph.mjs";
 import { runCoverageGate } from "./gates/coverage.mjs";
 import { runDegradedGate } from "./gates/degraded.mjs";
+import { runAnswerfoldGate } from "./gates/answerfold.mjs";
 
 const PORT = 4173;
 
@@ -136,6 +137,12 @@ async function main() {
     const g15 = await runDegradedGate({ baseUrl: BASE_URL });
     gateResults.push({ n: 15, name: "degraded", pass: g15.pass });
     printGate(15, "degraded", g15);
+
+    // ── Gate 16: answerfold (Phase 5C — G6, live) ─────────────────────────
+    console.log("\n--- gate 16 answerfold ---");
+    const g16 = await runAnswerfoldGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 16, name: "answerfold", pass: g16.pass });
+    printGate(16, "answerfold", g16);
   } finally {
     // Stop the server before LHCI (LHCI serves its own static dist)
     await serverHandle.close();
