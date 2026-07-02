@@ -112,8 +112,8 @@ SHARED_PREAMBLE = """\
 You write program dossiers for GovBudget, a spending-intelligence site read by
 curious citizens, journalists, and congressional staff. You will receive a
 FACT BUNDLE for one defense budget program: warehouse rows (each carrying a
-fact_id), J-book narratives, lobbying mentions, award recipients, feed events,
-and possibly cached news snapshots.
+fact_id), J-book narratives (each carrying a fact_id when citable), lobbying
+mentions, award recipients, feed events, and possibly cached news snapshots.
 
 The honesty contract — every rule below is enforced mechanically downstream:
 
@@ -135,16 +135,23 @@ The honesty contract — every rule below is enforced mechanically downstream:
 7. Write for a curious citizen: plain language, expand jargon and acronyms on
    first use, explain why a number matters. Budget figures from budget_lines
    and trajectory are in USD thousands unless the row says otherwise.
+8. Narrative-derived claims: each narrative row that carries a fact_id field
+   is citable — use that fact_id. Narrative rows without a fact_id field are
+   provided for context only; do not cite them.
 
 EXPLICIT NEGATIVE RULES (violations cause automatic rejection):
 - XML anchors such as ProgramElement[5] or ProgramElement[5]/Project[1] are
   INTERNAL LOCATORS, never citations. Never use them as fact_id or url values.
+- Award/contract numbers such as HR001119C0089 or W15P7T20C0024 are CONTRACT
+  IDENTIFIERS, not citations. Never use them as fact_id or url values.
 - Filing URLs (lda.senate.gov/api/v1/filings/...) are NEVER citable urls.
   Each lobbying mention carries a citable_fact_id — cite that fact_id instead.
   The filing_url field labeled "(reference link, NOT a citable url)" must never
   appear in any citation.
 - The ONLY valid url citations are the news-snapshot URLs listed in the
   NEWS SNAPSHOTS section of this bundle. Every other URL is off-limits.
+- If an award recipient claim cannot be cited with a fact_id from the bundle,
+  omit the claim entirely rather than citing the contract number as a url.
 
 Respond with JSON matching the requested schema: sections what_it_is,
 why_it_matters, players, recent_developments, each {"claims": [{"text",
@@ -348,10 +355,27 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
     # Strip xml_path — it is an internal J-book locator (e.g.
     # "ProgramElement[5]/Project[1]"), not a citable identifier.  Leaving it in
     # the bundle invites the model to use it as a url citation.
+    # Preserve fact_id when present — it was minted by fact_id_narrative() and
+    # resolves in citations.json; narrative-derived claims should cite it.
     clean_narratives = [
         {k: v for k, v in narr.items() if k != "xml_path"}
         for narr in details.get("narratives", [])
     ]
+    # Filter narratives by citations_keyset: only include narrative rows whose
+    # fact_id resolves (i.e. the citation row was emitted). Rows without a
+    # fact_id field are included as context-only (the model is instructed not
+    # to cite them).
+    if citations_keyset is not None:
+        keyed_narr: list[dict] = []
+        context_narr: list[dict] = []
+        for narr in clean_narratives:
+            fid = narr.get("fact_id")
+            if fid is None:
+                context_narr.append(narr)
+            elif fid in citations_keyset:
+                keyed_narr.append(narr)
+            # else: fact_id present but not in citations_keyset — exclude silently
+        clean_narratives = keyed_narr + context_narr
 
     # --- Bundle hygiene: mentions ---
     # Inject citable_fact_id from the lda_url_map (first lda_filing fact_id for
