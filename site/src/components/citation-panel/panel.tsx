@@ -37,7 +37,10 @@ import {
   isJbookNarrative,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
-import { AssetConfigProvider } from "@/components/asset-config";
+import {
+  AssetConfigProvider,
+  AssetConfigContext,
+} from "@/components/asset-config";
 import { PdfView } from "./pdf-view";
 import { WorkbookCard } from "./workbook-card";
 import { LdaCard } from "./lda-card";
@@ -113,6 +116,7 @@ export function CitationPanelProvider({
         provides it, this is a no-op equivalent (context re-wrapping is safe).
       */}
       <AssetConfigProvider>
+        <AssetPreconnect />
         {children}
         <CitationPanelDialog
           open={open}
@@ -123,6 +127,49 @@ export function CitationPanelProvider({
       </AssetConfigProvider>
     </CitationPanelContext.Provider>
   );
+}
+
+// ── AssetPreconnect ───────────────────────────────────────────────────────────
+
+/**
+ * Injects <link rel="preconnect"> for the asset origin so the first PDF /
+ * parquet fetch skips DNS + TCP + TLS setup.
+ *
+ * Tradeoff: the asset base is RUNTIME config (/config.json — rewritten to the
+ * R2 host at deploy time), so we cannot emit the preconnect into the static
+ * <head> without baking the committed prod URL into the build and breaking
+ * the one-artifact contract. Injecting after config resolution still warms
+ * the connection well before the user opens a citation panel.
+ */
+function AssetPreconnect() {
+  const base = useContext(AssetConfigContext);
+
+  useEffect(() => {
+    if (!/^https?:\/\//i.test(base)) return; // same-origin (/assets) — nothing to warm
+    let origin: string;
+    try {
+      origin = new URL(base).origin;
+    } catch {
+      return;
+    }
+    if (origin === window.location.origin) return;
+    if (
+      document.head.querySelector(
+        `link[rel="preconnect"][href="${origin}"]`,
+      )
+    ) {
+      return;
+    }
+    const link = document.createElement("link");
+    link.rel = "preconnect";
+    link.href = origin;
+    // PDF.js/DuckDB fetch cross-origin in CORS mode — the warmed connection
+    // must be a CORS one to be reused.
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }, [base]);
+
+  return null;
 }
 
 // ── CitationPanelDialog ───────────────────────────────────────────────────────
