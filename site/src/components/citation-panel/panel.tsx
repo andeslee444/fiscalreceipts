@@ -364,7 +364,7 @@ function CopyFootnoteButton({
     // Canonical permalink: origin + pathname (no hash/query).
     const url = `${window.location.origin}${window.location.pathname}`;
     // Human label from the page title, trimmed of site-name suffixes
-    // ("{Program} — FY2026 Budget… | GovBudget" → "{Program}").
+    // ("{Program} — FY2026 Budget… | Fiscal Receipts" → "{Program}").
     const label =
       document.title.split(" | ")[0].split(" — ")[0].trim() || null;
     const text = formatFootnote(

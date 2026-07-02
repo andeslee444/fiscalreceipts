@@ -10,7 +10,7 @@ import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
 export const metadata: Metadata = {
   title: `Downloads — ${SITE_NAME}`,
   description:
-    "Bulk Parquet exports of all GovBudget datasets — budget, awards, entities, lobbying, and citations — with full provenance metadata.",
+    "Bulk Parquet exports of all Fiscal Receipts datasets — budget, awards, entities, lobbying, and citations — with full provenance metadata.",
   alternates: { canonical: `${SITE_URL}/downloads/` },
   openGraph: {
     title: `Downloads — ${SITE_NAME}`,

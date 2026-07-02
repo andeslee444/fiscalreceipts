@@ -9,12 +9,12 @@ import { CoverageNote } from "@/components/coverage-note";
 export const metadata: Metadata = {
   title: `Methodology — ${SITE_NAME}`,
   description:
-    "How GovBudget collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
+    "How Fiscal Receipts collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
   alternates: { canonical: `${SITE_URL}/methodology/` },
   openGraph: {
     title: `Methodology — ${SITE_NAME}`,
     description:
-      "How GovBudget collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
+      "How Fiscal Receipts collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
     url: `${SITE_URL}/methodology/`,
     siteName: SITE_NAME,
     images: coreOgImages("methodology"),
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
 
 const FAQ_ITEMS = [
   {
-    question: "What is GovBudget and what does it cover?",
+    question: "What is Fiscal Receipts and what does it cover?",
     answer:
-      "GovBudget connects four government data silos: DoD budget justification books (J-books), USAspending federal award records, corporate entity registries, and Senate LDA lobbying disclosures. Every rendered number carries a citation to the exact source document, page, or API endpoint.",
+      "Fiscal Receipts connects four government data silos: DoD budget justification books (J-books), USAspending federal award records, corporate entity registries, and Senate LDA lobbying disclosures. Every rendered number carries a citation to the exact source document, page, or API endpoint.",
   },
   {
     question: "Where does every number come from?",
@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
       "Send us the citation that contradicts the number. We follow a supersede-not-delete policy: a corrected record is marked superseded and a new record takes its place. The old record is retained and accessible. Permalinks continue to resolve permanently.",
   },
   {
-    question: "How do I cite GovBudget data?",
+    question: "How do I cite Fiscal Receipts data?",
     answer:
       "Include the source citation displayed alongside the figure: document title, fiscal year, page or XML element path, and the date we retrieved the file. USAspending-derived figures cite the archive file name and SHA-256 hash. J-book figures cite the PDF title, page number, and XML element path.",
   },

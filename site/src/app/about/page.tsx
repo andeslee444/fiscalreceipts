@@ -6,7 +6,7 @@ import { coreOgImages } from "@/lib/og";
 export const metadata: Metadata = {
   title: `About — ${SITE_NAME}`,
   description:
-    "About GovBudget — corrections policy, data transparency, and the correlational-not-causal disclaimer.",
+    "About Fiscal Receipts — corrections policy, data transparency, and the correlational-not-causal disclaimer.",
   alternates: { canonical: `${SITE_URL}/about/` },
   openGraph: {
     title: `About — ${SITE_NAME}`,

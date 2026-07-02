@@ -1,6 +1,6 @@
-# GovBudget
+# Fiscal Receipts
 
-GovBudget is a spending-intelligence platform for U.S. federal defense budget data.
+Fiscal Receipts is a spending-intelligence platform for U.S. federal defense budget data.
 Every program element, award, and lobbying figure is citation-backed: J-book PDF
 page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
 The site covers 326 DoD R&D and procurement program elements across 20 agencies,
@@ -8,45 +8,45 @@ The site covers 326 DoD R&D and procurement program elements across 20 agencies,
 
 ## Core routes
 
-https://govbudget.vercel.app/
-https://govbudget.vercel.app/programs/
-https://govbudget.vercel.app/companies/
-https://govbudget.vercel.app/data/
-https://govbudget.vercel.app/methodology/
-https://govbudget.vercel.app/downloads/
-https://govbudget.vercel.app/about/
+https://fiscalreceipts.com/
+https://fiscalreceipts.com/programs/
+https://fiscalreceipts.com/companies/
+https://fiscalreceipts.com/data/
+https://fiscalreceipts.com/methodology/
+https://fiscalreceipts.com/downloads/
+https://fiscalreceipts.com/about/
 
 ## Top 5 programs by FY2026 budget
 
-https://govbudget.vercel.app/program/0607210D8Z/  # Industrial Base Analysis and Sustainment Support [OSD] FY26: 2328.4M
-https://govbudget.vercel.app/program/0603467E/  # DARPA Advanced Technology Development [DARPA] FY26: 1733.5M
-https://govbudget.vercel.app/program/0603941D8Z/  # Test & Evaluation Science & Technology [OSD] FY26: 1645.8M
-https://govbudget.vercel.app/program/0604874C/  # Improved Homeland Defense Interceptors [MDA] FY26: 1637.4M
-https://govbudget.vercel.app/program/0602025E/  # Making, Maintaining, Supply Chain and Logistics [DARPA] FY26: 1597.0M
+https://fiscalreceipts.com/program/0607210D8Z/  # Industrial Base Analysis and Sustainment Support [OSD] FY26: 2328.4M
+https://fiscalreceipts.com/program/0603467E/  # DARPA Advanced Technology Development [DARPA] FY26: 1733.5M
+https://fiscalreceipts.com/program/0603941D8Z/  # Test & Evaluation Science & Technology [OSD] FY26: 1645.8M
+https://fiscalreceipts.com/program/0604874C/  # Improved Homeland Defense Interceptors [MDA] FY26: 1637.4M
+https://fiscalreceipts.com/program/0602025E/  # Making, Maintaining, Supply Chain and Logistics [DARPA] FY26: 1597.0M
 
 ## Data downloads
 
-https://govbudget.vercel.app/downloads/  # Parquet exports: dim_programs, jbook_details, budget_lines, fct_budget_to_awards, dim_entities, fct_influence, citations
+https://fiscalreceipts.com/downloads/  # Parquet exports: dim_programs, jbook_details, budget_lines, fct_budget_to_awards, dim_entities, fct_influence, citations
 
 ## Agencies
 
-https://govbudget.vercel.app/agency/CBDP/
-https://govbudget.vercel.app/agency/CYBERCOM/
-https://govbudget.vercel.app/agency/DARPA/
-https://govbudget.vercel.app/agency/DCAA/
-https://govbudget.vercel.app/agency/DCMA/
-https://govbudget.vercel.app/agency/DCSA/
-https://govbudget.vercel.app/agency/DHRA/
-https://govbudget.vercel.app/agency/DISA/
-https://govbudget.vercel.app/agency/DLA/
-https://govbudget.vercel.app/agency/DPAA/
-https://govbudget.vercel.app/agency/DPAP/
-https://govbudget.vercel.app/agency/DSCA/
-https://govbudget.vercel.app/agency/DTIC/
-https://govbudget.vercel.app/agency/DTRA/
-https://govbudget.vercel.app/agency/MDA/
-https://govbudget.vercel.app/agency/OSD/
-https://govbudget.vercel.app/agency/OTE/
-https://govbudget.vercel.app/agency/SOCOM/
-https://govbudget.vercel.app/agency/TJS/
-https://govbudget.vercel.app/agency/WHS/
+https://fiscalreceipts.com/agency/CBDP/
+https://fiscalreceipts.com/agency/CYBERCOM/
+https://fiscalreceipts.com/agency/DARPA/
+https://fiscalreceipts.com/agency/DCAA/
+https://fiscalreceipts.com/agency/DCMA/
+https://fiscalreceipts.com/agency/DCSA/
+https://fiscalreceipts.com/agency/DHRA/
+https://fiscalreceipts.com/agency/DISA/
+https://fiscalreceipts.com/agency/DLA/
+https://fiscalreceipts.com/agency/DPAA/
+https://fiscalreceipts.com/agency/DPAP/
+https://fiscalreceipts.com/agency/DSCA/
+https://fiscalreceipts.com/agency/DTIC/
+https://fiscalreceipts.com/agency/DTRA/
+https://fiscalreceipts.com/agency/MDA/
+https://fiscalreceipts.com/agency/OSD/
+https://fiscalreceipts.com/agency/OTE/
+https://fiscalreceipts.com/agency/SOCOM/
+https://fiscalreceipts.com/agency/TJS/
+https://fiscalreceipts.com/agency/WHS/

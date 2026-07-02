@@ -175,9 +175,9 @@ if (fs.existsSync(agenciesPath)) {
 }
 
 const llmsTxt = [
-  `# GovBudget`,
+  `# Fiscal Receipts`,
   ``,
-  `GovBudget is a spending-intelligence platform for U.S. federal defense budget data.`,
+  `Fiscal Receipts is a spending-intelligence platform for U.S. federal defense budget data.`,
   `Every program element, award, and lobbying figure is citation-backed: J-book PDF`,
   `page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.`,
   `The site covers 326 DoD R&D and procurement program elements across 20 agencies,`,

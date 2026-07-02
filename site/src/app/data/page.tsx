@@ -11,7 +11,7 @@ import type { DatasetName } from "@/lib/duckdb";
 export const metadata: Metadata = {
   title: `Data Explorer — ${SITE_NAME}`,
   description:
-    "Query all 14 GovBudget datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.",
+    "Query all 14 Fiscal Receipts datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.",
   alternates: { canonical: `${SITE_URL}/data/` },
   openGraph: {
     title: `Data Explorer — ${SITE_NAME}`,
@@ -150,7 +150,7 @@ export default function DataPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-3">Data Explorer</h1>
         <p className="text-muted-foreground max-w-2xl">
-          Browse and query all {DATASET_INVENTORY.length} GovBudget datasets
+          Browse and query all {DATASET_INVENTORY.length} Fiscal Receipts datasets
           using SQL. Queries run entirely in your browser — no server receives
           your SQL or sees any intermediate results. Powered by{" "}
           <a

@@ -104,7 +104,7 @@ const COLORS = {
 /**
  * Shared card layout:
  *   ┌──────────────────────────────────────┐
- *   │ GovBudget ▎KIND                      │
+ *   │ Fiscal Receipts ▎KIND                │
  *   │                                      │
  *   │ TITLE (up to 3 lines)                │
  *   │ subtitle                             │
@@ -136,7 +136,7 @@ function card({ kind, title, subtitle, figure, figureLabel, tagline }) {
         "div",
         { display: "flex", alignItems: "center", gap: "20px" },
         [
-          h("div", { fontSize: "36px", color: COLORS.fg }, "GovBudget"),
+          h("div", { fontSize: "36px", color: COLORS.fg }, "Fiscal Receipts"),
           kind
             ? h(
                 "div",
@@ -280,7 +280,7 @@ async function main() {
     }],
     ["about", {
       kind: "About",
-      title: "About GovBudget",
+      title: "About Fiscal Receipts",
       subtitle: "A spending-intelligence platform for U.S. federal defense data",
       figure: null, figureLabel: null, tagline: TAGLINE,
     }],
