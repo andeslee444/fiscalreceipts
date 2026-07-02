@@ -48,23 +48,15 @@ export async function runFeedGate() {
   }
 
   // ── (a) Feed card count ─────────────────────────────────────────────────────
-  // Cards render as <div class="flex items-start justify-between gap-4 px-5 py-4 ...">
-  // Count by looking for elements containing the feed card classes.
-  // More robustly: count <section> elements with id starting "feed-", then
-  // sum the card items inside each section (divs that carry both px-5 and py-4).
+  // Contract: FeedCardItem root carries data-feed-card="". Gate selects by
+  // that attribute so class changes in the component never break this selector.
   const sections = root.querySelectorAll("section[id]").filter(
     (el) => (el.getAttribute("id") ?? "").startsWith("feed-")
   );
 
-  // Count card items: each card is a direct child div inside the section's
-  // .divide-y container — look for the nested card items by px-5 py-4 pattern.
   let totalCards = 0;
   for (const section of sections) {
-    // Cards are <div class="...px-5 py-4..."> inside the section
-    const cards = section.querySelectorAll("div").filter((el) => {
-      const cls = el.getAttribute("class") ?? "";
-      return cls.includes("px-5") && cls.includes("py-4");
-    });
+    const cards = section.querySelectorAll("[data-feed-card]");
     totalCards += cards.length;
   }
 

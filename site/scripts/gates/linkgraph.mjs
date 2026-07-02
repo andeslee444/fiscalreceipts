@@ -125,10 +125,9 @@ export async function runLinkgraphGate() {
     if (!section) {
       errors.push("feed: section#feed-new_entrant not found (contract missing)");
     } else {
-      const cards = section.querySelectorAll("div").filter((el) => {
-        const cls = el.getAttribute("class") ?? "";
-        return cls.includes("px-5") && cls.includes("py-4");
-      });
+      // Contract: FeedCardItem root carries data-feed-card="". Selecting by
+      // that attribute instead of class makes this selector stable against style changes.
+      const cards = section.querySelectorAll("[data-feed-card]");
       if (cards.length === 0) {
         errors.push("feed new_entrant: section present but 0 cards matched the card selector (selector rot?)");
       } else {

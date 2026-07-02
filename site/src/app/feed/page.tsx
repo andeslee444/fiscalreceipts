@@ -95,6 +95,7 @@ function FeedCardItem({
 
   return (
     <div
+      data-feed-card=""
       className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-muted/60 transition-colors"
       {...(isNewEntrant && !companySlug ? { "data-no-company-page": "" } : {})}
     >

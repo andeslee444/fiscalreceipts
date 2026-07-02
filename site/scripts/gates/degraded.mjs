@@ -102,6 +102,9 @@ export async function runDegradedGate({ baseUrl }) {
     // ── Check 1: /data/ → engine start → [data-degraded="explorer"] ──────────
     {
       const page = await context.newPage();
+      // ISOLATION INVARIANT: asset-blackholing must stay PAGE-level in this
+      // gate's own browser — never move to a shared context/browser or it
+      // leaks into other live gates running concurrently.
       await page.route("**/assets/**", (route) => route.abort());
       page.on("console", (msg) => {
         if (msg.type() === "error" && !isAllowedConsoleError(msg)) {

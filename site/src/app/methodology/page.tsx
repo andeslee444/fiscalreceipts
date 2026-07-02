@@ -469,10 +469,10 @@ export default function MethodologyPage() {
 
           <section id="coverage-districts" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              District lens — {districts.numerator} of 435 districts
+              District lens — {districts.numerator} of {districts.denominator} districts
             </h3>
             <p>
-              {districts.numerator} of 435 congressional districts appear in
+              {districts.numerator} of {districts.denominator} congressional districts appear in
               the district lens. A district gets a page only when at least one
               high-confidence budget→award link places obligated dollars
               there — a consequence of the crosswalk&apos;s current{" "}

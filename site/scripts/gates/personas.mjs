@@ -193,8 +193,10 @@ async function journeyBd(browser, baseUrl) {
     } else {
       // Honest absence: every new_entrant card must declare it has no
       // company page (see gate header ADAPTATION note).
+      // Contract: FeedCardItem root carries data-feed-card=""; select by that
+      // attribute for stable counts (was: .divide-y > * Reveal wrappers).
       const cardCount = await page
-        .locator("#feed-new_entrant .divide-y > *")
+        .locator("#feed-new_entrant [data-feed-card]")
         .count();
       const flagged = await page
         .locator("#feed-new_entrant [data-no-company-page]")
