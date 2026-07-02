@@ -120,6 +120,24 @@ function serveFile(req, res, filePath) {
 function handler(req, res) {
   const urlPath = req.url.split("?")[0];
 
+  // ── /config.json → local asset base ─────────────────────────────────────
+  // The committed public/config.json points at the production R2 host
+  // (LAUNCH.md Step 5 rewrote it for deploys). Gates must stay hermetic:
+  // this server already serves ../data/site at /assets/ with Range support,
+  // so answer /config.json with the local base instead of the file in out/.
+  // Without this, live gates fetch assets from prod R2 (CORS-blocked from
+  // 127.0.0.1) and the degraded gate's /assets/ blackhole never matches.
+  if (urlPath === "/config.json") {
+    const body = JSON.stringify({ assetBaseUrl: "/assets" });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(body),
+      "Cache-Control": "no-cache",
+    });
+    res.end(body);
+    return;
+  }
+
   // ── /assets/ → ../data/site ────────────────────────────────────────────
   if (urlPath.startsWith("/assets/")) {
     const rel = urlPath.slice("/assets/".length);
