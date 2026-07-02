@@ -1,4 +1,4 @@
-# GovBudget Launch Checklist
+# Fiscal Receipts Launch Checklist
 
 Ordered, operator-executable steps to take the site from a green local build to a
 live Vercel deployment backed by Cloudflare R2 for large static assets.

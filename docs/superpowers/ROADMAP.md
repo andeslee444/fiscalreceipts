@@ -53,6 +53,8 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-07-02: product rebranded to Fiscal Receipts** (site display name; infra
+  identifiers unchanged).
 - **J-book PDFs embed full XML** (.zzz attachments) — extraction is deterministic;
   no LLM needed for federal budget facts. The single most load-bearing discovery.
 - **Fact identity must include the amount** — 11 live duplicate
