@@ -74,7 +74,14 @@ function loadPagefind(): Promise<PagefindMod | null> {
       /* turbopackIgnore: true */ "/pagefind/pagefind.js" as string
     )
       .then((mod) => mod as PagefindMod)
-      .catch(() => null);
+      .catch(() => {
+        // Reset so the next search attempt retries rather than re-using a
+        // failed promise forever.  In dev the 404 is fast/consistent so
+        // repeated attempts are cheap; in prod a transient network blip
+        // should not permanently kill deep search until page reload.
+        pagefindPromise = null;
+        return null;
+      });
   }
   return pagefindPromise;
 }

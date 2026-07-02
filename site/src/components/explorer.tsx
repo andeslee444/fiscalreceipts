@@ -256,6 +256,10 @@ export function Explorer({ datasets }: ExplorerProps) {
   >("idle");
   const [engineError, setEngineError] = React.useState<string | null>(null);
   const dbRef = React.useRef<AsyncDuckDB | null>(null);
+  // Serialises concurrent ensureEngine calls: the first caller sets this to
+  // the in-flight promise; subsequent callers await the same promise instead
+  // of double-running the probe/init.  Cleared after settle (success or error).
+  const ensureEngineRef = React.useRef<Promise<AsyncDuckDB | null> | null>(null);
 
   // Terminate the DuckDB singleton on unmount to release worker + WASM memory.
   React.useEffect(() => {
@@ -283,45 +287,64 @@ export function Explorer({ datasets }: ExplorerProps) {
   /**
    * Initialise the DuckDB engine and register all datasets.
    * Returns the ready db, or null if already loading/errored.
+   *
+   * Serialisation: concurrent callers (e.g. two rapid canned-query clicks
+   * from idle state) both pass the dbRef fast-path check before either sets
+   * engineState to "loading".  ensureEngineRef holds the in-flight promise so
+   * only one probe+init runs; subsequent callers await the same promise.
    */
-  async function ensureEngine(): Promise<AsyncDuckDB | null> {
-    if (dbRef.current) return dbRef.current;
-    if (engineState === "error" || engineState === "degraded") return null;
+  function ensureEngine(): Promise<AsyncDuckDB | null> {
+    // Fast path: already initialised.
+    if (dbRef.current) return Promise.resolve(dbRef.current);
+    // Terminal states: do not retry.
+    if (engineState === "error" || engineState === "degraded") return Promise.resolve(null);
+    // Serialise: if init is already in flight, await that promise.
+    if (ensureEngineRef.current) return ensureEngineRef.current;
 
-    setEngineState("loading");
+    const initPromise = (async (): Promise<AsyncDuckDB | null> => {
+      setEngineState("loading");
 
-    // assetUrl('') → `${assetBase}` (the raw base, e.g. "/assets" or "https://r2.example.com")
-    const assetBase = assetUrl("").replace(/\/$/, "") || "/assets";
+      // assetUrl('') → `${assetBase}` (the raw base, e.g. "/assets" or "https://r2.example.com")
+      const assetBase = assetUrl("").replace(/\/$/, "") || "/assets";
 
-    // Reachability probe — the asset bundle (parquet files) may not be
-    // attached to this deployment. registerFileURL() is lazy (no fetch until
-    // the first query), so probe the first dataset with a HEAD request up
-    // front and surface an explicit degraded state instead of a spinner or
-    // an empty table (Phase 5C G3 contract).
-    try {
-      const probeName = datasets[0]?.name ?? "budget_lines";
-      const probe = await fetch(`${assetBase}/data/${probeName}.parquet`, {
-        method: "HEAD",
-      });
-      if (!probe.ok) {
-        throw new Error(`asset probe returned HTTP ${probe.status}`);
+      // Reachability probe — the asset bundle (parquet files) may not be
+      // attached to this deployment. registerFileURL() is lazy (no fetch until
+      // the first query), so probe the first dataset with a HEAD request up
+      // front and surface an explicit degraded state instead of a spinner or
+      // an empty table (Phase 5C G3 contract).
+      try {
+        const probeName = datasets[0]?.name ?? "budget_lines";
+        const probe = await fetch(`${assetBase}/data/${probeName}.parquet`, {
+          method: "HEAD",
+        });
+        if (!probe.ok) {
+          throw new Error(`asset probe returned HTTP ${probe.status}`);
+        }
+      } catch {
+        setEngineState("degraded");
+        return null;
       }
-    } catch {
-      setEngineState("degraded");
-      return null;
-    }
 
-    try {
-      const db = await getDuckDB();
-      await registerDatasets(db, assetBase);
-      dbRef.current = db;
-      setEngineState("ready");
-      return db;
-    } catch (err) {
-      setEngineError(String(err));
-      setEngineState("error");
-      return null;
-    }
+      try {
+        const db = await getDuckDB();
+        await registerDatasets(db, assetBase);
+        dbRef.current = db;
+        setEngineState("ready");
+        return db;
+      } catch (err) {
+        setEngineError(String(err));
+        setEngineState("error");
+        return null;
+      }
+    })();
+
+    // Store the promise so concurrent callers join it; clear after settle.
+    ensureEngineRef.current = initPromise;
+    initPromise.finally(() => {
+      ensureEngineRef.current = null;
+    });
+
+    return initPromise;
   }
 
   async function initEngine() {
