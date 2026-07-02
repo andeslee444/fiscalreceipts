@@ -2,6 +2,7 @@ import { Cite } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
 import { CoverageNote } from "@/components/coverage-note";
 import type { ProgramRow } from "@/lib/data";
+import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
 /**
  * ProgramFigures — top-line financial figures.
@@ -97,9 +98,10 @@ export function ProgramFigures({ program }: ProgramFiguresProps) {
           </div>
         </div>
 
-        {/* FY25→26 Change */}
+        {/* FY25→26 Change — label from the shared TRAJECTORY_FY_LABEL constant
+            (single "FY25→26" source; U+2192 arrow, never ASCII "-->") */}
         <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">FY25→26 Change</div>
+          <div className="text-xs text-muted-foreground mb-1">{TRAJECTORY_FY_LABEL} Change</div>
           <div className="text-xl font-bold">
             {fy2526Change !== null ? (
               <span

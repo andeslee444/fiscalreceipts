@@ -14,6 +14,11 @@
  *     OUTSIDE [data-amount] subtrees → FAIL (listing page + snippet).
  *     Exceptions: content inside <script>, <style>, JSON-LD <script> tags.
  *     Allowlist (prose-allowlist.json) consulted for known prose mentions.
+ *     svg <desc> (a11y-only text) is NOT exempt wholesale: each currency
+ *     token in a <desc> must have an identical normalized twin inside a
+ *     [data-amount] element within the same component subtree (the svg's
+ *     parent node — e.g. the sparkline legend Cites sit adjacent). A desc
+ *     may never introduce a dollar value absent from its cited siblings.
  *
  * (c) DATASET LEDGER (Phase 5B-3 — binding evaluator design):
  *     Reads site_meta.json's uncited_datasets ledger. Every [data-amount]
@@ -229,6 +234,48 @@ export async function runRenderStaticGate() {
       stripped = root; // fallback to original on parse error
     }
 
+    // Normalize a currency token for desc↔sibling comparison (whitespace-free)
+    const normToken = (s) => s.replace(/\s+/g, "");
+
+    // svg <desc> is never rendered (a11y-only description text, e.g.
+    // sparkline point values "FY24: $280.5M"). It may ECHO currency values,
+    // but only values that already exist Cite-wrapped beside the SVG: every
+    // desc token must have an identical normalized twin in a [data-amount]
+    // element within the nearest ancestor containing the <svg> (its parent
+    // node — the sparkline legend Cites sit adjacent). Divergent desc
+    // values FAIL the negative scan.
+    function checkDescCurrency(descNode) {
+      const descText = descNode.text || "";
+      const matches = descText.match(CURRENCY_RE);
+      if (!matches) return;
+      // Walk up to the containing <svg>, then take its parent — the nearest
+      // ancestor holding both the svg and its adjacent cited legend.
+      let svg = descNode.parentNode;
+      while (svg && !(svg.tagName && svg.tagName.toLowerCase() === "svg")) {
+        svg = svg.parentNode;
+      }
+      const scope =
+        (svg && svg.parentNode) || svg || descNode.parentNode || descNode;
+      const citedTokens = new Set();
+      for (const amtEl of scope.querySelectorAll("[data-amount]")) {
+        const amtMatches = (amtEl.text || "").match(CURRENCY_RE);
+        if (amtMatches) {
+          for (const t of amtMatches) citedTokens.add(normToken(t));
+        }
+      }
+      for (const m of matches) {
+        if (!citedTokens.has(normToken(m))) {
+          negativeErrors++;
+          negativeFailures.push({
+            file: relPath,
+            match: m,
+            snippet: `svg <desc> "${descText.trim().slice(0, 80)}" — token has no identical [data-amount] twin in the svg's parent subtree`,
+          });
+          if (negativeFailures.length >= 50) return;
+        }
+      }
+    }
+
     // Walk text nodes and check for currency patterns not inside [data-amount]
     //
     // Skip conditions (in addition to [data-amount]):
@@ -277,12 +324,15 @@ export async function runRenderStaticGate() {
       const isSourceText = node.getAttribute && node.getAttribute("data-source-text") != null;
       const isProgramName = node.getAttribute && node.getAttribute("data-program-name") != null;
       const isHead = node.tagName && node.tagName.toLowerCase() === "head";
-      // svg <desc> is never rendered — it is a11y-only description text
-      // (e.g. sparkline point values "FY24: $280.5M"). The negative scan
-      // targets VISIBLE currency without a citation wrapper; the visible
-      // twin of each desc value is the Cite-wrapped legend beside the SVG.
-      const isSvgDesc = node.tagName && node.tagName.toLowerCase() === "desc";
-      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead || isSvgDesc;
+      // svg <desc> gets the TIGHTENED check (not a wholesale skip): each of
+      // its currency tokens must match a [data-amount] twin in the svg's
+      // parent subtree — see checkDescCurrency above. Handled here, so the
+      // generic per-text-node scan does not recurse into the desc.
+      if (!insideAmount && node.tagName && node.tagName.toLowerCase() === "desc") {
+        checkDescCurrency(node);
+        return;
+      }
+      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead;
       if (node.childNodes) {
         for (const child of node.childNodes) {
           walkText(child, nowInside);

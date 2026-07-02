@@ -239,3 +239,19 @@ ERRORS:
   ✗   dead link on /feed/: /program/0607313A/
   ✗   dead link on /feed/: /program/1203176F/
   ✗   dead link on /feed/: /program/1203873SF/
+
+=== svg-desc tightening proof-can-fail ===
+(render-static gate: <desc> currency tokens must have an identical normalized
+[data-amount] twin in the containing <svg>'s parent subtree — desc may never
+introduce a dollar value absent from its cited siblings)
+
+Planted: out/program/0602891D8Z/index.html sparkline desc FY24 value changed
+$2.00M → $9.87M (visible Cite-wrapped legend still $2.00M). Gate output:
+
+PASS: false
+1 currency patterns found OUTSIDE [data-amount] (first 10):
+  program/0602891D8Z/index.html: "$9.87M" in "svg <desc> "FY24: $9.87M" — token has no identical [data-amount] twin in the svg's parent subtree"
+
+Reverted the planted value; gate output:
+
+PASS after revert: true

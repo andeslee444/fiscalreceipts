@@ -151,7 +151,9 @@ export function TrajectorySpark({
                 Format as compact USD ("FY24: $280.5M") — appending the raw-unit
                 parenthetical to the SCALED string ("280.5M (USD thousands)")
                 mixed units and misread as thousands-of-millions (a11y judge nit).
-                The currency gate skips svg <desc> (never-rendered a11y text). */}
+                The currency gate checks each desc token against the adjacent
+                Cite-wrapped legend: a desc may only echo values that exist in
+                a [data-amount] sibling — it must never introduce its own. */}
             <desc>
               {p.label}: {formatAmount(p.v, "USD thousands")}
             </desc>

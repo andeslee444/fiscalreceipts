@@ -127,6 +127,15 @@ def fact_id_narrative(document_sha256: str, pe_bli: str, kind: str, xml_path: st
 
 
 # ---------------------------------------------------------------------------
+# Human-readable fiscal-year pair label for the active trajectory columns
+# (fy2526_* in fct_budget_trajectory). Single source for feed headline text —
+# mirrors TRAJECTORY_FY_LABEL in site/src/lib/site.ts. Always the U+2192
+# arrow ("→"), never ASCII "-->". Update both when the mart rolls forward.
+# ---------------------------------------------------------------------------
+
+_TRAJECTORY_FY_LABEL = "FY25→26"
+
+# ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
 
@@ -2707,7 +2716,7 @@ def _emit_feed_sidecar(
         if event_type == "yoy_swing":
             direction = "increased" if (pct_change or 0) >= 0 else "decreased"
             pct_str = f"{abs(pct_change or 0):.0f}%"
-            headline_text = f"{program_title or pe_bli} {direction} {pct_str} FY25→26"
+            headline_text = f"{program_title or pe_bli} {direction} {pct_str} {_TRAJECTORY_FY_LABEL}"
             # figure: pct_change (rendered as %) — cite via trajectory derived fact_id
             figure_value = pct_change
             figure_units = "pct_change"
