@@ -18,6 +18,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5B-2 | Site skeleton: Next.js SSG + DuckDB-WASM + PDF.js citation panel + receipts mode + two-tier search + SEO | verify-phase5b2 | ✅ merged | 556 SSG pages (326 program/200 company/20 agency); 7 gates PASS; search 24/24 incl. typos; LHCI ≥90; a11y 0 serious; visual gate r2 medians 5/5/5/5 (r1 FAILED on doubled uncited-flag + mobile nav — agent-visual judging caught what no mechanical gate saw); 8,834 amount spans full-corpus verified cited/chipped/flagged |
 | 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→4 (dim_geography, dim_lobbyists, fct_budget_to_awards, jbook_narratives); 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) |
 | 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | ✅ COMPLETE | Analyst agent (sandboxed text-to-SQL: enable_external_access=false, cached schema card, 8-turn tool loop); eval set drift-corrected (freshness gate); verify-phase5 exits 0; live eval 45/45 accuracy + 40/40 citation resolution (100%) — run artifact data/research/eval-runs/eval-20260702T085924Z.json (2026-07-02); verify-phase1..5b3 + phase5 assembly all PASS; site live at https://govbudget.vercel.app; launch tooling (R2 upload/CORS/config-rewrite + LAUNCH.md); 830 pytest/192 vitest |
+| 5C | UX trust journey: linkgraph integrity, coverage notes, degraded-mode, receipt moment, 5 persona journeys, answer-fold, motion | 7 npm gates (G1–G7) | ✅ COMPLETE 2026-07-02 | 7 new gates all green; every gate has recorded proof-can-fail; 19/19 total npm gates; visual judges round-2 medians D1–D4:4 V1:5 V2:5 V3:4(after fix) V4:5 V5:4; final opus review SHIP; deployed https://govbudget.vercel.app; live computer-use verification of all 5 persona journeys PASS (PDF panel/downloads verified in degraded mode pending R2); data bug: 146/1,982 PEs had doubled trajectory rows — fixed (detail-only pivot + exporter derived-input join mirror); 4,446 trajectory citations re-verified; 136 dead-link feed events resolved from fct_budget_lines detail |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -136,6 +137,30 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 - **Eval cost correction (5B-4, 2026-07-02):** a full 45-question live run costs
   ~$0.40 (sonnet, ~$0.009/question), not the ~$10 earlier estimated — cheap enough
   to iterate the loop freely.
+- **Visual judges catch data bugs evals can't (5C, 2026-07-02):** a judge spotted
+  sparkline FY24 $561.0M vs card $280.5M on the same page → fct_budget_trajectory
+  summed rollup+detail duplicate rows (the q008 trap at the mart layer); 146 of
+  1,982 PEs inflated 1.09–2.0×; invisible to the eval because pct-change ratios
+  cancel doubling and eval absolutes hit fct_budget_lines with title filters. Fix:
+  detail-only pivot + exporter derived-input join mirror; 4,446 trajectory citations
+  re-verified. Companion lesson: derived-citation recompute passes when formula and
+  recorded value share the same wrong inputs — recompute checks internal consistency,
+  not truth; independent cross-surface comparison (two renderings of the same
+  quantity) is what caught it.
+- **fullPage screenshots don't trigger IntersectionObserver (5C, 2026-07-02):**
+  below-fold reveal content captures as blank; a judge flagged a phantom "blank band".
+  Capture scripts must scroll-through before fullPage shots.
+- **Dead-link feed events (5C, 2026-07-02):** 136 feed events linked to
+  non-existent program pages (pe_blis in trajectory but not dim_programs); G1 gained
+  a dead-link leg (proof-can-fail recorded); titles for all 136 resolved from
+  fct_budget_lines detail rows at export.
+- **svg `<desc>` a11y text is read by screen readers but was invisible to the
+  currency gate (5C, 2026-07-02)** after a naive exemption — tightened to require
+  an identical [data-amount] twin in the same svg's parent subtree.
+- **Evaluator-first worked as designed (5C, 2026-07-02):** G1/G2/G3 built failing
+  (orphan nav, no coverage notes, silent degradation), recorded, then turned green
+  by implementation — same for the dead-link leg. Proof-can-fail is not a checklist
+  item; it is the gate.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -177,6 +202,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 13. **Mistral OCR (Document AI) as fallback extractor** for scanned/legacy J-book
     PDFs — current pipeline is XML-first and doesn't need it; revisit if pre-2015
     books (scan-only) enter scope.
+14. **Feed title enrichment in dim_programs/exporter proper (5C):** 136 trajectory-only
+    PEs currently have titles resolved at feed-export only; they need program pages and
+    dim_programs entries so they appear in search and the sitemap.
+15. **District choropleth + entity-graph viz (5C deferred):** interactive map of
+    district spend distribution and force-directed entity graph; deferred pending
+    D3/Mapbox integration decision.
+16. **"Why?" link phrasing consistency (5C):** several detail pages mix "How is this
+    calculated?" / "Source" / "Why?" for the same action — standardize to one phrase.
+17. **Program pages for trajectory-only PEs (5C):** 136 PEs have feed events but no
+    program page; they produce dead links in the feed until pages are generated.
 
 ## Remaining launch items
 
