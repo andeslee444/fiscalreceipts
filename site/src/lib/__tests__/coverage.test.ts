@@ -14,7 +14,7 @@ import { getCoverage, COVERAGE_IDS } from "@/lib/coverage";
 
 describe("coverage manifest", () => {
   it("exposes all six surfaces with computed counts", () => {
-    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial"];
+    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial"] as const;
     expect(COVERAGE_IDS).toEqual(ids);
     for (const id of ids) {
       const c = getCoverage(id);
