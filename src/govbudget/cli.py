@@ -962,6 +962,26 @@ def cmd_verify_phase5b3(args) -> None:
     _run(args)
 
 
+def cmd_analyst(args) -> None:
+    """Run the text-to-SQL analyst agent on a single question."""
+    from govbudget.analyst.agent import run
+
+    result = run(
+        args.question,
+        duckdb_path=config.DUCKDB_PATH,
+        print_cost=True,
+    )
+    if result["refuse"]:
+        print(f"analyst: REFUSE ({result['refuse_reason_class']})")
+        print(f"  reason: {result['citation']}")
+    else:
+        print(f"analyst: {result['answer']}")
+        print(f"  citation ({result['citation_kind']}): {result['citation']}")
+        if result.get("sql"):
+            print(f"  sql: {result['sql']}")
+    print(f"  turns: {result['turns']}")
+
+
 def cmd_evals(args) -> None:
     """Phase 5B-4 eval refresh / check commands."""
     from govbudget.evals_refresh import cmd_evals_check, cmd_evals_refresh
@@ -1093,6 +1113,10 @@ def main(argv=None) -> None:
         ),
     )
     inf_restamp.set_defaults(func=cmd_influence_restamp)
+
+    an = sub.add_parser("analyst", help="text-to-SQL analyst agent (phase 5B-4)")
+    an.add_argument("question", help="Natural-language question to answer")
+    an.set_defaults(func=cmd_analyst)
 
     ev = sub.add_parser("evals", help="phase 5B-4 eval refresh/check pipeline")
     ev_sub = ev.add_subparsers(dest="evals_action", required=True)
