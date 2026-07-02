@@ -235,7 +235,11 @@ def _category_row(categories_csv: Path, pe_bli: str) -> dict | None:
     with path.open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             if (row.get("pe_bli") or "").strip() == pe_bli:
-                return {k: (v or "").strip() for k, v in row.items()}
+                out = {k: (v or "").strip() for k, v in row.items()}
+                # source_ref is an internal XML anchor (e.g. 'ProgramElement[52]')
+                # — models have cited it verbatim as a fact_id. Never render it.
+                out.pop("source_ref", None)
+                return out
     return None
 
 
@@ -297,8 +301,12 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
     feed_events: list[dict] = []
     feed_path = site_json_dir / "feed.json"
     if feed_path.exists():
+        # why_url/program_url are internal site anchors (e.g.
+        # '/methodology/#feed-…') — models have cited them verbatim as url
+        # citations. Strip them; figure_fact_id is the citable identifier.
         feed_events = [
-            c for c in _load_json(feed_path).get("cards", [])
+            {k: v for k, v in c.items() if k not in ("why_url", "program_url")}
+            for c in _load_json(feed_path).get("cards", [])
             if c.get("pe_bli") == pe_bli
         ]
 

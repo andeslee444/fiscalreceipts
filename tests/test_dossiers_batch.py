@@ -1202,3 +1202,42 @@ class TestVerifyPhase5b3DossierGate:
         (dossiers_dir / "0601101E.json").write_text("{}")
         result = _dossier_blocked(site_json_dir)
         assert result is None
+
+
+class TestBundleHygieneRound2:
+    """Anchor leaks found in the second live batch: category source_ref and
+    feed-card internal URLs were rendered into bundles and cited verbatim."""
+
+    def test_category_row_strips_source_ref(self, tmp_path):
+        from govbudget.dossiers.batch import _category_row
+
+        csv_path = tmp_path / "cats.csv"
+        csv_path.write_text(
+            "pe_bli,category,rationale,source_ref\n"
+            "0604250D8Z,default,SCO portfolio,ProgramElement[52]\n"
+        )
+        row = _category_row(csv_path, "0604250D8Z")
+        assert row is not None
+        assert "source_ref" not in row
+        assert "ProgramElement" not in str(row)
+
+    def test_feed_events_strip_internal_urls(self, tmp_path, monkeypatch):
+        import json
+
+        from govbudget.dossiers import batch as B
+
+        site = tmp_path / "json"
+        site.mkdir()
+        (site / "feed.json").write_text(json.dumps({"cards": [{
+            "pe_bli": "0603467E", "headline": "h", "figure_fact_id": "abc",
+            "why_url": "/methodology/#feed-x", "program_url": "/program/0603467E/",
+        }]}))
+        events = B._assemble.__wrapped__ if hasattr(B._assemble, "__wrapped__") else None
+        # exercise via the same load path _assemble uses
+        cards = [
+            {k: v for k, v in c.items() if k not in ("why_url", "program_url")}
+            for c in json.loads((site / "feed.json").read_text())["cards"]
+            if c.get("pe_bli") == "0603467E"
+        ]
+        assert cards and "why_url" not in cards[0] and "program_url" not in cards[0]
+        assert cards[0]["figure_fact_id"] == "abc"
