@@ -307,7 +307,7 @@ export default function HomePage() {
             elements.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {agencies
+            {[...agencies]
               .sort((a, b) => b.program_count - a.program_count)
               .map((agency) => (
                 // Cite (role=button) must not nest inside the Link — the org

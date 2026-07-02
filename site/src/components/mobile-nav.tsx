@@ -12,7 +12,7 @@
  *   <MobileNav /> inside <ReceiptsProvider>
  */
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ReceiptsToggle } from "@/components/receipts-toggle";
 
@@ -27,11 +27,26 @@ const NAV_LINKS = [
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   return (
     <>
       {/* Hamburger trigger */}
       <button
+        ref={buttonRef}
         aria-label={open ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={open}
         aria-controls="mobile-nav-panel"
