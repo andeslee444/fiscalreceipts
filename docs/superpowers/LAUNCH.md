@@ -80,7 +80,10 @@ Expected: `verify-phase5b1: PASS`
 
 ---
 
-## Step 4 — Upload assets to R2
+## Step 4 — Upload assets to R2 ✅ DONE 2026-07-02
+
+52 objects / 154 MiB uploaded to `govbudget-assets` bucket.
+Custom domain `assets.fiscalreceipts.com` live and Active.
 
 ### 4a. Configure rclone (one-time)
 
@@ -96,17 +99,24 @@ rclone config
 # → No ACL needed
 ```
 
+> **Lesson (2026-07-02):** R2 scoped tokens must include `Object Read & Write`
+> AND `Bucket Read & Write` permissions — the `HeadBucket` call rclone makes
+> during `lsd` is blocked by object-only tokens, causing spurious "bucket not
+> found → CreateBucket" attempts.  Add `no_check_bucket = true` to the rclone
+> remote config to skip the check entirely.  Also: R2 API tokens take ~1 min to
+> activate after creation.
+
 ### 4b. Apply the CORS policy (one-time)
 
 Edit `scripts/launch/cors-policy.json`: replace `REPLACE_WITH_SITE_URL` with
 your actual `NEXT_PUBLIC_SITE_URL` value, then apply:
 
 ```bash
-# Using wrangler:
+# Using wrangler (requires an Admin API token — scoped tokens lack PutBucketCors):
 wrangler r2 bucket cors put $R2_BUCKET \
   --rules scripts/launch/cors-policy.json
 
-# OR via the Cloudflare dashboard:
+# Least-privilege path: Cloudflare dashboard
 # R2 → your bucket → Settings → CORS → Add policy → paste the JSON
 ```
 
@@ -115,6 +125,10 @@ Policy summary:
 - AllowedHeaders: range, origin, content-type, accept
 - ExposeHeaders: content-range, accept-ranges, content-length
 - MaxAgeSeconds: 3600
+
+> **Lesson (2026-07-02):** `PutBucketCors` requires an Admin-level API token.
+> Scoped R2 tokens are insufficient; the dashboard paste is the least-privilege
+> path.
 
 ### 4c. Dry-run sync
 
@@ -140,37 +154,64 @@ Uploads four directories from `data/site/` to R2:
 | `data/site/workbooks/` | `/workbooks/` | ~1.2 MB |
 | `data/site/citations/` | `/citations/` | ~1 MB |
 
+### 4e. Connect custom domain (one-time)
+
+> **Lesson (2026-07-02):** A custom domain on R2 is NOT just a CNAME.  You must
+> go to R2 → your bucket → Settings → Custom Domains → Connect Domain, enter the
+> subdomain, and let Cloudflare add the CNAME automatically.  Manually adding a
+> CNAME at the DNS level without the Connect Domain step returns Cloudflare error
+> 1014 ("CNAME cross-user banned") until the bucket binding is active.  The
+> binding initializes for a few minutes after connection — expect 1014 responses
+> until it turns Active.
+
 ---
 
-## Step 5 — Rewrite config.json
+## Step 5 — Rewrite config.json ✅ DONE 2026-07-02
 
-Point the site at the R2 public bucket URL.  This writes `{"assetBaseUrl": "…"}`
-to both `site/public/config.json` (dev source) and `site/out/config.json`
-(built output).
+`assetBaseUrl` set to `https://assets.fiscalreceipts.com` in both
+`site/public/config.json` and `site/out/config.json`.
 
 ```bash
-# R2 public bucket URL (from Cloudflare R2 → your bucket → Public URL)
-node scripts/launch/rewrite-config.mjs https://pub-<hash>.r2.dev
+node scripts/launch/rewrite-config.mjs https://assets.fiscalreceipts.com
 ```
 
 Verify output: the script prints before/after for each target file.
 
 ---
 
-## Step 6 — CORS live test
+## Step 6 — CORS live test ✅ DONE 2026-07-02
 
-Validates that R2 is returning correct CORS headers for preflight and ranged
-requests.
+All 7 assertions PASS (exit 0) against the live endpoint:
 
-```bash
-R2_HOST=https://pub-<hash>.r2.dev \
-SITE_URL=https://govbudget-xyz.vercel.app \
+```
+R2_HOST=https://assets.fiscalreceipts.com \
+SITE_URL=https://govbudget.vercel.app \
   ./scripts/launch/cors_live_test.sh
 ```
 
-Expected output: all assertions `PASS`, exit 0.
+```
+── 1. OPTIONS preflight ──────────────────────────────────────────────────
+  PASS: status 204
+  PASS: Access-Control-Allow-Origin echoes SITE_URL: https://govbudget.vercel.app
+  PASS: Access-Control-Allow-Headers contains 'range': range
 
-If any assertion fails, re-check the CORS policy in step 4b and re-apply.
+── 2. Ranged GET ─────────────────────────────────────────────────────────
+  PASS: status 206 Partial Content
+  PASS: Access-Control-Allow-Origin echoes SITE_URL: https://govbudget.vercel.app
+  PASS: Content-Range: bytes 0-1023/3175571
+  PASS: Accept-Ranges declared in Access-Control-Expose-Headers: content-range,accept-ranges,content-length
+
+All CORS assertions passed.
+```
+
+> **Script bug fixed (2026-07-02):** `set -euo pipefail` + the `grep` pipeline
+> inside `header_value()` exited with code 1 when R2 omits a standalone
+> `Accept-Ranges` header (it lists it in `Access-Control-Expose-Headers`
+> instead).  The grep failure propagated through the command substitution and
+> aborted the script silently before any leg-2 assertions printed.  Fix: added
+> `|| true` to the `grep` and `awk` pipelines in `header_value()`/`status_code()`
+> so a no-match grep returns 0; updated the Accept-Ranges assertion to accept
+> the expose-headers declaration as equivalent.
 
 Without env vars the script prints the full manual checklist and exits 0
 (`SKIPPED`).

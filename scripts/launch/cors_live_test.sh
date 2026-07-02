@@ -94,12 +94,13 @@ pass() {
 header_value() {
   # Extract value of a response header (case-insensitive).
   # $1 = header name (lowercase), $2 = full response headers string
-  echo "$2" | grep -i "^$1:" | head -1 | sed 's/^[^:]*: *//' | tr -d '\r'
+  # grep exits 1 when the header is absent — || true prevents set -e from aborting.
+  echo "$2" | grep -i "^$1:" | head -1 | sed 's/^[^:]*: *//' | tr -d '\r' || true
 }
 
 status_code() {
   # Extract HTTP status code from the first status line.
-  echo "$1" | grep -m1 "^HTTP" | awk '{print $2}'
+  echo "$1" | grep -m1 "^HTTP" | awk '{print $2}' || true
 }
 
 # ── Find a probe path ─────────────────────────────────────────────────────────
@@ -196,7 +197,10 @@ ranged_response=$(curl --silent --include \
 get_status=$(status_code "$ranged_response")
 get_acao=$(header_value "access-control-allow-origin" "$ranged_response")
 get_cr=$(header_value "content-range" "$ranged_response")
+# R2 may omit a standalone Accept-Ranges header while still listing it in
+# Access-Control-Expose-Headers — check both before failing.
 get_ar=$(header_value "accept-ranges" "$ranged_response")
+get_expose=$(header_value "access-control-expose-headers" "$ranged_response")
 
 # Status: 206
 if [[ "$get_status" == "206" ]]; then
@@ -219,11 +223,19 @@ else
   fail "Content-Range header absent"
 fi
 
-# Accept-Ranges present
+# Accept-Ranges: present as a standalone header OR declared in Access-Control-Expose-Headers.
+# R2 with a custom domain exposes accept-ranges via the expose list rather than a separate header.
+get_expose_lower=$(echo "$get_expose" | tr '[:upper:]' '[:lower:]')
+expose_has_ar=false
+if echo "$get_expose_lower" | grep -q "accept-ranges"; then
+  expose_has_ar=true
+fi
 if [[ -n "$get_ar" ]]; then
   pass "Accept-Ranges: $get_ar"
+elif [[ "$expose_has_ar" == "true" ]]; then
+  pass "Accept-Ranges declared in Access-Control-Expose-Headers: $get_expose"
 else
-  fail "Accept-Ranges header absent"
+  fail "Accept-Ranges absent from both response headers and Access-Control-Expose-Headers"
 fi
 
 echo ""

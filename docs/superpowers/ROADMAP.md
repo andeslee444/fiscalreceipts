@@ -217,11 +217,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 - **GitHub repo push** — awaiting user decision; repo exists empty at
   github.com/andeslee444/govbudget.
-- **R2 asset upload + CORS live test** — PDF panel/downloads degrade on live site
-  until R2 is populated and CORS headers are verified end-to-end.
-- **`NEXT_PUBLIC_SITE_URL`** — must be set to production domain in Vercel env
-  before canonical meta and OG card URLs resolve correctly.
-- **Domain decision tabled** — candidates: outlays.us, fiscalreceipts.com.
+- **R2 assets** ✅ DONE 2026-07-02 — 52 objects / 154 MiB at
+  `assets.fiscalreceipts.com`; PDF panel, explorer, and downloads verified at
+  full fidelity in production browser.  CORS live test 7/7 PASS.
+- **Domain** — DECIDED: `fiscalreceipts.com`.  Assets subdomain (`assets.`)
+  already live.  Remaining: add `fiscalreceipts.com` to Vercel project + DNS
+  CNAME + rebuild with `NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com` +
+  OG/sitemap refresh + CORS policy already covers the new origin (step 4b done).
+- **`NEXT_PUBLIC_SITE_URL`** — must be updated to `https://fiscalreceipts.com`
+  in Vercel env before canonical meta and OG card URLs resolve correctly on the
+  custom domain.
 
 ## Standing constraints (unchanged, every phase)
 
