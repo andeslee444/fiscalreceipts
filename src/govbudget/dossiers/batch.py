@@ -109,7 +109,7 @@ DOSSIER_SCHEMA: dict = {
 # --------------------------------------------------------------------------
 
 SHARED_PREAMBLE = """\
-You write program dossiers for GovBudget, a spending-intelligence site read by
+You write program dossiers for Fiscal Receipts, a spending-intelligence site read by
 curious citizens, journalists, and congressional staff. You will receive a
 FACT BUNDLE for one defense budget program: warehouse rows (each carrying a
 fact_id), J-book narratives (each carrying a fact_id when citable), lobbying

@@ -2029,7 +2029,7 @@ def _write_all_sidecars(
 
     # Static pages
     static_pages = [
-        {"id": "s:home", "kind": "static", "title": "GovBudget", "url": "/"},
+        {"id": "s:home", "kind": "static", "title": "Fiscal Receipts", "url": "/"},
         {"id": "s:programs", "kind": "static", "title": "Programs", "url": "/programs/"},
         {"id": "s:companies", "kind": "static", "title": "Companies", "url": "/companies/"},
         {"id": "s:data", "kind": "static", "title": "Data Explorer", "url": "/data/"},
