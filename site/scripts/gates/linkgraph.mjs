@@ -122,23 +122,29 @@ export async function runLinkgraphGate() {
   if (fs.existsSync(feedPath)) {
     const feedRoot = parse(fs.readFileSync(feedPath, "utf8"), { comment: false });
     const section = feedRoot.querySelector("section#feed-new_entrant");
-    if (section) {
+    if (!section) {
+      errors.push("feed: section#feed-new_entrant not found (contract missing)");
+    } else {
       const cards = section.querySelectorAll("div").filter((el) => {
         const cls = el.getAttribute("class") ?? "";
         return cls.includes("px-5") && cls.includes("py-4");
       });
-      let bad = 0;
-      for (const card of cards) {
-        const hasCompanyLink = card
-          .querySelectorAll("a[href]")
-          .some((a) => (a.getAttribute("href") ?? "").startsWith("/company/"));
-        const optedOut =
-          card.getAttribute("data-no-company-page") !== undefined ||
-          card.querySelectorAll("[data-no-company-page]").length > 0;
-        if (!hasCompanyLink && !optedOut) bad++;
+      if (cards.length === 0) {
+        errors.push("feed new_entrant: section present but 0 cards matched the card selector (selector rot?)");
+      } else {
+        let bad = 0;
+        for (const card of cards) {
+          const hasCompanyLink = card
+            .querySelectorAll("a[href]")
+            .some((a) => (a.getAttribute("href") ?? "").startsWith("/company/"));
+          const optedOut =
+            card.getAttribute("data-no-company-page") !== undefined ||
+            card.querySelectorAll("[data-no-company-page]").length > 0;
+          if (!hasCompanyLink && !optedOut) bad++;
+        }
+        if (bad > 0) errors.push(`feed new_entrant: ${bad} card(s) with neither a /company/ link nor [data-no-company-page]`);
+        else notes.push(`feed new_entrant: ${cards.length} cards all linked/opted-out ✓`);
       }
-      if (bad > 0) errors.push(`feed new_entrant: ${bad} card(s) with neither a /company/ link nor [data-no-company-page]`);
-      else notes.push(`feed new_entrant: ${cards.length} cards all linked/opted-out ✓`);
     }
   }
 
@@ -160,7 +166,9 @@ export async function runLinkgraphGate() {
 
   // ── (c3) filing mentions link internally (sample 5 program pages) ──
   const programDir = path.join(outDir, "program");
-  if (fs.existsSync(programDir)) {
+  if (!fs.existsSync(programDir)) {
+    errors.push("out/program/ missing — build incomplete");
+  } else {
     const slugs = fs.readdirSync(programDir).slice(0, 400);
     let checked = 0, missing = 0;
     for (const slug of slugs) {

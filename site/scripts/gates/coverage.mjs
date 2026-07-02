@@ -165,7 +165,11 @@ export async function runCoverageGate() {
       pageLabel: flowSlug ? `/program/${flowSlug}/` : "(no flow page)",
       checkNumbers: () => {
         const n = counts.companyAwards;
-        const d = 200; // entity_details total
+        // Recompute denominator from entity_details dir count (independent of coverage.ts)
+        const entityDetailsDir = path.join(jsonDir, "entity_details");
+        const d = fs.existsSync(entityDetailsDir)
+          ? fs.readdirSync(entityDetailsDir).filter((f) => f.endsWith(".json")).length
+          : 0;
         return { n, d, pattern: `${n} of ${d}` };
       },
     },
