@@ -36,7 +36,7 @@ export function CoverageNote({
         href={c.anchor}
         className="underline decoration-dotted hover:text-foreground"
       >
-        why →
+        {c.linkText}
       </Link>
     </p>
   );

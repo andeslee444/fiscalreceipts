@@ -25,6 +25,8 @@ describe("coverage manifest", () => {
         expect(c.numerator).toBeGreaterThan(0);
         expect(c.denominator).toBeGreaterThan(c.numerator!);
       }
+      // linkText must be present and follow the "why …? →" convention
+      expect(c.linkText).toMatch(/^why .+\? →$/);
     }
   });
 

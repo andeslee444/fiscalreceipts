@@ -400,7 +400,7 @@ export default function MethodologyPage() {
 
       {/* §coverage ──────────────────────────────────────────────────────
           Coverage & limits (Phase 5C, Task 8). One anchored block per
-          coverage id — each block is the "why →" target for the inline
+          coverage id — each block is the "why <topic>? →" target for the inline
           <CoverageNote> rendered on the surface it describes. Counts are
           interpolated at build time; the G2 gate recomputes them from the
           data sidecars and fails the build if they drift. */}
@@ -410,7 +410,7 @@ export default function MethodologyPage() {
           Several surfaces on this site are deliberately partial: we show a
           link only when we can defend it, and we say so where the data
           renders instead of burying the caveat here. Each block below is the
-          &ldquo;why&rdquo; behind one of those inline scope notes.
+          destination for one of those inline &ldquo;why &hellip;? &rarr;&rdquo; links.
         </p>
 
         <div className="space-y-6 text-muted-foreground leading-7">

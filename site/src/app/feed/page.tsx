@@ -241,7 +241,7 @@ export default function FeedPage() {
           <p className="text-muted-foreground">
             {total}{" "}automated signals across{" "}{grouped.size}{" "}event types.
             Figures carry citations — click an underlined value to inspect the
-            source. &ldquo;Why?&rdquo; links explain each signal type and its
+            source. &ldquo;Why flagged?&rdquo; links explain each signal type and its
             threshold.
           </p>
         </div>

@@ -44,6 +44,13 @@ export interface Coverage {
    */
   emptyNote: string | null;
   anchor: string; // /methodology/#coverage-<id>
+  /**
+   * Visible link label for <CoverageNote>. States WHAT is being explained
+   * (e.g. "why coverage is partial? →") so users know what they're clicking
+   * before they arrive at the methodology anchor. Consistent convention:
+   * "why <topic>? →"
+   */
+  linkText: string;
 }
 
 export function getCoverage(id: CoverageId): Coverage {
@@ -58,6 +65,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
         emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
         anchor: "/methodology/#coverage-follow-the-dollar",
+        linkText: "why coverage is partial? →",
       };
     }
     case "dossiers": {
@@ -70,6 +78,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: `Research dossiers exist for ${num} of ${den} programs — the top-50 programs by FY2026 request, ranked by dollar value.`,
         emptyNote: `No research dossier for this program — dossiers cover ${num} of ${den} programs, ranked by FY2026 requested dollars.`,
         anchor: "/methodology/#coverage-dossiers",
+        linkText: "why no dossier here? →",
       };
     }
     case "company-awards": {
@@ -82,6 +91,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: `Award linkage is shown for ${num} of ${den} profiled companies — only high-confidence USASpending matches are included.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-company-awards",
+        linkText: "why partial award coverage? →",
       };
     }
     case "districts": {
@@ -94,6 +104,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: `${num} of 435 congressional districts have high-confidence linked defense dollars.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-districts",
+        linkText: "why not all districts? →",
       };
     }
     case "state-ca": {
@@ -104,6 +115,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: "California data covers FY2025 only — CA Open Fi$Cal updates on a lag; prior years not yet ingested.",
         emptyNote: null,
         anchor: "/methodology/#coverage-state-ca",
+        linkText: "why FY2025 only? →",
       };
     }
     case "fy2026-partial": {
@@ -114,6 +126,7 @@ export function getCoverage(id: CoverageId): Coverage {
         note: "FY2026 award data is a partial year — USASpending awards are reported on a rolling basis and the fiscal year does not close until September 30.",
         emptyNote: null,
         anchor: "/methodology/#coverage-fy2026-partial",
+        linkText: "why partial FY2026 data? →",
       };
     }
   }
