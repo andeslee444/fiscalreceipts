@@ -36,6 +36,8 @@ from govbudget.dossiers.batch import (
     REQUIRED_SECTIONS,
     SHARED_PREAMBLE,
     _TRIM_STAGES,
+    _lda_url_to_fact_id,
+    _load_citations_keyset,
     build_bundle,
     build_requests,
     collect,
@@ -88,12 +90,16 @@ def site_fixture(tmp_path):
 
     (site_json / "program_details" / f"{PE}.json").write_text(json.dumps({
         "narratives": [
-            {"kind": "mission", "title": "Mission", "body": "M" * 3000},
-            {"kind": "accomplishments", "title": "Acc", "body": "A" * 3000},
+            # xml_path should be stripped from bundle (internal locator, not citable)
+            {"kind": "mission", "title": "Mission", "body": "M" * 3000,
+             "xml_path": "ProgramElement[0]/AccomplishmentPlannedProgram[0]"},
+            {"kind": "accomplishments", "title": "Acc", "body": "A" * 3000,
+             "xml_path": "ProgramElement[0]/AccomplishmentPlannedProgram[1]"},
         ],
         "mentions": [
             {"client_name": f"CLIENT {i}", "filing_uuid": f"uuid-{i}",
-             "description_snippet": "lobbying on research"}
+             "description_snippet": "lobbying on research",
+             "filing_url": f"https://lda.senate.gov/api/v1/filings/uuid-{i}/"}
             for i in range(30)
         ],
         "awards": [
@@ -105,6 +111,9 @@ def site_fixture(tmp_path):
             {"fact_id": "blfact", "amount_thousands": 280494.0,
              "amount_type": "fy_2024_actuals", "organization": "DARPA"},
         ],
+        # Mix: detfact0..4 will be in citations.json; detfact5..29 will NOT.
+        # Also include rows WITHOUT a fact_id (xml_path-only) to ensure they
+        # are handled gracefully.
         "details": [
             {"fact_id": f"detfact{i}", "project_title": f"PROJ {i}",
              "amount_millions": float(i), "xml_path": f"ProgramElement[0]/Project[{i}]"}
@@ -125,11 +134,23 @@ def site_fixture(tmp_path):
         for i in range(12)
     ]}))
 
+    # citations.json: only detfact0..4 are present; detfact5..29 are absent.
+    # Also includes lda_filing entries for two filing_urls used in mentions.
+    lda_filing_url_a = "https://lda.senate.gov/api/v1/filings/uuid-0/"
+    lda_filing_url_b = "https://lda.senate.gov/api/v1/filings/uuid-1/"
     (site_json / "citations.json").write_text(json.dumps({
         "traj26fact": {"kind": "derived"}, "traj25fact": {"kind": "derived"},
         "traj26fact2": {"kind": "derived"}, "hhifact": {"kind": "derived"},
         "dollarsfact": {"kind": "derived"}, "blfact": {"kind": "workbook"},
-        "feedfact": {"kind": "derived"}, "detfact0": {"kind": "jbook_pdf"},
+        "feedfact": {"kind": "derived"},
+        "detfact0": {"kind": "jbook_pdf"},
+        "detfact1": {"kind": "jbook_pdf"},
+        "detfact2": {"kind": "jbook_pdf"},
+        "detfact3": {"kind": "jbook_pdf"},
+        "detfact4": {"kind": "jbook_pdf"},
+        # lda_filing entries — citable fact_ids for lobbying mentions
+        "ldafact_a": {"kind": "lda_filing", "official_url": lda_filing_url_a},
+        "ldafact_b": {"kind": "lda_filing", "official_url": lda_filing_url_b},
     }))
 
     (snapshots / "index.json").write_text(json.dumps({"snapshots": [
@@ -151,6 +172,8 @@ def site_fixture(tmp_path):
     return SimpleNamespace(
         site_json=site_json, snapshots=snapshots, categories=categories,
         tmp=tmp_path,
+        lda_url_a=lda_filing_url_a,
+        lda_url_b=lda_filing_url_b,
     )
 
 
@@ -402,6 +425,119 @@ class TestBuildBundle:
         counter = make_token_counter(client)
         self._build(site_fixture, token_counter=counter)
         assert client.messages.count_calls  # API counting, not heuristic
+
+
+# ---------------------------------------------------------------------------
+# Bundle hygiene — fact_id filtering, xml_path stripping, mention annotation
+# ---------------------------------------------------------------------------
+
+
+class TestBundleHygiene:
+    """Tests that build_bundle applies citation hygiene at assemble time."""
+
+    def _build_with_keyset(self, fx, **kw):
+        """Build with citations_keyset loaded from the fixture's citations.json."""
+        keyset = _load_citations_keyset(fx.site_json)
+        lda_map = _lda_url_to_fact_id(fx.site_json)
+        return build_bundle(
+            PE,
+            site_json_dir=fx.site_json,
+            snapshots_dir=fx.snapshots,
+            categories_csv=fx.categories,
+            citations_keyset=keyset,
+            lda_url_map=lda_map,
+            **kw,
+        )
+
+    def test_absent_fact_id_projects_filtered_and_counted(
+        self, site_fixture, capsys
+    ):
+        """Project rows whose fact_id is absent from citations.json must be dropped."""
+        # Fixture has detfact0..4 in citations.json, detfact5..29 absent.
+        # The 30 projects are sorted by amount_millions descending: indices 29→0.
+        # So detfact5..29 (indices 5-29) are the highest-amount projects and
+        # will come first, all absent → filtered. detfact0..4 will pass.
+        b = self._build_with_keyset(site_fixture)
+        data = _bundle_json(b)
+
+        present_fids = {p["fact_id"] for p in data["projects"]}
+        keyset = _load_citations_keyset(site_fixture.site_json)
+        assert all(fid in keyset for fid in present_fids), (
+            f"Projects contain fact_ids absent from citations.json: "
+            f"{present_fids - keyset}"
+        )
+        # At most 5 projects survive (detfact0..4), all valid
+        assert len(data["projects"]) <= 5
+
+        # Loud print when rows were dropped
+        captured = capsys.readouterr().out
+        assert "FILTERED" in captured
+
+    def test_no_keyset_does_not_filter(self, site_fixture):
+        """Without citations_keyset, projects are NOT filtered (backward compat)."""
+        b = build_bundle(
+            PE,
+            site_json_dir=site_fixture.site_json,
+            snapshots_dir=site_fixture.snapshots,
+            categories_csv=site_fixture.categories,
+        )
+        data = _bundle_json(b)
+        # Without filtering, all 25 top projects are included (cap=TOP_N_LIST=25)
+        assert len(data["projects"]) == 25
+
+    def test_xml_path_stripped_from_narratives(self, site_fixture):
+        """xml_path must be removed from narrative rows — it is not citable."""
+        b = self._build_with_keyset(site_fixture)
+        data = _bundle_json(b)
+        for narr in data["narratives"]:
+            assert "xml_path" not in narr, (
+                f"xml_path must be stripped from narratives; found in {narr}"
+            )
+        # Narrative body and other fields survive intact
+        assert data["narratives"][0]["body"] == "M" * 3000
+        assert data["narratives"][0]["kind"] == "mission"
+
+    def test_mention_carries_citable_fact_id(self, site_fixture):
+        """Mentions with a known filing_url must get a citable_fact_id annotation."""
+        b = self._build_with_keyset(site_fixture)
+        data = _bundle_json(b)
+        # uuid-0 and uuid-1 map to ldafact_a / ldafact_b in the fixture
+        m0 = next(m for m in data["mentions"] if "uuid-0" in m.get("filing_url", "")
+                  or "uuid-0" in m.get("filing_uuid", ""))
+        assert "citable_fact_id" in m0, (
+            "Mention with known filing_url must carry citable_fact_id"
+        )
+        assert m0["citable_fact_id"] == "ldafact_a"
+
+    def test_mention_filing_url_labeled_not_citable(self, site_fixture):
+        """filing_url on each mention must be labeled '(reference link, NOT a citable url)'."""
+        b = self._build_with_keyset(site_fixture)
+        data = _bundle_json(b)
+        for m in data["mentions"]:
+            raw_url = m.get("filing_url", "")
+            if raw_url:
+                assert "(reference link, NOT a citable url)" in raw_url, (
+                    f"filing_url must carry the NOT-citable label; got: {raw_url!r}"
+                )
+
+    def test_mention_without_known_url_has_no_citable_fact_id(self, site_fixture):
+        """Mentions whose filing_url has no match in lda_url_map get no citable_fact_id."""
+        b = self._build_with_keyset(site_fixture)
+        data = _bundle_json(b)
+        # filing_url "uuid-2" and beyond have no lda entry in fixture citations.json
+        unknown = [m for m in data["mentions"]
+                   if "uuid-2" in m.get("filing_url", "")]
+        assert unknown, "Expected at least one mention with an unknown filing_url"
+        for m in unknown:
+            assert "citable_fact_id" not in m
+
+    def test_preamble_contains_negative_rules(self):
+        """SHARED_PREAMBLE must contain the three explicit negative rules."""
+        assert "XML anchors" in SHARED_PREAMBLE
+        assert "ProgramElement" in SHARED_PREAMBLE
+        assert "lda.senate.gov" in SHARED_PREAMBLE
+        assert "NOT a citable url" in SHARED_PREAMBLE
+        assert "NEWS SNAPSHOTS" in SHARED_PREAMBLE
 
 
 # ---------------------------------------------------------------------------

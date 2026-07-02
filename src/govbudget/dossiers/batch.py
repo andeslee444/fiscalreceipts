@@ -136,6 +136,16 @@ The honesty contract — every rule below is enforced mechanically downstream:
    first use, explain why a number matters. Budget figures from budget_lines
    and trajectory are in USD thousands unless the row says otherwise.
 
+EXPLICIT NEGATIVE RULES (violations cause automatic rejection):
+- XML anchors such as ProgramElement[5] or ProgramElement[5]/Project[1] are
+  INTERNAL LOCATORS, never citations. Never use them as fact_id or url values.
+- Filing URLs (lda.senate.gov/api/v1/filings/...) are NEVER citable urls.
+  Each lobbying mention carries a citable_fact_id — cite that fact_id instead.
+  The filing_url field labeled "(reference link, NOT a citable url)" must never
+  appear in any citation.
+- The ONLY valid url citations are the news-snapshot URLs listed in the
+  NEWS SNAPSHOTS section of this bundle. Every other URL is off-limits.
+
 Respond with JSON matching the requested schema: sections what_it_is,
 why_it_matters, players, recent_developments, each {"claims": [{"text",
 "citation"}]}.
@@ -189,6 +199,35 @@ def _load_json(path: Path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _load_citations_keyset(site_json_dir: Path) -> set[str] | None:
+    """Return the set of fact_ids in citations.json, or None if the file is absent."""
+    path = Path(site_json_dir) / "citations.json"
+    if not path.exists():
+        return None
+    return set(_load_json(path).keys())
+
+
+def _lda_url_to_fact_id(site_json_dir: Path) -> dict[str, str]:
+    """Return {filing_url: first_fact_id} for all lda_filing entries in citations.json.
+
+    Used to annotate lobbying mentions with a citable fact_id so the model
+    can cite fact_id instead of the non-citable filing_url.
+    Only the first (alphabetically-sorted) fact_id per url is returned to give
+    a deterministic, stable choice.
+    """
+    path = Path(site_json_dir) / "citations.json"
+    if not path.exists():
+        return {}
+    mapping: dict[str, list[str]] = {}
+    for fact_id, val in _load_json(path).items():
+        if isinstance(val, dict) and val.get("kind") == "lda_filing":
+            official_url = val.get("official_url", "")
+            if official_url:
+                mapping.setdefault(official_url, []).append(fact_id)
+    # Use the lexicographically-first fact_id per url for determinism
+    return {url: sorted(ids)[0] for url, ids in mapping.items()}
+
+
 def _category_row(categories_csv: Path, pe_bli: str) -> dict | None:
     path = Path(categories_csv)
     if not path.exists():
@@ -230,8 +269,18 @@ def _matched_snapshots(snapshots_dir: Path, pe_bli: str) -> list[dict]:
 
 
 def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
-              categories_csv: Path) -> dict:
-    """Raw (untrimmed) bundle dict from the committed sidecars."""
+              categories_csv: Path,
+              citations_keyset: set[str] | None = None,
+              lda_url_map: dict[str, str] | None = None) -> dict:
+    """Raw (untrimmed) bundle dict from the committed sidecars.
+
+    Bundle hygiene applied here:
+    - projects: only rows whose fact_id is in citations_keyset are included;
+      absent-fact_id rows are dropped and counted (loud print).
+    - narratives: xml_path stripped (internal locator, not citable).
+    - mentions: citable_fact_id injected from lda_url_map when available;
+      filing_url labeled as "(reference link, NOT a citable url)".
+    """
     site_json_dir = Path(site_json_dir)
 
     program: dict = {}
@@ -264,10 +313,57 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
             "top_awards": awards[:10],
         }
 
-    projects = sorted(
+    # --- Bundle hygiene: projects ---
+    # Only include project detail rows whose fact_id is in citations.json.
+    # Rows with zero-amount / AllPriorYears resolution often carry fact_ids that
+    # were never exported to citations.json; letting them through causes the
+    # model to cite invalid fact_ids.
+    raw_projects = sorted(
         details.get("details", []),
         key=lambda d: -abs(d.get("amount_millions") or 0),
-    )[:TOP_N_LIST]
+    )
+    if citations_keyset is not None:
+        filtered_projects = [
+            p for p in raw_projects if p.get("fact_id") in citations_keyset
+        ]
+        dropped = len(raw_projects) - len(filtered_projects)
+        if dropped:
+            print(
+                f"dossiers bundle [{pe_bli}]: FILTERED {dropped} project row(s)"
+                f" whose fact_id is absent from citations.json"
+            )
+        projects = filtered_projects[:TOP_N_LIST]
+    else:
+        projects = raw_projects[:TOP_N_LIST]
+
+    # --- Bundle hygiene: narratives ---
+    # Strip xml_path — it is an internal J-book locator (e.g.
+    # "ProgramElement[5]/Project[1]"), not a citable identifier.  Leaving it in
+    # the bundle invites the model to use it as a url citation.
+    clean_narratives = [
+        {k: v for k, v in narr.items() if k != "xml_path"}
+        for narr in details.get("narratives", [])
+    ]
+
+    # --- Bundle hygiene: mentions ---
+    # Inject citable_fact_id from the lda_url_map (first lda_filing fact_id for
+    # this filing's official_url).  Label filing_url as NOT citable so the model
+    # is never tempted to use the API URL as a url citation.
+    raw_mentions = details.get("mentions", [])[:TOP_N_LIST]
+    if lda_url_map is not None:
+        clean_mentions: list[dict] = []
+        for m in raw_mentions:
+            m_out = dict(m)
+            filing_url = m.get("filing_url", "")
+            citable_fid = lda_url_map.get(filing_url)
+            if citable_fid:
+                m_out["citable_fact_id"] = citable_fid
+            if filing_url:
+                m_out["filing_url"] = f"{filing_url} (reference link, NOT a citable url)"
+            clean_mentions.append(m_out)
+        mentions = clean_mentions
+    else:
+        mentions = raw_mentions
 
     return {
         "pe_bli": pe_bli,
@@ -281,8 +377,8 @@ def _assemble(pe_bli: str, *, site_json_dir: Path, snapshots_dir: Path,
         "category": _category_row(categories_csv, pe_bli),
         "budget_lines": details.get("budget_lines", []),
         "projects": projects,
-        "narratives": details.get("narratives", []),
-        "mentions": details.get("mentions", [])[:TOP_N_LIST],
+        "narratives": clean_narratives,
+        "mentions": mentions,
         "awards": details.get("awards", [])[:TOP_N_LIST],
         "feed_events": feed_events,
         "flows": flows_summary,
@@ -337,12 +433,20 @@ def build_bundle(
     categories_csv: str | Path,
     token_counter: Callable[[str], int] | None = None,
     token_cap: int = BUNDLE_TOKEN_CAP,
+    citations_keyset: set[str] | None = None,
+    lda_url_map: dict[str, str] | None = None,
 ) -> dict:
     """Assemble + token-trim the fact bundle for one program.
 
     Returns {pe_bli, title, text, tokens, trim_stages}. `token_counter`
     defaults to the chars/4 heuristic; pass make_token_counter(client) to
     count via the API instead (preferred when a key is available).
+
+    citations_keyset: set of fact_ids from citations.json; when provided,
+      project detail rows whose fact_id is absent are filtered out and counted.
+    lda_url_map: {filing_url: fact_id} from citations.json lda_filing entries;
+      when provided, each mention gets a citable_fact_id annotation and the
+      filing_url is labeled as NOT citable.
     """
     counter = token_counter or heuristic_token_count
     bundle = _assemble(
@@ -350,6 +454,8 @@ def build_bundle(
         site_json_dir=Path(site_json_dir),
         snapshots_dir=Path(snapshots_dir),
         categories_csv=Path(categories_csv),
+        citations_keyset=citations_keyset,
+        lda_url_map=lda_url_map,
     )
 
     applied: list[str] = []
@@ -527,6 +633,15 @@ def submit(
         )
 
     counter = make_token_counter(client)
+    # Load hygiene references once — avoids re-reading on every bundle
+    site_json_path = Path(site_json_dir)
+    cit_keyset = _load_citations_keyset(site_json_path)
+    lda_map = _lda_url_to_fact_id(site_json_path)
+    if cit_keyset is not None:
+        print(
+            f"dossiers submit: bundle hygiene active"
+            f" — citations keyset={len(cit_keyset)}, lda_url_map={len(lda_map)}"
+        )
     bundles = [
         build_bundle(
             pe_bli,
@@ -534,6 +649,8 @@ def submit(
             snapshots_dir=snapshots_dir,
             categories_csv=categories_csv,
             token_counter=counter,
+            citations_keyset=cit_keyset,
+            lda_url_map=lda_map,
         )
         for pe_bli, _title, _org, _total in programs
     ]
