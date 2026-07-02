@@ -820,6 +820,11 @@ def cmd_dossiers(args) -> None:
             raw_dir=config.RESEARCH_DIR / "dossiers-raw",
             out_dir=config.SITE_DIR / "json" / "dossiers",
             poll_interval=args.poll_interval,
+            # Membership validation at collect time — without these, collect
+            # silently degrades to shape-only checks (the wiring gap that let
+            # 15 anchor-citing dossiers through on the first live batches).
+            citations_path=config.SITE_DIR / "json" / "citations.json",
+            snapshots_index=config.RESEARCH_DIR / "snapshots" / "index.json",
         )
         if not summary["ok"]:
             sys.exit(1)
