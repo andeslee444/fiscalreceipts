@@ -97,6 +97,13 @@ SCHEMA_CARD: dict = {
         "after unit conversion is stable across runs).",
         "When ranking, add a deterministic tiebreaker to ORDER BY "
         "(e.g. ORDER BY metric DESC, id) so ties cannot reorder between runs.",
+        "Never use LIMIT without an explicit ORDER BY carrying a unique "
+        "tiebreaker — an unordered LIMIT returns different rows on the "
+        "grader's fresh connection. When the question names an entity "
+        "precisely, filter with exact equality (=) on the canonical name, "
+        "not LIKE/ILIKE patterns: fuzzy matches can catch unrelated rows "
+        "(e.g. a '%SIKORSKY%' pattern also matches a Boeing joint venture) "
+        "and make the returned row order-dependent.",
         "Unit conversion is MANDATORY when the question names a unit ('in "
         "millions', 'in billions', 'per capita', 'percentage') — never answer "
         "in raw full dollars when a display unit is named. Naming a unit alone "
