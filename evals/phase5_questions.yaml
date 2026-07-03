@@ -65,31 +65,32 @@
     (PE 0601101E), in millions of dollars, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
-    from fct_budget_lines
+    from fct_decade_series
     where pe_bli = '0601101E'
-      and organization = 'DARPA'
-      and amount_type = 'fy_2024_actuals'
-      and title = 'Defense Research Sciences'
+      and fy = 2024
+      and amount_type_kind = 'actuals'
     limit 1
   expected_answer: '280.494'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse
+  notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse.
+    Re-baselined to fct_decade_series 2026-07-03 (recompute verified 280.494)
+    — the decade mart is the canonical surface for fy+kind lookups.
 - id: q009
   question: What is the FY2025 enacted amount for DARPA's Defense Research Sciences
     program (PE 0601101E), in millions, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1000.0, 3)
-    from fct_budget_lines
+    from fct_decade_series
     where pe_bli = '0601101E'
-      and organization = 'DARPA'
-      and amount_type = 'fy_2025_enacted'
-      and title = 'Defense Research Sciences'
+      and fy = 2025
+      and amount_type_kind = 'enacted'
     limit 1
   expected_answer: '293.145'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: FY2025 enacted; re-verified 2026-07-01
+  notes: FY2025 enacted; re-verified 2026-07-01. Re-baselined to fct_decade_series
+    2026-07-03 (recompute verified 293.145)
 - id: q010
   question: Which Missile Defense Agency program had the largest FY2024 actual budget
     in the J-book, and what was the amount in millions?
@@ -191,8 +192,8 @@
   notes: fct_budget_to_awards PE coverage
 - id: q019
   question: Which DARPA program has the most individual award contracts (distinct
-    award PIIDs) linked in the budget-to-awards crosswalk? Identify it by PE code
-    and program title.
+    award PIIDs) linked in the budget-to-awards crosswalk? Answer with the PE code
+    and the program title only.
   answer_sql: |
     select pe_bli, program_title
     from fct_budget_to_awards
@@ -225,8 +226,9 @@
   expected_citation_kind: warehouse
   notes: HHI 8034; small agency, few vendors
 - id: q022
-  question: What is the HHI for the Missile Defense Agency (to one decimal place),
-    and how many distinct vendor families does it use?
+  question: What is the HHI for the Missile Defense Agency (rounded to one decimal
+    place), and how many distinct vendor families does it use? Report both values
+    as integers, exactly as the SQL returns them (e.g. 2068, not 2068.0).
   answer_sql: |
     select round(hhi, 1), family_count
     from fct_agency_concentration
@@ -423,13 +425,20 @@
   notes: FY2017-FY2026; re-verified 2026-07-01. SQL rewritten to return one formatted
     string.
 - id: q041
-  question: What were DARPA's FY2023 J-book actual obligations for Defense Research
-    Sciences?
-  expected_answer: REFUSE
-  expected_refuse_class: data_not_ingested
+  question: What were DARPA's FY2023 actual obligations for Defense Research Sciences
+    (PE 0601101E) in the decade series, as reported by the PB2025 J-book, in millions
+    of dollars, to three decimal places?
+  answer_sql: |
+    select round(amount_thousands / 1000.0, 3)
+    from fct_decade_series
+    where pe_bli = '0601101E' and fy = 2023 and amount_type_kind = 'actuals'
+  expected_answer: '376.978'
+  tolerance: 0.001
   expected_citation_kind: warehouse
-  notes: 'REFUSE: only FY2026 J-book edition is loaded (showing FY2024 actuals as
-    the prior-year column); no FY2023 J-book is ingested'
+  notes: 'Re-baselined 2026-07-03 (5E Task 9): the old REFUSE premise ("no FY2023
+    J-book ingested") died when PB2017-PB2026 editions were loaded. FY2023 actuals
+    come from the PB2025 PriorYear column via fct_decade_series; expected answer recomputed
+    through evals refresh.'
 - id: q042
   question: What were the winning bidders and bid prices for the Missile Defense Agency's
     Terminal High Altitude Area Defense (THAAD) contract competition?
@@ -461,3 +470,48 @@
   expected_citation_kind: warehouse
   notes: 'REFUSE: award transaction data covers FY2017-FY2026; FY2027 has not been
     ingested. (Rewritten from FY2024 which IS in the warehouse as of 2026-07-01.)'
+- id: q046
+  question: In the book-diff mart's request-vs-actuals comparison for DARPA's Defense
+    Research Sciences (PE 0601101E), by how much did FY2023 actuals deviate from the
+    original PB2023 request (actuals minus request), in millions of dollars, to three
+    decimal places?
+  answer_sql: |
+    select round(delta / 1000.0, 3)
+    from fct_book_diff
+    where pe_bli = '0601101E'
+      and diff_kind = 'request_vs_actuals'
+      and from_edition = 2023
+  expected_answer: '-24.892'
+  tolerance: 0.001
+  expected_citation_kind: warehouse
+  notes: 'Added 2026-07-03 (5E Task 9): accountability diff — PB2023 BudgetYearOne
+    request for FY2023 vs PB2025 PriorYear actuals for the same FY2023 (fct_book_diff,
+    delta = to_value - from_value, USD thousands). Expected answer recomputed through
+    evals refresh.'
+- id: q047
+  question: In the decade series mart, what were FY2016 actual obligations for the
+    Ballistic Missile Defense Midcourse Defense Segment (PE 0603882C) as reported
+    by the PB2018 J-book, in millions of dollars, to three decimal places?
+  answer_sql: |
+    select round(amount_thousands / 1000.0, 3)
+    from fct_decade_series
+    where pe_bli = '0603882C' and fy = 2016 and edition_year = 2018
+      and amount_type_kind = 'actuals'
+  expected_answer: '1260.48'
+  tolerance: 0.001
+  expected_citation_kind: warehouse
+  notes: 'Added 2026-07-03 (5E Task 9): old-edition actual — FY2016 actuals live only
+    in the PB2018 edition (PriorYear column) via fct_decade_series. Expected answer
+    recomputed through evals refresh.'
+- id: q048
+  question: How did the Virginia Class Submarine procurement line's budget request
+    change from the PB2020 J-book to the PB2024 J-book?
+  expected_answer: REFUSE
+  expected_refuse_class: structurally_absent
+  expected_citation_kind: warehouse
+  notes: 'REFUSE (added 2026-07-03, 5E Task 9): era (PB2017-PB2023) procurement lines
+    carry within-edition namespaced identities ({account}-{org}-L{n}, line renumbering
+    across editions), so cross-edition procurement diffs touching era editions are
+    structurally absent from fct_book_diff — an honest identity gap, never a join.
+    Proves the decade marts do not overreach: only RDT&E program elements diff across
+    era boundaries.'
