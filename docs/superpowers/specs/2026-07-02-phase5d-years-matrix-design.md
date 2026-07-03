@@ -64,8 +64,35 @@ deltas (nothing uncited gets computed in the UI).
   Motion tokens for expand/collapse; `prefers-reduced-motion` respected.
 - **Nav:** header gains **Years** (linkgraph gate picks it up automatically).
 
+## 3b. Derived breakdowns — "show your work" tables (site-wide, user directive)
+
+Everywhere a **derived** citation appears (agency FY totals, Δ figures, per-capita,
+lobbying totals, concentration dollars, improper-payment exposure — 17,606 derived
+facts), the citation panel's formula card gains **"View all N line items →"**, opening
+a breakdown table of every input row that was summed:
+
+- Columns: **Line item** (title via dim_pe_titles + PE/BLI) · **Amount** · **Cite**
+  (each row's amount is a real state-A `<Cite>` on that input's fact_id — clicking
+  drills the panel into that input's own citation, with back navigation).
+- A **sum row** pinned at the bottom equals the derived figure (`recorded_value` —
+  already recompute-verified by the derived gate; the table makes the equality
+  visible).
+- Sorted by amount desc; text filter when >25 rows; **CSV export** of the breakdown
+  (receipts → spreadsheet); small input sets (≤5, e.g. Δ = FY26 − FY25) render inline
+  in the panel, large ones use the full-screen overlay pattern from the PDF zoom.
+- **Data:** exporter emits `data/site/json/breakdowns/{fact_id}.json` for every
+  derived fact with ≥2 inputs: rows `{label, pe_bli, v, fid}` (labels joined from
+  dim_pe_titles / citation metadata; uncited inputs — e.g. the "20 uncited" in some
+  agency formulas — appear as rows honestly marked with the ⁂ uncited state, so the
+  table always accounts for 100% of the sum). Input citations resolve lazily through
+  the same cite-shards mechanism (§3).
+
 ## 4. Verification (evaluator-first, house rules)
 
+- **Breakdown integrity (G8 leg e):** for ≥10 sampled derived facts across kinds,
+  the breakdown rows sum EXACTLY to `recorded_value` (within canonical rounding);
+  every cited row's fact_id resolves via its shard; uncited rows are explicitly
+  marked; CSV export parses and matches the table.
 - **G8 `yearsmatrix` gate (new, built FIRST, proof-can-fail):**
   (a) integrity — recompute ≥30 sampled cells (programs and projects, every column
   type) from the parquet lake and compare to the rendered payload byte-for-canonical;

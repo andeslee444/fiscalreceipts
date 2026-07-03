@@ -60,6 +60,25 @@ fetch-on-miss shard resolution. New G8 gate built first, failing.
   path untouched (zero behavior change on existing pages — assert via existing tests).
 - [ ] vitest + tsc green; commit.
 
+### Task 3b: Derived breakdown tables — exporter + panel (spec §3b)
+
+**Files:** `src/govbudget/export_site.py` (+`tests/test_export_breakdowns.py`),
+`site/src/components/citation-panel/derived-card` (find the actual derived card file),
+new `site/src/components/citation-panel/breakdown-table.tsx` (+vitest)
+
+- [ ] Failing exporter tests: breakdowns/{fact_id}.json exists for every derived fact
+  with ≥2 inputs; rows carry {label, pe_bli, v, fid}; sum(v) equals recorded_value
+  canonically; uncited inputs present with fid:null + uncited:true (100% of the sum
+  accounted for); labels resolve via dim_pe_titles where pe_bli-keyed.
+- [ ] Implement `_emit_breakdowns()`; re-run export-site; pytest green; commit.
+- [ ] Failing vitest: derived card shows "View all N line items →" when a breakdown
+  exists; small sets (≤5) render inline table; large sets open the overlay (reuse the
+  PDF zoom overlay dialog pattern — focus trap, Esc); sum row equals the derived
+  figure; row Cite click drills panel to that input with a Back affordance; CSV
+  export button produces rows matching the table; uncited rows show the ⁂ state.
+- [ ] Implement breakdown-table.tsx + derived-card wiring (lazy-fetch the breakdown
+  JSON on demand; motion tokens; reduced-motion). vitest + tsc green; commit.
+
 ### Task 4: /years/ page + table island
 
 **Files:** `site/src/app/years/page.tsx`, `site/src/components/years-matrix.tsx`,
