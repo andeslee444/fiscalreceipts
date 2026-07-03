@@ -168,6 +168,13 @@ console.log(
   `✓  breakdowns/ (${fs.readdirSync(breakdownsSrc).length} files) → public/json/`
 );
 
+// ── 5d. Copy the years matrix sidecar (Phase 5D — /years/ grid) ──────────────
+copyFile(
+  path.join(jsonDir, "years_matrix.json"),
+  path.join(jsonDestDir, "years_matrix.json")
+);
+console.log("✓  years_matrix.json → public/json/");
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";

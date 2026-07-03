@@ -516,6 +516,28 @@ export default function MethodologyPage() {
               complete prior years will always understate FY2026.
             </p>
           </section>
+
+          <section id="coverage-years-matrix" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Years matrix — one budget edition
+            </h3>
+            <p>
+              Every year column on the{" "}
+              <a href="/years/" className="underline hover:text-foreground">
+                budget-over-time grid
+              </a>{" "}
+              comes from a single publication: the FY2026 President&apos;s
+              Budget justification books. FY2024 Actuals, FY2025
+              Enacted/Total, and the FY2026 request columns are that
+              edition&apos;s own restatements — not readings from the FY2024
+              or FY2025 books — so year-over-year comparisons share one
+              publication&apos;s revisions. Prior-edition backfill is on the
+              roadmap. A program missing a value in a column renders
+              &ldquo;–&rdquo;, never 0, and the grid computes no derived
+              metrics of its own — the Δ and %Δ columns come from the
+              recompute-verified trajectory mart.
+            </p>
+          </section>
         </div>
       </section>
 

@@ -11,7 +11,7 @@ import { SITE_URL } from "./site";
  *   program  → og/program-{pe_bli}.png
  *   company  → og/company-{slug}.png
  *   agency   → og/agency-{org}.png
- *   core     → og/{home|feed|district-index|downloads|methodology|data|about|filings-index}.png
+ *   core     → og/{home|feed|district-index|years|downloads|methodology|data|about|filings-index}.png
  *
  * /filing/[uuid] pages keep the shared static default
  * (public/og-default-filing.png — plan decision 3; 4,258 renders not
@@ -22,6 +22,7 @@ export type CoreOgPage =
   | "home"
   | "feed"
   | "district-index"
+  | "years"
   | "downloads"
   | "methodology"
   | "data"

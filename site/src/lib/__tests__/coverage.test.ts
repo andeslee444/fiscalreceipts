@@ -13,15 +13,16 @@ vi.mock("@/lib/data", () => ({
 import { getCoverage, COVERAGE_IDS } from "@/lib/coverage";
 
 describe("coverage manifest", () => {
-  it("exposes all six surfaces with computed counts", () => {
-    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial"] as const;
+  it("exposes all seven surfaces with computed counts", () => {
+    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial", "years-matrix"] as const;
     expect(COVERAGE_IDS).toEqual(ids);
     for (const id of ids) {
       const c = getCoverage(id);
       expect(c.note.length).toBeGreaterThan(10);
       expect(c.anchor).toMatch(/^\/methodology\/#coverage-/);
-      // numerator/denominator present where meaningful (fy2026-partial is prose-only)
-      if (id !== "fy2026-partial" && id !== "state-ca") {
+      // numerator/denominator present where meaningful
+      // (fy2026-partial / state-ca / years-matrix are prose-only)
+      if (id !== "fy2026-partial" && id !== "state-ca" && id !== "years-matrix") {
         expect(c.numerator).toBeGreaterThan(0);
         expect(c.denominator).toBeGreaterThan(c.numerator!);
       }
@@ -44,5 +45,6 @@ describe("coverage manifest", () => {
     expect(getCoverage("districts").emptyNote).toBeNull();
     expect(getCoverage("state-ca").emptyNote).toBeNull();
     expect(getCoverage("fy2026-partial").emptyNote).toBeNull();
+    expect(getCoverage("years-matrix").emptyNote).toBeNull();
   });
 });

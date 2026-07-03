@@ -26,6 +26,7 @@ export const COVERAGE_IDS = [
   "districts",
   "state-ca",
   "fy2026-partial",
+  "years-matrix",
 ] as const;
 
 export type CoverageId = (typeof COVERAGE_IDS)[number];
@@ -127,6 +128,17 @@ export function getCoverage(id: CoverageId): Coverage {
         emptyNote: null,
         anchor: "/methodology/#coverage-fy2026-partial",
         linkText: "why partial FY2026 data? →",
+      };
+    }
+    case "years-matrix": {
+      return {
+        id,
+        numerator: null,
+        denominator: null,
+        note: "All year columns come from the FY2026 President's Budget edition — prior-edition backfill is on the roadmap.",
+        emptyNote: null,
+        anchor: "/methodology/#coverage-years-matrix",
+        linkText: "why one edition? →",
       };
     }
   }

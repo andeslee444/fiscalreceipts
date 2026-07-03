@@ -11,6 +11,7 @@
  *     → first flow program page (first slug in data/site/json/flows/)
  *   districts → out/district/index.html
  *   state-ca  → out/methodology/index.html (CA surface note lives there)
+ *   years-matrix → out/years/index.html (single-edition honesty, Phase 5D)
  *
  * Counts are recomputed independently (no import of coverage.ts):
  *   flows = fs.readdirSync(data/site/json/flows).length
@@ -37,6 +38,7 @@ const COVERAGE_IDS = [
   "districts",
   "state-ca",
   "fy2026-partial",
+  "years-matrix",
 ];
 
 function readJson(p) {
@@ -197,6 +199,13 @@ export async function runCoverageGate() {
       pageExists: flowPageExists,
       pageLabel: flowSlug ? `/program/${flowSlug}/` : "(no flow page)",
       checkNumbers: null, // prose-only
+    },
+    {
+      id: "years-matrix",
+      pagePath: htmlFor("/years/"),
+      pageExists: fs.existsSync(htmlFor("/years/")),
+      pageLabel: "/years/",
+      checkNumbers: null, // prose-only (single-edition honesty)
     },
   ];
 

@@ -101,6 +101,9 @@ export function BreakdownSection({ factId }: { factId: string }) {
       <div data-testid="breakdown-section">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
           Line items ({breakdown.rows.length})
+          <span className="ml-1.5 normal-case tracking-normal">
+            · {breakdown.units}
+          </span>
         </span>
         <BreakdownTable breakdown={breakdown} />
       </div>
@@ -290,8 +293,12 @@ export function BreakdownTable({
               <th scope="col" className="px-2.5 py-1.5 font-semibold text-muted-foreground">
                 Line item
               </th>
-              <th scope="col" className="px-2.5 py-1.5 text-right font-semibold text-muted-foreground whitespace-nowrap">
-                Amount ({breakdown.units})
+              <th
+                scope="col"
+                title={`Amount in ${breakdown.units}`}
+                className="px-2.5 py-1.5 text-right font-semibold text-muted-foreground whitespace-nowrap"
+              >
+                Amount
               </th>
             </tr>
           </thead>

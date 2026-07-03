@@ -261,6 +261,12 @@ async function main() {
       subtitle: "Defense program dollars traced to congressional districts",
       figure: null, figureLabel: null, tagline: TAGLINE,
     }],
+    ["years", {
+      kind: "Years",
+      title: "Budget over time",
+      subtitle: "Program budgets year over year — every cell opens its citation",
+      figure: null, figureLabel: null, tagline: TAGLINE,
+    }],
     ["downloads", {
       kind: "Downloads",
       title: "Data downloads",

@@ -89,6 +89,12 @@ export default function RootLayout({
                   Districts
                 </Link>
                 <Link
+                  href="/years/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Years
+                </Link>
+                <Link
                   href="/feed/"
                   className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
