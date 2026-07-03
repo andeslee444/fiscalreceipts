@@ -21,6 +21,10 @@ sources:
       - name: jbook_details
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/details.parquet')"
+      - name: jbook_documents
+        description: "Downloaded J-book source documents (id, org, fiscal_year=edition, sha256, rel_path). All-varchar. Joined by fct_decade_series for workbook fact-id derivation."
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/documents.parquet')"
       - name: jbook_narratives
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/detail_narratives.parquet')"

@@ -8,5 +8,6 @@ select
     lower(reconciled) = 'true' as reconciled,
     org,
     exhibit_family,
-    cast(fiscal_year as integer) as fiscal_year
+    cast(fiscal_year as integer) as fiscal_year,
+    document_id
 from {{ source('lake', 'jbook_details') }}

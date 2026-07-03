@@ -30,7 +30,13 @@ def write_parquet(dir_path: Path, sql: str):
 
 JBOOK_BUDGET_LINE_COLS = (
     "exhibit, fiscal_year, account, account_title, organization,"
-    " budget_activity, budget_activity_title, pe_bli, title, amount_type, amount_thousands"
+    " budget_activity, budget_activity_title, pe_bli, title, amount_type, amount_thousands,"
+    " source_document_id"
+)
+
+JBOOK_DOCUMENT_COLS = (
+    "id, org, exhibit_family, fiscal_year, title, source_url, sha256,"
+    " bytes, downloaded_at, rel_path"
 )
 
 JBOOK_DETAIL_COLS = (
@@ -53,23 +59,46 @@ def make_lake(data_dir: Path):
     jbooks.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"copy (select * from (values ('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494'),"
+        f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494','1'),"
         # Phase 5H: fy_2026_total detail rows feed the budget flow river —
         # two programs under one BA so the flow tree has real fan-out,
-        # plus a title-NULL rollup row that the dedup rule MUST exclude.
+        # plus a title-NULL, provenance-less rollup row that the dedup rules
+        # MUST exclude (flow: title IS NOT NULL; decade series:
+        # source_document_id IS NOT NULL + lake-verifiability withhold).
         f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601101E','DEFENSE RESEARCH','fy_2026_total','300000'),"
+        f"'0601101E','DEFENSE RESEARCH','fy_2026_total','300000','1'),"
         f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601102E','APPLIED RESEARCH','fy_2026_total','100000'),"
+        f"'0601102E','APPLIED RESEARCH','fy_2026_total','100000','1'),"
         f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601101E',null,'fy_2026_total','400000'),"
+        f"'0601101E',null,'fy_2026_total','400000',null),"
         # Decoy PB2024-edition titled row: dim_pe_titles' PB2026 fence
         # (fiscal_year = 2026) must keep it out of the alphabetical
         # fallback pool, or 'AAA ANCIENT NAME' would shadow the PB2026
         # title for 0601102E (adversarial review Finding A).
         f"('R-1','2024','0400','Research','DARPA','1','Basic Research',"
-        f"'0601102E','AAA ANCIENT NAME','fy_2022_actuals','90000'))"
+        f"'0601102E','AAA ANCIENT NAME','fy_2022_actuals','90000','2'),"
+        # Phase 5E: PB2024 request row → fct_book_diff request_vs_actuals
+        # pair with the PB2026 fy_2024_actuals row (FY2024 asked vs spent).
+        f"('R-1','2024','0400','Research','DARPA','1','Basic Research',"
+        f"'0601101E','DEFENSE RESEARCH','fy_2024_request','250000','2'),"
+        # Phase 5E: PB2019 OSD row — its jbook details ship in TWO volumes
+        # (docs 278/279 below); fct_decade_series must carry the
+        # single-volume value 7,940, never the both-volumes sum 15,880
+        # (assert_decade_series_pb2019_osd_single_volume).
+        f"('R-1','2019','0400D','Research','OSD','3','Advanced Technology',"
+        f"'0303140D8Z','Information Systems Security Program','fy_2019_total','7940','278'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
+    )
+    duckdb.sql(
+        f"copy (select * from (values ('1','DARPA','rdte','2026','vol1.pdf',"
+        f"'https://example.test/vol1.pdf','sha-darpa-2026','1000','2026-06-01','fy2026/darpa/vol1.pdf'),"
+        f"('2','DARPA','rdte','2024','vol1.pdf',"
+        f"'https://example.test/2024/vol1.pdf','sha-darpa-2024','1000','2026-06-01','fy2024/darpa/vol1.pdf'),"
+        f"('278','OSD','rdte','2019','vol3a.pdf',"
+        f"'https://example.test/2019/vol3a.pdf','sha-osd-2019-a','1000','2026-06-01','fy2019/osd/vol3a.pdf'),"
+        f"('279','OSD','rdte','2019','vol3b.pdf',"
+        f"'https://example.test/2019/vol3b.pdf','sha-osd-2019-b','1000','2026-06-01','fy2019/osd/vol3b.pdf'))"
+        f" t({JBOOK_DOCUMENT_COLS})) to '{jbooks}/documents.parquet' (format parquet)"
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E',null,'Defense Research','PriorYear','280.494',"
@@ -79,7 +108,14 @@ def make_lake(data_dir: Path):
         # PB2026 fence (fiscal_year = 2026) must exclude it — the
         # assert_dim_programs_pb2026_pin dbt test fails if it ever sums in.
         f"('0601101E',null,'Defense Research','PriorYear','424.332',"
-        f"'ProgramElement[0]','True','DARPA','rdte','2024','2'))"
+        f"'ProgramElement[0]','True','DARPA','rdte','2024','2'),"
+        # Phase 5E PB2019 OSD dual-volume pair: docs 278 and 279 EACH embed
+        # the complete OSD XML — identical (pe_bli, scenario, amount)
+        # tuples under both documents (Task 5 binding (i)).
+        f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
+        f"'ProgramElement[0]','True','OSD','rdte','2019','278'),"
+        f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
+        f"'ProgramElement[0]','True','OSD','rdte','2019','279'))"
         f" t({JBOOK_DETAIL_COLS})) to '{jbooks}/details.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -345,6 +381,36 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select node_to from fct_flow_edges where river='spend'"
         " and level_from='office' and node_from='Navy|NAVSEA HQ'"
     ).fetchone()[0] == "BETA"
+
+    # Phase 5E Task 5: fct_decade_series + fct_book_diff
+    # PB2026 PriorYear pin row at the edition-aware grain (280,494 $K)
+    assert con.sql(
+        "select amount from fct_decade_series where pe_bli='0601101E'"
+        " and fy=2024 and edition_year=2026"
+    ).fetchone()[0] == 280494.0
+    # the poisoned fy_2026_total grain (provenance-less 400000 twin in the
+    # raw lake) is WITHHELD by the lake-verifiability filter — the series
+    # never publishes a value the verify-phase5e gate cannot recompute
+    assert con.sql(
+        "select count(*) from fct_decade_series where pe_bli='0601101E'"
+        " and edition_year=2026 and amount_type_kind='request'"
+    ).fetchone()[0] == 0
+    # PB2019 OSD dual-volume (binding (i)): the single-volume value 7,940,
+    # never the both-volumes sum 15,880
+    assert con.sql(
+        "select amount from fct_decade_series where pe_bli='0303140D8Z'"
+        " and edition_year=2019 and amount_type_kind='request'"
+    ).fetchone()[0] == 7940.0
+    # single-source grains carry a workbook fact_id (Task 6 minting handoff)
+    assert con.sql(
+        "select source_fact_id from fct_decade_series where pe_bli='0303140D8Z'"
+        " and edition_year=2019 and amount_type_kind='request'"
+    ).fetchone()[0] is not None
+    # book diff: FY2024 asked (PB2024 request) vs FY2024 spent (PB2026 actuals)
+    assert con.sql(
+        "select from_value, to_value, delta from fct_book_diff"
+        " where pe_bli='0601101E' and diff_kind='request_vs_actuals'"
+    ).fetchall() == [(250000.0, 280494.0, 30494.0)]
 
     # Finding 4: entity_xwalk.recipient_uei uniqueness guard
     # The dbt unique test in schema.yml gates the build. To prove that a duplicate

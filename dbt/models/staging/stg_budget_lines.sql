@@ -9,5 +9,6 @@ select
     pe_bli,
     title,
     amount_type,
-    try_cast(amount_thousands as double) as amount_thousands
+    try_cast(amount_thousands as double) as amount_thousands,
+    source_document_id
 from {{ source('lake', 'jbook_budget_lines') }}

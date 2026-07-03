@@ -184,3 +184,79 @@ models:
           - not_null
           - accepted_values:
               values: ['USD_thousands', 'USD']
+  - name: fct_decade_series
+    description: "Phase 5E edition-aware decade series. Grain: (pe_bli, fy, edition_year) — the edition-aware replacement for the PB2026-fenced dim_programs/dim_pe_titles surfaces (Task 5 binding (iii); the fences themselves are untouched). Scenario semantics are edition-relative (year-shift rule): PriorYear=FY(N-2) actuals, CurrentYear=FY(N-1) enacted, BudgetYearOne=FY(N) request for edition N. Values are USD thousands from R-1/P-1 display-workbook detail rows (source_document_id IS NOT NULL; P-1R reserve-component exhibit and the '9999999999' classified aggregate excluded); slugs picked per reconcile.scenario_map candidate priority; every emitted amount recomputes from the raw parquet lake under the verify-phase5e any-candidate rule. Coverage gap (documented, honest): modern (PB2024–PB2026) P-1 lines whose picked slug has a nonzero P-1R sibling row cannot be lake-recomputed and are withheld — 993 of 59,068 candidate grains (1.7%) at first build; see assert_decade_series_no_p1r_contamination.sql. PB2019 OSD dual-volume dedup (binding (i)) is satisfied by construction — this mart reads single-copy budget_lines, never jbook details; assert_decade_series_pb2019_osd_single_volume.sql guards belt-and-braces. Editions are parallel worlds: rows are never merged or reconciled across edition_year."
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+        description: "Program element (R-1) or budget line item (modern P-1) identifier; era procurement rows carry within-edition namespaced keys ('{account}-{org}-L{line}')."
+      - name: fy
+        data_tests: [not_null]
+        description: "Fiscal year the amount describes (edition_year - 2/1/0 for actuals/enacted/request)."
+      - name: edition_year
+        data_tests: [not_null]
+        description: "PB edition that reports this amount (jbook_documents.fiscal_year). Part of the grain — editions are never merged."
+      - name: amount_type_kind
+        description: "Scenario class: actuals (PriorYear), enacted (CurrentYear — for CR-era editions the source column is the CR-adjusted analog, see amount_type), request (BudgetYearOne)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['actuals', 'enacted', 'request']
+      - name: amount
+        data_tests: [not_null]
+        description: "USD thousands; sum of the edition's detail rows under amount_type. Recomputes from the parquet lake (verify-phase5e leg d)."
+      - name: amount_thousands
+        data_tests: [not_null]
+        description: "Alias of amount (explicit unit name for exporters)."
+      - name: scenario
+        data_tests: [not_null]
+        description: "Source XML/reconciliation scenario name (PriorYear/CurrentYear/BudgetYearOne)."
+      - name: amount_type
+        data_tests: [not_null]
+        description: "The picked source workbook column slug (e.g. fy_2024_actuals, fy_2017_total_pb_requests_with_cr_adj_base_oco) — preserves the exact per-edition header semantics."
+      - name: n_source_rows
+        data_tests: [not_null]
+        description: "Number of detail rows aggregated (accounts/orgs/budget activities)."
+      - name: source_fact_id
+        description: "Task 6 fact-minting handoff: when n_source_rows=1, the workbook fact_id (export_site.fact_id_workbook derivation, sha256(...)[:16]) of the single source row; NULL for multi-row grains — the exporter joins (pe_bli, edition_year, amount_type) to its typed budget_lines rows to mint a derived sum fact with breakdown inputs."
+  - name: fct_book_diff
+    description: "Phase 5E cross-edition book diff. Grain: (pe_bli, from_edition, to_edition, diff_kind); values USD thousands; delta = to_value - from_value, both sides sourced from fct_decade_series (join-completeness by construction). diff_kind: request_vs_request compares PB(N) vs PB(N+1) BudgetYearOne (consecutive asks, FY N vs FY N+1); request_vs_actuals compares the PB(N) FY-N request against PB(N+2) FY-N actuals (the accountability diff; span always 2). COVERAGE: RDT&E R-1 program elements diff across ALL edition boundaries PB2017–PB2026 (PE numbers are stable identities). Procurement coverage is modern-only — P-1 BLI codes are stable identities only from PB2024, so procurement diffs exist for PB2024→PB2025, PB2025→PB2026 and PB2024→PB2026 boundaries only. Era (PB2017–PB2023) procurement is excluded ENTIRELY (Task 5 binding (ii)): its namespaced '{account}-{org}-L{line}' keys are within-edition identities — line renumbering makes both era-to-modern and within-era procurement diffs an honest gap, never a join (guard: assert_book_diff_no_era_procurement.sql)."
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+      - name: from_edition
+        data_tests: [not_null]
+        description: "Earlier PB edition (its BudgetYearOne request is the from side)."
+      - name: to_edition
+        data_tests: [not_null]
+        description: "Later PB edition (from_edition+1 for request_vs_request, from_edition+2 for request_vs_actuals)."
+      - name: diff_kind
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['request_vs_request', 'request_vs_actuals']
+      - name: from_fy
+        data_tests: [not_null]
+        description: "Fiscal year of the from side (== from_edition; BudgetYearOne)."
+      - name: to_fy
+        data_tests: [not_null]
+        description: "Fiscal year of the to side (to_edition for request_vs_request; == from_fy for request_vs_actuals)."
+      - name: from_value
+        data_tests: [not_null]
+        description: "USD thousands; PB(from_edition) request for FY from_fy."
+      - name: to_value
+        data_tests: [not_null]
+        description: "USD thousands; PB(to_edition) request (request_vs_request) or actuals (request_vs_actuals)."
+      - name: delta
+        data_tests: [not_null]
+        description: "to_value - from_value, USD thousands (verify-phase5e leg c conservation)."
+      - name: from_amount_type
+        data_tests: [not_null]
+        description: "Source workbook column slug of the from side (Task 6 fact-minting join key)."
+      - name: to_amount_type
+        data_tests: [not_null]
+        description: "Source workbook column slug of the to side (Task 6 fact-minting join key)."
+      - name: from_source_fact_id
+        description: "Workbook fact_id of the from side when it aggregates a single source row; NULL otherwise (exporter mints a derived sum fact)."
+      - name: to_source_fact_id
+        description: "Workbook fact_id of the to side when single-source; NULL otherwise."
