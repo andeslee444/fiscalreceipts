@@ -104,10 +104,12 @@ def cmd_migrate(args) -> None:
     print(f"migrations applied: {applied or 'none (up to date)'}")
 
 
-JBOOK_INDEX_URLS = [
-    "https://comptroller.war.gov/Budget-Materials/Budget2026/",
-    "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
-]
+def jbook_index_urls(fy: int) -> list[str]:
+    """Comptroller index pages for a PB edition (rollup xlsx + J-book PDFs)."""
+    return [
+        f"https://comptroller.war.gov/Budget-Materials/Budget{fy}/",
+        f"https://comptroller.war.gov/Budget-Materials/FY{fy}BudgetJustification/",
+    ]
 
 
 def cmd_jbooks(args) -> None:
@@ -118,10 +120,11 @@ def cmd_jbooks(args) -> None:
 
     migrate()
     if args.action == "scrape":
+        fy = args.fiscal_year
         docs = []
         with httpx.Client(timeout=60) as client:
-            for index_url in JBOOK_INDEX_URLS:
-                docs.extend(registry.discover_documents(client, index_url, fiscal_year=config.JBOOK_FY))
+            for index_url in jbook_index_urls(fy):
+                docs.extend(registry.discover_documents(client, index_url, fiscal_year=fy))
         n = registry.upsert_documents(config.PG_DSN, docs)
         print(f"jbooks scrape: {len(docs)} discovered, {n} new")
     elif args.action == "acquire":
@@ -1075,6 +1078,8 @@ def main(argv=None) -> None:
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
     j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance"])
     j.add_argument("--org", default=None)
+    j.add_argument("--fiscal-year", type=int, default=config.JBOOK_FY, dest="fiscal_year",
+                   help="scrape: PB edition year for index discovery (default: %(default)s)")
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
                    help="crosswalk: filter awards to fiscal years >= this value")
     j.add_argument("--fy-end", type=int, default=None, dest="fy_end",

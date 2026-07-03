@@ -66,3 +66,105 @@ def test_upsert_is_idempotent(pg_dsn):
     with psycopg.connect(pg_dsn) as con:
         n = con.execute("select count(*) from jbook_documents").fetchone()[0]
     assert n == 1
+
+
+def test_jbook_index_urls_2025():
+    from govbudget.cli import jbook_index_urls
+
+    assert jbook_index_urls(2025) == [
+        "https://comptroller.war.gov/Budget-Materials/Budget2025/",
+        "https://comptroller.war.gov/Budget-Materials/FY2025BudgetJustification/",
+    ]
+
+
+def test_jbook_index_urls_2026_matches_legacy_constants():
+    from govbudget.cli import jbook_index_urls
+
+    # regression pin: the exact literals hardcoded before parameterization
+    assert jbook_index_urls(2026) == [
+        "https://comptroller.war.gov/Budget-Materials/Budget2026/",
+        "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
+    ]
+
+
+# Budget{fy}/ index page: rollup display links are relative, so their URLs
+# derive from the fy-parameterized index URL.
+BUDGET_INDEX_HTML = """
+<html><body>
+<a href="r1_display.xlsx">R-1 Display</a>
+<a href="p1_display.xlsx">P-1 Display</a>
+</body></html>
+"""
+
+JUSTIFICATION_INDEX_HTML = """
+<html><body>
+<a href="pdfs/RDTE_Vol1_DARPA_MasterJustificationBook_PB_2025.pdf">DARPA</a>
+</body></html>
+"""
+
+
+def _run_scrape(monkeypatch, argv):
+    """Run `govbudget jbooks scrape` with HTTP + DB boundaries mocked.
+
+    Returns (requested_urls, upserted_docs).
+    """
+    import types
+
+    import govbudget.jbooks.db
+    import govbudget.jbooks.registry
+    from govbudget import cli
+
+    requested: list[str] = []
+
+    def handler(request):
+        url = str(request.url)
+        requested.append(url)
+        if "/Budget-Materials/Budget" in url:
+            return httpx.Response(200, text=BUDGET_INDEX_HTML)
+        return httpx.Response(200, text=JUSTIFICATION_INDEX_HTML)
+
+    real_client = httpx.Client
+    monkeypatch.setattr(cli, "httpx", types.SimpleNamespace(
+        Client=lambda **kw: real_client(transport=httpx.MockTransport(handler)),
+    ))
+    monkeypatch.setattr(govbudget.jbooks.db, "migrate", lambda *a, **kw: [])
+    upserted: list[dict] = []
+
+    def fake_upsert(dsn, docs):
+        upserted.extend(docs)
+        return len(docs)
+
+    monkeypatch.setattr(govbudget.jbooks.registry, "upsert_documents", fake_upsert)
+    cli.main(argv)
+    return requested, upserted
+
+
+def test_scrape_cli_threads_fiscal_year_to_discovery_and_rollups(monkeypatch):
+    requested, docs = _run_scrape(
+        monkeypatch, ["jbooks", "scrape", "--fiscal-year", "2025"]
+    )
+    assert requested == [
+        "https://comptroller.war.gov/Budget-Materials/Budget2025/",
+        "https://comptroller.war.gov/Budget-Materials/FY2025BudgetJustification/",
+    ]
+    # every discovered doc is stamped with the requested edition year
+    assert docs and all(d["fiscal_year"] == 2025 for d in docs)
+    # rollup display-file URLs derive from the fy-parameterized index page
+    rollups = {d["title"]: d["source_url"] for d in docs if d["exhibit_family"] == "rollup"}
+    assert rollups == {
+        "r1_display.xlsx": "https://comptroller.war.gov/Budget-Materials/Budget2025/r1_display.xlsx",
+        "p1_display.xlsx": "https://comptroller.war.gov/Budget-Materials/Budget2025/p1_display.xlsx",
+    }
+
+
+def test_scrape_cli_defaults_to_config_jbook_fy(monkeypatch):
+    from govbudget import config
+
+    requested, docs = _run_scrape(monkeypatch, ["jbooks", "scrape"])
+    # omitting --fiscal-year preserves today's behavior exactly
+    assert config.JBOOK_FY == 2026
+    assert requested == [
+        "https://comptroller.war.gov/Budget-Materials/Budget2026/",
+        "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
+    ]
+    assert docs and all(d["fiscal_year"] == config.JBOOK_FY for d in docs)
