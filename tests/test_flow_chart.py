@@ -433,3 +433,276 @@ def test_missing_mart_returns_none(tmp_path, bl_rows):
     payload, rows = build_flow_chart(duckdb_path=db, bl_rows=bl_rows)
     assert payload is None
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# Label layout (F3 — precomputed, collision-free inline labels)
+# ---------------------------------------------------------------------------
+
+from govbudget.flow_chart import (  # noqa: E402  (grouped with the section)
+    GUTTER_GAP,
+    GUTTER_MIN_H,
+    LABEL_H,
+    MIN_LABEL_H,
+    WIDTH,
+    _node_label_w,
+)
+
+
+def _label_bbox(node, units):
+    """Axis-aligned bbox of a node's exported inline label (None if hidden).
+
+    Recomputed with the SAME estimator the exporter used — the invariant
+    under test is the exporter's own geometry model, end to end.
+    """
+    lbl = node.get("lbl")
+    if lbl is None:
+        return None
+    w = _node_label_w(node["label"], node["value"], units)
+    x0 = lbl["x"] if lbl["a"] == "s" else lbl["x"] - w
+    return (x0, lbl["y"] - LABEL_H / 2.0, x0 + w, lbl["y"] + LABEL_H / 2.0)
+
+
+def _bboxes_overlap(a, b):
+    return not (
+        a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+    )
+
+
+def _assert_labels_clean(nodes, units, what):
+    """Zero overlapping label bboxes + every label inside the viewBox."""
+    boxes = []
+    for n in nodes:
+        bb = _label_bbox(n, units)
+        if bb is None:
+            continue
+        assert -0.01 <= bb[0] and bb[2] <= WIDTH + 0.01, (
+            f"{what}: label for {n['id']} leaves the viewBox horizontally: {bb}"
+        )
+        assert -LABEL_H <= bb[1] and bb[3] <= 640.0 + LABEL_H, (
+            f"{what}: label for {n['id']} leaves the viewBox vertically: {bb}"
+        )
+        boxes.append((n["id"], bb))
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            assert not _bboxes_overlap(boxes[i][1], boxes[j][1]), (
+                f"{what}: labels collide: {boxes[i][0]} × {boxes[j][0]}"
+                f" ({boxes[i][1]} ∩ {boxes[j][1]})"
+            )
+
+
+@pytest.fixture()
+def collision_db(tmp_path: Path) -> Path:
+    """A fixture engineered to force label collisions under naive placement.
+
+    Budget river: long budget-activity labels (start-anchored, extending
+    right) sit at the same y as long program labels (end-anchored, extending
+    left) — the exact 'BA label overruns program label' judge finding — and a
+    TINY high-confidence crosswalked bridge band reproduces the 'Not yet
+    crosswalked clips the value above it' finding. Spend river: long office
+    labels vs long ALL-CAPS family labels, plus a stack of thin adjacent
+    family nodes to exercise gutter stacking + leader lines.
+    """
+    db = tmp_path / "collide.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(f"create table fct_flow_edges ({FLOW_COLS})")
+
+    long_ba = "Advanced Component Development and Prototypes"
+    budget = []
+    for i, (comp, clabel) in enumerate(
+        [("N", "Department of the Navy"), ("F", "Department of the Air Force")]
+    ):
+        acct = f"{i}400{comp}"
+        alabel = f"Research, Development, Test and Evaluation, {clabel}"
+        v = 400000.0 - i * 1000.0
+        budget += [
+            ("budget", 2026, "total", "TOTAL", "FY2026 PB", "component",
+             comp, clabel, None, None, v, 1, "USD_thousands"),
+            ("budget", 2026, "component", comp, clabel, "appropriation",
+             f"{comp}|{acct}", alabel, None, None, v, 1, "USD_thousands"),
+            ("budget", 2026, "appropriation", f"{comp}|{acct}", alabel,
+             "budget_activity", f"{comp}|{acct}|04", long_ba,
+             None, None, v, 1, "USD_thousands"),
+            ("budget", 2026, "budget_activity", f"{comp}|{acct}|04", long_ba,
+             "program", f"{comp}|{acct}|04|060{i}101X",
+             f"Extremely Long Program Title Number {i} For Collisions",
+             None, None, v, 1, "USD_thousands"),
+        ]
+    # a TINY crosswalked program → near-hairline crosswalked bridge band
+    budget += [
+        ("budget", 2026, "total", "TOTAL", "FY2026 PB", "component",
+         "N", "Department of the Navy", None, None, 4000.0, 1,
+         "USD_thousands"),
+        ("budget", 2026, "component", "N", "Department of the Navy",
+         "appropriation", "N|0400N",
+         "Research, Development, Test and Evaluation, Department of the Navy",
+         None, None, 4000.0, 1, "USD_thousands"),
+        ("budget", 2026, "appropriation", "N|0400N",
+         "Research, Development, Test and Evaluation, Department of the Navy",
+         "budget_activity", "N|0400N|04", long_ba, None, None, 4000.0, 1,
+         "USD_thousands"),
+        ("budget", 2026, "budget_activity", "N|0400N|04", long_ba,
+         "program", "N|0400N|04|0609999X", "Tiny Crosswalked Program",
+         None, None, 4000.0, 1, "USD_thousands"),
+    ]
+    spend = [
+        ("spend", 2025, "office", "DEPT ARMY|DHA", "DEFENSE HEALTH AGENCY",
+         "family", "HUNTINGTON INGALLS INDUSTRIES",
+         "HUNTINGTON INGALLS INDUSTRIES", "full_and_open", "3-4",
+         50_000.0, 3, "USD"),
+        ("spend", 2025, "office", "DEPT ARMY|DHA", "DEFENSE HEALTH AGENCY",
+         "family", "NORTHROP GRUMMAN CORPORATION",
+         "NORTHROP GRUMMAN CORPORATION", "not_competed", "1",
+         49_000.0, 1, "USD"),
+        ("spend", 2025, "office", "DEPT NAVY|NAVAL AIR SYSTEMS COMMAND",
+         "NAVAL AIR SYSTEMS COMMAND", "family", "RTX", "RTX",
+         "other_than_full", "2", 48_000.0, 2, "USD"),
+    ]
+    # thin adjacent families → gutter labels must stack with leader lines
+    for k in range(6):
+        spend.append(
+            ("spend", 2025, "office", "DEPT NAVY|NAVAL AIR SYSTEMS COMMAND",
+             "NAVAL AIR SYSTEMS COMMAND", "family", f"THIN FAMILY {k}",
+             f"THIN FAMILY {k}", "set_aside", "2", 400.0 + k, 1, "USD")
+        )
+    con.executemany(
+        "insert into fct_flow_edges values (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        budget + spend,
+    )
+    # tiny high-confidence crosswalk → near-hairline crosswalked bridge band
+    con.execute(
+        "create table fct_budget_to_awards as select * from (values"
+        " ('0609999X','PIID1','high')) t(pe_bli, award_piid, confidence)"
+    )
+    con.execute(
+        "create table fct_award_transactions as select * from (values"
+        " ('PIID1','UEI1',1000.0)) t(award_id_piid, recipient_uei, obligation)"
+    )
+    con.execute(
+        "create table entity_xwalk as select * from (values"
+        " ('UEI1','HUNTINGTON INGALLS INDUSTRIES'))"
+        " t(recipient_uei, family_key)"
+    )
+    con.close()
+    return db
+
+
+@pytest.fixture()
+def collision_bl_rows():
+    rows = []
+    for i, comp in enumerate(["N", "F"]):
+        acct = f"{i}400{comp}"
+        rows.append(_bl_row(
+            comp, acct, "04", f"060{i}101X",
+            f"Extremely Long Program Title Number {i} For Collisions",
+            400000 - i * 1000,
+        ))
+    rows.append(_bl_row(
+        "N", "0400N", "04", "0609999X", "Tiny Crosswalked Program", 4000,
+    ))
+    return rows
+
+
+def _build_collide(collision_db, collision_bl_rows, top_n=12):
+    return build_flow_chart(
+        duckdb_path=collision_db, bl_rows=collision_bl_rows,
+        top_n=top_n, default_fy=2025,
+    )
+
+
+def test_label_bboxes_never_overlap(collision_db, collision_bl_rows):
+    """THE F3 invariant: zero intersecting label bboxes, river-wide."""
+    payload, _ = _build_collide(collision_db, collision_bl_rows)
+    b = payload["budget"]
+    _assert_labels_clean(b["nodes"], b["units"], "budget")
+    s = payload["spend"]
+    for fy, river in s["by_fy"].items():
+        _assert_labels_clean(river["nodes"], s["units"], f"spend FY{fy}")
+
+
+def test_thin_midcolumn_labels_suppressed(flow_db, bl_rows):
+    """Mid-column nodes thinner than MIN_LABEL_H export NO inline label —
+    their name/value stay reachable via tooltip + aria (client contract)."""
+    payload, _ = _build(flow_db, bl_rows)
+    for river, units in [
+        (payload["budget"], payload["budget"]["units"]),
+        (payload["spend"]["by_fy"]["2025"], payload["spend"]["units"]),
+    ]:
+        last_x1 = max(n["x1"] for n in river["nodes"])
+        for n in river["nodes"]:
+            if n["x1"] >= last_x1 - 1e-9:
+                continue  # last column has its own gutter rules
+            if (n["y1"] - n["y0"]) < MIN_LABEL_H:
+                assert "lbl" not in n, (
+                    f"{n['id']} is {n['y1'] - n['y0']:.2f} tall (<{MIN_LABEL_H})"
+                    " but still carries an inline label"
+                )
+        _assert_labels_clean(river["nodes"], units, "flow_db river")
+
+
+def test_last_column_gutter_labels_and_leaders(collision_db, collision_bl_rows):
+    """Destination-column labels live OUTSIDE the band (right gutter),
+    start-anchored, stacked without overlap; displaced labels carry a short
+    leader line back to their node."""
+    payload, _ = _build_collide(collision_db, collision_bl_rows)
+
+    # budget bridge: BOTH bands labeled — including the near-hairline
+    # crosswalked band (the judge's 'clipped bridge label' case)
+    b = payload["budget"]
+    last_x1 = max(n["x1"] for n in b["nodes"])
+    assert last_x1 < WIDTH  # a gutter is actually reserved
+    for n in b["nodes"]:
+        if n["level"] != "bridge":
+            continue
+        if (n["y1"] - n["y0"]) >= GUTTER_MIN_H:
+            assert n["lbl"]["a"] == "s"
+            assert n["lbl"]["x"] >= last_x1 + GUTTER_GAP - 0.01
+    cw = _node_by_id(b, "b:bridge:crosswalked")
+    assert (cw["y1"] - cw["y0"]) < MIN_LABEL_H  # genuinely thin in this fixture
+    assert "lbl" in cw  # ... and still labeled, in the gutter
+
+    # spend family column: thin adjacent nodes stack downward; at least one
+    # displaced label carries a leader line [x0, y0, x1, y1]
+    river = payload["spend"]["by_fy"]["2025"]
+    fam = [n for n in river["nodes"] if n["level"] == "family" and "lbl" in n]
+    assert len(fam) >= 8
+    ys = [n["lbl"]["y"] for n in sorted(fam, key=lambda n: n["y0"])]
+    for a, bb in zip(ys, ys[1:]):
+        assert bb - a >= LABEL_H - 0.01, "gutter labels must not stack onto each other"
+    leaders = [n for n in fam if "ldr" in n]
+    assert leaders, "displaced gutter labels must carry a leader line"
+    for n in leaders:
+        x0, y0, x1, y1 = n["ldr"]
+        assert n["x1"] <= x0 <= x1 <= n["lbl"]["x"]
+        assert abs(y0 - (n["y0"] + n["y1"]) / 2) <= LABEL_H
+        assert abs(y1 - n["lbl"]["y"]) <= 0.01
+
+
+def test_label_layout_deterministic(collision_db, collision_bl_rows):
+    p1, _ = _build_collide(collision_db, collision_bl_rows)
+    p2, _ = _build_collide(collision_db, collision_bl_rows)
+    assert json.dumps(p1, sort_keys=True) == json.dumps(p2, sort_keys=True)
+
+
+REAL_PAYLOAD = Path(__file__).resolve().parents[1] / "data/site/json/flow_chart.json"
+
+
+@pytest.mark.skipif(not REAL_PAYLOAD.exists(), reason="no exported payload")
+def test_real_export_labels_clean():
+    """The SHIPPED payload must satisfy the F3 invariant too — this is the
+    'verify zero overlapping label bboxes in the payload' acceptance check."""
+    payload = json.loads(REAL_PAYLOAD.read_text())
+    b = payload["budget"]
+    _assert_labels_clean(b["nodes"], b["units"], "real budget")
+    # the bridge bands are the judge finding — both must be labeled
+    for nid in ("b:bridge:crosswalked", "b:bridge:not-crosswalked"):
+        assert "lbl" in _node_by_id(b, nid), f"{nid} lost its label"
+    s = payload["spend"]
+    for fy, river in s["by_fy"].items():
+        _assert_labels_clean(river["nodes"], s["units"], f"real spend FY{fy}")
+        last_x1 = max(n["x1"] for n in river["nodes"])
+        for n in river["nodes"]:
+            if n["level"] == "family" and (n["y1"] - n["y0"]) >= GUTTER_MIN_H:
+                assert "lbl" in n and n["lbl"]["x"] >= last_x1, (
+                    f"FY{fy} {n['id']}: family labels belong in the right gutter"
+                )

@@ -18,6 +18,11 @@ Design contract (binding for the G9 flowdown gate and the /flow/ UI):
   renders SVG with no layout math. Deterministic: nodes ordered by
   (value desc, id asc), Other last; geometry rounded to 2 decimals
   (monotonic rounding preserves containment).
+- Inline labels are ALSO precomputed (node["lbl"], optional node["ldr"]
+  leader lines) with deterministic collision handling: thin mid-column
+  nodes go tooltip-only, last-column labels live in a reserved right
+  gutter outside the ribbon band, and a global greedy pass guarantees
+  zero overlapping label bboxes (see _place_labels).
 - Citations:
     budget nodes/edges  → kind='derived', formula starts with
       'sum(budget_lines' and inputs = the budget_lines workbook fact_ids of
@@ -65,6 +70,26 @@ HEIGHT = 640.0
 NODE_W = 18.0
 NODE_PAD = 8.0
 
+# ── Inline-label layout (F3 — precomputed, collision-free) ──────────────────
+# The client renders node labels at fontSize 10 (viewBox units) from the
+# exported node["lbl"] geometry and does NO label math of its own. All the
+# collision handling lives HERE, deterministically:
+#   - mid-column labels are suppressed below MIN_LABEL_H (tooltip-only);
+#   - last-column ("destination") labels are right-aligned OUTSIDE the band
+#     in a reserved gutter, stacked without overlap, with short leader lines
+#     when displaced from their node's center;
+#   - a global greedy pass suppresses any remaining label whose estimated
+#     bbox would intersect a higher-priority label.
+MIN_LABEL_H = 9.0       # node thickness below which mid-column labels hide
+LABEL_H = 10.0          # label bbox height (client fontSize 10)
+LABEL_PAD_X = 5.0       # node face ↔ mid-column label gap
+GUTTER_GAP = 6.0        # last-column node face ↔ gutter label gap
+GUTTER_MAX = 250.0      # cap on the reserved right gutter
+GUTTER_MIN_H = 1.0      # zero/hairline nodes stay tooltip-only even there
+LABEL_STACK_GAP = 2.0   # min vertical gap between stacked gutter labels
+LEADER_MIN_DY = 6.0     # leader line when the label moved this far off-node
+_LABEL_VALUE_GAP = 6.0  # label ↔ value-tspan gap (client renders "  ")
+
 _Q_THOUSANDS = Decimal("0.001")
 _Q_DOLLARS = Decimal("0.01")
 
@@ -75,6 +100,80 @@ def _fnum(d: Decimal) -> float:
 
 def _r2(x: float) -> float:
     return round(x, 2)
+
+
+# ---------------------------------------------------------------------------
+# Label width estimation + amount formatting (mirrors the client)
+# ---------------------------------------------------------------------------
+
+_CH_NARROW = set("ijlI.,':;!|·")
+_CH_SEMI = set("tfr()[]- ")
+_CH_WIDE = set("mwMW")
+
+
+def _est_text_w(s: str) -> float:
+    """Deterministic width estimate (viewBox units) for a 10px sans label.
+
+    Slightly generous per-character buckets — over-estimating is safe (it
+    can only suppress/nudge more), under-estimating would let collisions
+    through. NOT a font metric: the invariant this feeds (zero overlapping
+    label bboxes) is defined over THIS estimator, exporter and tests alike.
+    """
+    w = 0.0
+    for ch in s:
+        if ch in _CH_NARROW:
+            w += 2.8
+        elif ch in _CH_SEMI:
+            w += 3.6
+        elif ch in _CH_WIDE:
+            w += 8.8
+        elif ch == "—":
+            w += 10.0
+        elif ch == "–":
+            w += 6.0
+        elif ch.isupper():
+            w += 6.8
+        elif ch.isdigit():
+            w += 5.8
+        elif ch in "&%@#":
+            w += 7.5
+        else:
+            w += 5.3
+    return w
+
+
+def _fmt_amount_no_currency(value: float, units: str) -> str:
+    """Python mirror of the client's formatAmountNoCurrency + minus glyph.
+
+    Used ONLY to size labels — the client still formats its own strings.
+    (A ±1-in-last-digit rounding divergence moves a width estimate by well
+    under one character and cannot create an overlap the estimator misses.)
+    """
+    raw = value * (1000.0 if units == "USD thousands"
+                   else 1_000_000.0 if units == "USD millions" else 1.0)
+    a = abs(raw)
+    if a >= 1e9:
+        v = a / 1e9
+        s = f"{v:.{2 if v < 10 else 1}f}B"
+    elif a >= 1e6:
+        v = a / 1e6
+        s = f"{v:.{2 if v < 10 else 1}f}M"
+    elif a >= 1e3:
+        v = a / 1e3
+        s = f"{v:.{2 if v < 10 else 1}f}K"
+    else:
+        s = f"{round(a):,}"
+    return ("−" if raw < 0 else "") + s
+
+
+def _node_label_w(label: str, value: float, units: str) -> float:
+    """Estimated total width of an inline label: name + gap + value."""
+    return (_est_text_w(label) + _LABEL_VALUE_GAP
+            + _est_text_w(_fmt_amount_no_currency(value, units)))
+
+
+def _bbox_overlap(a: tuple, b: tuple) -> bool:
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +263,111 @@ def _layout(nodes: list[dict], edges: list[dict], levels: list[str],
     for n in nodes:
         n.pop("_y0f", None)
         n.pop("_y1f", None)
+
+
+# ---------------------------------------------------------------------------
+# Inline-label placement (deterministic, collision-free — F3)
+# ---------------------------------------------------------------------------
+
+
+def _gutter_width(nodes: list[dict], levels: list[str], units: str) -> float:
+    """Right gutter reserved for the LAST column's labels, sized to the
+    widest label that will live there (capped at GUTTER_MAX)."""
+    present = [lv for lv in levels if any(n["level"] == lv for n in nodes)]
+    if not present:
+        return 0.0
+    last = present[-1]
+    widths = [
+        _node_label_w(n["label"], float(n["_v"]), units)
+        for n in nodes if n["level"] == last
+    ]
+    if not widths:
+        return 0.0
+    return min(GUTTER_MAX, max(widths) + GUTTER_GAP + 2.0)
+
+
+def _place_labels(nodes: list[dict], units: str, *,
+                  width: float = WIDTH, height: float = HEIGHT) -> None:
+    """Assign node["lbl"] = {x, y (center), a: 's'|'e'} and, for displaced
+    gutter labels, node["ldr"] = [x0, y0, x1, y1] — in place.
+
+    Deterministic collision handling (the F3 contract; the pytest collision
+    suite and the client render both bind to this exact model):
+
+      1. mid-column nodes thinner than MIN_LABEL_H get NO inline label
+         (tooltip + aria still carry name and value);
+      2. last-column nodes are labeled in the right gutter (start-anchored
+         OUTSIDE the ribbon band), stacked top-down/bottom-up so gutter
+         labels never overlap, with a short leader line whenever a label
+         had to move more than LEADER_MIN_DY off its node's center;
+         zero/hairline nodes (< GUTTER_MIN_H) stay tooltip-only, and a
+         label estimated wider than the remaining gutter is suppressed
+         rather than clipped by the viewBox;
+      3. a global greedy pass (gutter labels first, then value desc, then
+         deeper column, then id) suppresses any remaining label whose
+         estimated bbox intersects one already kept — zero overlapping
+         label bboxes by construction.
+    """
+    if not nodes:
+        return
+    last_x1 = max(n["x1"] for n in nodes)
+    cand: list[dict] = []
+    for n in nodes:
+        h = n["y1"] - n["y0"]
+        w = _node_label_w(n["label"], n["value"], units)
+        ncy = (n["y0"] + n["y1"]) / 2.0
+        if n["x1"] >= last_x1 - 1e-9:
+            if h < GUTTER_MIN_H:
+                continue
+            x = n["x1"] + GUTTER_GAP
+            if x + w > width - 0.5:
+                continue  # wider than the gutter — tooltip-only, never clipped
+            cand.append({"n": n, "gutter": True, "a": "s",
+                         "x": x, "cy": ncy, "ncy": ncy, "w": w})
+        else:
+            if h < MIN_LABEL_H:
+                continue
+            start = n["x1"] < 0.75 * last_x1
+            x = n["x1"] + LABEL_PAD_X if start else n["x0"] - LABEL_PAD_X
+            cand.append({"n": n, "gutter": False, "a": "s" if start else "e",
+                         "x": x, "cy": ncy, "ncy": ncy, "w": w})
+
+    # gutter stacking: push down to clear the label above, then pull back up
+    # from the bottom edge so the stack stays inside the viewBox.
+    gutter = sorted((c for c in cand if c["gutter"]),
+                    key=lambda c: (c["ncy"], c["n"]["id"]))
+    step = LABEL_H + LABEL_STACK_GAP
+    lo = LABEL_H / 2.0
+    for c in gutter:
+        c["cy"] = max(c["cy"], lo)
+        lo = c["cy"] + step
+    hi = height - LABEL_H / 2.0
+    for c in reversed(gutter):
+        c["cy"] = min(c["cy"], hi)
+        hi = c["cy"] - step
+
+    def bbox(c: dict) -> tuple:
+        x0 = c["x"] if c["a"] == "s" else c["x"] - c["w"]
+        return (x0, c["cy"] - LABEL_H / 2.0, x0 + c["w"], c["cy"] + LABEL_H / 2.0)
+
+    kept: list[tuple] = []
+    for c in sorted(cand, key=lambda c: (0 if c["gutter"] else 1,
+                                         -c["n"]["value"], -c["n"]["x0"],
+                                         c["n"]["id"])):
+        b = bbox(c)
+        if any(_bbox_overlap(b, k) for k in kept):
+            continue  # lower-priority label suppressed (hover carries it)
+        kept.append(b)
+        c["keep"] = True
+
+    for c in cand:
+        if not c.get("keep"):
+            continue
+        n = c["n"]
+        n["lbl"] = {"x": _r2(c["x"]), "y": _r2(c["cy"]), "a": c["a"]}
+        if c["gutter"] and abs(c["cy"] - c["ncy"]) > LEADER_MIN_DY:
+            n["ldr"] = [_r2(n["x1"] + 1.0), _r2(c["ncy"]),
+                        _r2(c["x"] - 2.0), _r2(c["cy"])]
 
 
 # ---------------------------------------------------------------------------
@@ -528,7 +732,10 @@ def _build_budget_river(budget_leaves, label_maps, bl_lookup, xwalk_conf,
             "v": _fnum(acc["v"]), "_v": acc["v"], "f": fid,
         })
 
-    _layout(nodes, edges, list(BUDGET_LEVELS))
+    # Reserve the right label gutter, lay out inside it, then place labels.
+    gutter = _gutter_width(nodes, list(BUDGET_LEVELS), UNITS)
+    _layout(nodes, edges, list(BUDGET_LEVELS), width=WIDTH - gutter)
+    _place_labels(nodes, UNITS)
 
     # ---- bridge summary ------------------------------------------------------
     programs = []
@@ -778,7 +985,10 @@ def _build_spend_river(fy: int, leaf_rows, *, top_n, members_cap, mint,
             inputs, recorded,
         )
 
-    _layout(nodes, edges, list(SPEND_LEVELS))
+    # Reserve the right label gutter, lay out inside it, then place labels.
+    gutter = _gutter_width(nodes, list(SPEND_LEVELS), units)
+    _layout(nodes, edges, list(SPEND_LEVELS), width=WIDTH - gutter)
+    _place_labels(nodes, units)
 
     for n in nodes:
         n.pop("_v", None)
