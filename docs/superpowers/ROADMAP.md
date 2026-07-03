@@ -163,6 +163,28 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (orphan nav, no coverage notes, silent degradation), recorded, then turned green
   by implementation — same for the dead-link leg. Proof-can-fail is not a checklist
   item; it is the gate.
+- **Fleet stragglers ship half-finished expectation raises (final stage,
+  2026-07-02):** an uncommitted fleet diff raised match_gate5a to 0.85 claiming
+  "data legitimately improved" — but the LDA re-pull that would improve the data
+  never ran (aliases alone can't match filings the original pull never fetched;
+  verified: only 1 of 4 target client names exists in the parquet at all).
+  verify-phase5a caught it at 40/50 = 80% < 85%. Rule refined: a
+  documented-expectation raise must land in the SAME change-set as the pipeline
+  run that makes it true, with the gate's PASS output as commit evidence. Same
+  class: a fleet build regenerated llms.txt without NEXT_PUBLIC_SITE_URL,
+  committing placeholder-origin URLs into the tracked artifact.
+- **LDA pull attribution is first-query-wins even at match 'none' (2026-07-02):**
+  the global UUID dedup in pull_top_families assigns a filing to the first
+  (highest-obligation) family whose contains-style query returns it, regardless of
+  match quality — VECTRUS's 'V2X' query consumes the 'V2X, Inc. (formerly known as
+  Vertex Aerospace)' filings at match 'none', starving VERTEX AEROSPACE SERVICES.
+  A future re-pull should prefer matched attribution over unmatched before global
+  dedup (or dedup only among matched claims).
+- **Exhibit-header tie-breaking shrinks pdf-page ambiguity by a third (2026-07-02):**
+  ambiguous_first 73% → 51% of provenance rows (969 facts disambiguated to their
+  detail-exhibit page); the rebuild is deterministic (delete + rebuild reproduced
+  all 4,419 keys byte-identically), so the improvement is re-runnable at every
+  future J-book ingest.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -171,17 +193,39 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    Marine Propulsion, MacAndrews & Forbes, Shell E&P, Bell-Boeing JPO*, Domestic
    Awardees* — *=genuinely unmatchable). Curated client_aliases.csv additions with
    documented corporate facts.
-2. **Citation tiers deferred from 5B-1:** USAspending (reproducible query
+   *Update 2026-07-02:* aliases CURATED + committed for Booz Allen, ADS Tactical,
+   Vertex (V2X fka), Shell E&P — spellings verified against the live LDA API, with
+   over-merge guard tests. STAGED, not yet effective: those filings were never
+   returned by the original pull's query strings, so they only match at the next
+   `govbudget influence pull` (+ dbt marts, mentions, export-site, dossier-citation
+   check). The match_gate5a raise to 0.85 lands with that re-pull (a premature
+   raise was reverted in final-stage verification — see findings). Remaining 6
+   families verified as having zero 2024–2026 filings (genuinely unmatchable).
+2. **Citation tiers deferred from 5B-1:** ~~USAspending (reproducible query
    permalink), state checkbook (SoQL URL), derived metrics (formula + input
    citations). Owner: 5B-2 (usaspending/state), 5B-3 (derived). The manifest's
    `uncited_datasets` ledger (11 datasets) is the enforcement hook — 5B-2's
-   render gate must refuse to render numbers from datasets still on it.
-3. **Page-resolution disambiguation:** prefer detail-exhibit pages over summary
-   pages via "Exhibit R-2"/"P-40" header anchoring → shrink ambiguous_first 73%.
+   render gate must refuse to render numbers from datasets still on it.~~
+   **DONE 2026-07-02:** ledger cleared to 0 — final holdouts dim_geography,
+   fct_budget_to_awards, dim_lobbyists received citations (district dollars are
+   clickable citations); the ledger gate is now armed at empty (any future
+   uncited dataset fails loudly).
+3. **Page-resolution disambiguation:** ~~prefer detail-exhibit pages over summary
+   pages via "Exhibit R-2"/"P-40" header anchoring → shrink ambiguous_first 73%.~~
+   **DONE 2026-07-02:** exhibit-aware tie-breaking (source exhibit header, then
+   project-number token; each step skipped if it would empty the candidate set);
+   ambiguous_first 3,208 (73% of 4,419) → 2,239 (51%), unique 209 → 1,178.
+   'unique' only when uniquely determined + word-confirmed; candidate_pages keeps
+   the raw pre-tie-break count (auditable, no fabricated certainty). Rebuild
+   determinism verified: delete-ambiguous + rebuild reproduced 4,419/4,419 keys
+   byte-identically.
 4. **Historical J-book backfill (PB2025/PB2024)** → enables book-diff "what
    changed this cycle" (5B-3 feature 6). Schema already supports.
-5. **$39T CPI SATCOM subaward outlier** — staging-layer sanity guard
-   (max-plausible-amount flag, quarantine table).
+   *Update 2026-07-02:* PB2025 feasibility spike complete — GO recommendation
+   (docs/superpowers/plans/2026-07-02-pb2025-backfill-feasibility.md).
+5. **$39T CPI SATCOM subaward outlier** — ~~staging-layer sanity guard
+   (max-plausible-amount flag, quarantine table).~~ **DONE 2026-07-02:**
+   staging quarantines subaward outliers with `is_amount_suspect` flag.
 6. **Site-mart gaps found in 5B-1 recon:** no per-family obligations-by-year mart
    (company page time series), no feed/event mart, dim_geography lacks
    fiscal_year/pe_bli breakdown (district drill-down) — build in 5B-2/5B-3 as
@@ -202,22 +246,50 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     high_risk.mapped BOOLEAN); parquets retyped in place value-identically
     (fct_improper_exposure checksum unchanged); dbt try_casts dropped; schema card
     updated (trap note replaced — legacy CASTs are harmless no-ops).
-12. **Build gate for stale/failed `site/out`:** verify gates should detect that
+12. **Build gate for stale/failed `site/out`:** ~~verify gates should detect that
     the SSG output is absent or from a failed build before running npm verify gates
-    — currently a broken build silently causes gate false-passes against stale HTML.
+    — currently a broken build silently causes gate false-passes against stale HTML.~~
+    **DONE 2026-07-02:** gate 1 build-staleness check — postbuild marker file +
+    mtime guard against data/site inputs.
 13. **Mistral OCR (Document AI) as fallback extractor** for scanned/legacy J-book
     PDFs — current pipeline is XML-first and doesn't need it; revisit if pre-2015
     books (scan-only) enter scope.
 14. **Feed title enrichment in dim_programs/exporter proper (5C):** 136 trajectory-only
     PEs currently have titles resolved at feed-export only; they need program pages and
     dim_programs entries so they appear in search and the sitemap.
+    *Update 2026-07-02:* pages/search/sitemap half completed by backlog #17 (exporter
+    synthesis from dim_pe_titles); dim_programs entries proper still require R-2/P-40
+    detail ingestion and remain out of scope by design.
 15. **District choropleth + entity-graph viz (5C deferred):** interactive map of
     district spend distribution and force-directed entity graph; deferred pending
     D3/Mapbox integration decision.
-16. **"Why?" link phrasing consistency (5C):** several detail pages mix "How is this
-    calculated?" / "Source" / "Why?" for the same action — standardize to one phrase.
-17. **Program pages for trajectory-only PEs (5C):** 136 PEs have feed events but no
-    program page; they produce dead links in the feed until pages are generated.
+16. **"Why?" link phrasing consistency (5C):** ~~several detail pages mix "How is this
+    calculated?" / "Source" / "Why?" for the same action — standardize to one phrase.~~
+    **DONE 2026-07-02:** standardized to the explicit `why <topic>? →` convention
+    across detail pages.
+17. **Program pages for trajectory-only PEs (5C):** ~~136 PEs have feed events but no
+    program page; they produce dead links in the feed until pages are generated.~~
+    **DONE 2026-07-02:** exporter synthesizes dim_programs-shaped rows for feed PEs
+    outside dim_programs (`_trajectory_only_feed_programs`): title from dim_pe_titles,
+    exhibit_family from fct_budget_lines exhibits, trajectory figures reuse the
+    already-emitted derived citations; honest absences elsewhere (no FY24 J-book
+    headline / details / narratives / dossier). programs.json 326→462 pages;
+    program_details, search docs, sitemap, OG cards, coverage denominators
+    ("N of 462") all follow from data. Feed cards regained "view program →" links
+    via the existing programs.json gate. agencies.json stays dim_programs-scoped
+    (derived agency-sum recompute unchanged); service-org codes (A/N/F/DHA) render
+    as plain text in the program header, never a dead link. This also completes the
+    page-generation half of backlog #14 (dim_programs entries themselves still
+    require R-2/P-40 detail by design).
+18. **llms.txt / sitemap origin gate:** a build without NEXT_PUBLIC_SITE_URL bakes
+    the placeholder origin into tracked/deployed artifacts (caught once in a fleet
+    straggler, 2026-07-02). Add a verify leg: production artifacts must not contain
+    `govbudget-placeholder.example`.
+19. **LDA re-pull to activate curated aliases (from backlog #1):** run
+    `govbudget influence pull` + dbt influence marts + mentions + export-site +
+    dossier-citation check; then raise match_gate5a to 0.85 and move the boundary
+    tests to 43/50. Fix first-query-wins attribution (see findings) or verify
+    VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
 
 ## Remaining launch items
 
