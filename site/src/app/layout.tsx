@@ -53,8 +53,12 @@ export default function RootLayout({
             Skip to content
           </a>
 
-          {/* ── Site Header ── */}
-          <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+          {/* ── Site Header ──
+              Fully OPAQUE bg (no translucency/backdrop-blur): the sticky bar
+              must occlude scrolled content — the 60%-tint variant let page
+              chrome ghost through at mobile widths (visual-judge finding,
+              years-390-scrolled). */}
+          <header className="border-b border-border bg-background sticky top-0 z-40">
             <div className="container mx-auto flex h-14 items-center px-4 gap-4 min-w-0">
               {/* Brand — always visible */}
               <Link

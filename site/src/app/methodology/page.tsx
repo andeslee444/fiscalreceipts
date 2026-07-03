@@ -537,6 +537,18 @@ export default function MethodologyPage() {
               metrics of its own — the Δ and %Δ columns come from the
               recompute-verified trajectory mart.
             </p>
+            <p className="mt-2">
+              &ldquo;–&rdquo; and a zero tagged <em>XML</em> mean different
+              things. &ldquo;–&rdquo; is <em>absent</em>: the trajectory
+              workbook simply has no row for that program and column (most
+              DARPA program elements, for example, carry no FY2026 Total
+              there). An amber <em>XML</em>-tagged zero on a project sub-row
+              is a <em>source statement</em>: the J-book XML explicitly
+              records a zero-dollar amount for that project, cited to its XML
+              path. A parent showing &ldquo;–&rdquo; above zero-valued project
+              rows is therefore honest reporting of two different documents —
+              the grid never derives a parent total from its children.
+            </p>
           </section>
         </div>
       </section>

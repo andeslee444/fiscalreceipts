@@ -47,7 +47,9 @@ export default function YearsPage() {
               lost its joining space in the static export on this page (the
               same shape renders fine elsewhere) — one expression sidesteps
               the whitespace hazard entirely. */}
-          <p className="mb-2 text-muted-foreground">
+          {/* text-sm below sm: the intro must not push the grid off the
+              390px fold (visual-judge finding). */}
+          <p className="mb-2 text-sm text-muted-foreground sm:text-base">
             {`${_programCount} program elements as rows, fiscal-year amount types as columns — grouped by organization, expandable to the J-book's own project grain. Click any figure to open its citation.`}
           </p>
           {/* Unit statement — always visible (CapIQ convention: one stated
@@ -55,8 +57,9 @@ export default function YearsPage() {
           <p className="mb-2 text-sm font-medium text-foreground">
             All figures in USD millions.
           </p>
-          {/* Single-edition honesty — G2 contract (data-coverage="years-matrix") */}
-          <CoverageNote id="years-matrix" className="mb-2" />
+          {/* Single-edition honesty — G2 contract (data-coverage="years-matrix").
+              Collapsible: below sm only the "why one edition? →" link shows. */}
+          <CoverageNote id="years-matrix" collapsible className="mb-2" />
         </div>
         <YearsMatrix />
       </div>
