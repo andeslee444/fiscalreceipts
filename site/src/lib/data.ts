@@ -218,12 +218,52 @@ export interface ProgramMention {
   matched_term: string;
 }
 
+/**
+ * One decade-series point (Phase 5E): a cited grain from fct_decade_series.
+ * v is USD thousands; fid resolves in citations.json (uncited grains are
+ * never exported); edition is the PB book the figure was read from.
+ * Gaps are ABSENT entries — never zeros, never interpolated.
+ */
+export interface DecadePoint {
+  fy: number;
+  v: number;
+  fid: string;
+  edition: number;
+}
+
+/** Keyed by amount_type_kind; a kind with no grains is simply absent. */
+export interface DecadeSeries {
+  actuals?: DecadePoint[];
+  enacted?: DecadePoint[];
+  request?: DecadePoint[];
+}
+
+/**
+ * The PE's largest cited request-vs-actuals book diff (Phase 5E Task 7):
+ * PB(from_edition) asked `fy`-year dollars, PB(to_edition) reported the
+ * actuals — delta (USD thousands) cites the minted book_diff derived fact
+ * (fid). Side values resolve from decade_series by (fy, edition, kind).
+ * Minted in Python (fact_id_derived) — NEVER recomputed in TS.
+ */
+export interface ProgramBookDiff {
+  kind: "request_vs_actuals";
+  fy: number;
+  from_edition: number;
+  to_edition: number;
+  delta: number;
+  fid: string;
+}
+
 export interface ProgramDetails {
   awards: ProgramAward[];
   budget_lines: ProgramBudgetLine[];
   details: ProgramDetailRow[];
   mentions: ProgramMention[];
   narratives: ProgramNarrative[];
+  /** Phase 5E: cited decade series (absent when the PE has no decade grains). */
+  decade_series?: DecadeSeries;
+  /** Phase 5E: largest cited request-vs-actuals gap (requires decade_series). */
+  book_diff?: ProgramBookDiff;
   /**
    * Phase 5F rollup-tier fields (Batch A): present ONLY on the 1,533
    * rollup sidecars (R-1/P-1 figures + trajectory, no J-book detail).
@@ -785,7 +825,12 @@ export function getReceiptMomentFact(): ReceiptMomentFact | null {
 // ── feed.json ─────────────────────────────────────────────────────────────────
 
 export interface FeedCard {
-  event_type: "yoy_swing" | "zeroed_fy2026" | "concentration_shift" | "new_entrant";
+  event_type:
+    | "yoy_swing"
+    | "zeroed_fy2026"
+    | "concentration_shift"
+    | "new_entrant"
+    | "request_vs_actuals_gap";
   family_key: string | null;
   figure_fact_id: string | null;
   figure_units: string;

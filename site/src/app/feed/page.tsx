@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   getFeed,
   getEntityTopByFamilyKey,
-  getPrograms,
+  getProgramPeBlis,
   collectCitations,
   feedDisplayHeadline,
 } from "@/lib/data";
@@ -53,6 +53,14 @@ const EVENT_META: Record<
       "Programs whose Herfindahl-Hirschman Index (HHI) indicates high award concentration (≥ $5M matched obligations). An HHI above 2,500 suggests a near-monopoly supplier.",
     anchorId: "feed-concentration_shift",
   },
+  request_vs_actuals_gap: {
+    label: "Largest Request-vs-Actuals Gaps",
+    // Claim scoped EXACTLY to request-vs-actuals (Task 6 review advisory):
+    // this section says nothing about request-vs-request changes.
+    description:
+      "The largest gaps between what a President's Budget asked for a fiscal year and what a later book reported actually spent — the PB(N) request for FY N vs the PB(N+2) book's FY N actuals, ranked by absolute dollar gap across the loaded PB2017–PB2026 editions.",
+    anchorId: "feed-request_vs_actuals_gap",
+  },
   new_entrant: {
     label: "New Defense Contractors",
     description:
@@ -65,6 +73,7 @@ const EVENT_META: Record<
 const EVENT_ORDER = [
   "yoy_swing",
   "zeroed_fy2026",
+  "request_vs_actuals_gap",
   "concentration_shift",
   "new_entrant",
 ];
@@ -103,6 +112,7 @@ function FeedCardItem({
 }) {
   const isConcentration = card.event_type === "concentration_shift";
   const isNewEntrant = card.event_type === "new_entrant";
+  const isRvaGap = card.event_type === "request_vs_actuals_gap";
 
   return (
     <div
@@ -173,6 +183,15 @@ function FeedCardItem({
                 dataset="fct_feed_events"
                 factId={card.figure_fact_id}
               />
+            ) : isRvaGap ? (
+              // Signed gap in USD thousands, cited via the minted book_diff
+              // derived fact (breakdown reachable from the citation panel).
+              <Cite
+                value={card.figure_value}
+                units="USD thousands"
+                dataset="fct_book_diff"
+                factId={card.figure_fact_id}
+              />
             ) : card.figure_units === "pct_change" ? (
               <Cite
                 value={card.figure_value}
@@ -217,11 +236,12 @@ export default function FeedPage() {
   // company page — their cards get data-no-company-page instead of a link.
   const entityByFamilyKey = getEntityTopByFamilyKey();
 
-  // pe_blis that actually have a /program/{pe_bli}/ page — programs.json is
-  // the generateStaticParams source for program pages. Feed events come from
-  // the trajectory mart, which covers pe_blis outside this set; linking those
-  // would 404 in the static export (G1 dead-link contract).
-  const programPeBlis = new Set(getPrograms().map((p) => p.pe_bli));
+  // pe_blis that actually have a /program/{pe_bli}/ page — the page universe
+  // is EVERY program_details sidecar (Phase 5F §2a: full + rollup tiers),
+  // the same set generateStaticParams enumerates. Feed events may reference
+  // pe_blis outside even that (trajectory-mart extras, dead decade-diff PEs);
+  // linking those would 404 in the static export (G1 dead-link contract).
+  const programPeBlis = new Set(getProgramPeBlis());
 
   // Collect all fact_ids on this page
   const pageFactIds: string[] = [];

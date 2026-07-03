@@ -213,6 +213,19 @@ export default async function ProgramPage({
     pageFactIds.push(program.hhi.program_dollars_fact_id);
   }
 
+  // Decade series + book-diff (Phase 5E): every sparkline point and the
+  // asked-vs-spent delta open the citation panel from the embedded slice.
+  const decadeSeries = details.decade_series ?? null;
+  const bookDiff = details.book_diff ?? null;
+  if (decadeSeries) {
+    for (const points of Object.values(decadeSeries)) {
+      for (const p of points ?? []) {
+        if (p.fid) pageFactIds.push(p.fid);
+      }
+    }
+  }
+  if (bookDiff?.fid) pageFactIds.push(bookDiff.fid);
+
   // Details table: resolution ∈ {unique, ambiguous_first} → state A (fact_id resolves)
   for (const d of details.details) {
     if (d.resolution !== "zero_amount" && d.fact_id) {
@@ -321,10 +334,14 @@ export default async function ProgramPage({
         <ProgramFigures program={program} />
       </ProgramSection>
 
-      {/* 3 · Trajectory */}
+      {/* 3 · Trajectory — PB2026 sparkline + Phase 5E decade series */}
       <ProgramSection id="trajectory">
-        {program.trajectory ? (
-          <ProgramTrajectoryCard program={program} />
+        {program.trajectory || decadeSeries ? (
+          <ProgramTrajectoryCard
+            program={program}
+            decadeSeries={decadeSeries}
+            bookDiff={bookDiff}
+          />
         ) : (
           <SectionEmpty title="Budget Trajectory">
             No year-over-year trajectory row for this line — the FY2026

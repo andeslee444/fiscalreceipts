@@ -56,6 +56,14 @@ describe("coverage manifest", () => {
     );
   });
 
+  it("years-matrix note states the edition rule — the 5D roadmap promise is delivered (5E)", () => {
+    const c = getCoverage("years-matrix");
+    expect(c.note).toContain("actuals for FY N come from the PB(N+2)");
+    expect(c.note).toContain("ten editions (PB2017–PB2026)");
+    expect(c.note).not.toContain("roadmap");
+    expect(c.anchor).toBe("/methodology/#coverage-editions");
+  });
+
   it("service-books note interpolates full-tier vs page-universe counts (5F)", () => {
     const c = getCoverage("service-books");
     expect(c.note).toContain("420 of 1900 program pages");

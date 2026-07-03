@@ -77,6 +77,18 @@ export interface YearsOrg {
   programs: YearsProgram[];
 }
 
+/**
+ * Phase 5E decade column meta. `key` is the cell key ('fy{yyyy}{a|e|r}'),
+ * `edition` is the President's Budget book the figure was read from —
+ * edition-honest rule: actuals for FY N come from the PB(N+2) book.
+ */
+export interface DecadeColumn {
+  key: string;
+  fy: number;
+  kind: "actuals" | "enacted" | "request";
+  edition: number;
+}
+
 export interface YearsMatrixData {
   schema_version: number;
   program_units: string;
@@ -85,6 +97,9 @@ export interface YearsMatrixData {
   default_columns: string[];
   delta_columns: string[];
   project_scenarios: Record<string, string>;
+  /** Phase 5E: present only when the exporter minted decade grains. */
+  decade_columns?: DecadeColumn[];
+  decade_default_columns?: string[];
   orgs: YearsOrg[];
 }
 
@@ -130,11 +145,43 @@ function columnLabelShort(key: string): string {
   return COLUMN_LABELS_SHORT[key] ?? columnLabel(key);
 }
 
-/** Program column → project-cell key (the J-book scenario years). */
+// ── Decade column labels (Phase 5E) ─────────────────────────────────────────
+
+const DECADE_KIND_LETTER: Record<DecadeColumn["kind"], string> = {
+  actuals: "A",
+  enacted: "E",
+  request: "R",
+};
+
+/** 'fy2020a' meta → "FY2020A" (the edition renders as a header sub-tag). */
+export function decadeColumnLabel(col: DecadeColumn): string {
+  return `FY${col.fy}${DECADE_KIND_LETTER[col.kind]}`;
+}
+
+/** Abbreviated for <sm viewports: "FY20A". */
+function decadeColumnLabelShort(col: DecadeColumn): string {
+  return `FY${String(col.fy).slice(-2)}${DECADE_KIND_LETTER[col.kind]}`;
+}
+
+/** Long-form for aria-labels / tooltips: "FY2020 actuals (PB2022 edition)". */
+function decadeColumnTitle(col: DecadeColumn): string {
+  return `FY${col.fy} ${col.kind} (PB${col.edition} edition)`;
+}
+
+/**
+ * Program column → project-cell key (the J-book scenario years).
+ * The three PB2026-edition decade columns map to the SAME project scenarios
+ * as their amount-type twins (fy2024a ≡ PB2026 PriorYear, etc.) — other
+ * decade columns come from older books whose project grain isn't ingested,
+ * so their project cells stay absent ("–"), never borrowed across editions.
+ */
 const PROJECT_COL_FOR: Record<string, string> = {
   fy_2024_actuals: "fy2024",
   fy_2025_total: "fy2025",
   fy_2026_total: "fy2026",
+  fy2024a: "fy2024",
+  fy2025e: "fy2025",
+  fy2026r: "fy2026",
 };
 
 const PCT_KEY = "fy2526_pct_change";
@@ -195,18 +242,27 @@ function csvField(s: string): string {
  * CSV of the current view: visible entries × visible columns.
  * Dollar columns are exported in USD millions (matching the display);
  * %Δ is exported as a raw percentage. Missing values are empty — never 0.
+ * Decade columns carry their edition IN the header (fy2020a_pb2022_…):
+ * one homogeneous header row keeps naive CSV parsers (and the G8 gate's
+ * pe_bli set check) working — no second "edition row" of pseudo-data.
  */
 export function buildYearsCsv(
   entries: ProgramEntry[],
   columns: string[],
+  decadeColumns?: DecadeColumn[],
 ): string {
+  const decadeByKey = new Map(
+    (decadeColumns ?? []).map((c) => [c.key, c]),
+  );
   const header = [
     "org",
     "pe_bli",
     "title",
-    ...columns.map((c) =>
-      c === PCT_KEY ? `${c}_pct` : `${c}_usd_millions`,
-    ),
+    ...columns.map((c) => {
+      if (c === PCT_KEY) return `${c}_pct`;
+      const d = decadeByKey.get(c);
+      return d ? `${c}_pb${d.edition}_usd_millions` : `${c}_usd_millions`;
+    }),
   ];
   const lines = [header.join(",")];
   for (const { org, program } of entries) {
@@ -311,16 +367,39 @@ export function YearsMatrix() {
 
   const matrix = load.s === "ready" ? load.matrix : null;
 
-  // Canonical column order: amount types, then Δ columns.
-  const allColumns = useMemo(
-    () => (matrix ? [...matrix.amount_types, ...matrix.delta_columns] : []),
+  // Phase 5E decade meta: column key → {fy, kind, edition}.
+  const decadeMeta = useMemo(() => {
+    const m = new Map<string, DecadeColumn>();
+    for (const c of matrix?.decade_columns ?? []) m.set(c.key, c);
+    return m;
+  }, [matrix]);
+  const decadeKeys = useMemo(
+    () => (matrix?.decade_columns ?? []).map((c) => c.key),
     [matrix],
   );
+
+  // Canonical column order: decade columns (chronological, as emitted),
+  // then the PB2026-edition amount types, then Δ columns.
+  const allColumns = useMemo(
+    () =>
+      matrix
+        ? [...decadeKeys, ...matrix.amount_types, ...matrix.delta_columns]
+        : [],
+    [matrix, decadeKeys],
+  );
+  // Defaults: the edition-honest decade set when the payload carries it
+  // (FY2015A…FY2024A + FY2025E + FY2026R), else the 5D defaults.
+  const defaultCols = useMemo(() => {
+    if (!matrix) return [];
+    return matrix.decade_default_columns?.length
+      ? matrix.decade_default_columns
+      : matrix.default_columns;
+  }, [matrix]);
   const visibleCols = useMemo(() => {
     if (!matrix) return [];
-    const chosen = new Set(chosenCols ?? matrix.default_columns);
+    const chosen = new Set(chosenCols ?? defaultCols);
     return allColumns.filter((c) => chosen.has(c));
-  }, [matrix, chosenCols, allColumns]);
+  }, [matrix, chosenCols, allColumns, defaultCols]);
 
   const allEntries = useMemo(
     () => (matrix ? flattenPrograms(matrix) : []),
@@ -368,7 +447,7 @@ export function YearsMatrix() {
 
   function toggleColumn(key: string) {
     if (!matrix) return;
-    const current = new Set(chosenCols ?? matrix.default_columns);
+    const current = new Set(chosenCols ?? defaultCols);
     if (current.has(key)) {
       if (current.size <= 1) return; // keep at least one column
       current.delete(key);
@@ -381,7 +460,7 @@ export function YearsMatrix() {
   }
 
   function exportCsv() {
-    const csv = buildYearsCsv(visibleEntries, visibleCols);
+    const csv = buildYearsCsv(visibleEntries, visibleCols, matrix?.decade_columns);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -457,35 +536,86 @@ export function YearsMatrix() {
         </button>
       </div>
 
-      {/* ── Column picker ── */}
+      {/* ── Column picker — decade columns and PB2026 detail grouped ── */}
       <div
         className="flex flex-wrap items-center gap-1.5"
         role="group"
         aria-label="Choose visible columns"
       >
         <span className="text-xs text-muted-foreground">Columns:</span>
-        {allColumns.map((key) => {
+        {decadeKeys.length > 0 && (
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+            Decade
+          </span>
+        )}
+        {decadeKeys.map((key) => {
+          const col = decadeMeta.get(key)!;
           const on = visibleCols.includes(key);
+          const label = decadeColumnLabel(col);
           return (
             <button
               key={key}
               type="button"
               aria-pressed={on}
-              aria-label={`${on ? "Hide" : "Show"} ${columnLabel(key)} column`}
+              aria-label={`${on ? "Hide" : "Show"} ${label} column`}
+              title={decadeColumnTitle(col)}
               onClick={() => toggleColumn(key)}
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+              className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
                 on
-                  ? // Selected chips get a SOLID primary fill + weight bump —
-                    // the earlier 10% tint read as barely-on (visual judge).
-                    "border-primary bg-primary font-semibold text-primary-foreground"
+                  ? "border-primary bg-primary font-semibold text-primary-foreground"
                   : "border-border font-medium text-muted-foreground hover:text-foreground"
               }`}
             >
-              {columnLabel(key)}
+              {label}
             </button>
           );
         })}
+        {decadeKeys.length > 0 && (
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+            PB2026 detail
+          </span>
+        )}
+        {[...(matrix?.amount_types ?? []), ...(matrix?.delta_columns ?? [])].map(
+          (key) => {
+            const on = visibleCols.includes(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                aria-label={`${on ? "Hide" : "Show"} ${columnLabel(key)} column`}
+                onClick={() => toggleColumn(key)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+                  on
+                    ? // Selected chips get a SOLID primary fill + weight bump —
+                      // the earlier 10% tint read as barely-on (visual judge).
+                      "border-primary bg-primary font-semibold text-primary-foreground"
+                    : "border-border font-medium text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {columnLabel(key)}
+              </button>
+            );
+          },
+        )}
       </div>
+
+      {/* ── Edition rule — one quiet line (spec §4; details on /methodology/) ── */}
+      {decadeKeys.length > 0 && (
+        <p
+          data-testid="edition-legend"
+          className="text-[11px] leading-5 text-muted-foreground"
+        >
+          Actuals for FY N come from the PB(N+2) book; each column states its
+          edition.{" "}
+          <Link
+            href="/methodology/#coverage-editions"
+            className="underline decoration-dotted hover:text-foreground"
+          >
+            how editions work &rarr;
+          </Link>
+        </p>
+      )}
 
       {/* ── Honesty-marker legend (visual-judge M2 finding) ── */}
       <CiteLegend />
@@ -515,44 +645,69 @@ export function YearsMatrix() {
                     would cover the whole viewport at 390px. */}
                 <span className="block w-[170px] sm:w-[240px]">Program</span>
               </th>
-              {visibleCols.map((key) => (
-                <th
-                  key={key}
-                  scope="col"
-                  data-col={key}
-                  aria-sort={
-                    sort?.key === key
-                      ? sort.dir === "desc"
-                        ? "descending"
-                        : "ascending"
-                      : "none"
-                  }
-                  className="sticky top-0 z-20 border-b border-border bg-background px-2.5 py-2 text-right font-semibold text-muted-foreground whitespace-nowrap"
-                >
-                  <button
-                    type="button"
-                    data-sort={key}
-                    onClick={() => toggleSort(key)}
-                    aria-label={`Sort by ${columnLabel(key)}`}
-                    title={`Sort by ${columnLabel(key)} (missing values last)`}
-                    className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
+              {visibleCols.map((key) => {
+                const decade = decadeMeta.get(key);
+                const label = decade ? decadeColumnLabel(decade) : columnLabel(key);
+                const labelShort = decade
+                  ? decadeColumnLabelShort(decade)
+                  : columnLabelShort(key);
+                const sortTitle = decade
+                  ? `Sort by ${decadeColumnTitle(decade)} (missing values last)`
+                  : `Sort by ${columnLabel(key)} (missing values last)`;
+                return (
+                  <th
+                    key={key}
+                    scope="col"
+                    data-col={key}
+                    {...(decade ? { "data-edition": decade.edition } : {})}
+                    aria-sort={
+                      sort?.key === key
+                        ? sort.dir === "desc"
+                          ? "descending"
+                          : "ascending"
+                        : "none"
+                    }
+                    className="sticky top-0 z-20 border-b border-border bg-background px-2.5 py-1.5 text-right font-semibold text-muted-foreground whitespace-nowrap align-bottom"
                   >
-                    {/* Abbreviated below sm — full labels crowd the 390 fold. */}
-                    <span className="sm:hidden">{columnLabelShort(key)}</span>
-                    <span className="hidden sm:inline">{columnLabel(key)}</span>
-                    {/* Sort caret: idle ↕ (muted), active ↓/↑ — same idiom as
-                        programs-table's SortIcon, fixed width (no shift). */}
-                    <span
-                      aria-hidden="true"
-                      className={`inline-block w-3 text-center text-[10px] ${
-                        sort?.key === key ? "" : "text-muted-foreground/50"
-                      }`}
+                    <button
+                      type="button"
+                      data-sort={key}
+                      onClick={() => toggleSort(key)}
+                      aria-label={`Sort by ${label}`}
+                      title={sortTitle}
+                      className="inline-flex items-center gap-0.5 transition-colors hover:text-foreground"
                     >
-                      {sort?.key === key ? (sort.dir === "desc" ? "↓" : "↑") : "↕"}
-                    </span>
-                  </button>
-                </th>
-              ))}
+                      {/* Decade headers stack a small edition tag under the
+                          year — the least-noisy always-visible treatment at
+                          12-column density (spec §4: every column states
+                          its edition). */}
+                      <span className="inline-flex flex-col items-end leading-tight">
+                        <span>
+                          {/* Abbreviated below sm — full labels crowd the
+                              390 fold. */}
+                          <span className="sm:hidden">{labelShort}</span>
+                          <span className="hidden sm:inline">{label}</span>
+                        </span>
+                        {decade && (
+                          <span className="text-[9px] font-normal text-muted-foreground/80">
+                            PB{decade.edition}
+                          </span>
+                        )}
+                      </span>
+                      {/* Sort caret: idle ↕ (muted), active ↓/↑ — same idiom as
+                          programs-table's SortIcon, fixed width (no shift). */}
+                      <span
+                        aria-hidden="true"
+                        className={`inline-block w-3 text-center text-[10px] ${
+                          sort?.key === key ? "" : "text-muted-foreground/50"
+                        }`}
+                      >
+                        {sort?.key === key ? (sort.dir === "desc" ? "↓" : "↑") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -563,6 +718,7 @@ export function YearsMatrix() {
                     key={entry.program.pe_bli}
                     entry={entry}
                     columns={visibleCols}
+                    decadeMeta={decadeMeta}
                     expanded={expandedPrograms.has(entry.program.pe_bli)}
                     onToggle={toggleProgram}
                     showOrg
@@ -617,6 +773,7 @@ export function YearsMatrix() {
                             key={entry.program.pe_bli}
                             entry={entry}
                             columns={visibleCols}
+                            decadeMeta={decadeMeta}
                             expanded={expandedPrograms.has(
                               entry.program.pe_bli,
                             )}
@@ -648,6 +805,8 @@ export function YearsMatrix() {
 interface ProgramRowsProps {
   entry: ProgramEntry;
   columns: string[];
+  /** Phase 5E: decade column meta (empty map on pre-5E payloads). */
+  decadeMeta: Map<string, DecadeColumn>;
   expanded: boolean;
   onToggle: (peBli: string) => void;
   /** Flat (sorted) mode — show the org inline since section headers are hidden. */
@@ -658,6 +817,7 @@ interface ProgramRowsProps {
 function ProgramRows({
   entry,
   columns,
+  decadeMeta,
   expanded,
   onToggle,
   showOrg = false,
@@ -715,7 +875,12 @@ function ProgramRows({
           </span>
         </td>
         {columns.map((key) => (
-          <ProgramCellTd key={key} colKey={key} cell={program.cells[key]} />
+          <ProgramCellTd
+            key={key}
+            colKey={key}
+            cell={program.cells[key]}
+            decade={decadeMeta.get(key)}
+          />
         ))}
       </tr>
 
@@ -789,17 +954,43 @@ function ProgramRows({
 function ProgramCellTd({
   colKey,
   cell,
+  decade,
 }: {
   colKey: string;
   cell: YearsCell | undefined;
+  /** Phase 5E: set when colKey is a decade column ('fy{yyyy}{a|e|r}'). */
+  decade?: DecadeColumn;
 }) {
   if (!cell) {
+    // Decade gaps are edition-honest absences (spec §2 rule 4): the PE has
+    // no entry in that column's book — the tooltip says which edition.
     return (
       <td
         data-col={colKey}
+        {...(decade ? { title: `Not in the PB${decade.edition} edition` } : {})}
         className="px-2.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
       >
         –
+      </td>
+    );
+  }
+
+  if (decade) {
+    // Decade cells: workbook fact (single source) or derived decade sum —
+    // both live in the budget_lines_decade citation tier.
+    return (
+      <td
+        data-col={colKey}
+        data-v={cell.v}
+        className="px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+      >
+        <Cite
+          value={cell.v}
+          units="USD thousands"
+          dataset="budget_lines_decade"
+          factId={cell.fid}
+          display={fmtThousandsAsMillions(cell.v)}
+        />
       </td>
     );
   }

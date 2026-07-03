@@ -1,7 +1,8 @@
 import { Cite } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
+import { DecadeTrajectory } from "@/components/decade-trajectory";
 import { CoverageNote } from "@/components/coverage-note";
-import type { ProgramRow } from "@/lib/data";
+import type { DecadeSeries, ProgramBookDiff, ProgramRow } from "@/lib/data";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
 /**
@@ -168,20 +169,40 @@ export function ProgramFigures({ program }: ProgramFiguresProps) {
 /**
  * ProgramTrajectorySection — the year-over-year sparkline card
  * (data-section="trajectory" content; the page wraps it). Renders the
- * sparkline when a trajectory row exists; the page renders the quiet
- * empty-state line otherwise.
+ * PB2026 sparkline when a trajectory row exists, plus the Phase 5E decade
+ * series (edition-honest, gaps never interpolated) when the sidecar
+ * carries one — both tiers. The page renders the quiet empty-state line
+ * only when NEITHER exists.
  */
-export function ProgramTrajectoryCard({ program }: ProgramFiguresProps) {
-  if (!program.trajectory) return null;
+export function ProgramTrajectoryCard({
+  program,
+  decadeSeries = null,
+  bookDiff = null,
+}: ProgramFiguresProps & {
+  decadeSeries?: DecadeSeries | null;
+  bookDiff?: ProgramBookDiff | null;
+}) {
+  if (!program.trajectory && !decadeSeries) return null;
   return (
     <div className="mb-8 rounded-lg border border-border bg-card p-4">
       <div className="text-xs text-muted-foreground mb-2">
         Budget Trajectory
       </div>
-      <TrajectorySpark
-        trajectory={program.trajectory}
-        trajectoryFactIds={program.trajectory_fact_ids}
-      />
+      {program.trajectory && (
+        <TrajectorySpark
+          trajectory={program.trajectory}
+          trajectoryFactIds={program.trajectory_fact_ids}
+        />
+      )}
+      {decadeSeries && (
+        <div className={program.trajectory ? "mt-4 border-t border-border pt-4" : undefined}>
+          <div className="text-xs text-muted-foreground mb-2">
+            Decade view — each figure cites its own President&apos;s Budget
+            edition
+          </div>
+          <DecadeTrajectory series={decadeSeries} bookDiff={bookDiff} />
+        </div>
+      )}
     </div>
   );
 }

@@ -115,6 +115,50 @@ const MATRIX: YearsMatrixData = {
   ],
 };
 
+// ── Phase 5E decade fixture (decade_columns / decade_default_columns) ───────
+// Cells live under fy{yyyy}{a|e|r} keys; absent editions are GAPS (no key).
+
+const MATRIX_DECADE: YearsMatrixData = {
+  ...MATRIX,
+  orgs: [
+    {
+      org: "DARPA",
+      programs: [
+        {
+          ...MATRIX.orgs[0].programs[0],
+          cells: {
+            ...MATRIX.orgs[0].programs[0].cells,
+            fy2015a: { fid: "dd00000000000001", v: 90000 },
+            fy2020a: { fid: "dd00000000000002", v: 95000 },
+            fy2020e: { fid: "dd00000000000005", v: 94000 },
+            fy2025e: { fid: "dd00000000000003", v: 200000 },
+            fy2026r: { fid: "dd00000000000004", v: 300000 },
+          },
+        },
+        {
+          // 0602702E: NOT in the PB2017 edition → fy2015a is a gap
+          ...MATRIX.orgs[0].programs[1],
+          cells: {
+            ...MATRIX.orgs[0].programs[1].cells,
+            fy2020a: { fid: "dd00000000000006", v: 40000 },
+            fy2026r: { fid: "dd00000000000007", v: 42000 },
+          },
+        },
+      ],
+    },
+    MATRIX.orgs[1],
+  ],
+  decade_columns: [
+    { key: "fy2015a", fy: 2015, kind: "actuals", edition: 2017 },
+    { key: "fy2020a", fy: 2020, kind: "actuals", edition: 2022 },
+    { key: "fy2020e", fy: 2020, kind: "enacted", edition: 2021 },
+    { key: "fy2024a", fy: 2024, kind: "actuals", edition: 2026 },
+    { key: "fy2025e", fy: 2025, kind: "enacted", edition: 2026 },
+    { key: "fy2026r", fy: 2026, kind: "request", edition: 2026 },
+  ],
+  decade_default_columns: ["fy2015a", "fy2020a", "fy2025e", "fy2026r"],
+};
+
 // ── Pure helpers ─────────────────────────────────────────────────────────────
 
 describe("years-matrix helpers", () => {
@@ -395,5 +439,144 @@ describe("YearsMatrix — render contract", () => {
         document.querySelector('[data-degraded="years-matrix"]'),
       ).toBeInTheDocument();
     });
+  });
+});
+
+// ── Phase 5E — decade columns (edition-honest defaults) ──────────────────────
+
+describe("YearsMatrix — decade view (Phase 5E)", () => {
+  beforeEach(() => {
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url) === "/json/years_matrix.json") {
+        return Promise.resolve(jsonResponse(MATRIX_DECADE));
+      }
+      return Promise.reject(new Error(`unmocked fetch ${url}`));
+    });
+  });
+
+  it("default columns come from decade_default_columns", async () => {
+    await renderMatrix();
+    for (const key of MATRIX_DECADE.decade_default_columns!) {
+      expect(document.querySelector(`th[data-col="${key}"]`)).not.toBeNull();
+    }
+    // PB2026-detail columns are NOT default in the decade view…
+    expect(document.querySelector('th[data-col="fy_2024_actuals"]')).toBeNull();
+    // …but non-default decade alternates aren't either
+    expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
+  });
+
+  it("decade column headers carry the fiscal year and an edition tag", async () => {
+    await renderMatrix();
+    const th = document.querySelector('th[data-col="fy2020a"]') as HTMLElement;
+    expect(th.textContent).toContain("FY2020A");
+    expect(th.textContent).toContain("PB2022");
+    expect(th.getAttribute("data-edition")).toBe("2022");
+  });
+
+  it("renders the edition-rule legend linking to the methodology anchor", async () => {
+    await renderMatrix();
+    const legend = document.querySelector(
+      '[data-testid="edition-legend"]',
+    ) as HTMLElement;
+    expect(legend).not.toBeNull();
+    expect(legend.textContent).toMatch(/actuals for FY N come from the PB\(N\+2\) book/i);
+    expect(legend.textContent).toMatch(/each column states its edition/i);
+    // next/link may normalize the trailing slash before the hash — the
+    // contract is the methodology anchor target.
+    const link = legend.querySelector('a[href$="#coverage-editions"]');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toMatch(/^\/methodology\/?#coverage-editions$/);
+  });
+
+  it("decade cells render as state-A Cites with dataset budget_lines_decade", async () => {
+    await renderMatrix();
+    const cell = document.querySelector(
+      'tr[data-pe="0601101E"] td[data-col="fy2020a"]',
+    ) as HTMLElement;
+    expect(cell.getAttribute("data-v")).toBe("95000");
+    const cite = cell.querySelector('[data-fact-id="dd00000000000002"]');
+    expect(cite).not.toBeNull();
+    expect(cite!.getAttribute("data-dataset")).toBe("budget_lines_decade");
+  });
+
+  it('absent decade cells render "–" with the not-in-edition tooltip', async () => {
+    await renderMatrix();
+    const cell = document.querySelector(
+      'tr[data-pe="0602702E"] td[data-col="fy2015a"]',
+    ) as HTMLElement;
+    expect(cell.textContent).toBe("–");
+    expect(cell.hasAttribute("data-v")).toBe(false);
+    expect(cell.querySelector("[data-amount]")).toBeNull();
+    expect(cell.getAttribute("title")).toBe("Not in the PB2017 edition");
+  });
+
+  it("sorting by a decade column works, missing-last", async () => {
+    await renderMatrix();
+    fireEvent.click(
+      document.querySelector('[data-sort="fy2015a"]') as HTMLElement,
+    );
+    const pes = [...document.querySelectorAll("tr[data-program-row]")].map(
+      (tr) => tr.getAttribute("data-pe"),
+    );
+    // only 0601101E has fy2015a — the others sort last in original order
+    expect(pes[0]).toBe("0601101E");
+  });
+
+  it("CSV headers carry the per-column edition for decade columns", async () => {
+    const entries = flattenPrograms(MATRIX_DECADE);
+    const csv = buildYearsCsv(
+      entries,
+      ["fy2020a", "fy2026r", "fy_2026_total"],
+      MATRIX_DECADE.decade_columns,
+    );
+    const lines = csv.trim().split("\n");
+    expect(lines[0]).toContain("fy2020a_pb2022_usd_millions");
+    expect(lines[0]).toContain("fy2026r_pb2026_usd_millions");
+    expect(lines[0]).toContain("fy_2026_total_usd_millions");
+    // 95000 thousands → 95.000 millions
+    expect(lines[1]).toContain("95.000");
+    // gap → empty field, never 0: 0603882C has no decade cells at all
+    const mdaRow = lines[3].split(",");
+    const colIdx = lines[0]
+      .split(",")
+      .findIndex((h) => h.includes("fy2020a"));
+    expect(mdaRow[colIdx]).toBe("");
+  });
+
+  it("column picker groups decade and PB2026-detail columns", async () => {
+    await renderMatrix();
+    const picker = document.querySelector(
+      '[role="group"][aria-label="Choose visible columns"]',
+    ) as HTMLElement;
+    expect(picker.textContent).toContain("Decade");
+    expect(picker.textContent).toContain("PB2026 detail");
+    // Toggling a decade chip hides its column
+    fireEvent.click(
+      screen.getByRole("button", { name: /hide fy2020a column/i }),
+    );
+    expect(document.querySelector('th[data-col="fy2020a"]')).toBeNull();
+    // The PB2026-detail chips still work
+    fireEvent.click(
+      screen.getByRole("button", { name: /show fy2025 total column/i }),
+    );
+    expect(document.querySelector('th[data-col="fy_2025_total"]')).not.toBeNull();
+  });
+
+  it("project sub-rows map PB2026-edition decade columns to project cells", async () => {
+    await renderMatrix();
+    fireEvent.click(document.querySelector("[data-expand]") as HTMLElement);
+    // fy2026r (edition 2026) maps to the project fy2026 scenario cell — but
+    // the fixture project has no fy2026 cell, so check fy2024a → fy2024.
+    // First bring fy2024a into view via the picker.
+    fireEvent.click(
+      screen.getByRole("button", { name: /show fy2024a column/i }),
+    );
+    const projCell = document.querySelector(
+      'tr[data-project-row] td[data-col="fy2024"]',
+    );
+    expect(projCell).not.toBeNull();
+    expect(
+      projCell!.querySelector('[data-fact-id="bb00000000000001"]'),
+    ).not.toBeNull();
   });
 });

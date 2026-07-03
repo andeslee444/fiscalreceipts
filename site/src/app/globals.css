@@ -445,6 +445,25 @@ span.interactive-raise:hover {
     infinite;
 }
 
+/* ── Decade trajectory draw-in (Phase 5E Task 7) ────────────────────────────
+   The program-page decade sparkline segments draw in once on load.
+   pathLength=1 on each polyline normalizes the dash space; stroke-dashoffset
+   is compositor-friendly. Reduced motion collapses --motion-story to 1ms →
+   the final (fully drawn) frame renders immediately. */
+@keyframes decade-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.decade-draw {
+  stroke-dasharray: 1;
+  animation: decade-draw calc(var(--motion-story) * 2) var(--ease-decelerate)
+    both;
+}
+
 /* ── Reduced motion (Phase 5C Task 11) ──────────────────────────────────────
    All motion collapses: tokens → 1ms, plus a universal duration collapse for
    anything not on the tokens (built-in utilities, third-party styles).

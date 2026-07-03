@@ -529,22 +529,22 @@ export default function MethodologyPage() {
 
           <section id="coverage-years-matrix" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              Years matrix — one budget edition
+              Years matrix — edition-honest columns
             </h3>
             <p>
-              Every year column on the{" "}
+              The{" "}
               <a href="/years/" className="underline hover:text-foreground">
                 budget-over-time grid
               </a>{" "}
-              comes from a single publication: the FY2026 President&apos;s
-              Budget justification books. FY2024 Actuals, FY2025
-              Enacted/Total, and the FY2026 request columns are that
-              edition&apos;s own restatements — not readings from the FY2024
-              or FY2025 books — so year-over-year comparisons share one
-              publication&apos;s revisions. Prior-edition backfill is on the
-              roadmap. A program missing a value in a column renders
-              &ldquo;–&rdquo;, never 0, and the grid computes no derived
-              metrics of its own — the Δ and %Δ columns come from the
+              spans ten President&apos;s Budget editions (PB2017–PB2026). Its
+              default columns follow the edition rule — actuals for FY N come
+              from the PB(N+2) book, and every column states its edition
+              (see the editions block below). The PB2026-detail columns
+              (FY2024 Actuals, FY2025 Enacted/Total, the FY2026 request)
+              remain that one edition&apos;s own restatements, selectable
+              from the column picker. A program missing a value in a column
+              renders &ldquo;–&rdquo;, never 0, and the grid computes no
+              derived metrics of its own — the Δ and %Δ columns come from the
               recompute-verified trajectory mart.
             </p>
             <p className="mt-2">
@@ -564,6 +564,44 @@ export default function MethodologyPage() {
               with detail-grade (R-2/P-40) data; the full site carries{" "}
               {serviceBooks.denominator} browsable program pages — see the
               service J-books block below for what separates the two tiers.
+            </p>
+          </section>
+
+          <section id="coverage-editions" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Budget editions — how ten books become one decade
+            </h3>
+            <p>
+              Each President&apos;s Budget edition reports three fiscal years:
+              its own request (FY N in the PB(N) book), the prior year&apos;s
+              enacted total (FY N−1), and the year before that as actuals
+              (FY N−2). The decade columns follow that rule —{" "}
+              <strong className="font-medium text-foreground">
+                actuals for FY N come from the PB(N+2) book
+              </strong>
+              , enacted for FY N from PB(N+1) — and every column, cell
+              citation, and diff states its edition. Editions are parallel
+              publications, not corrections: PB2026&apos;s FY2024 actuals and
+              PB2025&apos;s FY2024 enacted may disagree, both are kept, and
+              the site never averages or reconciles across books. All ten
+              defense-wide editions (PB2017–PB2026) are loaded; the nine
+              backfilled editions each passed a per-edition probe, with every
+              per-book exclusion (duplicate consolidated volumes, niche-fund
+              books) recorded in the edition coverage manifest — an honest
+              record, never a silent skip.
+            </p>
+            <p className="mt-2">
+              Two honest gaps remain. First, cross-edition{" "}
+              <em>procurement</em> comparisons stop at the PB2024 boundary:
+              PB2017–PB2023 procurement lines are keyed within their own
+              edition (the underlying account/line identity is unstable
+              across those years), so book diffs for the era editions cover
+              RDT&amp;E only — a wrong lineage would be worse than a gap.
+              Second, program elements absent from an edition render as gaps
+              (&ldquo;–&rdquo;, or a break in the decade sparkline) with a
+              &ldquo;not in the PB20XX edition&rdquo; note; the site never
+              interpolates across missing books and never fuzzy-matches
+              renamed programs across editions.
             </p>
           </section>
 
@@ -698,6 +736,24 @@ export default function MethodologyPage() {
               (negative/recoupment flows are excluded). An HHI above 2,500
               indicates near-monopoly concentration; above 1,500 is
               moderately concentrated.
+            </p>
+          </div>
+          <div id="feed-request_vs_actuals_gap">
+            <h3 className="font-semibold text-foreground mb-1">
+              Largest Request-vs-Actuals Gaps (request_vs_actuals_gap)
+            </h3>
+            <p>
+              The largest gaps between what a President&apos;s Budget asked
+              for a fiscal year and what a later book reported actually
+              spent: the PB(N) request for FY N compared against the
+              PB(N+2) book&apos;s FY N actuals, ranked by absolute dollar
+              gap across all loaded editions (PB2017–PB2026). The claim is
+              scoped exactly to this request-vs-actuals comparison — the
+              feed makes no claim about request-vs-request changes between
+              adjacent asks. Each figure cites its book-diff derived fact;
+              the citation panel shows the two input figures (each cited to
+              its own edition&apos;s workbook) and the show-your-work
+              breakdown.
             </p>
           </div>
           <div id="feed-new_entrant">
