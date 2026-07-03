@@ -21,7 +21,9 @@
  *       A Δ cell's citation panel with the inline 2-row breakdown table.
  *   breakdown-overlay-1440.png
  *       /agency/OSD/ FY24 total (123 line items) — full-screen breakdown
- *       overlay with the filter box.
+ *       overlay with the filter box, body scrolled to its MIDPOINT so the
+ *       sticky "Sum — recorded value" footer is visibly pinned over the
+ *       scrolled rows (visual-judge M2 evidence).
  *
  * All /years/ captures wait for [data-testid="years-matrix"] (the island
  * fetches years_matrix.json client-side — networkidle alone is not enough
@@ -248,6 +250,12 @@ async function main() {
       await pg.locator('[data-testid="breakdown-open"]').click({ timeout: 10000 });
       await pg.waitForSelector('[data-testid="breakdown-overlay"]', { timeout: 10000 });
       await pg.waitForSelector('[data-testid="breakdown-filter"]', { timeout: 5000 });
+      // Mid-scroll the overlay body: the sticky sum footer must be visibly
+      // pinned while line items scroll beneath it (M2 fix evidence).
+      await pg.evaluate(() => {
+        const s = document.querySelector('[data-testid="breakdown-scroll"]');
+        s.scrollTop = Math.round((s.scrollHeight - s.clientHeight) / 2);
+      });
       await waitSettle(pg);
     });
   } finally {
