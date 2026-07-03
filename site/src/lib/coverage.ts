@@ -13,6 +13,7 @@ import "server-only";
 import {
   getFlowsCount,
   getProgramsCount,
+  getProgramPagesCount,
   getDossierCount,
   getCompaniesCount,
   getCompaniesWithAwardsCount,
@@ -27,6 +28,7 @@ export const COVERAGE_IDS = [
   "state-ca",
   "fy2026-partial",
   "years-matrix",
+  "service-books",
 ] as const;
 
 export type CoverageId = (typeof COVERAGE_IDS)[number];
@@ -131,14 +133,31 @@ export function getCoverage(id: CoverageId): Coverage {
       };
     }
     case "years-matrix": {
+      const num = getProgramsCount();
+      const den = getProgramPagesCount();
       return {
         id,
-        numerator: null,
-        denominator: null,
-        note: "All year columns come from the FY2026 President's Budget edition — prior-edition backfill is on the roadmap.",
+        numerator: num,
+        denominator: den,
+        note:
+          `All year columns come from the FY2026 President's Budget edition — prior-edition backfill is on the roadmap. ` +
+          `The matrix covers the ${num} programs with detail-grade data; all ${den} program pages are browsable.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-years-matrix",
         linkText: "why one edition? →",
+      };
+    }
+    case "service-books": {
+      const num = getProgramsCount();
+      const den = getProgramPagesCount();
+      return {
+        id,
+        numerator: num,
+        denominator: den,
+        note: `Detailed J-book justification is ingested for ${num} of ${den} program pages — the rest carry cited R-1/P-1 workbook figures while the service J-books await ingestion.`,
+        emptyNote: null,
+        anchor: "/methodology/#coverage-service-books",
+        linkText: "why summary figures only? →",
       };
     }
   }

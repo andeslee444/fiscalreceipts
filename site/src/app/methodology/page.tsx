@@ -66,6 +66,7 @@ export default function MethodologyPage() {
   const dossiers = getCoverage("dossiers");
   const companyAwards = getCoverage("company-awards");
   const districts = getCoverage("districts");
+  const serviceBooks = getCoverage("service-books");
 
   return (
     <>
@@ -548,6 +549,36 @@ export default function MethodologyPage() {
               path. A parent showing &ldquo;–&rdquo; above zero-valued project
               rows is therefore honest reporting of two different documents —
               the grid never derives a parent total from its children.
+            </p>
+            <p className="mt-2">
+              The grid&apos;s rows are the {serviceBooks.numerator} programs
+              with detail-grade (R-2/P-40) data; the full site carries{" "}
+              {serviceBooks.denominator} browsable program pages — see the
+              service J-books block below for what separates the two tiers.
+            </p>
+          </section>
+
+          <section id="coverage-service-books" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              Service J-books — {serviceBooks.numerator} of{" "}
+              {serviceBooks.denominator} program pages with full detail
+            </h3>
+            <p>
+              Every distinct program element in the budget workbooks has a
+              page — {serviceBooks.denominator} in total. Full J-book detail
+              (mission prose, project tables, accomplishments) is ingested
+              for {serviceBooks.numerator} of them, whose justification books
+              come from the sources already in the pipeline. The remaining
+              pages are mostly Army, Navy, and Air Force program elements:
+              their dollar figures come from the all-service R-1/P-1
+              workbooks (every figure cited), but their narrative books live
+              on the service comptroller sites and have not been ingested
+              yet. Those pages say so in place of a description — the
+              &ldquo;roadmap&rdquo; is exactly that ingestion: a feasibility
+              spike for the service books is recorded alongside the Phase 5F
+              design, and coverage grows as each service&apos;s books land.
+              We never substitute generated prose for a missing source
+              document.
             </p>
           </section>
         </div>
