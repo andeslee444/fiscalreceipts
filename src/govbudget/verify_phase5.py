@@ -6,8 +6,8 @@ Gates (CLI: verify-phase5):
      DuckDB and fails loud if any expected_answer is stale. Runs FIRST so the
      eval_gate operates on a correct expected set.
 
-  2. eval_gate  — runs the analyst agent over all 45 questions (BLOCKED when
-     ANTHROPIC_API_KEY is absent). Scores accuracy (≥41/45 = 91.1%, tolerance-
+  2. eval_gate  — runs the analyst agent over all 48 questions (BLOCKED when
+     ANTHROPIC_API_KEY is absent). Scores accuracy (≥44/48 = 91.7%, tolerance-
      aware, canonical string compare). REFUSE questions: agent.refuse AND exact
      expected_refuse_class match. Citation resolution: for every non-REFUSE
      answered question, re-executes agent.sql through a fresh SqlTool instance
@@ -56,8 +56,10 @@ from govbudget.analyst.sql_tool import KNOWN_TABLES, SqlError, SqlTool
 
 EVAL_PATH = Path(__file__).resolve().parents[2] / "evals" / "phase5_questions.yaml"
 
-# Accuracy threshold: 41/45 ≈ 91.1%
-ACCURACY_THRESHOLD = 41
+# Accuracy threshold: 44/48 ≈ 91.7% (raised from 41/45 when the 5E Task 9
+# decade questions were added — the relative bar must never loosen as the
+# question set grows)
+ACCURACY_THRESHOLD = 44
 
 REFUSE_CLASSES = frozenset({"data_not_ingested", "structurally_absent", "classified"})
 
@@ -457,14 +459,14 @@ def eval_gate(
     duckdb_path: Path | None = None,
     citations_parquet: Path | None = None,
 ) -> dict:
-    """Run the analyst agent over all 45 eval questions.
+    """Run the analyst agent over all 48 eval questions.
 
     Returns:
         ok (bool)
         blocked (bool)  — True when ANTHROPIC_API_KEY is absent
         scores (list of dicts, one per question)
         accuracy (int)  — number of correctly scored answers
-        total (int)     — 45
+        total (int)     — 48
         citation_ok (int)    — answered questions with resolved citations
         citation_total (int) — answered questions evaluated for citation
         reason (str | None)  — set when BLOCKED or FAIL
@@ -480,7 +482,7 @@ Export a key and re-run:
     export ANTHROPIC_API_KEY=sk-ant-...
     uv run python -m govbudget verify-phase5
 
-Nothing was run and nothing was spent. (~45 questions × ~8 turns ≈ $0.50 uncached.)"""
+Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 uncached.)"""
 
     # Check for client/key — do NOT call require_client yet (it exits)
     import os
@@ -490,7 +492,7 @@ Nothing was run and nothing was spent. (~45 questions × ~8 turns ≈ $0.50 unca
             "blocked": True,
             "scores": [],
             "accuracy": 0,
-            "total": 45,
+            "total": 48,
             "citation_ok": 0,
             "citation_total": 0,
             "reason": _NO_KEY_MSG,

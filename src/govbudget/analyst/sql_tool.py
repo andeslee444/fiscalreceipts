@@ -54,6 +54,9 @@ KNOWN_TABLES: frozenset[str] = frozenset({
     "fct_program_concentration",
     "fct_improper_exposure",
     "fct_state_per_capita",
+    # 5E decade marts (edition-aware series + cross-edition diffs)
+    "fct_decade_series",
+    "fct_book_diff",
     # dimension tables
     "dim_entities",
     "dim_geography",

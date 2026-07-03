@@ -40,9 +40,11 @@ URL_COLUMN_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 SCHEMA_CARD: dict = {
-    "version": "5b4.3",
+    "version": "5e.1",
     "description": (
-        "GovBudget warehouse — DoD J-book budget facts (FY2026 edition only), "
+        "GovBudget warehouse — DoD J-book budget facts across ten PB editions "
+        "(PB2017–PB2026), an edition-aware decade series and cross-edition "
+        "book-diff marts, "
         "USASpending award transactions (FY2017-FY2026), entity family crosswalk, "
         "congressional-district geography, agency/program HHI concentration, "
         "improper-payment derived estimates, GAO high-risk areas, "
@@ -114,11 +116,19 @@ SCHEMA_CARD: dict = {
         "enum": list(REFUSE_CLASSES),
         "rules": [
             "Use data_not_ingested when the data domain exists but the specific "
-            "dataset/fiscal-year is not loaded (e.g. FY2023 J-book, FY2027 awards, "
-            "Florida state budget).",
+            "dataset/fiscal-year is not loaded (e.g. PB2016-or-earlier J-book "
+            "editions, service-branch narrative justification books, FY2027 "
+            "awards, Florida state budget).",
             "Use structurally_absent when the data type is not collected at all "
             "(e.g. bid prices, competition award records — USASpending has outcomes, "
             "not procurement competition data).",
+            "Use structurally_absent for cross-edition procurement comparisons "
+            "that touch era editions (PB2017–PB2023): era procurement line "
+            "identities are within-edition keys that renumber between editions, "
+            "so no stable cross-edition procurement identity exists — "
+            "fct_book_diff carries RDT&E program elements only across era "
+            "boundaries, and title-matching across editions is NOT a valid "
+            "substitute for a stable identity.",
             "Use classified when the budget line or program is classified / redacted "
             "(pe_bli 9999999999 is a placeholder only; NRO/black programmes not present).",
             "NEVER invent data, guess, or say 'approximately' without a real warehouse row.",
@@ -128,6 +138,8 @@ SCHEMA_CARD: dict = {
     "unit_traps": [
         "fct_budget_lines.amount_thousands is in THOUSANDS of USD — divide by 1000 "
         "to get millions; by 1e6 to get billions.",
+        "fct_decade_series.amount / amount_thousands are in THOUSANDS of USD.",
+        "fct_book_diff from_value / to_value / delta are in THOUSANDS of USD.",
         "fct_award_transactions.obligation is in USD (not thousands).",
         "fct_state_per_capita.amount_per_capita is in USD per person.",
         "fct_budget_trajectory columns (fy2024_actuals, fy2025_total, fy2026_total, "
@@ -149,11 +161,19 @@ SCHEMA_CARD: dict = {
         "audited figures may differ.",
         "fct_budget_trajectory: fy2526_change and fy2526_pct_change are "
         "pre-computed deltas; do not recompute from the total columns.",
+        "fct_decade_series: several editions report the SAME fiscal year "
+        "(FY N request in PB N, enacted in PB N+1, actuals in PB N+2) — never "
+        "SUM across edition_year for one fy; filter to a single "
+        "(edition_year, amount_type_kind) and read a single row.",
     ],
 
     "data_windows": {
-        "jbook": "FY2026 edition only (shows FY2024 actuals, FY2025 enacted, "
-                 "FY2026 request columns). No FY2023 or earlier J-book editions.",
+        "jbook": "Ten PB J-book editions are ingested: PB2017 through PB2026. "
+                 "fct_decade_series covers FY2015–FY2026 with edition-relative "
+                 "scenarios (for edition N: PriorYear = FY N-2 actuals, "
+                 "CurrentYear = FY N-1 enacted, BudgetYearOne = FY N request). "
+                 "No PB2016-or-earlier editions, no service-branch narrative "
+                 "justification books, no outlay data.",
         "award_transactions": "FY2017 through FY2026 inclusive. FY2021 is a partial "
                               "year (~22k transactions). FY2027 not ingested.",
         "entity_graph": "FY2017-FY2026 award window; dim_entities covers this range.",
@@ -166,18 +186,29 @@ SCHEMA_CARD: dict = {
 
     "tables": {
         "fct_budget_lines": {
-            "description": "J-book program-element budget facts. FY2026 edition.",
+            "description": (
+                "J-book program-element budget facts from all ten PB editions "
+                "(fiscal_year = PB edition year, 2017–2026)."
+            ),
             "key_columns": {
                 "pe_bli": "Program element / budget-line identifier",
+                "fiscal_year": "PB EDITION year (2017–2026), NOT the money year",
                 "organization": "DoD component (DARPA, MDA, Navy, etc.)",
                 "title": "Program title",
                 "amount_thousands": "Amount in THOUSANDS of USD (see unit_traps)",
                 "amount_type": (
-                    "One of: fy_2024_actuals | fy_2025_enacted | fy_2026_request"
+                    "Edition-specific column slug. The PB2026 edition uses: "
+                    "fy_2024_actuals | fy_2025_enacted | fy_2026_request. "
+                    "Older editions carry messy edition-specific slugs "
+                    "(base/OCO splits, CR adjustments) — for prior-edition or "
+                    "cross-edition figures use fct_decade_series instead, "
+                    "which normalizes the scenario semantics."
                 ),
             },
             "notes": [
-                "FY2026 edition only — no FY2023 or earlier actuals.",
+                "For any question about a PRIOR edition's actuals/enacted/"
+                "request, or comparisons across editions, prefer "
+                "fct_decade_series / fct_book_diff over this table.",
                 "District-level breakdowns are high-confidence only.",
                 "Negative obligations exist (contract modifications/de-obligations).",
                 "A single pe_bli can appear on MULTIPLE rows for the same "
@@ -187,6 +218,69 @@ SCHEMA_CARD: dict = {
                 "row. NEVER SUM rows to get one program's amount; filter "
                 "precisely (single exhibit, title IS NOT NULL) and read a "
                 "single row.",
+            ],
+        },
+        "fct_decade_series": {
+            "description": (
+                "Edition-aware J-book decade series (PB2017–PB2026). Grain: "
+                "one row per (pe_bli, fy, edition_year) — one program line, "
+                "one fiscal year, one PB edition that reports it."
+            ),
+            "key_columns": {
+                "pe_bli": "Program element / budget-line identifier",
+                "fy": "The FISCAL YEAR the amount describes (2015–2026)",
+                "edition_year": "The PB edition reporting the amount (2017–2026)",
+                "scenario": (
+                    "PriorYear | CurrentYear | BudgetYearOne — edition-RELATIVE: "
+                    "for edition N, PriorYear = FY N-2 actuals, CurrentYear = "
+                    "FY N-1 enacted, BudgetYearOne = FY N request"
+                ),
+                "amount_type_kind": "actuals | enacted | request",
+                "amount_thousands": "Amount in THOUSANDS of USD",
+            },
+            "notes": [
+                "FY N actuals are reported by edition N+2 (PriorYear column); "
+                "FY N enacted by edition N+1; FY N request by edition N. Each "
+                "(fy, amount_type_kind) pair therefore maps to exactly ONE "
+                "edition_year.",
+                "Era procurement lines (PB2017–PB2023) use within-edition "
+                "namespaced keys '{account}-{org}-L{n}' — valid within a "
+                "single edition only, never comparable across editions.",
+                "Cite answers from this mart with citation_kind='warehouse'.",
+            ],
+        },
+        "fct_book_diff": {
+            "description": (
+                "Same pe_bli compared across PB editions. Grain: one row per "
+                "(pe_bli, from_edition, to_edition, diff_kind). All values in "
+                "THOUSANDS of USD."
+            ),
+            "key_columns": {
+                "pe_bli": "Program element identifier (stable across editions)",
+                "diff_kind": (
+                    "request_vs_request (PB N BudgetYearOne vs PB N+1 "
+                    "BudgetYearOne — consecutive asks, different FYs) | "
+                    "request_vs_actuals (PB N request for FY N vs PB N+2 "
+                    "PriorYear actuals for the SAME FY N — the accountability "
+                    "diff; to_edition - from_edition == 2)"
+                ),
+                "from_edition": "Earlier PB edition",
+                "to_edition": "Later PB edition",
+                "from_fy": "Fiscal year of the from-side value",
+                "to_fy": "Fiscal year of the to-side value",
+                "from_value": "From-side amount (THOUSANDS)",
+                "to_value": "To-side amount (THOUSANDS)",
+                "delta": "to_value - from_value (THOUSANDS)",
+            },
+            "notes": [
+                "Era (PB2017–PB2023) procurement is EXCLUDED entirely: across "
+                "era boundaries only RDT&E R-1 program elements are diffed "
+                "(PE numbers are stable identities; era procurement line "
+                "numbers renumber between editions). Cross-edition procurement "
+                "questions touching era editions must be REFUSED "
+                "(structurally_absent) — the identity gap is honest and "
+                "cannot be bridged by title matching.",
+                "Cite answers from this mart with citation_kind='warehouse'.",
             ],
         },
         "fct_budget_trajectory": {
