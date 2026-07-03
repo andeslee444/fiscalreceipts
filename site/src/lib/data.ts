@@ -17,6 +17,7 @@ import {
   type DossierFile,
   type SnapshotMeta,
 } from "./dossier";
+import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -1231,6 +1232,68 @@ export function isStateSoql(c: Citation): c is StateSoqlCitation {
 
 export function isStateFile(c: Citation): c is StateFileCitation {
   return c.kind === "state_file";
+}
+
+// ── flow_chart.json meta (Phase 5H — /flow/ server shell + coverage) ─────────
+
+export interface FlowBridgeStats {
+  crosswalkedPeCount: number;
+  universePeCount: number;
+  highConfidencePeCount: number;
+  /** Share of the FY2026 request not yet crosswalked, one decimal ("98.7"). */
+  pctNotCrosswalked: string;
+}
+
+export interface FlowChartMeta {
+  budgetLabel: string;
+  budgetUnits: string;
+  budgetFy: number;
+  spendUnits: string;
+  spendFys: number[];
+  defaultFy: number;
+  fy2026Partial: boolean;
+  sourceNote: string;
+  offersNote: string;
+  bridge: FlowBridgeStats;
+}
+
+let _flowChartMeta: FlowChartMeta | null = null;
+
+/**
+ * Light server-side meta extracted from the (heavy, client-fetched)
+ * flow_chart.json export — the /flow/ shell and the flow-bridge coverage
+ * note interpolate from here so no number is ever hardcoded in JSX.
+ */
+export function getFlowChartMeta(): FlowChartMeta {
+  if (_flowChartMeta) return _flowChartMeta;
+  const payload = readJson<FlowChartPayload>("flow_chart.json");
+  if (payload.schema_version !== 1) {
+    throw new Error(
+      `[govbudget/data] flow_chart.json schema_version is ${payload.schema_version}, expected 1`,
+    );
+  }
+  const b = payload.budget.bridge;
+  _flowChartMeta = {
+    budgetLabel: payload.budget.label,
+    budgetUnits: payload.budget.units,
+    budgetFy: payload.budget.fiscal_year,
+    spendUnits: payload.spend.units,
+    spendFys: payload.spend.fys,
+    defaultFy: payload.spend.default_fy,
+    fy2026Partial: payload.spend.notes.fy2026_partial,
+    sourceNote: payload.spend.source_note,
+    offersNote: payload.spend.notes.offers,
+    bridge: {
+      crosswalkedPeCount: b.crosswalked_pe_count,
+      universePeCount: b.crosswalk_universe_pe_count,
+      highConfidencePeCount: b.high_confidence_pe_count,
+      pctNotCrosswalked: pctNotCrosswalked(
+        b.not_yet_crosswalked_str,
+        b.budget_total_str,
+      ),
+    },
+  };
+  return _flowChartMeta;
 }
 
 // ── Coverage count helpers (Phase 5C) ─────────────────────────────────────────

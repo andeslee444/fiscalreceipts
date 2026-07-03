@@ -40,7 +40,16 @@ const COVERAGE_IDS = [
   "fy2026-partial",
   "years-matrix",
   "service-books",
+  "flow-bridge",
 ];
+
+/**
+ * Methodology anchor ids default to `coverage-<id>`; overrides listed here
+ * (flow-bridge's anchor covers the whole /flow/ surface — Phase 5H).
+ */
+const ANCHOR_ID_OVERRIDES = {
+  "flow-bridge": "coverage-flowdown",
+};
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
@@ -134,11 +143,12 @@ export async function runCoverageGate() {
   const methHtml = fs.readFileSync(methodologyPath, "utf8");
   const methRoot = parse(methHtml, { comment: false });
   for (const id of COVERAGE_IDS) {
-    const anchor = methRoot.querySelector(`[id="coverage-${id}"]`);
+    const anchorId = ANCHOR_ID_OVERRIDES[id] ?? `coverage-${id}`;
+    const anchor = methRoot.querySelector(`[id="${anchorId}"]`);
     if (!anchor) {
-      errors.push(`methodology: missing anchor id="coverage-${id}"`);
+      errors.push(`methodology: missing anchor id="${anchorId}"`);
     } else {
-      notes.push(`methodology: #coverage-${id} ✓`);
+      notes.push(`methodology: #${anchorId} ✓`);
     }
   }
 
@@ -257,6 +267,31 @@ export async function runCoverageGate() {
         return slug ? `/program/${slug}/` : "(no rollup page)";
       })(),
       checkNumbers: null, // per-service prose ("…lives in the {service} J-book…")
+    },
+    {
+      id: "flow-bridge",
+      pagePath: htmlFor("/flow/"),
+      pageExists: fs.existsSync(htmlFor("/flow/")),
+      pageLabel: "/flow/",
+      // Phase 5H: the note must state the crosswalked-PE fraction AND the
+      // not-yet-crosswalked share of the request, all recomputed here from
+      // the flow_chart export (independent of coverage.ts).
+      checkNumbers: () => {
+        const flowChart = readJson(path.join(jsonDir, "flow_chart.json"));
+        const bridge = flowChart.budget.bridge;
+        const n = bridge.crosswalked_pe_count;
+        const d = bridge.crosswalk_universe_pe_count;
+        const pct = (
+          (Number(bridge.not_yet_crosswalked_str) /
+            Number(bridge.budget_total_str)) *
+          100
+        ).toFixed(1);
+        return {
+          n,
+          d,
+          pattern: `${n} of ${d} crosswalked PEs — ${pct}% of the FY2026 request is not yet crosswalked`,
+        };
+      },
     },
   ];
 

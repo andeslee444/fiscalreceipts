@@ -9,13 +9,30 @@ vi.mock("@/lib/data", () => ({
   getCompaniesCount: () => 200,
   getCompaniesWithAwardsCount: () => 18,
   getDistrictsCount: () => 106,
+  getFlowChartMeta: () => ({
+    budgetLabel: "FY2026 President's Budget (R-1 + P-1)",
+    budgetUnits: "USD thousands",
+    budgetFy: 2026,
+    spendUnits: "USD",
+    spendFys: [2024, 2025, 2026],
+    defaultFy: 2025,
+    fy2026Partial: true,
+    sourceNote: "USAspending DoD prime contract transactions",
+    offersNote: "offers, not bidders' identities",
+    bridge: {
+      crosswalkedPeCount: 10,
+      universePeCount: 24,
+      highConfidencePeCount: 6,
+      pctNotCrosswalked: "98.7",
+    },
+  }),
 }));
 
 import { getCoverage, COVERAGE_IDS } from "@/lib/coverage";
 
 describe("coverage manifest", () => {
-  it("exposes all eight surfaces with computed counts", () => {
-    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial", "years-matrix", "service-books"] as const;
+  it("exposes all nine surfaces with computed counts", () => {
+    const ids = ["follow-the-dollar", "dossiers", "company-awards", "districts", "state-ca", "fy2026-partial", "years-matrix", "service-books", "flow-bridge"] as const;
     expect(COVERAGE_IDS).toEqual(ids);
     for (const id of ids) {
       const c = getCoverage(id);
@@ -50,6 +67,15 @@ describe("coverage manifest", () => {
     expect(c.note).toContain("17 of 420");
   });
 
+  it("flow-bridge note states the crosswalk gap with interpolated counts (5H)", () => {
+    const c = getCoverage("flow-bridge");
+    // The G9 leg-e contract requires the rendered note to state the
+    // not-yet-crosswalked gap; the G2 gate recomputes both numbers.
+    expect(c.note).toContain("10 of 24 crosswalked PEs");
+    expect(c.note).toContain("98.7% of the FY2026 request is not yet crosswalked");
+    expect(c.anchor).toBe("/methodology/#coverage-flowdown");
+  });
+
   it("empty-state notes carry the same interpolated counts", () => {
     // Empty-state variants must satisfy the same G2 number check as the
     // standard notes (the representative flow page may lack a dossier).
@@ -63,5 +89,7 @@ describe("coverage manifest", () => {
     // service-books renders through the per-service <ServiceBooksNote>, not
     // an emptyNote variant.
     expect(getCoverage("service-books").emptyNote).toBeNull();
+    // /flow/ always renders the bridge note.
+    expect(getCoverage("flow-bridge").emptyNote).toBeNull();
   });
 });

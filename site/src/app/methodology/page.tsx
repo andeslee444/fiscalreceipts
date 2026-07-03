@@ -4,6 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
+import { getFlowChartMeta } from "@/lib/data";
 import { CoverageNote } from "@/components/coverage-note";
 
 export const metadata: Metadata = {
@@ -67,6 +68,8 @@ export default function MethodologyPage() {
   const companyAwards = getCoverage("company-awards");
   const districts = getCoverage("districts");
   const serviceBooks = getCoverage("service-books");
+  const flowBridge = getCoverage("flow-bridge");
+  const flowMeta = getFlowChartMeta();
 
   return (
     <>
@@ -585,6 +588,62 @@ export default function MethodologyPage() {
               design, and coverage grows as each service&apos;s books land.
               We never substitute generated prose for a missing source
               document.
+            </p>
+          </section>
+
+          <section id="coverage-flowdown" className="scroll-mt-16">
+            <h3 className="font-semibold text-foreground mb-1">
+              The flowdown chart — two rivers, bridged for{" "}
+              {flowBridge.numerator} of {flowBridge.denominator} crosswalked
+              PEs
+            </h3>
+            <p>
+              <a href="/flow/" className="underline hover:text-foreground">
+                /flow/
+              </a>{" "}
+              draws two separate systems and refuses to blur them. The{" "}
+              <strong className="font-medium text-foreground">
+                budget river
+              </strong>{" "}
+              is the FY{flowMeta.budgetFy} President&apos;s Budget request
+              (R-1 + P-1, USD thousands) — money Congress is being asked to
+              approve. The{" "}
+              <strong className="font-medium text-foreground">
+                spend river
+              </strong>{" "}
+              is DoD prime-contract obligations from USAspending (USD, per
+              selected fiscal year, FY{flowMeta.spendFys[0]}–FY
+              {flowMeta.spendFys[flowMeta.spendFys.length - 1]}) — money that
+              actually went on contract. Budget years are not obligation
+              years, and request dollars are not obligation dollars, so the
+              two rivers carry separate unit statements and never share an
+              axis.
+            </p>
+            <p className="mt-2">
+              The bridge between them exists only where the award crosswalk
+              (§4) links a program element to contractor families:{" "}
+              {flowBridge.numerator} of {flowBridge.denominator} crosswalked
+              PEs carry FY{flowMeta.budgetFy} request dollars (
+              {flowMeta.bridge.highConfidencePeCount} at high confidence).
+              Everything else terminates in an explicit &ldquo;not yet
+              crosswalked&rdquo; band — {flowMeta.bridge.pctNotCrosswalked}%
+              of the request. That band is an honest statement about our
+              crosswalk, not a claim that those programs have no contractors.
+              The G9 gate verifies the remainder arithmetic exactly and
+              recomputes every node from the parquet lake.
+            </p>
+            <p className="mt-2">
+              Spend-river edges are colored by FPDS{" "}
+              <code className="text-xs">extent_competed</code> (full &amp;
+              open / set-aside / other than full / not competed), with the
+              distribution of <em>offers received</em> on hover. FPDS records
+              how many offers came in — never who the losing bidders were —
+              so the chart states offer counts and implies nothing more.
+              Negative flows (net de-obligations, where an office clawed back
+              more than it obligated to a family in that year) render as
+              zero-width hairlines per the exporter&apos;s layout rule; their
+              tooltips carry the honest negative value. Every node and edge
+              opens a citation panel with its derived formula and inputs.
             </p>
           </section>
         </div>

@@ -18,6 +18,7 @@ import {
   getCompaniesCount,
   getCompaniesWithAwardsCount,
   getDistrictsCount,
+  getFlowChartMeta,
 } from "@/lib/data";
 
 export const COVERAGE_IDS = [
@@ -29,6 +30,7 @@ export const COVERAGE_IDS = [
   "fy2026-partial",
   "years-matrix",
   "service-books",
+  "flow-bridge",
 ] as const;
 
 export type CoverageId = (typeof COVERAGE_IDS)[number];
@@ -158,6 +160,27 @@ export function getCoverage(id: CoverageId): Coverage {
         emptyNote: null,
         anchor: "/methodology/#coverage-service-books",
         linkText: "why summary figures only? →",
+      };
+    }
+    case "flow-bridge": {
+      // /flow/ bridge honesty (Phase 5H). Numbers come from the flow_chart
+      // export; the G2 gate recomputes both counts AND the percentage from
+      // the payload, and the G9 leg-e contract requires the rendered note to
+      // state the not-yet-crosswalked gap.
+      const b = getFlowChartMeta().bridge;
+      return {
+        id,
+        numerator: b.crosswalkedPeCount,
+        denominator: b.universePeCount,
+        note:
+          `Budget→contractor links are drawn for ${b.crosswalkedPeCount} of ${b.universePeCount} crosswalked PEs — ` +
+          `${b.pctNotCrosswalked}% of the FY2026 request is not yet crosswalked: an honest gap, not an absence of contractors.`,
+        emptyNote: null,
+        // Anchor id is "coverage-flowdown" (the section covers the whole
+        // /flow/ surface, not just the bridge) — the G2 gate carries an
+        // explicit override for this id.
+        anchor: "/methodology/#coverage-flowdown",
+        linkText: "why is so little bridged? →",
       };
     }
   }
