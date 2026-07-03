@@ -58,11 +58,23 @@
       "status": "loaded"
     },
     "2020": {
+      "budget_lines": 20565,
       "date": "2026-07-03",
+      "detail_facts": 3785,
       "discovered": 10,
-      "reason": "probe failed: discovered 10/[30,45] classifiable documents (3 rollups + 5 rdte vols + 2 proc vols: RDTE_Vol1_DARPA..Vol5_DW + PROC_Vol1_DW/Vol2_MDA). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "documents": 10,
+      "downloaded": 10,
+      "provenance": {
+        "ambiguous_first": 2089,
+        "total": 3785,
+        "unique": 1187,
+        "unresolved": 0,
+        "zero_amount": 509
+      },
+      "reason": "loaded: 10 docs (10 downloaded), 20565 budget_lines, 3785 detail facts, 2352 recon checks",
+      "recon_checks": 2352,
+      "sample_pe_count": 17,
+      "status": "loaded"
     },
     "2021": {
       "date": "2026-07-03",
