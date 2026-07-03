@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-07-02 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-07-03 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Phase ledger
@@ -19,6 +19,8 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5B-3 | Features + enrichment: anomaly feed, district lens, follow-the-dollar, share cards, top-50 dossiers + animations; USAspending/state/derived citation tiers | verify-phase5b3 + dossier_gate | ✅ merged (dossier batch pending API key) | 4,923 pages (feed 290 cards/4 types; 106 district; 4,258 filing w/ noindex policy; 554 OG cards); 7+ citation kinds, uncited_datasets 11→4 (dim_geography, dim_lobbyists, fct_budget_to_awards, jbook_narratives); 12 npm gates PASS; visual r3 5/5/5/5; 692 pytest/192 vitest. Dossier LLM batch BLOCKED on ANTHROPIC_API_KEY (cost-capped ≤$50; `govbudget dossiers submit` when exported) |
 | 5B-4 | verify-phase5 assembly: NL eval ≥90%, citation resolution 100%, search eval, full regression | verify-phase5 | ✅ COMPLETE | Analyst agent (sandboxed text-to-SQL: enable_external_access=false, cached schema card, 8-turn tool loop); eval set drift-corrected (freshness gate); verify-phase5 exits 0; live eval 45/45 accuracy + 40/40 citation resolution (100%) — run artifact data/research/eval-runs/eval-20260702T085924Z.json (2026-07-02); verify-phase1..5b3 + phase5 assembly all PASS; site live at https://govbudget.vercel.app; launch tooling (R2 upload/CORS/config-rewrite + LAUNCH.md); 830 pytest/192 vitest |
 | 5C | UX trust journey: linkgraph integrity, coverage notes, degraded-mode, receipt moment, 5 persona journeys, answer-fold, motion | 7 npm gates (G1–G7) | ✅ COMPLETE 2026-07-02 | 7 new gates all green; every gate has recorded proof-can-fail; 19/19 total npm gates; visual judges round-2 medians D1–D4:4 V1:5 V2:5 V3:4(after fix) V4:5 V5:4; final opus review SHIP; deployed https://govbudget.vercel.app; live computer-use verification of all 5 persona journeys PASS (PDF panel/downloads verified in degraded mode pending R2); data bug: 146/1,982 PEs had doubled trajectory rows — fixed (detail-only pivot + exporter derived-input join mirror); 4,446 trajectory citations re-verified; 136 dead-link feed events resolved from fct_budget_lines detail |
+| 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
+| 5F | Program-page normalization: pages for all 1,995 PEs (rollup + full tiers), narrative paragraph provenance, deterministic prose amount cites, universal PE linking, 12-section skeleton | program-skeleton gate (21st) + linkgraph leg f + render-static prose-cite leg | ✅ COMPLETE 2026-07-03 | 1,995 program pages both tiers; narrative provenance 2,449/2,457 = 99.7% (8 unresolved keep the non-paged card — never a fake location); 27 deterministic prose cites; universal PE linking (196 unlinked tokens pre-fix → 0); 12-section skeleton gate; visual judges 4.5/5/4.5 PASS; 21/21 gates; 1,039 pytest / 303 vitest; live at fiscalreceipts.com |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -185,6 +187,35 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   detail-exhibit page); the rebuild is deterministic (delete + rebuild reproduced
   all 4,419 keys byte-identically), so the improvement is re-runnable at every
   future J-book ingest.
+- **Paragraph-provenance technique (5F, 2026-07-03):** narrative paragraphs are
+  located in the source PDF by their OPENING TEXT (first 12 words,
+  whitespace-normalized — the `narrative_opening` string is BINDING, shared
+  verbatim with the verify-phase5b1 re-derivation leg) via the same
+  pypdf-prefilter + pdfplumber-confirm machinery as amounts, with pe_bli →
+  source-exhibit → project tie-breaking and a word-boundary span guard; bbox is
+  the passage's first rendered line. 2,449/2,457 (99.7%) resolved; the 8
+  unresolvable openings store 'unresolved' with NO page and keep the pageless
+  citation card — locations are never faked. Prose needed no new machinery,
+  only a new *anchor* (opening text instead of an amount) into the existing
+  amount-provenance pipeline.
+- **Integration tests catch cross-pass crashes unit tests can't (5F,
+  2026-07-03):** the exporter's 4a jbook_pdf citation pass predated the
+  target_kind discriminator and read ALL provenance_pages rows — with zero
+  narrative rows it passed silently for weeks; the FIRST real
+  narrative-provenance build (2,457 rows, NULL amounts by the kind-shape
+  constraint) fed NULL into fact_id_jbook and crashed export-site. Each pass's
+  unit tests were green in isolation; only running both builders + export
+  together surfaced it. Regression now TDD'd (both builders in one export;
+  4a selects target_kind='amount' only). Producer-consumer integration tests
+  are load-bearing whenever two pipeline stages share a table.
+- **Deterministic-prose-cite restraint is self-proving (5F, 2026-07-03):** a
+  prose dollar token becomes a clickable cite ONLY when it exactly equals
+  (canonical dollars) exactly ONE resolvable fact scoped to the same PE —
+  ambiguous, unit-less, and uncited tokens stay plain prose. That yields just
+  27 prose cites across 2,457 narratives, and the visual judges praised
+  exactly this: the sparseness itself communicates that every link is earned
+  (a maximal-recall linker would have manufactured doubt about all of them).
+  Precision-over-recall in citation UX is a trust feature, not a coverage gap.
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
@@ -290,8 +321,6 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     dossier-citation check; then raise match_gate5a to 0.85 and move the boundary
     tests to 43/50. Fix first-query-wins attribution (see findings) or verify
     VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
-
-| 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
 
 ## Remaining launch items
 
