@@ -27,9 +27,17 @@ def _str(v) -> str | None:
     return None if v is None else str(v)
 
 
+def norm_header(v) -> str:
+    """Normalize a header cell: PB2017–PB2023 display workbooks wrap headers
+    across lines ('Budget\\nActivity') and space the slash ('PE / BLI').
+    Modern (PB2024+) headers are single-line and pass through unchanged."""
+    h = re.sub(r"\s+", " ", str(v)).strip()
+    return re.sub(r"\s*/\s*", "/", h)
+
+
 def _find_header_row(ws) -> tuple[int, dict[int, str]]:
     for i, row in enumerate(ws.iter_rows(min_row=1, max_row=20, values_only=True), start=1):
-        cells = {j: str(v).strip() for j, v in enumerate(row) if v is not None}
+        cells = {j: norm_header(v) for j, v in enumerate(row) if v is not None}
         if REQUIRED <= set(cells.values()):
             return i, cells
     raise ValueError(f"No header row with {REQUIRED} found in first 20 rows")

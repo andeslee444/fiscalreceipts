@@ -131,3 +131,53 @@ def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
         ).fetchone()[0]
     assert len(rows) == 2
     assert total == Decimal("24281")
+
+
+# --- PB2017–PB2023 era header variants (live workbook evidence, Task 4) ---
+
+ERA_HEADERS_2017 = [
+    "Account", "Account Title", "Organization", "Budget\nActivity",
+    "Budget Activity Title", "Line\nNumber", "PE / BLI",
+    "Program Element / Budget Line Item (BLI) Title", "Include\nin\nTOA",
+    "FY 2015\n(Base & OCO)", "FY 2016\nTotal Enacted", "FY 2017\nBase",
+    "FY 2017\nTotal", "Classification",
+]
+
+
+def make_era_xlsx(tmp_path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit R-1"
+    ws.append(["Total of Displayed Rows"])
+    ws.append(ERA_HEADERS_2017)
+    ws.append(["0400", "RDT&E Defense-Wide", "DTRA", "02", "Applied Research",
+               "18", "0602718BR", "WMD DEFEAT TECHNOLOGIES", "Y",
+               172869, 165786, 160000, 163340, "U"])
+    p = tmp_path / "r1_display.xlsx"
+    wb.save(p)
+    return p
+
+
+def test_load_rollup_normalizes_era_headers(pg_dsn, tmp_path):
+    """PB2017–PB2023 display workbooks wrap headers across lines and space
+    the slash in 'PE / BLI'; header matching normalizes whitespace and
+    slashes so the era loads without touching modern behavior."""
+    n = load_rollup(pg_dsn, make_era_xlsx(tmp_path), exhibit="R-1", fiscal_year=2017)
+    assert n == 4
+    with psycopg.connect(pg_dsn) as con:
+        rows = dict(con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where pe_bli='0602718BR'"
+        ).fetchall())
+        org, ba = con.execute(
+            "select organization, budget_activity from budget_lines"
+            " where pe_bli='0602718BR' limit 1"
+        ).fetchone()
+    assert rows == {
+        "fy_2015_base_oco": Decimal("172869"),
+        "fy_2016_total_enacted": Decimal("165786"),
+        "fy_2017_base": Decimal("160000"),
+        "fy_2017_total": Decimal("163340"),
+    }
+    assert org == "DTRA"
+    assert ba == "02"  # 'Budget\\nActivity' resolves to the budget_activity id

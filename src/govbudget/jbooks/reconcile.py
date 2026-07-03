@@ -23,20 +23,38 @@ def scenario_map(fiscal_year: int) -> dict[str, list[str]]:
       - PB2025: 'FY 2024 PB Request with CR Amounts*' (R-1) / '... with CR
         Adjustments Amount*' (P-1) — FY2024 ran under a continuing
         resolution when PB2025 published — plus 'FY 2025 Request'.
+      - PB2017–PB2023 (Task 4 round 2, live workbook evidence): prior-year
+        actuals labelled 'FY N-2 (Base & OCO)'/'(Base + OCO)' (2017–2021,
+        2023) or 'FY N-2 Actual*' (2022, singular); current-year enacted
+        labelled 'Total Enacted (Base+Emerg+OCO)' (2021), 'Enactment*'
+        (2023), or the FY2017/FY2018 CR-mess 'Total PB Requests with CR Adj
+        Base + OCO [+ SAA / + Emergency]' (2018/2019); budget-year request
+        split Base / OCO / 'Total (Base + OCO)' (2017–2021).
     Candidate slugs that don't exist in an edition's budget_lines never
     match, so each edition only ever reconciles against its own headers.
     """
     py, cy, by = fiscal_year - 2, fiscal_year - 1, fiscal_year
     return {
-        "PriorYear": [f"fy_{py}_actuals"],
+        "PriorYear": [f"fy_{py}_actuals", f"fy_{py}_base_oco", f"fy_{py}_actual"],
         "CurrentYear": [
             f"fy_{cy}_total", f"fy_{cy}_enacted", f"fy_{cy}_total_enacted",
             f"fy_{cy}_less_supplementals_enacted",
             f"fy_{cy}_pb_request_with_cr_amounts",
             f"fy_{cy}_pb_request_with_cr_adjustments",
+            f"fy_{cy}_enactment",
+            f"fy_{cy}_total_enacted_base_emerg_oco",
+            f"fy_{cy}_total_pb_requests_with_cr_adj_base_oco",
+            f"fy_{cy}_total_pb_requests_with_cr_adj_base_oco_saa",
+            f"fy_{cy}_total_pb_requests_with_cr_adj_base_oco_emergency",
         ],
-        "BudgetYearOne": [f"fy_{by}_total", f"fy_{by}_disc_request", f"fy_{by}_request"],
-        "BudgetYearOneBase": [f"fy_{by}_disc_request", f"fy_{by}_total", f"fy_{by}_request"],
+        "BudgetYearOne": [
+            f"fy_{by}_total", f"fy_{by}_disc_request", f"fy_{by}_request",
+            f"fy_{by}_total_base_oco",
+        ],
+        "BudgetYearOneBase": [
+            f"fy_{by}_disc_request", f"fy_{by}_total", f"fy_{by}_request",
+            f"fy_{by}_base",
+        ],
     }
 
 # Extracted but intentionally not reconciled: no R-1 display analog.

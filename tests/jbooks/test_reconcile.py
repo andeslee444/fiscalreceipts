@@ -110,21 +110,32 @@ def test_scenario_map_2026_pins_pb2026_semantics():
     # columns, PB2025 CR-adjusted columns) don't exist in PB2026 budget_lines,
     # so PB2026 reconciliation outcomes are unchanged.
     assert scenario_map(2026) == {
-        "PriorYear": ["fy_2024_actuals"],
+        "PriorYear": ["fy_2024_actuals", "fy_2024_base_oco", "fy_2024_actual"],
         "CurrentYear": [
             "fy_2025_total", "fy_2025_enacted", "fy_2025_total_enacted",
             "fy_2025_less_supplementals_enacted",
             "fy_2025_pb_request_with_cr_amounts",
             "fy_2025_pb_request_with_cr_adjustments",
+            "fy_2025_enactment",
+            "fy_2025_total_enacted_base_emerg_oco",
+            "fy_2025_total_pb_requests_with_cr_adj_base_oco",
+            "fy_2025_total_pb_requests_with_cr_adj_base_oco_saa",
+            "fy_2025_total_pb_requests_with_cr_adj_base_oco_emergency",
         ],
-        "BudgetYearOne": ["fy_2026_total", "fy_2026_disc_request", "fy_2026_request"],
-        "BudgetYearOneBase": ["fy_2026_disc_request", "fy_2026_total", "fy_2026_request"],
+        "BudgetYearOne": [
+            "fy_2026_total", "fy_2026_disc_request", "fy_2026_request",
+            "fy_2026_total_base_oco",
+        ],
+        "BudgetYearOneBase": [
+            "fy_2026_disc_request", "fy_2026_total", "fy_2026_request",
+            "fy_2026_base",
+        ],
     }
 
 
 def test_scenario_map_2025_shifts_every_year_by_one():
     m = scenario_map(2025)
-    assert m["PriorYear"] == ["fy_2023_actuals"]
+    assert m["PriorYear"][0] == "fy_2023_actuals"
     assert m["CurrentYear"][:2] == ["fy_2024_total", "fy_2024_enacted"]
     # PB2025 published while FY2024 ran under a continuing resolution: the
     # display workbooks label the FY2024 column 'FY 2024 PB Request with CR
@@ -132,8 +143,8 @@ def test_scenario_map_2025_shifts_every_year_by_one():
     assert "fy_2024_pb_request_with_cr_amounts" in m["CurrentYear"]
     assert "fy_2024_pb_request_with_cr_adjustments" in m["CurrentYear"]
     # 'FY 2025 Request' is the PB2024/PB2025-era request column label.
-    assert m["BudgetYearOne"] == ["fy_2025_total", "fy_2025_disc_request", "fy_2025_request"]
-    assert m["BudgetYearOneBase"] == ["fy_2025_disc_request", "fy_2025_total", "fy_2025_request"]
+    assert m["BudgetYearOne"][:3] == ["fy_2025_total", "fy_2025_disc_request", "fy_2025_request"]
+    assert m["BudgetYearOneBase"][:3] == ["fy_2025_disc_request", "fy_2025_total", "fy_2025_request"]
 
 
 def test_scenario_map_2024_covers_total_enacted_headers():
@@ -141,7 +152,7 @@ def test_scenario_map_2024_covers_total_enacted_headers():
     # Enacted' / 'FY 2023 Less Supplementals Enacted' and the FY2024 column
     # 'FY 2024 Request' (live-run evidence, Task 4).
     m = scenario_map(2024)
-    assert m["PriorYear"] == ["fy_2022_actuals"]
+    assert m["PriorYear"][0] == "fy_2022_actuals"
     assert "fy_2023_total_enacted" in m["CurrentYear"]
     assert "fy_2023_less_supplementals_enacted" in m["CurrentYear"]
     # the supplementals-only column is NOT a CurrentYear candidate
@@ -152,10 +163,40 @@ def test_scenario_map_2024_covers_total_enacted_headers():
 
 def test_scenario_map_2017_shifts_every_year_by_nine():
     m = scenario_map(2017)
-    assert m["PriorYear"] == ["fy_2015_actuals"]
+    assert m["PriorYear"][0] == "fy_2015_actuals"
     assert m["CurrentYear"][:2] == ["fy_2016_total", "fy_2016_enacted"]
     assert m["BudgetYearOne"][:2] == ["fy_2017_total", "fy_2017_disc_request"]
     assert m["BudgetYearOneBase"][:2] == ["fy_2017_disc_request", "fy_2017_total"]
+
+
+def test_scenario_map_covers_legacy_edition_headers():
+    """PB2017–PB2023 display-workbook columns (live evidence, Task 4 round 2):
+    prior year '(Base & OCO)'/'(Base + OCO)'/'Actual*', current year
+    'Total Enacted (Base+Emerg+OCO)'/'Enactment*'/CR-adjusted totals, budget
+    year 'Total (Base + OCO)' and 'Base'."""
+    # PB2017: FY 2015 (Base & OCO) / FY 2016 Total Enacted / FY 2017 Base+Total
+    m = scenario_map(2017)
+    assert "fy_2015_base_oco" in m["PriorYear"]
+    assert "fy_2016_total_enacted" in m["CurrentYear"]
+    assert "fy_2017_total" in m["BudgetYearOne"]
+    assert "fy_2017_base" in m["BudgetYearOneBase"]
+    # PB2018/PB2019: FY(N-1) ran under a CR — 'Total PB Requests with CR Adj'
+    m = scenario_map(2018)
+    assert "fy_2017_total_pb_requests_with_cr_adj_base_oco" in m["CurrentYear"]
+    assert "fy_2017_total_pb_requests_with_cr_adj_base_oco_saa" in m["CurrentYear"]
+    m = scenario_map(2019)
+    assert "fy_2018_total_pb_requests_with_cr_adj_base_oco_emergency" in m["CurrentYear"]
+    # PB2020/PB2021: FY(N) request splits Base / OCO / Total (Base + OCO)
+    m = scenario_map(2020)
+    assert "fy_2020_total_base_oco" in m["BudgetYearOne"]
+    m = scenario_map(2021)
+    assert "fy_2020_total_enacted_base_emerg_oco" in m["CurrentYear"]
+    # PB2022: 'FY 2020 Actual*' (singular) prior-year column
+    m = scenario_map(2022)
+    assert "fy_2020_actual" in m["PriorYear"]
+    # PB2023: 'FY 2022 Enactment*' current-year column
+    m = scenario_map(2023)
+    assert "fy_2022_enactment" in m["CurrentYear"]
 
 
 def test_reconcile_uses_edition_year_map(pg_dsn):

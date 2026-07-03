@@ -22,8 +22,10 @@ ORG_ALIASES: dict[str, str] = {
     "DoD_Human_Resources_Activity": "DHRA",
     "Defense_Information_Systems_Agency": "DISA",
     "Defense_Logistics_Agency": "DLA",
-    "Defense_Media_Activity": "DMA",
-    "Defense_Production_Act_Purchases": "DPA",
+    # P-1 display evidence: DMA lines carry org code DMACT; the DPA Purchases
+    # account (0360D) sits under OSD; the JUON Fund account (0303D) under DEFW.
+    "Defense_Media_Activity": "DMACT",
+    "Defense_Production_Act_Purchases": "OSD",
     "Defense_Security_Cooperation_Agency": "DSCA",
     "Defense_Security_Service": "DSS",
     "Defense_Technical_Information_Center": "DTIC",
@@ -31,7 +33,7 @@ ORG_ALIASES: dict[str, str] = {
     "Department_of_Defense_Education_Activity": "DODEA",
     "Joint_Staff": "TJS",
     "The_Joint_Staff": "TJS",
-    "Joint_Urgent_Operational_Needs_Fund": "JUON",
+    "Joint_Urgent_Operational_Needs_Fund": "DEFW",
     "Missile_Defense_Agency": "MDA",
     "Office_of_Secretary_Of_Defense": "OSD",
     "Operational_Test_Evaluation_Defense": "OTE",

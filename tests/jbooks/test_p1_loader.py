@@ -168,3 +168,72 @@ def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
     assert rows["fy_2023_actuals"] == Decimal("100000")
     assert rows["fy_2024_pb_request_with_cr_adjustments"] == Decimal("150000")
     assert rows["fy_2025_request"] == Decimal("200000")
+
+
+# --- PB2017–PB2023 era header variants (live workbook evidence, Task 4) ---
+
+ERA_P1_HEADERS = [
+    "Account", "Account Title", "Organization", "Budget\nActivity",
+    "Budget Activity Title", "Line\nNumber", "BSA",
+    "Budget Sub Activity (BSA) Title", "Line Item", "Line Item Title",
+    "Cost\nType", "Cost Type Title", "Add/\nNon-Add",
+    "FY 2016\nBase Enacted\nQuantity", "FY 2016\nBase Enacted\nAmount",
+    "FY 2016\nTotal Enacted\nQuantity", "FY 2016\nTotal Enacted\nAmount",
+    "FY 2017\nTotal\nQuantity", "FY 2017\nTotal\nAmount", "Classification",
+]
+
+
+def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
+    """PB2017–PB2023 P-1 workbooks say 'Line Item' (not 'Budget Line Item'),
+    wrap 'Add/Non-Add' and the FY '... Amount' suffixes across lines."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(["Total of Displayed Rows"])
+    ws.append(ERA_P1_HEADERS)
+    ws.append(["0300D", "Procurement, Defense-Wide", "DTRA", "01", "Major Equipment",
+               "14", "1", "Major Equipment, DTRA", "23", "Vehicles",
+               "A", "Weapon System Cost", "Add", "", 12000, "", 13000, "", 14000])
+    ws.append(["0300D", "Procurement, Defense-Wide", "DTRA", "01", "Major Equipment",
+               "14", "1", "Major Equipment, DTRA", "23", "Vehicles",
+               "Z", "Memo", "Non-Add", "", 999999, "", 999999, "", 999999])
+    p = tmp_path / "p1_display.xlsx"
+    wb.save(p)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2017)
+    assert n == 3
+    with psycopg.connect(pg_dsn) as con:
+        rows = dict(con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where exhibit='P-1' and pe_bli='23'"
+        ).fetchall())
+    assert rows == {
+        "fy_2016_base_enacted": Decimal("12000"),
+        "fy_2016_total_enacted": Decimal("13000"),
+        "fy_2017_total": Decimal("14000"),
+    }
+
+
+def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path):
+    """PB2017–PB2023 P-1R workbooks have no Add/Non-Add column: every row
+    loads (there is nothing to filter on)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1R"
+    ws.append(["Total of Displayed Rows"])
+    ws.append(["Account", "Account Title", "Organization", "Budget\nActivity",
+               "Budget Activity Title", "BSA", "Budget Sub Activity (BSA) Title",
+               "Line Item", "Line Item Title", "Cost\nType", "Cost Type Title",
+               "FY 2018\nQuantity", "FY 2018\nAmount", "Classification"])
+    ws.append(["0300D", "Procurement, Defense-Wide", "DEFW", "01", "Major Equipment",
+               "1", "Major Equipment", "23", "Vehicles", "A", "Weapon System Cost",
+               "", 21000, "U"])
+    p = tmp_path / "p1r_display.xlsx"
+    wb.save(p)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1R", fiscal_year=2017)
+    assert n == 1
+    with psycopg.connect(pg_dsn) as con:
+        row = con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where exhibit='P-1R' and pe_bli='23'"
+        ).fetchone()
+    assert row == ("fy_2018", Decimal("21000"))

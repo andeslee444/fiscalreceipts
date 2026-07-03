@@ -7,6 +7,8 @@ import psycopg
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
+from govbudget.jbooks.rollup_loader import norm_header
+
 P1_ID_HEADERS = {
     "Account": "account",
     "Account Title": "account_title",
@@ -16,8 +18,12 @@ P1_ID_HEADERS = {
     "Line Number": "line_number",
     "Budget Line Item": "pe_bli",
     "Budget Line Item (BLI) Title": "title",
+    # PB2017–PB2023 era spellings (no workbook carries both variants)
+    "Line Item": "pe_bli",
+    "Line Item Title": "title",
 }
-P1_REQUIRED = {"Account", "Organization", "Budget Line Item", "Add/Non-Add"}
+P1_REQUIRED = {"Account", "Organization"}
+P1_BLI_HEADERS = ("Budget Line Item", "Line Item")
 
 
 def _slug(header: str) -> str:
@@ -30,10 +36,14 @@ def _str(v) -> str | None:
 
 def _find_header_row(ws) -> tuple[int, dict[int, str]]:
     for i, row in enumerate(ws.iter_rows(min_row=1, max_row=20, values_only=True), start=1):
-        cells = {j: str(v).strip() for j, v in enumerate(row) if v is not None}
-        if P1_REQUIRED <= set(cells.values()):
+        cells = {j: norm_header(v) for j, v in enumerate(row) if v is not None}
+        vals = set(cells.values())
+        if P1_REQUIRED <= vals and any(h in vals for h in P1_BLI_HEADERS):
             return i, cells
-    raise ValueError(f"No header row with {P1_REQUIRED} found in first 20 rows")
+    raise ValueError(
+        f"No header row with {P1_REQUIRED} + one of {P1_BLI_HEADERS}"
+        " found in first 20 rows"
+    )
 
 
 def load_p1_rollup(
@@ -59,7 +69,8 @@ def load_p1_rollup(
         if h.upper().startswith("FY ") and clean[j].endswith(" Amount")
     }
     id_cols = {j: P1_ID_HEADERS[h] for j, h in headers.items() if h in P1_ID_HEADERS}
-    add_col = next(j for j, h in headers.items() if h == "Add/Non-Add")
+    # PB2017–PB2023 P-1R workbooks have no Add/Non-Add column: nothing to filter.
+    add_col = next((j for j, h in headers.items() if h == "Add/Non-Add"), None)
 
     # key matches the DB unique constraint grain:
     # (account, account_title, organization, ba, ba_title, bli, title)
@@ -74,7 +85,9 @@ def load_p1_rollup(
         ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
         if not ids.get("pe_bli"):
             continue
-        if add_col >= len(row) or str(row[add_col]).strip().lower() != "add":
+        if add_col is not None and (
+            add_col >= len(row) or str(row[add_col]).strip().lower() != "add"
+        ):
             continue
         key = (
             str(ids.get("account")), ids.get("account_title"),
