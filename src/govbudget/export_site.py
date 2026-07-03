@@ -2585,6 +2585,13 @@ def _write_all_sidecars(
     n_files += 1
 
     # ------------------------------------------------------------------ #
+    # 7b. cite-shards/{fact_id[:2]}.json (Phase 5D — lazy resolution)     #
+    # ------------------------------------------------------------------ #
+    # Same citations_dict objects as citations.json — one serializer, so
+    # the panel resolves an identical row whether embedded or fetched.
+    n_files += _emit_cite_shards(json_dir=json_dir, citations_dict=citations_dict)
+
+    # ------------------------------------------------------------------ #
     # 8. search_quick.json                                               #
     # ------------------------------------------------------------------ #
 
@@ -2833,6 +2840,19 @@ def _write_all_sidecars(
     # 16. categories.json (Task 8a — top-50 hero categories)              #
     # ------------------------------------------------------------------ #
     _emit_categories_sidecar(json_dir=json_dir)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 17. years_matrix.json (Phase 5D Task 1 — /years/ grid)              #
+    # ------------------------------------------------------------------ #
+    _emit_years_matrix(
+        json_dir=json_dir,
+        con=con,
+        all_prog_rows=all_prog_rows,
+        detail_rows=detail_rows,
+        bl_rows=bl_rows,
+        cited_fact_ids=_cited_fact_ids,
+    )
     n_files += 1
 
     return n_files
@@ -3911,6 +3931,276 @@ def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = No
                     mapping[pe_bli] = category
 
     _write_json(json_dir / "categories.json", mapping)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5D: years matrix + sharded citation slices + derived breakdowns
+# ---------------------------------------------------------------------------
+
+# Size budget for years_matrix.json (spec §3: ≤ 900 KB raw, fetched lazily
+# by the /years/ client island). Loud guard — a payload over budget means
+# the matrix design regressed, not that the budget should move.
+_YEARS_MATRIX_MAX_BYTES = 900 * 1024
+
+# Canonical column order for the matrix (workbook amount_types). Types not
+# present in the data are dropped; unknown new types are appended sorted.
+_YEARS_AMOUNT_TYPE_ORDER = [
+    "fy_2024_actuals",
+    "fy_2025_enacted",
+    "fy_2025_supplemental",
+    "fy_2025_total",
+    "fy_2026_disc_request",
+    "fy_2026_reconciliation_request",
+    "fy_2026_total",
+]
+
+# amount_type → fct_budget_trajectory metric (the derived-citation fallback
+# for multi-line pivot cells — the cited, recompute-verified sum).
+_YEARS_TRAJ_METRIC_BY_AT = {
+    "fy_2024_actuals": "fy2024_actuals",
+    "fy_2025_total": "fy2025_total",
+    "fy_2026_total": "fy2026_total",
+}
+
+# Project sub-row year columns → jbook_details scenarios (spec §2:
+# PriorYear=FY2024, CurrentYear=FY2025, BudgetYearOne=FY2026 request).
+_YEARS_PROJECT_SCENARIOS = {
+    "fy2024": "PriorYear",
+    "fy2025": "CurrentYear",
+    "fy2026": "BudgetYearOne",
+}
+
+# Default visible columns (spec §1: FY24A, FY25T, FY26T, Δ, %Δ).
+_YEARS_DEFAULT_COLUMNS = [
+    "fy_2024_actuals",
+    "fy_2025_total",
+    "fy_2026_total",
+    "fy2526_change",
+    "fy2526_pct_change",
+]
+
+
+def _emit_years_matrix(
+    *,
+    json_dir: Path,
+    con,  # duckdb connection (read-only mart)
+    all_prog_rows: list,
+    detail_rows: list,
+    bl_rows: list,
+    cited_fact_ids: set,
+) -> dict:
+    """Emit json/years_matrix.json — the /years/ CapIQ-style grid payload.
+
+    Nesting: orgs → programs → projects; every dollar cell is {"v", "fid"}.
+
+    Cell contract (BINDING — mirrored by the G8 yearsmatrix gate and the
+    /years/ client island; see tests/test_export_years_matrix.py):
+      - exactly ONE cited budget_lines detail row for
+        (pe_bli, workbook_org, amount_type) → v = amount_thousands,
+        fid = the workbook fact_id (the direct receipt);
+      - zero or >1 rows for a trajectory-covered amount_type → v = the
+        fct_budget_trajectory value, fid = the derived trajectory fact_id
+        (the cited, recompute-verified sum) — never a client-side sum;
+      - otherwise the cell is ABSENT: missing renders "–", never 0, and no
+        uncited sum is ever minted.
+      - Δ cell 'fy2526_change' carries the derived trajectory change fid
+        (only when fy25, fy26 and the citation all exist).
+      - '%Δ' cell 'fy2526_pct_change' carries {"v"} with NO fid — it is a
+        mart-computed presentation figure emitted only alongside a cited Δ.
+      - project cells (fy2024/fy2025/fy2026 ← PriorYear/CurrentYear/
+        BudgetYearOne): cited rows carry the jbook fact_id; uncited
+        zero_amount rows carry xp (xml_path — Cite state B). Duplicate
+        (project, scenario) rows resolve last-wins in detail_rows order,
+        matching the program-page ProgramDetailsTable behavior.
+
+    Returns the payload dict (also written to disk). Raises ValueError when
+    the serialized payload exceeds _YEARS_MATRIX_MAX_BYTES.
+    """
+    from collections import defaultdict
+
+    # ---- trajectory index: (pe_bli, organization) → metrics dict ----------
+    try:
+        traj_rows = con.execute(
+            "select pe_bli, organization, fy2024_actuals, fy2025_total,"
+            " fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_budget_trajectory"
+        ).fetchall()
+    except Exception:
+        traj_rows = []
+    traj_index: dict[tuple, dict] = {}
+    for r in traj_rows:
+        traj_index[(r[0], r[1])] = {
+            "fy2024_actuals": r[2],
+            "fy2025_total": r[3],
+            "fy2026_total": r[4],
+            "fy2526_change": r[5],
+            "fy2526_pct_change": r[6],
+        }
+
+    # ---- budget-line cell index: (pe_bli, org, amount_type) → [(fid, amt)] --
+    # Detail rows only (title IS NOT NULL) — the rollup+detail dedup lesson:
+    # stg_budget_lines carries R-1 rollup rows (title IS NULL) that would
+    # double-count against the trajectory pivot.
+    bl_cells: dict[tuple, list] = defaultdict(list)
+    for r in bl_rows:
+        (fid, _exhibit, _fy, _acct, _acct_title, org, _ba, _ba_title,
+         pe_bli, title, amount_type, amount_thousands, _units,
+         _sha, _sheet, _cells) = r
+        if title is None or amount_thousands is None:
+            continue
+        bl_cells[(pe_bli, org, amount_type)].append((fid, amount_thousands))
+
+    # ---- present amount_types, canonical order -----------------------------
+    present_ats = {k[2] for k in bl_cells}
+    amount_types = [at for at in _YEARS_AMOUNT_TYPE_ORDER if at in present_ats]
+    amount_types += sorted(present_ats - set(_YEARS_AMOUNT_TYPE_ORDER))
+
+    # ---- project sub-rows: pe_bli → project_number → row -------------------
+    # detail_rows order is (sha256, pe_bli, scenario); last-wins per
+    # (project, scenario) mirrors the program-page scenarioMap behavior.
+    projects_by_pe: dict[str, dict] = defaultdict(dict)
+    for r in detail_rows:
+        (fid, pe_bli, project_number, project_title, scenario,
+         amount_millions, _units, xml_path, _org, _fam,
+         _fy, _sha, _resolution) = r
+        if project_number is None:
+            continue
+        proj = projects_by_pe[pe_bli].setdefault(
+            project_number, {"title": None, "scenarios": {}}
+        )
+        if project_title:
+            proj["title"] = project_title
+        proj["scenarios"][scenario] = (fid, amount_millions, xml_path)
+
+    def _program_cells(pe_bli: str, translated_org: str) -> dict:
+        traj = traj_index.get((pe_bli, translated_org))
+        cells: dict[str, dict] = {}
+        for at in amount_types:
+            entries = bl_cells.get((pe_bli, translated_org, at), [])
+            if len(entries) == 1 and entries[0][0] in cited_fact_ids:
+                fid, amt = entries[0]
+                cells[at] = {"v": amt, "fid": fid}
+                continue
+            # zero or multiple lines → the cited trajectory sum, if any
+            metric = _YEARS_TRAJ_METRIC_BY_AT.get(at)
+            if metric and traj is not None and traj.get(metric) is not None:
+                d_fid = fact_id_derived(
+                    "trajectory", f"{pe_bli}|{translated_org}", metric
+                )
+                if d_fid in cited_fact_ids:
+                    cells[at] = {"v": traj[metric], "fid": d_fid}
+            # else: absent — honest "–", never an uncited sum
+
+        # Δ / %Δ — mirrors _trajectory_fact_ids emission conditions
+        if traj is not None:
+            chg_fid = fact_id_derived(
+                "trajectory", f"{pe_bli}|{translated_org}", "fy2526_change"
+            )
+            if (
+                traj.get("fy2526_change") is not None
+                and traj.get("fy2025_total") is not None
+                and traj.get("fy2026_total") is not None
+                and chg_fid in cited_fact_ids
+            ):
+                cells["fy2526_change"] = {
+                    "v": traj["fy2526_change"], "fid": chg_fid,
+                }
+                if traj.get("fy2526_pct_change") is not None:
+                    cells["fy2526_pct_change"] = {
+                        "v": traj["fy2526_pct_change"],
+                    }
+        return cells
+
+    def _project_rows(pe_bli: str) -> list[dict]:
+        out = []
+        for pn in sorted(projects_by_pe.get(pe_bli, {})):
+            proj = projects_by_pe[pe_bli][pn]
+            cells: dict[str, dict] = {}
+            for ykey, scenario in _YEARS_PROJECT_SCENARIOS.items():
+                row = proj["scenarios"].get(scenario)
+                if row is None:
+                    continue
+                fid, amount_millions, xml_path = row
+                if fid is not None and fid in cited_fact_ids:
+                    cells[ykey] = {"v": amount_millions, "fid": fid}
+                elif amount_millions is not None:
+                    cell: dict = {"v": amount_millions, "fid": None}
+                    if xml_path:
+                        cell["xp"] = xml_path
+                    cells[ykey] = cell
+                # fid uncited AND amount None → absent (nothing to render)
+            out.append({
+                "project_number": pn,
+                "title": proj["title"],
+                "cells": cells,
+            })
+        return out
+
+    # ---- org sections -------------------------------------------------------
+    by_org: dict[str, list] = defaultdict(list)
+    for r in all_prog_rows:
+        pe_bli, org, _fam, title, _pc, _fy24m, _rec = r
+        by_org[org].append((pe_bli, title))
+
+    orgs_out = []
+    for org in sorted(by_org):
+        translated = _workbook_org(org)
+        programs = []
+        for pe_bli, title in sorted(by_org[org]):
+            programs.append({
+                "pe_bli": pe_bli,
+                "title": title,
+                "cells": _program_cells(pe_bli, translated),
+                "projects": _project_rows(pe_bli),
+            })
+        orgs_out.append({"org": org, "programs": programs})
+
+    payload = {
+        "schema_version": 1,
+        "program_units": "USD thousands",
+        "project_units": "USD millions",
+        "amount_types": amount_types,
+        "delta_columns": ["fy2526_change", "fy2526_pct_change"],
+        "default_columns": [
+            c for c in _YEARS_DEFAULT_COLUMNS
+            if c in amount_types or c in ("fy2526_change", "fy2526_pct_change")
+        ],
+        "project_scenarios": dict(_YEARS_PROJECT_SCENARIOS),
+        "orgs": orgs_out,
+    }
+
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    if len(raw.encode("utf-8")) > _YEARS_MATRIX_MAX_BYTES:
+        raise ValueError(
+            f"years_matrix.json is {len(raw.encode('utf-8'))} bytes — over the"
+            f" {_YEARS_MATRIX_MAX_BYTES}-byte budget (spec §3). The matrix"
+            " design regressed; do not raise the budget."
+        )
+    _write_json(json_dir / "years_matrix.json", payload)
+    return payload
+
+
+def _emit_cite_shards(*, json_dir: Path, citations_dict: dict) -> int:
+    """Emit json/cite-shards/{fact_id[:2]}.json — sharded citation slices.
+
+    Covers ALL citations (shard union == citations.json keys) so any page can
+    lazily resolve any fact_id: the citation panel's fetch-on-miss path loads
+    fid[:2].json and finds the identical row it would have found embedded.
+    The values are the SAME objects written to citations.json — one
+    serializer, identical panel schema by construction.
+
+    Returns the number of shard files written (≤256).
+    """
+    shard_dir = json_dir / "cite-shards"
+    shard_dir.mkdir(exist_ok=True)
+
+    shards: dict[str, dict] = {}
+    for fid, obj in citations_dict.items():
+        shards.setdefault(fid[:2], {})[fid] = obj
+
+    for prefix in sorted(shards):
+        _write_json(shard_dir / f"{prefix}.json", shards[prefix])
+    return len(shards)
 
 
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
