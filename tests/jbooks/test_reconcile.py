@@ -315,6 +315,62 @@ def test_gate_b_translates_document_org_aliases(pg_dsn):
     assert check == (True,)
 
 
+def test_gate_b_consolidated_volume_matches_per_organization(pg_dsn):
+    """A consolidated Defense-Wide volume (PB2018–PB2023 era) spans many
+    workbook orgs. Gate B must match each PE against its own organization's
+    control rows, not require organization == document org."""
+    upsert_documents(pg_dsn, [{
+        "org": "Defense_Wide", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "dw.pdf", "source_url": "https://example.test/dw.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        # the PE's control row lives under DARPA — not under 'DW'
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s)",
+            (Decimal("280494"),),
+        )
+        # another org's row for a DIFFERENT amount must not blend into the sum
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','DISA','0601101E','fy_2024_actuals',999999)",
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, expected from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert check[0] is True
+    assert check[1] == Decimal("280.494")
+
+
+def test_gate_b_consolidated_volume_no_match_still_fails(pg_dsn):
+    upsert_documents(pg_dsn, [{
+        "org": "Defense_Wide", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "dw.pdf", "source_url": "https://example.test/dw.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',111111)",
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert check == (False,)
+
+
 def test_budget_year_one_matches_total_minus_recon(pg_dsn):
     # R-1 total carries a reconciliation-request slice the PB book excludes.
     upsert_documents(pg_dsn, [{

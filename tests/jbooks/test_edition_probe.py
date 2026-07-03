@@ -148,6 +148,39 @@ def test_probe_discovered_above_range(tmp_path):
     assert "45" in result["reason"]
 
 
+def test_discovery_envelope_is_edition_aware():
+    """Consolidated-volume era (PB2017–PB2023) publishes as few as 5
+    classifiable documents; the per-agency era (PB2024+) publishes ~37."""
+    from govbudget.jbooks.edition_probe import discovery_envelope
+
+    for fy in range(2017, 2024):
+        assert discovery_envelope(fy) == (5, 45)
+    for fy in (2024, 2025, 2026, 2027):
+        assert discovery_envelope(fy) == (30, 45)
+
+
+def test_probe_legacy_edition_accepts_consolidated_count(tmp_path):
+    # 5 rdte + 0 proc + 3 rollups = 8 discovered: fails the [30,45] modern
+    # envelope but is a healthy consolidated-era edition.
+    client, requested = _client(2023, n_rdte=5, n_proc=0)
+    with client:
+        result = probe_edition(client, 2023, work_dir=tmp_path)
+    assert result["ok"] is True
+    assert result["discovered"] == 8
+    assert result["sample_pe_count"] == 2
+
+
+def test_probe_legacy_edition_still_rejects_below_envelope(tmp_path):
+    # 1 rdte + 0 proc + 3 rollups = 4 discovered < 5: a broken index page.
+    client, requested = _client(2017, n_rdte=1, n_proc=0)
+    with client:
+        result = probe_edition(client, 2017, work_dir=tmp_path)
+    assert result["ok"] is False
+    assert result["discovered"] == 4
+    assert "5" in result["reason"] and "45" in result["reason"]
+    assert not any(u.endswith(".pdf") for u in requested)
+
+
 def test_probe_no_embedded_xml(tmp_path):
     client, _ = _client(2025, pdf_bytes=_sample_pdf(2025, with_attachment=False))
     with client:

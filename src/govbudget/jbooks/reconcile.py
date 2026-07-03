@@ -71,9 +71,13 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             """,
             (document_id,),
         )
-        from govbudget.jbooks.orgs import workbook_org
+        from govbudget.jbooks.orgs import CONSOLIDATED_ORGS, workbook_org
 
         org = workbook_org(org)
+        # Consolidated Defense-Wide volumes (PB2018–PB2023) span many workbook
+        # orgs: their Gate B candidates are computed per organization instead
+        # of pinned to the document org.
+        consolidated = org in CONSOLIDATED_ORGS
         exhibit = {"rdte": "R-1", "procurement": "P-1"}.get(family)
         # ---------- Gate A: project rows sum to the PE-level amount ----------
         gate_a_rows = con.execute(
@@ -116,27 +120,42 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             if not candidates:
                 continue
             fetch_types = list(candidates) + [total_type, recon_type]
-            row = con.execute(
-                "select amount_type, sum(amount_thousands) from budget_lines "
-                "where pe_bli=%s and amount_type = any(%s) "
-                "and exhibit=%s and organization=%s and fiscal_year=%s "
-                "group by amount_type",
-                (pe_bli, fetch_types, exhibit, org, fy),
-            ).fetchall()
-            by_type = {t: v for t, v in row}
+            if consolidated:
+                rows = con.execute(
+                    "select amount_type, organization, sum(amount_thousands) "
+                    "from budget_lines "
+                    "where pe_bli=%s and amount_type = any(%s) "
+                    "and exhibit=%s and fiscal_year=%s "
+                    "group by amount_type, organization",
+                    (pe_bli, fetch_types, exhibit, fy),
+                ).fetchall()
+            else:
+                rows = [
+                    (t, org, v) for t, v in con.execute(
+                        "select amount_type, sum(amount_thousands) from budget_lines "
+                        "where pe_bli=%s and amount_type = any(%s) "
+                        "and exhibit=%s and organization=%s and fiscal_year=%s "
+                        "group by amount_type",
+                        (pe_bli, fetch_types, exhibit, org, fy),
+                    ).fetchall()
+                ]
+            control_orgs = sorted({o for _, o, _ in rows})
+            by_type_org = {(t, o): v for t, o, v in rows}
             present = [
-                (t, by_type[t] / Decimal(1000))  # R-1 $K -> $M
+                (t, by_type_org[(t, o)] / Decimal(1000))  # R-1 $K -> $M
                 for t in candidates
-                if by_type.get(t) is not None
+                for o in control_orgs
+                if by_type_org.get((t, o)) is not None
             ]
             if scenario in ("BudgetYearOne", "BudgetYearOneBase"):
-                total = by_type.get(total_type)
-                recon = by_type.get(recon_type)
-                if total is not None and recon is not None:
-                    present.append((
-                        f"fy_{fy}_total_minus_recon",
-                        (total - recon) / Decimal(1000),
-                    ))
+                for o in control_orgs:
+                    total = by_type_org.get((total_type, o))
+                    recon = by_type_org.get((recon_type, o))
+                    if total is not None and recon is not None:
+                        present.append((
+                            f"fy_{fy}_total_minus_recon",
+                            (total - recon) / Decimal(1000),
+                        ))
             match = next(
                 ((t, v) for t, v in present if abs(v - amount_m) <= TOLERANCE_M), None
             )

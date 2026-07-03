@@ -26,6 +26,17 @@ import httpx
 # reorganization that silently drops half the books.
 DISCOVERED_MIN = 30
 DISCOVERED_MAX = 45
+# PB2017–PB2023 publish consolidated Defense-Wide volumes instead of ~34
+# per-agency books: as few as 5 classifiable documents (PB2023: 3 RDT&E
+# volumes + 2 procurement volumes) plus 3 rollups is a healthy edition.
+LEGACY_DISCOVERED_MIN = 5
+LEGACY_LAST_FY = 2023
+
+
+def discovery_envelope(fy: int) -> tuple[int, int]:
+    """Edition-aware [min, max] discovery envelope."""
+    lo = LEGACY_DISCOVERED_MIN if fy <= LEGACY_LAST_FY else DISCOVERED_MIN
+    return lo, DISCOVERED_MAX
 
 
 def probe_edition(client: httpx.Client, fy: int, *, work_dir: Path | None = None) -> dict:
@@ -63,11 +74,12 @@ def probe_edition(client: httpx.Client, fy: int, *, work_dir: Path | None = None
                 docs.append(d)
     result["discovered"] = len(docs)
 
-    # 2. Discovery count in the sane envelope.
-    if not (DISCOVERED_MIN <= len(docs) <= DISCOVERED_MAX):
+    # 2. Discovery count in the sane (edition-aware) envelope.
+    lo, hi = discovery_envelope(fy)
+    if not (lo <= len(docs) <= hi):
         result["reason"] = (
             f"discovered {len(docs)} documents — outside sane range"
-            f" [{DISCOVERED_MIN}, {DISCOVERED_MAX}]"
+            f" [{lo}, {hi}]"
         )
         return result
 
