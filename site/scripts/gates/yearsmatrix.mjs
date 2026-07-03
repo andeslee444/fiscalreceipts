@@ -1,0 +1,789 @@
+/**
+ * gate — yearsmatrix_gate (Phase 5D, G8)
+ *
+ * Verifies the /years/ budget-over-time matrix end to end (spec §4):
+ *
+ *  (a) cell integrity — ≥30 sampled cells (program cells across EVERY
+ *      amount_type present, Δ cells, project cells) recomputed independently
+ *      from the parquet lake (budget_lines.parquet / jbook_details.parquet)
+ *      via a python helper (yearsmatrix-recompute.py) and compared to the
+ *      rendered years_matrix.json payload canonically (|diff| ≤ 0.001).
+ *  (b) citation contract — sampled cells carry resolvable fact_ids per the
+ *      three-state Cite rules (program cells: workbook|derived; project
+ *      cells: jbook_pdf; state-B cells carry xp and NO fid); Δ cells resolve
+ *      to derived citations whose formula recomputes (rv[0] − rv[1] ==
+ *      recorded_value ≤ 0.001) and whose recorded_value equals the cell v.
+ *  (c) UX mechanics via Playwright on /years/ —
+ *      sticky header + sticky first column at 1440 AND 390 wide,
+ *      sort correctness on two columns (missing-last), expand shows project
+ *      rows, filter narrows to the searched program, CSV export parses and
+ *      matches the current view (pe_bli set equality), filtered CSV matches
+ *      the filtered view.
+ *  (d) shard integrity — every fact_id referenced in years_matrix.json
+ *      resolves in cite-shards/{fid[:2]}.json with a row deep-equal to its
+ *      citations.json row; shard union == citations.json keys (no orphans,
+ *      no misses, no misplaced keys).
+ *  (e) breakdown integrity (spec §3b) — every sum-decomposable derived fact
+ *      has breakdowns/{fact_id}.json; ≥10 sampled breakdowns across classes
+ *      sum EXACTLY to recorded_value (≤0.005 canonical rounding); cited rows
+ *      resolve via their shards; uncited rows are explicitly marked; on
+ *      /years/, opening a Δ cell's citation shows the inline breakdown table
+ *      whose sum row equals the derived figure and whose CSV export parses
+ *      to the same rows.
+ *
+ * DOM contract for the /years/ page (BINDING for Task 4 — the gate was
+ * built first, per house rules):
+ *   [data-testid="years-matrix"]           table container
+ *   tr[data-program-row][data-pe]          program rows
+ *   tr[data-project-row]                   project sub-rows
+ *   td/th[data-col="<key>"]                cells; numeric cells carry data-v
+ *   [data-sort="<key>"]                    header sort trigger
+ *   [data-expand]                          program expand caret
+ *   [data-testid="years-filter"]           text filter input
+ *   [data-testid="years-csv"]              CSV export button (download)
+ *   [data-sticky-col]                      first-column sticky cells
+ *   dollar cells render the existing <Cite> ([data-fact-id])
+ *   citation panel breakdown (Task 3b):
+ *   [data-testid="breakdown-table"], [data-testid="breakdown-sum"][data-v],
+ *   [data-testid="breakdown-csv"]
+ *
+ * Export: runYearsMatrixGate({ baseUrl }) → { pass, errors, notes }
+ */
+
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { spawnSync } from "child_process";
+import { fileURLToPath } from "url";
+import { chromium } from "playwright";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const siteRoot = path.resolve(__dirname, "..", "..");
+const repoRoot = path.resolve(siteRoot, "..");
+const jsonDir = path.resolve(repoRoot, "data", "site", "json");
+
+const TOL_CELL = 0.001;
+const TOL_BREAKDOWN = 0.005;
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function* iterPrograms(matrix) {
+  for (const org of matrix.orgs) {
+    for (const p of org.programs) {
+      yield { org: org.org, program: p };
+    }
+  }
+}
+
+/** All fact_ids referenced by the matrix payload (program + project cells). */
+function collectMatrixFids(matrix) {
+  const fids = new Set();
+  for (const { program } of iterPrograms(matrix)) {
+    for (const cell of Object.values(program.cells)) {
+      if (cell && cell.fid) fids.add(cell.fid);
+    }
+    for (const proj of program.projects) {
+      for (const cell of Object.values(proj.cells)) {
+        if (cell && cell.fid) fids.add(cell.fid);
+      }
+    }
+  }
+  return fids;
+}
+
+/** Deterministic sample: program cells covering every amount_type, Δ cells,
+ *  and project cells. Returns {programCells, deltaCells, projectCells}. */
+function sampleCells(matrix, { perType = 5, deltas = 6, projects = 10 } = {}) {
+  const programCells = [];
+  const deltaCells = [];
+  const projectCells = [];
+  const perTypeCount = new Map(matrix.amount_types.map((t) => [t, 0]));
+
+  const programs = [...iterPrograms(matrix)];
+  // Stride the list so samples spread across orgs (deterministic, no RNG).
+  const stride = Math.max(1, Math.floor(programs.length / 37));
+  for (let pass = 0; pass < stride; pass++) {
+    for (let i = pass; i < programs.length; i += stride) {
+      const { org, program } = programs[i];
+      for (const at of matrix.amount_types) {
+        const cell = program.cells[at];
+        if (cell && perTypeCount.get(at) < perType) {
+          programCells.push({ pe_bli: program.pe_bli, org, at, cell });
+          perTypeCount.set(at, perTypeCount.get(at) + 1);
+        }
+      }
+      const d = program.cells["fy2526_change"];
+      if (d && deltaCells.length < deltas) {
+        deltaCells.push({ pe_bli: program.pe_bli, org, cell: d });
+      }
+      for (const proj of program.projects) {
+        for (const [ykey, cell] of Object.entries(proj.cells)) {
+          if (cell && projectCells.length < projects) {
+            projectCells.push({
+              pe_bli: program.pe_bli,
+              project_number: proj.project_number,
+              scenario: matrix.project_scenarios[ykey],
+              ykey,
+              cell,
+            });
+          }
+        }
+      }
+    }
+  }
+  return { programCells, deltaCells, projectCells };
+}
+
+/** Spawn the python recompute helper over the parquet lake. */
+function recomputeFromLake(request) {
+  const reqFile = path.join(
+    os.tmpdir(),
+    `yearsmatrix-recompute-${process.pid}.json`
+  );
+  fs.writeFileSync(reqFile, JSON.stringify(request));
+  try {
+    const res = spawnSync(
+      "uv",
+      ["run", "python", "site/scripts/gates/yearsmatrix-recompute.py", reqFile],
+      { cwd: repoRoot, encoding: "utf8", timeout: 120000 }
+    );
+    if (res.status !== 0) {
+      throw new Error(
+        `recompute helper exited ${res.status}: ${(res.stderr || "").slice(0, 400)}`
+      );
+    }
+    return JSON.parse(res.stdout);
+  } finally {
+    fs.rmSync(reqFile, { force: true });
+  }
+}
+
+/** Minimal CSV parse (quoted fields with commas supported). */
+function parseCsv(text) {
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === "") continue;
+    const fields = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"' && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else if (ch === '"') {
+          inQ = false;
+        } else {
+          cur += ch;
+        }
+      } else if (ch === '"') {
+        inQ = true;
+      } else if (ch === ",") {
+        fields.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    fields.push(cur);
+    rows.push(fields);
+  }
+  return rows;
+}
+
+const BREAKDOWN_CLASSES = [
+  { key: "traj_sum", test: (f) => f.startsWith("sum(budget_lines") },
+  { key: "difference", test: (f, inputs) => f.includes(" - ") && inputs.length === 2 },
+  { key: "agency_fy26", test: (f) => f.startsWith("sum(fct_budget_trajectory.fy2026_total)") },
+  { key: "district", test: (f) => f.startsWith("sum(fct_district_programs.total_obligation)") },
+  { key: "agency_fy24", test: (f) => f.startsWith("sum(dim_programs.fy2024_actual_millions)") },
+];
+
+const HEX16 = /^[0-9a-f]{16}$/;
+
+function breakdownClass(citation) {
+  if (citation.kind !== "derived" || !citation.formula) return null;
+  if (citation.recorded_value == null || !Number.isFinite(Number(citation.recorded_value)))
+    return null;
+  let inputs = [];
+  try {
+    inputs = JSON.parse(citation.inputs ?? "[]");
+  } catch {
+    return null;
+  }
+  const allHex = Array.isArray(inputs) && inputs.every((x) => HEX16.test(String(x)));
+  for (const cls of BREAKDOWN_CLASSES) {
+    if (!cls.test(citation.formula, inputs)) continue;
+    // agency_fy24 decomposes at PROGRAM grain (its thousands-inputs cannot
+    // sum to a millions recorded_value) — eligible regardless of inputs.
+    if (cls.key === "agency_fy24") return cls.key;
+    if (allHex && inputs.length >= 2) return cls.key;
+    return null;
+  }
+  return null;
+}
+
+export async function runYearsMatrixGate({ baseUrl }) {
+  const errors = [];
+  const notes = [];
+
+  // ── Load static inputs ────────────────────────────────────────────────────
+  const matrixPath = path.join(jsonDir, "years_matrix.json");
+  if (!fs.existsSync(matrixPath)) {
+    return {
+      pass: false,
+      errors: [`years_matrix.json missing at ${matrixPath} — run export-site`],
+      notes,
+    };
+  }
+  const matrix = readJson(matrixPath);
+  const citations = readJson(path.join(jsonDir, "citations.json"));
+
+  const size = fs.statSync(matrixPath).size;
+  if (size >= 900 * 1024) {
+    errors.push(`years_matrix.json is ${size} bytes — over the 900KB budget`);
+  }
+  const nPrograms = [...iterPrograms(matrix)].length;
+  notes.push(`matrix: ${nPrograms} programs / ${matrix.orgs.length} orgs / ${size} bytes`);
+
+  const { programCells, deltaCells, projectCells } = sampleCells(matrix);
+  const nSampled = programCells.length + deltaCells.length + projectCells.length;
+
+  // ── Leg (a): cell integrity recompute vs the parquet lake ────────────────
+  {
+    const typesCovered = new Set(programCells.map((c) => c.at));
+    const missingTypes = matrix.amount_types.filter((t) => !typesCovered.has(t));
+    if (nSampled < 30) {
+      errors.push(`leg a: only ${nSampled} cells sampled (<30)`);
+    }
+    if (missingTypes.length > 0) {
+      errors.push(`leg a: no sampled cells for amount_type(s): ${missingTypes.join(", ")}`);
+    }
+    if (deltaCells.length === 0) errors.push("leg a: no Δ cells sampled");
+    if (projectCells.length === 0) errors.push("leg a: no project cells sampled");
+
+    let recomputed;
+    try {
+      recomputed = recomputeFromLake({
+        programs: programCells.map(({ pe_bli, org, at }) => ({ pe_bli, org, at })),
+        deltas: deltaCells.map(({ pe_bli, org }) => ({ pe_bli, org })),
+        projects: projectCells.map(({ pe_bli, project_number, scenario }) => ({
+          pe_bli,
+          project_number,
+          scenario,
+        })),
+      });
+    } catch (e) {
+      recomputed = null;
+      errors.push(`leg a: recompute helper failed: ${e.message}`);
+    }
+
+    if (recomputed) {
+      let ok = 0;
+      for (const { pe_bli, org, at, cell } of programCells) {
+        const rc = recomputed.programs[`${pe_bli}|${org}|${at}`];
+        if (rc == null || Math.abs(rc - cell.v) > TOL_CELL) {
+          errors.push(
+            `leg a: program cell ${pe_bli}/${at} payload=${cell.v} lake=${rc}`
+          );
+        } else ok++;
+      }
+      let deltaVerified = 0;
+      for (const { pe_bli, org, cell } of deltaCells) {
+        const rc = recomputed.deltas[`${pe_bli}|${org}`];
+        if (rc == null) continue; // no budget lines for one side — leg b still recomputes via inputs
+        if (Math.abs(rc - cell.v) > TOL_CELL) {
+          errors.push(`leg a: Δ cell ${pe_bli} payload=${cell.v} lake=${rc}`);
+        } else {
+          ok++;
+          deltaVerified++;
+        }
+      }
+      if (deltaCells.length > 0 && deltaVerified === 0) {
+        errors.push("leg a: no sampled Δ cell was lake-recomputable");
+      }
+      for (const { pe_bli, project_number, scenario, cell } of projectCells) {
+        const rc = recomputed.projects[`${pe_bli}|${project_number}|${scenario}`];
+        if (rc == null || Math.abs(rc - cell.v) > TOL_CELL) {
+          errors.push(
+            `leg a: project cell ${pe_bli}/${project_number}/${scenario} payload=${cell.v} lake=${rc}`
+          );
+        } else ok++;
+      }
+      notes.push(`leg a: ${ok}/${nSampled} sampled cells recomputed from the lake ✓`);
+    }
+  }
+
+  // ── Leg (b): citation contract on sampled cells ──────────────────────────
+  {
+    let ok = 0;
+    for (const { pe_bli, at, cell } of programCells) {
+      const cit = citations[cell.fid];
+      if (!cit) {
+        errors.push(`leg b: program cell ${pe_bli}/${at} fid ${cell.fid} unresolvable`);
+        continue;
+      }
+      if (cit.kind !== "workbook" && cit.kind !== "derived") {
+        errors.push(`leg b: program cell ${pe_bli}/${at} fid kind=${cit.kind} (want workbook|derived)`);
+        continue;
+      }
+      if (cit.kind === "workbook" && Math.abs(cit.amount_thousands - cell.v) > TOL_CELL) {
+        errors.push(
+          `leg b: workbook cell ${pe_bli}/${at} v=${cell.v} != amount_thousands=${cit.amount_thousands}`
+        );
+        continue;
+      }
+      if (cit.kind === "derived" && Math.abs(Number(cit.recorded_value) - cell.v) > TOL_CELL) {
+        errors.push(
+          `leg b: derived cell ${pe_bli}/${at} v=${cell.v} != recorded_value=${cit.recorded_value}`
+        );
+        continue;
+      }
+      ok++;
+    }
+    for (const { pe_bli, cell } of deltaCells) {
+      const cit = citations[cell.fid];
+      if (!cit || cit.kind !== "derived") {
+        errors.push(`leg b: Δ cell ${pe_bli} fid ${cell.fid} not a derived citation`);
+        continue;
+      }
+      if (!cit.formula || !cit.formula.includes(" - ")) {
+        errors.push(`leg b: Δ cell ${pe_bli} formula is not a difference: ${cit.formula}`);
+        continue;
+      }
+      let inputs = [];
+      try {
+        inputs = JSON.parse(cit.inputs ?? "[]");
+      } catch {
+        /* handled below */
+      }
+      if (inputs.length !== 2 || !citations[inputs[0]] || !citations[inputs[1]]) {
+        errors.push(`leg b: Δ cell ${pe_bli} inputs do not resolve: ${cit.inputs}`);
+        continue;
+      }
+      const diff =
+        Number(citations[inputs[0]].recorded_value) -
+        Number(citations[inputs[1]].recorded_value);
+      if (Math.abs(diff - Number(cit.recorded_value)) > TOL_CELL) {
+        errors.push(
+          `leg b: Δ cell ${pe_bli} formula recompute ${diff} != recorded ${cit.recorded_value}`
+        );
+        continue;
+      }
+      if (Math.abs(Number(cit.recorded_value) - cell.v) > TOL_CELL) {
+        errors.push(`leg b: Δ cell ${pe_bli} v=${cell.v} != recorded ${cit.recorded_value}`);
+        continue;
+      }
+      ok++;
+    }
+    for (const { pe_bli, project_number, cell } of projectCells) {
+      if (!cell.fid) {
+        // state-B cell: must carry xp and must NOT dangle a fid
+        if (!cell.xp) {
+          errors.push(
+            `leg b: project cell ${pe_bli}/${project_number} has neither fid nor xp`
+          );
+        } else ok++;
+        continue;
+      }
+      const cit = citations[cell.fid];
+      if (!cit || cit.kind !== "jbook_pdf") {
+        errors.push(
+          `leg b: project cell ${pe_bli}/${project_number} fid ${cell.fid} not a jbook_pdf citation`
+        );
+        continue;
+      }
+      if (!cit.hosted_pdf_url || cit.page_number == null) {
+        errors.push(
+          `leg b: project cell ${pe_bli}/${project_number} citation lacks hosted_pdf_url/page_number`
+        );
+        continue;
+      }
+      ok++;
+    }
+    notes.push(`leg b: ${ok} sampled citations verified ✓`);
+  }
+
+  // ── Leg (d): shard integrity ──────────────────────────────────────────────
+  {
+    const shardDir = path.join(jsonDir, "cite-shards");
+    if (!fs.existsSync(shardDir)) {
+      errors.push(`leg d: cite-shards/ missing at ${shardDir}`);
+    } else {
+      const matrixFids = collectMatrixFids(matrix);
+      const shardCache = new Map();
+      const loadShard = (prefix) => {
+        if (!shardCache.has(prefix)) {
+          const p = path.join(shardDir, `${prefix}.json`);
+          shardCache.set(prefix, fs.existsSync(p) ? readJson(p) : null);
+        }
+        return shardCache.get(prefix);
+      };
+
+      let misses = 0;
+      let mismatches = 0;
+      for (const fid of matrixFids) {
+        const shard = loadShard(fid.slice(0, 2));
+        if (!shard || !(fid in shard)) {
+          if (misses < 5) errors.push(`leg d: matrix fid ${fid} missing from its shard`);
+          misses++;
+          continue;
+        }
+        if (JSON.stringify(shard[fid]) !== JSON.stringify(citations[fid])) {
+          if (mismatches < 5)
+            errors.push(`leg d: shard row for ${fid} differs from citations.json`);
+          mismatches++;
+        }
+      }
+      if (misses > 5) errors.push(`leg d: ${misses} matrix fids missing from shards (total)`);
+      if (mismatches > 5) errors.push(`leg d: ${mismatches} shard/citations mismatches (total)`);
+
+      // Full union: every citations.json key in exactly its shard, no strays.
+      let unionCount = 0;
+      let misplaced = 0;
+      for (const f of fs.readdirSync(shardDir).filter((f) => f.endsWith(".json"))) {
+        const prefix = f.replace(".json", "");
+        const shard = readJson(path.join(shardDir, f));
+        for (const fid of Object.keys(shard)) {
+          if (fid.slice(0, 2) !== prefix) misplaced++;
+          if (!(fid in citations)) misplaced++;
+          unionCount++;
+        }
+      }
+      const nCitations = Object.keys(citations).length;
+      if (misplaced > 0) errors.push(`leg d: ${misplaced} misplaced/orphaned shard keys`);
+      if (unionCount !== nCitations) {
+        errors.push(
+          `leg d: shard union has ${unionCount} fids but citations.json has ${nCitations}`
+        );
+      } else {
+        notes.push(
+          `leg d: ${matrixFids.size} matrix fids + full ${unionCount}-fid shard union verified ✓`
+        );
+      }
+    }
+  }
+
+  // ── Leg (e) static: breakdown presence + integrity ────────────────────────
+  {
+    const breakdownDir = path.join(jsonDir, "breakdowns");
+    if (!fs.existsSync(breakdownDir)) {
+      errors.push(`leg e: breakdowns/ missing at ${breakdownDir}`);
+    } else {
+      // Presence: every sum-decomposable derived fact has a breakdown file.
+      const byClass = new Map();
+      let missing = 0;
+      for (const [fid, cit] of Object.entries(citations)) {
+        const cls = breakdownClass(cit);
+        if (!cls) continue;
+        if (!byClass.has(cls)) byClass.set(cls, []);
+        byClass.get(cls).push(fid);
+        if (!fs.existsSync(path.join(breakdownDir, `${fid}.json`))) {
+          if (missing < 5) errors.push(`leg e: breakdown missing for ${cls} fact ${fid}`);
+          missing++;
+        }
+      }
+      if (missing > 5) errors.push(`leg e: ${missing} breakdowns missing (total)`);
+      const clsSummary = [...byClass.entries()]
+        .map(([k, v]) => `${k}=${v.length}`)
+        .join(" ");
+      notes.push(`leg e: eligible derived facts by class: ${clsSummary}`);
+
+      // Integrity: ≥10 samples spread across classes (first 3 of each).
+      const samples = [];
+      for (const fids of byClass.values()) {
+        samples.push(...fids.slice(0, 3));
+      }
+      if (samples.length < 10) {
+        errors.push(`leg e: only ${samples.length} breakdown samples available (<10)`);
+      }
+      const shardDir = path.join(jsonDir, "cite-shards");
+      let ok = 0;
+      for (const fid of samples) {
+        const p = path.join(breakdownDir, `${fid}.json`);
+        if (!fs.existsSync(p)) continue; // already reported above
+        const b = readJson(p);
+        const sum = b.rows.reduce((acc, r) => acc + r.v, 0);
+        const recorded = Number(b.recorded_value);
+        if (!Number.isFinite(recorded) || Math.abs(sum - recorded) > TOL_BREAKDOWN) {
+          errors.push(`leg e: breakdown ${fid} rows sum ${sum} != recorded ${b.recorded_value}`);
+          continue;
+        }
+        let rowsOk = true;
+        for (const r of b.rows) {
+          if (r.fid) {
+            const shardPath = path.join(shardDir, `${r.fid.slice(0, 2)}.json`);
+            const shard = fs.existsSync(shardPath) ? readJson(shardPath) : {};
+            if (!(r.fid in shard)) {
+              errors.push(`leg e: breakdown ${fid} row fid ${r.fid} not in its shard`);
+              rowsOk = false;
+            }
+          } else if (r.uncited !== true) {
+            errors.push(`leg e: breakdown ${fid} has a fid-less row not marked uncited`);
+            rowsOk = false;
+          }
+        }
+        if (rowsOk) ok++;
+      }
+      notes.push(`leg e: ${ok}/${samples.length} sampled breakdowns verified ✓`);
+    }
+  }
+
+  // ── Legs (c) + (e-UI): Playwright on /years/ ─────────────────────────────
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      acceptDownloads: true,
+    });
+    const page = await context.newPage();
+    const consoleErrors = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+
+    let pageUp = false;
+    try {
+      const resp = await page.goto(`${baseUrl}/years/`, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
+      if (!resp || resp.status() >= 400) {
+        errors.push(`leg c: /years/ returned status ${resp ? resp.status() : "none"}`);
+      } else {
+        const table = await page
+          .waitForSelector('[data-testid="years-matrix"]', { timeout: 15000 })
+          .catch(() => null);
+        if (!table) {
+          errors.push('leg c: [data-testid="years-matrix"] not found on /years/');
+        } else {
+          pageUp = true;
+        }
+      }
+    } catch (e) {
+      errors.push(`leg c: /years/ navigation failed: ${e.message}`);
+    }
+
+    if (pageUp) {
+      // ---- sticky header + first column at 1440 and 390 ----
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+        const sticky = await page.evaluate(() => {
+          const th = document.querySelector('[data-testid="years-matrix"] thead th');
+          const col = document.querySelector("[data-sticky-col]");
+          return {
+            header: th ? getComputedStyle(th).position : null,
+            firstCol: col ? getComputedStyle(col).position : null,
+          };
+        });
+        if (sticky.header !== "sticky")
+          errors.push(`leg c: header not sticky at ${width}px (position=${sticky.header})`);
+        if (sticky.firstCol !== "sticky")
+          errors.push(`leg c: first column not sticky at ${width}px (position=${sticky.firstCol})`);
+      }
+      await page.setViewportSize({ width: 1440, height: 900 });
+
+      // ---- sort correctness on two columns (missing-last) ----
+      const readColumn = (key) =>
+        page.evaluate((k) => {
+          return [...document.querySelectorAll("tr[data-program-row]")]
+            .filter((tr) => tr.offsetParent !== null)
+            .map((tr) => {
+              const td = tr.querySelector(`[data-col="${k}"][data-v]`);
+              return td ? Number(td.getAttribute("data-v")) : null;
+            });
+        }, key);
+
+      for (const key of ["fy_2026_total", "fy_2024_actuals"]) {
+        const trigger = page.locator(`[data-sort="${key}"]`).first();
+        if ((await trigger.count()) === 0) {
+          errors.push(`leg c: no sort trigger [data-sort="${key}"]`);
+          continue;
+        }
+        await trigger.click();
+        let vals = await readColumn(key);
+        const check = (arr, dir) => {
+          const nums = arr.filter((v) => v != null);
+          const firstNullIdx = arr.findIndex((v) => v == null);
+          if (firstNullIdx !== -1 && arr.slice(firstNullIdx).some((v) => v != null)) {
+            return `missing values not last`;
+          }
+          for (let i = 1; i < nums.length; i++) {
+            if (dir === "desc" ? nums[i] > nums[i - 1] + 1e-9 : nums[i] < nums[i - 1] - 1e-9)
+              return `not ${dir} at index ${i}`;
+          }
+          return null;
+        };
+        let err = check(vals, "desc");
+        if (err) errors.push(`leg c: sort ${key} (1st click): ${err}`);
+        await trigger.click();
+        vals = await readColumn(key);
+        err = check(vals, "asc");
+        if (err) errors.push(`leg c: sort ${key} (2nd click): ${err}`);
+      }
+      notes.push("leg c: sort checks done");
+
+      // ---- expand shows project rows ----
+      {
+        const before = await page.locator("tr[data-project-row]:visible").count();
+        const caret = page.locator("[data-expand]").first();
+        if ((await caret.count()) === 0) {
+          errors.push("leg c: no [data-expand] caret found");
+        } else {
+          await caret.click();
+          await page.waitForTimeout(400);
+          const after = await page.locator("tr[data-project-row]:visible").count();
+          if (after <= before) {
+            errors.push(`leg c: expand did not reveal project rows (${before} → ${after})`);
+          } else {
+            notes.push(`leg c: expand revealed ${after - before} project rows ✓`);
+          }
+          await caret.click(); // collapse back
+        }
+      }
+
+      // ---- CSV export matches the current view ----
+      const csvPeSet = async () => {
+        const [download] = await Promise.all([
+          page.waitForEvent("download", { timeout: 15000 }),
+          page.locator('[data-testid="years-csv"]').click(),
+        ]);
+        const file = await download.path();
+        const rows = parseCsv(fs.readFileSync(file, "utf8"));
+        if (rows.length < 2) throw new Error("CSV has no data rows");
+        const header = rows[0];
+        const peIdx = header.findIndex((h) => /pe.?bli/i.test(h));
+        if (peIdx === -1) throw new Error(`CSV lacks a pe_bli column: ${header.join(",")}`);
+        return new Set(rows.slice(1).map((r) => r[peIdx]).filter(Boolean));
+      };
+      const visiblePeSet = () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll("tr[data-program-row]")]
+            .filter((tr) => tr.offsetParent !== null)
+            .map((tr) => tr.getAttribute("data-pe"))
+        );
+
+      try {
+        const csvSet = await csvPeSet();
+        const visSet = new Set(await visiblePeSet());
+        const missing = [...visSet].filter((pe) => !csvSet.has(pe));
+        const extra = [...csvSet].filter((pe) => !visSet.has(pe));
+        if (missing.length > 0 || extra.length > 0) {
+          errors.push(
+            `leg c: CSV/view mismatch (missing ${missing.length}, extra ${extra.length})`
+          );
+        } else {
+          notes.push(`leg c: CSV matches view (${csvSet.size} programs) ✓`);
+        }
+      } catch (e) {
+        errors.push(`leg c: CSV export failed: ${e.message}`);
+      }
+
+      // ---- filter narrows + filtered CSV matches ----
+      {
+        const target = matrix.orgs[0].programs[0];
+        const filterInput = page.locator('[data-testid="years-filter"]');
+        if ((await filterInput.count()) === 0) {
+          errors.push('leg c: no [data-testid="years-filter"] input');
+        } else {
+          await filterInput.fill(target.pe_bli);
+          await page.waitForTimeout(300);
+          const vis = await visiblePeSet();
+          if (!vis.includes(target.pe_bli)) {
+            errors.push(`leg c: filter by ${target.pe_bli} hid the matching program`);
+          }
+          if (vis.length >= nPrograms) {
+            errors.push(`leg c: filter did not narrow rows (${vis.length} visible)`);
+          }
+          try {
+            const csvSet = await csvPeSet();
+            const visSet = new Set(vis);
+            if (
+              csvSet.size !== visSet.size ||
+              [...csvSet].some((pe) => !visSet.has(pe))
+            ) {
+              errors.push("leg c: filtered CSV does not match the filtered view");
+            } else {
+              notes.push(`leg c: filter narrows to ${vis.length} row(s), CSV matches ✓`);
+            }
+          } catch (e) {
+            errors.push(`leg c: filtered CSV export failed: ${e.message}`);
+          }
+          await filterInput.fill("");
+        }
+      }
+
+      // ---- Leg (e) UI: Δ cell breakdown table in the citation panel ----
+      {
+        const delta = deltaCells[0];
+        if (!delta) {
+          errors.push("leg e: no Δ cell available for the breakdown UI check");
+        } else {
+          const cite = page.locator(`[data-fact-id="${delta.cell.fid}"]`).first();
+          if ((await cite.count()) === 0) {
+            errors.push(`leg e: no [data-fact-id="${delta.cell.fid}"] Δ cite on /years/`);
+          } else {
+            await cite.click();
+            const panel = await page
+              .waitForSelector('[data-testid="citation-panel"]', { timeout: 10000 })
+              .catch(() => null);
+            if (!panel) {
+              errors.push("leg e: citation panel did not open from a Δ cell");
+            } else {
+              const table = await page
+                .waitForSelector('[data-testid="breakdown-table"]', { timeout: 10000 })
+                .catch(() => null);
+              if (!table) {
+                errors.push("leg e: breakdown table not shown for a Δ derived citation");
+              } else {
+                const sumV = await page.evaluate(() => {
+                  const el = document.querySelector('[data-testid="breakdown-sum"][data-v]');
+                  return el ? Number(el.getAttribute("data-v")) : null;
+                });
+                const recorded = Number(citations[delta.cell.fid].recorded_value);
+                if (sumV == null || Math.abs(sumV - recorded) > TOL_CELL) {
+                  errors.push(
+                    `leg e: breakdown sum row ${sumV} != derived recorded ${recorded}`
+                  );
+                }
+                try {
+                  const [download] = await Promise.all([
+                    page.waitForEvent("download", { timeout: 15000 }),
+                    page.locator('[data-testid="breakdown-csv"]').click(),
+                  ]);
+                  const rows = parseCsv(fs.readFileSync(await download.path(), "utf8"));
+                  const nTableRows = await page
+                    .locator('[data-testid="breakdown-table"] tbody tr')
+                    .count();
+                  if (rows.length - 1 !== nTableRows) {
+                    errors.push(
+                      `leg e: breakdown CSV has ${rows.length - 1} data rows, table has ${nTableRows}`
+                    );
+                  } else {
+                    notes.push("leg e: breakdown UI (inline table + sum + CSV) ✓");
+                  }
+                } catch (e) {
+                  errors.push(`leg e: breakdown CSV export failed: ${e.message}`);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (consoleErrors.length > 0) {
+        errors.push(
+          `leg c: ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 3).join(" | ")}`
+        );
+      }
+    }
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+
+  return { pass: errors.length === 0, errors, notes };
+}

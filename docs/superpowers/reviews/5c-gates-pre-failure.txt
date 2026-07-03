@@ -285,3 +285,48 @@ PASS: true (staleness leg)
 NOTES:
   build-meta git_head: be07ca87 ✓
   build freshness: out/ is newer than all watched source files ✓
+
+=== G8 yearsmatrix ===
+(Phase 5D — gate 20, built FIRST per house rules. Recorded 2026-07-02 against
+the current build: Task 1 exporter artifacts present (years_matrix.json,
+cite-shards/, breakdowns/ — Task 3b exporter half landed early to batch
+export-site runs); the /years/ page does NOT exist yet (Task 4), so leg c
+fails and the leg-e UI sub-checks (inline Δ breakdown table + CSV) are
+unreachable behind the missing page. Legs a/b/d and the static half of leg e
+pass against the freshly exported data — which legs fail is exactly the
+missing-page surface, as expected pre-implementation.)
+
+Run: node standalone runner (serve-static on out/ + runYearsMatrixGate):
+
+PASS: false
+NOTES:
+  matrix: 462 programs / 24 orgs / 336291 bytes
+  leg a: 46/46 sampled cells recomputed from the lake ✓
+  leg b: 46 sampled citations verified ✓
+  leg d: 3520 matrix fids + full 72165-fid shard union verified ✓
+  leg e: eligible derived facts by class: difference=874 district=116 agency_fy24=20 traj_sum=44 agency_fy26=14
+  leg e: 15/15 sampled breakdowns verified ✓
+ERRORS:
+  ✗ leg c: /years/ returned status 404
+
+--- planted-corruption proof (every static leg has teeth) ---
+Method: in one run, (1) years_matrix.json first sampled cell v +9999,
+(2) removed one matrix fid from its cite-shard, (3) breakdown row v +1000
+on the first sampled difference-class fact. Gate output:
+
+PASS: false
+ERRORS:
+  ✗ leg a: program cell 0203735A/fy_2024_actuals payload=233718 lake=223719
+  ✗ leg b: workbook cell 0203735A/fy_2024_actuals v=233718 != amount_thousands=223719
+  ✗ leg d: matrix fid c6fc0f5281880122 missing from its shard
+  ✗ leg d: shard union has 72164 fids but citations.json has 72165
+  ✗ leg e: breakdown 0020e98cc83a9076 rows sum 310 != recorded -690.000
+  ✗ leg c: /years/ returned status 404
+
+Reverted all three planted values; gate output returned to the single
+missing-page failure above (legs a/b/d/e-static ✓, leg c ✗).
+
+Bonus catch during pre-failure: the gate's leg-a "every column type sampled"
+check exposed that fy_2025_supplemental shipped as an all-empty column (its
+only 2 workbook rows belong to pe_blis outside the 462-program set) — fixed
+in the exporter (empty amount_type columns are now pruned; TDD'd).

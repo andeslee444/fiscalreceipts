@@ -39,6 +39,8 @@ import { runAnswerfoldGate } from "./gates/answerfold.mjs";
 import { runMotionGate } from "./gates/motion.mjs";
 import { runReceiptMomentGate } from "./gates/receiptmoment.mjs";
 import { runPersonasGate } from "./gates/personas.mjs";
+// Phase 5D gates
+import { runYearsMatrixGate } from "./gates/yearsmatrix.mjs";
 
 const PORT = 4173;
 
@@ -158,6 +160,12 @@ async function main() {
     const g19 = await runPersonasGate({ baseUrl: BASE_URL });
     gateResults.push({ n: 19, name: "personas", pass: g19.pass });
     printGate(19, "personas", g19);
+
+    // ── Gate 20: yearsmatrix (Phase 5D — G8, static + live hybrid) ────────
+    console.log("\n--- gate 20 yearsmatrix ---");
+    const g20 = await runYearsMatrixGate({ baseUrl: BASE_URL });
+    gateResults.push({ n: 20, name: "yearsmatrix", pass: g20.pass });
+    printGate(20, "yearsmatrix", g20);
   } finally {
     // Stop the server before LHCI (LHCI serves its own static dist)
     await serverHandle.close();
