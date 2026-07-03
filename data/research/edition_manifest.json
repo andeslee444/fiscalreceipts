@@ -20,11 +20,23 @@
       "status": "loaded"
     },
     "2018": {
+      "budget_lines": 30043,
       "date": "2026-07-03",
-      "discovered": 3,
-      "reason": "probe failed: discovered 3/[30,45] classifiable documents (rollups only). Edition publishes consolidated Defense-Wide volumes with U_ prefixes (U_RDTE_MasterJustificationBook_Defense-Wide_PB_2018_20170524.pdf, U_PROCUREMENT_MasterJustificationBook_Defense-Wide_PB_2018_v4.pdf, U_RDTE_*_DTRA/MDA) that the registry's ^(RDTE|PROC)[_-] classifier misses. Classifier + probe-envelope extension deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "detail_facts": 3768,
+      "discovered": 10,
+      "documents": 10,
+      "downloaded": 10,
+      "provenance": {
+        "ambiguous_first": 1893,
+        "total": 3768,
+        "unique": 1275,
+        "unresolved": 1,
+        "zero_amount": 599
+      },
+      "reason": "loaded: 10 docs (10 downloaded), 30043 budget_lines, 3768 detail facts, 2291 recon checks",
+      "recon_checks": 2291,
+      "sample_pe_count": 8,
+      "status": "loaded"
     },
     "2019": {
       "date": "2026-07-03",
