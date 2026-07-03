@@ -44,7 +44,7 @@ def load_p1_rollup(
 
     P-1 rows are (BLI x cost type x BSA) grain with Add/Non-Add memo rows;
     this loader keeps 'Add' rows only, melts the per-FY '... Amount' columns
-    (slug drops the suffix so amount_types align with SCENARIO_MAP: fy_2024_actuals etc.),
+    (slug drops the suffix so amount_types align with reconcile.scenario_map: fy_2024_actuals etc.),
     and sums to (account, organization, budget activity, BLI) grain. Returns upserts.
     """
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)

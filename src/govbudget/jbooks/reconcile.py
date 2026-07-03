@@ -4,16 +4,21 @@ import psycopg
 
 TOLERANCE_M = Decimal("0.001")
 
-# XML scenario -> candidate R-1 amount_type slugs. Gate B passes if ANY
-# candidate matches within tolerance (PB books split base/OOC/total
-# differently per org). PB2026: PriorYear=FY2024 actuals, CurrentYear=FY2025,
-# BudgetYearOne=FY2026 total request, BudgetYearOneBase=FY2026 base/disc.
-SCENARIO_MAP: dict[str, list[str]] = {
-    "PriorYear": ["fy_2024_actuals"],
-    "CurrentYear": ["fy_2025_total", "fy_2025_enacted"],
-    "BudgetYearOne": ["fy_2026_total", "fy_2026_disc_request"],
-    "BudgetYearOneBase": ["fy_2026_disc_request", "fy_2026_total"],
-}
+def scenario_map(fiscal_year: int) -> dict[str, list[str]]:
+    """XML scenario -> candidate R-1 amount_type slugs for one PB edition.
+
+    Gate B passes if ANY candidate matches within tolerance (PB books split
+    base/OOC/total differently per org). Scenario names are edition-relative:
+    for edition year N, PriorYear=FY(N-2) actuals, CurrentYear=FY(N-1),
+    BudgetYearOne=FY(N) total request, BudgetYearOneBase=FY(N) base/disc.
+    """
+    py, cy, by = fiscal_year - 2, fiscal_year - 1, fiscal_year
+    return {
+        "PriorYear": [f"fy_{py}_actuals"],
+        "CurrentYear": [f"fy_{cy}_total", f"fy_{cy}_enacted"],
+        "BudgetYearOne": [f"fy_{by}_total", f"fy_{by}_disc_request"],
+        "BudgetYearOneBase": [f"fy_{by}_disc_request", f"fy_{by}_total"],
+    }
 
 # Extracted but intentionally not reconciled: no R-1 display analog.
 # Marts and the accuracy gate treat these as not-served-by-design,
@@ -84,13 +89,14 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             "where document_id=%s and not superseded and project_number is null",
             (document_id,),
         ).fetchall()
+        edition_map = scenario_map(fy)
+        total_type = f"fy_{fy}_total"
+        recon_type = f"fy_{fy}_reconciliation_request"
         for pe_bli, scenario, amount_m in pe_rows:
-            candidates = SCENARIO_MAP.get(scenario)
+            candidates = edition_map.get(scenario)
             if not candidates:
                 continue
-            fetch_types = list(candidates) + [
-                "fy_2026_total", "fy_2026_reconciliation_request",
-            ]
+            fetch_types = list(candidates) + [total_type, recon_type]
             row = con.execute(
                 "select amount_type, sum(amount_thousands) from budget_lines "
                 "where pe_bli=%s and amount_type = any(%s) "
@@ -105,11 +111,11 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 if by_type.get(t) is not None
             ]
             if scenario in ("BudgetYearOne", "BudgetYearOneBase"):
-                total = by_type.get("fy_2026_total")
-                recon = by_type.get("fy_2026_reconciliation_request")
+                total = by_type.get(total_type)
+                recon = by_type.get(recon_type)
                 if total is not None and recon is not None:
                     present.append((
-                        "fy_2026_total_minus_recon",
+                        f"fy_{fy}_total_minus_recon",
                         (total - recon) / Decimal(1000),
                     ))
             match = next(

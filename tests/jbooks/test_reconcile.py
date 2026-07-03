@@ -4,7 +4,7 @@ from pathlib import Path
 import psycopg
 
 from govbudget.jbooks.load_details import load_document_details
-from govbudget.jbooks.reconcile import SCENARIO_MAP, reconcile_document
+from govbudget.jbooks.reconcile import reconcile_document, scenario_map
 from govbudget.jbooks.registry import upsert_documents
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_fy2026_excerpt.xml"
@@ -97,9 +97,64 @@ def test_gate_a_checks_project_sums(pg_dsn):
 
 
 def test_scenario_map_covers_core_scenarios():
-    assert SCENARIO_MAP["PriorYear"][0] == "fy_2024_actuals"
-    assert "fy_2025_total" in SCENARIO_MAP["CurrentYear"]
-    assert "fy_2026_disc_request" in SCENARIO_MAP["BudgetYearOne"]
+    m = scenario_map(2026)
+    assert m["PriorYear"][0] == "fy_2024_actuals"
+    assert "fy_2025_total" in m["CurrentYear"]
+    assert "fy_2026_disc_request" in m["BudgetYearOne"]
+
+
+def test_scenario_map_2026_pins_pb2026_semantics():
+    # Regression pin: byte-identical to the pre-5E module constant.
+    assert scenario_map(2026) == {
+        "PriorYear": ["fy_2024_actuals"],
+        "CurrentYear": ["fy_2025_total", "fy_2025_enacted"],
+        "BudgetYearOne": ["fy_2026_total", "fy_2026_disc_request"],
+        "BudgetYearOneBase": ["fy_2026_disc_request", "fy_2026_total"],
+    }
+
+
+def test_scenario_map_2025_shifts_every_year_by_one():
+    assert scenario_map(2025) == {
+        "PriorYear": ["fy_2023_actuals"],
+        "CurrentYear": ["fy_2024_total", "fy_2024_enacted"],
+        "BudgetYearOne": ["fy_2025_total", "fy_2025_disc_request"],
+        "BudgetYearOneBase": ["fy_2025_disc_request", "fy_2025_total"],
+    }
+
+
+def test_scenario_map_2017_shifts_every_year_by_nine():
+    assert scenario_map(2017) == {
+        "PriorYear": ["fy_2015_actuals"],
+        "CurrentYear": ["fy_2016_total", "fy_2016_enacted"],
+        "BudgetYearOne": ["fy_2017_total", "fy_2017_disc_request"],
+        "BudgetYearOneBase": ["fy_2017_disc_request", "fy_2017_total"],
+    }
+
+
+def test_reconcile_uses_edition_year_map(pg_dsn):
+    # A PB2025 document: PriorYear must reconcile against fy_2023_actuals,
+    # not the PB2026 fy_2024_actuals column.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2025,
+        "title": "darpa25.pdf", "source_url": "https://example.test/darpa25.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
+            " amount_type, amount_thousands) values ('R-1',2025,'0400','DARPA','0601101E',"
+            " 'fy_2023_actuals', %s)",
+            (Decimal("280494"),),
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert check[0] is True
+    assert "fy_2023_actuals" in check[1]
 
 
 def test_gate_b_ignores_other_org_control_rows(pg_dsn):
@@ -192,7 +247,7 @@ def test_budget_year_one_base_is_reconciled(pg_dsn):
     from govbudget.jbooks.reconcile import DESIGN_EXCLUDED_SCENARIOS
 
     assert "AllPriorYears" in DESIGN_EXCLUDED_SCENARIOS
-    assert "BudgetYearOneBase" in SCENARIO_MAP
+    assert "BudgetYearOneBase" in scenario_map(2026)
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
     with psycopg.connect(pg_dsn) as con:
