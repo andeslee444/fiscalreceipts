@@ -36,6 +36,7 @@ All gate functions take explicit paths — never read config at module level.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -203,9 +204,20 @@ def cmd_verify_phase5b3(args) -> None:
 
     # ── npm verify (gates 1-12) ────────────────────────────────────────────────
     print("--- npm verify (gates 1-12) ---")
+    # Gate 1's sitemap-origin leg needs the canonical site origin at verify
+    # time; inheriting a shell without NEXT_PUBLIC_SITE_URL fails the gate on
+    # environment, not content (the backlog-#18 footgun). Default it here so
+    # the wrapped verify is deterministic; an explicit env still wins.
+    npm_env = {
+        **os.environ,
+        "NEXT_PUBLIC_SITE_URL": os.environ.get(
+            "NEXT_PUBLIC_SITE_URL", "https://fiscalreceipts.com"
+        ),
+    }
     result_npm = subprocess.run(
         ["npm", "--prefix", str(site_dir), "run", "verify"],
         cwd=str(repo_root),
+        env=npm_env,
     )
     npm_ok = result_npm.returncode == 0
 
