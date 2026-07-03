@@ -63,6 +63,25 @@
   --ease-decelerate: cubic-bezier(0, 0, 0, 1);
   --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
 
+  /* ── /flow/ chart palette (Phase 5H) ──
+     Competition classes use the Okabe-Ito colorblind-safe palette (indexes
+     mirror the payload's competed_classes order); "not competed" additionally
+     carries an SVG hatch pattern so the sole-source story never rides on hue
+     alone. The budget river stays monochrome slate — the two rivers must
+     read as different systems at a glance. */
+  --flow-class-full: #0072b2; /* full_and_open */
+  --flow-class-setaside: #009e73; /* set_aside */
+  --flow-class-otherfull: #e69f00; /* other_than_full */
+  --flow-class-notcomp: #d55e00; /* not_competed (hatched) */
+  --flow-negative: #b91c1c; /* net de-obligation hairlines */
+  --flow-node-budget: oklch(0.4 0.02 260);
+  --flow-node-spend: oklch(0.32 0 0);
+  --flow-node-other: oklch(0.6 0.01 260);
+  --flow-band-budget: oklch(0.62 0.03 260);
+  --flow-band-gap: oklch(0.85 0.005 260);
+  --flow-bridge-ok: oklch(0.45 0.09 165);
+  --flow-bridge-gap: oklch(0.72 0.01 260);
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -272,6 +291,60 @@ span.interactive-raise:hover {
   animation: flow-dot-travel var(--flow-dur, calc(var(--motion-story) * 6))
     linear infinite;
   will-change: transform;
+}
+
+/* ── /flow/ flowdown chart (Phase 5H) ───────────────────────────────────────
+   Compositor-only: opacity transitions on hover, an opacity fade on FY
+   remount, and an opacity+transform pop for the drill-down dialog. All on
+   motion tokens — reduced motion collapses them to the final frame via the
+   token override below. */
+.flow-node {
+  cursor: pointer;
+}
+.flow-node:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.flow-node .flow-node-rect {
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.flow-node:hover .flow-node-rect,
+.flow-node:focus-visible .flow-node-rect {
+  opacity: 0.8;
+}
+.flow-band {
+  opacity: 0.55;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.flow-edge:hover .flow-band {
+  opacity: 0.85;
+}
+@keyframes flow-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.flow-fade-in {
+  animation: flow-fade-in var(--motion-slow) var(--ease-decelerate);
+}
+@keyframes flow-drill-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.flow-drill-pop[data-state="open"] {
+  animation: flow-drill-pop var(--motion-base) var(--ease-decelerate);
+}
+.flow-tooltip {
+  transition: opacity var(--motion-fast) var(--ease-standard);
 }
 
 /* ── Category hero animations (Task 8a) ─────────────────────────────────────
