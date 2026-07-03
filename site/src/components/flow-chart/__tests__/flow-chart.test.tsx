@@ -231,6 +231,8 @@ describe("FlowChart", () => {
     const neg = document.querySelector("[data-flow-negative]");
     expect(neg).not.toBeNull();
     // The honest negative value travels on the accessible label.
+    // role="img" makes aria-label permitted on <path> (axe aria-prohibited-attr).
+    expect(neg!.getAttribute("role")).toBe("img");
     expect(neg!.getAttribute("aria-label")).toContain("−50");
   });
 

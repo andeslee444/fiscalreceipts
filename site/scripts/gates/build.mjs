@@ -6,7 +6,7 @@
  *   trajectory-only feed programs)
  * - agency pages == distinct orgs from agencies.json
  * - company pages == 200 (entities_top.json count)
- * - core pages present (/, /programs, /companies, /data, /downloads, /methodology, /about)
+ * - core pages present (/, /programs, /companies, /data, /flow, /downloads, /methodology, /about)
  * - out/pagefind/pagefind.js exists
  * - sitemap URL count == emitted pages AND every URL starts with SITE_URL origin
  * - robots.txt present
@@ -237,6 +237,7 @@ export async function runBuildGate() {
     { path: path.join("programs", "index.html"), label: "/programs/" },
     { path: path.join("companies", "index.html"), label: "/companies/" },
     { path: path.join("data", "index.html"), label: "/data/" },
+    { path: path.join("flow", "index.html"), label: "/flow/" },
     { path: path.join("downloads", "index.html"), label: "/downloads/" },
     { path: path.join("methodology", "index.html"), label: "/methodology/" },
     { path: path.join("about", "index.html"), label: "/about/" },
@@ -303,15 +304,16 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(7) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(7) = /, /programs/, /companies/, /data/, /downloads/, /methodology/, /about/
+    // Expected: static(8) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(8) = /, /programs/, /companies/, /data/, /flow/, /downloads/, /methodology/, /about/
+    // (/flow/ added in Phase 5H — sitemap.ts static core pages.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
     const expectedTotal =
-      7 + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
+      8 + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
       errors.push(
-        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${sitemapProgramCount} programs (${programCount} pages − ${zeroContentCount} zero-content noindex) + ${companyCount} companies + ${agencyCount} agencies)`
+        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (8 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${sitemapProgramCount} programs (${programCount} pages − ${zeroContentCount} zero-content noindex) + ${companyCount} companies + ${agencyCount} agencies)`
       );
     } else {
       notes.push(`sitemap: ${sitemapCount} URLs ✓ (${zeroContentCount} zero-content program page(s) excluded)`);

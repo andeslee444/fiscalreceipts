@@ -626,6 +626,7 @@ function RiverSvg({
                 strokeWidth={1.25}
                 strokeDasharray="4 3"
                 data-flow-negative=""
+                role="img"
                 aria-label={`${src.label} to ${nodes[e.t].label}: ${displayAmount(e.v, units)} ${units} (net de-obligation)`}
                 className="flow-band"
               />
