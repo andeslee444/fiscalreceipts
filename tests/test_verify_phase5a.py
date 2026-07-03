@@ -245,32 +245,34 @@ class TestMatchGate5a:
         assert result["matched_fraction"] == pytest.approx(0.2)
         assert len(result["unmatched_families"]) == 8
 
-    def test_pass_boundary_86_pct(self, tmp_path):
-        """Exactly 86% match (43 of 50) → PASS at the ≥85% threshold.
+    def test_pass_boundary_80_pct(self, tmp_path):
+        """Exactly 80% match (40 of 50) → PASS.
 
-        Documented-expectation update (5A backlog #1, 2026-07): the threshold
-        moved 0.80 → 0.85 after curated aliases for Booz Allen, ADS Tactical,
-        Vertex (V2X fka), and Shell E&P raised the live floor to 44/50 = 88%.
-        43/50 is the lowest whole-family fraction that still passes.
+        NOTE (5A backlog #1, 2026-07): a raise to 0.85 is STAGED, not live —
+        the curated aliases for Booz Allen / ADS Tactical / Vertex / Shell E&P
+        only take effect at the next `govbudget influence pull` (those filings
+        were never returned by the original pull's query strings, so the live
+        floor is still 40/50). Move this boundary to 43/50 = 86% when the
+        re-pull lands and _MATCH_THRESHOLD moves to 0.85.
         """
         db = tmp_path / "t.duckdb"
         n = 50
         entities = self._make_entities(n)
         make_duckdb_with_influence(db, dim_entities_rows=entities)
-        # Match exactly 43 families (86%)
+        # Match exactly 40 families (80%)
         filings_rows = [
             (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
              "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
-            for i in range(43)
+            for i in range(40)
         ]
         filings_p = tmp_path / "lda_filings.parquet"
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is True
-        assert result["matched_fraction"] == pytest.approx(0.86)
+        assert result["matched_fraction"] == pytest.approx(0.80)
 
-    def test_fail_boundary_84_pct(self, tmp_path):
-        """42 of 50 = 84% < 85% → FAIL (proof the hardened threshold bites)."""
+    def test_fail_boundary_78_pct(self, tmp_path):
+        """39 of 50 = 78% < 80% → FAIL (proof the threshold bites)."""
         db = tmp_path / "t.duckdb"
         n = 50
         entities = self._make_entities(n)
@@ -278,13 +280,13 @@ class TestMatchGate5a:
         filings_rows = [
             (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
              "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
-            for i in range(42)
+            for i in range(39)
         ]
         filings_p = tmp_path / "lda_filings.parquet"
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is False
-        assert result["matched_fraction"] == pytest.approx(0.84)
+        assert result["matched_fraction"] == pytest.approx(0.78)
 
     def test_match_method_none_not_counted(self, tmp_path):
         """Filings with match_method='none' do NOT count as matched."""

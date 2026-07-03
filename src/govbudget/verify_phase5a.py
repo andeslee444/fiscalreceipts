@@ -4,7 +4,7 @@ Gates (CLI: verify-phase5a):
   1. provenance_gate5a  — every row in lda_filings has a non-empty uuid AND url;
                           at least 1 row present.
   2. match_gate5a       — of the top-50 families by obligation (same ordering as
-                          pull_top_families), ≥85% have ≥1 filing row matched
+                          pull_top_families), ≥80% have ≥1 filing row matched
                           (match_method != 'none'). Reports unmatched families
                           for Phase 5B alias work.  Also validates that every
                           existing 'normalized'-stamped row passes the
@@ -38,18 +38,28 @@ _MATCH_TOP_N = 50
 
 # Thresholds
 # _MATCH_THRESHOLD history:
-#   0.80 — Phase 5A launch spec (gate passed at exactly 40/50).
-#   0.85 — 5A backlog #1 (2026-07): curated aliases added for Booz Allen,
-#          ADS Tactical, Vertex (V2X fka), and Shell E&P raised the floor to
-#          44/50 = 88%.  Data legitimately improved, so the documented
-#          expectation moves UP.  0.85 (not 0.88) leaves one-family headroom
-#          against obligation-ranking drift in the top-50 list.  The remaining
-#          6 unmatched families were verified against the live LDA API as
-#          having zero 2024-2026 filings under any client-name spelling
-#          (Bell Boeing JPO, Domestic Awardees (Undisclosed), Northrop Grumman
-#          Innovation Systems, Fluor Marine Propulsion, MacAndrews & Forbes,
-#          Health Net).
-_MATCH_THRESHOLD = 0.85
+#   0.80 — Phase 5A launch spec (gate passed at exactly 40/50). CURRENT.
+#   STAGED (5A backlog #1, 2026-07): curated aliases for Booz Allen, ADS
+#          Tactical, Vertex (V2X fka), and Shell E&P are in
+#          client_aliases.csv, with client-name spellings verified against
+#          the live LDA API (each has ≥1 filing in 2024–2026).  The aliases
+#          only take effect at the next `govbudget influence pull` — the
+#          Booz Allen / ADS / Shell filings were never returned by the
+#          original pull's query strings, so no offline restamp can match
+#          them.  After that re-pull lands (and its downstream: dbt
+#          influence marts, mentions, export-site, dossier-citation check),
+#          raise this to 0.85 (expected floor 44/50 = 88%; 0.85 leaves
+#          one-family headroom for obligation-ranking drift).  Caveat found
+#          in review: the pull's global UUID dedup attributes a filing to
+#          the FIRST family whose query returns it, even at match 'none' —
+#          the fka-Vertex filings are currently consumed by VECTRUS's 'V2X'
+#          query, so the Vertex match depends on obligation ordering.  The
+#          remaining 6 unmatched families were verified against the live
+#          LDA API as having zero 2024–2026 filings under any client-name
+#          spelling (Bell Boeing JPO, Domestic Awardees (Undisclosed),
+#          Northrop Grumman Innovation Systems, Fluor Marine Propulsion,
+#          MacAndrews & Forbes, Health Net).
+_MATCH_THRESHOLD = 0.80
 _MIN_FAMILIES_WITH_BOTH = 30
 _MIN_MENTION_ROWS = 10
 _MIN_MENTION_PE_BLI = 3
@@ -105,7 +115,7 @@ def provenance_gate5a(filings_parquet_path: Path) -> dict:
 
 
 def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
-    """Gate 2: of top-50 families by obligation, ≥85% have ≥1 matched filing.
+    """Gate 2: of top-50 families by obligation, ≥80% have ≥1 matched filing.
 
     'Matched' means the filing carries that family's family_key_guess with
     match_method != 'none'.  Families with zero filings or only 'none'-method
