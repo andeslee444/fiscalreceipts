@@ -176,6 +176,36 @@ def test_classify_jbook_pb2019_to_pb2023_consolidated_volumes():
     assert _classify_jbook("OSD_PB2023.pdf") is None  # same filename in both dirs
 
 
+def test_discover_evidence_paths_pb2023_osd_cbdp():
+    """PB2023 publishes tokenless '{ORG}_PB2023.pdf' twins under BOTH
+    02_Procurement/ and 03_RDT_and_E/ — the filename alone is ambiguous.
+    EVIDENCE_PATHS classifies the 03_RDT_and_E OSD/CBDP books by URL path
+    (their embedded XML is U_RDTE_MJB_*_{OSD,CBDP}_PB_2023, verified live —
+    Finding B: they are NOT duplicates; the loaded edition had zero OSD/CBDP
+    detail rows). The 02_Procurement twins (duplicates of PROC_MJB_DW_Vol1)
+    and other tokenless twins stay unregistered."""
+    base = "/Portals/45/Documents/defbudget/fy2023/budget_justification/pdfs"
+    html = "<html><body>" + "".join(
+        f'<a href="{base}/{d}/{n}_PB2023.pdf">{n}</a>'
+        for d in ("02_Procurement", "03_RDT_and_E")
+        for n in ("OSD", "CBDP", "DISA", "DTRA")
+    ) + "</body></html>"
+
+    def handler(request):
+        return httpx.Response(200, text=html)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        docs = discover_documents(
+            client, BASE + "/Budget-Materials/Budget2023/", fiscal_year=2023
+        )
+    got = {
+        (d["org"], d["exhibit_family"]): d["source_url"] for d in docs
+    }
+    assert set(got) == {("OSD", "rdte"), ("CBDP", "rdte")}
+    assert "03_RDT_and_E/OSD_PB2023.pdf" in got[("OSD", "rdte")]
+    assert "03_RDT_and_E/CBDP_PB2023.pdf" in got[("CBDP", "rdte")]
+
+
 def test_discover_unquotes_percent_encoded_titles():
     """PB2020's MDA volume is linked with an encoded space; the stored title
     is the decoded filename, and classification sees the decoded tokens."""

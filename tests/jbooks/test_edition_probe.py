@@ -471,3 +471,34 @@ def test_backfill_acquire_failure_records_load_failed(monkeypatch, tmp_path):
     editions = json.loads(manifest_path.read_text())["editions"]
     assert editions["2025"]["status"] == "load_failed"
     assert "RDTE_X_PB_2025.pdf" in editions["2025"]["reason"]
+
+
+def test_record_exclusions_shape_and_replacement(tmp_path):
+    """Finding C: exclusions land in the manifest, sorted, whole-list
+    replacement (regeneration is idempotent), malformed entries rejected."""
+    import json
+
+    from govbudget.jbooks.edition_probe import record_exclusions
+
+    manifest = tmp_path / "edition_manifest.json"
+    record_exclusions(manifest, 2017, [
+        {"filename": "b.pdf", "rule": "niche-fund", "reason": "JIDF fund"},
+        {"filename": "a.pdf", "rule": "numeric-index-duplicate",
+         "reason": "numeric copy"},
+    ])
+    entry = json.loads(manifest.read_text())["editions"]["2017"]
+    assert [e["filename"] for e in entry["exclusions"]] == ["a.pdf", "b.pdf"]
+
+    # regeneration replaces wholesale
+    record_exclusions(manifest, 2017, [
+        {"filename": "c.pdf", "rule": "tokenless-undecidable", "reason": "twin"},
+    ])
+    entry = json.loads(manifest.read_text())["editions"]["2017"]
+    assert [e["filename"] for e in entry["exclusions"]] == ["c.pdf"]
+
+    with pytest.raises(ValueError, match="malformed"):
+        record_exclusions(manifest, 2017, [
+            {"filename": "d.pdf", "rule": "because-i-said-so", "reason": "no"},
+        ])
+    with pytest.raises(ValueError, match="malformed"):
+        record_exclusions(manifest, 2017, [{"filename": "d.pdf"}])

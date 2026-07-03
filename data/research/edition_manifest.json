@@ -7,6 +7,23 @@
       "discovered": 36,
       "documents": 36,
       "downloaded": 36,
+      "exclusions": [
+        {
+          "filename": "1_PROCUREMENT_MasterJustificationBook_Defense_Wide_PB_2017_Vol_1.pdf",
+          "reason": "leading numeric index: consolidated Defense-Wide volume duplicating the loaded per-agency book set",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "5_RDTE_MasterJustificationBook_Defense_Wide_PB_2017_Vol_5.pdf",
+          "reason": "leading numeric index: consolidated Defense-Wide volume duplicating the loaded per-agency book set",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "JIDO_PB17_2093D_J-Book_SCOMBFinal_Feb16.pdf",
+          "reason": "JIDF niche-fund book (2093D); no embedded master-book evidence. PB2017's two P-1 2093D lines ($408M) have no detail rows \u2014 small honest gap (no other PB2017 book carries 2093D).",
+          "rule": "niche-fund"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 1910,
         "total": 3642,
@@ -26,6 +43,158 @@
       "discovered": 10,
       "documents": 10,
       "downloaded": 10,
+      "exclusions": [
+        {
+          "filename": "CBDP_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DCAA_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DCMA_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DCMA_0400D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DHRA_0300D_FY18_PB.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DHRA_0400D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DISA_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DISA_0400D_FY18_PB_Final.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DLA_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DLA_0400D_FY18_PB_final.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DMA_0300D_FY18_PB.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DPAA_0300D_FY18_PB.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DPA_0360D_FY18_PB_v2.pdf",
+          "reason": "DPA niche-fund book (0360D); the loaded DW procurement MJB carries a single consolidated 0360D line item, so item-level DPA detail beyond it is a small honest gap (1 of PB2018's 2 P-1 0360D lines has detail rows).",
+          "rule": "niche-fund"
+        },
+        {
+          "filename": "DSCA_0400D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DSS_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DSS_0400D_FY18_PB_Final.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DTIC_0400D_FY18_PB_Final.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DTRA_0300D_FY18_PB_v3.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "DTRA_JIDF_2093D_PB18JBook_Final_18May17.pdf",
+          "reason": "JIDF niche-fund book (2093D); the loaded DW procurement MJB carries the 2093D line items (verified: PB2018 details cover 2093D).",
+          "rule": "niche-fund"
+        },
+        {
+          "filename": "DoDEA_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "JUONS_0303D_PB18J-Book_Final_17May17.pdf",
+          "reason": "JUON niche-fund book (0303D); the loaded DW procurement MJB carries the 0303D line item.",
+          "rule": "niche-fund"
+        },
+        {
+          "filename": "OSD_0300D_FY18_PB_FINAL.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "OTE_0460D_FY18_PB_FINAL.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "SOCOM_0300D_FY18_B_3.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "SOCOM_0400D_FY18PB.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "TJS_0300D_FY18_PB_v2.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "TJS_0400D_FY18_PB_FINAL.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "U_RDTE_MasterJustificationBook_Defense_Threat_Reduction_Agency_PB_2018_1.pdf",
+          "reason": "standalone DTRA MJB duplicating the loaded U_RDTE Defense-Wide MJB, whose JustificationBookInfoList already includes DTRA (registry.EXCLUDED_NAMES, verified live Task 4).",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "WHS_0300D_FY18_PB_FINAL.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "WHS_0400D_FY18_PB_FINAL.pdf",
+          "reason": "per-agency account-code book; its org's lines are carried by the loaded consolidated Defense-Wide MJB (embedded-XML evidence, Task 4: EVIDENCE_NAMES pins exactly the per-agency books NOT covered)",
+          "rule": "evidence-duplicate"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 1893,
         "total": 3768,
@@ -45,6 +214,153 @@
       "discovered": 11,
       "documents": 11,
       "downloaded": 11,
+      "exclusions": [
+        {
+          "filename": "01_CBDP_FY19_PB-Procurement_Exhibits.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "01_DCAA_RDTE_MasterJustificationBook_PB_2019_FINAL.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "02_DCAA_FY19_PB_Procurement.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "02_DCMA_RDTE_MasterJustificationBook_Defense_Contract_Management_Agency_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "03_DCMA_PROCUREMENT_MasterJustificationBook_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "03_DHRA_FY2019_RDTE_J-Book.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "04_DHRA_FY2019_Procurement_J-Book.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "04_DISA_RDTE_PB19. Final_12_FEB_18.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "05_DISA_PB19_PROC_J-Book.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "05_DLA_PB19_0400D_JBOOK.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "06_DLA_0300_FY19_PB.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "06_DSCA_PB19_RDTE_JustificationBook.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "07_DMA_Procurement_J-Book_PB19.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "07_DSS_FY19_PB_BA07_0400_02052018.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "08_DPA_PB19.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "08_DTIC_RDTE_MasterJustificationBook_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "09_DSS_FY19_PB_BA01_0300.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "09_DTRA_RDTE_MasterJustificationBook_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "10_DTRA_PROCUREMENT_MasterJustificationBook_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "10_TJS_0400_FY19_PB.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "11_DODEA_PROCUREMENT_PB19.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "11_USSOCOM_FY19_0400_RDTE_J-Book.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "12_OSD_FY19_PB_Procurement.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "12_WHS_FY19PB_RDTE.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "13_DOTE_RDTE_MasterJustificationBook_PB_2019.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "13_TJS_0300_FY19 PB.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "14_USSOCOM_FY19 PB_ 0300_PROC_J-Book.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "15_WHS_FY19_PB_Procurement.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "17_JIDF_Procurement_PB19.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 1998,
         "total": 4980,
@@ -64,6 +380,163 @@
       "discovered": 10,
       "documents": 10,
       "downloaded": 10,
+      "exclusions": [
+        {
+          "filename": "01_0300_CBDP_PB_2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "01_0400_DCAA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "02_0300_DCAA_PB 2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "02_0400_DCMA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "03_0300_DCMA_PB_2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "03_0400_DHRA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "04_0300_DHRA_PB_2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "04_0400_DISA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "05_0300_DISA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "05_0400_DLA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "06_0300_DLA PB_2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "06_0400_DSCA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "07_0300_DMACT_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "07_0400_DSS_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "08_0300_DPAA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "08_0400_DTIC_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "09_0360_DPAP_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "09_0400_DTRA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "10_0300_DSS_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "10_0400_SDA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "11_0300_DTRA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "11_0400_TJS_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "12_0300_DODEA_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "12_0400_SOCOM_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "13_0300_OSD_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "13_0400_WHS_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "14_0300_TJS_ PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "14_0400_OTE_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "15_0300_SOCOM_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "16_0300_WHS_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        },
+        {
+          "filename": "17_0303_JUON_PB2020.pdf",
+          "reason": "leading numeric index: per-agency book duplicating the loaded consolidated volumes",
+          "rule": "numeric-index-duplicate"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 2089,
         "total": 3785,
@@ -83,6 +556,163 @@
       "discovered": 10,
       "documents": 10,
       "downloaded": 10,
+      "exclusions": [
+        {
+          "filename": "CBDP_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCAA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCAA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCMA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCMA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCSA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCSA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DHRA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DHRA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DISA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DISA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DLA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DLA_PB_2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DMACT_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DODEA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DPAA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DPAP_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DSCA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DSCA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTIC_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTRA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTRA_PB_2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "OSD_PB_2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "OTE_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SDA_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SOCOM_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SOCOM_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "TJS_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "TJS_PB_2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "WHS_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "WHS_PB2021.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 2022,
         "total": 3971,
@@ -102,6 +732,163 @@
       "discovered": 10,
       "documents": 10,
       "downloaded": 10,
+      "exclusions": [
+        {
+          "filename": "CBDP_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCAA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCMA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCMA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCSA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DCSA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DHRA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DHRA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DISA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DISA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DLA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DLA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DMA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DODEA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DPAA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DPAP_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DSCA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DSCA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTIC_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTRA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "DTRA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "OSD_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "OTE_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SDA_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SDA_PB2022_v2.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SOCOM_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "SOCOM_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "TJS_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "TJS_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "WHS_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "WHS_PB2022.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        }
+      ],
       "provenance": {
         "ambiguous_first": 1982,
         "total": 3885,
@@ -117,20 +904,172 @@
     "2023": {
       "budget_lines": 6756,
       "date": "2026-07-03",
-      "detail_facts": 2296,
-      "discovered": 8,
-      "documents": 8,
-      "downloaded": 8,
+      "detail_facts": 3805,
+      "discovered": 10,
+      "documents": 10,
+      "downloaded": 10,
+      "exclusions": [
+        {
+          "filename": "02_Procurement/CBDP_PB2023.pdf",
+          "reason": "tokenless twin; embeds U_PROCUREMENT_MJB_2204261421XAYF_CBDP_PB_2023 whose line items are carried by the loaded PROC_MJB_DW_Vol1 (downloaded + inspected 2026-07-03). The 03_RDT_and_E twin is NOT a duplicate and loads via registry.EVIDENCE_PATHS (Finding B).",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "02_Procurement/DCSA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DHRA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DISA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DLA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DMACT_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DODEA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DPAA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DPAP_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DSCA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/DTRA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/OSD_PB2023.pdf",
+          "reason": "tokenless twin; embeds U_PROCUREMENT_MJB_2204261444XAYF_OSD_PB_2023 whose line items are carried by the loaded PROC_MJB_DW_Vol1 (downloaded + inspected 2026-07-03). The 03_RDT_and_E twin is NOT a duplicate and loads via registry.EVIDENCE_PATHS (Finding B).",
+          "rule": "evidence-duplicate"
+        },
+        {
+          "filename": "02_Procurement/SDA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/SOCOM_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/TJS_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "02_Procurement/WHS_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DCAA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DCMA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DCSA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DHRA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DISA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DLA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DSCA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DTIC_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/DTRA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/OTE_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/SDA_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/SOCOM_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/TJS_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        },
+        {
+          "filename": "03_RDT_and_E/WHS_PB2023.pdf",
+          "reason": "tokenless '{ORG}_PB20xx' twin of the loaded consolidated volumes; verified 2026-07-03: the org's R-1 PEs / P-1 lines carry detail rows from the Vol1\u20135 sets",
+          "rule": "tokenless-undecidable"
+        }
+      ],
       "provenance": {
-        "ambiguous_first": 1222,
-        "total": 2296,
-        "unique": 759,
+        "ambiguous_first": 2053,
+        "total": 3805,
+        "unique": 1132,
         "unresolved": 0,
-        "zero_amount": 315
+        "zero_amount": 620
       },
-      "reason": "loaded: 8 docs (8 downloaded), 6756 budget_lines, 2296 detail facts, 1442 recon checks",
-      "recon_checks": 1442,
-      "sample_pe_count": 84,
+      "reason": "loaded: 10 docs (10 downloaded), 6756 budget_lines, 3805 detail facts, 2405 recon checks",
+      "recon_checks": 2405,
+      "sample_pe_count": 8,
       "status": "loaded"
     },
     "2024": {

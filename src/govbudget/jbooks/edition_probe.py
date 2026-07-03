@@ -203,6 +203,26 @@ def record_loaded(manifest_path: Path, fy: int, counts: dict, *,
     })
 
 
+def record_exclusions(manifest_path: Path, fy: int,
+                      exclusions: list[dict]) -> dict:
+    """Record an edition's intentionally-excluded J-book files.
+
+    Spec honesty rule 3: gaps live in the manifest, not agent reports. Each
+    entry is {filename, rule, reason} where rule ∈ {numeric-index-duplicate,
+    evidence-duplicate, tokenless-undecidable, niche-fund}. Entries are
+    sorted by filename for deterministic diffs; the list replaces any prior
+    exclusions for the edition (regeneration is idempotent — see
+    scripts/record_edition_exclusions.py).
+    """
+    allowed = {"numeric-index-duplicate", "evidence-duplicate",
+               "tokenless-undecidable", "niche-fund"}
+    for e in exclusions:
+        if set(e) != {"filename", "rule", "reason"} or e["rule"] not in allowed:
+            raise ValueError(f"malformed exclusion entry: {e!r}")
+    ordered = sorted(exclusions, key=lambda e: e["filename"])
+    return _update_edition(manifest_path, fy, {"exclusions": ordered})
+
+
 def record_failure(manifest_path: Path, fy: int, *, status: str, reason: str,
                    date: str | None = None) -> dict:
     """Record a structural load failure (post-probe) with a precise reason."""

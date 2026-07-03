@@ -60,6 +60,32 @@ EVIDENCE_NAMES = {
         ("procurement", "Missile_Defense_Agency"),
 }
 
+# Evidence-classified books whose FILENAME is ambiguous across index paths:
+# PB2023 publishes tokenless '{ORG}_PB2023.pdf' twins under BOTH
+# 02_Procurement/ and 03_RDT_and_E/, so the name alone cannot classify.
+# Keyed on the last two URL path segments. The two entries below are the
+# only PB2023 per-agency books NOT duplicated by the consolidated volumes:
+# the loaded edition had ZERO detail rows for all 104 OSD and all 8 CBDP
+# R-1 PEs until these load (adversarial review Finding B). Embedded-XML
+# evidence (downloaded + inspected live, 2026-07-03):
+#   03_RDT_and_E/OSD_PB2023.pdf  embeds U_RDTE_MJB_2204221117XAYF_OSD_PB_2023
+#     → 104 ProgramElements, BudgetYear 2023;
+#   03_RDT_and_E/CBDP_PB2023.pdf embeds U_RDTE_MJB_2204211718XAYF_CBDP_PB_2023
+#     → 8 ProgramElements, BudgetYear 2023.
+# Their 02_Procurement/ twins embed U_PROCUREMENT_MJB books whose line items
+# are already carried by PROC_MJB_DW_Vol1_PB_2023 — duplicates, recorded in
+# the edition manifest exclusions, never registered.
+EVIDENCE_PATHS = {
+    "03_RDT_and_E/OSD_PB2023.pdf": ("rdte", "OSD"),
+    "03_RDT_and_E/CBDP_PB2023.pdf": ("rdte", "CBDP"),
+}
+
+
+def _classify_by_path(url: str) -> tuple[str, str] | None:
+    """EVIDENCE_PATHS lookup on the URL's last two (unquoted) segments."""
+    tail = "/".join(unquote(url).rsplit("/", 2)[-2:])
+    return EVIDENCE_PATHS.get(tail)
+
 
 def _classify_jbook(name: str) -> tuple[str, str] | None:
     """Classify a J-book PDF filename -> (exhibit_family, org), or None.
@@ -134,7 +160,7 @@ def discover_documents(client: httpx.Client, index_url: str, *, fiscal_year: int
                 "title": name, "source_url": url,
             })
             continue
-        classified = _classify_jbook(name)
+        classified = _classify_by_path(url) or _classify_jbook(name)
         if classified:
             family, org = classified
             docs.append({
