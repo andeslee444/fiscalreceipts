@@ -242,6 +242,10 @@ def run(
             resp = client.messages.create(
                 model=MODEL,
                 max_tokens=1024,
+                # Deterministic sampling: the answer contract is copy-paste of
+                # the canonical string run_sql returns; temperature 0 keeps
+                # repeated eval runs from flaking on formatting/query choice.
+                temperature=0,
                 system=system,
                 tools=_TOOLS,
                 tool_choice=tool_choice,
