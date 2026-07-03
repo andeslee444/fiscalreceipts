@@ -112,6 +112,37 @@ verify_phase5b1 structure), `tests/test_verify_phase5e.py`.
   existing `_emit_breakdowns` once inputs carry fact_ids.
 - [ ] dbt build + tests green; verify-phase5e legs c+d PASS. Commit.
 
+**Binding requirements (adversarial review, 2026-07-03 — the Task 5 marts MUST
+honor all three):**
+
+1. **PB2019 OSD dual-volume dedup.** The PB2019 OSD RDT&E book ships as two
+   BA-split volumes (Vol_3A BA1–3, Vol_3B BA4–7) that EACH embed the complete
+   OSD MJB XML — the edition's jbook details carry identical (pe_bli, project,
+   scenario, amount) tuple sets under BOTH documents (jbook_documents ids
+   278/279 at time of review). Any Task 5 mart aggregating jbook details must
+   dedupe by distinct tuple or prefer exactly one of the two documents —
+   summing both silently doubles every PB2019 OSD figure.
+
+2. **Era procurement is excluded from pe_bli-keyed cross-edition diff joins.**
+   Era (PB2017–PB2023) procurement pe_bli are namespaced within-edition keys
+   (`{account}-{org}-L{line}`, `jbooks/era_keys.py` — review Finding D): the
+   underlying (account, org, line) identity is unstable across editions, and
+   post-re-key the keys are disjoint from the modern BLI space and the R-1 PE
+   space by construction (guarded by tests/jbooks/test_era_keys.py).
+   `fct_book_diff` must therefore state RDT&E-only coverage for boundaries
+   touching era editions, or use the namespaced keys strictly within one
+   edition — never join era procurement rows across editions by pe_bli.
+
+3. **The dim_programs/dim_pe_titles/export fences are superseded by
+   edition-aware marts.** The `fiscal_year = 2026` fences (review Finding A:
+   dim_programs.sql, dim_pe_titles.sql, and the export_site.py typed-export
+   queries) exist because scenario names and the fy2024_*/PriorYear labels are
+   edition-relative and those surfaces carry PB2026 semantics without an
+   edition axis. Task 5's marts replace the fences with explicit
+   `edition_year` grain — they must NOT widen the fences; the pinned
+   regression is dbt/tests/assert_dim_programs_pb2026_pin.sql
+   (0601101E fy2024_actual_millions = 280.494).
+
 ### Task 6: Exporter — years_matrix decade columns + decade sparklines
 
 **Files:** `src/govbudget/export_site.py` (_emit_years_matrix + program sidecars),
