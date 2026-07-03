@@ -36,6 +36,19 @@ def pg(pg_dsn):
         con.rollback()
 
 
+@pytest.fixture()
+def doc_id(pg_dsn):
+    """A jbook_documents row id for loader provenance (migration 005 made
+    budget_lines.source_document_id NOT NULL — loaders require it)."""
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        return con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+            " title, source_url, status) values ('DOD', 'rollup', 2026,"
+            " 'fixture_display.xlsx', 'https://example.test/fixture.xlsx',"
+            " 'downloaded') returning id"
+        ).fetchone()[0]
+
+
 @pytest.fixture(autouse=True)
 def _clean_tables(request):
     """Truncate Phase 1 tables after any test that actually used the DB.

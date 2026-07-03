@@ -38,8 +38,9 @@ def make_p1_xlsx(tmp_path):
     return p
 
 
-def test_p1_loader_aggregates_to_bli(pg_dsn, tmp_path):
-    n = load_p1_rollup(pg_dsn, make_p1_xlsx(tmp_path), exhibit="P-1", fiscal_year=2026)
+def test_p1_loader_aggregates_to_bli(pg_dsn, tmp_path, doc_id):
+    n = load_p1_rollup(pg_dsn, make_p1_xlsx(tmp_path), exhibit="P-1", fiscal_year=2026,
+                       source_document_id=doc_id)
     assert n == 3  # one BLI x three FY amount columns
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(
@@ -51,10 +52,10 @@ def test_p1_loader_aggregates_to_bli(pg_dsn, tmp_path):
     assert rows["fy_2026_disc_request"] == Decimal("208051")
 
 
-def test_p1_loader_is_idempotent(pg_dsn, tmp_path):
+def test_p1_loader_is_idempotent(pg_dsn, tmp_path, doc_id):
     p = make_p1_xlsx(tmp_path)
-    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
-    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         total = con.execute(
             "select count(*) from budget_lines where exhibit='P-1'"
@@ -62,9 +63,9 @@ def test_p1_loader_is_idempotent(pg_dsn, tmp_path):
     assert total == 3
 
 
-def test_load_p1_records_contributing_cells(pg_dsn, tmp_path):
+def test_load_p1_records_contributing_cells(pg_dsn, tmp_path, doc_id):
     xlsx = make_p1_xlsx(tmp_path)
-    load_p1_rollup(pg_dsn, xlsx, exhibit="P-1", fiscal_year=2026)
+    load_p1_rollup(pg_dsn, xlsx, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         row = con.execute(
             "select source_sheet, source_cells from budget_lines where pe_bli = %s"
@@ -74,7 +75,7 @@ def test_load_p1_records_contributing_cells(pg_dsn, tmp_path):
     assert row[1] == ["O3", "O4"]      # BOTH contributing cells — honesty for summed facts
 
 
-def test_p1_loader_skips_nan_amount(pg_dsn, tmp_path):
+def test_p1_loader_skips_nan_amount(pg_dsn, tmp_path, doc_id):
     """Cells whose value is the literal string 'NaN' produce Decimal('NaN') without raising.
     For P-1, this NaN contaminates the sums bucket. Must be caught by is_nan() guard
     so both the sum and the cell list are excluded together."""
@@ -93,7 +94,7 @@ def test_p1_loader_skips_nan_amount(pg_dsn, tmp_path):
     p = tmp_path / "p1_nan.xlsx"
     wb.save(p)
 
-    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(
             "select amount_type, amount_thousands from budget_lines"
@@ -106,7 +107,7 @@ def test_p1_loader_skips_nan_amount(pg_dsn, tmp_path):
     assert rows["fy_2026_disc_request"] == Decimal("0")
 
 
-def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
+def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path, doc_id):
     # Real-data regression: Apache-style BLI split across two Line Numbers
     # previously collided on upsert (last write wins, $138B understated).
     wb = Workbook()
@@ -122,7 +123,7 @@ def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
     p = tmp_path / "p1_split_lines.xlsx"
     wb.save(p)
 
-    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026)
+    load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         total = con.execute(
             "select sum(amount_thousands) from budget_lines"
@@ -136,7 +137,7 @@ def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
     assert n_rows == 1  # single aggregated control row
 
 
-def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
+def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path, doc_id):
     """PB2025's P-1 labels the FY2024 column 'FY 2024 PB Request with CR
     Adjustments Amount*' — the footnote asterisk must not drop the column
     (Task 4 live-run evidence)."""
@@ -158,7 +159,7 @@ def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
                2, 100000, 1, 150000, 3, 200000])
     p = tmp_path / "p1_display.xlsx"
     wb.save(p)
-    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2025)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2025, source_document_id=doc_id)
     assert n == 3
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(
@@ -170,7 +171,7 @@ def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
     assert rows["fy_2025_request"] == Decimal("200000")
 
 
-def test_p1_loader_pb2024_program_element_title_header(pg_dsn, tmp_path):
+def test_p1_loader_pb2024_program_element_title_header(pg_dsn, tmp_path, doc_id):
     """PB2024's P-1 names its title column 'Program Element/Budget Line Item
     (BLI) Title' (the R-1 spelling) instead of PB2025+'s 'Budget Line Item
     (BLI) Title' — the variant must map to title, not silently load 4,585
@@ -196,7 +197,7 @@ def test_p1_loader_pb2024_program_element_title_header(pg_dsn, tmp_path):
                "Add", 2, 7304359, 2, 4632695, 2, 7223549])
     p = tmp_path / "p1_display.xlsx"
     wb.save(p)
-    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2024)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2024, source_document_id=doc_id)
     assert n == 3
     with psycopg.connect(pg_dsn) as con:
         rows = con.execute(
@@ -219,7 +220,7 @@ ERA_P1_HEADERS = [
 ]
 
 
-def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
+def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path, doc_id):
     """PB2017–PB2023 P-1 workbooks say 'Line Item' (not 'Budget Line Item'),
     wrap 'Add/Non-Add' and the FY '... Amount' suffixes across lines."""
     wb = Workbook()
@@ -235,7 +236,7 @@ def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
                "Z", "Memo", "Non-Add", "", 999999, "", 999999, "", 999999])
     p = tmp_path / "p1_display.xlsx"
     wb.save(p)
-    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2017)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2017, source_document_id=doc_id)
     assert n == 3
     # era workbooks key budget_lines on the P-1 line number (the only
     # identifier the era P-40 XML shares — its P1LineNumber), NOT the
@@ -258,7 +259,7 @@ def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
     assert li_rows == 0
 
 
-def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path):
+def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path, doc_id):
     """PB2017–PB2023 P-1R workbooks have no Add/Non-Add column: every row
     loads (there is nothing to filter on)."""
     wb = Workbook()
@@ -274,7 +275,7 @@ def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path):
                "", 21000, "U"])
     p = tmp_path / "p1r_display.xlsx"
     wb.save(p)
-    n = load_p1_rollup(pg_dsn, p, exhibit="P-1R", fiscal_year=2017)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1R", fiscal_year=2017, source_document_id=doc_id)
     assert n == 1
     with psycopg.connect(pg_dsn) as con:
         row = con.execute(

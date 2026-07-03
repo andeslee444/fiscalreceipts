@@ -56,31 +56,36 @@ def make_navy_award_parquet(tmp_path: Path) -> Path:
 def seed_budget(pg_dsn):
     with psycopg.connect(pg_dsn) as con:
         con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('DARPA','rdte',2026,'seed.pdf','https://example.test/seed.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, title, amount_type, amount_thousands) values"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
             " ('R-1',2026,'0400','DARPA','0601101E','DEFENSE RESEARCH SCIENCES',"
-            " 'fy_2024_actuals',%s)",
-            (Decimal("280494"),),
+            " 'fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
         )
 
 
 def seed_budget_with_detail(pg_dsn):
     """Seed DARPA budget line with a detail row for project title tokens."""
     with psycopg.connect(pg_dsn) as con:
-        # Insert budget line
-        con.execute(
-            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, title, amount_type, amount_thousands) values"
-            " ('R-1',2026,'0400','DARPA','0601101E','DEFENSE RESEARCH SCIENCES',"
-            " 'fy_2024_actuals',%s)",
-            (Decimal("280494"),),
-        )
-        # Insert jbook_documents row (minimal, no real file)
+        # Insert jbook_documents row first (minimal, no real file) — the
+        # budget line needs its id for provenance (migration 005)
         con.execute(
             "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
             " values ('DARPA','rdte',2026,'darpa_test.pdf','https://example.test/darpa.pdf')"
         )
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0400','DARPA','0601101E','DEFENSE RESEARCH SCIENCES',"
+            " 'fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
+        )
         # Insert extraction_runs row
         con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions, status)"
@@ -103,11 +108,16 @@ def seed_navy_budget(pg_dsn):
     """Seed Navy budget line with account '1319N' (service-letter N -> 017)."""
     with psycopg.connect(pg_dsn) as con:
         con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('NAVY','rdte',2026,'navy.pdf','https://example.test/navy.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, title, amount_type, amount_thousands) values"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
             " ('R-1',2026,'1319N','NAVY','0601152N','NAVY RESEARCH SCIENCES',"
-            " 'fy_2024_actuals',%s)",
-            (Decimal("50000"),),
+            " 'fy_2024_actuals',%s,%s)",
+            (Decimal("50000"), doc_id),
         )
 
 
@@ -173,11 +183,16 @@ def test_crosswalk_small_token_not_high_confidence(pg_dsn, tmp_path):
     """
     with psycopg.connect(pg_dsn) as con:
         con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('DARPA','rdte',2026,'sbir.pdf','https://example.test/sbir.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, title, amount_type, amount_thousands) values"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
             " ('R-1',2026,'0400','DARPA','0601SBIR','SMALL BUSINESS INNOVATION RESEARCH',"
-            " 'fy_2024_actuals',%s)",
-            (Decimal("10000"),),
+            " 'fy_2024_actuals',%s,%s)",
+            (Decimal("10000"), doc_id),
         )
     out = tmp_path / "contracts" / "fy=2024"
     out.mkdir(parents=True)

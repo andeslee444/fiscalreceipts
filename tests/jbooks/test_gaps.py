@@ -20,9 +20,9 @@ def test_gaps_recorded_for_unextracted_r1_lines(pg_dsn):
         for pe in ("0601101E", "0699999E", "9999999999"):
             con.execute(
                 "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-                " pe_bli, amount_type, amount_thousands)"
-                " values ('R-1',2026,'0400','DARPA',%s,'fy_2024_actuals',%s)",
-                (pe, Decimal("1000")),
+                " pe_bli, amount_type, amount_thousands, source_document_id)"
+                " values ('R-1',2026,'0400','DARPA',%s,'fy_2024_actuals',%s,%s)",
+                (pe, Decimal("1000"), doc_id),
             )
     load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     n = record_extraction_gaps(pg_dsn, document_id=doc_id)
@@ -46,9 +46,15 @@ def test_coverage_gate_translates_aliased_orgs(pg_dsn):
 
     with psycopg.connect(pg_dsn) as con:
         con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('CYBER','rdte',2026,'cyber.pdf','https://example.test/cyber.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','CYBER','0208085JCY','fy_2024_actuals',1000)",
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','CYBER','0208085JCY','fy_2024_actuals',1000,%s)",
+            (doc_id,),
         )
     cov = coverage_gate(pg_dsn, organizations=["CYBERCOM"])
     assert cov["r1_lines"] == 1  # not a vacuous 0/0
@@ -68,10 +74,14 @@ def test_coverage_gap_lookup_is_org_scoped(pg_dsn):
         other_id = con.execute(
             "select id from jbook_documents where org='OTHER'"
         ).fetchone()[0]
+        darpa_id = con.execute(
+            "select id from jbook_documents where org='DARPA'"
+        ).fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601999E','fy_2024_actuals',1000)",
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601999E','fy_2024_actuals',1000,%s)",
+            (darpa_id,),
         )
         # a gap row belonging to ANOTHER org's document must not cover DARPA's PE
         con.execute(

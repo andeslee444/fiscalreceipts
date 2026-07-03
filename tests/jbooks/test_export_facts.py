@@ -3,6 +3,7 @@ from pathlib import Path
 
 import duckdb
 import psycopg
+import pytest
 
 from govbudget.jbooks.export_facts import export_facts
 from govbudget.jbooks.load_details import load_document_details
@@ -58,14 +59,18 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
             " values ('R-1',2026,'0400','DARPA','0601101E','fy_2025_enacted',%s,%s,%s)",
             (Decimal("300000"), ["J4", "J5"], doc_id),
         )
-        # Provenance-less orphan row: the lake export must EXCLUDE it
-        # (budget_lines provenance invariant — Phase 5E Task 5).
-        con.execute(
-            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2026_total',%s)",
-            (Decimal("999999"),),
-        )
+        # Provenance-less orphan row: REJECTED at the schema level since
+        # migration 005 (source_document_id NOT NULL — the invariant the
+        # export filter used to enforce alone is now structural; the
+        # export's IS NOT NULL filter stays as belt-and-braces).
+        with pytest.raises(psycopg.errors.NotNullViolation):
+            with con.transaction():
+                con.execute(
+                    "insert into budget_lines (exhibit, fiscal_year, account,"
+                    " organization, pe_bli, amount_type, amount_thousands)"
+                    " values ('R-1',2026,'0400','DARPA','0601101E','fy_2026_total',%s)",
+                    (Decimal("999999"),),
+                )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
     paths = export_facts(pg_dsn, parquet_dir=tmp_path)
@@ -79,7 +84,7 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
     n = duckdb.sql(
         f"select count(*) from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"
     ).fetchone()[0]
-    assert n == 2, "provenance-less row must not export (got orphan in lake)"
+    assert n == 2, "provenance-less row must not exist, let alone export"
     # NULL source_cells exports as empty string (not NULL)
     no_cells_row = duckdb.sql(
         f"select source_cells from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"

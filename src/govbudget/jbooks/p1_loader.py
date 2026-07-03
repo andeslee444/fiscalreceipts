@@ -53,9 +53,13 @@ def _find_header_row(ws) -> tuple[int, dict[int, str]]:
 
 def load_p1_rollup(
     dsn: str, xlsx_path: Path, *, exhibit: str, fiscal_year: int,
-    source_document_id: int | None = None,
+    source_document_id: int,
 ) -> int:
     """Melt a P-1/P-1R display workbook into BLI-grain budget_lines rows.
+
+    source_document_id is REQUIRED (migration 005: budget_lines provenance
+    is a structural invariant — every row must trace to a jbook_documents
+    row, the same contract the lake export enforces).
 
     P-1 rows are (BLI x cost type x BSA) grain with Add/Non-Add memo rows;
     this loader keeps 'Add' rows only, melts the per-FY '... Amount' columns

@@ -19,9 +19,9 @@ def seed(pg_dsn, r1_fy2024_thousands):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('R-1',2026,'0400','DARPA','0601101E',"
-            " 'fy_2024_actuals', %s)",
-            (r1_fy2024_thousands,),
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0400','DARPA','0601101E', 'fy_2024_actuals', %s, %s)",
+            (r1_fy2024_thousands, doc_id),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     return doc_id, run_id
@@ -55,9 +55,10 @@ def test_gate_b_split_ba_control_rows_are_summed(pg_dsn):
         for ba, amt in (("01", Decimal("200000")), ("02", Decimal("80494"))):
             con.execute(
                 "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-                " budget_activity, pe_bli, amount_type, amount_thousands)"
-                " values ('R-1',2026,'0400','DARPA',%s,'0601101E','fy_2024_actuals',%s)",
-                (ba, amt),
+                " budget_activity, pe_bli, amount_type, amount_thousands,"
+                " source_document_id)"
+                " values ('R-1',2026,'0400','DARPA',%s,'0601101E','fy_2024_actuals',%s,%s)",
+                (ba, amt, doc_id),
             )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -210,9 +211,9 @@ def test_reconcile_uses_edition_year_map(pg_dsn):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('R-1',2025,'0400','DARPA','0601101E',"
-            " 'fy_2023_actuals', %s)",
-            (Decimal("280494"),),
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2025,'0400','DARPA','0601101E', 'fy_2023_actuals', %s, %s)",
+            (Decimal("280494"), doc_id),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -235,20 +236,22 @@ def test_gate_b_ignores_other_org_control_rows(pg_dsn):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('R-1',2026,'0400','DARPA','0601101E',"
-            " 'fy_2024_actuals', %s)",
-            (Decimal("280494"),),
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0400','DARPA','0601101E', 'fy_2024_actuals', %s, %s)",
+            (Decimal("280494"), doc_id),
         )
         # alien rows that MUST NOT pollute the control sum
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('R-1',2026,'2040','ARMY','0601101E',"
-            " 'fy_2024_actuals', 500000)",
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'2040','ARMY','0601101E', 'fy_2024_actuals', 500000, %s)",
+            (doc_id,),
         )
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values ('P-1',2026,'2035','NAVY','0601101E',"
-            " 'fy_2024_actuals', 999999)",
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('P-1',2026,'2035','NAVY','0601101E', 'fy_2024_actuals', 999999, %s)",
+            (doc_id,),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -296,9 +299,9 @@ def test_gate_b_matches_any_candidate_not_first_present(pg_dsn):
                                  ("fy_2025_enacted", Decimal("293145"))):
             con.execute(
                 "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-                " pe_bli, amount_type, amount_thousands)"
-                " values ('R-1',2026,'0400','DARPA','0601101E',%s,%s)",
-                (amount_type, amt),
+                " pe_bli, amount_type, amount_thousands, source_document_id)"
+                " values ('R-1',2026,'0400','DARPA','0601101E',%s,%s,%s)",
+                (amount_type, amt, doc_id),
             )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -342,9 +345,9 @@ def test_gate_b_translates_document_org_aliases(pg_dsn):
         # control row lives under OSD, not CHIPS
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','OSD','0601101E','fy_2024_actuals',%s)",
-            (Decimal("280494"),),
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','OSD','0601101E','fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -369,15 +372,16 @@ def test_gate_b_consolidated_volume_matches_per_organization(pg_dsn):
         # the PE's control row lives under DARPA — not under 'DW'
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s)",
-            (Decimal("280494"),),
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
         )
         # another org's row for a DIFFERENT amount must not blend into the sum
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DISA','0601101E','fy_2024_actuals',999999)",
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DISA','0601101E','fy_2024_actuals',999999,%s)",
+            (doc_id,),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -399,8 +403,9 @@ def test_gate_b_consolidated_volume_no_match_still_fails(pg_dsn):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',111111)",
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',111111,%s)",
+            (doc_id,),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -426,9 +431,9 @@ def test_budget_year_one_matches_total_minus_recon(pg_dsn):
         ):
             con.execute(
                 "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-                " pe_bli, amount_type, amount_thousands)"
-                " values ('R-1',2026,'0400','DARPA','0601101E',%s,%s)",
-                (amount_type, amt),
+                " pe_bli, amount_type, amount_thousands, source_document_id)"
+                " values ('R-1',2026,'0400','DARPA','0601101E',%s,%s,%s)",
+                (amount_type, amt, doc_id),
             )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -461,9 +466,9 @@ def test_rereconcile_prunes_stale_open_queue_items(pg_dsn):
         ):
             con.execute(
                 "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-                " pe_bli, amount_type, amount_thousands)"
-                " values ('R-1',2026,'0400','DARPA',%s,%s,%s)",
-                (pe, amount_type, amt),
+                " pe_bli, amount_type, amount_thousands, source_document_id)"
+                " values ('R-1',2026,'0400','DARPA',%s,%s,%s,%s)",
+                (pe, amount_type, amt, doc_id),
             )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)

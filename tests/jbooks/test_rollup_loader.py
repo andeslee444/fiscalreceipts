@@ -34,8 +34,9 @@ def make_xlsx(tmp_path, with_preamble_rows=True):
     return p
 
 
-def test_load_rollup_melts_fy_columns(pg_dsn, tmp_path):
-    n = load_rollup(pg_dsn, make_xlsx(tmp_path), exhibit="R-1", fiscal_year=2026)
+def test_load_rollup_melts_fy_columns(pg_dsn, tmp_path, doc_id):
+    n = load_rollup(pg_dsn, make_xlsx(tmp_path), exhibit="R-1", fiscal_year=2026,
+                    source_document_id=doc_id)
     assert n == 7  # ROW1: 4 amounts, ROW2: 3 amounts (None skipped)
     with psycopg.connect(pg_dsn) as con:
         val = con.execute(
@@ -48,19 +49,19 @@ def test_load_rollup_melts_fy_columns(pg_dsn, tmp_path):
     assert types == {"fy_2024_actuals", "fy_2025_enacted", "fy_2026_disc_request"}
 
 
-def test_load_rollup_is_idempotent_upsert(pg_dsn, tmp_path):
+def test_load_rollup_is_idempotent_upsert(pg_dsn, tmp_path, doc_id):
     p = make_xlsx(tmp_path)
-    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
-    n2 = load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026, source_document_id=doc_id)
+    n2 = load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026, source_document_id=doc_id)
     assert n2 == 7  # upserts same rows
     with psycopg.connect(pg_dsn) as con:
         total = con.execute("select count(*) from budget_lines").fetchone()[0]
     assert total == 7
 
 
-def test_load_rollup_records_cell_provenance(pg_dsn, tmp_path):
+def test_load_rollup_records_cell_provenance(pg_dsn, tmp_path, doc_id):
     xlsx = make_xlsx(tmp_path, with_preamble_rows=True)
-    load_rollup(pg_dsn, xlsx, exhibit="R-1", fiscal_year=2026)
+    load_rollup(pg_dsn, xlsx, exhibit="R-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         row = con.execute(
             "select source_sheet, source_cells from budget_lines"
@@ -71,7 +72,7 @@ def test_load_rollup_records_cell_provenance(pg_dsn, tmp_path):
     assert row[1] == ["J4"]            # col J (0-based 9 → letter J), data row 4
 
 
-def test_load_rollup_skips_nan_amount(pg_dsn, tmp_path):
+def test_load_rollup_skips_nan_amount(pg_dsn, tmp_path, doc_id):
     """Cells whose value is the literal string 'NaN' produce Decimal('NaN') without raising,
     so they must be caught by an explicit is_nan() guard and skipped."""
     from openpyxl import Workbook
@@ -87,7 +88,7 @@ def test_load_rollup_skips_nan_amount(pg_dsn, tmp_path):
     p = tmp_path / "r1_nan.xlsx"
     wb.save(p)
 
-    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         # The NaN cell (fy_2024_actuals) must NOT be inserted
         nan_row = con.execute(
@@ -103,7 +104,7 @@ def test_load_rollup_skips_nan_amount(pg_dsn, tmp_path):
     assert valid_row == 1, "Valid amounts in the same row must still load"
 
 
-def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
+def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path, doc_id):
     from openpyxl import Workbook
 
     wb = Workbook()
@@ -119,7 +120,7 @@ def test_split_ba_programs_keep_both_rows(pg_dsn, tmp_path):
     p = tmp_path / "r1_split.xlsx"
     wb.save(p)
 
-    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026)
+    load_rollup(pg_dsn, p, exhibit="R-1", fiscal_year=2026, source_document_id=doc_id)
     with psycopg.connect(pg_dsn) as con:
         rows = con.execute(
             "select budget_activity, amount_thousands from budget_lines "
@@ -158,11 +159,12 @@ def make_era_xlsx(tmp_path):
     return p
 
 
-def test_load_rollup_normalizes_era_headers(pg_dsn, tmp_path):
+def test_load_rollup_normalizes_era_headers(pg_dsn, tmp_path, doc_id):
     """PB2017–PB2023 display workbooks wrap headers across lines and space
     the slash in 'PE / BLI'; header matching normalizes whitespace and
     slashes so the era loads without touching modern behavior."""
-    n = load_rollup(pg_dsn, make_era_xlsx(tmp_path), exhibit="R-1", fiscal_year=2017)
+    n = load_rollup(pg_dsn, make_era_xlsx(tmp_path), exhibit="R-1", fiscal_year=2017,
+                    source_document_id=doc_id)
     assert n == 4
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(

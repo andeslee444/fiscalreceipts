@@ -329,9 +329,11 @@ def test_edition_counts(pg_dsn):
         ).fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " budget_activity, pe_bli, amount_type, amount_thousands) values"
-            " ('R-1', 2025, '0400', 'DARPA', '1', '0601101E', 'fy_2025_total', 100),"
-            " ('R-1', 2026, '0400', 'DARPA', '1', '0601101E', 'fy_2026_total', 200)"
+            " budget_activity, pe_bli, amount_type, amount_thousands,"
+            " source_document_id) values"
+            " ('R-1', 2025, '0400', 'DARPA', '1', '0601101E', 'fy_2025_total', 100, %s),"
+            " ('R-1', 2026, '0400', 'DARPA', '1', '0601101E', 'fy_2026_total', 200, %s)",
+            (doc_id, doc_id),
         )
         con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions)"

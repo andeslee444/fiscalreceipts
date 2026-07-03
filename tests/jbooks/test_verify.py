@@ -30,9 +30,9 @@ def seed_full(pg_dsn, tmp_path):
         )
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization, pe_bli,"
-            " amount_type, amount_thousands) values"
-            " ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals', %s)",
-            (Decimal("280494"),),
+            " amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals', %s, %s)",
+            (Decimal("280494"), doc_id),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)

@@ -45,9 +45,14 @@ def _find_header_row(ws) -> tuple[int, dict[int, str]]:
 
 def load_rollup(
     dsn: str, xlsx_path: Path, *, exhibit: str, fiscal_year: int,
-    source_document_id: int | None = None,
+    source_document_id: int,
 ) -> int:
-    """Melt an R-1/P-1 display workbook into budget_lines rows. Returns upsert executions fired (inserts + updates)."""
+    """Melt an R-1/P-1 display workbook into budget_lines rows. Returns upsert executions fired (inserts + updates).
+
+    source_document_id is REQUIRED (migration 005: budget_lines provenance
+    is a structural invariant — every row must trace to a jbook_documents
+    row, the same contract the lake export enforces).
+    """
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = wb[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in wb.sheetnames else wb[wb.sheetnames[0]]
     header_row, headers = _find_header_row(sheet)

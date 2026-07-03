@@ -17,9 +17,10 @@ def test_trace_gate_walks_all_hops(pg_dsn, tmp_path):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, title, amount_type, amount_thousands) values"
-            " ('R-1',2026,'0400','DARPA','0601101E','DEFENSE RESEARCH SCIENCES',"
-            "  'fy_2024_actuals',280494)"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','DEFENSE RESEARCH SCIENCES',"
+            "  'fy_2024_actuals',280494,%s)",
+            (doc_id,),
         )
         con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions, status)"
@@ -57,9 +58,15 @@ def test_trace_gate_walks_all_hops(pg_dsn, tmp_path):
 def test_trace_gate_reports_missing_hops(pg_dsn, tmp_path):
     with psycopg.connect(pg_dsn) as con:
         con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url, status) values ('DARPA','rdte',2026,'d.pdf','u1','downloaded')"
+        )
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands) values"
-            " ('R-1',2026,'0400','DARPA','0699999E','fy_2024_actuals',1)"
+            " pe_bli, amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0400','DARPA','0699999E','fy_2024_actuals',1,%s)",
+            (doc_id,),
         )
     result = trace_gate(
         pg_dsn, pe_blis=["0699999E"],

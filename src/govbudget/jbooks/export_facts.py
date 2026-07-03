@@ -5,10 +5,10 @@ row must trace to a source document (source_document_id is not null) — the
 same document-join contract the details/detail_narratives exports already
 enforce. A provenance-less row can never mint a citation (fact_id_workbook
 needs the document sha256) and cannot be independently recomputed by the
-verify-phase5e lake gates. The live warehouse carries one known legacy
-orphan (budget_lines id 13541, a title-NULL duplicate of the PB2026
-0601101E fy_2024_actuals row from an early 5C load); it stays out of the
-lake by this filter until a cleanup migration removes it.
+verify-phase5e lake gates. Migration 005 made the invariant structural
+(source_document_id NOT NULL, deleting the one legacy orphan — id 13541,
+a title-NULL duplicate of the PB2026 0601101E fy_2024_actuals row from an
+early 5C load); the filter here stays as belt-and-braces.
 """
 from pathlib import Path
 
