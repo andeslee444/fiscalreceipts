@@ -24,8 +24,9 @@ import type { DecadePoint, DecadeSeries, ProgramBookDiff } from "@/lib/data";
  *     uncitable claim renders as absence, never as bare prose.
  *
  * Units: decade values are USD thousands (Cite renders compact USD).
- * Motion: the line segments draw in via .decade-draw (globals.css, motion
- * tokens only) — prefers-reduced-motion collapses to the final frame.
+ * Motion: the line segments fade in via .decade-draw (globals.css, motion
+ * tokens, opacity-only per the G7 compositor rule) — prefers-reduced-motion
+ * collapses to the final frame.
  *
  * Edition window: the loaded editions are PB2017–PB2026 (Phase 5E). A
  * kind's eligible FY range derives from that window (actuals for FY N live
@@ -171,7 +172,6 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
               key={`run-${run[0].fy}`}
               data-decade-line=""
               className="decade-draw"
-              pathLength={1}
               points={run.map((p) => `${toX(p.fy)},${toY(p.v)}`).join(" ")}
               fill="none"
               stroke={trendColor}

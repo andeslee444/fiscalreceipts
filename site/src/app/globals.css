@@ -445,21 +445,21 @@ span.interactive-raise:hover {
     infinite;
 }
 
-/* ── Decade trajectory draw-in (Phase 5E Task 7) ────────────────────────────
-   The program-page decade sparkline segments draw in once on load.
-   pathLength=1 on each polyline normalizes the dash space; stroke-dashoffset
-   is compositor-friendly. Reduced motion collapses --motion-story to 1ms →
-   the final (fully drawn) frame renders immediately. */
+/* ── Decade trajectory reveal (Phase 5E Task 7) ─────────────────────────────
+   The program-page decade sparkline segments fade in once on load —
+   opacity only (the G7 motion gate's compositor rule: transform/opacity/
+   filter; a stroke-dashoffset draw was rejected by the gate). Reduced
+   motion collapses --motion-story to 1ms → the final frame renders
+   immediately. */
 @keyframes decade-draw {
   from {
-    stroke-dashoffset: 1;
+    opacity: 0;
   }
   to {
-    stroke-dashoffset: 0;
+    opacity: 1;
   }
 }
 .decade-draw {
-  stroke-dasharray: 1;
   animation: decade-draw calc(var(--motion-story) * 2) var(--ease-decelerate)
     both;
 }

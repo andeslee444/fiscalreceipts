@@ -140,11 +140,12 @@ describe("DecadeTrajectory", () => {
     ).toBeNull();
   });
 
-  it("the draw-in animation is on motion tokens and reduced-motion-safe", () => {
+  it("the reveal animation is on motion tokens and reduced-motion-safe", () => {
     const { container } = render(
       <DecadeTrajectory series={SERIES} bookDiff={null} />,
     );
-    // Class-based animation defined in globals.css on var(--motion-story) —
+    // Class-based opacity animation defined in globals.css on
+    // var(--motion-story) (compositor-only per the G7 motion gate) —
     // prefers-reduced-motion collapses tokens to 1ms (final frame).
     const line = container.querySelector("[data-decade-line]") as SVGElement;
     expect(line.getAttribute("class") ?? "").toContain("decade-draw");

@@ -714,3 +714,20 @@ Pre-failure 3 (leg g, tampered payload — fy2020a column edition
   ✗ leg g: decade cell 0203735A/fy2020a sources span edition(s) [2022] != stated PB2023
   ✗ leg g: decade cell 0603327A/fy2020a sources span edition(s) [2022] != stated PB2023
   (33/36 others verified — only the lied-about column fails)
+
+Addendum (same date): the first full verify run against the Task-7 build
+surfaced two more required adaptations, both recorded here:
+  1. G17 motion REJECTED the initial decade sparkline draw-in
+     (@keyframes decade-draw animated stroke-dashoffset — non-compositor):
+       ✗ motion_gate: src/app/globals.css @keyframes decade-draw animates
+         non-compositor property [stroke-dashoffset]
+     Fixed by switching the reveal to opacity-only (gate unchanged).
+  2. G8 leg e (Δ-cell breakdown UI) failed against the decade default
+     view because the Δ column is no longer visible by default:
+       ✗ leg e: no [data-fact-id="e5d96f0ba8b682cb"] Δ cite on /years/
+     The leg now reveals the Δ column through the column picker (the same
+     user path) before the UNCHANGED breakdown checks; if the chip is
+     missing it FAILS loudly. Full log: /tmp/5e-task7-verify.log.
+Post-fix: all 22 gates PASS (npm run verify, /tmp/5e-task7-verify2.log);
+standalone G8 run: legs a–g + g-UI all green (36/36 decade cells across
+12 columns recomputed + edition-verified).

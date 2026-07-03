@@ -979,6 +979,20 @@ export async function runYearsMatrixGate({ baseUrl }) {
         if (!delta) {
           errors.push("leg e: no Δ cell available for the breakdown UI check");
         } else {
+          // Phase 5E: the decade defaults replaced the Δ column in the
+          // default view — reveal it through the column picker (the same
+          // user path) before the check. The check itself is unchanged.
+          if ((await page.locator('th[data-col="fy2526_change"]').count()) === 0) {
+            const chip = page.locator('button[aria-label^="Show Δ"]').first();
+            if ((await chip.count()) === 0) {
+              errors.push(
+                "leg e: Δ column hidden by default and no picker chip to reveal it"
+              );
+            } else {
+              await chip.click();
+              await page.waitForTimeout(300);
+            }
+          }
           const cite = page.locator(`[data-fact-id="${delta.cell.fid}"]`).first();
           if ((await cite.count()) === 0) {
             errors.push(`leg e: no [data-fact-id="${delta.cell.fid}"] Δ cite on /years/`);
