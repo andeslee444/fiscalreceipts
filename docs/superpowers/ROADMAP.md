@@ -21,6 +21,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5C | UX trust journey: linkgraph integrity, coverage notes, degraded-mode, receipt moment, 5 persona journeys, answer-fold, motion | 7 npm gates (G1–G7) | ✅ COMPLETE 2026-07-02 | 7 new gates all green; every gate has recorded proof-can-fail; 19/19 total npm gates; visual judges round-2 medians D1–D4:4 V1:5 V2:5 V3:4(after fix) V4:5 V5:4; final opus review SHIP; deployed https://govbudget.vercel.app; live computer-use verification of all 5 persona journeys PASS (PDF panel/downloads verified in degraded mode pending R2); data bug: 146/1,982 PEs had doubled trajectory rows — fixed (detail-only pivot + exporter derived-input join mirror); 4,446 trajectory citations re-verified; 136 dead-link feed events resolved from fct_budget_lines detail |
 | 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
 | 5F | Program-page normalization: pages for all 1,995 PEs (rollup + full tiers), narrative paragraph provenance, deterministic prose amount cites, universal PE linking, 12-section skeleton | program-skeleton gate (21st) + linkgraph leg f + render-static prose-cite leg | ✅ COMPLETE 2026-07-03 | 1,995 program pages both tiers; narrative provenance 2,449/2,457 = 99.7% (8 unresolved keep the non-paged card — never a fake location); 27 deterministic prose cites; universal PE linking (196 unlinked tokens pre-fix → 0); 12-section skeleton gate; visual judges 4.5/5/4.5 PASS; 21/21 gates; 1,039 pytest / 303 vitest; live at fiscalreceipts.com |
+| 5H | Experimental flowdown (/flow/): two-river sankey (budget intent vs contract obligations), honest 98.7% not-yet-crosswalked bridge band, FPDS competition overlay (FY2017–FY2026 selector), 1,965 minted flow derived facts, exporter-precomputed collision-free labels | G9 flowdown gate (22nd, legs a–e) + fct_flow_edges dbt conservation tests | ✅ COMPLETE 2026-07-03 | judges r1 PASS/PASS/PASS (F1 two-river honesty unanimous 5s) with F3 craftsmanship=3 on label collisions → fix round (exporter collision-free-by-construction labels + TDD bbox test, hue-split competition classes, value halos) → F3 re-score 5/4/5; G9 recomputes 55 budget + 40 spend nodes from the lake, bridge exact, 58/58 citations; 22/22 gates; 1,059 pytest / 335 vitest; live-verified node→panel (121.8B Navy derived formula + 532-input breakdown) and FY2025→FY2020 switch; live at fiscalreceipts.com/flow/ |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -57,6 +58,29 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 - **2026-07-02: product rebranded to Fiscal Receipts** (site display name; infra
   identifiers unchanged).
+- **47.3% of FY2025 DoD obligations ($232.4B) were not competed** — surfaced by
+  the 5H competition overlay from extent_competed, a field sitting untapped in
+  the contracts parquet since Phase 0. Editorial headline candidate.
+- **Losing bidders are structurally absent from all public data** — FPDS records
+  number_of_offers_received (counts) but never offer identities; SAM.gov is an
+  entity registry, not a bid ledger. The /flow/ UI states this statically
+  ("counts offers, not bidders") so the overlay can't be misread (5H).
+- **Sankey labels: precompute collision-free placement in the exporter, don't
+  fix collisions in the client** — thickness-threshold suppression + placement
+  at export time made "no label overlaps" a TDD-able bbox-intersection test
+  instead of a rendering hope. Rendering-metric drift (font change) is the
+  residual risk — judge flagged; a render-level bbox gate leg is a backlog
+  hardening candidate (5H F3 fix round, 3→5/4/5).
+- **Negative net flows need an explicit rule** — TACOM→Boeing FY2017 nets to
+  −$97.6M; sankeys can't draw negative width. Rule: draw at zero width, label
+  "net de-obligation", keep the citation (5H).
+- **max() on confidence strings is a trap** — lexicographic max('high','medium')
+  = 'medium'; the flow marts needed an explicit ordinal mapping (5H dbt).
+- **Next.js title.template doubles when pages also append the site name** —
+  every one of 6,593 pages rendered "… | Fiscal Receipts | Fiscal Receipts";
+  caught only during 5H live verification because no gate read <title>. New
+  render-static leg (t) asserts the site name appears at most once
+  (proof-can-fail: 6,593 pages).
 - **J-book PDFs embed full XML** (.zzz attachments) — extraction is deterministic;
   no LLM needed for federal budget facts. The single most load-bearing discovery.
 - **Fact identity must include the amount** — 11 live duplicate
@@ -321,6 +345,17 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     dossier-citation check; then raise match_gate5a to 0.85 and move the boundary
     tests to 43/50. Fix first-query-wins attribution (see findings) or verify
     VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
+20. **Render-level sankey label bbox gate leg (5H judge hardening):** the
+    exporter TDD bbox test proves the *precomputed* layout is collision-free,
+    but if the site font or node metrics ever drift from the exporter's
+    assumptions, labels could re-collide at render time. Add a G9 Playwright
+    leg asserting no two rendered flow-label bounding boxes intersect at 1440.
+21. **favicon.ico 404:** browsers request /favicon.ico by default; the site
+    ships only the Next.js app-dir icon. Add a favicon.ico to site/public/
+    (or a redirect) — found as the sole console error during 5H live
+    verification. Also from judge advisories: include print-CSS +
+    reduced-motion captures in visual-judge evidence packs; consider pinning
+    the breakdown-overlay filter box in the sticky header.
 
 ## Remaining launch items
 

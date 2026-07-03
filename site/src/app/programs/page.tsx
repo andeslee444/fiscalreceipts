@@ -13,7 +13,7 @@ const PROGRAM_COUNT = getPrograms().length;
 const PROGRAMS_DESCRIPTION = `Browse all ${PROGRAM_COUNT} DoD R&D and procurement program elements with FY2024 actuals and FY2026 budget figures.`;
 
 export const metadata: Metadata = {
-  title: `All Programs — ${SITE_NAME}`,
+  title: "All Programs",
   description: PROGRAMS_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/programs/` },
   openGraph: {

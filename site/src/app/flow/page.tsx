@@ -26,7 +26,7 @@ const _fyFirst = _meta.spendFys[0];
 const _fyLast = _meta.spendFys[_meta.spendFys.length - 1];
 
 export const metadata: Metadata = {
-  title: `Flow — follow the money | ${SITE_NAME}`,
+  title: "Flow — follow the money",
   description:
     `The FY${_meta.budgetFy} defense budget request flowing down to programs, and DoD contract obligations ` +
     `(FY${_fyFirst}–FY${_fyLast}) flowing out to contractor families — two honestly separated rivers, ` +

@@ -132,6 +132,7 @@ export async function runRenderStaticGate() {
   const positiveFailures = [];
   const negativeFailures = [];
   const ledgerFailures = [];
+  const titleFailures = [];
 
   for (const filePath of htmlFiles) {
     const relPath = path.relative(outDir, filePath);
@@ -149,6 +150,19 @@ export async function runRenderStaticGate() {
     } catch (e) {
       errors.push(`failed to parse ${relPath}: ${e.message}`);
       continue;
+    }
+
+    // ── (t) title-template doubling: the layout template appends
+    //        "| Fiscal Receipts" to every page title, so a page metadata title
+    //        that includes the site name itself renders "… | Fiscal Receipts
+    //        | Fiscal Receipts". Any title with the site name twice is a bug.
+    const titleEl = root.querySelector("title");
+    if (titleEl) {
+      const titleText = titleEl.text;
+      const siteNameCount = titleText.split("Fiscal Receipts").length - 1;
+      if (siteNameCount > 1) {
+        titleFailures.push({ file: relPath, title: titleText });
+      }
     }
 
     // ── (a0) data-source-text constraint: every data-source-text element must
@@ -447,6 +461,22 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`dataset ledger: all [data-amount] elements consistent with uncited_datasets ✓`);
+  }
+
+  if (titleFailures.length > 0) {
+    errors.push(
+      `${titleFailures.length} pages render the site name twice in <title> ` +
+        `(page metadata includes "Fiscal Receipts" while the layout template ` +
+        `appends it again — drop the manual suffix; first 10):`
+    );
+    for (const f of titleFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: "${f.title}"`);
+    }
+    if (titleFailures.length > 10) {
+      errors.push(`  ... and ${titleFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(`title template: no doubled site-name suffixes ✓`);
   }
 
   return { pass: errors.length === 0, errors, notes };

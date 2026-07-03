@@ -20,7 +20,7 @@ import { YearsMatrix } from "@/components/years-matrix";
 const _programCount = getPrograms().length;
 
 export const metadata: Metadata = {
-  title: `Years — budget over time | ${SITE_NAME}`,
+  title: "Years — budget over time",
   description: `Every one of ${_programCount} defense program elements as rows, fiscal years as columns — FY2024 actuals through FY2026 request with cited ${TRAJECTORY_FY_LABEL} deltas. Every cell opens its source citation.`,
   alternates: { canonical: `${SITE_URL}/years/` },
   openGraph: {

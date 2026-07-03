@@ -13,7 +13,7 @@ const _flowsCount = getFlowsCount();
 const _programsCount = getProgramsCount();
 
 export const metadata: Metadata = {
-  title: `Congressional Districts — ${SITE_NAME}`,
+  title: "Congressional Districts",
   description: `Defense spending by congressional district — programs, recipients, and awarded dollars linked via DARPA crosswalk (${_flowsCount} of ${_programsCount} programs currently linkable).`,
   alternates: { canonical: `${SITE_URL}/district/` },
   openGraph: {

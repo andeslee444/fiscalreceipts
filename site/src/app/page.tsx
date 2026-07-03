@@ -19,7 +19,9 @@ import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
-  title: `${SITE_NAME} — Federal Defense Budget, Contracts & Lobbying`,
+  title: {
+    absolute: `${SITE_NAME} — Federal Defense Budget, Contracts & Lobbying`,
+  },
   description:
     "Every defense R&D and procurement program element — budget figures, awarded contracts, and lobbying filings — all traceable to their source documents.",
   alternates: { canonical: `${SITE_URL}/` },

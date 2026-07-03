@@ -33,7 +33,7 @@ export async function generateMetadata({
 
   const canonical = `${SITE_URL}/agency/${org}/`;
   return {
-    title: `${org} — ${SITE_NAME}`,
+    title: org,
     description: `${org}: ${agency.program_count} defense program elements with FY2024 and FY2026 budget data.`,
     alternates: { canonical },
     openGraph: {

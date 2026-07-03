@@ -16,7 +16,7 @@ import { Reveal } from "@/components/reveal";
 import type { FeedCard } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: `Anomaly Feed — ${SITE_NAME}`,
+  title: "Anomaly Feed",
   description:
     "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
   alternates: { canonical: `${SITE_URL}/feed/` },

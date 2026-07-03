@@ -7,7 +7,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { FilingsTable } from "@/components/filings-table";
 
 export const metadata: Metadata = {
-  title: `Lobbying Filings — ${SITE_NAME}`,
+  title: "Lobbying Filings",
   description:
     "Senate LDA lobbying filings cross-referenced against tracked defense programs — client, registrant, reported dollars, and program mentions.",
   alternates: { canonical: `${SITE_URL}/filings/` },

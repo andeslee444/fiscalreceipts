@@ -9,7 +9,7 @@ import { Explorer } from "@/components/explorer";
 import type { DatasetName } from "@/lib/duckdb";
 
 export const metadata: Metadata = {
-  title: `Data Explorer — ${SITE_NAME}`,
+  title: "Data Explorer",
   description:
     "Query all 14 Fiscal Receipts datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.",
   alternates: { canonical: `${SITE_URL}/data/` },

@@ -7,7 +7,7 @@ import { CompaniesTable } from "@/components/companies-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 export const metadata: Metadata = {
-  title: `Top Contractors — ${SITE_NAME}`,
+  title: "Top Contractors",
   description:
     "Top 200 defense contractor families by total federal obligations — USAspending-derived, FY2017 onward.",
   alternates: { canonical: `${SITE_URL}/companies/` },

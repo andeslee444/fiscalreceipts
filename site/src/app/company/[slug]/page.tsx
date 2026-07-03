@@ -34,7 +34,7 @@ export async function generateMetadata({
 
   const canonical = `${SITE_URL}/company/${slug}/`;
   return {
-    title: `${entity.display_name} — ${SITE_NAME}`,
+    title: entity.display_name,
     description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
     alternates: { canonical },
     openGraph: {

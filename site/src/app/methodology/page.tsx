@@ -8,7 +8,7 @@ import { getFlowChartMeta } from "@/lib/data";
 import { CoverageNote } from "@/components/coverage-note";
 
 export const metadata: Metadata = {
-  title: `Methodology — ${SITE_NAME}`,
+  title: "Methodology",
   description:
     "How Fiscal Receipts collects, verifies, and cites every federal defense budget figure, contract award, and lobbying disclosure.",
   alternates: { canonical: `${SITE_URL}/methodology/` },

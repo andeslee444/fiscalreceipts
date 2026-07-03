@@ -4,7 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 
 export const metadata: Metadata = {
-  title: `About — ${SITE_NAME}`,
+  title: "About",
   description:
     "About Fiscal Receipts — corrections policy, data transparency, and the correlational-not-causal disclaimer.",
   alternates: { canonical: `${SITE_URL}/about/` },

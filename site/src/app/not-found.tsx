@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Page Not Found — ${SITE_NAME}`,
+  title: "Page Not Found",
   description: "The page you were looking for could not be found.",
 };
 

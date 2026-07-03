@@ -129,7 +129,7 @@ export async function generateMetadata({
   const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
 
   return {
-    title: `${program.title} — FY2026 Budget, Contracts & Lobbying | ${SITE_NAME}`,
+    title: `${program.title} — FY2026 Budget, Contracts & Lobbying`,
     description,
     alternates: {
       canonical: canonicalUrl,

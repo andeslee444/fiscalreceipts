@@ -8,7 +8,7 @@ import { DownloadCards } from "@/components/download-cards";
 import { datasetJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
-  title: `Downloads — ${SITE_NAME}`,
+  title: "Downloads",
   description:
     "Bulk Parquet exports of all Fiscal Receipts datasets — budget, awards, entities, lobbying, and citations — with full provenance metadata.",
   alternates: { canonical: `${SITE_URL}/downloads/` },

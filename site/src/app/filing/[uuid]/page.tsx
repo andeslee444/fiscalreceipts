@@ -48,7 +48,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hasMentions = detail.mentions.length > 0;
   const client = f.client_name ?? "Unknown client";
   const year = f.filing_year ?? "";
-  const title = `${client} — Lobbying Filing ${year} | ${SITE_NAME}`;
+  // Bare title for metadata (the layout template appends the site name);
+  // og keeps the full suffixed form since templates don't apply to openGraph.
+  const title = `${client} — Lobbying Filing ${year}`;
+  const ogTitle = `${title} | ${SITE_NAME}`;
   const description = `Senate LDA filing ${f.filing_type ?? ""} ${year} — client ${client}, registrant ${f.registrant_name ?? "unknown"}. Activities, lobbyists, and tracked program mentions.`;
   const human = humanLdaUrl(f.url);
 
@@ -59,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: human ?? `${SITE_URL}/filing/${uuid}/` },
     robots: hasMentions ? undefined : { index: false, follow: true },
     openGraph: {
-      title,
+      title: ogTitle,
       description,
       url: `${SITE_URL}/filing/${uuid}/`,
       siteName: SITE_NAME,

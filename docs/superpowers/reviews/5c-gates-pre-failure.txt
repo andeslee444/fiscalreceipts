@@ -473,3 +473,15 @@ sum exactly; 15/15 sampled breakdowns verified.)
    Fixed with an explicit documented rule (values stay honestly negative;
    zero-width bands; node-side compression), duplicated independently in
    the gate, plus a negative-flow fixture test.
+
+── render-static leg (t): doubled title suffix ──────────────────────────────
+Date: 2026-07-03 (post-5H live verification — found on production /flow/)
+Proof-can-fail: gate leg added BEFORE the fix; run against the then-current
+out/ build reported FAIL with 6,593 pages rendering "… Fiscal Receipts |
+Fiscal Receipts" (page metadata titles embedded the site name while the
+layout title.template appended it again). Sample:
+  404/index.html: "Page Not Found — Fiscal Receipts | Fiscal Receipts"
+  about/index.html: "About — Fiscal Receipts | Fiscal Receipts"
+  flow/index.html: "Flow — follow the money | Fiscal Receipts | Fiscal Receipts"
+Fix: strip manual site-name suffixes from all page metadata titles (template
+owns the suffix); home page uses title.absolute.

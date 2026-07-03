@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // ignore
   }
   return {
-    title: `District ${district}${state} — ${SITE_NAME}`,
+    title: `District ${district}${state}`,
     description: `Defense contract awards in congressional district ${district}${state} — high-confidence program links via USAspending crosswalk.`,
     alternates: { canonical: `${SITE_URL}/district/${district}/` },
     openGraph: {
