@@ -291,6 +291,8 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     tests to 43/50. Fix first-query-wins attribution (see findings) or verify
     VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
 
+| 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
