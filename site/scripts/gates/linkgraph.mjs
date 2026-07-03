@@ -20,6 +20,11 @@
  *     index.html present; file URLs (extension) need the file present.
  *     #anchors on existing pages are allowed (fragment is stripped before
  *     resolution); pure same-page "#..." anchors are skipped.
+ * (f) Universal PE linking (Phase 5F §2a): on sampled program pages (pages
+ *     whose narratives/dossiers reference other PEs, plus generic samples
+ *     from BOTH tiers), every PE-shaped token in body text that HAS a built
+ *     page and is not the page's own PE must be inside an <a>. The PE shape
+ *     is recomputed here (mirror of lib/pe-link.ts PE_TOKEN_RE).
  */
 import fs from "fs";
 import path from "path";
@@ -28,6 +33,10 @@ import { parse } from "node-html-parser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(__dirname, "..", "..", "out");
+const jsonDir = path.resolve(__dirname, "..", "..", "..", "data", "site", "json");
+
+// PE-shaped token — independent recompute of lib/pe-link.ts PE_TOKEN_RE.
+const PE_TOKEN_RE = /\b\d{7}[A-Z][A-Z0-9]{0,2}\b/g;
 
 const PAGE_TYPES = [
   { key: "programs_index", re: /^\/programs\/$/ },
@@ -239,6 +248,120 @@ export async function runLinkgraphGate() {
       }
     } else {
       notes.push(`dead links on ${pageUrl}: 0 of ${internal} internal hrefs ✓`);
+    }
+  }
+
+  // ── (f) universal PE linking on sampled program pages (Phase 5F §2a) ──
+  {
+    const detailsDir = path.join(jsonDir, "program_details");
+    const dossiersDir = path.join(jsonDir, "dossiers");
+    if (!fs.existsSync(detailsDir)) {
+      errors.push("(f) pe-linking: data/site/json/program_details missing");
+    } else {
+      const allSlugs = fs
+        .readdirSync(detailsDir)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => f.replace(/\.json$/, ""))
+        .sort();
+      const peSet = new Set(allSlugs);
+      const findTokens = (text) => [...(text ?? "").matchAll(PE_TOKEN_RE)].map((m) => m[0]);
+
+      // Sample: pages whose narratives reference OTHER PEs (up to 8), dossier
+      // pages with cross-PE claims (up to 4), plus 3 rollup + 3 full generic.
+      const sample = new Set();
+      let fullSeen = 0;
+      let rollupSeen = 0;
+      let narrativeRefAdds = 0;
+      for (const slug of allSlugs) {
+        let sidecar;
+        try {
+          sidecar = JSON.parse(
+            fs.readFileSync(path.join(detailsDir, `${slug}.json`), "utf8")
+          );
+        } catch {
+          continue;
+        }
+        const isRollup = sidecar.tier === "rollup";
+        if (isRollup && rollupSeen < 3) {
+          sample.add(slug);
+          rollupSeen++;
+        }
+        if (!isRollup && fullSeen < 3) {
+          sample.add(slug);
+          fullSeen++;
+        }
+        // Pages whose narratives reference OTHER PEs are the meaningful
+        // targets for this leg — sample up to 8 of them.
+        if (narrativeRefAdds < 8) {
+          const narrativeText = (sidecar.narratives ?? [])
+            .map((n) => n.body ?? "")
+            .join("\n");
+          if (findTokens(narrativeText).some((t) => peSet.has(t) && t !== slug)) {
+            if (!sample.has(slug)) narrativeRefAdds++;
+            sample.add(slug);
+          }
+        }
+      }
+      if (fs.existsSync(dossiersDir)) {
+        let dossierAdds = 0;
+        for (const f of fs.readdirSync(dossiersDir).filter((x) => x.endsWith(".json")).sort()) {
+          if (dossierAdds >= 4) break;
+          const slug = f.replace(/\.json$/, "");
+          const raw = fs.readFileSync(path.join(dossiersDir, f), "utf8");
+          if (findTokens(raw).some((t) => peSet.has(t) && t !== slug)) {
+            sample.add(slug);
+            dossierAdds++;
+          }
+        }
+      }
+
+      // Walk body text nodes; a linkable token outside an <a> is an error.
+      const walkText = (node, insideAnchor, cb) => {
+        if (node.nodeType === 3) {
+          cb(node.rawText ?? "", insideAnchor);
+          return;
+        }
+        const tag = node.tagName ? node.tagName.toLowerCase() : null;
+        if (tag === "script" || tag === "style" || tag === "head") return;
+        const nowInside = insideAnchor || tag === "a";
+        for (const child of node.childNodes ?? []) {
+          walkText(child, nowInside, cb);
+        }
+      };
+
+      let scanned = 0;
+      let unlinked = 0;
+      const unlinkedDetails = [];
+      for (const slug of [...sample].sort()) {
+        const p = htmlPathFor(`/program/${slug}/`);
+        if (!fs.existsSync(p)) {
+          errors.push(`(f) pe-linking: sampled page /program/${slug}/ not built`);
+          continue;
+        }
+        scanned++;
+        const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+        const body = root.querySelector("body") ?? root;
+        walkText(body, false, (text, insideAnchor) => {
+          if (insideAnchor) return;
+          for (const token of findTokens(text)) {
+            if (!peSet.has(token) || token === slug) continue;
+            unlinked++;
+            if (unlinkedDetails.length < 10) {
+              unlinkedDetails.push(
+                `/program/${slug}/: "${token}" in "${text.trim().slice(0, 80)}"`
+              );
+            }
+          }
+        });
+      }
+      if (unlinked > 0) {
+        errors.push(
+          `(f) pe-linking: ${unlinked} PE-shaped token(s) with pages are NOT <a>-wrapped on sampled pages:`
+        );
+        for (const d of unlinkedDetails) errors.push(`  ${d}`);
+      } else {
+        notes.push(`(f) pe-linking: ${scanned} sampled pages, 0 unlinked PE tokens ✓`);
+      }
     }
   }
 

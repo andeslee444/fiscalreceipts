@@ -39,6 +39,7 @@ const COVERAGE_IDS = [
   "state-ca",
   "fy2026-partial",
   "years-matrix",
+  "service-books",
 ];
 
 function readJson(p) {
@@ -93,6 +94,30 @@ function firstFlowSlug() {
   const files = fs.readdirSync(flowsDir).filter((f) => f.endsWith(".json"));
   if (files.length === 0) return null;
   return files.sort()[0].replace(".json", "");
+}
+
+/** Total program-page count (all program_details sidecars — Phase 5F). */
+function programPagesCount() {
+  const dir = path.join(jsonDir, "program_details");
+  if (!fs.existsSync(dir)) return 0;
+  return fs.readdirSync(dir).filter((f) => f.endsWith(".json")).length;
+}
+
+/** First rollup-tier program slug (sidecar with tier:'rollup', sorted) —
+ *  the representative page for the service-books coverage note. */
+function firstRollupSlug() {
+  const dir = path.join(jsonDir, "program_details");
+  if (!fs.existsSync(dir)) return null;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
+    try {
+      if (readJson(path.join(dir, f)).tier === "rollup") {
+        return f.replace(".json", "");
+      }
+    } catch {
+      // skip malformed
+    }
+  }
+  return null;
 }
 
 export async function runCoverageGate() {
@@ -205,7 +230,33 @@ export async function runCoverageGate() {
       pagePath: htmlFor("/years/"),
       pageExists: fs.existsSync(htmlFor("/years/")),
       pageLabel: "/years/",
-      checkNumbers: null, // prose-only (single-edition honesty)
+      // Phase 5F: the note must state the matrix's detail-grade scope vs the
+      // full browsable page universe, numbers interpolated (never hardcoded).
+      checkNumbers: () => {
+        const n = counts.programs;
+        const d = programPagesCount();
+        return {
+          n,
+          d,
+          pattern: `The matrix covers the ${n} programs with detail-grade data; all ${d} program pages are browsable.`,
+        };
+      },
+    },
+    {
+      id: "service-books",
+      pagePath: (() => {
+        const slug = firstRollupSlug();
+        return slug ? htmlFor(`/program/${slug}/`) : null;
+      })(),
+      pageExists: (() => {
+        const slug = firstRollupSlug();
+        return slug ? fs.existsSync(htmlFor(`/program/${slug}/`)) : false;
+      })(),
+      pageLabel: (() => {
+        const slug = firstRollupSlug();
+        return slug ? `/program/${slug}/` : "(no rollup page)";
+      })(),
+      checkNumbers: null, // per-service prose ("…lives in the {service} J-book…")
     },
   ];
 

@@ -29,6 +29,12 @@
  *         (a dataset cannot be both 'citation pending' and cited)
  *       - missing/empty data-dataset on ANY [data-amount] → FAIL
  *
+ * (a1) PROSE CITES (Phase 5F §2c): every [data-prose-cite] element (a dollar
+ *      token inside quoted source text, rendered as a state-A-style cite)
+ *      MUST carry a data-fact-id that resolves in citations.json AND must
+ *      NOT carry data-amount (the a0 contract keeps computed figures out of
+ *      source-text subtrees — prose cites are the sanctioned alternative).
+ *
  * (c2) EXPECTED LEDGER (regression arm): the ledger was cleared to [] when
  *      dim_geography, fct_budget_to_awards, and dim_lobbyists gained citation
  *      tiers. Any dataset appearing on the manifest ledger that is NOT in
@@ -122,6 +128,7 @@ export async function runRenderStaticGate() {
   let positiveErrors = 0;
   let negativeErrors = 0;
   let ledgerErrors = 0;
+  let proseCiteCount = 0;
   const positiveFailures = [];
   const negativeFailures = [];
   const ledgerFailures = [];
@@ -169,6 +176,28 @@ export async function runRenderStaticGate() {
         positiveFailures.push({
           file: relPath,
           issue: `[data-source-text] subtree contains ${amountDescendants.length} [data-amount] descendant(s) — computed figures may not be nested inside source text`,
+        });
+      }
+    }
+
+    // ── (a1) Prose cites (Phase 5F §2c): fact_id must resolve; never
+    //         double-marked as data-amount. ─────────────────────────────────
+    for (const pcEl of root.querySelectorAll("[data-prose-cite]")) {
+      proseCiteCount++;
+      const factId = pcEl.getAttribute("data-fact-id");
+      if (!factId || !citationKeys.has(factId)) {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue: `[data-prose-cite] fact_id ${factId ? `"${factId}" does not resolve in citations.json` : "missing"}`,
+          attrs: pcEl.rawAttrs?.slice(0, 200),
+        });
+      }
+      if (pcEl.getAttribute("data-amount") != null) {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue: `[data-prose-cite] element also carries data-amount — prose cites must never be amount-marked (a0)`,
         });
       }
     }
@@ -389,6 +418,7 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`positive scan: all [data-amount] elements match Cite-state contract ✓`);
+    notes.push(`prose cites: ${proseCiteCount} [data-prose-cite] element(s), all resolving ✓`);
   }
 
   if (negativeErrors > 0) {

@@ -41,6 +41,8 @@ import { runReceiptMomentGate } from "./gates/receiptmoment.mjs";
 import { runPersonasGate } from "./gates/personas.mjs";
 // Phase 5D gates
 import { runYearsMatrixGate } from "./gates/yearsmatrix.mjs";
+// Phase 5F gates
+import { runProgramSkeletonGate } from "./gates/program-skeleton.mjs";
 
 const PORT = 4173;
 
@@ -227,6 +229,12 @@ async function main() {
   const g17 = await runMotionGate();
   gateResults.push({ n: 17, name: "motion", pass: g17.pass });
   printGate(17, "motion", g17);
+
+  // ── Gate 21: program-skeleton (Phase 5F — §2d, static) ───────────────────
+  console.log("\n--- gate 21 program-skeleton ---");
+  const g21 = await runProgramSkeletonGate();
+  gateResults.push({ n: 21, name: "program-skeleton", pass: g21.pass });
+  printGate(21, "program-skeleton", g21);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

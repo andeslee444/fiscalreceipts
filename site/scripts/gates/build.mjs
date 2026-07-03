@@ -48,12 +48,49 @@ export async function runBuildGate() {
   const agencies = readJson(path.join(jsonDir, "agencies.json"));
   const siteMeta = readJson(path.join(jsonDir, "site_meta.json"));
 
-  const programCount = programs.length;
+  // Phase 5F §2a: the program-page universe is EVERY program_details sidecar
+  // (full tier from programs.json + rollup tier), recomputed here
+  // independently of src/. Zero-content pages (no details/narratives/awards/
+  // mentions and every figure zero) are built but noindex — excluded from
+  // the sitemap, so the two counts differ.
+  const detailsDir = path.join(jsonDir, "program_details");
+  const programSlugs = dirExists(detailsDir)
+    ? fs.readdirSync(detailsDir).filter((f) => f.endsWith(".json"))
+    : [];
+  const programCount = programSlugs.length;
+  let zeroContentCount = 0;
+  for (const f of programSlugs) {
+    try {
+      const d = readJson(path.join(detailsDir, f));
+      const hasContent =
+        (d.details ?? []).length > 0 ||
+        (d.narratives ?? []).length > 0 ||
+        (d.awards ?? []).length > 0 ||
+        (d.mentions ?? []).length > 0;
+      if (hasContent) continue;
+      const figures = (d.budget_lines ?? []).map((bl) => bl.amount_thousands);
+      const t = d.trajectory;
+      if (t) {
+        for (const v of [t.fy2024_actuals, t.fy2025_total, t.fy2026_total]) {
+          if (v !== null && v !== undefined) figures.push(v);
+        }
+      }
+      if (figures.every((v) => v === 0)) zeroContentCount++;
+    } catch {
+      errors.push(`program sidecar unreadable: ${f}`);
+    }
+  }
+  const sitemapProgramCount = programCount - zeroContentCount;
+
   const companyCount = entities.length;
   const agencyCount = agencies.length;
   const citationTotal = siteMeta.counts?.citations ?? 0;
 
-  notes.push(`sidecars: ${programCount} programs, ${companyCount} companies, ${agencyCount} agencies, ${citationTotal} citations`);
+  notes.push(
+    `sidecars: ${programCount} program pages (${programs.length} full tier, ` +
+      `${zeroContentCount} zero-content/noindex), ${companyCount} companies, ` +
+      `${agencyCount} agencies, ${citationTotal} citations`
+  );
 
   // ── out/ exists ──────────────────────────────────────────────────────────
   if (!dirExists(outDir)) {
@@ -268,14 +305,16 @@ export async function runBuildGate() {
     }
     // Expected: static(7) + feed(1) + district pages + filing pages + programs + companies + agencies
     // static(7) = /, /programs/, /companies/, /data/, /downloads/, /methodology/, /about/
+    // Programs: page universe MINUS zero-content noindex pages (5F policy —
+    // built but excluded from the sitemap, like zero-mention filings).
     const expectedTotal =
-      7 + 1 + districtPageCount + filingPageCount + programCount + companyCount + agencyCount;
+      7 + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
       errors.push(
-        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${programCount} programs + ${companyCount} companies + ${agencyCount} agencies)`
+        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (7 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${sitemapProgramCount} programs (${programCount} pages − ${zeroContentCount} zero-content noindex) + ${companyCount} companies + ${agencyCount} agencies)`
       );
     } else {
-      notes.push(`sitemap: ${sitemapCount} URLs ✓`);
+      notes.push(`sitemap: ${sitemapCount} URLs ✓ (${zeroContentCount} zero-content program page(s) excluded)`);
     }
 
     // Check all URLs start with SITE_URL origin
