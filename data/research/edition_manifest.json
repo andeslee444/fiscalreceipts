@@ -39,11 +39,23 @@
       "status": "loaded"
     },
     "2019": {
+      "budget_lines": 30069,
       "date": "2026-07-03",
-      "discovered": 7,
-      "reason": "probe failed: discovered 7/[30,45] classifiable documents (3 rollups + 4 rdte). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope (calibrated to PB2024/PB2025 per-agency style) structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "detail_facts": 4980,
+      "discovered": 11,
+      "documents": 11,
+      "downloaded": 11,
+      "provenance": {
+        "ambiguous_first": 1998,
+        "total": 4980,
+        "unique": 1243,
+        "unresolved": 1006,
+        "zero_amount": 733
+      },
+      "reason": "loaded: 11 docs (11 downloaded), 30069 budget_lines, 4980 detail facts, 3121 recon checks. Note: OSD RDT&E ships as two BA-split volumes (Vol_3A BA1-3, Vol_3B BA4-7) that EACH embed the complete OSD MJB XML \u2014 both load fully, so OSD detail facts appear under both documents and the 1006 'unresolved' provenance rows are the cross-volume amounts (each amount resolves in its sibling volume's pages).",
+      "recon_checks": 3121,
+      "sample_pe_count": 17,
+      "status": "loaded"
     },
     "2020": {
       "date": "2026-07-03",
