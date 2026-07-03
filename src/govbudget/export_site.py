@@ -2855,6 +2855,17 @@ def _write_all_sidecars(
     )
     n_files += 1
 
+    # ------------------------------------------------------------------ #
+    # 18. breakdowns/{fact_id}.json (Phase 5D Task 3b — show-your-work)   #
+    # ------------------------------------------------------------------ #
+    n_files += _emit_breakdowns(
+        json_dir=json_dir,
+        con=con,
+        citation_rows=citation_rows,
+        bl_rows=bl_rows,
+        detail_rows=detail_rows,
+    )
+
     return n_files
 
 
@@ -4201,6 +4212,315 @@ def _emit_cite_shards(*, json_dir: Path, citations_dict: dict) -> int:
     for prefix in sorted(shards):
         _write_json(shard_dir / f"{prefix}.json", shards[prefix])
     return len(shards)
+
+
+# Formula prefix marking the agency FY2024 sum — its inputs are workbook
+# fact_ids in THOUSANDS while recorded_value is in MILLIONS, so the generic
+# input-grain decomposition cannot hold; it gets a program-grain breakdown
+# (dim_programs.fy2024_actual_millions rows, cited via the program's single
+# PriorYear root jbook fact where one exists — the same citation the program
+# page headline uses; multi-root or uncited programs appear as ⁂ rows).
+_AGENCY_FY24_FORMULA_PREFIX = "sum(dim_programs.fy2024_actual_millions)"
+
+_TRAJ_METRIC_LABELS = {
+    "fy2024_actuals": "FY2024 actuals",
+    "fy2025_total": "FY2025 total",
+    "fy2026_total": "FY2026 total",
+    "fy2526_change": "Δ FY25→26",
+}
+
+# Sum-decomposition tolerance (Decimal): recorded_value is canonically
+# 3-decimal-rounded while row values keep full float precision.
+_BREAKDOWN_SUM_TOL = "0.005"
+
+
+def _emit_breakdowns(
+    *,
+    json_dir: Path,
+    con,  # duckdb connection (read-only mart)
+    citation_rows: list,
+    bl_rows: list,
+    detail_rows: list,
+) -> int:
+    """Emit json/breakdowns/{fact_id}.json — "show your work" tables (spec §3b).
+
+    One file per SUM-DECOMPOSABLE derived fact with ≥2 fact_id inputs:
+      {fact_id, op: 'sum'|'difference', units, formula, recorded_value,
+       rows: [{label, pe_bli, v, fid} ...]}
+    where sum(rows.v) == recorded_value canonically (difference facts negate
+    the subtracted input's v and mark it "subtracted": true). Uncited rows
+    (agency FY2024 programs without a cited jbook root) carry fid: null +
+    "uncited": true so the table accounts for 100% of the sum honestly.
+
+    NOT emitted (by design, documented in tests/test_export_breakdowns.py):
+    crosswalk links (recorded_value is a confidence tier), URL/mixed-input
+    facts, <2 inputs, and any row whose inputs do not actually sum to
+    recorded_value (skipped LOUDLY — the 5B-1 derived gate owns that failure;
+    a breakdown that does not sum must never ship).
+
+    Returns the number of breakdown files written.
+    """
+    import json as _json
+    import re as _re
+    from decimal import Decimal as D
+
+    breakdown_dir = json_dir / "breakdowns"
+    breakdown_dir.mkdir(exist_ok=True)
+
+    hex_re = _re.compile(r"^[0-9a-f]{16}$")
+
+    # ---- lookup indexes ------------------------------------------------------
+    # fid → recorded_value (derived/usaspending tiers)
+    rv_by_fid: dict[str, str] = {}
+    # fid → pe_bli (citation rows carry pe_bli at index 24)
+    pe_by_fid: dict[str, str] = {}
+    for row in citation_rows:
+        fid = row[0]
+        if row[23] is not None:
+            rv_by_fid[fid] = row[23]
+        if row[24]:
+            pe_by_fid[fid] = row[24]
+
+    # workbook fid → (amount_thousands, title, pe_bli)
+    bl_by_fid: dict[str, tuple] = {}
+    for r in bl_rows:
+        bl_by_fid[r[0]] = (r[11], r[9], r[8])
+
+    # dim_pe_titles (single deterministic title mart)
+    try:
+        titles: dict[str, str] = dict(
+            con.execute("select pe_bli, title from dim_pe_titles").fetchall()
+        )
+    except Exception:
+        titles = {}
+
+    # trajectory reverse index: derived fid → (pe_bli, metric)
+    traj_meta: dict[str, tuple] = {}
+    try:
+        traj_rows = con.execute(
+            "select pe_bli, organization from fct_budget_trajectory"
+        ).fetchall()
+    except Exception:
+        traj_rows = []
+    for t_pe, t_org in traj_rows:
+        for metric in _TRAJ_METRIC_LABELS:
+            traj_meta[fact_id_derived("trajectory", f"{t_pe}|{t_org}", metric)] = (
+                t_pe, metric,
+            )
+
+    # usaspending district-program reverse index: fid → (pe_bli, program_title)
+    usas_meta: dict[str, tuple] = {}
+    try:
+        dp_rows = con.execute(
+            "select pop_state, pop_district, pe_bli, program_title"
+            " from fct_district_programs"
+        ).fetchall()
+    except Exception:
+        dp_rows = []
+    for pop_state, pop_district, dp_pe, dp_title in dp_rows:
+        fid_us = fact_id_usaspending(
+            "district_program", f"{pop_state}|{pop_district}|{dp_pe}",
+            "total_obligation",
+        )
+        usas_meta[fid_us] = (dp_pe, dp_title)
+
+    def _input_meta(fid: str, *, op: str) -> tuple:
+        """(label, pe_bli) for an input fact_id."""
+        if fid in bl_by_fid:
+            _amt, title, pe = bl_by_fid[fid]
+            return (title or titles.get(pe) or pe, pe)
+        if fid in traj_meta:
+            pe, metric = traj_meta[fid]
+            if op == "difference":
+                # Δ rows: both inputs share the program — the metric is
+                # the distinguishing label (FY2026 total − FY2025 total).
+                return (_TRAJ_METRIC_LABELS[metric], pe)
+            return (titles.get(pe) or pe, pe)
+        if fid in usas_meta:
+            pe, dp_title = usas_meta[fid]
+            return (dp_title or titles.get(pe) or pe, pe)
+        pe = pe_by_fid.get(fid)
+        if pe:
+            return (titles.get(pe) or pe, pe)
+        return (None, None)
+
+    def _input_value(fid: str):
+        rv = rv_by_fid.get(fid)
+        if rv is not None:
+            try:
+                return D(rv)
+            except Exception:
+                return None
+        entry = bl_by_fid.get(fid)
+        if entry is not None and entry[0] is not None:
+            return D(str(entry[0]))
+        return None
+
+    tol = D(_BREAKDOWN_SUM_TOL)
+    n_files = 0
+    n_skipped_mismatch = 0
+
+    # ---- agency FY2024 special case (program-grain, ⁂ rows) -----------------
+    # detail_rows PriorYear roots: pe_bli → [(fid, amount_millions)]
+    roots_by_pe: dict[str, list] = {}
+    for r in detail_rows:
+        (fid, pe_bli, project_number, _pt, scenario, amount_millions,
+         *_rest) = r
+        if project_number is None and scenario == "PriorYear":
+            roots_by_pe.setdefault(pe_bli, []).append((fid, amount_millions))
+
+    cited_fids = {row[0] for row in citation_rows}
+
+    try:
+        dim_prog_rows = con.execute(
+            "select pe_bli, org, fy2024_actual_millions from dim_programs"
+        ).fetchall()
+    except Exception:
+        dim_prog_rows = []
+
+    agency_fy24_rows: dict[str, list] = {}
+    for pe_bli, org, fy24_m in dim_prog_rows:
+        if fy24_m is None:
+            continue
+        roots = roots_by_pe.get(pe_bli, [])
+        cited_roots = [
+            (f, a) for f, a in roots if f in cited_fids and a is not None
+        ]
+        row: dict = {
+            "label": titles.get(pe_bli) or pe_bli,
+            "pe_bli": pe_bli,
+            "v": fy24_m,
+        }
+        # Cited only when a SINGLE cited root row carries the exact program
+        # value — otherwise the row is honestly ⁂ (multi-root sums and
+        # zero_amount roots have no single citation for this figure).
+        if (
+            len(roots) == 1
+            and len(cited_roots) == 1
+            and cited_roots[0][1] is not None
+            and abs(D(str(cited_roots[0][1])) - D(str(fy24_m))) <= tol
+        ):
+            row["fid"] = cited_roots[0][0]
+        else:
+            row["fid"] = None
+            row["uncited"] = True
+        agency_fy24_rows.setdefault(org, []).append(row)
+
+    handled_agency_fy24: set[str] = set()
+    for row in citation_rows:
+        fid, kind, units = row[0], row[1], row[2]
+        formula, recorded = row[20], row[23]
+        if kind != "derived" or not formula or recorded is None:
+            continue
+        if not formula.startswith(_AGENCY_FY24_FORMULA_PREFIX):
+            continue
+        # org from the formula: sum(...) for org='DARPA' (...)
+        m = _re.search(r"for org='([^']*)'", formula) or _re.search(
+            r'for org="([^"]*)"', formula
+        )
+        org = m.group(1) if m else None
+        rows_out = agency_fy24_rows.get(org or "", [])
+        if not rows_out:
+            continue
+        try:
+            recorded_d = D(recorded)
+        except Exception:
+            continue
+        total = sum((D(str(r_["v"])) for r_ in rows_out), D(0))
+        if abs(total - recorded_d) > tol:
+            n_skipped_mismatch += 1
+            print(
+                f"breakdowns: SKIP {fid} (agency fy2024 {org}) — program rows"
+                f" sum {total} != recorded_value {recorded} (mismatch)"
+            )
+            continue
+        _write_json(breakdown_dir / f"{fid}.json", {
+            "fact_id": fid,
+            "op": "sum",
+            "units": units,
+            "formula": formula,
+            "recorded_value": recorded,
+            "rows": rows_out,
+        })
+        handled_agency_fy24.add(fid)
+        n_files += 1
+
+    # ---- generic input-grain decompositions ---------------------------------
+    for row in citation_rows:
+        fid, kind, units = row[0], row[1], row[2]
+        formula, inputs_raw, recorded = row[20], row[21], row[23]
+        if kind != "derived" or not formula or recorded is None:
+            continue
+        if fid in handled_agency_fy24 or formula.startswith(
+            _AGENCY_FY24_FORMULA_PREFIX
+        ):
+            continue
+        if not inputs_raw:
+            continue
+        try:
+            inputs = _json.loads(inputs_raw)
+        except Exception:
+            continue
+        if (
+            not isinstance(inputs, list)
+            or len(inputs) < 2
+            or not all(isinstance(x, str) and hex_re.match(x) for x in inputs)
+        ):
+            continue
+        try:
+            recorded_d = D(recorded)
+        except Exception:
+            continue  # non-numeric recorded_value (crosswalk confidence tier)
+
+        values = [_input_value(f) for f in inputs]
+        if any(v is None for v in values):
+            continue  # unresolvable input — the 5B-1 derived gate owns this
+
+        is_difference = " - " in formula and len(inputs) == 2
+        op = "difference" if is_difference else "sum"
+
+        rows_out = []
+        if is_difference:
+            computed = values[0] - values[1]
+        else:
+            computed = sum(values, D(0))
+        if abs(computed - recorded_d) > tol:
+            n_skipped_mismatch += 1
+            print(
+                f"breakdowns: SKIP {fid} — {op} of {len(inputs)} inputs"
+                f" = {computed} != recorded_value {recorded} (mismatch)"
+            )
+            continue
+
+        for i, (inp_fid, val) in enumerate(zip(inputs, values)):
+            label, pe = _input_meta(inp_fid, op=op)
+            r_out: dict = {"label": label, "pe_bli": pe}
+            if is_difference and i == 1:
+                r_out["v"] = float(-val)
+                r_out["fid"] = inp_fid
+                r_out["subtracted"] = True
+            else:
+                r_out["v"] = float(val)
+                r_out["fid"] = inp_fid
+            rows_out.append(r_out)
+
+        _write_json(breakdown_dir / f"{fid}.json", {
+            "fact_id": fid,
+            "op": op,
+            "units": units,
+            "formula": formula,
+            "recorded_value": recorded,
+            "rows": rows_out,
+        })
+        n_files += 1
+
+    if n_skipped_mismatch:
+        print(
+            f"breakdowns: {n_skipped_mismatch} derived fact(s) skipped on"
+            " sum mismatch — investigate via verify-phase5b1 derived gate"
+        )
+    print(f"breakdowns: {n_files} files → json/breakdowns/")
+    return n_files
 
 
 def _build_entity_ueis_sidecar(*, duckdb_path, con=None) -> dict:
