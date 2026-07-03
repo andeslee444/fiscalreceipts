@@ -6,6 +6,10 @@
  * Shows:
  *   - Recorded value (prominent, with units)
  *   - Formula text (mono block)
+ *   - Breakdown ("show your work", Phase 5D §3b): when the panel knows the
+ *     fact_id AND a breakdown sidecar exists, the input line items render as
+ *     a table — inline for ≤5 rows, behind "View all N line items →" (full
+ *     screen overlay) for larger sets. See breakdown-table.tsx.
  *   - Input chips:
  *       16-hex fact_id inputs → clickable chips that open THAT citation in
  *       the panel (replacing the current card — "stack/replace" navigation).
@@ -22,9 +26,16 @@ import type { DerivedCitation } from "@/lib/data";
 import { parseDerivedInputs } from "@/lib/citations";
 import { usdEquivalence } from "@/lib/format";
 import { CitationPanelContext } from "@/components/cite";
+import { BreakdownSection } from "./breakdown-table";
 
 interface DerivedCardProps {
   citation: DerivedCitation;
+  /**
+   * The fact_id of this derived citation — enables the lazy breakdown
+   * ("show your work") table. Optional: legacy call sites without the id
+   * render the card exactly as before (no fetch, no breakdown UI).
+   */
+  factId?: string | null;
 }
 
 function formatRecordedValue(recorded: string): string {
@@ -33,7 +44,7 @@ function formatRecordedValue(recorded: string): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
 
-export function DerivedCard({ citation }: DerivedCardProps) {
+export function DerivedCard({ citation, factId }: DerivedCardProps) {
   const { openPanel, hasCitation } = useContext(CitationPanelContext);
   const inputs = parseDerivedInputs(citation.inputs);
   const factInputs = inputs.filter((i) => i.isFactId);
@@ -78,6 +89,10 @@ export function DerivedCard({ citation }: DerivedCardProps) {
           {citation.formula}
         </p>
       </div>
+
+      {/* Breakdown — "show your work" line items (lazy; absent for most
+          derived facts). Renders nothing until the sidecar resolves. */}
+      {factId && <BreakdownSection factId={factId} />}
 
       {/* Fact-id input chips — open their own citation in the panel */}
       {factInputs.length > 0 && (

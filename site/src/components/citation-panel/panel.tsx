@@ -429,7 +429,7 @@ function CitationPanelDialog({
                 )}
               </div>
             ) : citation ? (
-              <CitationBody citation={citation} />
+              <CitationBody citation={citation} factId={factId} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 No citation loaded.
@@ -496,7 +496,13 @@ function CitationPanelDialog({
 
 // ── CitationBody — dispatches to the right card ────────────────────────────
 
-function CitationBody({ citation }: { citation: Citation }) {
+function CitationBody({
+  citation,
+  factId,
+}: {
+  citation: Citation;
+  factId: string | null;
+}) {
   if (isJbookPdf(citation)) {
     return <PdfView citation={citation} />;
   }
@@ -507,7 +513,8 @@ function CitationBody({ citation }: { citation: Citation }) {
     return <LdaCard citation={citation} />;
   }
   if (isDerived(citation)) {
-    return <DerivedCard citation={citation} />;
+    // factId enables the lazy breakdown ("show your work") table.
+    return <DerivedCard citation={citation} factId={factId} />;
   }
   if (isUsaspending(citation)) {
     return <UsaspendingCard citation={citation} />;

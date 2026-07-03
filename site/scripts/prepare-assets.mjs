@@ -161,6 +161,13 @@ console.log(
   `✓  cite-shards/ (${fs.readdirSync(shardsSrc).length} files) → public/json/`
 );
 
+// ── 5c. Copy derived breakdowns (Phase 5D §3b — "show your work" tables) ─────
+const breakdownsSrc = path.join(jsonDir, "breakdowns");
+copyDir(breakdownsSrc, path.join(jsonDestDir, "breakdowns"));
+console.log(
+  `✓  breakdowns/ (${fs.readdirSync(breakdownsSrc).length} files) → public/json/`
+);
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
