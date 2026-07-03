@@ -605,7 +605,9 @@ export default function MethodologyPage() {
               <strong className="font-medium text-foreground">
                 budget river
               </strong>{" "}
-              is the FY{flowMeta.budgetFy} President&apos;s Budget request
+              {/* explicit {" "}: Turbopack drops the leading space of an
+                  entity-bearing text chunk after an expression */}
+              is the FY{flowMeta.budgetFy}{" "}President&apos;s Budget request
               (R-1 + P-1, USD thousands) — money Congress is being asked to
               approve. The{" "}
               <strong className="font-medium text-foreground">

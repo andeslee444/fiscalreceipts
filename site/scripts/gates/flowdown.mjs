@@ -26,9 +26,13 @@
  *      are canonical; every spend edge's class and offers vectors partition
  *      its value; per-(FY, class) totals at the river mouth match an
  *      independent lake regroup for ALL FYs.
- *  (e) Playwright on /flow/ (DOM contract BINDING for the UI batch):
+ *  (e) Playwright on /flow/ (DOM contract BINDING for the UI batch), plus
+ *      built-string regressions (Turbopack once dropped the space in
+ *      "FY2026 President's Budget" / "across N entries" — asserted on the
+ *      rendered page) and the static offers-not-bidders note by the legend:
  *        [data-testid="flow-chart"]           chart container
  *        [data-flow-experimental]             experimental banner
+ *        [data-testid="flow-offers-note"]     static offers honesty note
  *        [data-coverage="flow-bridge"]        bridge coverage note (names the
  *                                             not-yet-crosswalked honesty gap)
  *        [data-flow-node][data-node-id]       nodes (click → citation panel)
@@ -579,6 +583,32 @@ export async function runFlowdownGate({ baseUrl }) {
           errors.push("leg e: bridge note does not state the not-yet-crosswalked gap");
         }
 
+        // built-string regression: Turbopack drops the leading space of an
+        // entity-bearing JSX text chunk after an expression — the shipped
+        // page once read "FY2026President's Budget". Assert the BUILT text.
+        const bodyText = (await page.locator("body").innerText()) ?? "";
+        if (!/FY\d{4} President's Budget/.test(bodyText)) {
+          errors.push(
+            "leg e: unit statement must read \"FY#### President's Budget\" (spaced)"
+          );
+        }
+        if (/FY\d{4}President/.test(bodyText)) {
+          errors.push(
+            'leg e: "FY####President" — missing-space regression in the built page'
+          );
+        }
+
+        // offers honesty must be STATIC and adjacent to the legend — not
+        // hover-only, not footer-only.
+        const offers = page.locator('[data-testid="flow-offers-note"]');
+        if ((await offers.count()) === 0) {
+          errors.push('leg e: [data-testid="flow-offers-note"] missing');
+        } else if (!/counts offers, not bidders/.test((await offers.first().textContent()) ?? "")) {
+          errors.push("leg e: offers note does not state offers-not-bidders");
+        } else {
+          notes.push("leg e: static offers-not-bidders note beside the legend ✓");
+        }
+
         // drill-down expands an Other node
         const other = page.locator("[data-flow-other]").first();
         if ((await other.count()) === 0) {
@@ -594,6 +624,17 @@ export async function runFlowdownGate({ baseUrl }) {
             errors.push("leg e: drill-down shows no [data-drill-member] rows");
           } else {
             notes.push("leg e: Other drill-down expands ✓");
+            // built-string regression twin: the description once read
+            // "across 14entries" (same Turbopack chunk bug).
+            const drillText =
+              (await page.locator('[data-testid="flow-drilldown"]').innerText()) ?? "";
+            if (!/across \d+ entries below/.test(drillText)) {
+              errors.push(
+                `leg e: drill-down description must read "across N entries below" — got "${drillText
+                  .replace(/\s+/g, " ")
+                  .slice(0, 100)}"`
+              );
+            }
           }
           await page.keyboard.press("Escape");
         }

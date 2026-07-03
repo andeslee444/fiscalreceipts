@@ -70,8 +70,11 @@ export default function FlowPage() {
           {/* Per-river unit statements — one stated unit per system, always
               visible (the /years/ CapIQ convention, doubled). */}
           <p className="text-sm font-medium text-foreground">
-            Budget river: USD thousands — FY{meta.budgetFy} President&apos;s
-            Budget (R-1 + P-1).
+            {/* One template literal, not JSX text chunks: Turbopack drops
+                the leading space of an entity-bearing chunk after an
+                expression ("FY2026President's" regression — G9 leg e
+                asserts the built string). */}
+            {`Budget river: USD thousands — FY${meta.budgetFy} President's Budget (R-1 + P-1).`}
           </p>
           <p className="mb-2 text-sm font-medium text-foreground">
             Spend river: USD — DoD prime contract obligations for the selected
