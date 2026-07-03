@@ -515,6 +515,10 @@ def export_site(
                     where sha256 is not null
                     order by sha256, id
                 ) j on j.sha256 = p.document_sha256
+                -- Amount rows only: narrative rows (target_kind='narrative',
+                -- Phase 5F §2b) carry NULL scenario/amount_millions and are
+                -- exported by the jbook_narrative pass (4h), not here.
+                where p.target_kind = 'amount'
                 order by p.document_sha256, p.pe_bli, p.scenario
                 """
             ).fetchall()

@@ -193,6 +193,35 @@ def test_unresolved_narrative_provenance_stays_pageless(pg_dsn, tmp_path):
     assert row["hosted_pdf_url"] is None
 
 
+def test_narrative_provenance_rows_do_not_leak_into_amount_citations(
+        pg_dsn, tmp_path):
+    """REGRESSION: with BOTH kinds of provenance rows in the table and detail
+    facts present (so the jbook_pdf citation pass runs), narrative rows
+    (NULL scenario / amount_millions) must not enter the amount citation
+    loop — pre-fix this crashed fact_id_jbook with 'amount is None'."""
+    sha = _seed_synth_doc(pg_dsn, tmp_path,
+                          detail_amounts=(("CurrentYear", "15.750"),))
+    assert build_provenance_pages(pg_dsn) >= 1
+    assert build_narrative_provenance(pg_dsn) == 1
+    site = _export(pg_dsn, tmp_path)
+
+    cit_pq = site / "citations" / "citations.parquet"
+    con = duckdb.connect()
+    try:
+        pdf_rows = con.execute(
+            f"select fact_id, amount_text from read_parquet('{cit_pq}')"
+            " where kind = 'jbook_pdf'"
+        ).fetchall()
+    finally:
+        con.close()
+    detail_fid = fact_id_jbook(sha, _PE, None, "CurrentYear", "15.750")
+    assert [r[0] for r in pdf_rows] == [detail_fid]
+    assert all(r[1] is not None for r in pdf_rows)
+    # and the narrative citation still gets its page via the 4h pass
+    narr_fid = fact_id_narrative(sha, _PE, "mission", _XML_PATH)
+    assert _narr_citation_row(site, narr_fid)["page_number"] == 1
+
+
 # ---------------------------------------------------------------------------
 # §2a — sidecars for every distinct PE in budget_lines, tiered
 # ---------------------------------------------------------------------------
