@@ -1125,3 +1125,29 @@ def test_run_sql_resolves_parquet_path_from_other_cwd(tmp_path, monkeypatch):
         assert rows == [(99,)], f"Expected [(99,)], got {rows}"
     finally:
         cfg.PARQUET_DIR = original_parquet_dir
+
+
+# ---------------------------------------------------------------------------
+# Tests: 5E — table-equivalence groups in the overlap precheck
+# ---------------------------------------------------------------------------
+
+
+def test_equivalence_expands_decade_series_to_budget_lines():
+    """Agent citing fct_decade_series overlaps an answer_sql on
+    fct_budget_lines — the 5E decade marts own the same quantities."""
+    from govbudget.verify_phase5 import _expand_equivalence
+
+    touched = _expand_equivalence({"fct_decade_series"})
+    entry = _expand_equivalence({"fct_budget_lines"})
+    assert touched & entry
+
+
+def test_equivalence_does_not_cover_unrelated_tables():
+    """PROOF-IT-CAN-FAIL: the equivalence groups must not create overlap
+    between unrelated marts — a lobbying citation for a budget question
+    still fails the precheck."""
+    from govbudget.verify_phase5 import _expand_equivalence
+
+    touched = _expand_equivalence({"fct_program_lobbying"})
+    entry = _expand_equivalence({"fct_budget_lines"})
+    assert not (touched & entry)

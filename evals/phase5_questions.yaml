@@ -42,7 +42,7 @@
   notes: Boeing ~$76B
 - id: q006
   question: Sikorsky Aircraft Corporation is included in which entity family in the
-    warehouse?
+    warehouse? Answer with the single family display_name exactly as stored.
   answer_sql: |
     select display_name
     from dim_entities e
@@ -192,8 +192,8 @@
   notes: fct_budget_to_awards PE coverage
 - id: q019
   question: Which DARPA program has the most individual award contracts (distinct
-    award PIIDs) linked in the budget-to-awards crosswalk? Answer with the PE code
-    and the program title only.
+    award PIIDs) linked in the budget-to-awards crosswalk mart (fct_budget_to_awards)?
+    Answer with the PE code and the program title only.
   answer_sql: |
     select pe_bli, program_title
     from fct_budget_to_awards

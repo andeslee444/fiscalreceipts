@@ -63,6 +63,26 @@ ACCURACY_THRESHOLD = 44
 
 REFUSE_CLASSES = frozenset({"data_not_ingested", "structurally_absent", "classified"})
 
+# Marts that own the SAME jbook budget quantities at different grains. The 5E
+# decade backfill made fct_decade_series a second canonical surface for
+# per-PE fiscal-year amounts (fct_budget_trajectory a third for the FY25→26
+# deltas); an agent citing any surface in a group is citing the same fact
+# family, so the table-overlap precheck expands both sides through the group
+# before intersecting. This is a scope extension, NOT a weakening: the
+# value-recompute check below is untouched — the agent's fresh SQL must still
+# reproduce its exact answer, and unrelated tables still fail the overlap.
+TABLE_EQUIVALENCE_GROUPS: list[frozenset[str]] = [
+    frozenset({"fct_budget_lines", "fct_decade_series", "fct_budget_trajectory"}),
+]
+
+
+def _expand_equivalence(tables: set[str]) -> set[str]:
+    out = set(tables)
+    for group in TABLE_EQUIVALENCE_GROUPS:
+        if out & group:
+            out |= group
+    return out
+
 # Canonical amount_text formatter for citations.parquet lookup
 # f"{millions:,.3f}" e.g. "293.145" or "1,234.567"
 def _canonical_amount_text(millions: float) -> str:
@@ -239,7 +259,7 @@ def _resolve_citation(
     # Extract tables from the ENTRY's answer_sql (the correct SQL)
     entry_sql = entry.get("answer_sql", "")
     entry_tokens = set(re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", entry_sql)) & KNOWN_TABLES
-    if not (touched & entry_tokens):
+    if not (_expand_equivalence(touched) & _expand_equivalence(entry_tokens)):
         return {
             "ok": False,
             "reason": (
