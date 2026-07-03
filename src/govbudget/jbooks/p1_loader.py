@@ -69,6 +69,18 @@ def load_p1_rollup(
         if h.upper().startswith("FY ") and clean[j].endswith(" Amount")
     }
     id_cols = {j: P1_ID_HEADERS[h] for j, h in headers.items() if h in P1_ID_HEADERS}
+    # PB2017–PB2023 P-1 workbooks key rows by 'Line Item' display codes the
+    # era P-40 XML never carries; the era's shared identifier is the P-1 line
+    # number (the XML's P1LineNumber), so pe_bli comes from 'Line Number'.
+    # Modern workbooks ('Budget Line Item' BLI codes) are untouched; era
+    # P-1R has neither 'Budget Line Item' nor 'Line Number' and keeps the
+    # 'Line Item' code (P-1R is never reconciled against XML details).
+    header_vals = set(headers.values())
+    if "Budget Line Item" not in header_vals and "Line Number" in header_vals:
+        id_cols = {
+            j: n for j, n in id_cols.items() if n not in ("pe_bli", "line_number")
+        }
+        id_cols[next(j for j, h in headers.items() if h == "Line Number")] = "pe_bli"
     # PB2017–PB2023 P-1R workbooks have no Add/Non-Add column: nothing to filter.
     add_col = next((j for j, h in headers.items() if h == "Add/Non-Add"), None)
 
@@ -93,7 +105,8 @@ def load_p1_rollup(
             str(ids.get("account")), ids.get("account_title"),
             str(ids.get("organization")), _str(ids.get("budget_activity")),
             ids.get("budget_activity_title"),
-            str(ids.get("pe_bli")), ids.get("title"),
+            str(ids.get("pe_bli")).strip(),  # era 'Line Number' cells are padded
+            ids.get("title"),
         )
         for j, amount_type in amount_cols.items():
             if j >= len(row) or row[j] is None or str(row[j]).strip() == "":

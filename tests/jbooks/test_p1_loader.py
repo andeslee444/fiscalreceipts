@@ -192,25 +192,32 @@ def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
     ws.append(["Total of Displayed Rows"])
     ws.append(ERA_P1_HEADERS)
     ws.append(["0300D", "Procurement, Defense-Wide", "DTRA", "01", "Major Equipment",
-               "14", "1", "Major Equipment, DTRA", "23", "Vehicles",
+               "14 ", "1", "Major Equipment, DTRA", "23", "Vehicles",
                "A", "Weapon System Cost", "Add", "", 12000, "", 13000, "", 14000])
     ws.append(["0300D", "Procurement, Defense-Wide", "DTRA", "01", "Major Equipment",
-               "14", "1", "Major Equipment, DTRA", "23", "Vehicles",
+               "14 ", "1", "Major Equipment, DTRA", "23", "Vehicles",
                "Z", "Memo", "Non-Add", "", 999999, "", 999999, "", 999999])
     p = tmp_path / "p1_display.xlsx"
     wb.save(p)
     n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2017)
     assert n == 3
+    # era workbooks key budget_lines on the P-1 line number (the only
+    # identifier the era P-40 XML shares — its P1LineNumber), NOT the
+    # 'Line Item' display code
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(
             "select amount_type, amount_thousands from budget_lines"
-            " where exhibit='P-1' and pe_bli='23'"
+            " where exhibit='P-1' and pe_bli='14'"
         ).fetchall())
+        li_rows = con.execute(
+            "select count(*) from budget_lines where pe_bli='23'"
+        ).fetchone()[0]
     assert rows == {
         "fy_2016_base_enacted": Decimal("12000"),
         "fy_2016_total_enacted": Decimal("13000"),
         "fy_2017_total": Decimal("14000"),
     }
+    assert li_rows == 0
 
 
 def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path):

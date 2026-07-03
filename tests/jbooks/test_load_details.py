@@ -122,3 +122,26 @@ def test_loaders_raise_on_zero_records(pg_dsn, tmp_path):
         load_procurement_details(pg_dsn, document_id=doc_id, xml_path=empty)
     with pytest.raises(ValueError, match="no records"):
         load_document_details(pg_dsn, document_id=doc_id, xml_path=empty)
+
+
+def test_load_procurement_details_legacy_edition_keys_by_p1_line_number(pg_dsn):
+    """PB2017–PB2023: the era P-1 workbooks and P-40 XMLs share only the P-1
+    line number (the XML's P1LineNumber). LineItemNumber vocabulary is
+    per-agency inconsistent in that era (line numbers for DISA, ad-hoc codes
+    for SOCOM/CBDP/DCAA — verified live, Task 4 round 2)."""
+    from govbudget.jbooks.load_details import load_procurement_details
+
+    upsert_documents(pg_dsn, [{
+        "org": "CBDP", "exhibit_family": "procurement", "fiscal_year": 2017,
+        "title": "cbdp17.pdf", "source_url": "https://example.test/cbdp17.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+    load_procurement_details(pg_dsn, document_id=doc_id, xml_path=P40_FIXTURE)
+    with psycopg.connect(pg_dsn) as con:
+        keys = {r[0] for r in con.execute(
+            "select distinct pe_bli from budget_line_details where not superseded"
+        )}
+    # the fixture's P1LineNumber values, not its LineItemNumber codes
+    assert "120" in keys
+    assert "7001SA1000" not in keys

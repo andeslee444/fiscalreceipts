@@ -30,6 +30,10 @@ def test_legacy_long_form_document_orgs_translate_to_workbook_codes():
     assert workbook_org("Defense_Technical_Information_Center") == "DTIC"
     assert workbook_org("Defense_Threat_Reduction_Agency") == "DTRA"
     assert workbook_org("Department_of_Defense_Education_Activity") == "DODEA"
+    # the classifier's noise-stripping drops 'of': these are the org strings
+    # actually produced from the PB2017 filenames
+    assert workbook_org("Department_Defense_Education_Activity") == "DODEA"
+    assert workbook_org("Office_Secretary_Defense") == "OSD"
     assert workbook_org("Joint_Staff") == "TJS"
     assert workbook_org("The_Joint_Staff") == "TJS"
     assert workbook_org("Joint_Urgent_Operational_Needs_Fund") == "DEFW"

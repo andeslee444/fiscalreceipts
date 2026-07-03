@@ -31,6 +31,10 @@ ORG_ALIASES: dict[str, str] = {
     "Defense_Technical_Information_Center": "DTIC",
     "Defense_Threat_Reduction_Agency": "DTRA",
     "Department_of_Defense_Education_Activity": "DODEA",
+    # classify-time noise-stripping drops 'of' tokens: these are the org
+    # strings the classifier actually produces for the PB2017 filenames
+    "Department_Defense_Education_Activity": "DODEA",
+    "Office_Secretary_Defense": "OSD",
     "Joint_Staff": "TJS",
     "The_Joint_Staff": "TJS",
     "Joint_Urgent_Operational_Needs_Fund": "DEFW",

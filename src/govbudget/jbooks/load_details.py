@@ -76,6 +76,7 @@ def load_document_details(dsn: str, *, document_id: int, xml_path: Path) -> int:
 def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> int:
     """Parse a P-40 procurement XML and load details/narratives. Supersedes
     prior rows for the document. Returns the extraction_run id."""
+    from govbudget.jbooks.edition_probe import LEGACY_LAST_FY
     from govbudget.jbooks.p40_parser import parse_p40_xml
 
     records = parse_p40_xml(xml_path)
@@ -87,6 +88,14 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
             "values (%s, 0, %s) returning id",
             (document_id, json.dumps({"parser": "p40_parser/1", "source": str(xml_path)})),
         ).fetchone()[0]
+        # PB2017–PB2023: the era P-1 display and P-40 XMLs share only the P-1
+        # line number (XML P1LineNumber) — LineItemNumber vocabulary is
+        # per-agency inconsistent in that era. The era p1_loader keys
+        # budget_lines.pe_bli on the workbook 'Line Number' to match.
+        doc_fy = con.execute(
+            "select fiscal_year from jbook_documents where id=%s", (document_id,)
+        ).fetchone()[0]
+        legacy = doc_fy is not None and doc_fy <= LEGACY_LAST_FY
         con.execute(
             "update budget_line_details set superseded=true where document_id=%s",
             (document_id,),
@@ -96,12 +105,14 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
             (document_id,),
         )
         for li in records:
+            key = (li.p1_line_number or li.number) if legacy else li.number
+            key = key.strip() if key else key
             for f in li.funding:
                 con.execute(
                     "insert into budget_line_details (extraction_run_id, document_id,"
                     " pe_bli, project_number, project_title, scenario, amount_millions,"
                     " xml_path) values (%s,%s,%s,null,null,%s,%s,%s)",
-                    (run_id, document_id, li.number, f.scenario, f.amount_millions,
+                    (run_id, document_id, key, f.scenario, f.amount_millions,
                      li.xml_path),
                 )
             for kind, body in (("description", li.description),
@@ -111,7 +122,7 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
                         "insert into detail_narratives (extraction_run_id, document_id,"
                         " pe_bli, project_number, kind, title, body, xml_path)"
                         " values (%s,%s,%s,null,%s,%s,%s,%s)",
-                        (run_id, document_id, li.number, kind, li.title, body,
+                        (run_id, document_id, key, kind, li.title, body,
                          li.xml_path),
                     )
         con.execute(
