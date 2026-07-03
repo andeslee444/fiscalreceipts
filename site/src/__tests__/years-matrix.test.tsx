@@ -220,6 +220,14 @@ async function renderMatrix() {
 }
 
 describe("YearsMatrix — render contract", () => {
+  it("renders the honesty-marker legend near the table controls", async () => {
+    await renderMatrix();
+    const legend = screen.getByTestId("cite-legend");
+    expect(legend.textContent).toContain("cited (click for source)");
+    expect(legend.textContent).toContain("zero in source XML");
+    expect(legend.textContent).toContain("uncited input (still counted)");
+  });
+
   it("renders program rows with data-pe under collapsible org sections", async () => {
     await renderMatrix();
     const rows = document.querySelectorAll("tr[data-program-row]");
