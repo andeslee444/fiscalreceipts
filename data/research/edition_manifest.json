@@ -115,11 +115,23 @@
       "status": "loaded"
     },
     "2023": {
+      "budget_lines": 6756,
       "date": "2026-07-03",
+      "detail_facts": 2296,
       "discovered": 8,
-      "reason": "probe failed: discovered 8/[30,45] classifiable documents (3 rollups + 3 rdte + 2 proc: RDTE_Vol1_DARPA/Vol2_MDA/RDTE_MJB_DW_Vol5 + PROC_MJB_DW_Vol1/PROC_MDA_VOL2B). Edition publishes consolidated MJB volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "documents": 8,
+      "downloaded": 8,
+      "provenance": {
+        "ambiguous_first": 1222,
+        "total": 2296,
+        "unique": 759,
+        "unresolved": 0,
+        "zero_amount": 315
+      },
+      "reason": "loaded: 8 docs (8 downloaded), 6756 budget_lines, 2296 detail facts, 1442 recon checks",
+      "recon_checks": 1442,
+      "sample_pe_count": 84,
+      "status": "loaded"
     },
     "2024": {
       "budget_lines": 10582,
