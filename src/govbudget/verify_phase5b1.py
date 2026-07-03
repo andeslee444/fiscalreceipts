@@ -892,14 +892,21 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     checks["citation_distinctness"] = distinctness_ok
 
     # ---- LDA checks ----
-    # kind='lda_filing' rows come from TWO emitters (both must re-derive):
+    # kind='lda_filing' rows come from THREE emitters (all must re-derive):
     #   1. mention grain — fact_id_lda(filing_uuid, pe_bli, matched_term)
     #      from fct_program_lobbying rows
     #   2. filing-amount grain (Task 2b/6a) — fact_id_lda_filing(uuid, role)
     #      for non-null income/expenses, re-derived from the filings sidecars
+    #   3. lobbyist grain (ledger clearance) —
+    #      fact_id_lda_lobbyist(disclosing_filing_uuid, name), re-derived from
+    #      the enriched dim_lobbyists.parquet columns
     lda_pq = site_dir / "data" / "fct_program_lobbying.parquet"
     if lda_pq.exists() and lda_cit_ids:
-        from govbudget.export_site import fact_id_lda, fact_id_lda_filing
+        from govbudget.export_site import (
+            fact_id_lda,
+            fact_id_lda_filing,
+            fact_id_lda_lobbyist,
+        )
 
         con = duckdb.connect()
         try:
@@ -937,12 +944,37 @@ def integrity_gate5b1(site_dir: Path) -> dict:
                 if filing.get("expenses_usd") is not None:
                     filing_fids.add(fact_id_lda_filing(f_uuid, "expenses"))
 
-        lda_not_in_mart = lda_cit_ids - mart_fids - filing_fids
+        # Recompute lobbyist-grain fact_ids from the enriched
+        # dim_lobbyists.parquet (name + disclosing_filing_uuid columns).
+        # Older bundles without the columns contribute an empty set.
+        lobbyist_fids: set[str] = set()
+        lob_pq = site_dir / "data" / "dim_lobbyists.parquet"
+        if lob_pq.exists():
+            con = duckdb.connect()
+            try:
+                lob_cols = {
+                    d[0] for d in con.execute(
+                        f"describe select * from read_parquet('{_sql_path(lob_pq)}')"
+                    ).fetchall()
+                }
+                if {"name", "disclosing_filing_uuid"} <= lob_cols:
+                    for name, dfu in con.execute(
+                        f"select name, disclosing_filing_uuid"
+                        f" from read_parquet('{_sql_path(lob_pq)}')"
+                        f" where disclosing_filing_uuid is not null"
+                    ).fetchall():
+                        if name and dfu:
+                            lobbyist_fids.add(fact_id_lda_lobbyist(dfu, name))
+            finally:
+                con.close()
+
+        lda_not_in_mart = lda_cit_ids - mart_fids - filing_fids - lobbyist_fids
         if lda_not_in_mart:
             failures.append(
                 f"lda: {len(lda_not_in_mart)} lda_filing citation fact_id(s) "
-                f"not re-derivable from fct_program_lobbying or the filings "
-                f"sidecars: {sorted(lda_not_in_mart)[:5]}"
+                f"not re-derivable from fct_program_lobbying, the filings "
+                f"sidecars, or dim_lobbyists disclosing filings: "
+                f"{sorted(lda_not_in_mart)[:5]}"
             )
         checks["lda_fact_ids_in_mart"] = len(lda_not_in_mart) == 0
     else:

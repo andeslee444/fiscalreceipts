@@ -102,15 +102,21 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
         "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
     )
 
+    # LIVE mart schema (dbt/models/marts/dim_geography.sql): pop_state /
+    # pop_district / transaction_count / total_obligation — no obligation_type
+    # column. The old fixture schema had a fictional obligation_type column
+    # that made the sidecar's grand-total query silently return None against
+    # the real warehouse.
     con.execute(
         "CREATE TABLE dim_geography ("
-        "  state varchar, district varchar, total_obligation double, obligation_type varchar"
+        "  pop_state varchar, pop_district varchar,"
+        "  transaction_count bigint, total_obligation double"
         ")"
     )
     con.execute(
         "INSERT INTO dim_geography VALUES "
-        "('VA', 'VA-08', 500000000.0, 'contract'),"
-        "('CA', 'CA-18', 200000000.0, 'contract')"
+        "('VA', 'VA-08', 15, 500000000.0),"
+        "('CA', 'CA-18', 7, 200000000.0)"
     )
 
     con.close()
@@ -463,7 +469,8 @@ class TestEmitDistrictSidecars:
         )
         con.execute(
             "CREATE TABLE dim_geography ("
-            "  state varchar, district varchar, total_obligation double, obligation_type varchar"
+            "  pop_state varchar, pop_district varchar,"
+            "  transaction_count bigint, total_obligation double"
             ")"
         )
         con.close()

@@ -249,8 +249,15 @@ def test_export_site_happy_path(pg_dsn, tmp_path):
     assert "schema_version" in man
     assert man["schema_version"] == 1
 
-    # fct_budget_to_awards is not in _CITED_DATASETS, so it should remain uncited
-    assert "fct_budget_to_awards" in man["uncited_datasets"]
+    # fct_budget_to_awards + dim_geography now carry citation tiers (uncited-
+    # ledger clearance): link rows get derived crosswalk citations, geography
+    # rows get derived place-of-performance citations.
+    assert "fct_budget_to_awards" not in man["uncited_datasets"]
+    assert "dim_geography" not in man["uncited_datasets"]
+    # dim_lobbyists stays on the ledger in THIS fixture — no influence-stage
+    # lda parquets exist next to the duckdb, so no disclosing filing can be
+    # cited (honest degradation, not a fake tier).
+    assert "dim_lobbyists" in man["uncited_datasets"]
     # fct_budget_trajectory now has a derived citation tier (Task 2a)
     assert "fct_budget_trajectory" not in man["uncited_datasets"]
 

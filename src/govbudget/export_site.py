@@ -97,6 +97,19 @@ def fact_id_lda_filing(filing_uuid: str, role: str) -> str:
     return hashlib.sha256(f"lda_filing_amount|{filing_uuid}|{role}".encode()).hexdigest()[:16]
 
 
+def fact_id_lda_lobbyist(filing_uuid: str, name: str) -> str:
+    """Canonical identity for a lobbyist-grain LDA citation (dim_lobbyists rows).
+
+    sha256 of 'lda_lobbyist|{filing_uuid}|{name}', hexdigest[:16].
+    filing_uuid is the DISCLOSING filing — the deterministic LDA filing whose
+    lobbyist block discloses this person (covered_position match preferred,
+    lowest filing_uuid tiebreak; see _export_dim_lobbyists).
+    Distinct from fact_id_lda (mention grain) and fact_id_lda_filing
+    (filing-amount grain) by prefix.
+    """
+    return hashlib.sha256(f"lda_lobbyist|{filing_uuid}|{name}".encode()).hexdigest()[:16]
+
+
 def fact_id_state_soql(jurisdiction: str, comparable_category: str, fiscal_year: str) -> str:
     """Canonical identity for a state SoQL citation (CT Socrata aggregate).
 
@@ -161,6 +174,17 @@ _MART_NAMES = [
 #  lda_filings is the influence-stage parquet behind the /filing sidecars —
 #  filing income/expenses amounts cite the filing-level kind='lda_filing'
 #  rows minted by _build_filing_lda_citation_rows)
+#
+# Three datasets are cited CONDITIONALLY (added to the cited set at export
+# time only when their citation rows were actually emitted — a degenerate
+# export with missing marts/parquets keeps them on the uncited ledger
+# honestly rather than declaring a tier that has no rows behind it):
+#   dim_geography         — derived rows (USAspending place-of-performance
+#                           aggregation; _build_geography_citation_rows)
+#   fct_budget_to_awards  — derived rows (crosswalk link provenance;
+#                           _build_budget_to_awards_citation_rows)
+#   dim_lobbyists         — lda_filing rows (disclosing filing per lobbyist;
+#                           _build_lobbyist_citation_rows)
 _CITED_DATASETS = {
     "jbook_details",
     "jbook_narratives",
@@ -245,6 +269,13 @@ def export_site(
                 raise ValueError(f"required mart missing from duckdb: {name}")
 
         for name in _MART_NAMES:
+            if name == "dim_lobbyists":
+                # Enriched export: adds disclosing_filing_uuid /
+                # disclosing_filing_url / fact_id columns so lobbyist rows
+                # carry their own provenance (the lda_filing citation tier)
+                # and the integrity gate can re-derive lobbyist fact_ids
+                # hermetically from the site bundle.
+                continue
             dest = data_dir / f"{name}.parquet"
             dest_str = str(dest).replace("'", "''")
             con.execute(
@@ -253,6 +284,12 @@ def export_site(
             )
             count = con.execute(f"select count(*) from '{dest_str}'").fetchone()[0]
             dataset_counts[name] = count
+
+        # dim_lobbyists — enriched typed export (see _export_dim_lobbyists)
+        lobbyist_rows = _export_dim_lobbyists(
+            con=con, duckdb_path=duckdb_path, data_dir=data_dir
+        )
+        dataset_counts["dim_lobbyists"] = len(lobbyist_rows)
     finally:
         con.close()
 
@@ -617,6 +654,16 @@ def export_site(
     )
     citation_rows.extend(derived_rows)
 
+    # --- 4d2. Geography derived citations (dim_geography + district aggregates) ---
+    geography_rows = _build_geography_citation_rows(duckdb_path=duckdb_path)
+    citation_rows.extend(geography_rows)
+
+    # --- 4d3. Budget-to-awards crosswalk link citations ---
+    b2a_rows = _build_budget_to_awards_citation_rows(
+        duckdb_path=duckdb_path, bl_rows=bl_rows
+    )
+    citation_rows.extend(b2a_rows)
+
     # --- 4e. USAspending citations (family-year obligations + district programs) ---
     usas_rows = _build_usaspending_citation_rows(duckdb_path=duckdb_path)
     citation_rows.extend(usas_rows)
@@ -624,6 +671,10 @@ def export_site(
     # --- 4f. Filing-level LDA amount citations ---
     filing_lda_rows = _build_filing_lda_citation_rows(duckdb_path=duckdb_path)
     citation_rows.extend(filing_lda_rows)
+
+    # --- 4f2. Lobbyist-grain LDA citations (dim_lobbyists disclosing filings) ---
+    lobbyist_cit_rows = _build_lobbyist_citation_rows(lobbyist_rows=lobbyist_rows)
+    citation_rows.extend(lobbyist_cit_rows)
 
     # --- 4g. State citation tier (CT state_soql + CA state_file) ---
     state_citation_rows = _build_state_citation_rows(duckdb_path=duckdb_path)
@@ -700,11 +751,21 @@ def export_site(
     # -----------------------------------------------------------------------
     # 5. Manifest
     # -----------------------------------------------------------------------
-    # Compute uncited_datasets: all data/*.parquet names with no citation kind
+    # Compute uncited_datasets: all data/*.parquet names with no citation kind.
+    # The three conditionally-cited datasets join the cited set ONLY when
+    # their citation rows were actually emitted this run — a degenerate export
+    # (missing marts/parquets) keeps them on the ledger honestly.
     all_data_names = sorted(
         p.stem for p in data_dir.glob("*.parquet")
     )
-    uncited = [n for n in all_data_names if n not in _CITED_DATASETS]
+    cited_datasets = set(_CITED_DATASETS)
+    if geography_rows:
+        cited_datasets.add("dim_geography")
+    if b2a_rows:
+        cited_datasets.add("fct_budget_to_awards")
+    if lobbyist_cit_rows:
+        cited_datasets.add("dim_lobbyists")
+    uncited = [n for n in all_data_names if n not in cited_datasets]
 
     # Count citations by kind
     cit_by_kind: dict[str, int] = {}
@@ -1407,6 +1468,436 @@ def _build_derived_citation_rows(
     finally:
         con.close()
 
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Geography citation tier (uncited-ledger clearance)
+# ---------------------------------------------------------------------------
+
+
+def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
+    """Build derived citation rows for dim_geography and district aggregates.
+
+    Three surfaces (all kind='derived'):
+
+    1. surface='geography', key='{pop_state}|{pop_district}', metric='total_obligation'
+       — one row per dim_geography mart row (USAspending place-of-performance
+       aggregation over fct_award_transactions, contracts + assistance).
+       inputs = [USAspending filter API endpoint]; query_body = the
+       place-of-performance filter JSON that scopes the aggregation.
+
+    2. surface='geography', key='grand_total', metric='total_obligation'
+       — the all-district total rendered on /district/. recorded_value is
+       computed with the same SQL the district sidecar uses
+       (select sum(total_obligation) from dim_geography) so sidecar and
+       citation agree by construction. inputs=[]; query_body carries the SQL.
+
+    3. surface='district', key='{pop_district}',
+       metrics 'total_linkable_dollars' + 'total_cited_dollars'
+       — the per-district header/table sums over fct_district_programs.
+       inputs = the district's per-program USAspending citation fact_ids
+       (fact_id_usaspending district_program rows — emitted for every
+       fct_district_programs row with a non-null total_obligation), so the
+       derived row chains to the USAspending tier and integrity rule 4a can
+       resolve every input. Aggregation mirrors _emit_district_sidecars
+       exactly (same query ORDER BY, same float accumulation).
+
+    Never fails export: missing marts → skip that surface silently.
+    """
+    import datetime
+    import json as _json
+
+    import duckdb as _duckdb
+
+    rows: list[tuple] = []
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        # ---- 1. Per-row dim_geography citations ----
+        try:
+            geo_rows = con.execute(
+                "select pop_state, pop_district, transaction_count,"
+                " total_obligation from dim_geography"
+            ).fetchall()
+        except Exception:
+            geo_rows = []
+
+        for pop_state, pop_district, txn_count, total_obl in geo_rows:
+            if total_obl is None or not pop_district:
+                continue
+            key_str = f"{pop_state}|{pop_district}"
+            fid = fact_id_derived("geography", key_str, "total_obligation")
+            query_body = _json.dumps({
+                "filters": {
+                    "place_of_performance_locations": [
+                        {"country": "USA", "state": pop_state,
+                         "district_original": pop_district}
+                    ],
+                },
+                "version": "2020-06-01",
+            }, sort_keys=True)
+            formula = (
+                f"sum(fct_award_transactions.obligation) where"
+                f" pop_state={pop_state!r} and pop_district={pop_district!r}"
+                f" (USAspending place-of-performance aggregation,"
+                f" contracts + assistance, {txn_count or '?'} transactions)"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD",
+                formula,
+                _json.dumps([f"{_USASPENDING_BASE}{_USASPENDING_FILTER_ENDPOINT}"]),
+                f"{total_obl:.3f}",
+                built_at,
+                query_body=query_body,
+            ))
+
+        # ---- 2. Geography grand total (the /district/ index figure) ----
+        # Same SQL as _emit_district_sidecars so the sidecar value and the
+        # recorded_value agree by construction.
+        _GEO_GRAND_TOTAL_SQL = "select sum(total_obligation) from dim_geography"
+        try:
+            gt_row = con.execute(_GEO_GRAND_TOTAL_SQL).fetchone()
+            geo_grand_total = float(gt_row[0]) if gt_row and gt_row[0] else None
+        except Exception:
+            geo_grand_total = None
+
+        if geo_grand_total is not None and geo_rows:
+            fid = fact_id_derived("geography", "grand_total", "total_obligation")
+            rows.append(_null_derived_row(
+                fid, "derived", "USD",
+                f"sum(dim_geography.total_obligation) across {len(geo_rows)}"
+                f" (state, district) rows (USAspending place-of-performance"
+                f" aggregation, contracts + assistance)",
+                "[]",
+                f"{geo_grand_total:.3f}",
+                built_at,
+                query_body=_GEO_GRAND_TOTAL_SQL,
+            ))
+
+        # ---- 3. District aggregate citations (linkable + cited sums) ----
+        # MUST mirror _emit_district_sidecars: same query ORDER BY, same
+        # float accumulation, same fact-id attach rule (usaspending rows are
+        # emitted for every non-null total_obligation — see
+        # _build_usaspending_citation_rows).
+        try:
+            dp_rows = con.execute(
+                "select pop_state, pop_district, pe_bli, total_obligation"
+                " from fct_district_programs"
+                " order by pop_state, pop_district, total_obligation desc nulls last"
+            ).fetchall()
+        except Exception:
+            dp_rows = []
+
+        dist_linkable: dict[str, float] = {}
+        dist_cited: dict[str, float] = {}
+        dist_inputs: dict[str, list[str]] = {}
+        dist_prog_count: dict[str, int] = {}
+        for pop_state, pop_district, pe_bli, total_obl in dp_rows:
+            if not pop_district:
+                continue
+            dist_prog_count[pop_district] = dist_prog_count.get(pop_district, 0) + 1
+            dist_linkable[pop_district] = (
+                dist_linkable.get(pop_district, 0.0) + float(total_obl or 0)
+            )
+            if total_obl is not None:
+                usas_fid = fact_id_usaspending(
+                    "district_program",
+                    f"{pop_state}|{pop_district}|{pe_bli}",
+                    "total_obligation",
+                )
+                dist_cited[pop_district] = (
+                    dist_cited.get(pop_district, 0.0) + float(total_obl)
+                )
+                dist_inputs.setdefault(pop_district, []).append(usas_fid)
+
+        for pop_district in dist_linkable:
+            input_fids = list(dict.fromkeys(dist_inputs.get(pop_district, [])))
+            inputs_json = _json.dumps(input_fids)
+            n_progs = dist_prog_count.get(pop_district, 0)
+            for metric, value, formula in [
+                (
+                    "total_linkable_dollars",
+                    dist_linkable[pop_district],
+                    f"sum(fct_district_programs.total_obligation) for"
+                    f" pop_district={pop_district!r} ({n_progs} crosswalked"
+                    f" programs; null obligations contribute 0)",
+                ),
+                (
+                    "total_cited_dollars",
+                    dist_cited.get(pop_district, 0.0),
+                    f"sum(fct_district_programs.total_obligation) for"
+                    f" pop_district={pop_district!r} over programs with a"
+                    f" USAspending citation ({len(input_fids)} of {n_progs})",
+                ),
+            ]:
+                fid = fact_id_derived("district", pop_district, metric)
+                rows.append(_null_derived_row(
+                    fid, "derived", "USD",
+                    formula,
+                    inputs_json,
+                    f"{value:.3f}",
+                    built_at,
+                ))
+    finally:
+        con.close()
+
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Budget-to-awards crosswalk link citation tier (uncited-ledger clearance)
+# ---------------------------------------------------------------------------
+
+
+def _build_budget_to_awards_citation_rows(*, duckdb_path, bl_rows: list) -> list[tuple]:
+    """Build derived citation rows for fct_budget_to_awards link rows.
+
+    One kind='derived' row per distinct (pe_bli, award_piid) link:
+      surface='budget_to_awards', key='{pe_bli}|{award_piid}', metric='link'.
+
+    The cited fact is the LINK itself — pe_bli matched to an award PIID via
+    the crosswalk. Provenance:
+      - formula: the crosswalk method + confidence (self-describing; the link
+        carries no dollar amount — dollars live at award grain in
+        fct_award_transactions).
+      - inputs: budget-side workbook fact_ids for (pe_bli, workbook org) —
+        every budget_lines fact_id has a workbook citation (set equality
+        invariant), so integrity rule 4a resolves all inputs. Capped at 8.
+      - query_body: the USAspending award-lookup filter JSON for the PIID
+        (the award-side durable artifact).
+      - recorded_value: the confidence tier ('high' | 'medium') — the
+        assessed strength of the link.
+
+    Formula text deliberately contains no ' - ' token: _verify_derived
+    rule 4b treats a difference formula with exactly two fact_id inputs as a
+    recomputable subtraction, which a link row is not.
+
+    Deterministic: rows ordered by (pe_bli, award_piid); duplicate
+    (pe_bli, award_piid) mart rows collapse to the first occurrence
+    (citation_distinctness invariant).
+
+    Never fails export: missing mart → [].
+    """
+    import datetime
+    import json as _json
+
+    import duckdb as _duckdb
+
+    rows: list[tuple] = []
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        try:
+            link_rows = con.execute(
+                "select pe_bli, award_piid, organization, method, confidence"
+                " from fct_budget_to_awards"
+                " order by pe_bli, award_piid"
+            ).fetchall()
+        except Exception:
+            link_rows = []
+    finally:
+        con.close()
+
+    if not link_rows:
+        return rows
+
+    # Budget-side inputs: (pe_bli, workbook org) → budget_lines fact_ids.
+    # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
+    #   organization, budget_activity, budget_activity_title, pe_bli, title,
+    #   amount_type, amount_thousands, units, document_sha256, source_sheet,
+    #   source_cells)
+    bl_pe_org_to_fids: dict[tuple, list[str]] = {}
+    for r in bl_rows:
+        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, *_rest = r
+        bl_pe_org_to_fids.setdefault((bl_pe, bl_org), []).append(fid_bl)
+
+    _MAX_BUDGET_INPUTS = 8
+    seen_links: set[tuple] = set()
+
+    for pe_bli, award_piid, organization, method, confidence in link_rows:
+        if not pe_bli or not award_piid:
+            continue
+        link_key = (pe_bli, award_piid)
+        if link_key in seen_links:
+            continue
+        seen_links.add(link_key)
+
+        translated_org = _workbook_org(organization) if organization else organization
+        input_fids = list(dict.fromkeys(
+            bl_pe_org_to_fids.get((pe_bli, translated_org), [])
+        ))[:_MAX_BUDGET_INPUTS]
+
+        query_body = _json.dumps({
+            "filters": {"award_ids": [award_piid]},
+            "version": "2020-06-01",
+        }, sort_keys=True)
+
+        formula = (
+            f"crosswalk link: pe_bli={pe_bli} matched to award PIID"
+            f" {award_piid} via method={method!r}, confidence={confidence!r}"
+            f" (dollars live at award grain in fct_award_transactions)"
+        )
+
+        fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
+        rows.append(_null_derived_row(
+            fid, "derived", None,
+            formula,
+            _json.dumps(input_fids),
+            str(confidence or "unknown"),
+            built_at,
+            query_body=query_body,
+        ))
+
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Lobbyist citation tier (uncited-ledger clearance)
+# ---------------------------------------------------------------------------
+
+
+def _export_dim_lobbyists(*, con, duckdb_path, data_dir: Path) -> list[tuple]:
+    """Write data/dim_lobbyists.parquet enriched with disclosing-filing provenance.
+
+    Reads the dim_lobbyists mart (via the already-open read-only con) and the
+    influence-stage lda_lobbyists/lda_filings parquets, then writes a typed
+    parquet with three extra columns:
+
+      disclosing_filing_uuid — the deterministic LDA filing whose lobbyist
+        block discloses this person. Rule: among lda_lobbyists rows with the
+        same name, prefer rows whose covered_position equals the mart row's
+        covered_position (the statutory disclosure the revolving_door flag is
+        based on); tiebreak = lowest filing_uuid. When the mart
+        covered_position is empty/N/A (no disclosed position), lowest
+        filing_uuid across all of the name's rows.
+      disclosing_filing_url  — the filing's LDA API URL.
+      fact_id                — fact_id_lda_lobbyist(disclosing_filing_uuid, name).
+
+    When the influence parquets are unavailable (degenerate/test exports) the
+    three columns are NULL and no citations can be minted — dim_lobbyists then
+    stays on the uncited ledger (see export_site ledger computation).
+
+    Returns the exported row tuples:
+      (name, covered_position, filings_count, revolving_door,
+       disclosing_filing_uuid, disclosing_filing_url, fact_id)
+    """
+    import duckdb as _duckdb
+
+    try:
+        mart_rows = con.execute(
+            "select name, covered_position, filings_count, revolving_door"
+            " from dim_lobbyists order by name"
+        ).fetchall()
+    except Exception:
+        mart_rows = []
+
+    # name → [(covered_position, filing_uuid)] from the raw lobbyist rows
+    lob_pq = _stage_parquet_path(duckdb_path, "influence", "lda_lobbyists.parquet")
+    by_name: dict[str, list[tuple]] = {}
+    if lob_pq is not None:
+        try:
+            for fu, name, cp in _duckdb.sql(
+                f"select filing_uuid, name, covered_position"
+                f" from read_parquet('{lob_pq}')"
+                f" where filing_uuid is not null and filing_uuid <> ''"
+                f"   and name is not null and name <> ''"
+            ).fetchall():
+                by_name.setdefault(name, []).append((cp or "", fu))
+        except Exception:
+            by_name = {}
+
+    # filing_uuid → API URL from lda_filings
+    filing_urls: dict[str, str] = {}
+    lda_pq = _stage_parquet_path(duckdb_path, "influence", "lda_filings.parquet")
+    if lda_pq is not None:
+        try:
+            for fu, url in _duckdb.sql(
+                f"select filing_uuid, url from read_parquet('{lda_pq}')"
+                f" where filing_uuid is not null"
+            ).fetchall():
+                if fu and url:
+                    filing_urls[fu] = url
+        except Exception:
+            pass
+
+    export_rows: list[tuple] = []
+    for name, covered_position, filings_count, revolving_door in mart_rows:
+        disclosing_uuid = None
+        candidates = by_name.get(name, [])
+        if candidates:
+            cp = (covered_position or "").strip()
+            if cp and cp.upper() != "N/A":
+                matching = sorted(fu for c, fu in candidates if c == covered_position)
+                if matching:
+                    disclosing_uuid = matching[0]
+            if disclosing_uuid is None:
+                disclosing_uuid = sorted(fu for _c, fu in candidates)[0]
+
+        disclosing_url = None
+        fid = None
+        if disclosing_uuid:
+            disclosing_url = filing_urls.get(
+                disclosing_uuid,
+                f"https://lda.senate.gov/api/v1/filings/{disclosing_uuid}/",
+            )
+            fid = fact_id_lda_lobbyist(disclosing_uuid, name)
+
+        export_rows.append((
+            name, covered_position,
+            int(filings_count) if filings_count is not None else None,
+            bool(revolving_door) if revolving_door is not None else None,
+            disclosing_uuid, disclosing_url, fid,
+        ))
+
+    _write_typed_parquet(
+        data_dir / "dim_lobbyists.parquet",
+        columns=[
+            ("name", "varchar"), ("covered_position", "varchar"),
+            ("filings_count", "bigint"), ("revolving_door", "boolean"),
+            ("disclosing_filing_uuid", "varchar"),
+            ("disclosing_filing_url", "varchar"),
+            ("fact_id", "varchar"),
+        ],
+        rows=export_rows,
+    )
+    return export_rows
+
+
+def _build_lobbyist_citation_rows(*, lobbyist_rows: list) -> list[tuple]:
+    """Build kind='lda_filing' citation rows for dim_lobbyists rows.
+
+    One citation per lobbyist row that has a disclosing filing:
+      fact_id     = fact_id_lda_lobbyist(disclosing_filing_uuid, name)
+      official_url = the disclosing filing's LDA API URL (starts with
+                     https://lda.senate.gov/ and embeds the uuid — the same
+                     shape contract _verify_lda re-derives).
+
+    lobbyist_rows is the return value of _export_dim_lobbyists, so citations
+    and the exported parquet agree by construction (integrity gate re-derives
+    lobbyist fact_ids from the parquet's name + disclosing_filing_uuid).
+    """
+    rows: list[tuple] = []
+    for (name, _cp, _count, _rev, disclosing_uuid, disclosing_url, fid) in lobbyist_rows:
+        if not fid or not disclosing_uuid:
+            continue
+        rows.append((
+            fid, "lda_filing", None,  # fact_id, kind, units
+            None, None, None, None, None, None, None, None,  # amount_text + bbox
+            None,   # resolution
+            None,   # sheet
+            None,   # cells
+            None,   # amount_thousands
+            None,   # sha256
+            None,   # hosted_pdf_url
+            disclosing_url,  # official_url
+            None,   # xml_path
+            None,   # retrieved_at
+            None, None, None, None,  # formula, inputs, query_body, recorded_value
+            None, None, None,  # pe_bli, scenario, amount_type
+        ))
     return rows
 
 
@@ -2935,10 +3426,14 @@ def _emit_district_sidecars(
     """Emit districts/index.json and districts/{pop_district}.json (Task 5).
 
     High grain: programs with dollars + their usaspending fact_ids.
-    dim_geography grand total goes on the uncited ledger (state C, dataset='dim_geography').
 
-    index.json: totals per district + dim_geography grand total (uncited).
-    {pop_district}.json: per-district program list with cited dollars + counts.
+    index.json: totals per district + dim_geography grand total. The grand
+    total and the per-district linkable/cited sums carry derived-citation
+    fact_ids (geography/district surfaces — see
+    _build_geography_citation_rows), attached ONLY when the fact_id resolves
+    in cited_fact_ids; otherwise null and the site renders honest state C.
+    {pop_district}.json: per-district program list with cited dollars + counts
+    + the district's aggregate fact_ids.
 
     Returns number of files written.
     """
@@ -2958,15 +3453,22 @@ def _emit_district_sidecars(
     except Exception:
         dp_rows = []
 
-    # ---- dim_geography grand total (stays state C) ----
+    # ---- dim_geography grand total ----
+    # Same SQL as _build_geography_citation_rows' grand-total row so the
+    # sidecar value and the citation's recorded_value agree by construction.
     try:
         geo_total_row = con.execute(
             "select sum(total_obligation) from dim_geography"
-            " where obligation_type = 'contract'"
         ).fetchone()
         geo_grand_total = float(geo_total_row[0]) if geo_total_row and geo_total_row[0] else None
     except Exception:
         geo_grand_total = None
+
+    geo_grand_total_fact_id = None
+    if geo_grand_total is not None:
+        _gt_fid = fact_id_derived("geography", "grand_total", "total_obligation")
+        if _gt_fid in cited_fact_ids:
+            geo_grand_total_fact_id = _gt_fid
 
     # Build district index: distinct (pop_state, pop_district) with aggregates
     district_index: dict[str, dict] = {}
@@ -3015,6 +3517,17 @@ def _emit_district_sidecars(
             "transaction_count": transaction_count,
         })
 
+    # ---- Attach district aggregate fact_ids (derived 'district' surface) ----
+    # Only when the citation row actually resolves — otherwise null and the
+    # site renders honest state C for that figure.
+    for key, info in district_index.items():
+        for metric, field in (
+            ("total_linkable_dollars", "total_linkable_fact_id"),
+            ("total_cited_dollars", "total_cited_fact_id"),
+        ):
+            fid = fact_id_derived("district", key, metric)
+            info[field] = fid if fid in cited_fact_ids else None
+
     # ---- Write per-district files ----
     for key, programs in district_programs.items():
         info = district_index[key]
@@ -3024,7 +3537,9 @@ def _emit_district_sidecars(
             "program_count": info["program_count"],
             "programs": programs,
             "total_cited_dollars": info["total_cited_dollars"],
+            "total_cited_fact_id": info["total_cited_fact_id"],
             "total_linkable_dollars": info["total_linkable_dollars"],
+            "total_linkable_fact_id": info["total_linkable_fact_id"],
         }
         _write_json(dist_dir / f"{key}.json", obj)
         n_written += 1
@@ -3035,6 +3550,7 @@ def _emit_district_sidecars(
         "districts": index_records,
         "geo_grand_total": geo_grand_total,
         "geo_grand_total_dataset": "dim_geography",
+        "geo_grand_total_fact_id": geo_grand_total_fact_id,
         "total_districts": len(index_records),
     }
     _write_json(dist_dir / "index.json", index_obj)
