@@ -236,11 +236,38 @@ class TestMatrixStructure:
         assert isinstance(prog["projects"], list)
 
     def test_amount_types_present_in_canonical_order(self, tmp_path):
+        """Only amount_types with ≥1 EMITTED cell appear — fy_2025_enacted's
+        sole rows are the multi-line uncitable DARPA pair (absent cell), so
+        the column is dropped rather than shipped as a dead all-'–' column."""
         payload = _emit(tmp_path)
         assert payload["amount_types"] == [
-            "fy_2024_actuals", "fy_2025_enacted", "fy_2025_total",
-            "fy_2026_total",
+            "fy_2024_actuals", "fy_2025_total", "fy_2026_total",
         ]
+
+    def test_amount_type_outside_program_set_dropped(self, tmp_path):
+        """A workbook amount_type whose only rows belong to pe_blis outside
+        the program set (e.g. fy_2025_supplemental live) never becomes a
+        column."""
+        db_path = _make_duckdb_with_trajectory(tmp_path)
+        json_dir = tmp_path / "json"
+        json_dir.mkdir(exist_ok=True)
+        extra = _bl_rows() + [
+            _bl_row("ff11000000000099", "9999999X", "OSD",
+                    "fy_2025_supplemental", 123.0),
+        ]
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            payload = _emit_years_matrix(
+                json_dir=json_dir,
+                con=con,
+                all_prog_rows=_all_prog_rows(),
+                detail_rows=_detail_rows(),
+                bl_rows=extra,
+                cited_fact_ids=_cited_fact_ids() | {"ff11000000000099"},
+            )
+        finally:
+            con.close()
+        assert "fy_2025_supplemental" not in payload["amount_types"]
 
 
 # ---------------------------------------------------------------------------

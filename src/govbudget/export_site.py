@@ -4166,6 +4166,17 @@ def _emit_years_matrix(
             })
         orgs_out.append({"org": org, "programs": programs})
 
+    # Drop amount_types that produced NO cells across the whole program set
+    # (e.g. fy_2025_supplemental: its only workbook rows belong to pe_blis
+    # outside the page set) — an all-dash column is dead UI, not honesty.
+    used_ats = {
+        at
+        for o in orgs_out
+        for p in o["programs"]
+        for at in p["cells"]
+    }
+    amount_types = [at for at in amount_types if at in used_ats]
+
     payload = {
         "schema_version": 1,
         "program_units": "USD thousands",
