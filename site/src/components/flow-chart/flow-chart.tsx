@@ -71,8 +71,6 @@ import {
 
 /** viewBox headroom above y=0 for the column-header row. */
 const HEADER_H = 30;
-/** Minimum node height (viewBox units) that still gets an inline label. */
-const MIN_LABEL_H = 9;
 /** Okabe-Ito fills per competed-class index — declared in globals.css. */
 const CLASS_FILL_VARS = [
   "var(--flow-class-full)",
@@ -312,6 +310,14 @@ export function FlowChart() {
           offers-received distribution.
         </p>
         <CompetitionLegend classes={spend.competed_classes} />
+        {/* Offers honesty — STATIC, beside the legend it qualifies (a
+            hover-only or footer-only placement is too easy to miss). */}
+        <p
+          data-testid="flow-offers-note"
+          className="mt-1 text-xs text-muted-foreground"
+        >
+          {spend.notes.offers}
+        </p>
         <div className="mt-2 overflow-x-auto rounded-lg border border-border bg-card p-3">
           {/* key remount = token fade per FY switch (final frame under
               reduced motion); data comes from the payload — no fetch. */}
@@ -340,7 +346,7 @@ export function FlowChart() {
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          {spend.source_note} {spend.notes.offers}
+          {spend.source_note}
         </p>
       </section>
 
@@ -678,8 +684,6 @@ function RiverSvg({
         const isOther = Boolean(n.other);
         const levelLabel = levelLabels[n.level] ?? n.level;
         const h = Math.max(n.y1 - n.y0, 0);
-        const labelRight = n.x1 < width * 0.75;
-        const showLabel = h >= MIN_LABEL_H;
         const gap = n.id.endsWith(":not-crosswalked");
         const marker = isOther
           ? { "data-flow-other": "" }
@@ -735,13 +739,35 @@ function RiverSvg({
                 aria-hidden="true"
               />
             )}
-            {showLabel && (
+            {/* Leader line: exporter-placed, for gutter labels displaced
+                off their node's center (thin destination bands). */}
+            {n.ldr && (
+              <line
+                x1={n.ldr[0]}
+                y1={n.ldr[1]}
+                x2={n.ldr[2]}
+                y2={n.ldr[3]}
+                stroke="var(--flow-leader)"
+                strokeWidth={0.75}
+                aria-hidden="true"
+              />
+            )}
+            {/* Inline label: geometry precomputed by the exporter (F3 —
+                zero-collision contract; absent lbl = tooltip-only node).
+                paint-order:stroke draws a light halo behind the numerals so
+                values stay legible over busy hatched ribbons (D1). */}
+            {n.lbl && (
               <text
-                x={labelRight ? n.x1 + 5 : n.x0 - 5}
-                y={(n.y0 + n.y1) / 2 + 3.5}
-                textAnchor={labelRight ? "start" : "end"}
+                x={n.lbl.x}
+                y={n.lbl.y + 3.5}
+                textAnchor={n.lbl.a === "s" ? "start" : "end"}
                 fontSize={10}
                 className="fill-foreground"
+                paintOrder="stroke"
+                stroke="var(--flow-label-halo)"
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
               >
                 {n.label}
                 <tspan className="fill-muted-foreground">
@@ -792,8 +818,11 @@ function DrillDialog({
                     {node.label} — {item.levelLabel.toLowerCase()} level
                   </DialogPrimitive.Title>
                   <DialogPrimitive.Description className="text-xs text-muted-foreground">
-                    {displayAmount(node.value, item.units)} {item.units} across{" "}
-                    {other.count} entries below the chart&apos;s top slice.
+                    {/* One template literal, not JSX text chunks: Turbopack
+                        drops the leading space of an entity-bearing chunk
+                        after an expression ("across 14entries" regression —
+                        G9 leg e asserts the built string). */}
+                    {`${displayAmount(node.value, item.units)} ${item.units} across ${other.count} entries below the chart's top slice.`}
                   </DialogPrimitive.Description>
                 </div>
                 <DialogPrimitive.Close

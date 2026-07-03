@@ -21,8 +21,10 @@ function fixture(): FlowChartPayload {
       width: 1000,
       height: 640,
       nodes: [
+        // b:total carries NO lbl — the exporter suppressed it (the client
+        // must render labels ONLY from precomputed lbl geometry).
         { id: "b:total", fid: "fb-total", label: "FY2026 request", level: "total", value: 100, x0: 0, x1: 18, y0: 0, y1: 100 },
-        { id: "b:c:A", fid: "fb-army", label: "Army", level: "component", value: 60, x0: 491, x1: 509, y0: 0, y1: 60 },
+        { id: "b:c:A", fid: "fb-army", label: "Army", level: "component", value: 60, x0: 491, x1: 509, y0: 0, y1: 60, lbl: { x: 514, y: 30, a: "s" } },
         {
           id: "b:other:component", fid: "fb-other", label: "Other (3)", level: "component", value: 40,
           x0: 491, x1: 509, y0: 70, y1: 110,
@@ -36,8 +38,10 @@ function fixture(): FlowChartPayload {
             omitted_value: 5,
           },
         },
-        { id: "b:bridge:crosswalked", fid: "fb-cw", label: "Crosswalked to contractors (1 PE)", level: "bridge", value: 30, x0: 982, x1: 1000, y0: 0, y1: 30 },
-        { id: "b:bridge:not-crosswalked", fid: "fb-ny", label: "Not yet crosswalked", level: "bridge", value: 70, x0: 982, x1: 1000, y0: 40, y1: 110 },
+        // gutter labels: start-anchored beyond the node column; the thin
+        // crosswalked band's label is displaced and carries a leader line
+        { id: "b:bridge:crosswalked", fid: "fb-cw", label: "Crosswalked to contractors (1 PE)", level: "bridge", value: 30, x0: 762, x1: 780, y0: 0, y1: 30, lbl: { x: 786, y: 22, a: "s" }, ldr: [781, 15, 784, 22] },
+        { id: "b:bridge:not-crosswalked", fid: "fb-ny", label: "Not yet crosswalked", level: "bridge", value: 70, x0: 762, x1: 780, y0: 40, y1: 110, lbl: { x: 786, y: 75, a: "s" } },
       ],
       edges: [
         { s: 0, t: 1, v: 60, f: "fe-1", g: [0, 60, 0, 60] },
@@ -207,6 +211,12 @@ describe("FlowChart", () => {
     expect(screen.getByTestId("flow-drilldown").textContent).toContain("X Agency");
     // 1 member beyond the exported top slice.
     expect(screen.getByTestId("flow-drilldown").textContent).toMatch(/1 more/);
+    // Built-string regression: Turbopack once collapsed "across 3 entries"
+    // into "across 3entries" (entity-bearing JSX text chunk) — the
+    // description is now a single template literal and must stay spaced.
+    expect(screen.getByTestId("flow-drilldown").textContent).toMatch(
+      /across 3 entries below the chart's top slice\./,
+    );
   });
 
   it("switches the spend river from the FY selector without refetching", async () => {
@@ -243,5 +253,57 @@ describe("FlowChart", () => {
       expect(document.querySelector('[data-degraded="flow"]')).not.toBeNull();
     });
     expect(screen.queryByTestId("flow-chart")).toBeNull();
+  });
+
+  it("renders inline labels ONLY from exporter-precomputed lbl geometry", async () => {
+    renderChart();
+    await waitForChart();
+    // Army carries lbl → its group renders a <text> at the exported anchor.
+    const army = document.querySelector('[data-node-id="b:c:A"]')!;
+    const armyText = army.querySelector("text")!;
+    expect(armyText).not.toBeNull();
+    expect(armyText.getAttribute("x")).toBe("514");
+    expect(armyText.getAttribute("text-anchor")).toBe("start");
+    expect(armyText.textContent).toContain("Army");
+    // b:total has NO lbl (exporter-suppressed) → no inline <text>; the
+    // name/value still travel on the aria-label (tooltip contract).
+    const total = document.querySelector('[data-node-id="b:total"]')!;
+    expect(total.querySelector("text")).toBeNull();
+    expect(total.getAttribute("aria-label")).toContain("FY2026 request");
+  });
+
+  it("paints a light halo under labels (paint-order stroke — D1 contrast)", async () => {
+    renderChart();
+    await waitForChart();
+    const text = document
+      .querySelector('[data-node-id="b:c:A"]')!
+      .querySelector("text")!;
+    expect(text.getAttribute("paint-order")).toBe("stroke");
+    expect(text.getAttribute("stroke")).toBe("var(--flow-label-halo)");
+  });
+
+  it("draws exporter-placed leader lines for displaced gutter labels", async () => {
+    renderChart();
+    await waitForChart();
+    const cw = document.querySelector('[data-node-id="b:bridge:crosswalked"]')!;
+    const leader = cw.querySelector("line")!;
+    expect(leader).not.toBeNull();
+    expect(leader.getAttribute("stroke")).toBe("var(--flow-leader)");
+    expect(leader.getAttribute("aria-hidden")).toBe("true");
+    expect(leader.getAttribute("x1")).toBe("781");
+    expect(leader.getAttribute("y2")).toBe("22");
+    // undisplaced gutter label → no leader
+    const ny = document.querySelector('[data-node-id="b:bridge:not-crosswalked"]')!;
+    expect(ny.querySelector("line")).toBeNull();
+  });
+
+  it("keeps the offers note static and adjacent to the competition legend", async () => {
+    renderChart();
+    await waitForChart();
+    const note = screen.getByTestId("flow-offers-note");
+    expect(note.textContent).toContain("offers, not bidders");
+    // adjacent: the note is the legend's next sibling in the spend section
+    const legend = screen.getByTestId("flow-competition-legend");
+    expect(legend.nextElementSibling).toBe(note);
   });
 });

@@ -34,6 +34,19 @@ export interface FlowOther {
   omitted_value: number;
 }
 
+/**
+ * Exporter-precomputed inline-label geometry (F3 collision contract).
+ * `x` is the anchor x; `y` is the label's vertical CENTER (the client adds
+ * the baseline offset); `a` is the SVG text anchor ("s"=start, "e"=end).
+ * Absent = the exporter suppressed the label (too thin / would collide) —
+ * the tooltip and aria-label still carry the name and value.
+ */
+export interface FlowLabel {
+  x: number;
+  y: number;
+  a: "s" | "e";
+}
+
 export interface FlowNode {
   id: string;
   /** Minted derived fact_id — resolves via citations.json / cite-shards. */
@@ -47,6 +60,10 @@ export interface FlowNode {
   y1: number;
   /** Present only on "Other (N)" nodes. */
   other?: FlowOther;
+  /** Inline-label placement (precomputed; absent = tooltip-only node). */
+  lbl?: FlowLabel;
+  /** Leader line [x0, y0, x1, y1] for displaced gutter labels. */
+  ldr?: [number, number, number, number];
 }
 
 export interface FlowEdge {

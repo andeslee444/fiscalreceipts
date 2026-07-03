@@ -71,9 +71,17 @@
      read as different systems at a glance. */
   --flow-class-full: #0072b2; /* full_and_open */
   --flow-class-setaside: #009e73; /* set_aside */
-  --flow-class-otherfull: #e69f00; /* other_than_full */
+  /* other_than_full is Okabe-Ito reddish purple — NOT the amber family, so
+     it never reads as a tint of not_competed's vermillion (F2: hue must
+     separate the two even before the hatch backup kicks in). */
+  --flow-class-otherfull: #cc79a7; /* other_than_full */
   --flow-class-notcomp: #d55e00; /* not_competed (hatched) */
   --flow-negative: #b91c1c; /* net de-obligation hairlines */
+  /* light halo painted UNDER label glyphs (paint-order: stroke) so value
+     numerals stay legible over busy hatched ribbons (D1) */
+  --flow-label-halo: oklch(1 0 0 / 0.82);
+  /* leader hairlines for gutter labels displaced off their node's center */
+  --flow-leader: oklch(0.72 0.01 260);
   --flow-node-budget: oklch(0.4 0.02 260);
   --flow-node-spend: oklch(0.32 0 0);
   --flow-node-other: oklch(0.6 0.01 260);
