@@ -22,6 +22,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5D | Years matrix (/years/): 462 programs × FY columns, project sub-rows, cited cells via sharded lazy citations; derived breakdown tables (show-your-work, 1,068 sidecars) | G8 yearsmatrix gate (20th) | ✅ COMPLETE 2026-07-02 | judges r1 8/9 → M2 fix (sticky sum row, legend, decimal rule) → M2 re-score 5/5/5; 20/20 gates; 1,007 pytest / 271 vitest; live at fiscalreceipts.com/years/ |
 | 5F | Program-page normalization: pages for all 1,995 PEs (rollup + full tiers), narrative paragraph provenance, deterministic prose amount cites, universal PE linking, 12-section skeleton | program-skeleton gate (21st) + linkgraph leg f + render-static prose-cite leg | ✅ COMPLETE 2026-07-03 | 1,995 program pages both tiers; narrative provenance 2,449/2,457 = 99.7% (8 unresolved keep the non-paged card — never a fake location); 27 deterministic prose cites; universal PE linking (196 unlinked tokens pre-fix → 0); 12-section skeleton gate; visual judges 4.5/5/4.5 PASS; 21/21 gates; 1,039 pytest / 303 vitest; live at fiscalreceipts.com |
 | 5H | Experimental flowdown (/flow/): two-river sankey (budget intent vs contract obligations), honest 98.7% not-yet-crosswalked bridge band, FPDS competition overlay (FY2017–FY2026 selector), 1,965 minted flow derived facts, exporter-precomputed collision-free labels | G9 flowdown gate (22nd, legs a–e) + fct_flow_edges dbt conservation tests | ✅ COMPLETE 2026-07-03 | judges r1 PASS/PASS/PASS (F1 two-river honesty unanimous 5s) with F3 craftsmanship=3 on label collisions → fix round (exporter collision-free-by-construction labels + TDD bbox test, hue-split competition classes, value halos) → F3 re-score 5/4/5; G9 recomputes 55 budget + 40 spend nodes from the lake, bridge exact, 58/58 citations; 22/22 gates; 1,059 pytest / 335 vitest; live-verified node→panel (121.8B Navy derived formula + 532-input breakdown) and FY2025→FY2020 switch; live at fiscalreceipts.com/flow/ |
+| 5E | Decade backfill PB2017–PB2026: 10 J-book editions (371 books, 159,503 budget lines, 38,422 detail facts, amounts provenance for every edition, 185 manifest-recorded exclusions, era procurement re-keyed {account}-{org}-L{line} with disjointness guard); fct_decade_series 59,068 + fct_book_diff 18,379 (exhaustively lake-recomputed); /years/ 12 edition-tagged columns; decade sparklines on 1,994 program pages; 15 request-vs-actuals feed cards | verify-phase5e CLI (23rd gate, 4 legs, pre-failure recorded) + G8 legs f/g + edition-integrity | ✅ COMPLETE 2026-07-03 (one open confirmation, below) | Adversarial review rounds caught + fixed: edition-merging dbt fence (291 programs would have shipped wrong FY2024 actuals), PB2023 OSD/CBDP books wrongly excluded (sole detail carriers for 112 PEs), era pe_bli collisions with modern BLI codes, 27.8k-orphan citation-export hazard, P-1R subset rule (993 withheld grains published incl. C-130J $1.78B); visual judges first-round PASS medians E1:4 E2:5 E3:5 E4:5 E5:5 + 4 polish fixes shipped; 22/22 npm gates; 1,196 pytest / 352 vitest; eval 48/48 accuracy + 43/43 citations achieved (artifact eval-20260703T190641Z); ⚠️ OPEN: post-run-3 eval robustness fixes (table-equivalence groups, temperature-0 determinism, transient-error retries — all committed + unit-tested) await their confirming verify-phase5 exit-0 run, blocked by the Anthropic API monthly usage cap (resets 2026-08-01); first post-reset run must confirm |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -76,6 +77,35 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   "net de-obligation", keep the citation (5H).
 - **max() on confidence strings is a trap** — lexicographic max('high','medium')
   = 'medium'; the flow marts needed an explicit ordinal mapping (5H dbt).
+- **The whole 2017–2023 J-book era embeds .zzz XML** — same renamed-zip +
+  jb-2009 schema as 2026; the Mistral-OCR fallback was never needed (5E).
+- **Era editions publish consolidated volumes under unstable naming** — token
+  classification + evidence-keyed exceptions (EVIDENCE_PATHS, download and
+  inspect the embedded XML) beat prefix regexes; count envelopes must be
+  era-aware (5E).
+- **Era P-1 line numbers are not program identities** — the same string spans
+  orgs, conflates programs, and collides with modern BLI codes; namespace
+  within edition ({account}-{org}-L{line}) and guard keyspace disjointness (5E).
+- **PB2019 OSD ships the same MJB XML in two BA-split volumes** — identical
+  tuple sets under both documents; the dedup binding was recorded in the plan
+  BEFORE the marts existed, which is what kept it enforced (5E).
+- **P-1R is a subset breakout of P-1, never additive** — workbook-proven
+  (Aircraft Procurement Army FY2024 = P-1 alone); excluding P-1R from candidate
+  sums published 993 previously-unverifiable procurement grains (6 small-dollar
+  book quirks noted) (5E).
+- **`fiscal_year >= threshold` fences silently merge edition-relative
+  scenarios** — PriorYear means a different fiscal year in every edition;
+  always fence `= edition` (the 291-programs-wrong-FY2024 near-miss) (5E).
+- **Copy-paste-canonical eval contracts need temperature 0 AND deterministic
+  SQL rules** — and prompt examples leak into behavior on the very entities
+  they mention; keep rules generic (5E).
+- **Fencing typed exports requires symmetric fencing of every
+  provenance-derived emission pass** — the 27.8k-orphan citation hazard
+  (staleness luck masked it until the adversarial re-review simulated a fresh
+  export) (5E).
+- **Multiple marts can legitimately own the same quantity** — eval
+  table-overlap prechecks need documented equivalence groups or agents
+  flip-flop between correct citations run to run (5E).
 - **Next.js title.template doubles when pages also append the site name** —
   every one of 6,593 pages rendered "… | Fiscal Receipts | Fiscal Receipts";
   caught only during 5H live verification because no gate read <title>. New
@@ -356,6 +386,26 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     verification. Also from judge advisories: include print-CSS +
     reduced-motion captures in visual-judge evidence packs; consider pinning
     the breakdown-overlay filter box in the sticky header.
+22. **Confirm eval robustness fixes post API-cap reset (2026-08-01):** run
+    `verify-phase5` once the Anthropic monthly usage cap resets — the
+    table-equivalence groups, temperature-0 determinism, SQL-determinism
+    rules, and transient-error retries all landed after the clean 48/48+43/43
+    run (eval-20260703T190641Z) and need one confirming exit-0 run. Also
+    consider a runner-side distinction between transport ERRORs and agent
+    answers in the artifact (an ERROR currently scores "correct" on
+    REFUSE-expected questions).
+23. **Decade-parquet ↔ lake integrity leg** (Task 6 review): a dedicated gate
+    recomputing budget_lines_decade.parquet from the lake would close the
+    residual artifact-tamper window for both parquets symmetrically.
+24. **fid_to_bl_amount overlap equality assertion** (Task 6 review): 5,257
+    fids exist in both budget_lines and decade parquets; assert amount
+    equality so a divergent decade copy can't hide behind setdefault.
+25. **PB2024 P-1R title backfill** (582 title-NULL rows; P-1 was fixed in the
+    Task 5 improvements round; P-1R out of scope there).
+26. **Dead-PE 0605230F request_vs_request minting** if a feed claim ever
+    covers request-vs-request swings (currently scoped to request-vs-actuals
+    precisely because those are 100% minted).
+
 
 ## Remaining launch items
 
