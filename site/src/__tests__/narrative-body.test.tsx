@@ -117,4 +117,23 @@ describe("NarrativeBody — PE mention links (§2a)", () => {
       "/program/0601122E/",
     );
   });
+
+  it("distinguishes navigation from citation affordances (solid vs dotted underline)", () => {
+    renderWithPanel(
+      <NarrativeBody
+        body="$1.000 million moves to PE 0601122E."
+        amountLinks={[
+          { start: 0, end: 14, fact_id: "dddddddddddddddd", token: "$1.000 million" },
+        ]}
+        peIndex={peIndex}
+        selfPe="0601101E"
+      />,
+    );
+    // Link vocabulary (judge N3): PE links NAVIGATE → solid underline;
+    // citation spans open the panel in place → dotted underline.
+    const peLink = screen.getByRole("link");
+    expect(peLink.className).toContain("decoration-solid");
+    expect(peLink.className).not.toContain("decoration-dotted");
+    expect(screen.getByRole("button").className).toContain("decoration-dotted");
+  });
 });

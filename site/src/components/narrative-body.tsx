@@ -75,11 +75,14 @@ export function NarrativeBody({
           // Plain <a> (not next/link): hrefs keep their canonical trailing
           // slash exactly as emitted — the linkgraph dead-link scan and the
           // pe-linking leg both assert on the literal href.
+          // SOLID underline = navigation; dotted stays reserved for citation
+          // spans (ProseCite) that open the panel in place (keep in sync
+          // with pe-text.tsx).
           return (
             <a
               key={i}
               href={seg.href}
-              className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+              className="text-primary underline decoration-solid underline-offset-2 hover:decoration-2"
               title={`Open program page for ${seg.text}`}
             >
               {seg.text}

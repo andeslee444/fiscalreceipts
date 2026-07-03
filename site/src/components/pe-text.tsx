@@ -7,6 +7,11 @@
  * built from the serializable peHrefs map). Unknown tokens and
  * self-references stay plain text — deterministic only.
  *
+ * Link vocabulary: PE links NAVIGATE, so they render a SOLID underline —
+ * the dotted underline is reserved for citation spans (Cite/ProseCite),
+ * which open the citation panel in place. ↗ stays reserved for external
+ * links. Keep in sync with narrative-body.tsx.
+ *
  * No "use client" and no server-only imports: usable from both boundaries.
  */
 
@@ -41,7 +46,7 @@ export function PeText({
           <a
             key={i}
             href={seg.href}
-            className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+            className="text-primary underline decoration-solid underline-offset-2 hover:decoration-2"
             title={`Open program page for ${seg.text}`}
           >
             {seg.text}

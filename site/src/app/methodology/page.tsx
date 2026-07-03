@@ -416,6 +416,12 @@ export default function MethodologyPage() {
           link only when we can defend it, and we say so where the data
           renders instead of burying the caveat here. Each block below is the
           destination for one of those inline &ldquo;why &hellip;? &rarr;&rdquo; links.
+          Two program universes appear in these counts: the site carries{" "}
+          {serviceBooks.denominator} browsable program pages, but the flows,
+          dossiers, and years-matrix blocks below count against the{" "}
+          {serviceBooks.numerator} detail-grade programs — those features
+          require full R-2/P-40 J-book data, so the detail-grade universe is
+          their denominator.
         </p>
 
         <div className="space-y-6 text-muted-foreground leading-7">
