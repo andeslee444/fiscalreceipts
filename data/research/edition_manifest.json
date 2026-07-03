@@ -77,11 +77,23 @@
       "status": "loaded"
     },
     "2021": {
+      "budget_lines": 23730,
       "date": "2026-07-03",
+      "detail_facts": 3971,
       "discovered": 10,
-      "reason": "probe failed: discovered 10/[30,45] classifiable documents (3 rollups + 5 rdte vols + 2 proc vols). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "documents": 10,
+      "downloaded": 10,
+      "provenance": {
+        "ambiguous_first": 2022,
+        "total": 3971,
+        "unique": 1310,
+        "unresolved": 0,
+        "zero_amount": 639
+      },
+      "reason": "loaded: 10 docs (10 downloaded), 23730 budget_lines, 3971 detail facts, 2425 recon checks",
+      "recon_checks": 2425,
+      "sample_pe_count": 17,
+      "status": "loaded"
     },
     "2022": {
       "date": "2026-07-03",
