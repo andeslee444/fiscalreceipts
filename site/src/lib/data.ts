@@ -161,6 +161,20 @@ export interface ProgramDetailRow {
   xml_path: string;
 }
 
+/**
+ * Prose amount link (Phase 5F §2c): a dollar token inside a narrative body
+ * that EXACTLY matches a fact amount scoped to the same PE. Offsets are into
+ * the raw body string; token is the literal slice for defense-in-depth.
+ * Rendered as a prose Cite (data-prose-cite) — NEVER data-amount, which is
+ * forbidden inside data-source-text subtrees (render-static a0).
+ */
+export interface ProseAmountLink {
+  start: number;
+  end: number;
+  fact_id: string;
+  token: string;
+}
+
 export interface ProgramNarrative {
   body: string;
   kind: string;
@@ -168,6 +182,10 @@ export interface ProgramNarrative {
   /** xml_path of this narrative row in the J-book XML source. Used for
    *  data-xml-path on the data-source-text container (block-level citation). */
   xml_path?: string;
+  /** jbook_narrative citation fact_id for this narrative row (Phase 5F §2b). */
+  fact_id?: string;
+  /** Deterministic prose dollar-token citations (Phase 5F §2c). */
+  amount_links?: ProseAmountLink[];
 }
 
 export interface ProgramBudgetLine {
@@ -205,6 +223,17 @@ export interface ProgramDetails {
   details: ProgramDetailRow[];
   mentions: ProgramMention[];
   narratives: ProgramNarrative[];
+  /**
+   * Phase 5F rollup-tier fields (Batch A): present ONLY on the 1,533
+   * rollup sidecars (R-1/P-1 figures + trajectory, no J-book detail).
+   * The 462 full-tier sidecars carry none of these — their program row
+   * lives in programs.json.
+   */
+  tier?: "rollup";
+  service_org?: string;
+  title?: string;
+  trajectory?: ProgramTrajectory | null;
+  trajectory_fact_ids?: ProgramTrajectoryFactIds | null;
 }
 
 const _programDetails = new Map<string, ProgramDetails>();
@@ -216,6 +245,70 @@ export function getProgramDetails(peBli: string): ProgramDetails {
   _programDetails.set(peBli, details);
   return details;
 }
+
+// ── Program page universe (Phase 5F §2a) ─────────────────────────────────────
+// Every distinct PE in budget_lines has a program_details sidecar (1,995):
+// the 462 full-tier programs from programs.json PLUS 1,533 rollup-tier
+// sidecars. generateStaticParams / sitemap / OG all enumerate THIS set.
+
+let _programPeBlis: string[] | null = null;
+
+/** Sorted basenames of every program_details sidecar (the page universe). */
+export function getProgramPeBlis(): string[] {
+  if (_programPeBlis) return _programPeBlis;
+  getSiteMeta();
+  const dir = join(jsonDir(), "program_details");
+  _programPeBlis = readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.slice(0, -".json".length))
+    .sort();
+  return _programPeBlis;
+}
+
+/** Total number of program PAGES (all tiers) — 1,995 with Batch A data. */
+export function getProgramPagesCount(): number {
+  return getProgramPeBlis().length;
+}
+
+// ── PE link index (Phase 5F §2a — universal mention linking) ─────────────────
+
+export interface PeLinkIndex {
+  /** True when /program/{pe}/ is a built page. */
+  has: (pe: string) => boolean;
+  /** Project numbers present in a PE's detail rows (for #project-N anchors). */
+  projects: (pe: string) => ReadonlySet<string>;
+}
+
+const _peProjects = new Map<string, ReadonlySet<string>>();
+let _peLinkIndex: PeLinkIndex | null = null;
+
+/**
+ * Build-time PE link resolver: `has` answers from the sidecar dir listing;
+ * `projects` lazily loads the TARGET program's detail rows (memoized) so
+ * "PE X, Project Y" prose references can carry a real #project-Y anchor —
+ * only when the target actually has that project row.
+ */
+export function getPeLinkIndex(): PeLinkIndex {
+  if (_peLinkIndex) return _peLinkIndex;
+  const peSet = new Set(getProgramPeBlis());
+  _peLinkIndex = {
+    has: (pe: string) => peSet.has(pe),
+    projects: (pe: string) => {
+      if (!peSet.has(pe)) return EMPTY_SET;
+      const cached = _peProjects.get(pe);
+      if (cached) return cached;
+      const projects = new Set<string>();
+      for (const row of getProgramDetails(pe).details) {
+        if (row.project_number) projects.add(row.project_number);
+      }
+      _peProjects.set(pe, projects);
+      return projects;
+    },
+  };
+  return _peLinkIndex;
+}
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 // ── entities_top.json ────────────────────────────────────────────────────────
 
@@ -489,17 +582,47 @@ export interface StateFileCitation extends CitationBase, NonDocumentCitationFiel
  * detail_narratives; sha256 identifies the source document; xml_path is the
  * J-book XML locator; official_url is the document's hosted source URL.
  *
- * Null fields: all page/bbox/sheet/amount fields are null.
+ * Phase 5F §2b: 2,449 of 2,457 narrative citations now carry the passage
+ * START's page + bbox (page_number, x0/x1/top_pt/bottom_pt, hosted_pdf_url,
+ * resolution) derived by the narrative provenance builder — the panel then
+ * renders the PDF page with the passage highlight, like the jbook_pdf card.
+ * The 8 unresolved citations keep null page fields (OCR-hostile layouts) and
+ * render the non-paged card — never a fake location.
+ *
+ * Null fields: sheet/cells/amount fields are always null.
  */
 export interface JbookNarrativeCitation
   extends CitationBase,
-    Omit<NonDocumentCitationFields, "sha256" | "xml_path"> {
+    Omit<
+      NonDocumentCitationFields,
+      | "sha256"
+      | "xml_path"
+      | "hosted_pdf_url"
+      | "page_number"
+      | "page_width"
+      | "page_height"
+      | "top_pt"
+      | "bottom_pt"
+      | "x0"
+      | "x1"
+      | "resolution"
+    > {
   kind: "jbook_narrative";
   // Unlike other non-document kinds, narratives DO carry the source
   // document's sha and their in-document XML locator.
   sha256: string;
   xml_path: string;
   official_url: string;
+  // Passage-start page provenance (null for the 8 unresolved narratives).
+  hosted_pdf_url: string | null;
+  page_number: number | null;
+  page_width: number | null;
+  page_height: number | null;
+  top_pt: number | null;
+  bottom_pt: number | null;
+  x0: number | null;
+  x1: number | null;
+  resolution: "unique" | "ambiguous_first" | null;
 }
 
 export type Citation =
