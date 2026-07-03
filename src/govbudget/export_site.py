@@ -522,10 +522,18 @@ def export_site(
                 -- URL without changing content). A straight join on sha256 would fan-out
                 -- provenance_pages rows and produce duplicate citations. We select the
                 -- row with the lowest id to make the choice deterministic and stable.
+                -- PB2026 EDITION FENCE (Finding A follow-up): the Phase 5E era
+                -- backfills populate provenance_pages for EVERY edition
+                -- (PB2017–PB2025), but jbook_details.parquet above is fenced
+                -- to fiscal_year = 2026 — so this join must be too, or every
+                -- cross-edition provenance row becomes an orphan jbook_pdf
+                -- citation and verify_phase5b1's jbook_no_orphan_citations
+                -- gate fails. (Every fenced detail's document has
+                -- fiscal_year = 2026, so no PB2026 fact loses its citation.)
                 join (
                     select distinct on (sha256) sha256, source_url, downloaded_at
                     from jbook_documents
-                    where sha256 is not null
+                    where sha256 is not null and fiscal_year = 2026
                     order by sha256, id
                 ) j on j.sha256 = p.document_sha256
                 -- Amount rows only: narrative rows (target_kind='narrative',
@@ -536,6 +544,14 @@ def export_site(
                 """
             ).fetchall()
 
+        # Exact fence: the SQL fiscal_year filter above cannot separate
+        # editions that SHARE a sha256 (the same PDF re-shipped across PB
+        # editions, or superseded details whose provenance rows persist at
+        # the (sha, pe_bli, project, scenario, amount) grain). fact_id_jbook
+        # keys on that same grain, so intersecting with the fenced detail
+        # fact_id set makes citations ⊆ jbook_details BY CONSTRUCTION —
+        # the invariant jbook_no_orphan_citations checks.
+        detail_fids = {r[0] for r in detail_rows}
         for (doc_sha, pe_bli, project_number, scenario, amount_millions,
              amount_text, page_number, x0, x1, top_pt, bottom_pt,
              page_width, page_height, resolution, candidate_pages,
@@ -544,6 +560,8 @@ def export_site(
                 continue
             # Only unique/ambiguous_first
             fid = fact_id_jbook(doc_sha, pe_bli, project_number, scenario, amount_millions)
+            if fid not in detail_fids:
+                continue  # cross-edition or superseded provenance — fenced out
             hosted = f"{pdf_base_url}/{doc_sha}.pdf#page={page_number}"
             official = f"{source_url}#page={page_number}"
             ret_at = downloaded_at.isoformat() if downloaded_at else None

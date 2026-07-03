@@ -1105,7 +1105,7 @@
         "unresolved": 0,
         "zero_amount": 577
       },
-      "reason": "loaded: 37 docs (37 downloaded), 5844 budget_lines, 3899 detail facts, 2574 recon checks",
+      "reason": "loaded: 37 docs (37 downloaded), 5844 budget_lines, 3899 detail facts, 2574 recon checks; provenance.total 3,885 < detail_facts 3,899 because 14 duplicate fact-keys at the provenance grain (sha, pe_bli, project, scenario, amount) collapse under on-conflict-do-nothing (verified 2026-07-03)",
       "recon_checks": 2574,
       "sample_pe_count": 8,
       "status": "loaded"

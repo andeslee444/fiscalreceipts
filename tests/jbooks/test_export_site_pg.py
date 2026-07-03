@@ -391,6 +391,19 @@ def test_export_site_pb2026_edition_fence(pg_dsn, tmp_path):
         )
     _seed_pb2024_edition(pg_dsn, pdf_path=FIXTURE_PDF)
     build_provenance_pages(pg_dsn)
+    # Arm the decoy: the Phase 5E era backfills resolve PB2017–PB2025 facts
+    # against their own PDFs, so in production the PB2024 decoy's
+    # provenance_pages row is RESOLVED. The fixture excerpt doesn't contain
+    # '424.332', so _resolve_fact leaves it unresolved here — force the
+    # resolved state directly to simulate the production hazard (an
+    # unfenced 4a pass would emit an orphan jbook_pdf citation for it).
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "update provenance_pages set resolution='unique', page_number=1,"
+            " amount_text='424.332', x0=10, x1=60, top_pt=100, bottom_pt=110,"
+            " page_width=612, page_height=792"
+            " where target_kind='amount' and amount_millions=424.332"
+        )
 
     db = tmp_path / "wh.duckdb"
     _make_test_duckdb(db)
@@ -428,6 +441,45 @@ def test_export_site_pb2026_edition_fence(pg_dsn, tmp_path):
     assert prog["fy2024_fact_id"] in (fid_2026, None)
     assert prog["fy2024_fact_id"] != fid_2024
     assert prog["fy2024_actual_millions"] == 280.494
+
+    # Citation fence (4a/4h): the decoy's RESOLVED provenance row must NOT
+    # produce a citation — jbook-sourced citation fact_ids must be a subset
+    # of the fenced typed exports, or verify_phase5b1's
+    # jbook_no_orphan_citations gate hard-fails at the next export.
+    cit_pq = site / "citations" / "citations.parquet"
+    assert cit_pq.exists(), "citations.parquet missing"
+    jbook_cit_ids = {
+        r[0] for r in duckdb.sql(
+            f"select fact_id from read_parquet('{cit_pq}') where kind='jbook_pdf'"
+        ).fetchall()
+    }
+    detail_ids = {
+        r[0] for r in duckdb.sql(
+            f"select fact_id from read_parquet('{site}/data/jbook_details.parquet')"
+        ).fetchall()
+    }
+    assert fid_2024 not in jbook_cit_ids, (
+        "PB2024 decoy provenance leaked a jbook_pdf citation (orphan)"
+    )
+    assert jbook_cit_ids <= detail_ids, (
+        f"orphan jbook_pdf citations not in fenced jbook_details: "
+        f"{sorted(jbook_cit_ids - detail_ids)[:5]}"
+    )
+    narr_cit_ids = {
+        r[0] for r in duckdb.sql(
+            f"select fact_id from read_parquet('{cit_pq}') where kind='jbook_narrative'"
+        ).fetchall()
+    }
+    narr_ids = {
+        r[0] for r in duckdb.sql(
+            f"select fact_id from read_parquet('{site}/data/jbook_narratives.parquet')"
+            f" where fact_id is not null"
+        ).fetchall()
+    }
+    assert narr_cit_ids <= narr_ids, (
+        f"orphan jbook_narrative citations not in fenced jbook_narratives: "
+        f"{sorted(narr_cit_ids - narr_ids)[:5]}"
+    )
 
 
 def test_export_site_citations_jbook_pdf(pg_dsn, tmp_path):
