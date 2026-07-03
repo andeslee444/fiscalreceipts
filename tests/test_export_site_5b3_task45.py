@@ -78,8 +78,45 @@ def _make_duckdb_with_feed(tmp_path: Path) -> Path:
         "('new_entrant', NULL, NULL, 'ACME LLC', 2000000.0, 2024.0, NULL, 2024, 'dollars', NULL)"
     )
 
+    # fct_book_diff (Phase 5E Task 7 — request_vs_actuals_gap feed events).
+    # Cards only surface when their derived book_diff fid is in
+    # cited_fact_ids, so the legacy tests above (cited_fact_ids=set()) see
+    # no new cards from this table.
+    con.execute(
+        "CREATE TABLE fct_book_diff ("
+        "  pe_bli varchar, from_edition integer, to_edition integer,"
+        "  diff_kind varchar, from_fy integer, to_fy integer,"
+        "  from_value double, to_value double, delta double,"
+        "  from_amount_type varchar, to_amount_type varchar,"
+        "  from_source_fact_id varchar, to_source_fact_id varchar"
+        ")"
+    )
+    con.execute(
+        "INSERT INTO fct_book_diff VALUES "
+        # largest |delta| — spent $500M more than asked
+        "('0601101E', 2020, 2022, 'request_vs_actuals', 2020, 2020,"
+        " 400000.0, 900000.0, 500000.0, 'fy_2020_total_base_oco', 'fy_2020_actual', NULL, NULL),"
+        # smaller negative gap for the same PE
+        "('0601101E', 2021, 2023, 'request_vs_actuals', 2021, 2021,"
+        " 400000.0, 300000.0, -100000.0, 'fy_2021_total_base_oco', 'fy_2021_base_oco', NULL, NULL),"
+        # PE without a program page (dead line) — must never be linked
+        "('0699999X', 2020, 2022, 'request_vs_actuals', 2020, 2020,"
+        " 100000.0, 350000.0, 250000.0, 'fy_2020_total_base_oco', 'fy_2020_actual', NULL, NULL),"
+        # request_vs_request — advisory: NEVER surfaced by the feed claim
+        "('0601101E', 2020, 2021, 'request_vs_request', 2020, 2021,"
+        " 400000.0, 380000.0, -20000.0, 'fy_2020_total_base_oco', 'fy_2021_total_base_oco', NULL, NULL),"
+        # null delta — unmintable, ignored
+        "('0601101E', 2019, 2021, 'request_vs_actuals', 2019, 2019,"
+        " NULL, NULL, NULL, 'fy_2019_total', 'fy_2019_base_oco', NULL, NULL)"
+    )
+
     con.close()
     return db_path
+
+
+# The three cited request_vs_actuals diff fids in _make_duckdb_with_feed.
+def _rva_fid(pe: str, from_ed: int, to_ed: int) -> str:
+    return fact_id_derived("book_diff", f"{pe}|{from_ed}|{to_ed}", "request_vs_actuals")
 
 
 def _make_duckdb_with_districts(tmp_path: Path) -> Path:
@@ -312,6 +349,134 @@ class TestEmitFeedSidecar:
         assert feed_path.exists()
         data = json.loads(feed_path.read_text())
         assert data["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# request_vs_actuals_gap feed events (Phase 5E Task 7)
+# ---------------------------------------------------------------------------
+
+
+class TestFeedRvaGapEvents:
+    """New feed event kind: top request-vs-actuals gaps from fct_book_diff.
+
+    Advisory (Task 6 review, binding): the claim is scoped EXACTLY to
+    diff_kind='request_vs_actuals' (all top-100 minted); request_vs_request
+    rows must never surface here. Cards cite the minted diff fact and link
+    to the program page only when the page exists (dead-link lesson).
+    """
+
+    def _emit(self, tmp_path, cited_fact_ids, page_pe_blis=None):
+        db_path = _make_duckdb_with_feed(tmp_path)
+        json_dir = tmp_path / "json"
+        json_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_feed_sidecar(
+                json_dir=json_dir,
+                con=con,
+                prog_titles={"0601101E": "Defense Advanced Research Projects Agency"},
+                cited_fact_ids=cited_fact_ids,
+                page_pe_blis=page_pe_blis,
+            )
+        finally:
+            con.close()
+        return json.loads((json_dir / "feed.json").read_text())
+
+    def _all_rva_fids(self) -> set:
+        return {
+            _rva_fid("0601101E", 2020, 2022),
+            _rva_fid("0601101E", 2021, 2023),
+            _rva_fid("0699999X", 2020, 2022),
+        }
+
+    def test_rva_cards_emitted_ranked_by_abs_delta(self, tmp_path):
+        data = self._emit(
+            tmp_path, self._all_rva_fids(), page_pe_blis={"0601101E"}
+        )
+        rva = [c for c in data["cards"] if c["event_type"] == "request_vs_actuals_gap"]
+        assert [c["figure_value"] for c in rva] == [500000.0, 250000.0, -100000.0]
+        assert rva[0]["figure_fact_id"] == _rva_fid("0601101E", 2020, 2022)
+        assert rva[0]["fiscal_year"] == 2020
+        assert rva[0]["figure_units"] == "thousands_usd"
+        # headline states the editions rule inputs (PB ask vs PB actuals book)
+        assert "PB2020" in rva[0]["headline"]
+        assert "PB2022" in rva[0]["headline"]
+        assert rva[0]["headline"].startswith(
+            "Defense Advanced Research Projects Agency"
+        )
+        assert rva[0]["why_url"] == "/methodology/#feed-request_vs_actuals_gap"
+
+    def test_rva_uncited_diffs_never_surface(self, tmp_path):
+        data = self._emit(tmp_path, cited_fact_ids=set())
+        rva = [c for c in data["cards"] if c["event_type"] == "request_vs_actuals_gap"]
+        assert rva == []
+        assert data["total"] == 4  # legacy cards only
+
+    def test_rva_program_url_gated_on_page_existence(self, tmp_path):
+        data = self._emit(
+            tmp_path, self._all_rva_fids(), page_pe_blis={"0601101E"}
+        )
+        rva = {c["figure_fact_id"]: c for c in data["cards"]
+               if c["event_type"] == "request_vs_actuals_gap"}
+        assert rva[_rva_fid("0601101E", 2020, 2022)]["program_url"] == "/program/0601101E/"
+        # dead PE: minted + cited, but NO page → no link (dead-link lesson)
+        assert rva[_rva_fid("0699999X", 2020, 2022)]["program_url"] is None
+        assert rva[_rva_fid("0699999X", 2020, 2022)]["pe_bli"] == "0699999X"
+
+    def test_rva_scoped_to_request_vs_actuals_only(self, tmp_path):
+        """request_vs_request diffs never surface, even when cited."""
+        rvr_fid = fact_id_derived(
+            "book_diff", "0601101E|2020|2021", "request_vs_request"
+        )
+        data = self._emit(
+            tmp_path, self._all_rva_fids() | {rvr_fid}, page_pe_blis={"0601101E"}
+        )
+        gap_cards = [c for c in data["cards"]
+                     if c["event_type"] == "request_vs_actuals_gap"]
+        assert all(c["figure_fact_id"] != rvr_fid for c in gap_cards)
+        assert len(gap_cards) == 3
+
+    def test_rva_top_cap(self, tmp_path, monkeypatch):
+        import govbudget.export_site as es
+        monkeypatch.setattr(es, "_FEED_RVA_TOP", 1)
+        data = self._emit(tmp_path, self._all_rva_fids())
+        rva = [c for c in data["cards"] if c["event_type"] == "request_vs_actuals_gap"]
+        assert len(rva) == 1
+        assert rva[0]["figure_value"] == 500000.0
+
+    def test_rva_gap_index_largest_per_pe(self, tmp_path):
+        """_rva_gap_index: per-PE largest cited |delta| (program sidecar line)."""
+        from govbudget.export_site import _rva_gap_index
+
+        db_path = _make_duckdb_with_feed(tmp_path)
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            index = _rva_gap_index(con, self._all_rva_fids())
+        finally:
+            con.close()
+        assert set(index) == {"0601101E", "0699999X"}
+        entry = index["0601101E"]
+        assert entry == {
+            "kind": "request_vs_actuals",
+            "fy": 2020,
+            "from_edition": 2020,
+            "to_edition": 2022,
+            "delta": 500000.0,
+            "fid": _rva_fid("0601101E", 2020, 2022),
+        }
+
+    def test_rva_gap_index_uncited_dropped(self, tmp_path):
+        from govbudget.export_site import _rva_gap_index
+
+        db_path = _make_duckdb_with_feed(tmp_path)
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            index = _rva_gap_index(con, {_rva_fid("0601101E", 2021, 2023)})
+        finally:
+            con.close()
+        # only the cited (smaller) diff is eligible — largest CITED wins
+        assert set(index) == {"0601101E"}
+        assert index["0601101E"]["delta"] == -100000.0
 
 
 # ---------------------------------------------------------------------------

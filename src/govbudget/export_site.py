@@ -1595,6 +1595,11 @@ def _build_derived_citation_rows(
 # silently truncated to the page universe).
 _DECADE_TOP_RVA = 100
 
+# How many request_vs_actuals_gap events the /feed/ surfaces (Task 7).
+# MUST stay ≤ _DECADE_TOP_RVA — the top-N claim is only globally honest
+# while every candidate diff in the ranking window is minted.
+_FEED_RVA_TOP = 15
+
 
 def _build_decade_citation_rows(
     *,
@@ -2935,6 +2940,13 @@ def _write_all_sidecars(
             out.append({**e, "amount_links": links} if links else e)
         return out
 
+    # Largest cited request-vs-actuals gap per PE (Phase 5E Task 7) — the
+    # program page's "asked vs spent" line. Only attached where the sidecar
+    # also carries decade_series: the UI resolves the two side values (and
+    # their fids) from those grains, so a book_diff without its series would
+    # render an uncitable claim.
+    rva_by_pe = _rva_gap_index(con, _cited_fact_ids)
+
     all_pe_blis = {r[0] for r in all_prog_rows}
     for pe_bli in all_pe_blis:
         obj = {
@@ -2949,6 +2961,8 @@ def _write_all_sidecars(
         }
         if pe_bli in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[pe_bli]
+            if pe_bli in rva_by_pe:
+                obj["book_diff"] = rva_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
 
@@ -3020,6 +3034,8 @@ def _write_all_sidecars(
         }
         if pe_bli in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[pe_bli]
+            if pe_bli in rva_by_pe:
+                obj["book_diff"] = rva_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
     if rollup_pes:
@@ -3399,6 +3415,9 @@ def _write_all_sidecars(
         con=con,
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
+        # The program-page universe (full-tier + rollup-tier sidecars) —
+        # request_vs_actuals_gap cards link only where a page exists.
+        page_pe_blis=all_pe_blis | set(rollup_pes),
     )
     n_files += 1
 
@@ -3900,12 +3919,74 @@ def _build_state_citation_rows(*, duckdb_path) -> list[tuple]:
     return rows
 
 
+def _rva_gap_rows(con, cited_fact_ids: set) -> list[dict]:
+    """All request-vs-actuals book-diff rows whose derived diff fact is
+    minted AND cited, ranked by |delta| descending (Phase 5E Task 7).
+
+    Scope advisory (Task 6 review, binding): the feed's "largest gaps" claim
+    is scoped EXACTLY to diff_kind='request_vs_actuals' — the top-100 global
+    rva diffs are all minted by _build_decade_citation_rows, so a ranked
+    top-N (N ≤ 100) drawn from the CITED set is globally honest.
+    request_vs_request diffs are NOT fully minted (dead PEs) and never
+    surface here.
+    """
+    try:
+        rows = con.execute(
+            "select pe_bli, from_edition, to_edition, from_fy, delta"
+            " from fct_book_diff"
+            " where diff_kind = 'request_vs_actuals'"
+            "   and delta is not null and delta <> 0"
+            " order by abs(delta) desc, pe_bli, from_edition"
+        ).fetchall()
+    except Exception:
+        return []
+    out: list[dict] = []
+    for pe_bli, from_ed, to_ed, from_fy, delta in rows:
+        fid = fact_id_derived(
+            "book_diff", f"{pe_bli}|{from_ed}|{to_ed}", "request_vs_actuals"
+        )
+        if fid not in cited_fact_ids:
+            continue  # unminted/uncited diffs (out-of-scope PEs) never render
+        out.append({
+            "pe_bli": pe_bli,
+            "from_edition": int(from_ed),
+            "to_edition": int(to_ed),
+            "fy": int(from_fy),  # rva compares the same FY on both sides
+            "delta": float(delta),
+            "fid": fid,
+        })
+    return out
+
+
+def _rva_gap_index(con, cited_fact_ids: set) -> dict:
+    """pe_bli → largest cited request-vs-actuals gap (Phase 5E Task 7).
+
+    Feeds the program-page "asked vs spent" line: {kind, fy, from_edition,
+    to_edition, delta, fid}. Side values/fids resolve client-side from the
+    sidecar's decade_series (the same grains the diff fact cites as inputs).
+    """
+    index: dict[str, dict] = {}
+    for g in _rva_gap_rows(con, cited_fact_ids):
+        if g["pe_bli"] in index:
+            continue  # rows arrive ranked by |delta| — first wins
+        index[g["pe_bli"]] = {
+            "kind": "request_vs_actuals",
+            "fy": g["fy"],
+            "from_edition": g["from_edition"],
+            "to_edition": g["to_edition"],
+            "delta": g["delta"],
+            "fid": g["fid"],
+        }
+    return index
+
+
 def _emit_feed_sidecar(
     *,
     json_dir: Path,
     con,
     prog_titles: dict,
     cited_fact_ids: set,
+    page_pe_blis: set | None = None,
 ) -> None:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
@@ -3919,6 +4000,14 @@ def _emit_feed_sidecar(
     yoy_swing / zeroed_fy2026 figures cite trajectory derived fact_ids.
     concentration_shift HHI cites feed-surface derived fact_ids.
     new_entrant figure has no citation (year label, not a dollar).
+
+    Phase 5E Task 7 — request_vs_actuals_gap events: the top
+    {_FEED_RVA_TOP} cited request-vs-actuals book diffs (what a PB(N) book
+    asked for FY N vs what the PB(N+2) book reported actually spent),
+    ranked by |delta|. Each card cites its minted book_diff derived fact
+    (breakdown reachable through the citation panel) and links to the
+    program page ONLY when page_pe_blis says the page exists (dead-link
+    lesson — 3 top-100 rva PEs have no page).
 
     junk pe_bli filter: pe_bli='9999999999' excluded upstream in fct_feed_events SQL.
     """
@@ -4044,6 +4133,34 @@ def _emit_feed_sidecar(
             "why_url": f"{_WHY_BASE}-{event_type}",
         }
         cards.append(card)
+
+    # ---- request_vs_actuals_gap events (Phase 5E Task 7) -------------------
+    # Appended AFTER the mart-driven cards, in |delta| rank order (the site
+    # groups by event_type, so intra-section order is the ranking).
+    pages = page_pe_blis or set()
+    for g in _rva_gap_rows(con, cited_fact_ids)[:_FEED_RVA_TOP]:
+        pe_bli = g["pe_bli"]
+        program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
+        direction = "above" if g["delta"] > 0 else "below"
+        headline_text = (
+            f"{program_title or pe_bli} FY{g['fy']} actuals came in"
+            f" {_fmt_thousands(abs(g['delta']))} {direction} the"
+            f" PB{g['from_edition']} request (per the PB{g['to_edition']} book)"
+        )
+        cards.append({
+            "event_type": "request_vs_actuals_gap",
+            "family_key": None,
+            "figure_fact_id": g["fid"],  # cited by construction (_rva_gap_rows)
+            "figure_units": "thousands_usd",
+            "figure_value": g["delta"],
+            "fiscal_year": g["fy"],
+            "headline": headline_text,
+            "organization": None,
+            "pe_bli": pe_bli,
+            "program_url": f"/program/{pe_bli}/" if pe_bli in pages else None,
+            "title": program_title or None,
+            "why_url": f"{_WHY_BASE}-request_vs_actuals_gap",
+        })
 
     _write_json(json_dir / "feed.json", {"cards": cards, "total": len(cards)})
 
