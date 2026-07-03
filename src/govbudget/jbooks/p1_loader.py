@@ -50,10 +50,13 @@ def load_p1_rollup(
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = wb[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in wb.sheetnames else wb[wb.sheetnames[0]]
     header_row, headers = _find_header_row(sheet)
+    # PB2025 suffixes footnoted columns with '*' ('FY 2024 PB Request with CR
+    # Adjustments Amount*') — strip footnote markers before the suffix check.
+    clean = {j: h.rstrip("*").strip() for j, h in headers.items()}
     amount_cols = {
-        j: _slug(h[: -len(" Amount")])
+        j: _slug(clean[j][: -len(" Amount")])
         for j, h in headers.items()
-        if h.upper().startswith("FY ") and h.endswith(" Amount")
+        if h.upper().startswith("FY ") and clean[j].endswith(" Amount")
     }
     id_cols = {j: P1_ID_HEADERS[h] for j, h in headers.items() if h in P1_ID_HEADERS}
     add_col = next(j for j, h in headers.items() if h == "Add/Non-Add")

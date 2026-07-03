@@ -134,3 +134,37 @@ def test_same_bli_different_line_numbers_sum_not_overwrite(pg_dsn, tmp_path):
         ).fetchone()[0]
     assert total == Decimal("759000")  # 649000 + 110000
     assert n_rows == 1  # single aggregated control row
+
+
+def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
+    """PB2025's P-1 labels the FY2024 column 'FY 2024 PB Request with CR
+    Adjustments Amount*' — the footnote asterisk must not drop the column
+    (Task 4 live-run evidence)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(["Total of Displayed Rows"])
+    ws.append([
+        "Account", "Account Title", "Organization", "Budget Activity",
+        "Budget Activity Title", "Line Number", "Budget Line Item",
+        "Budget Line Item (BLI) Title", "Add/Non-Add",
+        "FY 2023 Actuals Quantity", "FY 2023 Actuals Amount",
+        "FY 2024 PB Request with CR Adjustments Quantity",
+        "FY 2024 PB Request with CR Adjustments Amount*",
+        "FY 2025 Request Quantity", "FY 2025 Request Amount",
+    ])
+    ws.append(["0300D", "Procurement, Defense-Wide", "CBDP", "03", "Chem/Bio",
+               "120", "7001SA1000", "CB Situational Awareness", "Add",
+               2, 100000, 1, 150000, 3, 200000])
+    p = tmp_path / "p1_display.xlsx"
+    wb.save(p)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2025)
+    assert n == 3
+    with psycopg.connect(pg_dsn) as con:
+        rows = dict(con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where exhibit='P-1' and pe_bli='7001SA1000'"
+        ).fetchall())
+    assert rows["fy_2023_actuals"] == Decimal("100000")
+    assert rows["fy_2024_pb_request_with_cr_adjustments"] == Decimal("150000")
+    assert rows["fy_2025_request"] == Decimal("200000")

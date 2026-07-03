@@ -5,19 +5,38 @@ import psycopg
 TOLERANCE_M = Decimal("0.001")
 
 def scenario_map(fiscal_year: int) -> dict[str, list[str]]:
-    """XML scenario -> candidate R-1 amount_type slugs for one PB edition.
+    """XML scenario -> candidate R-1/P-1 amount_type slugs for one PB edition.
 
     Gate B passes if ANY candidate matches within tolerance (PB books split
-    base/OOC/total differently per org). Scenario names are edition-relative:
-    for edition year N, PriorYear=FY(N-2) actuals, CurrentYear=FY(N-1),
+    base/OOC/total differently per org, and the display-workbook column
+    headers vary by edition). Scenario names are edition-relative: for
+    edition year N, PriorYear=FY(N-2) actuals, CurrentYear=FY(N-1),
     BudgetYearOne=FY(N) total request, BudgetYearOneBase=FY(N) base/disc.
+
+    Header-variant candidates are empirical, from the editions on disk
+    (Phase 5E Task 4 live-run evidence):
+      - PB2026: 'FY 2025 Total'/'FY 2025 Enacted', 'FY 2026 Total'/'FY 2026
+        Disc Request' — the original slugs, kept first in original order.
+      - PB2024: 'FY 2023 Total Enacted', 'FY 2023 Less Supplementals
+        Enacted', 'FY 2024 Request'. (The supplementals-only column is
+        intentionally NOT a CurrentYear candidate.)
+      - PB2025: 'FY 2024 PB Request with CR Amounts*' (R-1) / '... with CR
+        Adjustments Amount*' (P-1) — FY2024 ran under a continuing
+        resolution when PB2025 published — plus 'FY 2025 Request'.
+    Candidate slugs that don't exist in an edition's budget_lines never
+    match, so each edition only ever reconciles against its own headers.
     """
     py, cy, by = fiscal_year - 2, fiscal_year - 1, fiscal_year
     return {
         "PriorYear": [f"fy_{py}_actuals"],
-        "CurrentYear": [f"fy_{cy}_total", f"fy_{cy}_enacted"],
-        "BudgetYearOne": [f"fy_{by}_total", f"fy_{by}_disc_request"],
-        "BudgetYearOneBase": [f"fy_{by}_disc_request", f"fy_{by}_total"],
+        "CurrentYear": [
+            f"fy_{cy}_total", f"fy_{cy}_enacted", f"fy_{cy}_total_enacted",
+            f"fy_{cy}_less_supplementals_enacted",
+            f"fy_{cy}_pb_request_with_cr_amounts",
+            f"fy_{cy}_pb_request_with_cr_adjustments",
+        ],
+        "BudgetYearOne": [f"fy_{by}_total", f"fy_{by}_disc_request", f"fy_{by}_request"],
+        "BudgetYearOneBase": [f"fy_{by}_disc_request", f"fy_{by}_total", f"fy_{by}_request"],
     }
 
 # Extracted but intentionally not reconciled: no R-1 display analog.
