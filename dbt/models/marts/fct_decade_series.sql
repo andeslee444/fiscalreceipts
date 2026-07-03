@@ -20,7 +20,9 @@
 --   * The P-1R exhibit is EXCLUDED: it is the informational reserve-component
 --     breakout of P-1 lines (never reconciled against XML details); its
 --     modern-edition rows share (pe_bli, amount_type) with P-1 lines and
---     summing both would double-count the reserve share.
+--     summing both would double-count the reserve share. P-1R is a SUBSET
+--     of P-1 — P-1 is the inclusive total (workbook ground truth: Aircraft
+--     Procurement Army FY2024 = $3.321B from P-1 alone).
 --   * pe_bli '9999999999' (the Classified Programs display aggregate) is
 --     EXCLUDED: it is not a program identity, and in modern editions it
 --     appears in BOTH R-1 and P-1 under shared amount_type slugs.
@@ -30,13 +32,17 @@
 -- with detail rows is picked; amount = sum of its detail rows.
 --
 -- Lake-verifiability filter (verify-phase5e leg d recomputes every sampled
--- amount from raw budget_lines with NO exhibit/title filter, any-candidate
--- rule): a grain is emitted only when its honest detail sum equals the raw
--- whole-lake sum for at least one candidate slug. The only grains this
--- withholds are modern (PB2024–PB2026) P-1 lines whose picked slug is
--- contaminated by a nonzero P-1R sibling row — an honest, documented gap
--- (see assert_decade_series_no_p1r_contamination.sql, which proves nothing
--- P-1R-contaminated leaks in, and the schema.yml coverage note).
+-- amount from raw budget_lines with NO title filter, any-candidate rule):
+-- a grain is emitted only when its honest detail sum equals the raw
+-- lake sum for at least one candidate slug. Both sides of that recompute
+-- exclude P-1R rows (Task 5 improvements — P-1R recompute correction):
+-- P-1 already includes the reserve share, so summing the P-1R sibling in
+-- would double-count it, and the 993 modern P-1 grains the naive
+-- (P-1 + P-1R) recompute used to withhold now publish their P-1-only
+-- detail sums (assert_decade_series_p1r_published_grains.sql pins one;
+-- assert_decade_series_no_p1r_contamination.sql still proves no P-1R
+-- dollar reaches a published amount). Provenance-less rollup twins remain
+-- withheld — they still poison the lake sum by construction.
 --
 -- PB2019 OSD dual-volume dedup (Task 5 binding (i)): this mart reads
 -- budget_lines ONLY. budget_lines is loaded from the per-edition R-1/P-1
@@ -56,6 +62,7 @@
 
 with lake as (
     select
+        exhibit,
         pe_bli,
         fiscal_year as edition_year,
         amount_type,
@@ -153,8 +160,10 @@ chosen as (
     where rn = 1
 ),
 
--- Raw whole-lake sums per candidate slug: exactly what the verify-phase5e
--- gate recomputes (no exhibit filter, no title filter, all rows).
+-- Raw lake sums per candidate slug: exactly what the verify-phase5e gate
+-- recomputes (no title filter, all rows EXCEPT the P-1R exhibit — the
+-- reserve-component subset of P-1 whose modern rows share the P-1 slugs;
+-- verify_phase5e._lake_candidate_match applies the same exclusion).
 lake_sums as (
     select
         l.pe_bli,
@@ -165,6 +174,7 @@ lake_sums as (
     join candidates c
       on c.edition_year = l.edition_year
      and c.amount_type = l.amount_type
+    where l.exhibit <> 'P-1R'
     group by l.pe_bli, l.edition_year, c.scenario, c.amount_type
 )
 

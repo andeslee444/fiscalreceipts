@@ -254,9 +254,10 @@ def test_leakage_gate_fails_below_sample_size(pg5e):
 # ---------------------------------------------------------------------------
 
 
-def make_lake_parquet(tmp_path: Path, rows: list[tuple[str, int, str, str]]) -> Path:
-    """Rows: (pe_bli, fiscal_year, amount_type, amount_thousands) — written
-    all-varchar to match the real jbooks lake export."""
+def make_lake_parquet(tmp_path: Path, rows: list[tuple]) -> Path:
+    """Rows: (pe_bli, fiscal_year, amount_type, amount_thousands[, exhibit])
+    — written all-varchar to match the real jbooks lake export. exhibit
+    defaults to 'R-1' (5-tuples opt in, e.g. 'P-1R' sibling rows)."""
     pq = tmp_path / "budget_lines.parquet"
     con = duckdb.connect()
     con.execute(
@@ -266,8 +267,11 @@ def make_lake_parquet(tmp_path: Path, rows: list[tuple[str, int, str, str]]) -> 
     )
     if rows:
         con.executemany(
-            "insert into lake values ('R-1', ?, '0400', 'DARPA', ?, ?, ?)",
-            [(str(fy), pe, at, str(amt)) for pe, fy, at, amt in rows],
+            "insert into lake values (?, ?, '0400', 'DARPA', ?, ?, ?)",
+            [
+                (r[4] if len(r) > 4 else "R-1", str(r[1]), r[0], r[2], str(r[3]))
+                for r in rows
+            ],
         )
     con.execute(f"copy lake to '{pq}' (format parquet)")
     con.close()
@@ -486,6 +490,46 @@ def test_decade_series_recompute_passes(tmp_path):
     assert g["ok"] is True
     assert g["sampled"] == 2 and g["passed"] == 2
     assert g["duplicate_grains"] == 0
+
+
+def test_decade_series_recompute_excludes_p1r_rows(tmp_path):
+    """P-1R recompute correction (Task 5 improvements): P-1R is the
+    reserve-component SUBSET of the P-1 line (P-1 is the inclusive total —
+    workbook ground truth, e.g. Aircraft Procurement Army FY2024 = $3.321B
+    from P-1 alone). A modern P-1 grain with a nonzero P-1R sibling row
+    under the same slug must recompute to the P-1-only value: the C-130J
+    PB2025 FY2023-actuals shape (P-1 1,775,293 + P-1R 1,700,000)."""
+    lake = make_lake_parquet(tmp_path, [
+        ("C130J0", 2025, "fy_2023_actuals", "1775293", "P-1"),
+        ("C130J0", 2025, "fy_2023_actuals", "1700000", "P-1R"),
+    ])
+    db = make_decade_series_db(tmp_path, [("C130J0", 2023, 2025, 1775293.0, "f1")])
+    g = decade_series_gate5e(db, lake)
+    assert g["ok"] is True, g["failures"]
+    assert g["sampled"] == 1 and g["passed"] == 1
+    # …and the P-1 + P-1R contaminated sum must NOT verify: publishing
+    # 3,475,293 double-counts the reserve share.
+    bad_dir = tmp_path / "bad"
+    bad_dir.mkdir()
+    db_bad = make_decade_series_db(bad_dir, [("C130J0", 2023, 2025, 3475293.0, "f1")])
+    g = decade_series_gate5e(db_bad, lake)
+    assert g["ok"] is False
+    assert "lake recompute mismatch" in g["failures"][0][1]
+
+
+def test_book_diff_recompute_excludes_p1r_rows(tmp_path):
+    """Same P-1R exclusion on the book-diff side: both diff sides are
+    fct_decade_series amounts, so their lake recompute ignores P-1R rows."""
+    lake = make_lake_parquet(tmp_path, [
+        ("C130J0", 2023, "fy_2023_total", "1600000", "P-1"),
+        ("C130J0", 2023, "fy_2023_total", "1500000", "P-1R"),
+        ("C130J0", 2025, "fy_2023_actuals", "1775293", "P-1"),
+        ("C130J0", 2025, "fy_2023_actuals", "1700000", "P-1R"),
+    ])
+    rows = [("C130J0", 2023, 2025, "request_vs_actuals",
+             1600000.0, 1775293.0, 175293.0)]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=1)
+    assert g["ok"] is True, g["failures"]
 
 
 def test_decade_series_zero_duplicates_clean_recompute_passes(tmp_path):

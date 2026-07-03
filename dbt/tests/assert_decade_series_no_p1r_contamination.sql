@@ -3,13 +3,14 @@
 -- Belt-and-braces recompute: every published amount must equal the sum of
 -- provenance-carrying R-1/P-1 rows for its (pe_bli, edition_year,
 -- amount_type) — recomputed here independently from staging. P-1R rows
--- (the reserve-component breakout of P-1 lines, which shares pe_bli and
--- amount_type slugs with P-1 in modern editions), provenance-less rollup
--- twins, and the classified aggregate must never contribute a dollar to a
--- published series value. A mart row that picked a P-1R-contaminated slug
--- may still be emitted when an equal-valued alternate candidate slug makes
--- it lake-recomputable (the verify-phase5e any-candidate rule) — but its
--- AMOUNT must always be the P-1R-free detail sum this test recomputes.
+-- (the reserve-component SUBSET of P-1 lines, which shares pe_bli and
+-- amount_type slugs with P-1 in modern editions; P-1 is the inclusive
+-- total), provenance-less rollup twins, and the classified aggregate must
+-- never contribute a dollar to a published series value. Since the P-1R
+-- recompute correction (Task 5 improvements), the mart's lake-verifiability
+-- filter itself excludes P-1R from candidate sums — grains with a nonzero
+-- P-1R sibling are now published — but their AMOUNT must always be the
+-- P-1R-free detail sum this test recomputes.
 with honest as (
     select
         pe_bli,

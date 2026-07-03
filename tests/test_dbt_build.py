@@ -86,7 +86,17 @@ def make_lake(data_dir: Path):
         # single-volume value 7,940, never the both-volumes sum 15,880
         # (assert_decade_series_pb2019_osd_single_volume).
         f"('R-1','2019','0400D','Research','OSD','3','Advanced Technology',"
-        f"'0303140D8Z','Information Systems Security Program','fy_2019_total','7940','278'))"
+        f"'0303140D8Z','Information Systems Security Program','fy_2019_total','7940','278'),"
+        # Phase 5E Task 5 improvements (P-1R recompute correction): a modern
+        # P-1 line with a nonzero P-1R reserve-component sibling sharing the
+        # (pe_bli, amount_type) slug. P-1R is a SUBSET of P-1 (P-1 is the
+        # inclusive total), so fct_decade_series must publish the P-1-only
+        # value 1,775,293 — the naive P-1 + P-1R recompute (3,475,293) used
+        # to withhold this grain (assert_decade_series_p1r_published_grains).
+        f"('P-1','2025','3010F','Aircraft Procurement, Air Force','F','01','Combat Aircraft',"
+        f"'C130J0','C-130J','fy_2023_actuals','1775293','300'),"
+        f"('P-1R','2025','3010F','Aircraft Procurement, Air Force','F','01','Combat Aircraft',"
+        f"'C130J0','C-130J','fy_2023_actuals','1700000','300'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -97,7 +107,9 @@ def make_lake(data_dir: Path):
         f"('278','OSD','rdte','2019','vol3a.pdf',"
         f"'https://example.test/2019/vol3a.pdf','sha-osd-2019-a','1000','2026-06-01','fy2019/osd/vol3a.pdf'),"
         f"('279','OSD','rdte','2019','vol3b.pdf',"
-        f"'https://example.test/2019/vol3b.pdf','sha-osd-2019-b','1000','2026-06-01','fy2019/osd/vol3b.pdf'))"
+        f"'https://example.test/2019/vol3b.pdf','sha-osd-2019-b','1000','2026-06-01','fy2019/osd/vol3b.pdf'),"
+        f"('300','AF','rollup','2025','p1_display.xlsx',"
+        f"'https://example.test/2025/p1_display.xlsx','sha-af-2025','1000','2026-06-01','fy2025/af/p1_display.xlsx'))"
         f" t({JBOOK_DOCUMENT_COLS})) to '{jbooks}/documents.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -401,6 +413,14 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select amount from fct_decade_series where pe_bli='0303140D8Z'"
         " and edition_year=2019 and amount_type_kind='request'"
     ).fetchone()[0] == 7940.0
+    # P-1R recompute correction (Task 5 improvements): the C130J0 grain has
+    # a nonzero P-1R sibling under the same slug — it must be PUBLISHED with
+    # the P-1-only value (P-1 ⊇ P-1R; the reserve share must never sum in),
+    # not withheld by a naive P-1 + P-1R lake recompute.
+    assert con.sql(
+        "select amount from fct_decade_series where pe_bli='C130J0'"
+        " and fy=2023 and edition_year=2025"
+    ).fetchone()[0] == 1775293.0
     # single-source grains carry a workbook fact_id (Task 6 minting handoff)
     assert con.sql(
         "select source_fact_id from fct_decade_series where pe_bli='0303140D8Z'"

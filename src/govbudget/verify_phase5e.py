@@ -83,6 +83,14 @@ def _lake_candidate_match(
     _TOL of target (PB books split base/OOC/total differently per org — the
     same rule the reconciliation gate uses). Returns (matched, detail) where
     detail lists the candidate sums for failure messages.
+
+    P-1R rows are EXCLUDED from the candidate sums (Task 5 improvements —
+    P-1R recompute correction): the P-1R exhibit is the reserve-component
+    SUBSET of the P-1 line, and P-1 is the inclusive total (workbook ground
+    truth: Aircraft Procurement Army FY2024 = $3.321B from P-1 alone).
+    Modern (PB2024–PB2026) P-1R rows share (pe_bli, amount_type) with their
+    P-1 line, so a naive whole-lake sum double-counts the reserve share —
+    fct_decade_series applies the same exclusion in its lake_sums CTE.
     """
     sums: list[str] = []
     for slug in candidates:
@@ -94,6 +102,7 @@ def _lake_candidate_match(
             where pe_bli = ?
               and try_cast(fiscal_year as integer) = ?
               and amount_type = ?
+              and exhibit <> 'P-1R'
             """,
             [pe_bli, edition, slug],
         ).fetchone()

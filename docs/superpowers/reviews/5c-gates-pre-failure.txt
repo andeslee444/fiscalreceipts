@@ -554,3 +554,49 @@ row (warehouse budget_lines id 13541, title-NULL 0601101E fy_2024_actuals
 twin with no source document) no longer reaches the lake; it remains in
 Postgres pending a cleanup migration (gate b reports it as unjoined=1,
 informational).
+
+══════════════════════════════════════════════════════════════════════════
+P-1R recompute correction (Task 5 improvements)
+Date: 2026-07-03
+══════════════════════════════════════════════════════════════════════════
+The Task-5 adversarial review proved the P-1R exhibit is a
+reserve-component SUBSET of P-1 — P-1 is the inclusive total (workbook
+ground truth: Aircraft Procurement Army FY2024 = $3.321B from the P-1 row
+alone). The lake-verifiability recompute (fct_decade_series lake_sums CTE
+and verify_phase5e._lake_candidate_match) therefore now excludes
+exhibit='P-1R' rows on BOTH sides, symmetrically. This is a semantic
+correction, not a gate weakening:
+  * every published row still recomputes exactly from the raw lake under
+    the same any-candidate decimal semantics — the recompute simply stops
+    double-counting the reserve share that P-1 already includes;
+  * MORE rows become publishable, none become less checked: the 993
+    modern (PB2024: 290, PB2025: 418, PB2026: 285) P-1 grains the naive
+    P-1 + P-1R candidate sum withheld now publish their P-1-only detail
+    sums (e.g. C-130J/C130J0 PB2025 FY2023 actuals = 1,775,293 $K;
+    8750E27501 PB2026 FY2024 actuals = 2,469,375 $K);
+  * provenance-less rollup twins remain withheld (they still poison the
+    lake sum), and assert_decade_series_no_p1r_contamination.sql still
+    proves no P-1R dollar reaches any published amount;
+  * assert_decade_series_p1r_published_grains.sql pins the C-130J grain
+    so the withhold can never silently return.
+Book quirk noted in schema.yml: 6 small-dollar grains carry P-1R > P-1 in
+the source workbooks (e.g. 833040/3080F FY2023: 13,986 vs 16,000); the
+P-1 value is published as the exhibit's inclusive total.
+
+Row counts before → after:
+  fct_decade_series: 58,075 → 59,068 (+993; actuals 19,376→19,816,
+    enacted 19,372→19,655, request 19,327→19,597)
+  fct_book_diff: 17,938 → 18,379 (+441; request_vs_request 9,822→10,104,
+    request_vs_actuals 8,116→8,275) — modern procurement diffs now exist.
+Exhaustive off-gate validation: all 59,068 series rows and all 36,758
+diff sides recompute from the raw lake under the gate's exact decimal
+semantics (0 failures); duplicate grains 0; conservation violations 0.
+
+$ uv run python -m govbudget verify-phase5e
+gate a edition-coverage: loaded=10 excused=0 missing=0/10 editions → PASS
+gate b no-cross-edition-leakage: sampled=200/159502 joinable mismatches=0 unjoined=1 → PASS
+gate c book-diff-conservation: rows=18379 sampled=20 passed=20 → PASS
+gate d decade-series-integrity: rows=59068 duplicate_grains=0 sampled=20 passed=20 → PASS
+verify-phase5e: PASS
+exit code: 0
+(gate re-run 4x for sampling stability — PASS every run)
