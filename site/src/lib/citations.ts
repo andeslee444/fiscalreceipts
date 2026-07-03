@@ -88,6 +88,58 @@ export function isJbookNarrative(c: Citation): c is JbookNarrativeCitation {
   return c.kind === "jbook_narrative";
 }
 
+// ── PDF-page renderable citations (Phase 5F §2b) ─────────────────────────────
+
+/**
+ * Structural type for anything PdfView can render: a hosted PDF page plus a
+ * bbox highlight. jbook_pdf citations always fit; jbook_narrative citations
+ * fit when the provenance builder resolved their passage start (2,449/2,457).
+ */
+export interface PdfPageCitation {
+  hosted_pdf_url: string;
+  page_number: number;
+  x0: number;
+  x1: number;
+  top_pt: number;
+  bottom_pt: number;
+  resolution: "unique" | "ambiguous_first" | null;
+  amount_text: string | null;
+  units: string | null;
+  official_url: string | null;
+}
+
+/**
+ * Narrow a narrative citation to its paged (PdfView-renderable) form.
+ * The 8 unresolved narratives fail this and keep the non-paged card —
+ * never a fake location.
+ */
+export function pagedNarrativeCitation(
+  c: JbookNarrativeCitation,
+): PdfPageCitation | null {
+  if (
+    c.hosted_pdf_url == null ||
+    c.page_number == null ||
+    c.x0 == null ||
+    c.x1 == null ||
+    c.top_pt == null ||
+    c.bottom_pt == null
+  ) {
+    return null;
+  }
+  return {
+    hosted_pdf_url: c.hosted_pdf_url,
+    page_number: c.page_number,
+    x0: c.x0,
+    x1: c.x1,
+    top_pt: c.top_pt,
+    bottom_pt: c.bottom_pt,
+    resolution: c.resolution,
+    amount_text: null, // narratives cite prose, not an amount
+    units: null,
+    official_url: c.official_url,
+  };
+}
+
 // ── Derived-citation input helpers ───────────────────────────────────────────
 
 /** 16-hex fact_id pattern (export_site identity hashes). */

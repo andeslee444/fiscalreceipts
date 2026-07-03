@@ -46,8 +46,7 @@ import {
   X,
 } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import type { JbookPdfCitation } from "@/lib/data";
-import { pdfHighlightRect } from "@/lib/citations";
+import { pdfHighlightRect, type PdfPageCitation } from "@/lib/citations";
 import { usdEquivalence } from "@/lib/format";
 import { useAssetUrl } from "@/components/asset-config";
 
@@ -202,7 +201,7 @@ function stripFragment(url: string): string {
 /** Numeric highlight rect (px) for scroll math — same geometry as
  *  pdfHighlightRect, which returns CSS strings. */
 function highlightNumbers(
-  citation: JbookPdfCitation,
+  citation: PdfPageCitation,
   cssWidth: number,
 ): { left: number; top: number; width: number; height: number } {
   const r = pdfHighlightRect(citation, cssWidth);
@@ -217,7 +216,7 @@ function highlightNumbers(
 /** Scroll `container` so the highlight center sits at the container center. */
 function centerHighlight(
   container: HTMLElement,
-  citation: JbookPdfCitation,
+  citation: PdfPageCitation,
   cssWidth: number,
 ): void {
   const h = highlightNumbers(citation, cssWidth);
@@ -234,12 +233,20 @@ function centerHighlight(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface PdfViewProps {
-  citation: JbookPdfCitation;
+  /**
+   * Any PDF-page-renderable citation (structural): jbook_pdf always fits;
+   * paged jbook_narrative citations fit via pagedNarrativeCitation()
+   * (Phase 5F §2b — the narrative card reuses this whole view).
+   */
+  citation: PdfPageCitation;
+  /** Official-source link label override (narrative card: "Open official
+   *  source at p.N"). Defaults to the jbook_pdf wording. */
+  officialLinkLabel?: string;
 }
 
 type ViewState = "loading" | "ready" | "error";
 
-export function PdfView({ citation }: PdfViewProps) {
+export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
   const assetUrl = useAssetUrl();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -534,7 +541,9 @@ export function PdfView({ citation }: PdfViewProps) {
             className="h-3.5 w-3.5 shrink-0"
             aria-hidden="true"
           />
-          <span className="truncate">Open in official source (PDF)</span>
+          <span className="truncate">
+            {officialLinkLabel ?? "Open in official source (PDF)"}
+          </span>
           <span className="sr-only">(opens in new tab)</span>
         </a>
       )}
@@ -549,7 +558,7 @@ const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.25;
 
 interface PdfZoomOverlayProps {
-  citation: JbookPdfCitation;
+  citation: PdfPageCitation;
   /** Resolved asset URL (fragment already stripped). */
   url: string;
   open: boolean;
