@@ -758,6 +758,17 @@ def export_site(
             pe_bli, None, None,  # pe_bli, scenario, amount_type
         ))
 
+    # --- 4i. Flowdown chart citations + payload (Phase 5H) ---
+    # Minted BEFORE citations.parquet so flow node/edge facts ship in the
+    # same parquet/json/shards as every other tier. The payload itself is
+    # written as a JSON sidecar in step 19 of _write_all_sidecars.
+    from govbudget.flow_chart import build_flow_chart
+
+    flow_payload, flow_cit_rows = build_flow_chart(
+        duckdb_path=duckdb_path, bl_rows=bl_rows
+    )
+    citation_rows.extend(flow_cit_rows)
+
     # Write citations.parquet
     _write_typed_parquet(
         cit_dir / "citations.parquet",
@@ -848,6 +859,7 @@ def export_site(
         bl_rows=bl_rows,
         citation_rows=citation_rows,
         manifest=manifest,
+        flow_payload=flow_payload,
     )
 
     # Update manifest with json_sidecars count
@@ -2090,6 +2102,7 @@ def _emit_json_sidecars(
     bl_rows: list,
     citation_rows: list,
     manifest: dict,
+    flow_payload: dict | None = None,
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
 
@@ -2116,6 +2129,7 @@ def _emit_json_sidecars(
             bl_rows=bl_rows,
             citation_rows=citation_rows,
             manifest=manifest,
+            flow_payload=flow_payload,
         )
     finally:
         con.close()
@@ -2131,6 +2145,7 @@ def _write_all_sidecars(
     bl_rows: list,
     citation_rows: list,
     manifest: dict,
+    flow_payload: dict | None = None,
 ) -> int:
     """Core sidecar writer; called from _emit_json_sidecars."""
 
@@ -3076,6 +3091,28 @@ def _write_all_sidecars(
         bl_rows=bl_rows,
         detail_rows=detail_rows,
     )
+
+    # ------------------------------------------------------------------ #
+    # 19. flow_chart.json (Phase 5H — /flow/ flowdown, precomputed layout) #
+    # ------------------------------------------------------------------ #
+    if flow_payload is not None:
+        from govbudget.flow_chart import PAYLOAD_BUDGET_BYTES
+
+        flow_path = json_dir / "flow_chart.json"
+        _write_json(flow_path, flow_payload)
+        flow_size = flow_path.stat().st_size
+        if flow_size > PAYLOAD_BUDGET_BYTES:
+            print(
+                f"flow_chart.json: {flow_size} bytes EXCEEDS the"
+                f" {PAYLOAD_BUDGET_BYTES}-byte budget — aggregate more"
+                f" (lower Other member caps / top-N)"
+            )
+        else:
+            print(f"flow_chart.json: {flow_size} bytes"
+                  f" (budget {PAYLOAD_BUDGET_BYTES})")
+        n_files += 1
+    else:
+        print("flow_chart.json: NOT written (fct_flow_edges missing/empty)")
 
     return n_files
 

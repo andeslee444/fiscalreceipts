@@ -1259,6 +1259,83 @@ class TestDerivedSumViabudgetLines:
         assert "unresolvable" in result, f"expected 'unresolvable' in: {result}"
 
 
+class TestFlowChildrenRecompute:
+    """Rule 4b0 (Phase 5H): sum(flow_children…) node facts recompute from
+    their edge facts' recorded_values. Called directly like the 4c tests."""
+
+    def _edge_cits(self, pairs):
+        rows = []
+        for fid, rv in pairs:
+            rows.append(_make_derived_row_tuple(
+                fid, "sum(contracts.federal_action_obligation where fy=2025"
+                     " and flow_edge=a->b)", "[]", rv))
+        return rows
+
+    def test_flow_children_correct_sum_passes(self):
+        import json as _json
+        e1, e2 = "aaaa000011110000", "bbbb000022220000"
+        all_cits = self._edge_cits([(e1, "600.25"), (e2, "150.50")])
+        node_row = _make_derived_row_tuple(
+            "cccc000033330000",
+            "sum(flow_children(out_edges) where fy=2025 and flow_node=s:2025:sub:DEPT ARMY)",
+            _json.dumps([e1, e2]), "750.750",
+        )
+        idx = _build_cit_idx()
+        assert _verify_derived(node_row, idx, all_cits, idx, {}) is None
+
+    def test_flow_children_tampered_recorded_value_fails(self):
+        import json as _json
+        e1, e2 = "aaaa000011110000", "bbbb000022220000"
+        all_cits = self._edge_cits([(e1, "600.25"), (e2, "150.50")])
+        node_row = _make_derived_row_tuple(
+            "cccc000033330000",
+            "sum(flow_children(out_edges) where fy=2025 and flow_node=s:2025:sub:DEPT ARMY)",
+            _json.dumps([e1, e2]), "999.999",  # WRONG
+        )
+        idx = _build_cit_idx()
+        result = _verify_derived(node_row, idx, all_cits, idx, {})
+        assert result is not None and "mismatch" in result
+
+    def test_flow_children_unresolvable_input_fails(self):
+        """Edge fact present but with recorded_value=None → FAIL, never skip."""
+        import json as _json
+        e1 = "aaaa000011110000"
+        cit = list(_make_derived_row_tuple(e1, "edge", "[]", None))
+        node_row = _make_derived_row_tuple(
+            "cccc000033330000",
+            "sum(flow_children(out_edges) where fy=2025 and flow_node=n)",
+            _json.dumps([e1]), "1.000",
+        )
+        idx = _build_cit_idx()
+        result = _verify_derived(node_row, idx, [tuple(cit)], idx, {})
+        assert result is not None and "unresolvable" in result
+
+    def test_flow_children_name_with_dash_not_misread_as_difference(self):
+        """A node whose embedded name contains ' - ' with exactly 2 inputs
+        must recompute as a SUM (rule 4b0), not a difference (rule 4b)."""
+        import json as _json
+        e1, e2 = "aaaa000011110000", "bbbb000022220000"
+        all_cits = self._edge_cits([(e1, "100.00"), (e2, "50.00")])
+        node_row = _make_derived_row_tuple(
+            "cccc000033330000",
+            "sum(flow_children(out_edges) where fy=2025 and"
+            " flow_node=s:2025:sub:DEPT OF DEFENSE - EDUCATION ACTIVITY)",
+            _json.dumps([e1, e2]), "150.000",  # sum, NOT 100-50=50
+        )
+        idx = _build_cit_idx()
+        assert _verify_derived(node_row, idx, all_cits, idx, {}) is None
+
+    def test_flow_children_empty_inputs_fails(self):
+        node_row = _make_derived_row_tuple(
+            "cccc000033330000",
+            "sum(flow_children(out_edges) where fy=2025 and flow_node=n)",
+            "[]", "0.000",
+        )
+        idx = _build_cit_idx()
+        result = _verify_derived(node_row, idx, [], idx, {})
+        assert result is not None and "not recomputable" in result
+
+
 # ---------------------------------------------------------------------------
 # jbook_narrative citation kind
 # ---------------------------------------------------------------------------

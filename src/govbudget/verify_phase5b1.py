@@ -400,6 +400,11 @@ def _verify_derived(
     3. inputs is a JSON array string (may be []).
     4. If all inputs are 16-hex fact_ids (i.e. references to other citations):
        a. All referenced fact_ids must exist in the citation set.
+       b0. For flow-node facts (formula starts with 'sum(flow_children',
+           Phase 5H): recompute the Decimal sum of the inputs'
+           recorded_values within 0.001 tolerance. Checked BEFORE the
+           difference rule — flow node ids embed sub-agency/office names
+           that may contain ' - ' and must never be misread as differences.
        b. For trajectory difference (formula contains ' - ') with exactly 2
           16-hex inputs: recompute fy26 - fy25 within 0.001 tolerance.
        c. For trajectory sum (formula starts with 'sum(budget_lines') with
@@ -435,7 +440,7 @@ def _verify_derived(
     # Rule for sum formula with empty inputs: a 'sum(budget_lines' formula that has
     # no inputs is not recomputable — it must fail.  The emission side must use the
     # pivot formula string instead ('trajectory pivot of budget_lines ...').
-    if not inputs and formula.startswith("sum(budget_lines"):
+    if not inputs and formula.startswith(("sum(budget_lines", "sum(flow_children")):
         return (
             "derived sum formula with empty inputs — not recomputable; "
             "use pivot formula string for honest shape-check rows"
@@ -454,8 +459,41 @@ def _verify_derived(
         if missing:
             return f"derived inputs not found in citations: {missing[:3]}"
 
+        # Rule 4b0 (Phase 5H): flow-node facts — recorded_value must equal the
+        # Decimal sum of the inputs' (edge facts') recorded_values. Runs
+        # BEFORE the difference rule: node ids inside the formula embed
+        # sub-agency/office names that may contain ' - '.
+        if formula.startswith("sum(flow_children"):
+            values = []
+            unresolvable = []
+            for inp_fid in inputs:
+                rv = fid_to_rv.get(inp_fid)
+                if rv is None:
+                    unresolvable.append(inp_fid)
+                    continue
+                try:
+                    values.append(D(rv))
+                except Exception as e:
+                    return f"flow_children input {inp_fid} not numeric: {e}"
+            if unresolvable:
+                return (
+                    f"flow_children inputs unresolvable (no recorded_value): "
+                    f"{unresolvable[:3]}"
+                )
+            try:
+                expected_sum = sum(values, D(0))
+                actual = D(recorded_value)
+                if abs(actual - expected_sum) > D("0.001"):
+                    return (
+                        f"flow_children recompute mismatch: "
+                        f"sum({len(values)} inputs)={expected_sum} "
+                        f"but recorded_value={recorded_value}"
+                    )
+            except Exception as e:
+                return f"flow_children recompute error: {e}"
+
         # Rule 4b: difference formula (fy2526_change = fy2026 - fy2025)
-        if " - " in formula and len(inputs) == 2:
+        elif " - " in formula and len(inputs) == 2:
             rv0 = fid_to_rv.get(inputs[0])
             rv1 = fid_to_rv.get(inputs[1])
             if rv0 is not None and rv1 is not None:
