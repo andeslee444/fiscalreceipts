@@ -526,3 +526,31 @@ gate c book-diff-conservation: fct_book_diff mart absent — run the 5E dbt buil
 gate d decade-series-integrity: fct_decade_series mart absent — run the 5E dbt build (Task 5) → FAIL
 verify-phase5e: FAIL
 exit code: 1
+
+══════════════════════════════════════════════════════════════════════════
+verify-phase5e legs c+d first-green (Task 5)
+Date: 2026-07-03
+══════════════════════════════════════════════════════════════════════════
+The Task-3 pre-failure above recorded legs c/d red (marts absent). Task 5
+shipped fct_decade_series + fct_book_diff (dbt, table-materialized,
+lake-verifiable by construction) and the flip is recorded here. All four
+legs now PASS against the real warehouse + parquet lake (10 editions
+loaded by Task 4). Exhaustive off-gate validation: all 58,075 series rows
+and all 35,876 diff sides recompute from the raw lake under the gate's
+exact decimal semantics (0 failures); grain duplicates 0; conservation
+violations 0. Gate re-run 4x for sampling stability — PASS every run.
+
+$ uv run python -m govbudget verify-phase5e
+gate a edition-coverage: loaded=10 excused=0 missing=0/10 editions → PASS
+gate b no-cross-edition-leakage: sampled=200/159502 joinable mismatches=0 unjoined=1 → PASS
+gate c book-diff-conservation: rows=17938 sampled=20 passed=20 → PASS
+gate d decade-series-integrity: rows=58075 duplicate_grains=0 sampled=20 passed=20 → PASS
+verify-phase5e: PASS
+exit code: 0
+
+Data note: the lake export gained the budget_lines provenance invariant
+(source_document_id IS NOT NULL, export_facts.py) — the one legacy orphan
+row (warehouse budget_lines id 13541, title-NULL 0601101E fy_2024_actuals
+twin with no source document) no longer reaches the lake; it remains in
+Postgres pending a cleanup migration (gate b reports it as unjoined=1,
+informational).
