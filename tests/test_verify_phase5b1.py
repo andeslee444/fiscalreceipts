@@ -1740,3 +1740,222 @@ class TestNarrativeGate5b1:
         result = narrative_gate5b1(tmp_path / "nope")
         assert result["ok"] is False
         assert "site_dir missing" in result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 5E Task 6: decade gate-scope extension
+# (documented in docs/superpowers/reviews/5c-gates-pre-failure.txt —
+#  the workbook fact universe and the derived-recompute value lookup learn
+#  about data/budget_lines_decade.parquet; the difference rule gains the
+#  same budget_lines fallback the sum rule already had, so book-diff facts
+#  are GENUINELY recomputed, never silently shape-checked)
+# ---------------------------------------------------------------------------
+
+_BL_COL_DEFS = (
+    "fact_id varchar, exhibit varchar, fiscal_year integer, account varchar,"
+    " account_title varchar, organization varchar, budget_activity varchar,"
+    " budget_activity_title varchar, pe_bli varchar, title varchar,"
+    " amount_type varchar, amount_thousands double, units varchar,"
+    " document_sha256 varchar, source_sheet varchar, source_cells varchar"
+)
+
+
+def _decade_bl_parquet_row(fid: str, edition: int, at: str, amount: float,
+                           sha: str | None = None, cells: str = "J4") -> tuple:
+    return (fid, "R-1", edition, "0400", "RDT&E Defense-Wide", "DARPA", "01",
+            "Basic Research", "0601101E", "OLD LINE", at, amount,
+            "USD thousands", sha or f"sha_pb{edition}", "Exhibit R-1", cells)
+
+
+def _decade_wb_citation_row(fid: str, edition: int, at: str, amount: float,
+                            sha: str | None = None, cells: str = "J4") -> tuple:
+    return (fid, "workbook", "USD thousands", None, None,
+            None, None, None, None, None, None, None,
+            "Exhibit R-1", cells, amount,
+            sha or f"sha_pb{edition}", None,
+            "https://example.mil/old_r1.xlsx", None, None,
+            None, None, None, None,
+            "0601101E", None, at)
+
+
+def _mk_decade_workbook(site: Path, name: str, cells: dict[str, float]) -> str:
+    """Write an xlsx with the given 'Exhibit R-1' cell values, copy it to
+    workbooks/{sha}.xlsx and return the real sha (citation_gate5b1's
+    workbook tier re-opens the file and sums the cited cells)."""
+    src = site / f"_src_{name}.xlsx"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit R-1"
+    for ref, v in cells.items():
+        ws[ref] = v
+    wb.save(src)
+    sha = hashlib.sha256(src.read_bytes()).hexdigest()
+    wb_dir = site / "workbooks"
+    wb_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, wb_dir / f"{sha}.xlsx")
+    return sha
+
+
+class TestDecadeWorkbookSetEquality:
+    """integrity_gate5b1: the workbook fact universe is
+    budget_lines.parquet ∪ budget_lines_decade.parquet."""
+
+    def _base_site(self, site: Path) -> str:
+        """PB2026 workbook site (real xlsx) — returns the 2026 fid."""
+        _, fid = _make_site_with_workbook(site)
+        return fid
+
+    def test_decade_rows_cited_passes(self, tmp_path):
+        site = tmp_path / "site"
+        fid26 = self._base_site(site)
+        dfid = fact_id_workbook(
+            "sha_pb2022", "R-1", 2022, "0400", "DARPA", "01",
+            "0601101E", "fy_2020_actuals")
+        _write_parquet(site / "data" / "budget_lines_decade.parquet",
+                       _BL_COL_DEFS,
+                       [_decade_bl_parquet_row(dfid, 2022, "fy_2020_actuals", 150000.0)])
+        # citations: the 2026 workbook row + the decade workbook row
+        _write_parquet(
+            site / "citations" / "citations.parquet", _CIT_COL_DEFS,
+            [(fid26, "workbook", "USD thousands", None, None,
+              None, None, None, None, None, None, None,
+              "Exhibit R-1", "J2", 280494.0,
+              "sha_wb26", None, "https://example.mil/r1.xlsx", None, None,
+              None, None, None, None, None, None, None),
+             _decade_wb_citation_row(dfid, 2022, "fy_2020_actuals", 150000.0)],
+        )
+        _write_manifest(site)
+        result = integrity_gate5b1(site)
+        assert result["checks"]["workbook_set_equality"] is True, result["failures"]
+
+    def test_uncited_decade_row_fails(self, tmp_path):
+        """A budget_lines_decade row with NO workbook citation → FAIL
+        (set equality is bidirectional over the union universe)."""
+        site = tmp_path / "site"
+        fid26 = self._base_site(site)
+        dfid = fact_id_workbook(
+            "sha_pb2022", "R-1", 2022, "0400", "DARPA", "01",
+            "0601101E", "fy_2020_actuals")
+        _write_parquet(site / "data" / "budget_lines_decade.parquet",
+                       _BL_COL_DEFS,
+                       [_decade_bl_parquet_row(dfid, 2022, "fy_2020_actuals", 150000.0)])
+        _write_parquet(
+            site / "citations" / "citations.parquet", _CIT_COL_DEFS,
+            [(fid26, "workbook", "USD thousands", None, None,
+              None, None, None, None, None, None, None,
+              "Exhibit R-1", "J2", 280494.0,
+              "sha_wb26", None, "https://example.mil/r1.xlsx", None, None,
+              None, None, None, None, None, None, None)],
+        )
+        _write_manifest(site)
+        result = integrity_gate5b1(site)
+        assert result["checks"]["workbook_set_equality"] is False
+        assert any("not cited" in f for f in result["failures"])
+
+    def test_orphan_decade_citation_fails(self, tmp_path):
+        """A decade workbook citation absent from BOTH parquets → FAIL."""
+        site = tmp_path / "site"
+        fid26 = self._base_site(site)
+        _write_parquet(
+            site / "citations" / "citations.parquet", _CIT_COL_DEFS,
+            [(fid26, "workbook", "USD thousands", None, None,
+              None, None, None, None, None, None, None,
+              "Exhibit R-1", "J2", 280494.0,
+              "sha_wb26", None, "https://example.mil/r1.xlsx", None, None,
+              None, None, None, None, None, None, None),
+             _decade_wb_citation_row("ffff000000000001", 2022,
+                                     "fy_2020_actuals", 1.0)],
+        )
+        _write_manifest(site)
+        result = integrity_gate5b1(site)
+        assert result["checks"]["workbook_set_equality"] is False
+        assert any("not in budget_lines" in f for f in result["failures"])
+
+
+class TestDecadeDerivedRecompute:
+    """citation_gate5b1 recomputes decade sums and book-diff differences
+    through budget_lines_decade.parquet amounts."""
+
+    def _site_with_diff(self, site: Path, recorded_delta: str,
+                        recorded_sum: str = "90000.000") -> tuple[str, str]:
+        """Decade fixture (REAL xlsx files — the workbook tier re-derives):
+        a 2-row multi-source sum grain (PB2017) and a book-diff fact
+        PB2020 request → PB2022 actuals. Returns (sum_fid, diff_fid)."""
+        sha17 = _mk_decade_workbook(site, "pb2017",
+                                    {"J4": 60000.0, "J5": 30000.0})
+        sha20 = _mk_decade_workbook(site, "pb2020", {"J4": 140000.0})
+        sha22 = _mk_decade_workbook(site, "pb2022", {"J4": 150000.0})
+        w1 = fact_id_workbook(sha17, "R-1", 2017, "0400", "DARPA",
+                              "01", "0601101E", "fy_2015_actuals")
+        w2 = fact_id_workbook(sha17, "R-1", 2017, "0400", "DARPA",
+                              "02", "0601101E", "fy_2015_actuals")
+        w_from = fact_id_workbook(sha20, "R-1", 2020, "0400", "DARPA",
+                                  "01", "0601101E", "fy_2020_total")
+        w_to = fact_id_workbook(sha22, "R-1", 2022, "0400", "DARPA",
+                                "01", "0601101E", "fy_2020_actuals")
+        sum_fid = fact_id_derived("decade", "0601101E|2017", "fy_2015_actuals")
+        diff_fid = fact_id_derived("book_diff", "0601101E|2020|2022",
+                                   "request_vs_actuals")
+        rows_bl = [
+            _decade_bl_parquet_row(w1, 2017, "fy_2015_actuals", 60000.0,
+                                   sha=sha17, cells="J4"),
+            _decade_bl_parquet_row(w2, 2017, "fy_2015_actuals", 30000.0,
+                                   sha=sha17, cells="J5"),
+            _decade_bl_parquet_row(w_from, 2020, "fy_2020_total", 140000.0,
+                                   sha=sha20),
+            _decade_bl_parquet_row(w_to, 2022, "fy_2020_actuals", 150000.0,
+                                   sha=sha22),
+        ]
+        _write_parquet(site / "data" / "budget_lines_decade.parquet",
+                       _BL_COL_DEFS, rows_bl)
+        cit_rows = [
+            _decade_wb_citation_row(w1, 2017, "fy_2015_actuals", 60000.0,
+                                    sha=sha17, cells="J4"),
+            _decade_wb_citation_row(w2, 2017, "fy_2015_actuals", 30000.0,
+                                    sha=sha17, cells="J5"),
+            _decade_wb_citation_row(w_from, 2020, "fy_2020_total", 140000.0,
+                                    sha=sha20),
+            _decade_wb_citation_row(w_to, 2022, "fy_2020_actuals", 150000.0,
+                                    sha=sha22),
+            _make_derived_row(
+                sum_fid,
+                "sum(budget_lines.amount_thousands where"
+                " amount_type=fy_2015_actuals and edition=2017)",
+                json.dumps([w1, w2]), recorded_sum),
+            _make_derived_row(
+                diff_fid,
+                "PB2022 FY2020 actuals - PB2020 FY2020 request"
+                " (fct_book_diff request_vs_actuals)",
+                json.dumps([w_to, w_from]), recorded_delta),
+        ]
+        _write_parquet(site / "citations" / "citations.parquet",
+                       _CIT_COL_DEFS, cit_rows)
+        _write_manifest(site)
+        return sum_fid, diff_fid
+
+    def test_decade_sum_and_diff_recompute_pass(self, tmp_path):
+        site = tmp_path / "site"
+        self._site_with_diff(site, "10000.000")
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, f"failures: {result.get('failures')}"
+
+    def test_wrong_sum_fails(self, tmp_path):
+        site = tmp_path / "site"
+        sum_fid, _ = self._site_with_diff(site, "10000.000",
+                                          recorded_sum="99999.000")
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "tampered decade sum must FAIL"
+        assert any(f[0] == sum_fid for f in result["failures"])
+
+    def test_wrong_diff_delta_fails(self, tmp_path):
+        """A book-diff fact whose recorded delta does not recompute from its
+        two side amounts must FAIL — this is the proof-can-fail for the
+        difference-rule fallback (pre-extension, workbook-side inputs were
+        silently shape-checked and a corrupted delta would have shipped)."""
+        site = tmp_path / "site"
+        _, diff_fid = self._site_with_diff(site, "77777.000")
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "tampered book-diff delta must FAIL"
+        assert any(f[0] == diff_fid and "difference" in f[1]
+                   for f in result["failures"])

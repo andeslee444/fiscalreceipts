@@ -175,13 +175,19 @@ def citation_gate5b1(
     # Ensure we cap at sample_size total
     sample = sample[:sample_size]
 
-    # ── Load budget_lines.parquet once for derived-sum recompute ────────────
+    # ── Load budget-line parquets once for derived recompute ────────────────
     # Workbook citations carry recorded_value=None; their value lives in
-    # amount_thousands.  The derived sum rule (4c) needs to resolve input
-    # fact_ids through budget_lines when recorded_value is absent.
+    # amount_thousands.  The derived sum rule (4c) and the difference rule
+    # (4b) resolve input fact_ids through budget lines when recorded_value
+    # is absent.  Phase 5E gate-scope extension (documented in
+    # docs/superpowers/reviews/5c-gates-pre-failure.txt): the decade tier
+    # ships old-edition workbook rows in data/budget_lines_decade.parquet —
+    # the same fact universe extension integrity_gate5b1 applies.
     fid_to_bl_amount: dict[str, str] = {}
-    bl_pq = site_dir / "data" / "budget_lines.parquet"
-    if bl_pq.exists():
+    for bl_name in ("budget_lines.parquet", "budget_lines_decade.parquet"):
+        bl_pq = site_dir / "data" / bl_name
+        if not bl_pq.exists():
+            continue
         try:
             import duckdb as _duckdb
             _con = _duckdb.connect()
@@ -193,7 +199,7 @@ def citation_gate5b1(
                 _con.close()
             for _fid, _amt in bl_rows:
                 if _fid is not None and _amt is not None:
-                    fid_to_bl_amount[_fid] = str(_amt)
+                    fid_to_bl_amount.setdefault(_fid, str(_amt))
         except Exception:
             pass  # fail gracefully; _verify_derived will FAIL individual rows
 
@@ -405,10 +411,16 @@ def _verify_derived(
            recorded_values within 0.001 tolerance. Checked BEFORE the
            difference rule — flow node ids embed sub-agency/office names
            that may contain ' - ' and must never be misread as differences.
-       b. For trajectory difference (formula contains ' - ') with exactly 2
-          16-hex inputs: recompute fy26 - fy25 within 0.001 tolerance.
-       c. For trajectory sum (formula starts with 'sum(budget_lines') with
-          16-hex inputs: recompute sum within 0.001 tolerance.
+       b. For difference facts (formula contains ' - ') with exactly 2
+          16-hex inputs — trajectory Δ and Phase 5E book-diff facts:
+          recompute inputs[0] - inputs[1] within 0.001 tolerance. Input
+          values resolve from citations.recorded_value, falling back to
+          budget-line amounts (budget_lines ∪ budget_lines_decade — the
+          book-diff sides may be plain workbook facts) exactly like rule
+          4c. Both sides unresolvable → legacy shape-check only.
+       c. For trajectory/decade sum (formula starts with
+          'sum(budget_lines') with 16-hex inputs: recompute sum within
+          0.001 tolerance.
     5. If inputs contain URLs (non-hex strings): shape check only.
     """
     import json as _json
@@ -492,10 +504,18 @@ def _verify_derived(
             except Exception as e:
                 return f"flow_children recompute error: {e}"
 
-        # Rule 4b: difference formula (fy2526_change = fy2026 - fy2025)
+        # Rule 4b: difference formula (trajectory fy2526_change and Phase 5E
+        # book-diff facts). Sides resolve via recorded_value with the same
+        # budget-line fallback as rule 4c (book-diff sides may be plain
+        # workbook facts whose recorded_value is None by design).
         elif " - " in formula and len(inputs) == 2:
+            _bl_diff = fid_to_bl_amount or {}
             rv0 = fid_to_rv.get(inputs[0])
+            if rv0 is None:
+                rv0 = _bl_diff.get(inputs[0])
             rv1 = fid_to_rv.get(inputs[1])
+            if rv1 is None:
+                rv1 = _bl_diff.get(inputs[1])
             if rv0 is not None and rv1 is not None:
                 try:
                     expected = D(rv0) - D(rv1)
@@ -1078,16 +1098,24 @@ def integrity_gate5b1(site_dir: Path) -> dict:
         checks["jbook_no_orphan_citations"] = len(jbook_cit_ids) == 0
 
     # ---- workbook checks ----
+    # Phase 5E gate-scope extension (documented in
+    # docs/superpowers/reviews/5c-gates-pre-failure.txt): the workbook fact
+    # universe is budget_lines.parquet ∪ budget_lines_decade.parquet — the
+    # decade tier ships old-edition (PB2017–PB2025) workbook rows in the
+    # sibling parquet so the PB2026 edition fence stays intact. Set
+    # equality remains bidirectional over the union.
     bl_pq = site_dir / "data" / "budget_lines.parquet"
-    bl_ids = _parquet_ids(bl_pq)
+    bl_ids = _parquet_ids(bl_pq) | _parquet_ids(
+        site_dir / "data" / "budget_lines_decade.parquet"
+    )
     if wb_cit_ids or bl_ids:
         wb_orphan = wb_cit_ids - bl_ids  # citation fact_ids not in budget_lines
         bl_uncited = bl_ids - wb_cit_ids  # budget_lines fact_ids not cited
         # Both directions must match exactly
         if wb_orphan:
             failures.append(
-                f"workbook: {len(wb_orphan)} citation fact_id(s) not in budget_lines: "
-                f"{sorted(wb_orphan)[:5]}"
+                f"workbook: {len(wb_orphan)} citation fact_id(s) not in"
+                f" budget_lines ∪ budget_lines_decade: {sorted(wb_orphan)[:5]}"
             )
         if bl_uncited:
             failures.append(

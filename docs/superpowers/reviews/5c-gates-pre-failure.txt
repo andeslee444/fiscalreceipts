@@ -600,3 +600,74 @@ gate d decade-series-integrity: rows=59068 duplicate_grains=0 sampled=20 passed=
 verify-phase5e: PASS
 exit code: 0
 (gate re-run 4x for sampling stability — PASS every run)
+
+══════════════════════════════════════════════════════════════════════════
+Phase 5E Task 6 — decade exporter + verify-phase5b1 gate-scope extension
+Date: 2026-07-03
+══════════════════════════════════════════════════════════════════════════
+The decade fact space ships as data/budget_lines_decade.parquet (32,660
+old-edition workbook source rows, a SIBLING of the fenced PB2026
+budget_lines.parquet — editions never merge silently) plus 27,403 new
+kind='workbook' citations, 405 derived decade sums
+(surface='decade', formula 'sum(budget_lines…' — rule-4c recomputable)
+and 15,900 derived book-diff facts (surface='book_diff', formula
+'PB{to} … - PB{from} … (fct_book_diff {kind})' — rule-4b recomputable).
+
+verify-phase5b1's definition of the valid workbook fact universe had to
+LEARN about the decade parquet. This is an explicit GATE-SCOPE EXTENSION
+(sanctioned by the Task 6 plan), not a silent edit; three changes, each
+widening what the gate verifies, none weakening any check:
+  1. integrity_gate5b1 workbook set-equality universe becomes
+     budget_lines.parquet ∪ budget_lines_decade.parquet (still
+     bidirectional: every citation in a parquet, every parquet row cited);
+  2. citation_gate5b1's fid_to_bl_amount value lookup also loads
+     budget_lines_decade.parquet (decade sum inputs must RESOLVE, the
+     'unresolvable → FAIL' behavior is unchanged);
+  3. _verify_derived rule 4b (difference) gains the same budget-line
+     fallback rule 4c already had — book-diff sides may be plain workbook
+     facts whose recorded_value is None by design. Pre-extension, such a
+     difference row was silently shape-checked; now it is genuinely
+     recomputed (a STRENGTHENING — proof-can-fail below).
+
+Pre-extension evidence (new export, gate at commit b02f944 — recorded
+before the extension landed, via `git stash` of verify_phase5b1.py):
+$ uv run python -m govbudget verify-phase5b1
+gate 1 citations: sampled=50 passed=34 failures=16 → FAIL
+  FAIL 4bb8e90242f50e1f: derived inputs unresolvable: fact_ids not found
+    in citations.recorded_value or budget_lines.amount_thousands: […]
+  (all 16 failures are decade-sum 'derived inputs unresolvable'
+   rows; the CLI prints the first 10)
+gate 2 integrity: … workbook_set_equality=FAIL … → FAIL
+  FAIL: workbook: 27403 citation fact_id(s) not in budget_lines:
+    ['000032b9033343f4', '000213120fa6b0ad', …]
+verify-phase5b1: FAIL
+
+Post-extension:
+$ uv run python -m govbudget verify-phase5b1
+gate 1 citations: sampled=50 passed=50 failures=0 → PASS
+gate 2 integrity: … workbook_set_equality=PASS citation_distinctness=PASS
+  … → PASS
+gate 4 narrative provenance: resolved=2449/2457 (99.7%) sampled=25
+  passed=25 failures=0 → PASS
+verify-phase5b1: PASS
+
+Proof the strengthened rule 4b can fail: unit test
+tests/test_verify_phase5b1.py::TestDecadeDerivedRecompute::
+test_wrong_diff_delta_fails — a book-diff fact with a tampered
+recorded delta (77777.000 vs the recomputable 10000.000) now FAILS with
+'derived difference recompute mismatch'; pre-extension the same row
+passed silently (sides unresolvable → shape check only). Companion
+tests pin the pass path and the tampered-sum path
+(test_decade_sum_and_diff_recompute_pass, test_wrong_sum_fails) and the
+set-equality directions (TestDecadeWorkbookSetEquality).
+
+Exhaustive off-gate validation (beyond the gate's 50-row sample): ALL
+405 decade sums and ALL 15,900 book-diff facts recompute under the
+gate's exact Decimal semantics (rule 4b/4c, tol 0.001) — 0 failures.
+
+$ uv run python -m govbudget verify-phase5e
+gate a edition-coverage: loaded=10 excused=0 missing=0/10 editions → PASS
+gate b no-cross-edition-leakage: sampled=200/159502 joinable mismatches=0 unjoined=0 → PASS
+gate c book-diff-conservation: rows=18379 sampled=20 passed=20 → PASS
+gate d decade-series-integrity: rows=59068 duplicate_grains=0 sampled=20 passed=20 → PASS
+verify-phase5e: PASS
