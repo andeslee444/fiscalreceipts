@@ -286,6 +286,44 @@ def test_build_provenance_pages_distinct_amounts_both_stored(pg_dsn):
     assert build_provenance_pages(pg_dsn) == 2
 
 
+def test_build_provenance_pages_fiscal_year_filter(pg_dsn, tmp_path):
+    """Phase 5E: fiscal_year=N scopes the build to edition N's documents;
+    None keeps the historical whole-corpus behavior."""
+    for fy, pe in ((2025, "0601101E"), (2026, "0602101E")):
+        pdf = tmp_path / f"synthetic_{fy}.pdf"
+        _make_pdf(pdf, [
+            ["Exhibit R-2, RDT&E Budget Item Justification",
+             f"PE {pe} / TEST PROGRAM", "280.494"],
+        ])
+        sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
+        with psycopg.connect(pg_dsn, autocommit=True) as con:
+            doc_id = con.execute(
+                "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+                " title, source_url, file_path, sha256, downloaded_at, status)"
+                " values ('DARPA','rdte',%s,%s,%s,%s,%s,now(),'downloaded')"
+                " returning id",
+                (fy, f"synthetic_{fy}.pdf", f"https://example.mil/{fy}.pdf",
+                 str(pdf), sha),
+            ).fetchone()[0]
+            run_id = con.execute(
+                "insert into extraction_runs (document_id, tier, tool_versions)"
+                " values (%s, 1, '{}') returning id",
+                (doc_id,),
+            ).fetchone()[0]
+            con.execute(
+                "insert into budget_line_details (extraction_run_id, document_id,"
+                " pe_bli, scenario, amount_millions, xml_path) values"
+                " (%s,%s,%s,'PriorYear','280.494','ProgramElement[0]')",
+                (run_id, doc_id, pe),
+            )
+    assert build_provenance_pages(pg_dsn, fiscal_year=2025) == 1
+    with psycopg.connect(pg_dsn) as con:
+        rows = con.execute("select pe_bli from provenance_pages").fetchall()
+    assert rows == [("0601101E",)], "only the 2025 edition's fact resolves"
+    # unfiltered run picks up the remaining edition
+    assert build_provenance_pages(pg_dsn) == 1
+
+
 def test_not_exists_predicate_filters_prefetched(pg_dsn, monkeypatch):
     """The NOT EXISTS sub-select must filter rows that are already in
     provenance_pages — NOT rely on ON CONFLICT suppression to hide them.

@@ -112,97 +112,210 @@ def jbook_index_urls(fy: int) -> list[str]:
     ]
 
 
-def cmd_jbooks(args) -> None:
+def _jbooks_scrape(fy: int) -> tuple[int, int]:
+    """Discover + upsert one edition's documents. Returns (discovered, new)."""
+    from govbudget.jbooks import registry
+
+    docs = []
+    with httpx.Client(timeout=60) as client:
+        for index_url in jbook_index_urls(fy):
+            docs.extend(registry.discover_documents(client, index_url, fiscal_year=fy))
+    n = registry.upsert_documents(config.PG_DSN, docs)
+    return len(docs), n
+
+
+def _jbooks_acquire() -> tuple[int, list[tuple[int, str, str]]]:
+    """Download every 'registered' document. Returns (downloaded, failures)."""
+    from govbudget.jbooks import acquire
+
+    with httpx.Client(timeout=120) as client:
+        return acquire.acquire_pending(
+            config.PG_DSN, client,
+            raw_docs_dir=config.RAW_DOCS_DIR, min_free_gb=config.MIN_FREE_GB,
+        )
+
+
+def _jbooks_load_rollups(fiscal_year: int | None = None) -> tuple[int, list[str]]:
+    """Load downloaded rollup workbooks (optionally one edition's) into
+    budget_lines. Returns (loaded_count, failed_titles)."""
     import psycopg
 
-    from govbudget.jbooks import acquire, load_details, reconcile, registry, rollup_loader
+    from govbudget.jbooks import rollup_loader
+    from govbudget.jbooks.p1_loader import load_p1_rollup
+
+    with psycopg.connect(config.PG_DSN) as con:
+        rows = con.execute(
+            "select id, title, file_path, fiscal_year from jbook_documents "
+            "where exhibit_family='rollup' and status='downloaded'"
+            + (" and fiscal_year = %s" if fiscal_year is not None else ""),
+            ((fiscal_year,) if fiscal_year is not None else ()),
+        ).fetchall()
+    loaded = 0
+    failures = []
+    for doc_id, title, file_path, fy in rows:
+        try:
+            if title.startswith("r1"):
+                n = rollup_loader.load_rollup(
+                    config.PG_DSN, Path(file_path), exhibit="R-1", fiscal_year=fy,
+                    source_document_id=doc_id,
+                )
+            else:
+                exhibit = "P-1R" if title.startswith("p1r") else "P-1"
+                n = load_p1_rollup(
+                    config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
+                    source_document_id=doc_id,
+                )
+        except Exception as e:
+            failures.append(title)
+            print(f"{title}: FAILED ({type(e).__name__}: {e})")
+            continue
+        print(f"{title}: {n} budget_lines")
+        loaded += 1
+    return loaded, failures
+
+
+def _jbooks_extract(org: str | None = None, fiscal_year: int | None = None
+                    ) -> tuple[int, list[tuple[int, str]]]:
+    """Load details + reconcile every downloaded XML-bearing document
+    (optionally one org's / one edition's). Returns (processed, failures)."""
+    import psycopg
+
+    from govbudget.jbooks import load_details, reconcile
+    from govbudget.jbooks.attachments import pick_book_xml
+    from govbudget.jbooks.gaps import record_extraction_gaps
+
+    conds, params = [], []
+    if org:
+        conds.append(" and org = %s")
+        params.append(org)
+    if fiscal_year is not None:
+        conds.append(" and fiscal_year = %s")
+        params.append(fiscal_year)
+    with psycopg.connect(config.PG_DSN) as con:
+        rows = con.execute(
+            "select id, file_path, exhibit_family from jbook_documents "
+            "where has_embedded_xml and status='downloaded'" + "".join(conds),
+            tuple(params),
+        ).fetchall()
+    processed = 0
+    failures: list[tuple[int, str]] = []
+    for doc_id, file_path, family in rows:
+        book_xml = pick_book_xml(Path(file_path).parent / "xml", family=family)
+        if book_xml is None:
+            print(f"doc {doc_id}: no xml on disk, skipping")
+            continue
+        try:
+            if family == "procurement":
+                run_id = load_details.load_procurement_details(
+                    config.PG_DSN, document_id=doc_id, xml_path=book_xml
+                )
+            else:
+                run_id = load_details.load_document_details(
+                    config.PG_DSN, document_id=doc_id, xml_path=book_xml
+                )
+            result = reconcile.reconcile_document(
+                config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
+            )
+            gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
+        except Exception as e:
+            failures.append((doc_id, f"{type(e).__name__}: {e}"))
+            print(f"doc {doc_id}: FAILED ({type(e).__name__}: {e})")
+            continue
+        print(f"doc {doc_id}: run {run_id} reconcile {result} gaps {gaps}")
+        processed += 1
+    return processed, failures
+
+
+def _jbooks_backfill(args) -> None:
+    """Phase 5E: probe one PB edition, record the outcome in the coverage
+    manifest, and (unless --probe-only or the probe failed) run the standard
+    pipeline for that edition: scrape → acquire → load-rollups → extract
+    (details + reconcile). Every outcome lands in the manifest — an edition
+    is never silently skipped."""
+    from govbudget.jbooks import edition_probe
+
+    fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
+    manifest_path = config.RESEARCH_DIR / "edition_manifest.json"
+
+    with httpx.Client(timeout=120) as client:
+        result = edition_probe.probe_edition(client, fy)
+    edition_probe.record_probe(manifest_path, result)
+    if not result["ok"]:
+        print(
+            f"backfill PB{fy}: probe FAILED — {result['reason']}"
+            f" (recorded in {manifest_path.name})"
+        )
+        sys.exit(1)
+    print(
+        f"backfill PB{fy}: probe ok (discovered={result['discovered']},"
+        f" sample_pe_count={result['sample_pe_count']})"
+    )
+    if args.probe_only:
+        return
+
+    discovered, new = _jbooks_scrape(fy)
+    print(f"jbooks scrape: {discovered} discovered, {new} new")
+
+    n, failures = _jbooks_acquire()
+    print(f"jbooks acquire: {n} downloaded")
+    for doc_id, title, err in failures:
+        print(f"  FAILED #{doc_id} {title}: {err}")
+    if failures:
+        edition_probe.record_failure(
+            manifest_path, fy, status="load_failed",
+            reason=f"acquire failed for {len(failures)} document(s): "
+                   + ", ".join(f"{t} ({e})" for _, t, e in failures),
+        )
+        sys.exit(1)
+
+    loaded, rollup_failures = _jbooks_load_rollups(fiscal_year=fy)
+    print(f"jbooks load-rollups: {loaded} workbook(s) loaded")
+    if rollup_failures:
+        edition_probe.record_failure(
+            manifest_path, fy, status="load_failed",
+            reason=f"load-rollups failed: {', '.join(rollup_failures)}",
+        )
+        sys.exit(1)
+
+    processed, extract_failures = _jbooks_extract(fiscal_year=fy)
+    print(f"jbooks extract: {processed} document(s) processed")
+    if extract_failures:
+        edition_probe.record_failure(
+            manifest_path, fy, status="load_failed",
+            reason=f"extract failed for {len(extract_failures)} document(s): "
+                   + "; ".join(f"doc {d}: {e}" for d, e in extract_failures),
+        )
+        sys.exit(1)
+
+    counts = edition_probe.edition_counts(config.PG_DSN, fy)
+    entry = edition_probe.record_loaded(manifest_path, fy, counts)
+    print(f"backfill PB{fy}: {entry['reason']}")
+
+
+def cmd_jbooks(args) -> None:
     from govbudget.jbooks.db import migrate
 
     migrate()
     if args.action == "scrape":
-        fy = args.fiscal_year
-        docs = []
-        with httpx.Client(timeout=60) as client:
-            for index_url in jbook_index_urls(fy):
-                docs.extend(registry.discover_documents(client, index_url, fiscal_year=fy))
-        n = registry.upsert_documents(config.PG_DSN, docs)
-        print(f"jbooks scrape: {len(docs)} discovered, {n} new")
+        fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
+        discovered, n = _jbooks_scrape(fy)
+        print(f"jbooks scrape: {discovered} discovered, {n} new")
+    elif args.action == "backfill":
+        _jbooks_backfill(args)
     elif args.action == "acquire":
-        with httpx.Client(timeout=120) as client:
-            n, failures = acquire.acquire_pending(
-                config.PG_DSN, client,
-                raw_docs_dir=config.RAW_DOCS_DIR, min_free_gb=config.MIN_FREE_GB,
-            )
+        n, failures = _jbooks_acquire()
         print(f"jbooks acquire: {n} downloaded")
         for doc_id, title, err in failures:
             print(f"  FAILED #{doc_id} {title}: {err}")
         if failures:
             sys.exit(1)
     elif args.action == "load-rollups":
-        with psycopg.connect(config.PG_DSN) as con:
-            rows = con.execute(
-                "select id, title, file_path, fiscal_year from jbook_documents "
-                "where exhibit_family='rollup' and status='downloaded'"
-            ).fetchall()
-        failures = []
-        for doc_id, title, file_path, fy in rows:
-            try:
-                if title.startswith("r1"):
-                    n = rollup_loader.load_rollup(
-                        config.PG_DSN, Path(file_path), exhibit="R-1", fiscal_year=fy,
-                        source_document_id=doc_id,
-                    )
-                else:
-                    from govbudget.jbooks.p1_loader import load_p1_rollup
-
-                    exhibit = "P-1R" if title.startswith("p1r") else "P-1"
-                    n = load_p1_rollup(
-                        config.PG_DSN, Path(file_path), exhibit=exhibit, fiscal_year=fy,
-                        source_document_id=doc_id,
-                    )
-            except Exception as e:
-                failures.append(title)
-                print(f"{title}: FAILED ({type(e).__name__}: {e})")
-                continue
-            print(f"{title}: {n} budget_lines")
+        _, failures = _jbooks_load_rollups()
         if failures:
             print(f"load-rollups finished with {len(failures)} failure(s): {', '.join(failures)}")
             sys.exit(1)
     elif args.action == "extract":
-        with psycopg.connect(config.PG_DSN) as con:
-            rows = con.execute(
-                "select id, file_path, exhibit_family from jbook_documents "
-                "where has_embedded_xml and status='downloaded'"
-                + (" and org = %s" if args.org else ""),
-                ((args.org,) if args.org else ()),
-            ).fetchall()
-        from govbudget.jbooks.attachments import pick_book_xml
-        from govbudget.jbooks.gaps import record_extraction_gaps
-
-        failures = []
-        for doc_id, file_path, family in rows:
-            book_xml = pick_book_xml(Path(file_path).parent / "xml", family=family)
-            if book_xml is None:
-                print(f"doc {doc_id}: no xml on disk, skipping")
-                continue
-            try:
-                if family == "procurement":
-                    run_id = load_details.load_procurement_details(
-                        config.PG_DSN, document_id=doc_id, xml_path=book_xml
-                    )
-                else:
-                    run_id = load_details.load_document_details(
-                        config.PG_DSN, document_id=doc_id, xml_path=book_xml
-                    )
-                result = reconcile.reconcile_document(
-                    config.PG_DSN, document_id=doc_id, extraction_run_id=run_id
-                )
-                gaps = record_extraction_gaps(config.PG_DSN, document_id=doc_id)
-            except Exception as e:
-                failures.append((doc_id, f"{type(e).__name__}: {e}"))
-                print(f"doc {doc_id}: FAILED ({type(e).__name__}: {e})")
-                continue
-            print(f"doc {doc_id}: run {run_id} reconcile {result} gaps {gaps}")
+        _, failures = _jbooks_extract(org=args.org)
         if failures:
             print(f"extract finished with {len(failures)} failure(s)")
             sys.exit(1)
@@ -214,8 +327,9 @@ def cmd_jbooks(args) -> None:
     elif args.action == "provenance-pages":
         from govbudget.jbooks.provenance_pages import build_provenance_pages
 
-        n = build_provenance_pages(config.PG_DSN)
-        print(f"provenance-pages: {n} facts resolved")
+        n = build_provenance_pages(config.PG_DSN, fiscal_year=args.fiscal_year)
+        scope = f"PB{args.fiscal_year}" if args.fiscal_year is not None else "all editions"
+        print(f"provenance-pages ({scope}): {n} facts resolved")
     elif args.action == "narrative-provenance":
         import psycopg
 
@@ -1162,10 +1276,14 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance"])
+    j.add_argument("action", choices=["scrape", "backfill", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance"])
     j.add_argument("--org", default=None)
-    j.add_argument("--fiscal-year", type=int, default=config.JBOOK_FY, dest="fiscal_year",
-                   help="scrape: PB edition year for index discovery (default: %(default)s)")
+    j.add_argument("--fiscal-year", type=int, default=None, dest="fiscal_year",
+                   help="PB edition year. scrape/backfill default to"
+                        f" {config.JBOOK_FY}; provenance-pages defaults to all"
+                        " editions (unfiltered)")
+    j.add_argument("--probe-only", action="store_true", dest="probe_only",
+                   help="backfill: run + record the edition probe, skip the pipeline")
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
                    help="crosswalk: filter awards to fiscal years >= this value")
     j.add_argument("--fy-end", type=int, default=None, dest="fy_end",

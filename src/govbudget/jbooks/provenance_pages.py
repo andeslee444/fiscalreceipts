@@ -207,9 +207,11 @@ def find_fact_page(pdf_path: Path, *, pe_bli: str, amount: Decimal,
             pdf_handle.close()
 
 
-def build_provenance_pages(dsn: str) -> int:
+def build_provenance_pages(dsn: str, *, fiscal_year: int | None = None) -> int:
     """Resolve every non-superseded detail fact lacking a provenance_pages row.
 
+    fiscal_year scopes the run to one PB edition's documents (Phase 5E
+    per-edition backfill); None keeps the historical whole-corpus behavior.
     Grouped by document: each PDF's text is extracted ONCE for all its facts.
     Returns rows actually inserted (cursor rowcount — ON CONFLICT suppressions
     don't count). Missing document files raise loudly.
@@ -225,6 +227,7 @@ def build_provenance_pages(dsn: str) -> int:
             from budget_line_details d
             join jbook_documents j on j.id = d.document_id
             where not d.superseded and j.sha256 is not null
+              and (%(fy)s::int is null or j.fiscal_year = %(fy)s)
               and not exists (
                 select 1 from provenance_pages p
                 where p.target_kind = 'amount'
@@ -234,7 +237,8 @@ def build_provenance_pages(dsn: str) -> int:
                   and p.amount_millions = d.amount_millions
               )
             order by j.sha256
-            """
+            """,
+            {"fy": fiscal_year},
         ).fetchall()
         for sha, doc_group in groupby(rows, key=lambda r: r[0]):
             facts = list(doc_group)
