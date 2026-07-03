@@ -29,9 +29,17 @@ export const metadata: Metadata = {
 export default function DistrictIndexPage() {
   const index = getDistrictIndex();
 
-  // Citation slice for geo grand total (stays state C / uncited)
-  // No fact_ids here — geo total is uncited (dim_geography on uncited ledger).
-  const citationsSlice = collectCitations([]);
+  // Citation slice: the geography grand total (derived, dim_geography) plus
+  // every district row's linkable-dollars aggregate citation (derived,
+  // 'district' surface) so the table figures open the panel in state A.
+  const indexFactIds: string[] = [];
+  if (index.geo_grand_total_fact_id) {
+    indexFactIds.push(index.geo_grand_total_fact_id);
+  }
+  for (const d of index.districts) {
+    if (d.total_linkable_fact_id) indexFactIds.push(d.total_linkable_fact_id);
+  }
+  const citationsSlice = collectCitations(indexFactIds);
 
   const totalLinkable = index.districts.reduce(
     (sum, d) => sum + d.total_linkable_dollars,
@@ -95,10 +103,11 @@ export default function DistrictIndexPage() {
                     value={index.geo_grand_total}
                     units="USD"
                     dataset={index.geo_grand_total_dataset}
+                    factId={index.geo_grand_total_fact_id}
                   />
                 </p>
                 <p className="text-muted-foreground text-xs mt-1">
-                  all-district contracts (⁂ geography total)
+                  all-district obligations (geography total)
                 </p>
               </div>
             )}
@@ -109,8 +118,9 @@ export default function DistrictIndexPage() {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Dollars are from high-confidence USAspending award links only.
-          Geography grand total (⁂) is from award transaction data —
-          citation tier pending. See{" "}
+          The geography grand total aggregates USAspending award transaction
+          data across all districts — click it for the formula and query.
+          See{" "}
           <Link href="/methodology/" className="underline hover:text-foreground">
             methodology
           </Link>

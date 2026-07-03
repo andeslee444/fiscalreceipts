@@ -88,15 +88,15 @@ const DATASET_INVENTORY: DatasetEntry[] = [
     name: "fct_budget_to_awards",
     rowCount: 10091,
     description:
-      "Crosswalk linking budget program elements to USAspending award records by recipient.",
-    isCited: false,
+      "Crosswalk linking budget program elements to USAspending award records by recipient. Each link carries a derived citation (method + confidence).",
+    isCited: true,
   },
   {
     name: "dim_geography",
     rowCount: 1045,
     description:
-      "Congressional district-level obligation totals derived from USAspending.",
-    isCited: false,
+      "Congressional district-level obligation totals derived from USAspending place-of-performance data (derived-cited).",
+    isCited: true,
   },
   {
     name: "fct_program_concentration",
@@ -123,8 +123,8 @@ const DATASET_INVENTORY: DatasetEntry[] = [
     name: "dim_lobbyists",
     rowCount: 1416,
     description:
-      "Individual lobbyist records extracted from LDA filings.",
-    isCited: false,
+      "Individual lobbyist records extracted from LDA filings, with disclosing-filing provenance columns (LDA-cited).",
+    isCited: true,
   },
   {
     name: "jbook_narratives",

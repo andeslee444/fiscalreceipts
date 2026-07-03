@@ -40,7 +40,7 @@ const FAQ_ITEMS = [
   {
     question: "How confident should I be in the figures?",
     answer:
-      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — from datasets where row-level citation linkage is not yet complete.",
+      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document, query, or derived formula; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — reserved for datasets shipped before their citations (currently none).",
   },
   {
     question: "What are the known limitations?",
@@ -298,14 +298,18 @@ export default function MethodologyPage() {
             <p>
               Every rendered figure is in one of three states. <strong>Cited</strong>{" "}
               (underlined, clickable): a fact_id resolves to a source document
-              in our citation index — J-book PDF page-and-bbox, or a specific
-              workbook cell. <strong>XML-path chip</strong>: a zero-dollar
+              in our citation index — J-book PDF page-and-bbox, a specific
+              workbook cell, an LDA filing, a USAspending query, or a derived
+              formula whose inputs chain back to those sources.{" "}
+              <strong>XML-path chip</strong>: a zero-dollar
               budget line that exists in the structured XML but has no
               corresponding citation row — the XML element path is displayed.{" "}
               <strong>Citation tier pending</strong> (⁂): figure is from a
-              dataset (USAspending, LDA filings, trajectory workbooks) for
-              which row-level citation linkage is not yet complete — methodology
-              work in progress.
+              dataset for which row-level citation linkage is not yet
+              complete. As of this build every published dataset carries a
+              citation tier (the pending ledger is empty); the state remains
+              defined — and gate-enforced — for future datasets that ship
+              before their citations do.
             </p>
           </div>
           <div>

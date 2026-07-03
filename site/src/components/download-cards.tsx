@@ -18,6 +18,10 @@ interface DatasetCard {
   description: string;
   parquetPath: string;
   rowCount?: number;
+  /**
+   * Hardcoded override only for the non-dataset "citations" card; dataset
+   * cards derive citedness from the manifest ledger (uncitedDatasets prop).
+   */
   isCited?: boolean;
 }
 
@@ -38,14 +42,12 @@ function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[]
       description:
         "Project-level cost figures from J-book XML (R-2/P-40 exhibits), with page-level PDF citation.",
       parquetPath: "/data/jbook_details.parquet",
-      isCited: true,
     },
     {
       name: "budget_lines",
       description:
         "Budget line items from R-1 and P-1 Excel rollups (workbook-cited).",
       parquetPath: "/data/budget_lines.parquet",
-      isCited: true,
     },
     {
       name: "fct_budget_trajectory",
@@ -71,12 +73,13 @@ function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[]
     {
       name: "fct_budget_to_awards",
       description:
-        "Budget-to-contract crosswalk (confidence-tiered: high/medium/low).",
+        "Budget-to-contract crosswalk (confidence-tiered: high/medium/low), with per-link derived citations.",
       parquetPath: "/data/fct_budget_to_awards.parquet",
     },
     {
       name: "dim_geography",
-      description: "Per-state defense spending aggregates.",
+      description:
+        "Congressional-district obligation aggregates from USAspending place-of-performance data.",
       parquetPath: "/data/dim_geography.parquet",
     },
     {
@@ -93,6 +96,12 @@ function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[]
       name: "fct_improper_exposure",
       description: "Agency-level improper-payment exposure estimates (derived).",
       parquetPath: "/data/fct_improper_exposure.parquet",
+    },
+    {
+      name: "dim_lobbyists",
+      description:
+        "Named lobbyists from LDA filings with revolving-door flags and disclosing-filing provenance columns.",
+      parquetPath: "/data/dim_lobbyists.parquet",
     },
     {
       name: "jbook_narratives",
@@ -114,6 +123,7 @@ export function DownloadCards({
   datasets = {},
   pdfCount,
   workbookCount,
+  uncitedDatasets = [],
 }: {
   builtAt: string;
   datasets?: Record<string, number>;
@@ -121,9 +131,19 @@ export function DownloadCards({
   pdfCount?: number;
   /** Number of workbook files in the bundle (from site_meta.workbook_count). */
   workbookCount?: number;
+  /**
+   * The manifest's uncited_datasets ledger (from site_meta.uncited_datasets).
+   * Dataset cards show the "cited" badge IFF they are off this ledger — the
+   * badge flips automatically when a dataset gains a citation tier.
+   */
+  uncitedDatasets?: string[];
 }) {
   const assetUrl = useAssetUrl();
-  const DATASETS = buildDatasets(datasets);
+  const uncited = new Set(uncitedDatasets);
+  const DATASETS = buildDatasets(datasets).map((ds) => ({
+    ...ds,
+    isCited: ds.isCited ?? !uncited.has(ds.name),
+  }));
 
   // Asset-bundle reachability: null = probing, true = reachable, false = not.
   // Probe re-runs if the runtime asset base changes (config.json resolution).

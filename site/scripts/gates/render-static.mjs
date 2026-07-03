@@ -28,6 +28,14 @@
  *       - state A ([data-fact-id]) with a dataset still ON the ledger → FAIL
  *         (a dataset cannot be both 'citation pending' and cited)
  *       - missing/empty data-dataset on ANY [data-amount] → FAIL
+ *
+ * (c2) EXPECTED LEDGER (regression arm): the ledger was cleared to [] when
+ *      dim_geography, fct_budget_to_awards, and dim_lobbyists gained citation
+ *      tiers. Any dataset appearing on the manifest ledger that is NOT in
+ *      EXPECTED_UNCITED_DATASETS → FAIL. This keeps the gate armed: a future
+ *      export regression that silently drops a citation tier (re-growing the
+ *      ledger) fails the build instead of quietly re-legalizing ⁂ renders.
+ *      Growing EXPECTED_UNCITED_DATASETS requires a deliberate, reviewed edit.
  */
 
 import fs from "fs";
@@ -44,6 +52,14 @@ const allowlistPath = path.resolve(__dirname, "prose-allowlist.json");
 // Currency pattern: $X,XXX(.XX)? optionally followed by B/M/K
 // Must be in a text node (not a URL/href)
 const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[BMK]?/g;
+
+// (c2) Expected uncited ledger — EMPTY since the ledger-clearance work minted
+// citation tiers for dim_geography (derived place-of-performance rows),
+// fct_budget_to_awards (derived crosswalk-link rows), and dim_lobbyists
+// (lda_filing disclosing-filing rows). A manifest ledger entry outside this
+// set is an export REGRESSION (a citation tier silently disappeared) and
+// fails the gate. Extend this set only with a deliberate, reviewed edit.
+const EXPECTED_UNCITED_DATASETS = new Set([]);
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
@@ -72,6 +88,23 @@ export async function runRenderStaticGate() {
   const siteMeta = readJson(path.join(jsonDir, "site_meta.json"));
   const uncitedDatasets = new Set(siteMeta.uncited_datasets || []);
   notes.push(`dataset ledger: [${[...uncitedDatasets].join(", ")}]`);
+
+  // ── (c2) Expected-ledger regression check ─────────────────────────────────
+  const unexpectedLedgerEntries = [...uncitedDatasets].filter(
+    (d) => !EXPECTED_UNCITED_DATASETS.has(d)
+  );
+  if (unexpectedLedgerEntries.length > 0) {
+    errors.push(
+      `uncited ledger REGRESSION: [${unexpectedLedgerEntries.join(", ")}] on ` +
+        `the manifest ledger but not in EXPECTED_UNCITED_DATASETS — a citation ` +
+        `tier disappeared from the export (or a new dataset shipped uncited). ` +
+        `Fix the export; extending the expected set requires a reviewed edit.`
+    );
+  } else {
+    notes.push(
+      `expected ledger: manifest ⊆ expected (${EXPECTED_UNCITED_DATASETS.size} allowed) ✓`
+    );
+  }
 
   // ── Load prose allowlist ──────────────────────────────────────────────────
   let allowlist = [];

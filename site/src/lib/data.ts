@@ -733,13 +733,19 @@ export interface DistrictIndexRow {
   pop_state: string;
   program_count: number;
   total_cited_dollars: number;
+  /** Derived 'district' surface fact_id — null when the citation is absent. */
+  total_cited_fact_id: string | null;
   total_linkable_dollars: number;
+  /** Derived 'district' surface fact_id — null when the citation is absent. */
+  total_linkable_fact_id: string | null;
 }
 
 export interface DistrictIndex {
   districts: DistrictIndexRow[];
   geo_grand_total: number | null;
   geo_grand_total_dataset: string;
+  /** Derived 'geography' grand-total fact_id — null when the citation is absent. */
+  geo_grand_total_fact_id: string | null;
   total_districts: number;
 }
 
@@ -772,7 +778,11 @@ export interface DistrictDetail {
   program_count: number;
   programs: DistrictProgram[];
   total_cited_dollars: number;
+  /** Derived 'district' surface fact_id — null when the citation is absent. */
+  total_cited_fact_id: string | null;
   total_linkable_dollars: number;
+  /** Derived 'district' surface fact_id — null when the citation is absent. */
+  total_linkable_fact_id: string | null;
 }
 
 const _districtDetails = new Map<string, DistrictDetail>();

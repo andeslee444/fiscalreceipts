@@ -435,9 +435,9 @@ export default function HomePage() {
       <section className="border-t border-border bg-muted/30 py-10">
         <Reveal className="container mx-auto px-4 max-w-3xl text-center">
           <p className="text-muted-foreground text-sm">
-            All figures are cited to their exact source document, page, or API
-            endpoint. Numbers flagged ⁂ are from datasets where citation tier
-            is pending — see{" "}
+            All figures are cited to their exact source document, page, API
+            query, or derived formula — every published dataset carries a
+            citation tier. See{" "}
             <Link href="/methodology/" className="underline hover:text-foreground">
               full methodology
             </Link>

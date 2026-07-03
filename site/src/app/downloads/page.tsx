@@ -130,6 +130,7 @@ export default function DownloadsPage() {
             datasets={meta.datasets ?? {}}
             pdfCount={meta.pdf_count}
             workbookCount={meta.workbook_count}
+            uncitedDatasets={meta.uncited_datasets ?? []}
           />
         </AssetConfigProvider>
       </div>

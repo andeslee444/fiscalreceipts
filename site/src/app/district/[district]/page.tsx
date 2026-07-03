@@ -50,11 +50,14 @@ export default async function DistrictDetailPage({ params }: Props) {
   const { district } = await params;
   const detail = getDistrictDetail(district);
 
-  // Collect fact_ids for cited dollars
+  // Collect fact_ids for cited dollars — per-program USAspending citations
+  // plus the district's derived aggregate citations (header stats).
   const pageFactIds: string[] = [];
   for (const prog of detail.programs) {
     if (prog.fact_id) pageFactIds.push(prog.fact_id);
   }
+  if (detail.total_linkable_fact_id) pageFactIds.push(detail.total_linkable_fact_id);
+  if (detail.total_cited_fact_id) pageFactIds.push(detail.total_cited_fact_id);
   const citationsSlice = collectCitations(pageFactIds);
 
   const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
@@ -84,9 +87,10 @@ export default async function DistrictDetailPage({ params }: Props) {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-6">
           <strong>Coverage note:</strong> District data reflects only
           high-confidence award links from the DARPA crosswalk.
-          Geographic totals are derived from award transaction data and are
-          uncited (⁂) — citation tier pending. Recipients and transaction
-          counts are from USAspending; no additional verification applied.
+          Aggregate totals are derived from USAspending award transaction
+          data — click any figure to see the formula and query behind it.
+          Recipients and transaction counts are from USAspending; no
+          additional verification applied.
         </div>
 
         <div className="mb-6">
@@ -118,12 +122,14 @@ export default async function DistrictDetailPage({ params }: Props) {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums">
-                {/* dim_geography is the uncited geography totals dataset —
-                    these aggregate totals have no individual fact_id */}
+                {/* Derived 'district' aggregate citation — sums the district's
+                    per-program USAspending-cited obligations (state A when the
+                    citation resolves; honest state C otherwise). */}
                 <Cite
                   value={detail.total_linkable_dollars}
                   units="USD"
-                  dataset="dim_geography"
+                  dataset="fct_district_programs"
+                  factId={detail.total_linkable_fact_id}
                 />
               </p>
               <p className="text-muted-foreground text-xs mt-1">
@@ -135,7 +141,8 @@ export default async function DistrictDetailPage({ params }: Props) {
                 <Cite
                   value={detail.total_cited_dollars}
                   units="USD"
-                  dataset="dim_geography"
+                  dataset="fct_district_programs"
+                  factId={detail.total_cited_fact_id}
                 />
               </p>
               <p className="text-muted-foreground text-xs mt-1">

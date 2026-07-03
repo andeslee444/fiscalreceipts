@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DistrictIndexRow } from "@/lib/data";
-import { districtDisplayLabel, formatAmount } from "@/lib/format";
+import { districtDisplayLabel } from "@/lib/format";
+import { Cite } from "@/components/cite";
 
 type SortKey = "pop_district" | "pop_state" | "program_count" | "total_linkable_dollars";
 type SortDir = "asc" | "desc";
@@ -236,17 +237,16 @@ export function DistrictTable({ districts }: Props) {
                   </td>
                   <td className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap">
                     {d.total_linkable_dollars > 0 ? (
-                      // dim_geography is the uncited geography totals dataset —
-                      // district-index linkable totals are geography aggregates
-                      // with no individual fact_id (state C, uncited).
-                      <span
-                        data-amount
-                        data-uncited="true"
-                        data-dataset="dim_geography"
-                        title={`$${d.total_linkable_dollars.toLocaleString("en-US")} USD`}
-                      >
-                        {formatAmount(d.total_linkable_dollars, "USD")}
-                      </span>
+                      // Derived 'district' aggregate citation — the sum of the
+                      // district's per-program USAspending-cited obligations.
+                      // State A opens the citation panel (formula + input
+                      // chips); honest state C when the fact_id is absent.
+                      <Cite
+                        value={d.total_linkable_dollars}
+                        units="USD"
+                        dataset="fct_district_programs"
+                        factId={d.total_linkable_fact_id}
+                      />
                     ) : (
                       "—"
                     )}
