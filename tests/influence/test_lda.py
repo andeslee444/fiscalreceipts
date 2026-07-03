@@ -551,6 +551,90 @@ class TestLoadAliases:
         # normalize_name("V2X, Inc.") == "V2X"
         assert normalize_name("V2X, Inc.") in aliases["VECTRUS"]
 
+    def test_load_backlog1_families(self):
+        """Backlog #1 curated aliases: 4 previously-unmatched top-50 families.
+
+        LDA client-name spellings verified against the live Senate LDA API
+        (2026-07): each alias below has ≥1 filing in the pull years 2024-2026.
+        """
+        from govbudget.entities import normalize_name
+        aliases = _load_aliases()
+
+        # Booz Allen: LDA clients file as the operating company, not the holding co.
+        assert "BOOZ ALLEN HAMILTON HOLDING" in aliases
+        assert normalize_name("Booz Allen Hamilton Inc.") in aliases["BOOZ ALLEN HAMILTON HOLDING"]
+
+        # ADS Tactical: LDA clients are the Atlantic Diving Supply subsidiary,
+        # under three spellings that normalize to two distinct strings.
+        assert "ADS TACTICAL" in aliases
+        assert normalize_name("Atlantic Diving Supply, Inc.") in aliases["ADS TACTICAL"]
+        assert normalize_name("Atlantic Diving Supply, Inc. (ADS)") in aliases["ADS TACTICAL"]
+        assert normalize_name("Atlantic Diving Supply Inc. (ADS Inc.)") in aliases["ADS TACTICAL"]
+
+        # Vertex: post-merger client name is the '(formerly known as Vertex
+        # Aerospace)' variant — distinct from plain 'V2X, Inc.' (VECTRUS).
+        assert "VERTEX AEROSPACE SERVICES" in aliases
+        assert (
+            normalize_name("V2X, Inc. (formerly known as Vertex Aerospace)")
+            in aliases["VERTEX AEROSPACE SERVICES"]
+        )
+
+        # Shell E&P: the US parent umbrella files LDA (BP America → BP pattern).
+        assert "SHELL EXPLORATION PRODUCTION" in aliases
+        assert normalize_name("Shell USA, Inc.") in aliases["SHELL EXPLORATION PRODUCTION"]
+        assert (
+            normalize_name("Shell USA, Inc. (fka Shell Oil Company)")
+            in aliases["SHELL EXPLORATION PRODUCTION"]
+        )
+
+    def test_backlog1_aliases_no_over_merge(self):
+        """BP↔JAMESTOWN-class guard: each new alias matches ONLY the intended
+        client names; look-alike clients from other companies stay 'none',
+        and plain 'V2X, Inc.' stays with VECTRUS (not stolen by VERTEX)."""
+        aliases = _load_aliases()
+
+        vertex = aliases["VERTEX AEROSPACE SERVICES"]
+        # The intended client matches via curated_alias …
+        assert _match_method(
+            "V2X, INC. (FORMERLY KNOWN AS VERTEX AEROSPACE)",
+            "VERTEX AEROSPACE SERVICES", alias_norms=vertex,
+        ) == "curated_alias"
+        # … but plain V2X (VECTRUS's alias) and Vertex Pharma do NOT.
+        assert _match_method("V2X, Inc.", "VERTEX AEROSPACE SERVICES", alias_norms=vertex) == "none"
+        assert _match_method(
+            "VERTEX PHARMACEUTICALS INCORPORATED",
+            "VERTEX AEROSPACE SERVICES", alias_norms=vertex,
+        ) == "none"
+        # And VECTRUS's own alias set must not contain the FKA-Vertex client.
+        from govbudget.entities import normalize_name
+        assert (
+            normalize_name("V2X, Inc. (formerly known as Vertex Aerospace)")
+            not in aliases["VECTRUS"]
+        )
+
+        ads = aliases["ADS TACTICAL"]
+        assert _match_method(
+            "ATLANTIC DIVING SUPPLY INC. (ADS INC.)", "ADS TACTICAL", alias_norms=ads,
+        ) == "curated_alias"
+        # Unrelated ADS-named companies stay unmatched.
+        assert _match_method("ADS ALLIANCE DATA SYSTEMS", "ADS TACTICAL", alias_norms=ads) == "none"
+        assert _match_method("ADS ADVANCED DATA SERVICES, INC.", "ADS TACTICAL", alias_norms=ads) == "none"
+
+        booz = aliases["BOOZ ALLEN HAMILTON HOLDING"]
+        assert _match_method(
+            "BOOZ ALLEN HAMILTON INC.", "BOOZ ALLEN HAMILTON HOLDING", alias_norms=booz,
+        ) == "curated_alias"
+
+        shell = aliases["SHELL EXPLORATION PRODUCTION"]
+        assert _match_method(
+            "SHELL USA, INC.", "SHELL EXPLORATION PRODUCTION", alias_norms=shell,
+        ) == "curated_alias"
+        # Registrant-intermediary OBO names deliberately NOT aliased (conservative).
+        assert _match_method(
+            "ACORN CONSULTING OBO SHELL USA INC.",
+            "SHELL EXPLORATION PRODUCTION", alias_norms=shell,
+        ) == "none"
+
     def test_load_missing_file_returns_empty(self, tmp_path: Path):
         """Missing CSV returns empty dict without raising."""
         result = _load_aliases(tmp_path / "nonexistent.csv")

@@ -4,3 +4,9 @@ Peraton Inc.,PERATON SOLUTIONS,Peraton Inc. is the operating company; Peraton So
 Rolls-Royce North America Inc.,ROLLS ROYCE HOLDINGS,Rolls-Royce North America is the US subsidiary of Rolls-Royce Holdings plc
 "BP America, Inc.",BP,BP America is the US subsidiary of BP p.l.c.
 "V2X, Inc.",VECTRUS,Vectrus merged with Vertex to form V2X Inc. in July 2022
+Booz Allen Hamilton Inc.,BOOZ ALLEN HAMILTON HOLDING,LDA clients file as the operating company Booz Allen Hamilton (Inc.); the family key is the public holding corporation. Norm also covers the bare and comma variants.
+"Atlantic Diving Supply, Inc.",ADS TACTICAL,Atlantic Diving Supply (ADS Inc. of Virginia Beach) is the operating subsidiary of ADS Tactical Inc.; UEI-grounded — ATLANTIC DIVING SUPPLY is a recipient_name in entity_xwalk for this family
+"Atlantic Diving Supply, Inc. (ADS)",ADS TACTICAL,Client-name variant; normalizes identically to 'Atlantic Diving Supply Inc. (ADS Inc.)' so one row covers both parenthetical spellings
+"V2X, Inc. (formerly known as Vertex Aerospace)",VERTEX AEROSPACE SERVICES,Registrants renamed the former Vertex Aerospace client to this after the July 2022 V2X merger; distinct normalized string from plain 'V2X Inc.' which stays attributed to VECTRUS
+"Shell USA, Inc.",SHELL EXPLORATION PRODUCTION,Shell USA (fka Shell Oil Company) is the US parent that files LDA; Shell Exploration & Production Company is its subsidiary (same pattern as BP America → BP)
+"Shell USA, Inc. (fka Shell Oil Company)",SHELL EXPLORATION PRODUCTION,Client-name variant used by several registrants after the 2022 Shell Oil Company rename

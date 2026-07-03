@@ -245,23 +245,46 @@ class TestMatchGate5a:
         assert result["matched_fraction"] == pytest.approx(0.2)
         assert len(result["unmatched_families"]) == 8
 
-    def test_pass_boundary_80_pct(self, tmp_path):
-        """Exactly 80% match (40 of 50) → PASS."""
+    def test_pass_boundary_86_pct(self, tmp_path):
+        """Exactly 86% match (43 of 50) → PASS at the ≥85% threshold.
+
+        Documented-expectation update (5A backlog #1, 2026-07): the threshold
+        moved 0.80 → 0.85 after curated aliases for Booz Allen, ADS Tactical,
+        Vertex (V2X fka), and Shell E&P raised the live floor to 44/50 = 88%.
+        43/50 is the lowest whole-family fraction that still passes.
+        """
         db = tmp_path / "t.duckdb"
         n = 50
         entities = self._make_entities(n)
         make_duckdb_with_influence(db, dim_entities_rows=entities)
-        # Match exactly 40 families (80%)
+        # Match exactly 43 families (86%)
         filings_rows = [
             (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
              "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
-            for i in range(40)
+            for i in range(43)
         ]
         filings_p = tmp_path / "lda_filings.parquet"
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is True
-        assert result["matched_fraction"] == pytest.approx(0.80)
+        assert result["matched_fraction"] == pytest.approx(0.86)
+
+    def test_fail_boundary_84_pct(self, tmp_path):
+        """42 of 50 = 84% < 85% → FAIL (proof the hardened threshold bites)."""
+        db = tmp_path / "t.duckdb"
+        n = 50
+        entities = self._make_entities(n)
+        make_duckdb_with_influence(db, dim_entities_rows=entities)
+        filings_rows = [
+            (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
+             "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
+            for i in range(42)
+        ]
+        filings_p = tmp_path / "lda_filings.parquet"
+        make_filings(filings_p, filings_rows)
+        result = match_gate5a(db, filings_p)
+        assert result["ok"] is False
+        assert result["matched_fraction"] == pytest.approx(0.84)
 
     def test_match_method_none_not_counted(self, tmp_path):
         """Filings with match_method='none' do NOT count as matched."""
