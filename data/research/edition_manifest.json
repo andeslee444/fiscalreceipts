@@ -896,8 +896,8 @@
         "unresolved": 0,
         "zero_amount": 635
       },
-      "reason": "loaded: 10 docs (10 downloaded), 6969 budget_lines, 3885 detail facts, 2395 recon checks",
-      "recon_checks": 2395,
+      "reason": "loaded: 10 docs (10 downloaded), 6969 budget_lines, 3885 detail facts, 2397 recon checks",
+      "recon_checks": 2397,
       "sample_pe_count": 17,
       "status": "loaded"
     },

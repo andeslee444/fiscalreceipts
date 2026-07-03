@@ -496,6 +496,122 @@ def test_rereconcile_prunes_stale_open_queue_items(pg_dsn):
     assert accepted_kept == 0  # nothing was accepted in this test
 
 
+def _make_project_only_scenario(pg_dsn, doc_id, pe_bli, scenario, project_amount):
+    """Mimic a book whose PE-level funding element omits `scenario` while the
+    project list carries it explicitly (e.g. OSD PB2026 0605755D8Z PriorYear,
+    DW PB2022 0303430V PriorYear/CurrentYear): drop the PE-level detail row
+    and pin the project rows to the explicit amount."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "delete from budget_line_details where document_id=%s and pe_bli=%s"
+            " and scenario=%s and project_number is null",
+            (doc_id, pe_bli, scenario),
+        )
+        con.execute(
+            "update budget_line_details set amount_millions=%s, reconciled=false"
+            " where document_id=%s and pe_bli=%s and scenario=%s"
+            " and project_number is not null and not superseded",
+            (project_amount, doc_id, pe_bli, scenario),
+        )
+
+
+def test_gate_b_project_only_scenario_zero_absent_passes(pg_dsn):
+    # doc-60 pattern: PE funding omits PriorYear, project carries explicit
+    # 0.000, and the R-1 has no control row -> zero-absent rule PASS on the
+    # project-sum basis; the project rows must end up reconciled.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    _make_project_only_scenario(pg_dsn, doc_id, "0601101E", "PriorYear", Decimal("0.000"))
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+        unrec = con.execute(
+            "select count(*) from budget_line_details where pe_bli='0601101E'"
+            " and scenario='PriorYear' and not superseded and not reconciled"
+        ).fetchone()[0]
+    assert check is not None  # PE-absent scenario still gets a Gate B verdict
+    assert check[0] is True
+    assert "zero-absent" in check[1]
+    assert "sum(projects)" in check[1]  # audit trail records the basis
+    assert unrec == 0
+
+
+def test_gate_b_project_only_scenario_matches_explicit_zero_control(pg_dsn):
+    # doc-311 pattern: PE funding omits the scenario, project carries explicit
+    # 0.000, and the R-1 has an explicit zero control row -> candidate match.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',0,%s)",
+            (doc_id,),
+        )
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    _make_project_only_scenario(pg_dsn, doc_id, "0601101E", "PriorYear", Decimal("0.000"))
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+        unrec = con.execute(
+            "select count(*) from budget_line_details where pe_bli='0601101E'"
+            " and scenario='PriorYear' and not superseded and not reconciled"
+        ).fetchone()[0]
+    assert check[0] is True
+    assert "fy_2024_actuals" in check[1]
+    assert unrec == 0
+
+
+def test_gate_b_project_only_scenario_nonzero_mismatch_queues_review(pg_dsn):
+    # Guard: the project-sum basis must not rubber-stamp. A nonzero
+    # project-only amount with no control row FAILS and queues review.
+    upsert_documents(pg_dsn, [{
+        "org": "DARPA", "exhibit_family": "rdte", "fiscal_year": 2026,
+        "title": "darpa.pdf", "source_url": "https://example.test/darpa.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+    run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
+    with psycopg.connect(pg_dsn) as con:  # PE row gone, projects keep real amounts
+        con.execute(
+            "delete from budget_line_details where document_id=%s"
+            " and pe_bli='0601101E' and scenario='PriorYear' and project_number is null",
+            (doc_id,),
+        )
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+        queued = con.execute(
+            "select count(*) from review_queue rq join reconciliation_checks c"
+            " on c.id=rq.check_id where c.gate='B' and c.pe_bli='0601101E'"
+            " and c.scenario='PriorYear' and rq.status='open'"
+        ).fetchone()[0]
+        rec = con.execute(
+            "select bool_or(reconciled) from budget_line_details"
+            " where pe_bli='0601101E' and scenario='PriorYear' and not superseded"
+        ).fetchone()[0]
+    assert check == (False,)
+    assert queued == 1
+    assert rec is False
+
+
 def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     # corrupt one project row so Gate A fails for (0601101E, PriorYear)

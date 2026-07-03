@@ -130,10 +130,31 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             "where document_id=%s and not superseded and project_number is null",
             (document_id,),
         ).fetchall()
+        # Some books omit a PE-level funding element for a scenario while the
+        # project list carries it explicitly (absent = zero at PE level, e.g.
+        # OSD PB2026 0605755D8Z PriorYear; DW PB2022 0303430V PriorYear/
+        # CurrentYear). Neither gate would ever see those facts: reconcile the
+        # project-level sum as the PE amount so they get a verdict too.
+        pe_seen = {(p, s) for p, s, _ in pe_rows}
+        proj_only_rows = [
+            r for r in con.execute(
+                "select pe_bli, scenario, sum(amount_millions) "
+                "from budget_line_details "
+                "where document_id=%s and not superseded "
+                "and project_number is not null "
+                "group by pe_bli, scenario",
+                (document_id,),
+            ).fetchall()
+            if (r[0], r[1]) not in pe_seen
+        ]
         edition_map = scenario_map(fy)
         total_type = f"fy_{fy}_total"
         recon_type = f"fy_{fy}_reconciliation_request"
-        for pe_bli, scenario, amount_m in pe_rows:
+        for pe_bli, scenario, amount_m, basis in (
+            [(*r, "") for r in pe_rows]
+            + [(*r, " [PE funding absent: sum(projects) basis]")
+               for r in proj_only_rows]
+        ):
             candidates = edition_map.get(scenario)
             if not candidates:
                 continue
@@ -196,7 +217,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
                 ok = False
                 detail = f"no R-1 row for {pe_bli} ({exhibit}/{org}/fy{fy}) in {candidates}"
             check_id = _record(con, extraction_run_id, "B", pe_bli, scenario,
-                               expected, amount_m, ok, detail)
+                               expected, amount_m, ok, detail + basis)
             passed, failed, queued = _tally(con, check_id, ok, passed, failed, queued)
             if ok:
                 con.execute(
