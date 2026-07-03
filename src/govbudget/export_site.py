@@ -34,8 +34,9 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import re
 import shutil
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 
@@ -684,7 +685,11 @@ def export_site(
     # One citation row per jbook_narratives row that has a non-null xml_path.
     # official_url = the document's source_url (dedup on sha256, lowest id wins).
     # retrieved_at = the document's downloaded_at.
-    # All page/bbox/sheet fields are None; xml_path carries the locator.
+    # Phase 5F §2b: narratives located by the provenance builder
+    # (provenance_pages target_kind='narrative', keyed like fact_id_narrative)
+    # carry page + bbox of the paragraph opening, a #page=N anchor on both
+    # URLs and their resolution. Unresolved narratives keep the pre-5F
+    # pageless shape — the ambiguity flag, never a fake location.
     with psycopg.connect(dsn) as pg_narr:
         narr_doc_lookup = {
             r[0]: (r[1], r[2])
@@ -697,6 +702,23 @@ def export_site(
                 """
             ).fetchall()
         }
+        narr_prov: dict[tuple, tuple] = {}
+        for (p_sha, p_pe, p_kind, p_xml, page_number, x0, x1, top_pt,
+             bottom_pt, page_width, page_height, resolution) in pg_narr.execute(
+            """
+            select document_sha256, pe_bli, narrative_kind, xml_path,
+                   page_number, x0, x1, top_pt, bottom_pt,
+                   page_width, page_height, resolution
+            from provenance_pages
+            where target_kind = 'narrative'
+            """
+        ).fetchall():
+            if resolution in ("unique", "ambiguous_first") and page_number is not None:
+                narr_prov[(p_sha, p_pe, p_kind, p_xml)] = (
+                    int(page_number),
+                    float(x0), float(x1), float(top_pt), float(bottom_pt),
+                    float(page_width), float(page_height), resolution,
+                )
 
     for (fid, pe_bli, pn, kind, title, body, xml_path, org, fy, sha) in narr_rows_with_fid:
         if fid is None or not xml_path:
@@ -704,16 +726,28 @@ def export_site(
         src_url, dl_at = narr_doc_lookup.get(sha, (None, None))
         official_url = src_url or None
         ret_at = dl_at.isoformat() if dl_at else None
+        hit = narr_prov.get((sha, pe_bli, kind, xml_path))
+        if hit is not None:
+            (page_number, x0, x1, top_pt, bottom_pt,
+             page_width, page_height, resolution) = hit
+            hosted_pdf_url = f"{pdf_base_url}/{sha}.pdf#page={page_number}"
+            if official_url:
+                official_url = f"{official_url}#page={page_number}"
+        else:
+            page_number = x0 = x1 = top_pt = bottom_pt = None
+            page_width = page_height = resolution = None
+            hosted_pdf_url = None
         citation_rows.append((
             fid, "jbook_narrative", None,  # fact_id, kind, units
-            None, None, None, None, None, None, None, None,  # amount_text + bbox
-            None,   # resolution
+            None,          # amount_text (narrative locations are prose, not amounts)
+            page_number, x0, x1, top_pt, bottom_pt, page_width, page_height,
+            resolution,    # 'unique' | 'ambiguous_first' | None (pageless)
             None,   # sheet
             None,   # cells
             None,   # amount_thousands
             sha,    # sha256 (document fingerprint for integrity check)
-            None,   # hosted_pdf_url
-            official_url,  # official_url
+            hosted_pdf_url,
+            official_url,  # official_url (#page=N when located)
             xml_path,      # xml_path (J-book XML locator)
             ret_at,        # retrieved_at
             None, None, None, None,  # formula, inputs, query_body, recorded_value
@@ -1902,6 +1936,59 @@ def _build_lobbyist_citation_rows(*, lobbyist_rows: list) -> list[tuple]:
 
 
 # ---------------------------------------------------------------------------
+# Prose-amount links (Phase 5F §2c) — deterministic only
+# ---------------------------------------------------------------------------
+
+# A canonicalizable in-prose dollar token: '$15.750 million', '$3 billion',
+# '$1,234.5 thousand'. Unit-less tokens ('$15.750') are NOT matched — without
+# the unit word the dollar value cannot be derived deterministically, and a
+# wrong receipt is worse than none.
+_PROSE_DOLLAR_RE = re.compile(
+    r"\$\s?(\d[\d,]*(?:\.\d+)?)\s*(million|billion|thousand)\b",
+    re.IGNORECASE,
+)
+_PROSE_DOLLAR_MULT = {"thousand": 10**3, "million": 10**6, "billion": 10**9}
+
+
+def _narrative_amount_links(
+    body: str,
+    scoped_amounts: dict,
+    cited_fact_ids: set,
+) -> list[dict]:
+    """Link in-prose dollar tokens to facts of the same PE — exact match only.
+
+    scoped_amounts: canonical Decimal dollars → set of fact_ids for EVERY fact
+    in the PE's scope (details / budget_lines / trajectory), cited or not —
+    ambiguity is counted over all of them. A token links IFF its canonical
+    value matches exactly ONE fact AND that fact's citation exists (state-A
+    Cite contract: data-fact-id must resolve). Ambiguous, unmatched, or
+    uncited tokens stay plain prose.
+    """
+    links: list[dict] = []
+    for m in _PROSE_DOLLAR_RE.finditer(body):
+        try:
+            value = (
+                Decimal(m.group(1).replace(",", ""))
+                * _PROSE_DOLLAR_MULT[m.group(2).lower()]
+            )
+        except InvalidOperation:
+            continue
+        fids = scoped_amounts.get(value)
+        if fids is None or len(fids) != 1:
+            continue  # unmatched or multiple candidates → NO link
+        (fid,) = tuple(fids)
+        if fid not in cited_fact_ids:
+            continue  # link must resolve — never a dangling data-fact-id
+        links.append({
+            "end": m.end(),
+            "fact_id": fid,
+            "start": m.start(),
+            "token": m.group(0),
+        })
+    return links
+
+
+# ---------------------------------------------------------------------------
 # JSON sidecar emission (Phase 5B-2)
 # ---------------------------------------------------------------------------
 
@@ -2053,7 +2140,7 @@ def _write_all_sidecars(
     # detail_rows cols: (fact_id, pe_bli, project_number, project_title, scenario,
     #                    amount_millions, units, xml_path, org, exhibit_family,
     #                    fiscal_year, document_sha256, resolution)
-    from collections import defaultdict
+    from collections import Counter, defaultdict
 
     details_by_pe: dict[str, list] = defaultdict(list)
     for row in detail_rows:
@@ -2405,11 +2492,57 @@ def _write_all_sidecars(
     n_files += 1
 
     # ------------------------------------------------------------------ #
-    # 3. program_details/{pe_bli}.json  (one file per program)           #
+    # 3. program_details/{pe_bli}.json  (one file per distinct PE)       #
     # ------------------------------------------------------------------ #
 
     det_dir = json_dir / "program_details"
     det_dir.mkdir(exist_ok=True)
+
+    # trajectory rows regrouped per PE — used by the §2c scoped-amount index
+    # and the §2a rollup service_org rule.
+    traj_by_pe: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+    for (t_pe, t_org), t_metrics in traj_index.items():
+        traj_by_pe[t_pe].append((t_org, t_metrics))
+
+    def _scoped_amounts(pe_bli: str) -> dict:
+        """Canonical Decimal dollars → fact_ids for every fact of this PE
+        (details, budget_lines, trajectory — cited or not; §2c ambiguity is
+        counted over the full scope)."""
+        idx: dict = {}
+
+        def _add(value, fid):
+            idx.setdefault(value, set()).add(fid)
+
+        for d in details_by_pe.get(pe_bli, []):
+            if d["amount_millions"] is not None:
+                _add(Decimal(str(d["amount_millions"])) * 1_000_000, d["fact_id"])
+        for b in bl_by_pe.get(pe_bli, []):
+            if b["amount_thousands"] is not None:
+                _add(Decimal(str(b["amount_thousands"])) * 1_000, b["fact_id"])
+        for t_org, t_metrics in traj_by_pe.get(pe_bli, []):
+            for metric in ("fy2024_actuals", "fy2025_total",
+                           "fy2026_total", "fy2526_change"):
+                v = t_metrics.get(metric)
+                if v is not None:
+                    _add(Decimal(str(v)) * 1_000,
+                         fact_id_derived("trajectory", f"{pe_bli}|{t_org}", metric))
+        return idx
+
+    def _narratives_with_links(pe_bli: str) -> list[dict]:
+        """Narrative entries, each gaining 'amount_links' ONLY when at least
+        one prose dollar token deterministically matched (§2c) — entries
+        without matches keep their exact prior shape (byte-stability)."""
+        entries = narr_by_pe.get(pe_bli, [])
+        if not entries:
+            return entries
+        scoped = _scoped_amounts(pe_bli)
+        out: list[dict] = []
+        for e in entries:
+            links = _narrative_amount_links(
+                e.get("body") or "", scoped, _cited_fact_ids
+            )
+            out.append({**e, "amount_links": links} if links else e)
+        return out
 
     all_pe_blis = {r[0] for r in all_prog_rows}
     for pe_bli in all_pe_blis:
@@ -2421,10 +2554,84 @@ def _write_all_sidecars(
                 mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
             ),
-            "narratives": narr_by_pe.get(pe_bli, []),
+            "narratives": _narratives_with_links(pe_bli),
         }
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
+
+    # -- Rollup-tier sidecars (Phase 5F §2a) ---------------------------- #
+    # Every distinct PE in budget_lines gets a sidecar. PEs outside
+    # programs.json have R-1/P-1 numbers but no ingested narrative J-book —
+    # the sidecar carries an explicit tier + service_org (so the site can say
+    # honestly where the detailed justification lives), the dim_pe_titles
+    # title, the workbook rows and the cited trajectory. programs.json,
+    # agencies.json and years_matrix.json stay programs.json-scoped by
+    # construction — growing the /years/ matrix to all PEs is a site-batch
+    # decision, not made here.
+    titles_by_pe: dict[str, str] = {}
+    try:
+        titles_by_pe = dict(
+            con.execute("select pe_bli, title from dim_pe_titles").fetchall()
+        )
+    except Exception as exc:
+        print(
+            f"program_details rollup: dim_pe_titles unavailable ({exc});"
+            " rollup titles will be null"
+        )
+
+    bl_org_counts: dict[str, Counter] = defaultdict(Counter)
+    for row in bl_rows:
+        bl_org_counts[row[8]][row[5]] += 1     # pe_bli → org row counts
+
+    def _rollup_service_org(pe_bli: str) -> str | None:
+        """Deterministic primary org: the trajectory org with the largest
+        fy2026_total (org ascending tiebreak — the _trajectory_only_feed_
+        programs rule); falls back to the modal budget_lines org."""
+        entries = traj_by_pe.get(pe_bli)
+        if entries:
+            ranked = sorted(
+                entries,
+                key=lambda e: (
+                    e[1]["fy2026_total"] is None,
+                    -(e[1]["fy2026_total"] or 0.0),
+                    e[0],
+                ),
+            )
+            return ranked[0][0]
+        counts = bl_org_counts.get(pe_bli)
+        if counts:
+            return min(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+        return None
+
+    rollup_pes = sorted({row[8] for row in bl_rows} - all_pe_blis)
+    for pe_bli in rollup_pes:
+        service_org = _rollup_service_org(pe_bli)
+        traj = traj_index.get((pe_bli, service_org)) if service_org else None
+        obj = {
+            "awards": awards_by_pe.get(pe_bli, []),
+            "budget_lines": bl_by_pe.get(pe_bli, []),
+            "details": details_by_pe.get(pe_bli, []),
+            "mentions": _build_mentions(
+                mentions_by_pe.get(pe_bli, []),
+                top200_family_keys,
+            ),
+            "narratives": _narratives_with_links(pe_bli),
+            "service_org": service_org,
+            "tier": "rollup",
+            "title": titles_by_pe.get(pe_bli),
+            "trajectory": traj,
+            "trajectory_fact_ids": (
+                _trajectory_fact_ids(pe_bli, service_org, traj)
+                if service_org else None
+            ),
+        }
+        _write_json(det_dir / f"{pe_bli}.json", obj)
+        n_files += 1
+    if rollup_pes:
+        print(
+            f"program_details: +{len(rollup_pes)} rollup-tier sidecars"
+            f" (total {len(all_pe_blis) + len(rollup_pes)})"
+        )
 
     # ------------------------------------------------------------------ #
     # 4. entities_top.json                                               #
