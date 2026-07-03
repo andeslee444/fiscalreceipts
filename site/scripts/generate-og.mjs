@@ -267,6 +267,12 @@ async function main() {
       subtitle: "Program budgets year over year — every cell opens its citation",
       figure: null, figureLabel: null, tagline: TAGLINE,
     }],
+    ["flow", {
+      kind: "Flow",
+      title: "Follow the money",
+      subtitle: "Budget request to programs, obligations to contractors — honestly bridged",
+      figure: null, figureLabel: null, tagline: TAGLINE,
+    }],
     ["downloads", {
       kind: "Downloads",
       title: "Data downloads",

@@ -99,6 +99,19 @@ export async function runA11yGate(baseUrl) {
       setup: null,
     },
     {
+      // Phase 5H — the flowdown SVG must carry proper roles/labels (nodes
+      // are role=button, rivers are labeled groups). Audited with the chart
+      // fully rendered (the island fetches its payload client-side).
+      label: "/flow/ with chart rendered",
+      url: `${baseUrl}/flow/`,
+      setup: async (page) => {
+        await page
+          .waitForSelector('[data-testid="flow-chart"]', { timeout: 15000 })
+          .catch(() => null);
+        await page.waitForTimeout(300);
+      },
+    },
+    {
       label: "search palette open",
       url: `${baseUrl}/`,
       setup: async (page) => {

@@ -98,6 +98,14 @@ export default function RootLayout({
                 >
                   Years
                 </Link>
+                {/* Experimental flowdown (Phase 5H) — fits the 1440 header;
+                    mirrored in <MobileNav> below md. */}
+                <Link
+                  href="/flow/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Flow
+                </Link>
                 <Link
                   href="/feed/"
                   className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"

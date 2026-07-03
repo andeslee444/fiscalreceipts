@@ -53,6 +53,8 @@ const PAGE_TYPES = [
   { key: "downloads", re: /^\/downloads\/$/ },
   { key: "methodology", re: /^\/methodology\/$/ },
   { key: "about", re: /^\/about\/$/ },
+  // Phase 5H — the experimental flowdown must stay reachable from chrome.
+  { key: "flow", re: /^\/flow\/$/ },
 ];
 
 function normalize(href) {

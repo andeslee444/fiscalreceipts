@@ -175,6 +175,13 @@ copyFile(
 );
 console.log("✓  years_matrix.json → public/json/");
 
+// ── 5e. Copy the flowdown payload (Phase 5H — /flow/ two-river sankey) ───────
+copyFile(
+  path.join(jsonDir, "flow_chart.json"),
+  path.join(jsonDestDir, "flow_chart.json")
+);
+console.log("✓  flow_chart.json → public/json/");
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
