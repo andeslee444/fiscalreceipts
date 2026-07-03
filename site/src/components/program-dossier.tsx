@@ -6,8 +6,10 @@ import {
   isFactCitation,
   type DossierFile,
 } from "@/lib/dossier";
+import type { PeLinkIndex } from "@/lib/data";
 import { DossierFactChip, DossierUrlChip } from "@/components/dossier-chips";
 import { CoverageNote } from "@/components/coverage-note";
+import { PeText } from "@/components/pe-text";
 
 /**
  * ProgramDossier (Task 8a) — renders a GATED dossier's four sections:
@@ -27,9 +29,15 @@ interface ProgramDossierProps {
   dossier: DossierFile;
   /** url → snapshot metadata (from getSnapshotMeta()) for url-citation chips. */
   snapshotMeta: Record<string, SnapshotMeta>;
+  /** PE page resolver for claim-text mention linking (Phase 5F §2a). */
+  peIndex?: PeLinkIndex;
 }
 
-export function ProgramDossier({ dossier, snapshotMeta }: ProgramDossierProps) {
+export function ProgramDossier({
+  dossier,
+  snapshotMeta,
+  peIndex,
+}: ProgramDossierProps) {
   const sections = DOSSIER_ALL_SECTIONS.filter(
     (key) => dossier.dossier[key].claims.length > 0,
   );
@@ -69,7 +77,18 @@ export function ProgramDossier({ dossier, snapshotMeta }: ProgramDossierProps) {
                     ? { "data-cite-fact-id": claim.citation.fact_id }
                     : { "data-cite-url": claim.citation.url })}
                 >
-                  {claim.text}
+                  {peIndex ? (
+                    // PE mentions in claim text link to their program pages
+                    // (§2a); self-references stay plain.
+                    <PeText
+                      text={claim.text}
+                      peSet={peIndex}
+                      selfPe={dossier.pe_bli}
+                      projectsByPe={(pe) => peIndex.projects(pe)}
+                    />
+                  ) : (
+                    claim.text
+                  )}
                   {isFactCitation(claim.citation) ? (
                     <DossierFactChip factId={claim.citation.fact_id} />
                   ) : (

@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  getPrograms,
+  getProgramMap,
   getProgramDetails,
+  getProgramPeBlis,
+  getPeLinkIndex,
   getEntityTopByFamilyKey,
   getAgencies,
   getGaoOverlayForOrg,
@@ -15,7 +17,20 @@ import {
   collectCitationsWithInputs,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
-import type { JbookPdfCitation, ProgramRow } from "@/lib/data";
+import type {
+  CitationsMap,
+  JbookPdfCitation,
+  ProgramDetails,
+  ProgramRow,
+  WorkbookCitation,
+} from "@/lib/data";
+import {
+  isRollupDetails,
+  isZeroContentDetails,
+  rollupProgramRow,
+  serviceOrgName,
+} from "@/lib/program-tier";
+import { findPeLinks } from "@/lib/pe-link";
 import { Cite } from "@/components/cite";
 import { dossierFactIds } from "@/lib/dossier";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -28,11 +43,22 @@ import {
   FollowTheDollar,
   getFlowData,
 } from "@/components/follow-the-dollar";
+import {
+  ProgramSection,
+  SectionEmpty,
+} from "@/components/program-section";
+import { ServiceBooksNote } from "@/components/service-books-note";
 import { ProgramHeader } from "@/components/program-header";
 import { ProgramDossier } from "@/components/program-dossier";
-import { ProgramFigures } from "@/components/program-figures";
+import {
+  ProgramFigures,
+  ProgramTrajectoryCard,
+} from "@/components/program-figures";
 import { ProgramBudgetLines } from "@/components/program-budget-lines";
-import { ProgramNarratives } from "@/components/program-narratives";
+import {
+  ProgramNarratives,
+  narrativesInGroup,
+} from "@/components/program-narratives";
 import { ProgramDetailsTable } from "@/components/program-details-table";
 import { ProgramAwards } from "@/components/program-awards";
 import { ProgramMentions } from "@/components/program-mentions";
@@ -42,9 +68,31 @@ import { ProgramConcentration } from "@/components/program-concentration";
 
 export const dynamicParams = false;
 
+/**
+ * Phase 5F §2a: the page universe is EVERY program_details sidecar (1,995) —
+ * the 462 full-tier programs from programs.json plus the 1,533 rollup-tier
+ * sidecars (R-1/P-1 figures + trajectory, service J-book not yet ingested).
+ */
 export function generateStaticParams(): { peBli: string }[] {
-  const programs = getPrograms();
-  return programs.map((p) => ({ peBli: p.pe_bli }));
+  return getProgramPeBlis().map((peBli) => ({ peBli }));
+}
+
+/** Resolve the page's ProgramRow: full tier from programs.json, rollup tier
+ *  synthesized from the sidecar. Throws (loud build failure) on a sidecar
+ *  that is neither — that would be an export regression, not a 404. */
+function resolveProgram(
+  peBli: string,
+  details: ProgramDetails,
+): { program: ProgramRow; tier: "full" | "rollup" } {
+  const full = getProgramMap().get(peBli);
+  if (full) return { program: full, tier: "full" };
+  if (isRollupDetails(details)) {
+    return { program: rollupProgramRow(peBli, details), tier: "rollup" };
+  }
+  throw new Error(
+    `[program page] ${peBli} has a sidecar but is neither in programs.json ` +
+      `nor rollup-tier — export regression, refusing to render a broken page.`,
+  );
 }
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
@@ -55,36 +103,26 @@ export async function generateMetadata({
   params: Promise<{ peBli: string }>;
 }): Promise<Metadata> {
   const { peBli } = await params;
-  const programs = getPrograms();
-  const program = programs.find((p) => p.pe_bli === peBli);
-
-  if (!program) {
-    return {
-      title: "Program Not Found",
-    };
+  if (!getPeLinkIndex().has(peBli)) {
+    return { title: "Program Not Found" };
   }
+  const details = getProgramDetails(peBli);
+  const { program, tier } = resolveProgram(peBli, details);
 
-  // Description: first narrative sentence, fallback to org + pe_bli
+  // Description: first narrative sentence; rollup pages state their tier
+  // honestly; fallback to org + pe_bli.
   let description: string;
-  try {
-    const details = getProgramDetails(peBli);
-    // Mission narrative first, then any narrative
-    const missionNarrative = details.narratives.find(
-      (n) => n.kind === "mission",
-    );
-    const firstNarrative =
-      missionNarrative ?? details.narratives[0] ?? null;
-    if (firstNarrative?.body) {
-      // Take the first sentence (up to first period + space, or first 200 chars)
-      const firstSentence = firstNarrative.body.split(/\.\s/)[0];
-      description =
-        firstSentence.length > 200
-          ? firstSentence.slice(0, 197) + "…"
-          : firstSentence;
-    } else {
-      description = `${program.org} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
-    }
-  } catch {
+  const missionNarrative = details.narratives.find((n) => n.kind === "mission");
+  const firstNarrative = missionNarrative ?? details.narratives[0] ?? null;
+  if (firstNarrative?.body) {
+    const firstSentence = firstNarrative.body.split(/\.\s/)[0];
+    description =
+      firstSentence.length > 200
+        ? firstSentence.slice(0, 197) + "…"
+        : firstSentence;
+  } else if (tier === "rollup") {
+    description = `${program.org} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. Detailed service J-book not yet ingested.`;
+  } else {
     description = `${program.org} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
   }
 
@@ -96,6 +134,12 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
     },
+    // noindex policy (§2a): pages whose only content is zero-valued figure
+    // lines are built (linkable) but not indexed — same policy as
+    // zero-mention filings. Everything else stays indexable.
+    robots: isZeroContentDetails(details)
+      ? { index: false, follow: true }
+      : undefined,
     openGraph: {
       title: `${program.title} — FY2026 Budget, Contracts & Lobbying`,
       description,
@@ -117,13 +161,10 @@ export default async function ProgramPage({
 }) {
   const { peBli } = await params;
 
-  // Load program row
-  const programs = getPrograms();
-  const program = programs.find((p) => p.pe_bli === peBli);
-  if (!program) notFound();
-
-  // Load detailed data
+  if (!getPeLinkIndex().has(peBli)) notFound();
   const details = getProgramDetails(peBli);
+  const { program, tier } = resolveProgram(peBli, details);
+  const peIndex = getPeLinkIndex();
 
   // Build set of linkable family_keys (entities_top).
   // Passed to ProgramMentions (client component) as a plain string[] — Sets are
@@ -134,6 +175,18 @@ export default async function ProgramPage({
   // Slice lists for SSG cap
   const initialAwards = details.awards.slice(0, CAP);
   const initialMentions = details.mentions.slice(0, CAP);
+
+  // PE token → href map for the mention rows (client component gets a
+  // serializable record; §2a). Self-references excluded (stay plain).
+  const peHrefs: Record<string, string> = {};
+  for (const m of initialMentions) {
+    for (const text of [m.matched_term, m.description_snippet]) {
+      if (!text) continue;
+      for (const link of findPeLinks(text, peIndex, { selfPe: peBli })) {
+        peHrefs[link.token] = link.href;
+      }
+    }
+  }
 
   // ── Collect per-page citation slice (Task 5 + 5B-3 flips) ─────────────────
   // Gather ALL fact_ids referenced on this page to avoid a 10MB full-citations
@@ -174,6 +227,15 @@ export default async function ProgramPage({
     }
   }
 
+  // Narratives (Phase 5F §2b/§2c): per-paragraph jbook_narrative fact chips
+  // + prose amount-link targets both open the panel from the embedded slice.
+  for (const n of details.narratives) {
+    if (n.fact_id) pageFactIds.push(n.fact_id);
+    for (const l of n.amount_links ?? []) {
+      if (l.fact_id) pageFactIds.push(l.fact_id);
+    }
+  }
+
   // Follow-the-dollar (Task 6b): only the 17 crosswalked programs have a
   // flows sidecar. The cited per-district table needs the (district, pe_bli)
   // USAspending fact_ids in the page slice.
@@ -199,6 +261,11 @@ export default async function ProgramPage({
   const category = getCategories()?.[peBli] ?? null;
 
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
+
+  // Narrative groups for the two prose sections (§2d).
+  const descriptionNarratives = narrativesInGroup(details.narratives, "description");
+  const justificationNarratives = narrativesInGroup(details.narratives, "justification");
+  const serviceName = serviceOrgName(details.service_org ?? "") || "service";
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -226,124 +293,292 @@ export default async function ProgramPage({
       </p>
 
       {/* Header — top-50 pages get a category hero background (Task 8a).
-          orgHasPage gates the org link: trajectory-only feed programs
-          (backlog #17) carry service workbook orgs (A/N/F/DHA) that have no
-          agency pages — plain text instead of a dead link. */}
-      <ProgramHeader
-        program={program}
-        category={category}
-        orgHasPage={getAgencies().some((a) => a.org === program.org)}
-      />
+          orgHasPage gates the org link: rollup/trajectory-only programs carry
+          service orgs (Army/Navy/Air Force/DHA…) that have no agency pages —
+          plain text instead of a dead link (G1 contract).
+          Rollup pages wrap the header in data-pagefind-body so their title /
+          org / PE are deep-searchable (full pages index their narratives). */}
+      <div data-pagefind-body={tier === "rollup" ? "" : undefined}>
+        <ProgramHeader
+          program={program}
+          category={category}
+          orgHasPage={getAgencies().some((a) => a.org === program.org)}
+          tier={tier}
+        />
+      </div>
 
-      {/* Above-the-fold answer strip (Phase 5C Task 10, Goal 5) — what it
-          is / what changed / who gets it, directly under the header. The G6
-          answerfold gate asserts all three testids sit inside the initial
-          viewport at 1440×900 AND 390×844. */}
-      <AnswerStrip program={program} />
+      {/* ═══ Canonical section skeleton (Phase 5F §2d) — every program page,
+          both tiers, renders these twelve data-section blocks in this order;
+          absent data renders a quiet explained empty state, never silence. ═══ */}
 
-      {/* GAO oversight badge — agency-level risk context (Task 6b) */}
-      {gao && (
-        <div className="mb-6">
-          <Link
-            href={`/agency/${program.org}/#oversight`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
-            title={`GAO oversight context for ${gao.agencyCode} — high-risk areas and improper-payment exposure`}
-          >
-            <span aria-hidden="true">⚠</span>
-            GAO oversight: {gao.agencyCode}
-            {gao.overlay.high_risk_areas.length > 0 &&
-              ` — ${gao.overlay.high_risk_areas.length} high-risk area${gao.overlay.high_risk_areas.length !== 1 ? "s" : ""}`}
-          </Link>
-        </div>
-      )}
+      {/* 1 · Answer strip — above-the-fold WHAT/CHANGED/WHO (G6 contract). */}
+      <ProgramSection id="answer-strip">
+        <AnswerStrip program={program} />
+      </ProgramSection>
 
-      {/* Budget figures + sparkline */}
-      <ProgramFigures program={program} />
+      {/* 2 · Budget figures */}
+      <ProgramSection id="figures">
+        <ProgramFigures program={program} />
+      </ProgramSection>
 
-      {/* Program dossier — GATED dossiers only, cited-or-absent (Task 8a).
-          No dossier file → a one-line coverage note explains the absence
-          (Phase 5C: empty sections explain absence instead of disappearing).
-          Never placeholder prose — the note is the only ungated text. */}
-      {dossier ? (
-        <ProgramDossier dossier={dossier} snapshotMeta={getSnapshotMeta()} />
-      ) : (
-        <CoverageNote id="dossiers" empty className="mt-8" />
-      )}
+      {/* 3 · Trajectory */}
+      <ProgramSection id="trajectory">
+        {program.trajectory ? (
+          <ProgramTrajectoryCard program={program} />
+        ) : (
+          <SectionEmpty title="Budget Trajectory">
+            No year-over-year trajectory row for this line — the FY2026
+            R-1/P-1 trajectory workbooks carry no entry for it, so no
+            FY24→FY26 series can be drawn.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
 
-      {/* Budget line items (workbook-cited) */}
-      <ProgramBudgetLines budgetLines={details.budget_lines} />
-
-      {/* R-2/P-40 details table */}
-      <ProgramDetailsTable details={details.details} />
-
-      {/* Narratives (includes data-pagefind-body) */}
-      <ProgramNarratives narratives={details.narratives} />
-
-      {/* Contractor concentration card */}
-      <ProgramConcentration hhi={program.hhi} />
-
-      {/* Follow-the-dollar flow — crosswalked programs only (Task 6b).
-          Programs without a flow sidecar get a one-line coverage note
-          explaining the absence (Phase 5C Task 8). */}
-      {flowData ? (
-        <FollowTheDollar data={flowData} />
-      ) : (
-        <CoverageNote id="follow-the-dollar" empty className="mt-8" />
-      )}
-
-      {/* Awards — capped at 25, client expand. The company-awards scope
-          note is server-rendered here and passed down (client boundary). */}
-      <ProgramAwards
-        initialAwards={initialAwards}
-        totalCount={details.awards.length}
-        peBli={peBli}
-        scopeNote={<CoverageNote id="company-awards" />}
-      />
-
-      {/* Lobbying mentions — capped at 25, client expand */}
-      <ProgramMentions
-        initialMentions={initialMentions}
-        totalCount={details.mentions.length}
-        peBli={peBli}
-        linkableKeys={linkableKeysArray}
-      />
-
-      {/* Primary Sources — static links with #page=N for direct PDF navigation.
-          Rendered server-side so they appear in SSG HTML (gate compliance + UX).
-          Only jbook_pdf citations with an official_url containing #page= are shown. */}
-      {(() => {
-        const pdfLinks = Object.entries(citationsSlice)
-          .filter(
-            ([, cit]) =>
-              cit.kind === "jbook_pdf" &&
-              cit.official_url?.includes("#page="),
-          )
-          .slice(0, 5) as [string, JbookPdfCitation][];
-        if (pdfLinks.length === 0) return null;
-        return (
-          <section className="mt-8 pt-6 border-t border-border">
-            <h2 className="text-base font-semibold mb-3 text-foreground">
-              Primary Sources
+      {/* 4 · Description (mission) — rollup pages carry the honest
+          service-J-book note (data-coverage="service-books", §2a). */}
+      <ProgramSection id="description">
+        {descriptionNarratives.length > 0 ? (
+          <ProgramNarratives
+            narratives={details.narratives}
+            group="description"
+            peIndex={peIndex}
+            selfPe={peBli}
+          />
+        ) : tier === "rollup" ? (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-2 text-foreground">
+              Description
             </h2>
-            <ul className="space-y-1.5">
-              {pdfLinks.map(([factId, cit]) => (
-                <li key={factId}>
-                  <a
-                    href={cit.official_url!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    Budget Justification PDF (page {cit.page_number})
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })()}
+            <ServiceBooksNote serviceOrg={details.service_org ?? ""} />
+          </div>
+        ) : (
+          <SectionEmpty title="Description">
+            The J-book detail for this line carries no separate mission or
+            description narrative — see the justification and line items
+            below for its own prose.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 5 · Justification (accomplishments/plans) */}
+      <ProgramSection id="justification">
+        {justificationNarratives.length > 0 ? (
+          <ProgramNarratives
+            narratives={details.narratives}
+            group="justification"
+            peIndex={peIndex}
+            selfPe={peBli}
+          />
+        ) : tier === "rollup" ? (
+          <SectionEmpty title="Justification">
+            Accomplishments and planned-program narratives live in the{" "}
+            {serviceName} J-book, which is not yet ingested — see the
+            description note above for the roadmap.
+          </SectionEmpty>
+        ) : (
+          <SectionEmpty title="Justification">
+            No accomplishments or planned-program narratives in this
+            line&apos;s J-book detail — some exhibits carry figures without
+            per-project prose.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 6 · Line items — workbook budget lines + R-2/P-40 details table
+          (project rows carry #project-{n} anchors for §2a references). */}
+      <ProgramSection id="line-items">
+        {details.budget_lines.length > 0 || details.details.length > 0 ? (
+          <>
+            <ProgramBudgetLines budgetLines={details.budget_lines} />
+            <ProgramDetailsTable details={details.details} />
+          </>
+        ) : (
+          <SectionEmpty title="Line Items">
+            No workbook or J-book line items are linked to this program
+            element — its figures appear only in the trajectory mart.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 7 · Follow-the-dollar flow — crosswalked programs only (Task 6b). */}
+      <ProgramSection id="follow-dollar">
+        {flowData ? (
+          <FollowTheDollar data={flowData} />
+        ) : (
+          <CoverageNote id="follow-the-dollar" empty className="mt-8 mb-8" />
+        )}
+      </ProgramSection>
+
+      {/* 8 · Awards — capped at 25, client expand — plus the contractor
+          concentration card (award-share HHI belongs with awards). */}
+      <ProgramSection id="awards">
+        {details.awards.length > 0 ? (
+          <>
+            <ProgramAwards
+              initialAwards={initialAwards}
+              totalCount={details.awards.length}
+              peBli={peBli}
+              scopeNote={<CoverageNote id="company-awards" />}
+            />
+            <ProgramConcentration hhi={program.hhi} />
+          </>
+        ) : (
+          <SectionEmpty title="Awards">
+            No awards are linked to this program element at high confidence —
+            the budget→award crosswalk only asserts links it can defend, and
+            this line has none yet.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 9 · Lobbying mentions — capped at 25, client expand */}
+      <ProgramSection id="lobbying">
+        {details.mentions.length > 0 ? (
+          <ProgramMentions
+            initialMentions={initialMentions}
+            totalCount={details.mentions.length}
+            peBli={peBli}
+            linkableKeys={linkableKeysArray}
+            peHrefs={peHrefs}
+          />
+        ) : (
+          <SectionEmpty title="Lobbying Mentions">
+            No Senate LDA lobbying filing in the tracked data mentions this
+            program element by code or alias.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 10 · Oversight — GAO overlay chip when the program's agency has
+          high-risk areas / improper-payment exposure. */}
+      <ProgramSection id="oversight">
+        {gao ? (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-2 text-foreground">
+              Oversight
+            </h2>
+            <Link
+              href={`/agency/${program.org}/#oversight`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+              title={`GAO oversight context for ${gao.agencyCode} — high-risk areas and improper-payment exposure`}
+            >
+              <span aria-hidden="true">⚠</span>
+              GAO oversight: {gao.agencyCode}
+              {gao.overlay.high_risk_areas.length > 0 &&
+                ` — ${gao.overlay.high_risk_areas.length} high-risk area${gao.overlay.high_risk_areas.length !== 1 ? "s" : ""}`}
+            </Link>
+          </div>
+        ) : (
+          <SectionEmpty title="Oversight">
+            No GAO high-risk areas or improper-payment overlays map to{" "}
+            {program.org} in the ingested GAO data — absence of an overlay is
+            not a clean bill of health, only absence from those two lists.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 11 · Program dossier — GATED dossiers only, cited-or-absent (Task 8a). */}
+      <ProgramSection id="dossier">
+        {dossier ? (
+          <ProgramDossier
+            dossier={dossier}
+            snapshotMeta={getSnapshotMeta()}
+            peIndex={peIndex}
+          />
+        ) : (
+          <CoverageNote id="dossiers" empty className="mt-8 mb-8" />
+        )}
+      </ProgramSection>
+
+      {/* 12 · Primary sources — J-book PDF pages when cited on this page;
+          otherwise the workbook source documents (rollup tier). */}
+      <ProgramSection id="sources">
+        <PrimarySources citationsSlice={citationsSlice} />
+      </ProgramSection>
     </div>
     </CitationPanelProvider>
+  );
+}
+
+// ── Primary sources (§2d section 12) ─────────────────────────────────────────
+
+function PrimarySources({ citationsSlice }: { citationsSlice: CitationsMap }) {
+  const pdfLinks = Object.entries(citationsSlice)
+    .filter(
+      ([, cit]) =>
+        cit.kind === "jbook_pdf" && cit.official_url?.includes("#page="),
+    )
+    .slice(0, 5) as [string, JbookPdfCitation][];
+
+  if (pdfLinks.length > 0) {
+    return (
+      <div className="mt-8 pt-6 border-t border-border mb-8">
+        <h2 className="text-base font-semibold mb-3 text-foreground">
+          Primary Sources
+        </h2>
+        <ul className="space-y-1.5">
+          {pdfLinks.map(([factId, cit]) => (
+            <li key={factId}>
+              <a
+                href={cit.official_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+              >
+                Budget Justification PDF (page {cit.page_number})
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  // Rollup tier: no J-book PDF pages are cited — list the workbook source
+  // documents instead (deduped by sheet), so every page still ends at its
+  // primary sources.
+  const seen = new Set<string>();
+  const workbookLinks: [string, WorkbookCitation][] = [];
+  for (const [factId, cit] of Object.entries(citationsSlice)) {
+    if (cit.kind !== "workbook") continue;
+    const wb: WorkbookCitation = cit;
+    if (!wb.official_url) continue;
+    const key = `${wb.sha256}:${wb.sheet}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    workbookLinks.push([factId, wb]);
+    if (workbookLinks.length >= 3) break;
+  }
+
+  if (workbookLinks.length > 0) {
+    return (
+      <div className="mt-8 pt-6 border-t border-border mb-8">
+        <h2 className="text-base font-semibold mb-3 text-foreground">
+          Primary Sources
+        </h2>
+        <ul className="space-y-1.5">
+          {workbookLinks.map(([factId, wb]) => (
+            <li key={factId}>
+              <a
+                href={wb.official_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+              >
+                Budget workbook — sheet {wb.sheet}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <SectionEmpty title="Primary Sources" className="mt-8 pt-6 border-t border-border">
+      No document-tier citations resolve on this page — its figures are
+      derived-tier only; open any cited number for its derivation chain.
+    </SectionEmpty>
   );
 }
 
@@ -371,6 +606,8 @@ function answerFamilyPlain(family: string): string {
       return "operations & maintenance";
     case "milpers":
       return "military personnel";
+    case "budget":
+      return "budget"; // rollup tier with no classifiable workbook lines
     default:
       return family.toUpperCase();
   }

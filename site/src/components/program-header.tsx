@@ -28,6 +28,12 @@ interface ProgramHeaderProps {
    * agency pages — only synthesized trajectory-only programs don't).
    */
   orgHasPage?: boolean;
+  /**
+   * Page tier (Phase 5F §2a). Rollup pages carry only R-1/P-1 workbook
+   * figures — the reconciliation badge (a full-tier line-item concept) is
+   * replaced by an honest "Summary figures" badge.
+   */
+  tier?: "full" | "rollup";
 }
 
 /** Human-friendly label for exhibit_family values. */
@@ -51,6 +57,7 @@ export function ProgramHeader({
   program,
   category,
   orgHasPage = true,
+  tier = "full",
 }: ProgramHeaderProps) {
   const { title, org, exhibit_family, fully_reconciled, pe_bli } = program;
 
@@ -89,8 +96,18 @@ export function ProgramHeader({
           {exhibitFamilyLabel(exhibit_family)}
         </Badge>
 
-        {/* Fully reconciled */}
-        {fully_reconciled ? (
+        {/* Tier badge: full pages show reconciliation state; rollup pages
+            (R-1/P-1 workbook figures only — Phase 5F §2a) say so honestly
+            instead of claiming a reconciliation status they never had. */}
+        {tier === "rollup" ? (
+          <Badge
+            variant="outline"
+            className="text-xs text-muted-foreground"
+            title="Summary figures from the all-service R-1/P-1 workbooks — the detailed service J-book is not yet ingested"
+          >
+            Summary figures (R-1/P-1)
+          </Badge>
+        ) : fully_reconciled ? (
           <Badge
             variant="default"
             className="text-xs bg-green-100 text-green-800 border-green-200"

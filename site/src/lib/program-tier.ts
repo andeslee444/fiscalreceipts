@@ -65,7 +65,9 @@ export function rollupProgramRow(
   return {
     pe_bli: peBli,
     title: details.title ?? peBli,
-    org: serviceOrgName(details.service_org ?? ""),
+    // Empty service_org (1 sidecar) falls back to the honest umbrella "DoD"
+    // — the figures come from the DoD-wide R-1/P-1 workbooks.
+    org: serviceOrgName(details.service_org ?? "") || "DoD",
     exhibit_family: deriveExhibitFamily(details.budget_lines),
     fully_reconciled: false,
     fy2024_actual_millions: null,

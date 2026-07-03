@@ -1,14 +1,36 @@
-import type { ProgramNarrative } from "@/lib/data";
+import type { PeLinkIndex, ProgramNarrative } from "@/lib/data";
+import { NarrativeBody } from "@/components/narrative-body";
+import { NarrativeSourceChip } from "@/components/narrative-chip";
 
 /**
- * ProgramNarratives — mission kind first, then description/justification,
- * then accomplishment_planned_program items collapsible (details/summary HTML — no JS).
+ * ProgramNarratives — J-book narrative prose, split across the two skeleton
+ * sections (Phase 5F §2d):
  *
- * The outer <div> carries data-pagefind-body so Pagefind indexes this content.
+ *   group="description"   → mission + description kinds
+ *   group="justification" → justification + accomplishment_planned_program
+ *                           (+ any unknown kinds, so nothing silently drops)
+ *
+ * Accomplishments stay collapsible (details/summary HTML — no JS).
+ *
+ * Each group's wrapper carries data-pagefind-body (Pagefind indexing — the
+ * deep-search eval phrases live in accomplishments) AND
+ * data-source-text="narrative" + data-xml-path (block-level citation; the
+ * render-static a0 contract). Bodies render through <NarrativeBody>:
+ * prose amount links become data-prose-cite spans (§2c — NEVER data-amount
+ * inside source text) and PE mentions become internal links (§2a).
  */
+
+export type NarrativeGroup = "description" | "justification";
+
+const DESCRIPTION_KINDS = new Set(["mission", "description"]);
 
 interface ProgramNarrativesProps {
   narratives: ProgramNarrative[];
+  group: NarrativeGroup;
+  /** PE page/project resolver for mention linking (build-time index). */
+  peIndex: PeLinkIndex;
+  /** The page's own PE — self-references stay plain text. */
+  selfPe: string;
 }
 
 const KIND_ORDER: Record<string, number> = {
@@ -37,15 +59,32 @@ function humanizeKind(kind: string): string {
   }
 }
 
-export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
-  if (narratives.length === 0) {
+/** Narratives belonging to a skeleton group (exported for the page's
+ *  empty-state decision). Unknown kinds bucket under justification. */
+export function narrativesInGroup(
+  narratives: ProgramNarrative[],
+  group: NarrativeGroup,
+): ProgramNarrative[] {
+  return narratives.filter((n) =>
+    group === "description"
+      ? DESCRIPTION_KINDS.has(n.kind)
+      : !DESCRIPTION_KINDS.has(n.kind),
+  );
+}
+
+export function ProgramNarratives({
+  narratives,
+  group,
+  peIndex,
+  selfPe,
+}: ProgramNarrativesProps) {
+  const inGroup = narrativesInGroup(narratives, group);
+  if (inGroup.length === 0) {
     return null;
   }
 
   // Sort by kind order
-  const sorted = [...narratives].sort(
-    (a, b) => kindOrder(a.kind) - kindOrder(b.kind),
-  );
+  const sorted = [...inGroup].sort((a, b) => kindOrder(a.kind) - kindOrder(b.kind));
 
   // Separate non-accomplishment from accomplishments
   const primary = sorted.filter(
@@ -56,15 +95,9 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
   );
 
   return (
-    <section
-      aria-labelledby="narratives-heading"
-      className="mb-8"
-    >
-      <h2
-        id="narratives-heading"
-        className="text-lg font-semibold mb-4 text-foreground"
-      >
-        Program Narratives
+    <div className="mb-8">
+      <h2 className="text-lg font-semibold mb-4 text-foreground">
+        {group === "description" ? "Description" : "Justification"}
       </h2>
 
       {/* data-pagefind-body wraps main content for Pagefind indexing.
@@ -90,10 +123,14 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
                   — {n.title}
                 </span>
               )}
+              {n.fact_id && <NarrativeSourceChip factId={n.fact_id} />}
             </h3>
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-              {n.body}
-            </p>
+            <NarrativeBody
+              body={n.body}
+              amountLinks={n.amount_links}
+              peIndex={peIndex}
+              selfPe={selfPe}
+            />
           </div>
         ))}
 
@@ -113,7 +150,10 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
                   className="rounded-lg border border-border bg-muted/30 group"
                 >
                   <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors rounded-lg list-none flex items-center justify-between">
-                    <span>{n.title}</span>
+                    <span>
+                      {n.title}
+                      {n.fact_id && <NarrativeSourceChip factId={n.fact_id} />}
+                    </span>
                     <span
                       className="text-muted-foreground text-xs group-open:rotate-180 transition-transform"
                       aria-hidden="true"
@@ -122,9 +162,12 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
                     </span>
                   </summary>
                   <div className="px-4 pb-4 pt-2">
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-                      {n.body}
-                    </p>
+                    <NarrativeBody
+                      body={n.body}
+                      amountLinks={n.amount_links}
+                      peIndex={peIndex}
+                      selfPe={selfPe}
+                    />
                   </div>
                 </details>
               ))}
@@ -132,6 +175,6 @@ export function ProgramNarratives({ narratives }: ProgramNarrativesProps) {
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

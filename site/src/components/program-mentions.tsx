@@ -18,6 +18,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ProgramDetails } from "@/lib/data";
+import { PeText } from "@/components/pe-text";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
 // Note: family_key can be null (dangling entity — 2,781 / 32,780 lobbying rows)
@@ -57,14 +58,25 @@ interface ProgramMentionsProps {
    * the Next.js App Router server→client boundary.
    */
   linkableKeys: string[];
+  /**
+   * PE token → program URL for tokens appearing in this page's mentions
+   * (Phase 5F §2a universal linking). Server-computed against the full PE
+   * page set; serializable (plain record). Tokens outside the map stay
+   * plain text.
+   */
+  peHrefs?: Record<string, string>;
 }
 
 function MentionRow({
   mention,
   linkableKeys,
+  peSet,
+  peHrefs,
 }: {
   mention: ProgramMention;
   linkableKeys: Set<string>;
+  peSet: { has(pe: string): boolean };
+  peHrefs: Record<string, string>;
 }) {
   const humanUrl = humanLdaUrl(mention.filing_url);
   // family_key can be null (dangling entity) — treat as not linkable
@@ -91,18 +103,31 @@ function MentionRow({
           )}
         </span>
 
-        {/* Matched term chip */}
-        <span className="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium">
-          {mention.matched_term}
-        </span>
+        {/* Matched term chip — links when the term IS another program's PE
+            (Phase 5F §2a; self-references stay plain via the peHrefs map). */}
+        {peHrefs[mention.matched_term] ? (
+          <a
+            href={peHrefs[mention.matched_term]}
+            className="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium hover:bg-blue-200 transition-colors"
+            title={`Open program page for ${mention.matched_term}`}
+          >
+            {mention.matched_term}
+          </a>
+        ) : (
+          <span className="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium">
+            {mention.matched_term}
+          </span>
+        )}
 
         {/* Filing year */}
         <span className="text-xs text-muted-foreground">{mention.filing_year}</span>
       </div>
 
-      {/* Snippet */}
+      {/* Snippet — PE tokens with pages become internal links (§2a) */}
       <p className="text-sm text-muted-foreground leading-relaxed">
-        {mention.description_snippet}
+        {mention.description_snippet && (
+          <PeText text={mention.description_snippet} peSet={peSet} />
+        )}
         {mention.description_snippet && !mention.description_snippet.endsWith("…") && (
           <span aria-hidden="true">…</span>
         )}
@@ -136,10 +161,16 @@ export function ProgramMentions({
   totalCount,
   peBli,
   linkableKeys,
+  peHrefs = {},
 }: ProgramMentionsProps) {
   // Reconstruct as Set inside the client component for O(1) lookup.
   // The prop arrives as string[] because Sets cannot cross the server→client boundary.
   const linkableKeysSet = useMemo(() => new Set(linkableKeys), [linkableKeys]);
+  // PE membership for snippet linkification (from the serializable map).
+  const peSet = useMemo(
+    () => ({ has: (pe: string) => pe in peHrefs }),
+    [peHrefs],
+  );
 
   const [expanded, setExpanded] = useState(false);
   const [allMentions, setAllMentions] = useState<ProgramMention[] | null>(null);
@@ -196,6 +227,8 @@ export function ProgramMentions({
             key={`${mention.filing_uuid}-${mention.matched_term}-${i}`}
             mention={mention}
             linkableKeys={linkableKeysSet}
+            peSet={peSet}
+            peHrefs={peHrefs}
           />
         ))}
       </div>

@@ -436,9 +436,15 @@ function BreakdownRowTr({
           {row.label}
         </span>
         {row.pe_bli && (
-          <span className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+          // Every breakdown pe_bli has a program page (the Phase 5F universe
+          // covers every distinct PE in budget_lines) — link it (§2a).
+          <a
+            href={`/program/${encodeURIComponent(row.pe_bli)}/`}
+            className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+            title={`Open program page for ${row.pe_bli}`}
+          >
             {row.pe_bli}
-          </span>
+          </a>
         )}
       </td>
       <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">

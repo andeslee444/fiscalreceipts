@@ -1,5 +1,6 @@
 import { Cite } from "@/components/cite";
 import type { ProgramDetailRow } from "@/lib/data";
+import { projectAnchorId } from "@/lib/pe-link";
 
 /**
  * ProgramDetailsTable — R-2/P-40 facts table.
@@ -123,7 +124,15 @@ export function ProgramDetailsTable({ details }: ProgramDetailsTableProps) {
               return (
                 <tr
                   key={group.key}
-                  className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                  // Project anchor (Phase 5F §2a): "PE X, Project Y" prose
+                  // references across the site land here via
+                  // /program/{pe}/#project-{Y}. scroll-mt clears the header.
+                  id={
+                    group.project_number
+                      ? projectAnchorId(group.project_number)
+                      : undefined
+                  }
+                  className="scroll-mt-16 border-b border-border/50 hover:bg-muted/30 transition-colors"
                 >
                   <td className="py-2 pr-3 text-foreground font-medium">
                     {label}
