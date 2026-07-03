@@ -77,6 +77,7 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
     """Parse a P-40 procurement XML and load details/narratives. Supersedes
     prior rows for the document. Returns the extraction_run id."""
     from govbudget.jbooks.edition_probe import LEGACY_LAST_FY
+    from govbudget.jbooks.era_keys import era_procurement_key, p40_agency_org
     from govbudget.jbooks.p40_parser import parse_p40_xml
 
     records = parse_p40_xml(xml_path)
@@ -90,8 +91,11 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
         ).fetchone()[0]
         # PB2017–PB2023: the era P-1 display and P-40 XMLs share only the P-1
         # line number (XML P1LineNumber) — LineItemNumber vocabulary is
-        # per-agency inconsistent in that era. The era p1_loader keys
-        # budget_lines.pe_bli on the workbook 'Line Number' to match.
+        # per-agency inconsistent in that era. The key is namespaced to
+        # '{account}-{org}-L{line}' via era_procurement_key (Finding D: bare
+        # line numbers collide with modern BLI codes and conflate programs
+        # within one consolidated document); the era p1_loader namespaces
+        # budget_lines.pe_bli identically so reconciliation still joins.
         doc_fy = con.execute(
             "select fiscal_year from jbook_documents where id=%s", (document_id,)
         ).fetchone()[0]
@@ -105,8 +109,20 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
             (document_id,),
         )
         for li in records:
-            key = (li.p1_line_number or li.number) if legacy else li.number
-            key = key.strip() if key else key
+            if legacy:
+                if not li.p1_line_number:
+                    raise ValueError(
+                        f"era P-40 LineItem {li.number!r} (doc {document_id})"
+                        " has no P1LineNumber — cannot build a namespaced era"
+                        " key; refusing to load a colliding bare key"
+                    )
+                key = era_procurement_key(
+                    li.appropriation_number,
+                    p40_agency_org(li.service_agency),
+                    li.p1_line_number,
+                )
+            else:
+                key = li.number.strip() if li.number else li.number
             for f in li.funding:
                 con.execute(
                     "insert into budget_line_details (extraction_run_id, document_id,"

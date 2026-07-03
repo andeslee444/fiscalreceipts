@@ -128,7 +128,10 @@ def test_load_procurement_details_legacy_edition_keys_by_p1_line_number(pg_dsn):
     """PB2017–PB2023: the era P-1 workbooks and P-40 XMLs share only the P-1
     line number (the XML's P1LineNumber). LineItemNumber vocabulary is
     per-agency inconsistent in that era (line numbers for DISA, ad-hoc codes
-    for SOCOM/CBDP/DCAA — verified live, Task 4 round 2)."""
+    for SOCOM/CBDP/DCAA — verified live, Task 4 round 2). The key is
+    namespaced to '{account}-{org}-L{line}' (Finding D): bare line numbers
+    collide with modern BLI codes and conflate programs within one
+    consolidated document."""
     from govbudget.jbooks.load_details import load_procurement_details
 
     upsert_documents(pg_dsn, [{
@@ -142,6 +145,14 @@ def test_load_procurement_details_legacy_edition_keys_by_p1_line_number(pg_dsn):
         keys = {r[0] for r in con.execute(
             "select distinct pe_bli from budget_line_details where not superseded"
         )}
-    # the fixture's P1LineNumber values, not its LineItemNumber codes
-    assert "120" in keys
+        narr_keys = {r[0] for r in con.execute(
+            "select distinct pe_bli from detail_narratives where not superseded"
+        )}
+    # the fixture's P1LineNumber (120), namespaced by AppropriationNumber
+    # (0300D) + ServiceAgencyName→workbook-org (CBDP) — never the bare line
+    # number or the LineItemNumber code
+    assert "0300D-CBDP-L120" in keys
+    assert "120" not in keys
     assert "7001SA1000" not in keys
+    # narratives key identically (they join details by pe_bli downstream)
+    assert "0300D-CBDP-L120" in narr_keys

@@ -7,6 +7,7 @@ import psycopg
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
+from govbudget.jbooks.era_keys import era_procurement_key
 from govbudget.jbooks.rollup_loader import norm_header
 
 P1_ID_HEADERS = {
@@ -71,12 +72,19 @@ def load_p1_rollup(
     id_cols = {j: P1_ID_HEADERS[h] for j, h in headers.items() if h in P1_ID_HEADERS}
     # PB2017–PB2023 P-1 workbooks key rows by 'Line Item' display codes the
     # era P-40 XML never carries; the era's shared identifier is the P-1 line
-    # number (the XML's P1LineNumber), so pe_bli comes from 'Line Number'.
-    # Modern workbooks ('Budget Line Item' BLI codes) are untouched; era
-    # P-1R has neither 'Budget Line Item' nor 'Line Number' and keeps the
-    # 'Line Item' code (P-1R is never reconciled against XML details).
+    # number (the XML's P1LineNumber), so pe_bli comes from 'Line Number' —
+    # namespaced to '{account}-{org}-L{line}' via era_procurement_key
+    # (Finding D: bare line numbers collide with modern BLI codes, span
+    # orgs, and conflate programs; load_details keys the era XML side
+    # identically so reconciliation still joins). Modern workbooks
+    # ('Budget Line Item' BLI codes) are untouched; era P-1R has neither
+    # 'Budget Line Item' nor 'Line Number' and keeps the 'Line Item' code
+    # (P-1R is never reconciled against XML details).
     header_vals = set(headers.values())
-    if "Budget Line Item" not in header_vals and "Line Number" in header_vals:
+    era_line_keying = (
+        "Budget Line Item" not in header_vals and "Line Number" in header_vals
+    )
+    if era_line_keying:
         id_cols = {
             j: n for j, n in id_cols.items() if n not in ("pe_bli", "line_number")
         }
@@ -101,11 +109,19 @@ def load_p1_rollup(
             add_col >= len(row) or str(row[add_col]).strip().lower() != "add"
         ):
             continue
+        pe_bli = (
+            era_procurement_key(
+                str(ids.get("account")), str(ids.get("organization")),
+                str(ids.get("pe_bli")),
+            )
+            if era_line_keying
+            else str(ids.get("pe_bli")).strip()
+        )
         key = (
             str(ids.get("account")), ids.get("account_title"),
             str(ids.get("organization")), _str(ids.get("budget_activity")),
             ids.get("budget_activity_title"),
-            str(ids.get("pe_bli")).strip(),  # era 'Line Number' cells are padded
+            pe_bli,
             ids.get("title"),
         )
         for j, amount_type in amount_cols.items():

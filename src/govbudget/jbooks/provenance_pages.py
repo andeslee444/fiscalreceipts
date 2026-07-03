@@ -44,6 +44,19 @@ from pathlib import Path
 
 import psycopg
 
+from govbudget.jbooks.era_keys import era_key_anchor
+
+
+def fact_anchor(pe_bli: str | None) -> str | None:
+    """Page-text anchor for a fact's pe_bli.
+
+    Era procurement keys ('0300D-CBDP-L70', Finding D) never appear verbatim
+    on a page — the anchor is their P-1 line number ('70'), matching the
+    pre-re-key resolution behavior exactly. Everything else anchors on the
+    pe_bli itself.
+    """
+    return era_key_anchor(pe_bli) or pe_bli
+
 
 def amount_strings(amount: Decimal) -> list[str]:
     """Candidate page renderings, 3-decimal J-book style; comma form first."""
@@ -199,8 +212,8 @@ def find_fact_page(pdf_path: Path, *, pe_bli: str, amount: Decimal,
         return pdf_handle
 
     try:
-        return _resolve_fact(texts, plumber, pe_bli=pe_bli, amount=amount,
-                             project_number=project_number,
+        return _resolve_fact(texts, plumber, pe_bli=fact_anchor(pe_bli),
+                             amount=amount, project_number=project_number,
                              exhibit_family=exhibit_family)
     finally:
         if pdf_handle is not None:
@@ -257,7 +270,8 @@ def build_provenance_pages(dsn: str, *, fiscal_year: int | None = None) -> int:
             try:
                 for (_, _, pe_bli, project_number, scenario, amount,
                      exhibit_family) in facts:
-                    hit = _resolve_fact(texts, plumber, pe_bli=pe_bli,
+                    hit = _resolve_fact(texts, plumber,
+                                        pe_bli=fact_anchor(pe_bli),
                                         amount=Decimal(amount),
                                         project_number=project_number,
                                         exhibit_family=exhibit_family)
@@ -434,7 +448,7 @@ def find_narrative_page(pdf_path: Path, *, pe_bli: str, body: str,
     try:
         return _resolve_narrative(
             texts, norm_texts, plumber,
-            snippet=narrative_opening(body), pe_bli=pe_bli,
+            snippet=narrative_opening(body), pe_bli=fact_anchor(pe_bli),
             project_number=project_number, exhibit_family=exhibit_family,
         )
     finally:
@@ -491,7 +505,8 @@ def build_narrative_provenance(dsn: str) -> int:
                      exhibit_family) in narratives:
                     hit = _resolve_narrative(
                         texts, norm_texts, plumber,
-                        snippet=narrative_opening(body), pe_bli=pe_bli,
+                        snippet=narrative_opening(body),
+                        pe_bli=fact_anchor(pe_bli),
                         project_number=project_number,
                         exhibit_family=exhibit_family,
                         words_cache=words_cache,

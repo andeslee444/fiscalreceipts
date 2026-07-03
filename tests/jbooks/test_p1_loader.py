@@ -203,14 +203,16 @@ def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path):
     assert n == 3
     # era workbooks key budget_lines on the P-1 line number (the only
     # identifier the era P-40 XML shares — its P1LineNumber), NOT the
-    # 'Line Item' display code
+    # 'Line Item' display code. The line number is namespaced to
+    # '{account}-{org}-L{line}' (Finding D: bare line numbers collide with
+    # modern BLI codes and conflate programs across orgs).
     with psycopg.connect(pg_dsn) as con:
         rows = dict(con.execute(
             "select amount_type, amount_thousands from budget_lines"
-            " where exhibit='P-1' and pe_bli='14'"
+            " where exhibit='P-1' and pe_bli='0300D-DTRA-L14'"
         ).fetchall())
         li_rows = con.execute(
-            "select count(*) from budget_lines where pe_bli='23'"
+            "select count(*) from budget_lines where pe_bli in ('23', '14')"
         ).fetchone()[0]
     assert rows == {
         "fy_2016_base_enacted": Decimal("12000"),
