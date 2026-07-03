@@ -62,12 +62,24 @@ def make_lake(data_dir: Path):
         f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
         f"'0601102E','APPLIED RESEARCH','fy_2026_total','100000'),"
         f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601101E',null,'fy_2026_total','400000'))"
+        f"'0601101E',null,'fy_2026_total','400000'),"
+        # Decoy PB2024-edition titled row: dim_pe_titles' PB2026 fence
+        # (fiscal_year = 2026) must keep it out of the alphabetical
+        # fallback pool, or 'AAA ANCIENT NAME' would shadow the PB2026
+        # title for 0601102E (adversarial review Finding A).
+        f"('R-1','2024','0400','Research','DARPA','1','Basic Research',"
+        f"'0601102E','AAA ANCIENT NAME','fy_2022_actuals','90000'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E',null,'Defense Research','PriorYear','280.494',"
-        f"'ProgramElement[0]','True','DARPA','rdte','2026','1'))"
+        f"'ProgramElement[0]','True','DARPA','rdte','2026','1'),"
+        # Decoy PB2024-edition row: scenario names are edition-RELATIVE
+        # (PriorYear = FY2022 actuals in PB2024), so the dim_programs
+        # PB2026 fence (fiscal_year = 2026) must exclude it — the
+        # assert_dim_programs_pb2026_pin dbt test fails if it ever sums in.
+        f"('0601101E',null,'Defense Research','PriorYear','424.332',"
+        f"'ProgramElement[0]','True','DARPA','rdte','2024','2'))"
         f" t({JBOOK_DETAIL_COLS})) to '{jbooks}/details.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -253,6 +265,17 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     assert con.sql(
         "select title from dim_pe_titles where pe_bli='0601101E'"
     ).fetchone()[0] == 'DEFENSE RESEARCH'
+    # PB2026 fences (Finding A): dim_programs' fy2024_actual_millions is a
+    # PB2026-semantic column — the fixture's PB2024 PriorYear decoy row
+    # (FY2022 actuals!) must NOT sum in (280.494, never 704.826)…
+    assert con.sql(
+        "select fy2024_actual_millions from dim_programs where pe_bli='0601101E'"
+    ).fetchone()[0] == 280.494
+    # …and dim_pe_titles' fallback pool is PB2026-only: the PB2024 decoy
+    # title must not shadow the PB2026 title alphabetically.
+    assert con.sql(
+        "select title from dim_pe_titles where pe_bli='0601102E'"
+    ).fetchone()[0] == 'APPLIED RESEARCH'
     # fct_district_programs: the fixture contracts have CA-52 district + award HR001124C0001
     # which matches the high-confidence jbook_award. Expect >= 1 row.
     assert con.sql("select count(*) from fct_district_programs").fetchone()[0] >= 1

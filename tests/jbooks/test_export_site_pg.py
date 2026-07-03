@@ -313,6 +313,123 @@ def test_export_site_budget_lines_columns(pg_dsn, tmp_path):
         assert row[0] == "USD thousands"
 
 
+def _seed_pb2024_edition(pg_dsn: str, *, pdf_path: Path) -> None:
+    """Seed a PB2024-edition document with its own detail, narrative and
+    budget_lines rows — decoys the PB2026 edition fence must keep out.
+    PB2024's 'PriorYear' is FY2022 actuals; its titled workbook row uses the
+    edition's own fy_2022_actuals slug."""
+    sha = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url, file_path, sha256, downloaded_at, status) values"
+            " ('DARPA','rdte',2024,'excerpt24.pdf','https://example.mil/darpa24.pdf',%s,%s,"
+            " now(),'downloaded') on conflict (source_url) do nothing",
+            (str(pdf_path), sha),
+        )
+        doc24 = con.execute(
+            "select id from jbook_documents where fiscal_year=2024"
+        ).fetchone()[0]
+        con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions)"
+            " values (%s, 1, '{}')",
+            (doc24,),
+        )
+        run24 = con.execute("select max(id) from extraction_runs").fetchone()[0]
+        con.execute(
+            "insert into budget_line_details (extraction_run_id, document_id, pe_bli,"
+            " scenario, amount_millions, xml_path) values"
+            " (%s,%s,'0601101E','PriorYear','424.332','ProgramElement[0]')",
+            (run24, doc24),
+        )
+        con.execute(
+            "insert into detail_narratives (extraction_run_id, document_id, pe_bli,"
+            " project_number, kind, title, body, xml_path) values"
+            " (%s,%s,'0601101E',null,'mission','Old Title','PB2024 mission text',"
+            " 'ProgramElement[0]')",
+            (run24, doc24),
+        )
+        con.execute(
+            """
+            insert into budget_lines
+              (exhibit, fiscal_year, account, account_title, organization,
+               budget_activity, budget_activity_title, pe_bli, title,
+               amount_type, amount_thousands, source_document_id,
+               source_sheet, source_cells)
+            values
+              ('R-1', 2024, '0400', 'RDT&E Defense-Wide', 'DARPA',
+               '01', 'Basic Research', '0601101E', 'OLD EDITION TITLE',
+               'fy_2022_actuals', 424332, %s, 'Exhibit R-1', ARRAY['J4'])
+            on conflict (exhibit, fiscal_year, account, organization,
+                         budget_activity, pe_bli, amount_type)
+            do update set amount_thousands = excluded.amount_thousands
+            """,
+            (doc24,),
+        )
+
+
+def test_export_site_pb2026_edition_fence(pg_dsn, tmp_path):
+    """Finding A: every typed export that encodes PB2026 semantics filters
+    fiscal_year = 2026. Two seeded editions (PB2024 + PB2026) for the same
+    PE — the exported parquets and the fy2024_* sidecar indexes must carry
+    ONLY the PB2026 rows (scenario names are edition-relative: PB2024's
+    'PriorYear' is FY2022 actuals, never an FY2024 figure)."""
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        run26 = con.execute(
+            "select max(id) from extraction_runs where document_id=%s", (doc_id,)
+        ).fetchone()[0]
+        con.execute(
+            "insert into detail_narratives (extraction_run_id, document_id, pe_bli,"
+            " project_number, kind, title, body, xml_path) values"
+            " (%s,%s,'0601101E',null,'mission','PB26 Title','PB2026 mission text',"
+            " 'ProgramElement[0]')",
+            (run26, doc_id),
+        )
+    _seed_pb2024_edition(pg_dsn, pdf_path=FIXTURE_PDF)
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="https://cdn.example/pdfs")
+
+    details = duckdb.sql(
+        f"select distinct fiscal_year from read_parquet('{site}/data/jbook_details.parquet')"
+    ).fetchall()
+    assert details == [(2026,)], f"jbook_details carries editions {details}"
+    amounts = duckdb.sql(
+        f"select distinct amount_millions from read_parquet('{site}/data/jbook_details.parquet')"
+        f" where pe_bli='0601101E' and scenario='PriorYear'"
+    ).fetchall()
+    assert amounts == [(280.494,)], f"PB2024 PriorYear leaked: {amounts}"
+
+    narr = duckdb.sql(
+        f"select distinct fiscal_year from read_parquet('{site}/data/jbook_narratives.parquet')"
+    ).fetchall()
+    assert narr == [(2026,)], f"jbook_narratives carries editions {narr}"
+
+    bl = duckdb.sql(
+        f"select distinct fiscal_year from read_parquet('{site}/data/budget_lines.parquet')"
+    ).fetchall()
+    assert bl == [(2026,)], f"budget_lines carries editions {bl}"
+
+    # fy2024_fact_id sidecar index: must be the PB2026 fact (or honest null)
+    # — never the PB2024 'PriorYear' fact (first-in-sha-order would be an
+    # arbitrary edition without the fence).
+    progs = json.loads((site / "json" / "programs.json").read_text())
+    prog = next(p for p in progs if p["pe_bli"] == "0601101E")
+    fid_2026 = fact_id_jbook(sha, "0601101E", None, "PriorYear", "280.494")
+    fid_2024 = fact_id_jbook(sha, "0601101E", None, "PriorYear", "424.332")
+    assert prog["fy2024_fact_id"] in (fid_2026, None)
+    assert prog["fy2024_fact_id"] != fid_2024
+    assert prog["fy2024_actual_millions"] == 280.494
+
+
 def test_export_site_citations_jbook_pdf(pg_dsn, tmp_path):
     """jbook_pdf citations: hosted_pdf_url + official_url both have #page=N."""
     from govbudget.jbooks.provenance_pages import build_provenance_pages

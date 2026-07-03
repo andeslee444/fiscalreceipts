@@ -297,6 +297,16 @@ def export_site(
     # -----------------------------------------------------------------------
     # 2. Postgres typed exports
     # -----------------------------------------------------------------------
+    # PB2026 EDITION FENCE (BINDING, adversarial review Finding A): the
+    # typed exports below feed surfaces that render scenario names and
+    # amount types with PB2026 semantics and NO edition label — program-page
+    # details/narratives/budget-line tables, the fy2024_* sidecar indexes,
+    # _emit_years_matrix project cells, and _emit_breakdowns PriorYear
+    # roots. Scenario names are edition-RELATIVE (PriorYear = FY2022
+    # actuals in PB2024, FY2023 in PB2025, FY2024 in PB2026), so every one
+    # of these queries filters fiscal_year = 2026 — never merge editions
+    # silently (spec §2 rule 1). The PB2017–PB2025 editions ship through
+    # the edition-aware 5E Task 5 marts, which supersede this fence.
     with psycopg.connect(dsn) as pg:
         # ---- 2a. jbook_details.parquet ----
         rows_details = pg.execute(
@@ -314,6 +324,7 @@ def export_site(
                 and p.project_number is not distinct from d.project_number
                 and p.amount_millions = d.amount_millions
             where not d.superseded and j.sha256 is not null
+              and j.fiscal_year = 2026
             order by j.sha256, d.pe_bli, d.scenario
             """
         ).fetchall()
@@ -360,6 +371,7 @@ def export_site(
             from detail_narratives n
             join jbook_documents j on j.id = n.document_id
             where not n.superseded and j.sha256 is not null
+              and j.fiscal_year = 2026
             order by j.sha256, n.pe_bli
             """
         ).fetchall()
@@ -401,6 +413,7 @@ def export_site(
                    coalesce(array_to_string(bl.source_cells, ','), '') as source_cells
             from budget_lines bl
             left join jbook_documents j on j.id = bl.source_document_id
+            where bl.fiscal_year = 2026
             order by bl.exhibit, bl.pe_bli, bl.amount_type
             """
         ).fetchall()
@@ -2186,9 +2199,16 @@ def _write_all_sidecars(
     # ONLY populated when that fact_id exists in _cited_fact_ids; otherwise
     # null so the page renders honest Cite state C (data-uncited) instead of
     # emitting a dangling data-fact-id that citations.json cannot resolve.
+    # PB2026 fence (Finding A): 'PriorYear' means FY2024 actuals ONLY in the
+    # PB2026 edition — the fiscal_year == 2026 check makes that explicit
+    # even though detail_rows is already fenced at the export query
+    # (a first-PriorYear-in-sha-order pick across editions would be an
+    # arbitrary edition's figure under an FY2024 label).
     fy2024_fact_id: dict[str, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario, *rest) = row
+        if row[10] != 2026:
+            continue
         if project_number is None and scenario == "PriorYear":
             if pe_bli not in fy2024_fact_id and fid in _cited_fact_ids:
                 fy2024_fact_id[pe_bli] = fid
@@ -2198,10 +2218,13 @@ def _write_all_sidecars(
     # FY24 figure render honest Cite state B (xml-path chip) instead of
     # state C — required by the dataset-ledger render gate, since
     # jbook_details is a cited dataset and may no longer render ⁂.
+    # Same PB2026 fence as fy2024_fact_id above.
     fy2024_xml_path: dict[str, str] = {}
     for row in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          _amount_millions, _units, xml_path, *rest) = row
+        if row[10] != 2026:
+            continue
         if project_number is None and scenario == "PriorYear":
             if (pe_bli not in fy2024_xml_path and fid not in _cited_fact_ids
                     and xml_path):

@@ -13,11 +13,13 @@
 --   2. pe_blis with no fy_2024_actuals rows, and exact-amount ties, fall
 --      back to the alphabetically-first title.
 --
--- Modern-era fence (fiscal_year >= 2024): the Phase 5E decade backfill grew
--- the lake with PB2017–PB2023 rows whose era titles would otherwise join the
--- alphabetical fallback pool and shift winners; the decade series gets its
--- own edition-aware marts in 5E Task 5. The fence reproduces the
--- pre-backfill input relation exactly.
+-- PB2026 edition fence (fiscal_year = 2026, adversarial review Finding A):
+-- titles here are PB2026-semantic (they caption PB2026 figures site-wide).
+-- Rows from ANY other edition — PB2017–PB2023 era titles and PB2024/PB2025
+-- titled rows alike — would join the alphabetical fallback pool and shift
+-- winners (measured: 2 of 2,141 titles differed under the former >= 2024
+-- fence). The decade series gets its own edition-aware marts in 5E Task 5,
+-- which supersede this fence.
 select pe_bli, title
 from (
     select
@@ -31,6 +33,6 @@ from (
         ) as rn
     from {{ ref('fct_budget_lines') }}
     where pe_bli is not null and title is not null
-      and fiscal_year >= 2024
+      and fiscal_year = 2026
 )
 where rn = 1

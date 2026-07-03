@@ -33,8 +33,8 @@ def _render_model_sql(source_table: str) -> str:
 
 def _titles(rows: list[tuple]) -> dict[str, str]:
     """Run the model SQL over fixture (pe_bli, title, amount_type, amount[,
-    fiscal_year]) rows. fiscal_year defaults to 2026 (the mart's modern-era
-    fence keeps fiscal_year >= 2024 rows; PB2017-PB2023 rows are excluded)."""
+    fiscal_year]) rows. fiscal_year defaults to 2026 (the mart's PB2026
+    edition fence keeps ONLY fiscal_year = 2026 rows — Finding A)."""
     con = duckdb.connect()
     con.execute(
         "create table bl (pe_bli varchar, title varchar,"
@@ -95,6 +95,19 @@ class TestDimPeTitlesRule:
             ("0602718BR", "Legacy Only", "fy_2017_total", 50.0, 2017),
         ])
         assert got == {"0101213F": "Modern Title"}
+
+    def test_pb2024_pb2025_rows_are_fenced_out(self):
+        """Finding A: the fence is PB2026-only (fiscal_year = 2026), not
+        'modern era >= 2024' — PB2024/PB2025 titled rows would otherwise
+        join the alphabetical fallback pool and shift winners (measured
+        2/2,141 titles under the former fence)."""
+        got = _titles([
+            ("0101213F", "PB2026 Title", "fy_2026_total", 100.0, 2026),
+            ("0101213F", "AAA PB2024 Title", "fy_2022_actuals", 999.0, 2024),
+            ("0101213F", "AAB PB2025 Title", "fy_2023_actuals", 999.0, 2025),
+            ("0603999ZZ", "PB2025 Only", "fy_2025_total", 50.0, 2025),
+        ])
+        assert got == {"0101213F": "PB2026 Title"}
 
     def test_one_row_per_pe_bli(self):
         """Same property the dbt unique test on pe_bli guards."""
