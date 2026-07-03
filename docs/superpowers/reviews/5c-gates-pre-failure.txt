@@ -398,3 +398,78 @@ PASS: false
 NOTE: sidecars: 1995 program pages (462 full tier, 1 zero-content/noindex), …
   ✗ program pages: found 462, expected 1995
   ✗ sitemap URL count: found 3886, expected 5418 (…1994 programs (1995 pages − 1 zero-content noindex)…)
+
+=== G9 flowdown (Phase 5H — gate 22, built with the data layer, /flow/ page NOT yet built) ===
+(Recorded 2026-07-03 against the fresh export: fct_flow_edges mart built
+(dbt 82 PASS / 1 pre-existing subaward WARN; fct_budget_trajectory checksum
+identical pre/post build — 986080920472 @ 1982 rows; fct_agency_concentration
+identical within 1.4e-14 relative, view-recompute float jitter only),
+flow_chart.json exported (503,626 bytes of the 614,400 budget; 1,965 flow
+citations minted — 103 budget sum(budget_lines… recomputes, 400
+sum(flow_children… recomputes, 1,462 spend-edge query_body facts; ALL 1,965
+verified through _verify_derived with 0 failures; verify-phase5b1 → PASS).
+The /flow/ page does NOT exist yet, so leg e fails — which legs fail is
+exactly the missing-page surface, as expected pre-implementation.)
+
+Run: node site/scripts/run-flowdown-gate.mjs (serve-static on out/):
+
+PASS: false
+NOTES:
+  payload: 503626 bytes; budget 55 nodes/96 edges; spend FYs 2017–2026, default 2025
+  leg a: payload-internal conservation checked on every node/edge
+  leg a: 55/55 budget nodes recomputed from the lake ✓
+  leg a: FY2025 40/40 spend nodes recomputed from the lake ✓
+  leg a: FY2017 40/40 spend nodes recomputed from the lake ✓
+  leg b: bridge 10 PEs (6 high), remainder 98.7% of the request — exact ✓
+  leg c: 58/58 sampled node/edge citations verified ✓
+  leg d: 40 (FY × class) mouth totals match the lake regroup ✓
+ERRORS:
+  ✗ leg e: /flow/ not built (out/flow/index.html missing)
+  ✗ leg e: /flow/ returned status 404
+
+--- planted-corruption proof (every static leg has teeth; one combined run) ---
+Method: (1) leg a — budget component node b:c:N value +9999 in
+flow_chart.json; (2) leg b — not_yet_crosswalked_str 380565880.000 →
+380565880.001 (1 milli-unit); (3) leg c — removed spend node fid
+3837ac08ba8b1e86 (s:2025:sub:Department of the Navy) from cite-shard
+38.json; (4) leg d — FY2025 first spend edge c[0] (full_and_open) +1e6.
+Originals backed up first; restores verified byte-identical by sha256.
+
+PASS: false
+ERRORS:
+  ✗ leg a: budget node b:c:N inflow 121837608 != value 121847607
+  ✗ leg a: budget node b:c:N outflow 121837608 != value 121847607
+  ✗ leg a: budget node b:c:N payload=121847607 lake=121837608
+  ✗ leg b: bridge remainder NOT exact: 385481675.000 − 4915795.000 != 380565880.001
+  ✗ leg c: budget node b:c:N value 121847607 != recorded 121837608.000
+  ✗ leg c: spend node s:2025:sub:Department of the Navy fid 3837ac08ba8b1e86 missing from its cite-shard
+  ✗ leg d: FY2025 edge #0→#1 classes sum 176529990922.68 != 176528990922.68
+  ✗ leg d: FY2025 class full_and_open payload=183182994804.98004 lake=183181994804.98218
+  ✗ leg e: /flow/ not built (out/flow/index.html missing)
+  ✗ leg e: /flow/ returned status 404
+
+Reverted all four plants (sha256-verified byte-identical restores); gate
+output returned to the single missing-page failure above (legs a/b/c/d ✓,
+leg e ✗).
+
+--- G8 yearsmatrix regression on the SAME re-exported bundle ---
+node site/scripts/run-yearsmatrix-gate.mjs → PASS: true
+(leg d now verifies the full 74,130-fid shard union incl. the 1,965 flow
+facts; leg e traj_sum breakdown class grew 44 → 117 — the budget flow node
+facts are sum(budget_lines…-decomposable and their breakdowns all emit and
+sum exactly; 15/15 sampled breakdowns verified.)
+
+--- bonus catches during pre-failure (fixed in the exporter, TDD'd) ---
+1. First export run: bridge.high_confidence_pe_count was 0 and every bridge
+   program listed ~165 "families" — a lexicographic max('high','medium')
+   picked 'medium' for every PE with mixed links, and medium (account-level)
+   crosswalk rows fanned out ~400 PIIDs/PE into hundreds of incidental
+   families. Fixed: integer max for PE confidence; families listed from
+   high-confidence links only (same 14.7x-fanout guard as
+   fct_district_programs). Payload dropped 607,368 → 503,626 bytes.
+2. First gate run: FY2017 edge s:2017:o:…TACOM → s:2017:f:GENERAL DYNAMICS
+   band thickness != value — the TACOM→BOEING FY2017 NET position is
+   −$97.6M (real de-obligations), and the band cursor walked backwards.
+   Fixed with an explicit documented rule (values stay honestly negative;
+   zero-width bands; node-side compression), duplicated independently in
+   the gate, plus a negative-flow fixture test.
