@@ -1,11 +1,23 @@
 {
   "editions": {
     "2017": {
+      "budget_lines": 16387,
       "date": "2026-07-03",
-      "discovered": 16,
-      "reason": "probe failed: discovered 16/[30,45] classifiable documents (3 rollups + 13 rdte). Edition uses pre-2019 per-agency naming the registry cannot classify: PROCUREMENT_MasterJustificationBook_*_PB_2017.pdf (16 books, full-word prefix), DARPA_0400D_RDTE_*/MDA_RDTE_*/MDA_PROCUREMENT_* (org-first prefixes), 1_PROCUREMENT_*/5_RDTE_*_Vol_N (numeric prefixes), PB17_OSD_0400D_Master_J-Book_Final.pdf. Classifier + probe-envelope extension deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "detail_facts": 3642,
+      "discovered": 36,
+      "documents": 36,
+      "downloaded": 36,
+      "provenance": {
+        "ambiguous_first": 1910,
+        "total": 3642,
+        "unique": 1174,
+        "unresolved": 0,
+        "zero_amount": 558
+      },
+      "reason": "loaded: 36 docs (36 downloaded), 16387 budget_lines, 3642 detail facts, 2215 recon checks",
+      "recon_checks": 2215,
+      "sample_pe_count": 17,
+      "status": "loaded"
     },
     "2018": {
       "date": "2026-07-03",
