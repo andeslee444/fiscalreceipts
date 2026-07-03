@@ -27,6 +27,15 @@ Gates (CLI: verify-phase5b1):
   3. coverage_report5b1 — NOT pass/fail: counts by resolution + uncited_datasets
                           ledger echoed from manifest.
 
+  4. narrative_gate5b1  — Phase 5F §2b: sample (N=25) of page-resolved
+                          jbook_narrative citations; each opening text
+                          (recomputed from the exported body via the BINDING
+                          narrative_opening) must appear on the cited page of
+                          the sha-named PDF; sha + resolution + #page anchor +
+                          bbox-in-page-box checked. FAILS when narrative
+                          citations exist but none carries page provenance
+                          (the pre-5F state).
+
 All gate functions take explicit paths — never read config.
 No network access in any gate.
 """
@@ -664,6 +673,193 @@ def _verify_jbook_narrative(row: tuple, idx: dict) -> str | None:
         return "jbook_narrative: official_url is null or empty"
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Gate 4: narrative_gate5b1 — narrative provenance re-derivation (Phase 5F §2b)
+# ---------------------------------------------------------------------------
+
+_NARRATIVE_SAMPLE_SIZE = 25
+_NARRATIVE_BBOX_TOL_PT = 1.0  # bbox must sit inside the stored page box
+
+
+def narrative_gate5b1(
+    site_dir: Path,
+    *,
+    sample_size: int = _NARRATIVE_SAMPLE_SIZE,
+) -> dict:
+    """Re-derive a sample of page-resolved jbook_narrative citations.
+
+    For each sampled citation the opening text is RECOMPUTED from the exported
+    narrative body (jbook_narratives.parquet, via the BINDING
+    narrative_opening — never trusted from the citation row) and must appear,
+    whitespace-normalized, in the pypdf text of the cited page of the
+    sha-named PDF. Also checked: sha256 integrity, resolution vocabulary,
+    #page anchor on hosted_pdf_url, bbox inside the page box.
+
+    PASS iff ≥1 narrative citation carries page provenance AND 100% of the
+    sample re-derives. A bundle whose narrative citations are ALL pageless
+    FAILS — that is exactly the pre-5F state this leg exists to catch.
+
+    Returns: ok, narrative_total, resolved_total, sampled, passed,
+             failures [(fact_id, reason)], reason (structural failures only).
+    """
+    import hashlib
+
+    site_dir = Path(site_dir)
+    base = {
+        "ok": False, "narrative_total": 0, "resolved_total": 0,
+        "sampled": 0, "passed": 0, "failures": [],
+    }
+    if not site_dir.exists():
+        return {**base, "reason": f"site_dir missing: {site_dir}"}
+    cit_pq = site_dir / "citations" / "citations.parquet"
+    if not cit_pq.exists():
+        return {**base, "reason": f"citations.parquet missing: {cit_pq}"}
+
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        narr_rows = con.execute(
+            f"select * from read_parquet('{_sql_path(cit_pq)}')"
+            " where kind = 'jbook_narrative' order by fact_id"
+        ).fetchall()
+        col_names = [d[0] for d in con.execute(
+            f"describe select * from read_parquet('{_sql_path(cit_pq)}')"
+        ).fetchall()]
+    finally:
+        con.close()
+    idx = {name: i for i, name in enumerate(col_names)}
+
+    narrative_total = len(narr_rows)
+    if narrative_total == 0:
+        return {**base, "reason": "no jbook_narrative citations found"}
+
+    resolved = [r for r in narr_rows if r[idx["page_number"]] is not None]
+    resolved_total = len(resolved)
+    if resolved_total == 0:
+        return {
+            **base, "narrative_total": narrative_total,
+            "reason": "no narrative citation carries page provenance"
+                      " (pre-5F state — run the narrative provenance builder"
+                      " and re-export)",
+        }
+
+    # fact_id → body from the exported narratives parquet (the re-derivation
+    # source; a missing parquet or row is a FAIL, never a skip).
+    narr_pq = site_dir / "data" / "jbook_narratives.parquet"
+    if not narr_pq.exists():
+        return {
+            **base, "narrative_total": narrative_total,
+            "resolved_total": resolved_total,
+            "reason": f"jbook_narratives.parquet missing: {narr_pq}",
+        }
+    con = duckdb.connect()
+    try:
+        body_by_fid = {
+            r[0]: r[1] for r in con.execute(
+                f"select fact_id, body from read_parquet('{_sql_path(narr_pq)}')"
+                " where fact_id is not null"
+            ).fetchall()
+        }
+    finally:
+        con.close()
+
+    # Deterministic sample: fact_id order (already sorted), evenly strided.
+    if resolved_total <= sample_size:
+        sample = resolved
+    else:
+        sample = [
+            resolved[(i * resolved_total) // sample_size]
+            for i in range(sample_size)
+        ]
+
+    from govbudget.jbooks.provenance_pages import narrative_opening, normalize_ws
+
+    failures: list[tuple[str, str]] = []
+    page_texts_cache: dict[str, list] = {}   # sha → page texts
+    sha_ok_cache: dict[str, str | None] = {}  # sha → None (ok) | reason
+
+    def _check(row) -> str | None:
+        fid = row[idx["fact_id"]]
+        sha = row[idx["sha256"]]
+        page_number = row[idx["page_number"]]
+        resolution = row[idx["resolution"]]
+        hosted = row[idx["hosted_pdf_url"]]
+
+        if not sha:
+            return "sha256 is null"
+        if resolution not in ("unique", "ambiguous_first"):
+            return f"paged citation with resolution {resolution!r}"
+        if not hosted or not hosted.endswith(f"#page={int(page_number)}"):
+            return f"hosted_pdf_url lacks #page={int(page_number)} anchor: {hosted!r}"
+
+        body = body_by_fid.get(fid)
+        if body is None:
+            return "no jbook_narratives row for this fact_id"
+        snippet = narrative_opening(body)
+        if not snippet:
+            return "narrative body yields an empty opening"
+
+        pdf_path = site_dir / "pdfs" / f"{sha}.pdf"
+        if sha not in sha_ok_cache:
+            if not pdf_path.exists():
+                sha_ok_cache[sha] = f"PDF not found: {pdf_path}"
+            else:
+                actual = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+                sha_ok_cache[sha] = (
+                    None if actual == sha
+                    else f"sha256 mismatch: stored={sha} actual={actual}"
+                )
+        if sha_ok_cache[sha] is not None:
+            return sha_ok_cache[sha]
+
+        if sha not in page_texts_cache:
+            from pypdf import PdfReader
+            try:
+                page_texts_cache[sha] = [
+                    p.extract_text() or "" for p in PdfReader(str(pdf_path)).pages
+                ]
+            except Exception as e:
+                return f"pypdf error: {e}"
+        texts = page_texts_cache[sha]
+        page_idx = int(page_number) - 1
+        if page_idx < 0 or page_idx >= len(texts):
+            return f"page_number={page_number} out of range (doc has {len(texts)} pages)"
+        if snippet not in normalize_ws(texts[page_idx]):
+            return (f"opening text not found on cited page {page_number}:"
+                    f" {snippet[:60]!r}")
+
+        # bbox sanity: present and inside the stored page box
+        x0, x1 = row[idx["x0"]], row[idx["x1"]]
+        top_pt, bottom_pt = row[idx["top_pt"]], row[idx["bottom_pt"]]
+        pw, ph = row[idx["page_width"]], row[idx["page_height"]]
+        if None in (x0, x1, top_pt, bottom_pt, pw, ph):
+            return "paged citation with incomplete bbox"
+        tol = _NARRATIVE_BBOX_TOL_PT
+        if not (-tol <= x0 < x1 <= pw + tol):
+            return f"bbox x out of page box: x0={x0} x1={x1} page_width={pw}"
+        if not (-tol <= top_pt < bottom_pt <= ph + tol):
+            return (f"bbox y out of page box: top={top_pt} bottom={bottom_pt}"
+                    f" page_height={ph}")
+        return None
+
+    for row in sample:
+        reason = _check(row)
+        if reason:
+            failures.append((row[idx["fact_id"]], reason))
+
+    sampled = len(sample)
+    passed = sampled - len(failures)
+    return {
+        "ok": sampled > 0 and not failures,
+        "narrative_total": narrative_total,
+        "resolved_total": resolved_total,
+        "sampled": sampled,
+        "passed": passed,
+        "failures": failures,
+    }
 
 
 # ---------------------------------------------------------------------------

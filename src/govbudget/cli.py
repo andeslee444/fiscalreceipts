@@ -213,6 +213,23 @@ def cmd_jbooks(args) -> None:
 
         n = build_provenance_pages(config.PG_DSN)
         print(f"provenance-pages: {n} facts resolved")
+    elif args.action == "narrative-provenance":
+        import psycopg
+
+        from govbudget.jbooks.provenance_pages import build_narrative_provenance
+
+        n = build_narrative_provenance(config.PG_DSN)
+        with psycopg.connect(config.PG_DSN) as _con:
+            by_res = dict(_con.execute(
+                "select resolution, count(*) from provenance_pages"
+                " where target_kind = 'narrative' group by 1 order by 1"
+            ).fetchall())
+        total = sum(by_res.values())
+        located = by_res.get("unique", 0) + by_res.get("ambiguous_first", 0)
+        print(
+            f"narrative-provenance: {n} inserted; located {located}/{total}"
+            f" ({by_res})"
+        )
     elif args.action == "crosswalk":
         from govbudget.jbooks.crosswalk import crosswalk_org
         from govbudget.jbooks.orgs import workbook_org
@@ -877,6 +894,7 @@ def cmd_verify_phase5b1(args) -> None:
         citation_gate5b1,
         coverage_report5b1,
         integrity_gate5b1,
+        narrative_gate5b1,
     )
 
     site_dir = config.SITE_DIR
@@ -910,6 +928,26 @@ def cmd_verify_phase5b1(args) -> None:
         for failure in ig["failures"]:
             print(f"  FAIL: {failure}")
     gates_ok = gates_ok and g2_ok
+
+    # Gate 4: narrative provenance re-derivation (Phase 5F §2b)
+    ng = narrative_gate5b1(site_dir)
+    g4_ok = ng["ok"]
+    if ng.get("reason"):
+        print(f"gate 4 narrative provenance: {ng['reason']} → FAIL")
+    else:
+        rate = (
+            f"{ng['resolved_total']}/{ng['narrative_total']}"
+            f" ({100.0 * ng['resolved_total'] / ng['narrative_total']:.1f}%)"
+            if ng["narrative_total"] else "0/0"
+        )
+        print(
+            f"gate 4 narrative provenance: resolved={rate}"
+            f" sampled={ng['sampled']} passed={ng['passed']}"
+            f" failures={len(ng['failures'])} → {'PASS' if g4_ok else 'FAIL'}"
+        )
+        for fid, reason in ng["failures"][:10]:
+            print(f"  FAIL {fid}: {reason}")
+    gates_ok = gates_ok and g4_ok
 
     # Gate 3: coverage (non-gating)
     cr = coverage_report5b1(site_dir)
@@ -1035,7 +1073,7 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages"])
+    j.add_argument("action", choices=["scrape", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance"])
     j.add_argument("--org", default=None)
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",
                    help="crosswalk: filter awards to fiscal years >= this value")

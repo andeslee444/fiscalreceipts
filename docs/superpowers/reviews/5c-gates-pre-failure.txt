@@ -330,3 +330,25 @@ Bonus catch during pre-failure: the gate's leg-a "every column type sampled"
 check exposed that fy_2025_supplemental shipped as an all-empty column (its
 only 2 workbook rows belong to pe_blis outside the 462-program set) — fixed
 in the exporter (empty amount_type columns are now pruned; TDD'd).
+
+=== verify-phase5b1 gate 4 (narrative provenance re-derivation, Phase 5F §2b) proof-can-fail ===
+
+Method: gate built FIRST, run against the pre-5F site bundle (data/site as
+exported before build_narrative_provenance existed — 2,457 jbook_narrative
+citations, all pageless). No defect planted; this is the real pre-fix state
+the leg was built to catch. Gates 1/2 still PASS on the same bundle, proving
+the FAIL is the new leg, not bundle rot.
+
+Run: uv run python -m govbudget verify-phase5b1
+
+gate 1 citations: sampled=50 passed=50 failures=0 → PASS
+gate 2 integrity: jbook_all_resolved_cited=PASS jbook_no_orphan_citations=PASS jbook_manifest_skip_counts=PASS workbook_set_equality=PASS citation_distinctness=PASS lda_fact_ids_in_mart=PASS derived_formula_and_value=PASS usaspending_query_and_value=PASS state_soql_url_and_value=PASS state_file_url_and_value=PASS jbook_narrative_shape=PASS manifest_rowcounts_match=PASS → PASS
+gate 4 narrative provenance: no narrative citation carries page provenance (pre-5F state — run the narrative provenance builder and re-export) → FAIL
+gate 3 coverage (non-gating): total=4421 unique=1178 ambiguous=2239 zero_amount=1004 unresolved=0 uncited_datasets=0
+verify-phase5b1: FAIL
+(exit code 1)
+
+Planted-defect proofs live in tests/test_verify_phase5b1.py::TestNarrativeGate5b1:
+wrong cited page → "opening text not found"; tampered exported body → FAIL;
+missing jbook_narratives row → FAIL (never skip); sha-named PDF corrupted →
+"sha256 mismatch"; all-pageless bundle → FAIL with the pre-5F reason.

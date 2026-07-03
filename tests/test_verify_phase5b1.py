@@ -1490,3 +1490,176 @@ class TestJbookNarrativeIntegrityCheck:
         self._write_narr_site_with_parquet(site, cit_rows, narr_rows)
         result = integrity_gate5b1(site)
         assert result["checks"].get("jbook_narrative_shape") is False
+
+
+# ---------------------------------------------------------------------------
+# Gate 4: narrative_gate5b1 — narrative provenance re-derivation (Phase 5F §2b)
+# ---------------------------------------------------------------------------
+
+from pdf_factory import make_pdf  # noqa: E402
+
+from govbudget.verify_phase5b1 import narrative_gate5b1  # noqa: E402
+
+_NG_PE = "0605502TST"
+_NG_XMLPATH = "ProgramElement[0]/Narrative[0]"
+_NG_BODY = (
+    "The Corrosion Prevention program develops coatings that reduce maintenance"
+    " costs across weapon systems. Additional trailing sentences follow the"
+    " distinctive opening."
+)
+
+
+def _ng_pdf(path: Path) -> None:
+    """Two pages; the narrative opening lives ONLY on page 2."""
+    make_pdf(path, [
+        ["Exhibit R-1, RDT&E Program", f"{_NG_PE} 12.345"],
+        ["Exhibit R-2, RDT&E Budget Item Justification",
+         f"PE {_NG_PE} / CORROSION PREVENTION",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems. Additional trailing."],
+    ])
+
+
+def _make_site_with_narrative_provenance(
+    site_dir: Path,
+    *,
+    paged: bool = True,
+    page_number: int | None = None,
+    body_in_parquet: str = _NG_BODY,
+) -> str:
+    """Site dir with one jbook_narrative citation + jbook_narratives.parquet.
+
+    paged=True stores the live find_narrative_page location (page 2);
+    page_number overrides it (for planted-defect tests). Returns fact_id.
+    """
+    from govbudget.jbooks.provenance_pages import find_narrative_page
+
+    pdf_src = site_dir / "_src_narr.pdf"
+    site_dir.mkdir(parents=True, exist_ok=True)
+    _ng_pdf(pdf_src)
+    sha = hashlib.sha256(pdf_src.read_bytes()).hexdigest()
+    pdfs_dir = site_dir / "pdfs"
+    pdfs_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(pdf_src, pdfs_dir / f"{sha}.pdf")
+
+    fid = fact_id_narrative(sha, _NG_PE, "mission", _NG_XMLPATH)
+
+    if paged:
+        hit = find_narrative_page(pdf_src, pe_bli=_NG_PE, body=_NG_BODY,
+                                  exhibit_family="rdte")
+        assert hit["resolution"] == "unique" and hit["page_number"] == 2
+        pn = page_number if page_number is not None else hit["page_number"]
+        cit_row = (
+            fid, "jbook_narrative", None, None,
+            pn, hit["x0"], hit["x1"], hit["top_pt"], hit["bottom_pt"],
+            hit["page_width"], hit["page_height"], hit["resolution"],
+            None, None, None, sha,
+            f"https://cdn.example/pdfs/{sha}.pdf#page={pn}",
+            f"https://example.mil/narr.pdf#page={pn}",
+            _NG_XMLPATH, None,
+            None, None, None, None,
+            _NG_PE, None, None,
+        )
+    else:
+        cit_row = (
+            fid, "jbook_narrative", None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, sha,
+            None, "https://example.mil/narr.pdf",
+            _NG_XMLPATH, None,
+            None, None, None, None,
+            _NG_PE, None, None,
+        )
+
+    _write_parquet(site_dir / "citations" / "citations.parquet",
+                   _CIT_COL_DEFS, [cit_row])
+    _write_parquet(
+        site_dir / "data" / "jbook_narratives.parquet",
+        "fact_id varchar, pe_bli varchar, project_number varchar,"
+        " kind varchar, title varchar, body varchar, xml_path varchar,"
+        " org varchar, fiscal_year integer, document_sha256 varchar",
+        [(fid, _NG_PE, None, "mission", "A. Mission Description",
+          body_in_parquet, _NG_XMLPATH, "OSD", 2026, sha)],
+    )
+    return fid
+
+
+class TestNarrativeGate5b1:
+    def test_pre_5f_pageless_state_fails(self, tmp_path):
+        """THE pre-failure the leg exists to catch: narrative citations exist
+        but none carries page provenance → FAIL."""
+        site = tmp_path / "site"
+        _make_site_with_narrative_provenance(site, paged=False)
+        result = narrative_gate5b1(site)
+        assert result["ok"] is False
+        assert result["resolved_total"] == 0
+        assert result["narrative_total"] == 1
+        assert "no narrative citation carries page provenance" in result["reason"]
+
+    def test_resolved_narrative_rederives(self, tmp_path):
+        site = tmp_path / "site"
+        _make_site_with_narrative_provenance(site)
+        result = narrative_gate5b1(site)
+        assert result["failures"] == []
+        assert result["ok"] is True
+        assert result["sampled"] == 1
+        assert result["passed"] == 1
+
+    def test_wrong_page_fails(self, tmp_path):
+        """Planted defect: page_number points at a page that does not contain
+        the recomputed opening text."""
+        site = tmp_path / "site"
+        fid = _make_site_with_narrative_provenance(site, page_number=1)
+        result = narrative_gate5b1(site)
+        assert result["ok"] is False
+        assert any(f[0] == fid and "opening text not found" in f[1]
+                   for f in result["failures"])
+
+    def test_tampered_body_fails(self, tmp_path):
+        """The opening is recomputed from the exported body — a body that
+        drifted from the located passage must fail, not silently pass."""
+        site = tmp_path / "site"
+        fid = _make_site_with_narrative_provenance(
+            site,
+            body_in_parquet="Completely different body text that does not"
+                            " appear on the cited page at all today",
+        )
+        result = narrative_gate5b1(site)
+        assert result["ok"] is False
+        assert any(f[0] == fid for f in result["failures"])
+
+    def test_missing_body_row_fails(self, tmp_path):
+        """A paged citation whose fact_id has no jbook_narratives row cannot
+        be re-derived → FAIL (never skip)."""
+        site = tmp_path / "site"
+        fid = _make_site_with_narrative_provenance(site)
+        # rewrite the narratives parquet without the row
+        _write_parquet(
+            site / "data" / "jbook_narratives.parquet",
+            "fact_id varchar, pe_bli varchar, project_number varchar,"
+            " kind varchar, title varchar, body varchar, xml_path varchar,"
+            " org varchar, fiscal_year integer, document_sha256 varchar",
+            [],
+        )
+        result = narrative_gate5b1(site)
+        assert result["ok"] is False
+        assert any(f[0] == fid and "no jbook_narratives row" in f[1]
+                   for f in result["failures"])
+
+    def test_sha_mismatch_fails(self, tmp_path):
+        site = tmp_path / "site"
+        fid = _make_site_with_narrative_provenance(site)
+        # corrupt the sha-named PDF
+        cit_pq = site / "citations" / "citations.parquet"
+        sha = duckdb.sql(
+            f"select sha256 from read_parquet('{cit_pq}')").fetchone()[0]
+        (site / "pdfs" / f"{sha}.pdf").write_bytes(b"%PDF-1.4 tampered")
+        result = narrative_gate5b1(site)
+        assert result["ok"] is False
+        assert any(f[0] == fid and "sha256 mismatch" in f[1]
+                   for f in result["failures"])
+
+    def test_missing_site_dir(self, tmp_path):
+        result = narrative_gate5b1(tmp_path / "nope")
+        assert result["ok"] is False
+        assert "site_dir missing" in result["reason"]
