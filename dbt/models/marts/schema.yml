@@ -144,3 +144,43 @@ models:
         description: "Derived: total_amount_usd / population. Population from US Census NST-EST2024 estimates."
       - name: coverage_note
         description: "Human-readable capture provenance note per jurisdiction row. CA: 'CA full Open Fi$Cal capture FY2025 (all departments from pointer manifest)'. CT: 'CT full checkbook via Socrata SoQL aggregate (data.ct.gov ajdm-rvz7)'. Populated from jurisdiction field at build time."
+  - name: fct_flow_edges
+    description: "Phase 5H flowdown edges at FULL grain (top-N/'Other' collapse happens at export time only). Two rivers: budget (FY2026 PB detail rows, title IS NOT NULL dedup rule, amount_type=fy_2026_total, USD thousands, hierarchy TOTAL→component→appropriation→budget_activity→program) and spend (DoD prime contract obligations per fiscal year, USD, TOTAL→sub_agency→office→family, split by competed_class and offers_bucket). Conservation + source-recompute guards live in tests/assert_flow_*.sql."
+    columns:
+      - name: river
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['budget', 'spend']
+      - name: fiscal_year
+        data_tests: [not_null]
+      - name: level_from
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['total', 'component', 'appropriation', 'budget_activity', 'sub_agency', 'office']
+      - name: node_from
+        data_tests: [not_null]
+      - name: level_to
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['component', 'appropriation', 'budget_activity', 'program', 'sub_agency', 'office', 'family']
+      - name: node_to
+        data_tests: [not_null]
+      - name: competed_class
+        description: "4 honest classes for spend edges (full_and_open / set_aside / other_than_full / not_competed; NULL rows fold into not_competed — never flatters competition). NULL on budget edges: intent has no competition dimension."
+        data_tests:
+          - accepted_values:
+              values: ['full_and_open', 'set_aside', 'other_than_full', 'not_competed']
+      - name: offers_bucket
+        description: "number_of_offers_received bucket ('1','2','3-4','5-9','10+','unknown'); NULL on budget edges."
+        data_tests:
+          - accepted_values:
+              values: ['1', '2', '3-4', '5-9', '10+', 'unknown']
+      - name: units
+        description: "USD_thousands (budget river) | USD (spend river)"
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['USD_thousands', 'USD']

@@ -12,7 +12,9 @@ CONTRACT_COLS = (
     "awarding_agency_name, awarding_sub_agency_name, naics_code, "
     "product_or_service_code, primary_place_of_performance_state_code, "
     "prime_award_transaction_place_of_performance_cd_current, award_id_piid, "
-    "usaspending_permalink, contract_award_unique_key"
+    "usaspending_permalink, contract_award_unique_key, "
+    # Phase 5H flowdown columns (stg_flow_contracts)
+    "awarding_office_name, extent_competed, number_of_offers_received"
 )
 
 ENTITY_XWALK_COLS = (
@@ -51,7 +53,16 @@ def make_lake(data_dir: Path):
     jbooks.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"copy (select * from (values ('R-1','2026','0400','Research','DARPA','1','Basic Research',"
-        f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494'))"
+        f"'0601101E','DEFENSE RESEARCH','fy_2024_actuals','280494'),"
+        # Phase 5H: fy_2026_total detail rows feed the budget flow river —
+        # two programs under one BA so the flow tree has real fan-out,
+        # plus a title-NULL rollup row that the dedup rule MUST exclude.
+        f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
+        f"'0601101E','DEFENSE RESEARCH','fy_2026_total','300000'),"
+        f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
+        f"'0601102E','APPLIED RESEARCH','fy_2026_total','100000'),"
+        f"('R-1','2026','0400','Research','DARPA','1','Basic Research',"
+        f"'0601101E',null,'fy_2026_total','400000'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -72,8 +83,8 @@ def make_lake(data_dir: Path):
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "
-        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1'),"
-        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null)"
+        f"('K1','2017-01-15','1000.5','UEI1','ACME','PUEI1','ACME PARENT','DoD','Army','336411','1510','CA','CA-52','HR001124C0001','https://www.usaspending.gov/award/CONT_AWD_HR001124C0001','CAUK1','ACC-APG','FULL AND OPEN COMPETITION','3'),"
+        f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null,'NAVSEA HQ','NOT COMPETED',null)"
         f") t({CONTRACT_COLS})",
     )
     write_parquet(
@@ -275,6 +286,42 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select count(*) from stg_subawards where is_amount_suspect = false"
     ).fetchone()[0]
     assert clean_count == 1, f"expected 1 clean subaward row, got {clean_count}"
+
+    # Phase 5H fct_flow_edges — budget river (dedup rule: title IS NOT NULL,
+    # amount_type='fy_2026_total'; the 400000 rollup row must NOT count)
+    assert con.sql(
+        "select amount from fct_flow_edges where river='budget'"
+        " and level_from='total' and node_to='DARPA'"
+    ).fetchone()[0] == 400000.0  # 300000 + 100000 detail rows only
+    assert con.sql(
+        "select count(*) from fct_flow_edges where river='budget'"
+        " and level_to='program'"
+    ).fetchone()[0] == 2
+    assert con.sql(
+        "select amount from fct_flow_edges where river='budget'"
+        " and node_to='DARPA|0400|1|0601101E'"
+    ).fetchone()[0] == 300000.0
+    # Spend river: competed_class mapping + offers buckets from the fixture
+    # contracts (K1 full-and-open/3 offers, K2 not-competed/null offers);
+    # the assistance row must NOT appear (contracts only).
+    assert con.sql(
+        "select competed_class, offers_bucket, amount from fct_flow_edges"
+        " where river='spend' and level_from='total' and competed_class='full_and_open'"
+    ).fetchall() == [("full_and_open", "3-4", 1000.5)]
+    assert con.sql(
+        "select competed_class, offers_bucket, amount from fct_flow_edges"
+        " where river='spend' and level_from='total' and competed_class='not_competed'"
+    ).fetchall() == [("not_competed", "unknown", -50.25)]
+    # office → family edge resolves the entity_xwalk family for UEI1
+    assert con.sql(
+        "select node_to from fct_flow_edges where river='spend'"
+        " and level_from='office' and node_from='Army|ACC-APG'"
+    ).fetchone()[0] == "ACME PARENT"
+    # UEI2 has no xwalk row — family falls back to upper(recipient_name)
+    assert con.sql(
+        "select node_to from fct_flow_edges where river='spend'"
+        " and level_from='office' and node_from='Navy|NAVSEA HQ'"
+    ).fetchone()[0] == "BETA"
 
     # Finding 4: entity_xwalk.recipient_uei uniqueness guard
     # The dbt unique test in schema.yml gates the build. To prove that a duplicate
