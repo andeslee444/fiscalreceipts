@@ -67,6 +67,25 @@
       "recon_checks": 1450,
       "sample_pe_count": 3,
       "status": "loaded"
+    },
+    "2025": {
+      "budget_lines": 5844,
+      "date": "2026-07-03",
+      "detail_facts": 3899,
+      "discovered": 37,
+      "documents": 37,
+      "downloaded": 37,
+      "provenance": {
+        "ambiguous_first": 2196,
+        "total": 3885,
+        "unique": 1112,
+        "unresolved": 0,
+        "zero_amount": 577
+      },
+      "reason": "loaded: 37 docs (37 downloaded), 5844 budget_lines, 3899 detail facts, 2574 recon checks",
+      "recon_checks": 2574,
+      "sample_pe_count": 8,
+      "status": "loaded"
     }
   }
 }
