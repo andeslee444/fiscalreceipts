@@ -13,14 +13,17 @@ Request JSON:
     {
       "programs": [{"pe_bli": ..., "org": <section org>, "at": <amount_type>}],
       "deltas":   [{"pe_bli": ..., "org": <section org>}],
-      "projects": [{"pe_bli": ..., "project_number": ..., "scenario": ...}]
+      "projects": [{"pe_bli": ..., "project_number": ..., "scenario": ...}],
+      "decade_fids": ["<fact_id>", ...]
     }
 
 Response JSON (stdout):
     {
       "programs": {"{pe_bli}|{org}|{at}": float|null},
       "deltas":   {"{pe_bli}|{org}": float|null},
-      "projects": {"{pe_bli}|{project_number}|{scenario}": float|null}
+      "projects": {"{pe_bli}|{project_number}|{scenario}": float|null},
+      "decade":   {"{fact_id}": {"v": float, "n": int, "fys": [int],
+                                 "pes": [str], "shas": [str]} | null}
     }
 
 Program cells: sum(amount_thousands) over budget_lines.parquet detail rows
@@ -30,6 +33,11 @@ Deltas: fy_2026_total sum − fy_2025_total sum; null unless both exist.
 Project cells: jbook_details.parquet amount_millions for
 (pe_bli, project_number, scenario) — LAST row in file order (mirrors the
 exporter's last-wins dedup, which mirrors the program-page scenarioMap).
+Decade fids (Phase 5E, G8 legs f+g): per workbook fact_id, the matching
+budget_lines_decade.parquet rows aggregated — value sum, row count, and
+the DISTINCT fiscal_years (edition years), pe_blis and document sha256s
+behind the fact. The gate checks the value against the payload cell AND
+that every source row's edition equals the column's stated edition.
 """
 from __future__ import annotations
 
@@ -44,6 +52,7 @@ from govbudget.jbooks.orgs import workbook_org
 
 BL_PARQUET = ROOT / "data" / "site" / "data" / "budget_lines.parquet"
 JD_PARQUET = ROOT / "data" / "site" / "data" / "jbook_details.parquet"
+DEC_PARQUET = ROOT / "data" / "site" / "data" / "budget_lines_decade.parquet"
 
 
 def main() -> int:
@@ -97,6 +106,30 @@ def main() -> int:
         out["projects"][f"{pe}|{pn}|{scenario}"] = (
             float(row[0]) if row and row[0] is not None else None
         )
+
+    decade_fids = request.get("decade_fids", [])
+    out["decade"] = {}
+    if decade_fids:
+        if not DEC_PARQUET.exists():
+            print(f"decade parquet missing: {DEC_PARQUET}", file=sys.stderr)
+            return 2
+        dec = str(DEC_PARQUET).replace("'", "''")
+        for fid in decade_fids:
+            rows = con.execute(
+                f"select amount_thousands, fiscal_year, pe_bli, document_sha256"
+                f" from read_parquet('{dec}') where fact_id = ?",
+                [fid],
+            ).fetchall()
+            if not rows or any(r[0] is None for r in rows):
+                out["decade"][fid] = None
+                continue
+            out["decade"][fid] = {
+                "v": float(sum(r[0] for r in rows)),
+                "n": len(rows),
+                "fys": sorted({int(r[1]) for r in rows}),
+                "pes": sorted({r[2] for r in rows}),
+                "shas": sorted({r[3] for r in rows}),
+            }
 
     print(json.dumps(out))
     return 0

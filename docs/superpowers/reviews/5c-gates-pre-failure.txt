@@ -671,3 +671,46 @@ gate b no-cross-edition-leakage: sampled=200/159502 joinable mismatches=0 unjoin
 gate c book-diff-conservation: rows=18379 sampled=20 passed=20 → PASS
 gate d decade-series-integrity: rows=59068 duplicate_grains=0 sampled=20 passed=20 → PASS
 verify-phase5e: PASS
+
+================================================================================
+G8 yearsmatrix — Phase 5E Task 7 ADDITIVE legs (f, g, g-UI) + sort-key
+derivation from the default column set
+================================================================================
+Date: 2026-07-03. New legs (site/scripts/gates/yearsmatrix.mjs +
+yearsmatrix-recompute.py "decade_fids" request):
+  (f) decade cell recompute — sampled cells across ALL 12 decade default
+      columns recompute from budget_lines_decade.parquet (workbook cells
+      match their single lake row; derived decade sums recompute from
+      their input fids; recorded_value == cell v == Σ inputs, ≤0.001);
+  (g) edition integrity — every sampled cell's lake rows carry
+      fiscal_year == the column's STATED edition + the cell's pe_bli;
+      workbook citations' sha256 among their lake rows (spec §2 rule 1);
+  (g-UI) the DEFAULT /years/ view renders the decade columns
+      (th[data-edition] ≥10), visible PB-edition header tags, the
+      edition-rule legend ("PB(N+2)"), and cited decade cells.
+Leg (c) sort keys now derive from the payload's default column set
+(decade defaults when present, else the 5D pair) — same check, same
+strength: two visible columns, desc AND asc, missing-last. No existing
+leg weakened; the 900KB payload budget stands (payload: 847,861 bytes).
+
+Pre-failure 1 (g-UI + derived sort keys, run against the pre-Task-7
+build — UI without decade columns; full log /tmp/5e-task7-g8-prefail.log):
+$ node scripts/run-yearsmatrix-gate.mjs
+PASS: false
+  ✗ leg g-UI: only 0 decade headers with data-edition rendered by default (want ≥10)
+  ✗ leg g-UI: default decade column fy2015a not rendered
+  ✗ leg g-UI: [data-testid="edition-legend"] missing on /years/
+  ✗ leg g-UI: no cited cell rendered under decade column fy2015a
+  ✗ leg c: no sort trigger [data-sort="fy2026r"]
+  ✗ leg c: no sort trigger [data-sort="fy2015a"]
+(static legs f/g PASSED against the untampered Task-6 payload: 36/36)
+
+Pre-failure 2 (leg f, tampered payload — one decade cell v +1000,
+backup/restore verified byte-identical):
+  ✗ leg f: decade cell 0203735A/fy2015a payload=298423 lake=297423
+
+Pre-failure 3 (leg g, tampered payload — fy2020a column edition
+2022→2023):
+  ✗ leg g: decade cell 0203735A/fy2020a sources span edition(s) [2022] != stated PB2023
+  ✗ leg g: decade cell 0603327A/fy2020a sources span edition(s) [2022] != stated PB2023
+  (33/36 others verified — only the lied-about column fails)

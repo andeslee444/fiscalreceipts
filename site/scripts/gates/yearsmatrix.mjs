@@ -30,6 +30,18 @@
  *      /years/, opening a Δ cell's citation shows the inline breakdown table
  *      whose sum row equals the derived figure and whose CSV export parses
  *      to the same rows.
+ *  (f) decade cell recompute (Phase 5E, ADDITIVE) — sampled cells across
+ *      ≥3 decade columns (the edition-honest fy{yyyy}{a|e|r} defaults)
+ *      recompute from budget_lines_decade.parquet: workbook cells match
+ *      their single lake row; derived decade sums recompute from their
+ *      input fids (recorded_value == cell v == Σ inputs, ≤0.001).
+ *  (g) edition integrity (Phase 5E, ADDITIVE — spec §2 rule 1): every
+ *      sampled decade cell's source rows carry fiscal_year == the column's
+ *      STATED edition and the cell's pe_bli; workbook citations' sha256
+ *      must be among their lake rows' document_sha256. UI side (leg g-UI):
+ *      the default view renders the decade columns with visible PB-edition
+ *      tags and the edition-rule legend ("PB(N+2)"), and decade cells are
+ *      state-A Cites.
  *  (e-UI overlay, STRENGTHENED 2026-07-02 — visual-judge M2 blocker: the
  *      large breakdown overlay shipped without a visible sum row) — an
  *      overlay-sized (>5-row) breakdown is opened live from the built page
@@ -148,6 +160,33 @@ function sampleCells(matrix, { perType = 5, deltas = 6, projects = 10 } = {}) {
     }
   }
   return { programCells, deltaCells, projectCells };
+}
+
+/**
+ * Deterministic decade-cell sample (Phase 5E legs f+g): up to `perColumn`
+ * cited cells for EVERY default decade column, strided across programs.
+ */
+function sampleDecadeCells(matrix, { perColumn = 3 } = {}) {
+  const byKey = new Map((matrix.decade_columns ?? []).map((c) => [c.key, c]));
+  const out = [];
+  const programs = [...iterPrograms(matrix)];
+  const stride = Math.max(1, Math.floor(programs.length / 37));
+  for (const key of matrix.decade_default_columns ?? []) {
+    const col = byKey.get(key);
+    if (!col) continue;
+    let n = 0;
+    for (let pass = 0; pass < stride && n < perColumn; pass++) {
+      for (let i = pass; i < programs.length && n < perColumn; i += stride) {
+        const { program } = programs[i];
+        const cell = program.cells[key];
+        if (cell && cell.fid) {
+          out.push({ pe_bli: program.pe_bli, col, cell });
+          n++;
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** Spawn the python recompute helper over the parquet lake. */
@@ -421,6 +460,132 @@ export async function runYearsMatrixGate({ baseUrl }) {
     notes.push(`leg b: ${ok} sampled citations verified ✓`);
   }
 
+  // ── Legs (f)+(g) static (Phase 5E): decade recompute + edition integrity ──
+  {
+    if (
+      !Array.isArray(matrix.decade_columns) ||
+      !(matrix.decade_default_columns ?? []).length
+    ) {
+      errors.push(
+        "leg f: payload carries no decade_columns/decade_default_columns (Phase 5E contract)"
+      );
+    } else {
+      const samples = sampleDecadeCells(matrix);
+      const colsCovered = new Set(samples.map((s) => s.col.key));
+      if (colsCovered.size < 3) {
+        errors.push(`leg f: only ${colsCovered.size} decade columns sampled (<3)`);
+      }
+      // Resolve citations; collect the workbook fids each cell decomposes to.
+      const wanted = new Set();
+      const checks = [];
+      for (const s of samples) {
+        const cit = citations[s.cell.fid];
+        if (!cit) {
+          errors.push(
+            `leg f: decade cell ${s.pe_bli}/${s.col.key} fid ${s.cell.fid} unresolvable`
+          );
+          continue;
+        }
+        if (cit.kind === "workbook") {
+          checks.push({ s, cit, inputFids: [s.cell.fid] });
+          wanted.add(s.cell.fid);
+        } else if (cit.kind === "derived") {
+          if (!cit.formula || !cit.formula.startsWith("sum(budget_lines")) {
+            errors.push(
+              `leg f: decade derived ${s.cell.fid} has unexpected formula: ${cit.formula}`
+            );
+            continue;
+          }
+          if (Math.abs(Number(cit.recorded_value) - s.cell.v) > TOL_CELL) {
+            errors.push(
+              `leg f: decade derived ${s.cell.fid} recorded ${cit.recorded_value} != cell ${s.cell.v}`
+            );
+            continue;
+          }
+          let inputs = [];
+          try {
+            inputs = JSON.parse(cit.inputs ?? "[]");
+          } catch {
+            /* handled below */
+          }
+          if (!Array.isArray(inputs) || inputs.length < 2) {
+            errors.push(
+              `leg f: decade derived ${s.cell.fid} inputs do not parse: ${cit.inputs}`
+            );
+            continue;
+          }
+          checks.push({ s, cit, inputFids: inputs });
+          for (const f of inputs) wanted.add(f);
+        } else {
+          errors.push(
+            `leg f: decade cell ${s.pe_bli}/${s.col.key} fid kind=${cit.kind} (want workbook|derived)`
+          );
+        }
+      }
+
+      let dec = null;
+      if (wanted.size > 0) {
+        try {
+          dec = recomputeFromLake({ decade_fids: [...wanted] }).decade ?? {};
+        } catch (e) {
+          errors.push(`leg f: decade recompute helper failed: ${e.message}`);
+        }
+      }
+      if (dec) {
+        let okF = 0;
+        let okG = 0;
+        for (const { s, cit, inputFids } of checks) {
+          const rows = inputFids.map((f) => dec[f]);
+          if (rows.some((r) => r == null)) {
+            errors.push(
+              `leg f: decade cell ${s.pe_bli}/${s.col.key}: input fid missing from budget_lines_decade.parquet`
+            );
+            continue;
+          }
+          const sum = rows.reduce((acc, r) => acc + r.v, 0);
+          if (Math.abs(sum - s.cell.v) > TOL_CELL) {
+            errors.push(
+              `leg f: decade cell ${s.pe_bli}/${s.col.key} payload=${s.cell.v} lake=${sum}`
+            );
+            continue;
+          }
+          okF++;
+          // Leg (g): sources must all sit in the column's STATED edition,
+          // belong to the cell's pe_bli, and a workbook citation's sha256
+          // must be among its lake rows' documents (spec §2 rule 1).
+          const fys = new Set(rows.flatMap((r) => r.fys));
+          const pes = new Set(rows.flatMap((r) => r.pes));
+          if (fys.size !== 1 || !fys.has(s.col.edition)) {
+            errors.push(
+              `leg g: decade cell ${s.pe_bli}/${s.col.key} sources span edition(s) [${[...fys].join(",")}] != stated PB${s.col.edition}`
+            );
+            continue;
+          }
+          if (pes.size !== 1 || !pes.has(s.pe_bli)) {
+            errors.push(
+              `leg g: decade cell ${s.pe_bli}/${s.col.key} sources span pe_bli(s) [${[...pes].join(",")}]`
+            );
+            continue;
+          }
+          if (
+            cit.kind === "workbook" &&
+            !rows.some((r) => (r.shas ?? []).includes(cit.sha256))
+          ) {
+            errors.push(
+              `leg g: decade cell ${s.pe_bli}/${s.col.key} citation sha256 not among its lake rows`
+            );
+            continue;
+          }
+          okG++;
+        }
+        notes.push(
+          `leg f: ${okF}/${checks.length} decade cells recomputed from budget_lines_decade.parquet across ${colsCovered.size} columns ✓`
+        );
+        notes.push(`leg g: ${okG}/${checks.length} decade cells edition-integrity verified ✓`);
+      }
+    }
+  }
+
   // ── Leg (d): shard integrity ──────────────────────────────────────────────
   {
     const shardDir = path.join(jsonDir, "cite-shards");
@@ -607,6 +772,65 @@ export async function runYearsMatrixGate({ baseUrl }) {
       }
       await page.setViewportSize({ width: 1440, height: 900 });
 
+      // ---- decade defaults + edition tags + legend (Phase 5E leg g-UI) ----
+      {
+        const decadeDefaults = matrix.decade_default_columns ?? [];
+        if (decadeDefaults.length < 10) {
+          errors.push(
+            `leg g-UI: payload decade_default_columns has ${decadeDefaults.length} entries (<10)`
+          );
+        }
+        const nEditionThs = await page
+          .locator("th[data-col][data-edition]")
+          .count();
+        const wantThs = Math.min(decadeDefaults.length, 10);
+        if (nEditionThs < wantThs) {
+          errors.push(
+            `leg g-UI: only ${nEditionThs} decade headers with data-edition rendered by default (want ≥${wantThs})`
+          );
+        }
+        // Spot-check 3 headers state their PB edition visibly.
+        for (const key of decadeDefaults.slice(0, 3)) {
+          const th = page.locator(`th[data-col="${key}"]`).first();
+          if ((await th.count()) === 0) {
+            errors.push(`leg g-UI: default decade column ${key} not rendered`);
+            continue;
+          }
+          const edition = (matrix.decade_columns ?? []).find(
+            (c) => c.key === key
+          )?.edition;
+          const text = (await th.textContent()) ?? "";
+          if (!text.includes(`PB${edition}`)) {
+            errors.push(
+              `leg g-UI: header ${key} lacks its visible edition tag PB${edition}`
+            );
+          }
+        }
+        // The edition-rule legend near the controls.
+        const legend = page.locator('[data-testid="edition-legend"]');
+        if ((await legend.count()) === 0) {
+          errors.push('leg g-UI: [data-testid="edition-legend"] missing on /years/');
+        } else {
+          const t = (await legend.first().textContent()) ?? "";
+          if (!/PB\(N\+2\)/.test(t)) {
+            errors.push("leg g-UI: edition legend does not state the PB(N+2) rule");
+          }
+        }
+        // At least one decade cell renders as a state-A Cite by default.
+        if (decadeDefaults.length > 0) {
+          const anyDecadeCite = await page
+            .locator(`td[data-col="${decadeDefaults[0]}"] [data-fact-id]`)
+            .count();
+          if (anyDecadeCite === 0) {
+            errors.push(
+              `leg g-UI: no cited cell rendered under decade column ${decadeDefaults[0]}`
+            );
+          } else {
+            notes.push("leg g-UI: decade defaults + edition tags + legend ✓");
+          }
+        }
+      }
+
       // ---- sort correctness on two columns (missing-last) ----
       const readColumn = (key) =>
         page.evaluate((k) => {
@@ -618,7 +842,19 @@ export async function runYearsMatrixGate({ baseUrl }) {
             });
         }, key);
 
-      for (const key of ["fy_2026_total", "fy_2024_actuals"]) {
+      // Sort keys come from the DEFAULT visible column set: the decade
+      // defaults when the payload carries them (Phase 5E — the 5D keys are
+      // no longer visible by default), else the 5D pair. Same check, same
+      // strength: two visible columns, desc AND asc, missing-last.
+      const sortKeys = (matrix.decade_default_columns ?? []).length
+        ? [
+            matrix.decade_default_columns[
+              matrix.decade_default_columns.length - 1
+            ],
+            matrix.decade_default_columns[0],
+          ]
+        : ["fy_2026_total", "fy_2024_actuals"];
+      for (const key of sortKeys) {
         const trigger = page.locator(`[data-sort="${key}"]`).first();
         if ((await trigger.count()) === 0) {
           errors.push(`leg c: no sort trigger [data-sort="${key}"]`);
