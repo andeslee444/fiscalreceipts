@@ -3,8 +3,8 @@
 Fiscal Receipts is a spending-intelligence platform for U.S. federal defense budget data.
 Every program element, award, and lobbying figure is citation-backed: J-book PDF
 page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
-The site covers 326 DoD R&D and procurement program elements across 20 agencies,
-200 top contractor families, and 59,502 source citations from FY2017 onward.
+The site covers 462 DoD R&D and procurement program elements across 20 agencies,
+200 top contractor families, and 72,165 source citations from FY2017 onward.
 
 ## Core routes
 
@@ -18,11 +18,11 @@ https://fiscalreceipts.com/about/
 
 ## Top 5 programs by FY2026 budget
 
+https://fiscalreceipts.com/program/1203154SF/  # Long Range Kill Chains [F] FY26: 7696.9M
+https://fiscalreceipts.com/program/0604015F/  # Long Range Strike - Bomber [F] FY26: 4739.1M
+https://fiscalreceipts.com/program/0605238F/  # Ground Based Strategic Deterrent EMD [F] FY26: 4147.6M
+https://fiscalreceipts.com/program/1206446SF/  # Resilient Missile Warning Missile Tracking - Low Earth Orbit (LEO) [F] FY26: 2580.4M
 https://fiscalreceipts.com/program/0607210D8Z/  # Industrial Base Analysis and Sustainment Support [OSD] FY26: 2328.4M
-https://fiscalreceipts.com/program/0603467E/  # DARPA Advanced Technology Development [DARPA] FY26: 1733.5M
-https://fiscalreceipts.com/program/0603941D8Z/  # Test & Evaluation Science & Technology [OSD] FY26: 1645.8M
-https://fiscalreceipts.com/program/0604874C/  # Improved Homeland Defense Interceptors [MDA] FY26: 1637.4M
-https://fiscalreceipts.com/program/0602025E/  # Making, Maintaining, Supply Chain and Logistics [DARPA] FY26: 1597.0M
 
 ## Data downloads
 
