@@ -22,8 +22,11 @@ analyst-specific BLOCKED message.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
+
+import anthropic
 
 from govbudget.analyst.schema_card import REFUSE_CLASSES, render_system_prompt
 from govbudget.analyst.sql_tool import ROW_CAP, SqlError, SqlTool
@@ -239,18 +242,34 @@ def run(
             else:
                 tool_choice = {"type": "auto"}
 
-            resp = client.messages.create(
-                model=MODEL,
-                max_tokens=1024,
-                # Deterministic sampling: the answer contract is copy-paste of
-                # the canonical string run_sql returns; temperature 0 keeps
-                # repeated eval runs from flaking on formatting/query choice.
-                temperature=0,
-                system=system,
-                tools=_TOOLS,
-                tool_choice=tool_choice,
-                messages=messages,
-            )
+            # Transient API failures (rate limits, 529 overloaded, connection
+            # drops) are transport problems, not agent answers — retry with
+            # backoff instead of letting one blip surface as an ERROR result
+            # for this and every following question in an eval run.
+            for attempt in range(4):
+                try:
+                    resp = client.messages.create(
+                        model=MODEL,
+                        max_tokens=1024,
+                        # Deterministic sampling: the answer contract is
+                        # copy-paste of the canonical string run_sql returns;
+                        # temperature 0 keeps repeated eval runs from flaking
+                        # on formatting/query choice.
+                        temperature=0,
+                        system=system,
+                        tools=_TOOLS,
+                        tool_choice=tool_choice,
+                        messages=messages,
+                    )
+                    break
+                except (
+                    anthropic.RateLimitError,
+                    anthropic.InternalServerError,
+                    anthropic.APIConnectionError,
+                ) as exc:
+                    if attempt == 3:
+                        raise
+                    time.sleep(2 ** (attempt + 2))  # 4s, 8s, 16s
             cost.add(resp.usage)
 
             # Collect assistant turn
