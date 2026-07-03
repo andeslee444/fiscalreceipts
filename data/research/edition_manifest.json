@@ -1,3 +1,72 @@
 {
-  "editions": {}
+  "editions": {
+    "2017": {
+      "date": "2026-07-03",
+      "discovered": 16,
+      "reason": "probe failed: discovered 16/[30,45] classifiable documents (3 rollups + 13 rdte). Edition uses pre-2019 per-agency naming the registry cannot classify: PROCUREMENT_MasterJustificationBook_*_PB_2017.pdf (16 books, full-word prefix), DARPA_0400D_RDTE_*/MDA_RDTE_*/MDA_PROCUREMENT_* (org-first prefixes), 1_PROCUREMENT_*/5_RDTE_*_Vol_N (numeric prefixes), PB17_OSD_0400D_Master_J-Book_Final.pdf. Classifier + probe-envelope extension deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2018": {
+      "date": "2026-07-03",
+      "discovered": 3,
+      "reason": "probe failed: discovered 3/[30,45] classifiable documents (rollups only). Edition publishes consolidated Defense-Wide volumes with U_ prefixes (U_RDTE_MasterJustificationBook_Defense-Wide_PB_2018_20170524.pdf, U_PROCUREMENT_MasterJustificationBook_Defense-Wide_PB_2018_v4.pdf, U_RDTE_*_DTRA/MDA) that the registry's ^(RDTE|PROC)[_-] classifier misses. Classifier + probe-envelope extension deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2019": {
+      "date": "2026-07-03",
+      "discovered": 7,
+      "reason": "probe failed: discovered 7/[30,45] classifiable documents (3 rollups + 4 rdte). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope (calibrated to PB2024/PB2025 per-agency style) structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2020": {
+      "date": "2026-07-03",
+      "discovered": 10,
+      "reason": "probe failed: discovered 10/[30,45] classifiable documents (3 rollups + 5 rdte vols + 2 proc vols: RDTE_Vol1_DARPA..Vol5_DW + PROC_Vol1_DW/Vol2_MDA). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2021": {
+      "date": "2026-07-03",
+      "discovered": 10,
+      "reason": "probe failed: discovered 10/[30,45] classifiable documents (3 rollups + 5 rdte vols + 2 proc vols). Edition publishes consolidated volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2022": {
+      "date": "2026-07-03",
+      "discovered": 8,
+      "reason": "probe failed: discovered 8/[30,45] classifiable documents (3 rollups + 5 rdte vols; the 2 procurement volumes are misnamed on the comptroller site as ROC_Vol1_DW_PROC_PB22_Justification_Book_Final.pdf / ROC_Vol2_MDA_* \u2014 truncated 'PROC' prefix). Consolidated volumes + misnamed files; support deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2023": {
+      "date": "2026-07-03",
+      "discovered": 8,
+      "reason": "probe failed: discovered 8/[30,45] classifiable documents (3 rollups + 3 rdte + 2 proc: RDTE_Vol1_DARPA/Vol2_MDA/RDTE_MJB_DW_Vol5 + PROC_MJB_DW_Vol1/PROC_MDA_VOL2B). Edition publishes consolidated MJB volumes, not ~37 per-agency books; the [30,45] envelope structurally rejects it. Consolidated-edition support deferred \u2014 honest gap, not a silent skip.",
+      "sample_pe_count": 0,
+      "status": "probe_failed"
+    },
+    "2024": {
+      "budget_lines": 10582,
+      "date": "2026-07-03",
+      "detail_facts": 2266,
+      "discovered": 38,
+      "documents": 38,
+      "downloaded": 38,
+      "provenance": {
+        "ambiguous_first": 1232,
+        "total": 2266,
+        "unique": 747,
+        "unresolved": 0,
+        "zero_amount": 287
+      },
+      "reason": "loaded: 38 docs (38 downloaded), 10582 budget_lines, 2266 detail facts, 1450 recon checks",
+      "recon_checks": 1450,
+      "sample_pe_count": 3,
+      "status": "loaded"
+    }
+  }
 }
