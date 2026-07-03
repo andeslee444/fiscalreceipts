@@ -14,59 +14,9 @@ from govbudget.jbooks.provenance_pages import (
     find_fact_page,
 )
 
+from pdf_factory import make_pdf as _make_pdf
+
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_p24_25.pdf"
-
-
-def _make_pdf(path: Path, pages: list[list[str]]) -> None:
-    """Write a minimal multi-page PDF; each page is a list of Helvetica text
-    lines rendered top-down (extractable by both pypdf and pdfplumber)."""
-
-    def esc(s: str) -> str:
-        return s.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
-
-    objects: list[bytes] = []  # 1-indexed body objects
-    n_pages = len(pages)
-    font_num = 3 + 2 * n_pages
-    kids = " ".join(f"{3 + 2 * i} 0 R" for i in range(n_pages))
-    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")            # 1: catalog
-    objects.append(                                                  # 2: pages
-        f"<< /Type /Pages /Kids [{kids}] /Count {n_pages} >>".encode()
-    )
-    for i, lines in enumerate(pages):
-        page_num, content_num = 3 + 2 * i, 4 + 2 * i
-        objects.append(                                              # page
-            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            f"/Resources << /Font << /F1 {font_num} 0 R >> >> "
-            f"/Contents {content_num} 0 R >>".encode()
-        )
-        ops = ["BT", "/F1 10 Tf", "72 720 Td"]
-        for j, line in enumerate(lines):
-            if j:
-                ops.append("0 -20 Td")
-            ops.append(f"({esc(line)}) Tj")
-        ops.append("ET")
-        stream = "\n".join(ops).encode()
-        objects.append(                                              # content
-            b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream)
-        )
-    objects.append(                                                  # font
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-    )
-
-    out = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for num, body in enumerate(objects, start=1):
-        offsets.append(len(out))
-        out += b"%d 0 obj\n%s\nendobj\n" % (num, body)
-    xref_at = len(out)
-    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
-    for off in offsets[1:]:
-        out += b"%010d 00000 n \n" % off
-    out += (
-        b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n"
-        % (len(objects) + 1, xref_at)
-    )
-    path.write_bytes(bytes(out))
 
 
 def test_amount_strings():
@@ -373,3 +323,261 @@ def test_not_exists_predicate_filters_prefetched(pg_dsn, monkeypatch):
 
     result = build_provenance_pages(pg_dsn)
     assert result == 0, "pre-cached row must be filtered by NOT EXISTS, not ON CONFLICT"
+
+
+# ---------------------------------------------------------------------------
+# Narrative paragraph provenance (Phase 5F §2b)
+# ---------------------------------------------------------------------------
+
+from govbudget.jbooks.provenance_pages import (  # noqa: E402
+    build_narrative_provenance,
+    find_narrative_page,
+    narrative_opening,
+    normalize_ws,
+)
+
+_NARR_BODY = (
+    "The Corrosion Prevention program develops coatings that reduce maintenance"
+    " costs across weapon systems. Additional trailing sentences follow the"
+    " distinctive opening and are not part of the search snippet."
+)
+# first 12 words of _NARR_BODY
+_NARR_OPENING = (
+    "The Corrosion Prevention program develops coatings that reduce"
+    " maintenance costs across weapon"
+)
+
+
+def test_normalize_ws_collapses_all_whitespace():
+    assert normalize_ws("a\n b\t\tc  d ") == "a b c d"
+
+
+def test_narrative_opening_first_12_words_ws_normalized():
+    assert narrative_opening(_NARR_BODY) == _NARR_OPENING
+    # short bodies: all words, no padding, no crash
+    assert narrative_opening("only three words") == "only three words"
+    assert narrative_opening("  \n ") == ""
+    # internal whitespace runs collapse
+    assert narrative_opening("a\nb\t c") == "a b c"
+
+
+def _narr_pdf(path):
+    """Two-page PDF: R-1 summary page, then the R-2 page carrying the
+    narrative opening split across two rendered lines."""
+    _make_pdf(path, [
+        ["Exhibit R-1, RDT&E Program", "0605502TST 12.345"],
+        ["Exhibit R-2, RDT&E Budget Item Justification",
+         "PE 0605502TST / CORROSION PREVENTION",
+         "A. Mission Description and Budget Item Justification",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems. Additional trailing"
+         " sentences follow."],
+    ])
+
+
+def test_find_narrative_page_resolves_with_bbox(tmp_path):
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body=_NARR_BODY,
+                              exhibit_family="rdte")
+    assert hit["page_number"] == 2
+    assert hit["resolution"] == "unique"       # single candidate page
+    assert hit["candidate_pages"] == 1
+    assert hit["search_text"] == _NARR_OPENING
+    # bbox sanity: first line of the passage, inside the page box
+    assert 0 <= hit["x0"] < hit["x1"] <= hit["page_width"]
+    assert 0 <= hit["top_pt"] < hit["bottom_pt"] <= hit["page_height"]
+
+
+def test_find_narrative_page_unresolved_never_fakes(tmp_path):
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    hit = find_narrative_page(pdf, pe_bli="0605502TST",
+                              body="Entirely different text that appears nowhere"
+                                   " in the rendered document pages at all")
+    assert hit["resolution"] == "unresolved"
+    assert hit["page_number"] is None
+    assert hit["x0"] is None
+
+
+def test_find_narrative_page_empty_body(tmp_path):
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body="   \n ")
+    assert hit["resolution"] == "unresolved"
+    assert hit["page_number"] is None
+    assert hit["candidate_pages"] == 0
+
+
+def test_find_narrative_page_ambiguous_two_pages(tmp_path):
+    """The same opening on two pages of the SAME exhibit stays ambiguous —
+    never fake certainty."""
+    pdf = tmp_path / "dup.pdf"
+    _make_pdf(pdf, [
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0605502TST",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0605502TST",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems. Continued."],
+    ])
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body=_NARR_BODY,
+                              exhibit_family="rdte")
+    assert hit["resolution"] == "ambiguous_first"
+    assert hit["page_number"] == 1
+    assert hit["candidate_pages"] == 2
+
+
+def test_find_narrative_page_exhibit_tiebreak(tmp_path):
+    """Opening text on both an R-2 page and an R-2A page: a project-level
+    narrative (project_number set) must resolve 'unique' to the R-2A page."""
+    pdf = tmp_path / "tiebreak.pdf"
+    _make_pdf(pdf, [
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0605502TST",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+        ["Exhibit R-2A, RDT&E Project Justification", "PE 0605502TST",
+         "Project (Number/Name) PJ1",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+    ])
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body=_NARR_BODY,
+                              project_number="PJ1", exhibit_family="rdte")
+    assert hit["page_number"] == 2
+    assert hit["resolution"] == "unique"
+    assert hit["candidate_pages"] == 2
+
+
+def test_find_narrative_page_pe_bli_tiebreak(tmp_path):
+    """Same opening under two PEs in one document: the page carrying the
+    fact's PE wins, resolution 'unique' (narrowed to exactly one page)."""
+    pdf = tmp_path / "twope.pdf"
+    _make_pdf(pdf, [
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0699999TST",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0605502TST",
+         "The Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+    ])
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body=_NARR_BODY,
+                              exhibit_family="rdte")
+    assert hit["page_number"] == 2
+    assert hit["resolution"] == "unique"
+    assert hit["candidate_pages"] == 2
+
+
+def test_find_narrative_page_rejects_mid_word_match(tmp_path):
+    """Word-boundary guard: the opening appearing only as a suffix inside a
+    longer word must NOT produce a location."""
+    pdf = tmp_path / "midword.pdf"
+    _make_pdf(pdf, [
+        ["Exhibit R-2, RDT&E Budget Item Justification", "PE 0605502TST",
+         "prefixThe Corrosion Prevention program develops coatings that reduce",
+         "maintenance costs across weapon systems."],
+    ])
+    hit = find_narrative_page(pdf, pe_bli="0605502TST", body=_NARR_BODY)
+    assert hit["resolution"] == "unresolved"
+    assert hit["page_number"] is None
+
+
+def _seed_narrative(pg_dsn, pdf_path, *, kind="mission",
+                    xml_path="ProgramElement[0]/Narrative[0]",
+                    body=_NARR_BODY, pe_bli="0605502TST",
+                    project_number=None):
+    sha = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url, file_path, sha256, downloaded_at, status) values"
+            " ('OSD','rdte',2026,'narr.pdf','https://example.mil/narr.pdf',%s,%s,"
+            " now(),'downloaded') on conflict (source_url) do nothing",
+            (str(pdf_path), sha),
+        )
+        doc_id = con.execute(
+            "select id from jbook_documents where sha256 = %s", (sha,)
+        ).fetchone()[0]
+        con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions)"
+            " values (%s, 1, '{}')",
+            (doc_id,),
+        )
+        run_id = con.execute("select max(id) from extraction_runs").fetchone()[0]
+        con.execute(
+            "insert into detail_narratives (extraction_run_id, document_id,"
+            " pe_bli, project_number, kind, title, body, xml_path)"
+            " values (%s,%s,%s,%s,%s,'A. Mission Description',%s,%s)",
+            (run_id, doc_id, pe_bli, project_number, kind, body, xml_path),
+        )
+    return sha
+
+
+def test_build_narrative_provenance_inserts_and_caches(pg_dsn, tmp_path):
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    sha = _seed_narrative(pg_dsn, pdf)
+    assert build_narrative_provenance(pg_dsn) == 1
+    assert build_narrative_provenance(pg_dsn) == 0    # cached by identity
+    with psycopg.connect(pg_dsn) as con:
+        row = con.execute(
+            "select target_kind, narrative_kind, xml_path, page_number,"
+            " resolution, amount_text, scenario, amount_millions"
+            " from provenance_pages where document_sha256 = %s", (sha,)
+        ).fetchone()
+    assert row[0] == "narrative"
+    assert row[1] == "mission"
+    assert row[2] == "ProgramElement[0]/Narrative[0]"
+    assert row[3] == 2
+    assert row[4] == "unique"
+    assert row[5] == _NARR_OPENING       # the searched string, stored honestly
+    assert row[6] is None and row[7] is None
+
+
+def test_build_narrative_provenance_unresolved_row_kept_honest(pg_dsn, tmp_path):
+    """A narrative whose opening is not locatable stores an unresolved row
+    with NO page — the ambiguity flag survives, nothing is faked."""
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    sha = _seed_narrative(
+        pg_dsn, pdf, xml_path="ProgramElement[0]/Narrative[1]",
+        body="Body text that never appears in the rendered document pages"
+             " anywhere at all in any form",
+    )
+    assert build_narrative_provenance(pg_dsn) == 1
+    with psycopg.connect(pg_dsn) as con:
+        page_number, resolution = con.execute(
+            "select page_number, resolution from provenance_pages"
+            " where document_sha256 = %s and target_kind = 'narrative'", (sha,)
+        ).fetchone()
+    assert page_number is None
+    assert resolution == "unresolved"
+
+
+def test_amount_and_narrative_rows_coexist(pg_dsn, tmp_path):
+    """Migration 004: both target_kinds share the table without colliding;
+    the amount builder still caches after narrative rows exist."""
+    _seed_fact(pg_dsn)
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    _seed_narrative(pg_dsn, pdf)
+    assert build_provenance_pages(pg_dsn) == 1
+    assert build_narrative_provenance(pg_dsn) == 1
+    assert build_provenance_pages(pg_dsn) == 0
+    assert build_narrative_provenance(pg_dsn) == 0
+    with psycopg.connect(pg_dsn) as con:
+        kinds = dict(con.execute(
+            "select target_kind, count(*) from provenance_pages group by 1"
+        ).fetchall())
+    assert kinds == {"amount": 1, "narrative": 1}
+
+
+def test_two_narratives_same_pe_do_not_collide(pg_dsn, tmp_path):
+    """The old 5-column NULLS-NOT-DISTINCT key would have collapsed two
+    narratives of one PE (both scenario/amount NULL) into a single row —
+    migration 004's partial narrative key must keep BOTH."""
+    pdf = tmp_path / "narr.pdf"
+    _narr_pdf(pdf)
+    _seed_narrative(pg_dsn, pdf, xml_path="ProgramElement[0]/Narrative[0]")
+    _seed_narrative(pg_dsn, pdf, xml_path="ProgramElement[0]/Narrative[1]",
+                    kind="justification")
+    assert build_narrative_provenance(pg_dsn) == 2
