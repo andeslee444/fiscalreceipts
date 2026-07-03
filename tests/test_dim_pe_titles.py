@@ -32,13 +32,18 @@ def _render_model_sql(source_table: str) -> str:
 
 
 def _titles(rows: list[tuple]) -> dict[str, str]:
-    """Run the model SQL over fixture (pe_bli, title, amount_type, amount) rows."""
+    """Run the model SQL over fixture (pe_bli, title, amount_type, amount[,
+    fiscal_year]) rows. fiscal_year defaults to 2026 (the mart's modern-era
+    fence keeps fiscal_year >= 2024 rows; PB2017-PB2023 rows are excluded)."""
     con = duckdb.connect()
     con.execute(
         "create table bl (pe_bli varchar, title varchar,"
-        " amount_type varchar, amount_thousands double)"
+        " amount_type varchar, amount_thousands double, fiscal_year integer)"
     )
-    con.executemany("insert into bl values (?, ?, ?, ?)", rows)
+    con.executemany(
+        "insert into bl values (?, ?, ?, ?, ?)",
+        [r if len(r) == 5 else (*r, 2026) for r in rows],
+    )
     out = con.execute(_render_model_sql("bl")).fetchall()
     con.close()
     return {r[0]: r[1] for r in out}
@@ -81,19 +86,29 @@ class TestDimPeTitlesRule:
         ])
         assert got == {"0603456A": "Titled Row"}
 
+    def test_legacy_edition_rows_are_fenced_out(self):
+        """PB2017-PB2023 lake rows must not shift title winners (5E round 2):
+        the era title would otherwise win the alphabetical fallback."""
+        got = _titles([
+            ("0101213F", "Modern Title", "fy_2026_total", 100.0, 2026),
+            ("0101213F", "Ancient Era Title", "fy_2017_total", 999.0, 2017),
+            ("0602718BR", "Legacy Only", "fy_2017_total", 50.0, 2017),
+        ])
+        assert got == {"0101213F": "Modern Title"}
+
     def test_one_row_per_pe_bli(self):
         """Same property the dbt unique test on pe_bli guards."""
         con = duckdb.connect()
         con.execute(
             "create table bl (pe_bli varchar, title varchar,"
-            " amount_type varchar, amount_thousands double)"
+            " amount_type varchar, amount_thousands double, fiscal_year integer)"
         )
         con.executemany(
-            "insert into bl values (?, ?, ?, ?)",
+            "insert into bl values (?, ?, ?, ?, ?)",
             [
-                ("0601101E", "A", "fy_2024_actuals", 1.0),
-                ("0601101E", "B", "fy_2025_total", 2.0),
-                ("0602303E", "C", "fy_2024_actuals", 3.0),
+                ("0601101E", "A", "fy_2024_actuals", 1.0, 2026),
+                ("0601101E", "B", "fy_2025_total", 2.0, 2026),
+                ("0602303E", "C", "fy_2024_actuals", 3.0, 2026),
             ],
         )
         dupes = con.execute(
