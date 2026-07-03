@@ -1021,8 +1021,8 @@ def cmd_verify_phase5e(args) -> None:
             print(f"  FAIL budget_lines id={bl_id}: fy={bl_fy} but document fy={doc_fy}")
     gates_ok = gates_ok and gb_ok
 
-    # Gate c: book-diff conservation
-    bd = book_diff_gate5e(config.DUCKDB_PATH)
+    # Gate c: book-diff conservation (lake-grounded)
+    bd = book_diff_gate5e(config.DUCKDB_PATH, lake_budget_lines)
     gc_ok = bd["ok"]
     if bd.get("reason"):
         print(f"gate c book-diff-conservation: {bd['reason']} → FAIL")

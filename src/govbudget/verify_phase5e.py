@@ -13,12 +13,16 @@ Gates (CLI: verify-phase5e):
   2. leakage_gate5e — sample ≥200 budget_lines rows joined to their source
      jbook_documents; 100% must satisfy budget_lines.fiscal_year ==
      jbook_documents.fiscal_year. Editions are parallel worlds (spec §2.1/2.2)
-     — a single cross-edition row is a FAIL.
+     — a single cross-edition row is a FAIL. Fewer joinable rows than the
+     sample size is also a FAIL (sub-sample guard).
 
   3. book_diff_gate5e — the fct_book_diff mart exists in the dbt DuckDB
-     output; sample ≥20 rows with a non-null delta; each delta recomputes as
-     to_value − from_value from the mart's own input columns within 0.001.
-     FAIL if the mart is absent or empty (Task 5 must turn this green).
+     output; sample ≥20 rows with a non-null delta (fewer available is a
+     FAIL); each row must (a) conserve — delta == to_value − from_value —
+     AND (b) recompute from the parquet-lake budget_lines per diff_kind
+     using reconcile.scenario_map (see the gate docstring for the Task-5
+     mart contract). FAIL if the mart is absent or empty (Task 5 must turn
+     this green).
 
   4. decade_series_gate5e — the fct_decade_series mart exists;
      (pe_bli, fy, edition_year) is unique; sample ≥20 rows and recompute each
@@ -42,7 +46,11 @@ TARGET_EDITIONS: tuple[int, ...] = tuple(range(2017, 2027))
 # 'downloaded' is the only terminal success state the schema records.
 TERMINAL_STATUS = "downloaded"
 
-_TOL = Decimal("0.001")
+# Recompute tolerance. The 5E marts and the lake are both in USD thousands
+# (the unit contract: mart values match budget_lines.amount_thousands), so
+# Decimal("1.0") = $1,000 — the same materiality as reconcile.TOLERANCE_M
+# (Decimal("0.001") in USD millions).
+_TOL = Decimal("1.0")
 
 
 def _sql_path(p) -> str:
@@ -58,6 +66,43 @@ def _dec(value) -> Decimal | None:
         return Decimal(str(value))
     except (InvalidOperation, ValueError):
         return None
+
+
+def _lake_candidate_match(
+    lake_con,
+    lake_budget_lines: Path,
+    pe_bli: str,
+    edition: int,
+    candidates: list[str],
+    target: Decimal,
+) -> tuple[bool, str]:
+    """Any-candidate-matches rule (reconcile.scenario_map semantics).
+
+    For each candidate amount_type slug, sum amount_thousands over the
+    edition's lake rows for pe_bli; matched iff ANY candidate sum is within
+    _TOL of target (PB books split base/OOC/total differently per org — the
+    same rule the reconciliation gate uses). Returns (matched, detail) where
+    detail lists the candidate sums for failure messages.
+    """
+    sums: list[str] = []
+    for slug in candidates:
+        n, s = lake_con.execute(
+            f"""
+            select count(*),
+                   sum(try_cast(amount_thousands as decimal(20, 3)))
+            from read_parquet('{_sql_path(lake_budget_lines)}')
+            where pe_bli = ?
+              and try_cast(fiscal_year as integer) = ?
+              and amount_type = ?
+            """,
+            [pe_bli, edition, slug],
+        ).fetchone()
+        if n == 0 or s is None:
+            continue
+        sums.append(f"{slug}={s}")
+        if abs(Decimal(str(s)) - target) <= _TOL:
+            return True, ", ".join(sums)
+    return False, ", ".join(sums) or "no lake rows"
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +250,10 @@ def leakage_gate5e(dsn: str, *, sample_size: int = _LEAKAGE_SAMPLE_SIZE) -> dict
     """No cross-edition leakage: sampled budget_lines rows carry the same
     fiscal_year as their source jbook_documents row. 100% required.
 
+    Sub-sample guard: fewer than sample_size joinable rows is a FAIL — a
+    thin join means the warehouse under-delivers, not that the gate should
+    quietly shrink its evidence base.
+
     Returns: ok, joinable, unjoined (informational), sampled,
              mismatch_count, mismatches [(budget_line_id, bl_fy, doc_fy)],
              reason (structural failures only).
@@ -243,11 +292,23 @@ def leakage_gate5e(dsn: str, *, sample_size: int = _LEAKAGE_SAMPLE_SIZE) -> dict
             (sample_size,),
         ).fetchall()
 
+    if len(rows) < sample_size:
+        return {
+            "ok": False,
+            "joinable": joinable,
+            "unjoined": unjoined,
+            "sampled": len(rows),
+            "mismatch_count": 0,
+            "mismatches": [],
+            "reason": f"only {len(rows)} joinable rows available —"
+                      f" fewer than sample_size={sample_size}",
+        }
+
     mismatches = [
         (bl_id, bl_fy, doc_fy) for bl_id, bl_fy, doc_fy in rows if bl_fy != doc_fy
     ]
     return {
-        "ok": len(rows) > 0 and len(mismatches) == 0,
+        "ok": len(mismatches) == 0,
         "joinable": joinable,
         "unjoined": unjoined,
         "sampled": len(rows),
@@ -273,18 +334,46 @@ def _mart_exists(con, table_name: str) -> bool:
     )
 
 
-def book_diff_gate5e(duckdb_path: Path, *, sample_size: int = _MART_SAMPLE_SIZE) -> dict:
-    """fct_book_diff conservation: delta recomputes as to_value − from_value.
+def book_diff_gate5e(
+    duckdb_path: Path,
+    lake_budget_lines: Path,
+    *,
+    sample_size: int = _MART_SAMPLE_SIZE,
+) -> dict:
+    """fct_book_diff conservation, grounded in the parquet lake.
 
-    Samples ≥sample_size rows with a non-null delta; each must carry non-null
-    from_value/to_value and recompute within 0.001. FAIL if the mart is
-    absent or empty — the mart is Task 5's deliverable and this gate must be
-    red until it lands.
+    Mart contract (Task 5 must build fct_book_diff to satisfy this gate):
+      - Columns: pe_bli, from_edition, to_edition, diff_kind, from_value,
+        to_value, delta. All values are in USD thousands, matching the
+        lake's budget_lines.amount_thousands.
+      - diff_kind = 'request_vs_request' (from_edition=N, to_edition=M):
+          from_value = edition-N lake value under
+                       scenario_map(N)["BudgetYearOne"] candidates
+          to_value   = edition-M lake value under
+                       scenario_map(M)["BudgetYearOne"] candidates
+      - diff_kind = 'request_vs_actuals' (from_edition=N, to_edition=N+2):
+          from_value = edition-N BudgetYearOne (the FY-N request)
+          to_value   = edition-(N+2) PriorYear (the FY-N actuals,
+                       slug fy_{N}_actuals)
+      - delta = to_value − from_value.
+
+    Each sampled row (non-null delta) must BOTH conserve (delta recomputes
+    as to_value − from_value within _TOL) AND recompute from the lake:
+    from_value and to_value each match a candidate-slug sum for their
+    edition (any-candidate-matches rule, reconcile.scenario_map — same rule
+    decade_series_gate5e uses). Recomputing from the lake keeps the gate
+    independent of the dbt model's own arithmetic.
+
+    Sub-sample guard: fewer than sample_size non-null-delta rows is a FAIL
+    (Task 5's mart will carry thousands; unit tests pass small sizes).
+    FAIL if the mart is absent or empty — the mart is Task 5's deliverable
+    and this gate must be red until it lands.
 
     Returns: ok, total_rows, sampled, passed, failures [(grain, reason)],
              reason (structural failures only).
     """
     duckdb_path = Path(duckdb_path)
+    lake_budget_lines = Path(lake_budget_lines)
     base = {"ok": False, "total_rows": 0, "sampled": 0, "passed": 0, "failures": []}
     if not duckdb_path.exists():
         return {**base, "reason": f"duckdb warehouse missing: {duckdb_path}"}
@@ -322,34 +411,93 @@ def book_diff_gate5e(duckdb_path: Path, *, sample_size: int = _MART_SAMPLE_SIZE)
     finally:
         con.close()
 
+    if len(rows) < sample_size:
+        return {
+            **base,
+            "total_rows": total,
+            "sampled": len(rows),
+            "reason": f"only {len(rows)} non-null-delta rows available —"
+                      f" fewer than sample_size={sample_size}",
+        }
+
+    if not lake_budget_lines.exists():
+        return {
+            **base,
+            "total_rows": total,
+            "reason": f"lake budget_lines parquet missing: {lake_budget_lines}",
+        }
+
+    from govbudget.jbooks.reconcile import scenario_map
+
     failures: list[tuple[str, str]] = []
-    for pe_bli, from_ed, to_ed, kind, from_v, to_v, delta in rows:
-        grain = f"{pe_bli} {from_ed}→{to_ed} {kind}"
-        fd, td, dd = _dec(from_v), _dec(to_v), _dec(delta)
-        if fd is None or td is None:
-            failures.append(
-                (grain, f"non-null delta with null/non-numeric inputs:"
-                        f" from_value={from_v!r} to_value={to_v!r}")
+    lake = duckdb.connect()
+    try:
+        for pe_bli, from_ed, to_ed, kind, from_v, to_v, delta in rows:
+            grain = f"{pe_bli} {from_ed}→{to_ed} {kind}"
+            fd, td, dd = _dec(from_v), _dec(to_v), _dec(delta)
+            if fd is None or td is None:
+                failures.append(
+                    (grain, f"non-null delta with null/non-numeric inputs:"
+                            f" from_value={from_v!r} to_value={to_v!r}")
+                )
+                continue
+            if dd is None:
+                failures.append((grain, f"delta not numeric: {delta!r}"))
+                continue
+            expected = td - fd
+            if abs(dd - expected) > _TOL:
+                failures.append(
+                    (grain, f"delta recompute mismatch: {to_v} − {from_v} ="
+                            f" {expected} but delta={delta}")
+                )
+                continue
+            # Lake grounding: recompute from_value/to_value per diff_kind.
+            if kind == "request_vs_request":
+                from_candidates = scenario_map(int(from_ed))["BudgetYearOne"]
+                to_candidates = scenario_map(int(to_ed))["BudgetYearOne"]
+            elif kind == "request_vs_actuals":
+                if int(to_ed) - int(from_ed) != 2:
+                    failures.append(
+                        (grain, f"request_vs_actuals span invalid:"
+                                f" to_edition − from_edition ="
+                                f" {int(to_ed) - int(from_ed)}; expected 2"
+                                f" (FY-{from_ed} actuals appear in"
+                                f" PB{int(from_ed) + 2})")
+                    )
+                    continue
+                from_candidates = scenario_map(int(from_ed))["BudgetYearOne"]
+                # scenario_map(N+2)["PriorYear"] == ["fy_{N}_actuals"]
+                to_candidates = scenario_map(int(to_ed))["PriorYear"]
+            else:
+                failures.append((grain, f"unknown diff_kind: {kind!r}"))
+                continue
+            ok_from, detail = _lake_candidate_match(
+                lake, lake_budget_lines, pe_bli, int(from_ed), from_candidates, fd
             )
-            continue
-        if dd is None:
-            failures.append((grain, f"delta not numeric: {delta!r}"))
-            continue
-        expected = td - fd
-        if abs(dd - expected) > _TOL:
-            failures.append(
-                (grain, f"delta recompute mismatch: {to_v} − {from_v} ="
-                        f" {expected} but delta={delta}")
+            if not ok_from:
+                failures.append(
+                    (grain, f"from_value lake recompute mismatch:"
+                            f" mart={fd} but candidates [{detail}]")
+                )
+                continue
+            ok_to, detail = _lake_candidate_match(
+                lake, lake_budget_lines, pe_bli, int(to_ed), to_candidates, td
             )
+            if not ok_to:
+                failures.append(
+                    (grain, f"to_value lake recompute mismatch:"
+                            f" mart={td} but candidates [{detail}]")
+                )
+    finally:
+        lake.close()
 
     sampled = len(rows)
     return {
-        "ok": sampled > 0 and len(failures) == 0,
+        "ok": len(failures) == 0,
         "total_rows": total,
         "sampled": sampled,
         "passed": sampled - len(failures),
         "failures": failures,
-        **({} if sampled else {"reason": "no fct_book_diff rows carry a non-null delta"}),
     }
 
 
@@ -466,30 +614,13 @@ def decade_series_gate5e(
                 )
                 continue
             candidates = scenario_map(int(edition_year))[scenario]
-            matched = False
-            candidate_sums: list[str] = []
-            for slug in candidates:
-                n, s = lake.execute(
-                    f"""
-                    select count(*),
-                           sum(try_cast(amount_thousands as decimal(20, 3)))
-                    from read_parquet('{_sql_path(lake_budget_lines)}')
-                    where pe_bli = ?
-                      and try_cast(fiscal_year as integer) = ?
-                      and amount_type = ?
-                    """,
-                    [pe_bli, int(edition_year), slug],
-                ).fetchone()
-                if n == 0 or s is None:
-                    continue
-                candidate_sums.append(f"{slug}={s}")
-                if abs(Decimal(str(s)) - amt) <= _TOL:
-                    matched = True
-                    break
+            matched, detail = _lake_candidate_match(
+                lake, lake_budget_lines, pe_bli, int(edition_year), candidates, amt
+            )
             if not matched:
                 failures.append(
                     (grain, f"lake recompute mismatch: amount={amt} but"
-                            f" candidates [{', '.join(candidate_sums) or 'no lake rows'}]")
+                            f" candidates [{detail}]")
                 )
     finally:
         lake.close()

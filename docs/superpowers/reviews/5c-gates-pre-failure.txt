@@ -487,14 +487,18 @@ Fix: strip manual site-name suffixes from all page metadata titles (template
 owns the suffix); home page uses title.absolute.
 
 ══════════════════════════════════════════════════════════════════════════
-verify-phase5e (5E Task 3)
+verify-phase5e (5E Task 3 — updated after review fixes, 2026-07-03)
 Date: 2026-07-03
 ══════════════════════════════════════════════════════════════════════════
 Proof-can-fail: gate shipped BEFORE the decade backfill (Task 4) and the
 5E marts (Task 5). Run against the REAL current warehouse (only PB2026
 loaded, data/research/edition_manifest.json empty, fct_book_diff and
 fct_decade_series not built). Legs a/c/d FAIL as designed; leg b PASSES
-(single edition loaded — no cross-edition leakage possible). Exit code 1.
+(single edition loaded — no cross-edition leakage possible; 200 sampled
+of 8,557 joinable satisfies the new sub-sample guard). Exit code 1.
+Review fixes reflected in this run: leg c is now lake-grounded (recomputes
+from_value/to_value from budget_lines.parquet per diff_kind, $K tolerance
+= reconcile.TOLERANCE_M materiality) and legs b/c fail on sub-size samples.
 
 $ uv run python -m govbudget verify-phase5e
 gate a edition-coverage: loaded=1 excused=0 missing=9/10 editions → FAIL

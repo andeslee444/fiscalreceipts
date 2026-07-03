@@ -58,7 +58,8 @@ def pg5e(pg_dsn_5e):
         con.execute(
             "truncate jbook_documents, budget_lines, extraction_runs,"
             " budget_line_details, detail_narratives, reconciliation_checks,"
-            " review_queue, extraction_gaps restart identity cascade"
+            " review_queue, extraction_gaps, budget_line_awards,"
+            " provenance_pages restart identity cascade"
         )
 
 
@@ -213,7 +214,7 @@ def test_leakage_gate_passes_when_editions_align(pg5e):
     docs = seed_edition(pg5e, 2026)
     for i in range(5):
         seed_budget_line(pg5e, 2026, docs[0], pe_bli=f"060110{i}E")
-    g = leakage_gate5e(pg5e)
+    g = leakage_gate5e(pg5e, sample_size=5)
     assert g["ok"] is True
     assert g["sampled"] == 5
     assert g["mismatch_count"] == 0
@@ -224,7 +225,7 @@ def test_leakage_gate_fails_on_single_cross_edition_row(pg5e):
     seed_budget_line(pg5e, 2026, docs[0], pe_bli="0601101E")
     # leakage: a FY2025 line pointing at a PB2026 document
     seed_budget_line(pg5e, 2025, docs[0], pe_bli="0601102E")
-    g = leakage_gate5e(pg5e)
+    g = leakage_gate5e(pg5e, sample_size=2)
     assert g["ok"] is False
     assert g["mismatch_count"] == 1
     assert g["mismatches"][0][1] == 2025 and g["mismatches"][0][2] == 2026
@@ -236,75 +237,20 @@ def test_leakage_gate_fails_when_nothing_joinable(pg5e):
     assert "nothing to verify" in g["reason"]
 
 
-# ---------------------------------------------------------------------------
-# Gate 3: book-diff conservation
-# ---------------------------------------------------------------------------
-
-
-def make_book_diff_db(tmp_path: Path, rows: list[tuple]) -> Path:
-    db = tmp_path / "wh.duckdb"
-    con = duckdb.connect(str(db))
-    con.execute(
-        "create table fct_book_diff (pe_bli varchar, from_edition int,"
-        " to_edition int, diff_kind varchar, from_value decimal(20,3),"
-        " to_value decimal(20,3), delta decimal(20,3))"
-    )
-    if rows:
-        con.executemany("insert into fct_book_diff values (?, ?, ?, ?, ?, ?, ?)", rows)
-    con.close()
-    return db
-
-
-def test_book_diff_gate_fails_when_mart_absent(tmp_path):
-    db = tmp_path / "wh.duckdb"
-    duckdb.connect(str(db)).close()  # warehouse exists, mart does not
-    g = book_diff_gate5e(db)
+def test_leakage_gate_fails_below_sample_size(pg5e):
+    """Sub-sample guard: 2 joinable rows with sample_size=5 → FAIL, never a
+    quiet PASS on a thin evidence base."""
+    docs = seed_edition(pg5e, 2026)
+    seed_budget_line(pg5e, 2026, docs[0], pe_bli="0601101E")
+    seed_budget_line(pg5e, 2026, docs[0], pe_bli="0601102E")
+    g = leakage_gate5e(pg5e, sample_size=5)
     assert g["ok"] is False
-    assert "fct_book_diff mart absent" in g["reason"]
-
-
-def test_book_diff_gate_fails_when_warehouse_missing(tmp_path):
-    g = book_diff_gate5e(tmp_path / "nope.duckdb")
-    assert g["ok"] is False
-    assert "duckdb warehouse missing" in g["reason"]
-
-
-def test_book_diff_gate_fails_when_mart_empty(tmp_path):
-    g = book_diff_gate5e(make_book_diff_db(tmp_path, []))
-    assert g["ok"] is False
-    assert "empty" in g["reason"]
-
-
-def test_book_diff_conservation_passes(tmp_path):
-    rows = [
-        ("0601101E", 2025, 2026, "request_vs_request", 100.5, 120.25, 19.75),
-        ("0601102E", 2024, 2026, "request_vs_actuals", 50.0, 40.0, -10.0),
-    ]
-    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows))
-    assert g["ok"] is True
-    assert g["sampled"] == 2 and g["passed"] == 2
-
-
-def test_book_diff_conservation_fails_on_bad_delta(tmp_path):
-    rows = [
-        ("0601101E", 2025, 2026, "request_vs_request", 100.0, 120.0, 20.0),
-        ("0601102E", 2025, 2026, "request_vs_request", 100.0, 120.0, 21.0),  # wrong
-    ]
-    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows))
-    assert g["ok"] is False
-    assert len(g["failures"]) == 1
-    assert "recompute mismatch" in g["failures"][0][1]
-
-
-def test_book_diff_fails_on_null_inputs_with_nonnull_delta(tmp_path):
-    rows = [("0601101E", 2025, 2026, "request_vs_request", None, 120.0, 20.0)]
-    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows))
-    assert g["ok"] is False
-    assert "null/non-numeric inputs" in g["failures"][0][1]
+    assert g["sampled"] == 2
+    assert "fewer than sample_size=5" in g["reason"]
 
 
 # ---------------------------------------------------------------------------
-# Gate 4: decade-series integrity
+# Gate 3: book-diff conservation (lake-grounded)
 # ---------------------------------------------------------------------------
 
 
@@ -326,6 +272,181 @@ def make_lake_parquet(tmp_path: Path, rows: list[tuple[str, int, str, str]]) -> 
     con.execute(f"copy lake to '{pq}' (format parquet)")
     con.close()
     return pq
+
+
+def make_book_diff_db(tmp_path: Path, rows: list[tuple]) -> Path:
+    db = tmp_path / "wh.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "create table fct_book_diff (pe_bli varchar, from_edition int,"
+        " to_edition int, diff_kind varchar, from_value decimal(20,3),"
+        " to_value decimal(20,3), delta decimal(20,3))"
+    )
+    if rows:
+        con.executemany("insert into fct_book_diff values (?, ?, ?, ?, ?, ?, ?)", rows)
+    con.close()
+    return db
+
+
+def test_book_diff_gate_fails_when_mart_absent(tmp_path):
+    db = tmp_path / "wh.duckdb"
+    duckdb.connect(str(db)).close()  # warehouse exists, mart does not
+    g = book_diff_gate5e(db, make_lake_parquet(tmp_path, []))
+    assert g["ok"] is False
+    assert "fct_book_diff mart absent" in g["reason"]
+
+
+def test_book_diff_gate_fails_when_warehouse_missing(tmp_path):
+    g = book_diff_gate5e(tmp_path / "nope.duckdb", make_lake_parquet(tmp_path, []))
+    assert g["ok"] is False
+    assert "duckdb warehouse missing" in g["reason"]
+
+
+def test_book_diff_gate_fails_when_mart_empty(tmp_path):
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, []), make_lake_parquet(tmp_path, []))
+    assert g["ok"] is False
+    assert "empty" in g["reason"]
+
+
+def test_book_diff_gate_fails_when_lake_missing(tmp_path):
+    rows = [("0601101E", 2025, 2026, "request_vs_request", 100.0, 120.0, 20.0)]
+    g = book_diff_gate5e(
+        make_book_diff_db(tmp_path, rows), tmp_path / "nope.parquet", sample_size=1
+    )
+    assert g["ok"] is False
+    assert "lake budget_lines parquet missing" in g["reason"]
+
+
+def test_book_diff_conservation_and_lake_recompute_pass(tmp_path):
+    """Both diff_kinds: mart values recompute from the lake AND conserve.
+    request_vs_actuals: from = FY2024 request in PB2024 (BudgetYearOne),
+    to = FY2024 actuals in PB2026 (PriorYear slug fy_2024_actuals)."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2025, "fy_2025_total", "100.5"),
+        ("0601101E", 2026, "fy_2026_total", "120.25"),
+        ("0601102E", 2024, "fy_2024_total", "50"),
+        ("0601102E", 2026, "fy_2024_actuals", "40"),
+    ])
+    rows = [
+        ("0601101E", 2025, 2026, "request_vs_request", 100.5, 120.25, 19.75),
+        ("0601102E", 2024, 2026, "request_vs_actuals", 50.0, 40.0, -10.0),
+    ]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=2)
+    assert g["ok"] is True
+    assert g["sampled"] == 2 and g["passed"] == 2
+
+
+def test_book_diff_any_candidate_slug_matches(tmp_path):
+    """scenario_map any-candidate rule: from_value matches the second
+    BudgetYearOne candidate (fy_2025_disc_request), not the first."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2025, "fy_2025_total", "999"),
+        ("0601101E", 2025, "fy_2025_disc_request", "80"),
+        ("0601101E", 2026, "fy_2026_total", "120"),
+    ])
+    rows = [("0601101E", 2025, 2026, "request_vs_request", 80.0, 120.0, 40.0)]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=1)
+    assert g["ok"] is True
+
+
+def test_book_diff_conservation_fails_on_bad_delta(tmp_path):
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2025, "fy_2025_total", "100"),
+        ("0601101E", 2026, "fy_2026_total", "120"),
+        ("0601102E", 2025, "fy_2025_total", "100"),
+        ("0601102E", 2026, "fy_2026_total", "120"),
+    ])
+    rows = [
+        ("0601101E", 2025, 2026, "request_vs_request", 100.0, 120.0, 20.0),
+        ("0601102E", 2025, 2026, "request_vs_request", 100.0, 120.0, 25.0),  # wrong
+    ]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=2)
+    assert g["ok"] is False
+    assert len(g["failures"]) == 1
+    assert "delta recompute mismatch" in g["failures"][0][1]
+
+
+def test_book_diff_fails_when_mart_diverges_from_lake(tmp_path):
+    """Anti-tautology: delta == to − from is internally consistent, but the
+    mart's to_value does not recompute from the lake → FAIL."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2025, "fy_2025_total", "100"),
+        ("0601101E", 2026, "fy_2026_total", "120"),
+    ])
+    rows = [("0601101E", 2025, 2026, "request_vs_request", 100.0, 130.0, 30.0)]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=1)
+    assert g["ok"] is False
+    assert "to_value lake recompute mismatch" in g["failures"][0][1]
+
+
+def test_book_diff_fails_on_null_inputs_with_nonnull_delta(tmp_path):
+    rows = [("0601101E", 2025, 2026, "request_vs_request", None, 120.0, 20.0)]
+    g = book_diff_gate5e(
+        make_book_diff_db(tmp_path, rows), make_lake_parquet(tmp_path, []),
+        sample_size=1,
+    )
+    assert g["ok"] is False
+    assert "null/non-numeric inputs" in g["failures"][0][1]
+
+
+def test_book_diff_all_null_delta_fails(tmp_path):
+    """Sub-sample guard: a mart whose deltas are all null yields zero
+    sampled rows → FAIL, not a vacuous PASS."""
+    rows = [
+        ("0601101E", 2025, 2026, "request_vs_request", 100.0, None, None),
+        ("0601102E", 2025, 2026, "request_vs_request", None, 120.0, None),
+    ]
+    g = book_diff_gate5e(
+        make_book_diff_db(tmp_path, rows), make_lake_parquet(tmp_path, []),
+        sample_size=1,
+    )
+    assert g["ok"] is False
+    assert g["sampled"] == 0
+    assert "fewer than sample_size=1" in g["reason"]
+
+
+def test_book_diff_below_sample_size_fails(tmp_path):
+    """Sub-sample guard: only 1 of 3 rows carries a non-null delta but the
+    gate demands 2 → FAIL even though that row is valid."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2025, "fy_2025_total", "100"),
+        ("0601101E", 2026, "fy_2026_total", "120"),
+    ])
+    rows = [
+        ("0601101E", 2025, 2026, "request_vs_request", 100.0, 120.0, 20.0),
+        ("0601102E", 2025, 2026, "request_vs_request", 100.0, None, None),
+        ("0601103E", 2025, 2026, "request_vs_request", None, None, None),
+    ]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=2)
+    assert g["ok"] is False
+    assert g["sampled"] == 1
+    assert "fewer than sample_size=2" in g["reason"]
+
+
+def test_book_diff_request_vs_actuals_span_invalid_fails(tmp_path):
+    """request_vs_actuals requires to_edition == from_edition + 2 (FY-N
+    actuals first appear as PriorYear in PB(N+2))."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2024, "fy_2024_total", "100"),
+        ("0601101E", 2025, "fy_2023_actuals", "120"),
+    ])
+    rows = [("0601101E", 2024, 2025, "request_vs_actuals", 100.0, 120.0, 20.0)]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=1)
+    assert g["ok"] is False
+    assert "span invalid" in g["failures"][0][1]
+
+
+def test_book_diff_unknown_diff_kind_fails(tmp_path):
+    lake = make_lake_parquet(tmp_path, [("0601101E", 2025, "fy_2025_total", "100")])
+    rows = [("0601101E", 2025, 2026, "request_vs_enacted", 100.0, 120.0, 20.0)]
+    g = book_diff_gate5e(make_book_diff_db(tmp_path, rows), lake, sample_size=1)
+    assert g["ok"] is False
+    assert "unknown diff_kind" in g["failures"][0][1]
+
+
+# ---------------------------------------------------------------------------
+# Gate 4: decade-series integrity
+# ---------------------------------------------------------------------------
 
 
 def make_decade_series_db(tmp_path: Path, rows: list[tuple]) -> Path:
@@ -365,6 +486,30 @@ def test_decade_series_recompute_passes(tmp_path):
     assert g["ok"] is True
     assert g["sampled"] == 2 and g["passed"] == 2
     assert g["duplicate_grains"] == 0
+
+
+def test_decade_series_zero_duplicates_clean_recompute_passes(tmp_path):
+    """Grain-check polarity: rows sharing pe_bli across fy, and sharing
+    (fy, edition) across pe_bli, are NOT duplicates — with clean lake
+    recomputes the gate passes with duplicate_grains == 0. An inverted
+    grain check (flagging unique grains) cannot survive this test."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2026, "fy_2024_actuals", "100"),
+        ("0601101E", 2026, "fy_2025_total", "110"),
+        ("0601101E", 2026, "fy_2026_total", "120"),
+        ("0601102E", 2026, "fy_2026_total", "200"),
+    ])
+    db = make_decade_series_db(tmp_path, [
+        ("0601101E", 2024, 2026, 100.0, "f1"),
+        ("0601101E", 2025, 2026, 110.0, "f2"),
+        ("0601101E", 2026, 2026, 120.0, "f3"),
+        ("0601102E", 2026, 2026, 200.0, "f4"),
+    ])
+    g = decade_series_gate5e(db, lake)
+    assert g["ok"] is True
+    assert g["duplicate_grains"] == 0
+    assert g["failures"] == []
+    assert g["sampled"] == 4 and g["passed"] == 4
 
 
 def test_decade_series_duplicate_grain_fails(tmp_path):
