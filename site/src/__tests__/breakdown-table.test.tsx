@@ -208,6 +208,19 @@ describe("DerivedCard breakdown — inline (≤5 rows)", () => {
     expect(table.textContent).toContain("-25,823");
   });
 
+  it("amounts render FIXED 3 decimals (decimal-aligned column)", async () => {
+    render(<DerivedCard citation={DELTA_CITATION} factId={DELTA_FID} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("breakdown-table")).toBeInTheDocument();
+    });
+
+    const table = screen.getByTestId("breakdown-table");
+    // 25133 / -25823 / -690 all pad to 3dp — no mixed "168.2"-style rows.
+    expect(table.textContent).toContain("25,133.000");
+    expect(table.textContent).toContain("-25,823.000");
+    expect(table.textContent).toContain("-690.000");
+  });
+
   it("row amounts are state-A cites; clicking drills the panel to that input", async () => {
     let openedWith: string | null = null;
     render(
@@ -312,6 +325,42 @@ describe("DerivedCard breakdown — overlay (>5 rows)", () => {
     // Uncited rows never carry a fact id
     expect(uncited[0].getAttribute("data-fact-id")).toBeNull();
     expect(table.textContent).toContain("Uncited Program");
+  });
+
+  it('uncited rows carry an explicit muted "uncited" tag in the amount cell', async () => {
+    render(<DerivedCard citation={SUM_CITATION} factId={SUM_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    await waitFor(() => {
+      expect(screen.getByTestId("breakdown-table")).toBeInTheDocument();
+    });
+
+    const table = screen.getByTestId("breakdown-table");
+    const uncitedSpan = table.querySelector('[data-uncited="true"]') as HTMLElement;
+    const amountCell = uncitedSpan.closest("td") as HTMLElement;
+    // The tag is a visible word, not just the ⁂ glyph.
+    expect(amountCell.textContent).toContain("uncited");
+  });
+
+  it('overlay header states the recorded total ("sums to …") and shows the legend', async () => {
+    render(<DerivedCard citation={SUM_CITATION} factId={SUM_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    const overlay = await screen.findByTestId("breakdown-overlay");
+
+    const total = screen.getByTestId("breakdown-overlay-total");
+    expect(Number(total.getAttribute("data-v"))).toBeCloseTo(60.0, 3);
+    expect(total.textContent).toBe("60.000");
+    expect(overlay.textContent).toContain("sums to");
+
+    // Honesty-marker legend in the overlay header
+    expect(
+      overlay.querySelector('[data-testid="cite-legend"]'),
+    ).not.toBeNull();
+    // …and the sum row is inside the dedicated scrollport contract element.
+    const scroll = overlay.querySelector('[data-testid="breakdown-scroll"]');
+    expect(scroll).not.toBeNull();
+    expect(
+      scroll!.querySelector('[data-testid="breakdown-sum"]'),
+    ).not.toBeNull();
   });
 });
 

@@ -14,10 +14,19 @@
  *     token-driven fade, focus trap, Esc/click-outside closes). A text filter
  *     appears above the table when rows > FILTER_ROW_THRESHOLD.
  *
- * Table contract (G8 leg e, BINDING):
+ * Table contract (G8 leg e, BINDING — overlay legs STRENGTHENED 2026-07-02
+ * after the visual-judge M2 finding):
  *   [data-testid="breakdown-table"]           the table
  *   [data-testid="breakdown-sum"][data-v]     sum row; data-v == recorded_value
  *   [data-testid="breakdown-csv"]             CSV download of the tbody rows
+ *   [data-testid="breakdown-scroll"]          overlay scrollport; the sum row
+ *                                             MUST stay visible mid-scroll
+ *                                             (sticky tds, opaque bg)
+ *   [data-testid="breakdown-overlay-total"][data-v]
+ *                                             recorded total in the overlay
+ *                                             header ("sums to …")
+ *   [data-testid="cite-legend"]               honesty-marker legend in the
+ *                                             overlay header
  *
  * Row semantics:
  *   - Sorted by amount desc (subtracted/negative inputs naturally sink).
@@ -40,7 +49,7 @@ import React, {
 } from "react";
 import { Download, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { Cite, CitationPanelContext } from "@/components/cite";
+import { Cite, CiteLegend, CitationPanelContext } from "@/components/cite";
 import {
   fetchBreakdown,
   type Breakdown,
@@ -60,9 +69,31 @@ function asAmountUnits(units: string): AmountUnits {
     : "USD";
 }
 
-/** Exact numerals (not compact) so the sum arithmetic is visibly checkable. */
+/**
+ * Exact numerals (not compact) so the sum arithmetic is visibly checkable.
+ * FIXED 3 decimals (visual-judge decimal-alignment finding): every breakdown
+ * amount pads to 3dp ("168.2" → "168.200") so, with tabular-nums, the decimal
+ * points form a vertical rule down the column.
+ */
 function fmtExact(v: number): string {
-  return v.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  return v.toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+}
+
+/**
+ * Invisible twin of the Cite state-C trailing "⁂" (same classes → same
+ * advance width). Appended to CITED rows and the sum row so their numerals
+ * end at exactly the same x as uncited rows' — keeping the decimal points
+ * aligned across all rows despite the uncited glyph.
+ */
+function MarkerSpacer() {
+  return (
+    <span className="ml-0.5 invisible select-none" aria-hidden="true">
+      ⁂
+    </span>
+  );
 }
 
 /** RFC-4180-ish field escaping. */
@@ -118,6 +149,7 @@ export function BreakdownSection({ factId }: { factId: string }) {
 function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
   const [open, setOpen] = useState(false);
   const parentPanel = useContext(CitationPanelContext);
+  const recorded = Number(breakdown.recorded_value);
 
   // Drilling into a row's citation from the overlay must reveal the panel
   // card underneath — close the overlay, then delegate to the provider.
@@ -163,24 +195,42 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
               each with its own citation
             </DialogPrimitive.Description>
 
-            {/* Toolbar */}
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2">
-              <span className="truncate text-sm font-medium">
-                Line items ({breakdown.rows.length})
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  {breakdown.units}
+            {/* Toolbar — states the recorded total up front so the reader
+                knows what the line items must reconcile to (M2 finding). */}
+            <div className="shrink-0 border-b border-border px-4 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-sm font-medium">
+                  Line items ({breakdown.rows.length})
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {breakdown.units} · sums to{" "}
+                    <span
+                      data-testid="breakdown-overlay-total"
+                      data-v={recorded}
+                      className="font-mono tabular-nums text-foreground"
+                    >
+                      {fmtExact(recorded)}
+                    </span>
+                  </span>
                 </span>
-              </span>
-              <DialogPrimitive.Close
-                aria-label="Close line items"
-                className="rounded-md border border-border p-1.5 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </DialogPrimitive.Close>
+                <DialogPrimitive.Close
+                  aria-label="Close line items"
+                  className="rounded-md border border-border p-1.5 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </DialogPrimitive.Close>
+              </div>
+              <CiteLegend />
             </div>
 
-            {/* Scrollable table */}
-            <div className="min-h-0 flex-1 overflow-auto p-4">
+            {/* Scrollable table — THIS div is the vertical scrollport the
+                sticky sum row pins to (data-testid consumed by the G8
+                strengthened e-UI leg). The table wrapper inside must NOT be
+                its own scroll container in overlay mode, or `sticky bottom-0`
+                pins to the wrong box and the sum row vanishes mid-scroll. */}
+            <div
+              data-testid="breakdown-scroll"
+              className="min-h-0 flex-1 overflow-auto p-4 pb-0"
+            >
               <CitationPanelContext.Provider value={drillContext}>
                 <BreakdownTable
                   breakdown={breakdown}
@@ -283,7 +333,17 @@ export function BreakdownTable({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-border">
+      {/* In stickySum (overlay) mode the wrapper must NOT be a scroll
+          container — `overflow-x-auto` would become the sum row's sticky
+          scrollport (it never scrolls vertically, so the row would sit inert
+          at the table foot). The overlay's own scroll div handles both axes. */}
+      <div
+        className={
+          stickySum
+            ? "rounded-md border border-border"
+            : "overflow-x-auto rounded-md border border-border"
+        }
+      >
         <table data-testid="breakdown-table" className="w-full text-xs">
           <caption className="sr-only">
             Input line items summed into this derived figure ({breakdown.units})
@@ -315,14 +375,26 @@ export function BreakdownTable({
             )}
           </tbody>
           <tfoot>
+            {/* Sticky pinning lives on the TDs, not the TR — Chromium does
+                not apply position:sticky to table rows. The background must
+                be OPAQUE (bg-muted, not bg-muted/60) so scrolled line items
+                cannot ghost through the pinned row; the -1px box-shadow
+                stands in for border-top, which collapsed borders leave
+                behind when a cell goes sticky. */}
             <tr
               data-testid="breakdown-sum"
               data-v={recorded}
-              className={`border-t border-border bg-muted/60 font-semibold ${
-                stickySum ? "sticky bottom-0" : ""
+              className={`border-t border-border font-semibold ${
+                stickySum ? "" : "bg-muted/60"
               }`}
             >
-              <td className="px-2.5 py-1.5">
+              <td
+                className={`px-2.5 py-1.5 ${
+                  stickySum
+                    ? "sticky bottom-0 bg-muted [box-shadow:0_-1px_0_var(--color-border)]"
+                    : ""
+                }`}
+              >
                 Sum — recorded value
                 {filter.trim() !== "" && (
                   <span className="ml-1 font-normal text-muted-foreground">
@@ -330,8 +402,15 @@ export function BreakdownTable({
                   </span>
                 )}
               </td>
-              <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+              <td
+                className={`px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
+                  stickySum
+                    ? "sticky bottom-0 bg-muted [box-shadow:0_-1px_0_var(--color-border)]"
+                    : ""
+                }`}
+              >
                 {fmtExact(recorded)}
+                <MarkerSpacer />
               </td>
             </tr>
           </tfoot>
@@ -348,6 +427,7 @@ function BreakdownRowTr({
   row: BreakdownRow;
   units: AmountUnits;
 }) {
+  const isUncited = !row.fid;
   return (
     <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/30">
       <td className="px-2.5 py-1.5">
@@ -362,6 +442,17 @@ function BreakdownRowTr({
         )}
       </td>
       <td className="px-2.5 py-1.5 text-right font-mono tabular-nums whitespace-nowrap">
+        {/* Uncited rows carry an EXPLICIT muted tag ahead of the amount (not
+            just the trailing ⁂ glyph) — visual-judge M2 finding. It sits
+            before the numerals so it cannot disturb decimal alignment. */}
+        {isUncited && (
+          <span
+            className="mr-1.5 rounded bg-muted px-1 py-0.5 font-sans text-[10px] font-normal text-muted-foreground align-middle"
+            title="input has no citation row — still counted in the sum"
+          >
+            uncited
+          </span>
+        )}
         <Cite
           value={row.v}
           units={units}
@@ -369,6 +460,9 @@ function BreakdownRowTr({
           factId={row.fid ?? undefined}
           display={fmtExact(row.v)}
         />
+        {/* Cited rows get an invisible ⁂-width spacer so their numerals line
+            up with uncited rows' (whose Cite appends a real trailing ⁂). */}
+        {!isUncited && <MarkerSpacer />}
       </td>
     </tr>
   );

@@ -106,6 +106,38 @@ export interface CiteProps {
 }
 
 /**
+ * <CiteLegend> — one-line legend decoding the three Cite states (visual-judge
+ * M2 finding: the honesty markers were unexplained at the point of use).
+ * Rendered near the /years/ table controls and in the breakdown overlay
+ * header. Each marker is shown with its real visual treatment so the legend
+ * doubles as a swatch.
+ */
+export function CiteLegend({ className }: { className?: string }) {
+  return (
+    <p
+      data-testid="cite-legend"
+      className={[
+        "text-[11px] leading-5 text-muted-foreground",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="underline decoration-dotted underline-offset-2">
+        dotted underline
+      </span>
+      {" = cited (click for source) · "}
+      <span className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700">
+        XML
+      </span>
+      {" = zero in source XML · "}
+      <span>⁂</span>
+      {" = uncited input (still counted)"}
+    </p>
+  );
+}
+
+/**
  * Render a cited monetary amount with full three-state provenance signaling.
  *
  * The rendered span ALWAYS has:

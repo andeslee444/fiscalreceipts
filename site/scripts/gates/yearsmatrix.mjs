@@ -30,6 +30,18 @@
  *      /years/, opening a Δ cell's citation shows the inline breakdown table
  *      whose sum row equals the derived figure and whose CSV export parses
  *      to the same rows.
+ *  (e-UI overlay, STRENGTHENED 2026-07-02 — visual-judge M2 blocker: the
+ *      large breakdown overlay shipped without a visible sum row) — an
+ *      overlay-sized (>5-row) breakdown is opened live from the built page
+ *      that cites it; the gate REQUIRES:
+ *        · [data-testid="breakdown-overlay-total"][data-v] in the overlay
+ *          header equals the derived recorded_value,
+ *        · [data-testid="cite-legend"] present in the overlay header AND on
+ *          /years/ near the table controls,
+ *        · with [data-testid="breakdown-scroll"] scrolled to its midpoint,
+ *          the [data-testid="breakdown-sum"] row REMAINS fully visible
+ *          inside the scrollport (position:sticky td, non-transparent bg)
+ *          and its data-v equals recorded_value.
  *
  * DOM contract for the /years/ page (BINDING for Task 4 — the gate was
  * built first, per house rules):
@@ -43,9 +55,11 @@
  *   [data-testid="years-csv"]              CSV export button (download)
  *   [data-sticky-col]                      first-column sticky cells
  *   dollar cells render the existing <Cite> ([data-fact-id])
- *   citation panel breakdown (Task 3b):
+ *   citation panel breakdown (Task 3b + strengthened overlay contract):
  *   [data-testid="breakdown-table"], [data-testid="breakdown-sum"][data-v],
- *   [data-testid="breakdown-csv"]
+ *   [data-testid="breakdown-csv"], [data-testid="breakdown-scroll"],
+ *   [data-testid="breakdown-overlay-total"][data-v],
+ *   [data-testid="cite-legend"] (overlay header AND /years/ controls)
  *
  * Export: runYearsMatrixGate({ baseUrl }) → { pass, errors, notes }
  */
@@ -568,6 +582,13 @@ export async function runYearsMatrixGate({ baseUrl }) {
     }
 
     if (pageUp) {
+      // ---- honesty-marker legend near the table controls (strengthened) ----
+      if ((await page.locator('[data-testid="cite-legend"]').count()) === 0) {
+        errors.push('leg e-UI: [data-testid="cite-legend"] missing on /years/ near the table controls');
+      } else {
+        notes.push("leg e-UI: honesty-marker legend on /years/ ✓");
+      }
+
       // ---- sticky header + first column at 1440 and 390 ----
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
@@ -770,6 +791,159 @@ export async function runYearsMatrixGate({ baseUrl }) {
                 }
               }
             }
+          }
+        }
+      }
+
+      // ---- Leg (e-UI overlay, STRENGTHENED 2026-07-02): the large-overlay
+      //      sum row must stay visible while the overlay body is MID-SCROLL
+      //      (visual-judge M2 blocker — do not weaken; see header docs) ----
+      {
+        // Find an overlay-sized breakdown (>5 rows renders as the overlay)
+        // and the built page whose server-rendered HTML cites it.
+        const breakdownDir = path.join(jsonDir, "breakdowns");
+        const agencyDir = path.join(siteRoot, "out", "agency");
+        let overlay = null; // { fid, nRows, url }
+        if (fs.existsSync(breakdownDir) && fs.existsSync(agencyDir)) {
+          const candidates = fs
+            .readdirSync(breakdownDir)
+            .filter((f) => f.endsWith(".json"))
+            .map((f) => {
+              const b = readJson(path.join(breakdownDir, f));
+              return { fid: f.replace(".json", ""), nRows: b.rows?.length ?? 0 };
+            })
+            .filter((c) => c.nRows > 5)
+            .sort((a, b) => b.nRows - a.nRows);
+          const slugs = fs.readdirSync(agencyDir);
+          outer: for (const cand of candidates) {
+            for (const slug of slugs) {
+              const p = path.join(agencyDir, slug, "index.html");
+              if (!fs.existsSync(p)) continue;
+              if (fs.readFileSync(p, "utf8").includes(`data-fact-id="${cand.fid}"`)) {
+                overlay = { ...cand, url: `/agency/${slug}/` };
+                break outer;
+              }
+            }
+          }
+        }
+
+        if (!overlay) {
+          errors.push(
+            "leg e-UI: no overlay-sized (>5-row) breakdown cited on any built agency page — the strengthened overlay checks cannot run"
+          );
+        } else {
+          try {
+            await page.goto(`${baseUrl}${overlay.url}`, {
+              waitUntil: "networkidle",
+              timeout: 30000,
+            });
+            const cite = page.locator(`[data-fact-id="${overlay.fid}"]`).first();
+            await cite.scrollIntoViewIfNeeded();
+            await cite.click();
+            await page.waitForSelector('[data-testid="citation-panel"]', { timeout: 10000 });
+            await page.locator('[data-testid="breakdown-open"]').click({ timeout: 10000 });
+            await page.waitForSelector('[data-testid="breakdown-overlay"]', { timeout: 10000 });
+
+            const recorded = Number(citations[overlay.fid].recorded_value);
+
+            // Header states the recorded total the line items reconcile to.
+            const headerV = await page.evaluate(() => {
+              const el = document.querySelector('[data-testid="breakdown-overlay-total"][data-v]');
+              return el ? Number(el.getAttribute("data-v")) : null;
+            });
+            if (headerV == null || Math.abs(headerV - recorded) > TOL_CELL) {
+              errors.push(
+                `leg e-UI: overlay header total ${headerV} != recorded ${recorded} (${overlay.fid})`
+              );
+            }
+
+            // Honesty-marker legend inside the overlay header.
+            const legendInOverlay = await page
+              .locator('[data-testid="breakdown-overlay"] [data-testid="cite-legend"]')
+              .count();
+            if (legendInOverlay === 0) {
+              errors.push("leg e-UI: honesty-marker legend missing from the breakdown overlay");
+            }
+
+            // Scroll the overlay body to its midpoint, then require the sum
+            // row to still be fully visible inside the scrollport.
+            const scrolled = await page.evaluate(() => {
+              const s = document.querySelector('[data-testid="breakdown-scroll"]');
+              if (!s) return null;
+              s.scrollTop = Math.round((s.scrollHeight - s.clientHeight) / 2);
+              return { max: s.scrollHeight - s.clientHeight };
+            });
+            if (!scrolled) {
+              errors.push('leg e-UI: [data-testid="breakdown-scroll"] scrollport missing in overlay');
+            } else if (scrolled.max <= 0) {
+              errors.push(
+                `leg e-UI: overlay body does not scroll (${overlay.nRows} rows should overflow) — mid-scroll check impossible`
+              );
+            } else {
+              await page.waitForTimeout(200);
+              const mid = await page.evaluate(() => {
+                const s = document.querySelector('[data-testid="breakdown-scroll"]');
+                const row = document.querySelector('[data-testid="breakdown-sum"]');
+                const td = row ? row.querySelector("td") : null;
+                if (!s || !row || !td) return null;
+                const sr = s.getBoundingClientRect();
+                const rr = td.getBoundingClientRect();
+                const style = getComputedStyle(td);
+                return {
+                  scrollTop: s.scrollTop,
+                  visible:
+                    rr.height > 0 &&
+                    rr.top >= sr.top - 1 &&
+                    rr.bottom <= sr.bottom + 1,
+                  position: style.position,
+                  bg: style.backgroundColor,
+                  dataV: Number(row.getAttribute("data-v")),
+                };
+              });
+              if (!mid) {
+                errors.push("leg e-UI: overlay sum row not found while mid-scroll");
+              } else {
+                if (mid.scrollTop <= 0) {
+                  errors.push("leg e-UI: overlay scrollport did not scroll (scrollTop=0)");
+                }
+                if (!mid.visible) {
+                  errors.push(
+                    "leg e-UI: overlay sum row NOT visible while mid-scroll (the M2 regression)"
+                  );
+                }
+                if (mid.position !== "sticky") {
+                  errors.push(
+                    `leg e-UI: overlay sum td position=${mid.position} (want sticky)`
+                  );
+                }
+                const transparent =
+                  mid.bg === "rgba(0, 0, 0, 0)" ||
+                  /\/\s*0(\.\d+)?\s*\)/.test(mid.bg) ||
+                  /rgba\([^)]+,\s*0(\.\d+)?\s*\)/.test(mid.bg);
+                if (transparent) {
+                  errors.push(
+                    `leg e-UI: overlay sum row background is not opaque (${mid.bg}) — rows would ghost through`
+                  );
+                }
+                if (Math.abs(mid.dataV - recorded) > TOL_CELL) {
+                  errors.push(
+                    `leg e-UI: overlay sum data-v ${mid.dataV} != recorded ${recorded}`
+                  );
+                }
+                if (
+                  mid.scrollTop > 0 &&
+                  mid.visible &&
+                  mid.position === "sticky" &&
+                  !transparent
+                ) {
+                  notes.push(
+                    `leg e-UI (strengthened): overlay ${overlay.fid} (${overlay.nRows} rows on ${overlay.url}) — header total + legend + sum row pinned & opaque mid-scroll ✓`
+                  );
+                }
+              }
+            }
+          } catch (e) {
+            errors.push(`leg e-UI: overlay check failed: ${e.message}`);
           }
         }
       }
