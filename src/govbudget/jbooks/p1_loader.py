@@ -19,6 +19,10 @@ P1_ID_HEADERS = {
     "Line Number": "line_number",
     "Budget Line Item": "pe_bli",
     "Budget Line Item (BLI) Title": "title",
+    # PB2024 spelling (the R-1 header reused verbatim on P-1/P-1R; PB2025+
+    # shortened it to 'Budget Line Item (BLI) Title' above — missing this
+    # variant loaded PB2024's 4,585 P-1 rows title-NULL)
+    "Program Element/Budget Line Item (BLI) Title": "title",
     # PB2017–PB2023 era spellings (no workbook carries both variants)
     "Line Item": "pe_bli",
     "Line Item Title": "title",

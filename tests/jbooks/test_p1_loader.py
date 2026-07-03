@@ -170,6 +170,42 @@ def test_p1_loader_handles_footnote_asterisk_headers(pg_dsn, tmp_path):
     assert rows["fy_2025_request"] == Decimal("200000")
 
 
+def test_p1_loader_pb2024_program_element_title_header(pg_dsn, tmp_path):
+    """PB2024's P-1 names its title column 'Program Element/Budget Line Item
+    (BLI) Title' (the R-1 spelling) instead of PB2025+'s 'Budget Line Item
+    (BLI) Title' — the variant must map to title, not silently load 4,585
+    title-NULL rows (Task 5 improvements, live workbook evidence)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(["Total of Displayed Rows"])
+    ws.append([
+        "Account", "Account Title", "Organization", "Budget Activity",
+        "Budget Activity Title", "Line Number", "BSA",
+        "Budget SubActivity (BSA) Title", "Budget Line Item",
+        "Program Element/Budget Line Item (BLI) Title", "Cost Type",
+        "Cost Type Title", "Add/Non-Add",
+        "FY 2022  Actuals Quantity", "FY 2022  Actuals Amount",
+        "FY 2023  Total Enacted Quantity", "FY 2023  Total Enacted Amount",
+        "FY 2024  Request Quantity", "FY 2024  Request Amount",
+        "Classification",
+    ])
+    ws.append(["1319N", "Shipbuilding and Conversion, Navy", "N", "02",
+               "Other Warships", "13", "20", "Attack Submarines",
+               "0204", "Virginia Class Submarine", "A", "Weapon System Cost",
+               "Add", 2, 7304359, 2, 4632695, 2, 7223549])
+    p = tmp_path / "p1_display.xlsx"
+    wb.save(p)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2024)
+    assert n == 3
+    with psycopg.connect(pg_dsn) as con:
+        rows = con.execute(
+            "select distinct title from budget_lines"
+            " where exhibit='P-1' and pe_bli='0204'"
+        ).fetchall()
+    assert rows == [("Virginia Class Submarine",)]
+
+
 # --- PB2017–PB2023 era header variants (live workbook evidence, Task 4) ---
 
 ERA_P1_HEADERS = [
