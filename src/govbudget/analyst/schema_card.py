@@ -99,11 +99,12 @@ SCHEMA_CARD: dict = {
         "(e.g. ORDER BY metric DESC, id) so ties cannot reorder between runs.",
         "Never use LIMIT without an explicit ORDER BY carrying a unique "
         "tiebreaker — an unordered LIMIT returns different rows on the "
-        "grader's fresh connection. When the question names an entity "
-        "precisely, filter with exact equality (=) on the canonical name, "
-        "not LIKE/ILIKE patterns: fuzzy matches can catch unrelated rows "
-        "(e.g. a '%SIKORSKY%' pattern also matches a Boeing joint venture) "
-        "and make the returned row order-dependent.",
+        "grader's fresh connection. When the question quotes an exact "
+        "entity name, filter with exact equality (=) on that exact string "
+        "(names are stored uppercase) rather than a LIKE/ILIKE pattern; "
+        "fuzzy patterns can match similarly-named but unrelated rows. The "
+        "final SELECT must return exactly the rows your answer contains — "
+        "a 'which one …' question returns one row, never a list.",
         "Unit conversion is MANDATORY when the question names a unit ('in "
         "millions', 'in billions', 'per capita', 'percentage') — never answer "
         "in raw full dollars when a display unit is named. Naming a unit alone "

@@ -108,9 +108,9 @@
     program, in billions, to three decimal places?
   answer_sql: |
     select round(amount_thousands / 1e6, 3)
-    from fct_budget_lines
-    where title = 'Virginia Class Submarine' and amount_type = 'fy_2024_actuals'
-    limit 1
+    from fct_decade_series
+    where pe_bli = '2013' and fy = 2024 and edition_year = 2026
+      and amount_type_kind = 'actuals'
   expected_answer: '10.657'
   tolerance: 0.001
   expected_citation_kind: pdf_page
