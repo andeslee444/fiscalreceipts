@@ -96,11 +96,23 @@
       "status": "loaded"
     },
     "2022": {
+      "budget_lines": 6969,
       "date": "2026-07-03",
-      "discovered": 8,
-      "reason": "probe failed: discovered 8/[30,45] classifiable documents (3 rollups + 5 rdte vols; the 2 procurement volumes are misnamed on the comptroller site as ROC_Vol1_DW_PROC_PB22_Justification_Book_Final.pdf / ROC_Vol2_MDA_* \u2014 truncated 'PROC' prefix). Consolidated volumes + misnamed files; support deferred \u2014 honest gap, not a silent skip.",
-      "sample_pe_count": 0,
-      "status": "probe_failed"
+      "detail_facts": 3885,
+      "discovered": 10,
+      "documents": 10,
+      "downloaded": 10,
+      "provenance": {
+        "ambiguous_first": 1982,
+        "total": 3885,
+        "unique": 1268,
+        "unresolved": 0,
+        "zero_amount": 635
+      },
+      "reason": "loaded: 10 docs (10 downloaded), 6969 budget_lines, 3885 detail facts, 2395 recon checks",
+      "recon_checks": 2395,
+      "sample_pe_count": 17,
+      "status": "loaded"
     },
     "2023": {
       "date": "2026-07-03",
