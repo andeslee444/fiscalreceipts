@@ -7,7 +7,18 @@
  *   - Implements the CitationPanelContext.openPanel function
  *   - Holds the citations slice (per-page subset, passed from the server page)
  *   - Opens the panel when openPanel(factId) is called
+ *   - Fetch-on-miss (Phase 5D Task 3): a fact_id NOT in the embedded slice is
+ *     resolved lazily from /json/cite-shards/{fact_id[:2]}.json (cached Map,
+ *     single-flight per shard — lib/cite-shards.ts). While resolving, the
+ *     panel shows a loading body; on failure it shows the degraded state
+ *     ([data-degraded="citation"]) — never a silent no-op or fake success.
+ *     The embedded fast path is untouched (no fetch, zero behavior change on
+ *     existing pages).
  *   - Dispatches to the right card based on citation.kind
+ *   - Drill-down history (Phase 5D Task 3b): opening another citation while
+ *     the panel is already open (derived-input chips, breakdown-table row
+ *     cites) pushes the current fact onto a back stack; a Back button in the
+ *     header returns to it. The stack resets when the panel closes.
  *   - State B (xml-path) and state C (uncited) spans NEVER call openPanel
  *     (they have no data-fact-id — cite.tsx only wires clicks for state A)
  *
@@ -22,7 +33,7 @@
  */
 
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { X, ExternalLink, Copy, Check } from "lucide-react";
+import { X, ExternalLink, Copy, Check, ArrowLeft, AlertCircle } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
 import { formatFootnote, footnoteInputFromCitation } from "./footnote";
@@ -37,6 +48,7 @@ import {
   isJbookNarrative,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
+import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
   AssetConfigProvider,
   AssetConfigContext,
@@ -70,6 +82,9 @@ interface CitationPanelProviderProps {
  *     </CitationPanelProvider>
  *   );
  */
+/** Body display state: ready (card), loading (shard fetch), error (degraded). */
+type PanelBodyState = "ready" | "loading" | "error";
+
 export function CitationPanelProvider({
   citations,
   children,
@@ -77,31 +92,97 @@ export function CitationPanelProvider({
   const [open, setOpen] = useState(false);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [activeFactId, setActiveFactId] = useState<string | null>(null);
+  const [bodyState, setBodyState] = useState<PanelBodyState>("ready");
+  // Drill-down back stack (fact_ids UNDER the active one). State so the Back
+  // button re-renders; ref-free because updates only happen in handlers.
+  const [backStack, setBackStack] = useState<string[]>([]);
+
+  // Citations resolved lazily via cite-shards — merged view for lookups.
+  // A ref (not state): resolved rows are only read inside handlers, and the
+  // panel re-renders via setActiveCitation when one becomes active.
+  const dynamicRef = useRef<CitationsMap>({});
+  // Monotonic token so a stale shard resolution can't clobber a newer open.
+  const openEpochRef = useRef(0);
+
+  const lookup = useCallback(
+    (factId: string): Citation | undefined =>
+      citations[factId] ?? dynamicRef.current[factId],
+    [citations],
+  );
+
+  const showCitation = useCallback((factId: string, citation: Citation) => {
+    setActiveCitation(citation);
+    setActiveFactId(factId);
+    setBodyState("ready");
+    setOpen(true);
+  }, []);
 
   const openPanel = useCallback(
     (factId: string) => {
-      const citation = citations[factId];
-      if (!citation) {
-        // factId not in slice — shouldn't happen if caller is correct
-        console.warn(
-          `[CitationPanel] openPanel("${factId}") — fact_id not found in citations slice.`,
-        );
+      // Drill-down: opening a NEW fact while the panel is already showing one
+      // pushes the current fact onto the back stack (Back returns to it).
+      setBackStack((stack) => {
+        if (!open || !activeFactId || activeFactId === factId) return stack;
+        return [...stack, activeFactId];
+      });
+
+      const embedded = lookup(factId);
+      if (embedded) {
+        // Fast path — embedded slice (or an already-fetched shard row).
+        // Behavior identical to the pre-5D panel: no fetch.
+        showCitation(factId, embedded);
         return;
       }
-      setActiveCitation(citation);
+
+      // Fetch-on-miss: open immediately in the loading state, resolve the
+      // fact's shard, then either show the card or the degraded state.
+      const epoch = ++openEpochRef.current;
+      setActiveCitation(null);
       setActiveFactId(factId);
+      setBodyState("loading");
       setOpen(true);
+      resolveCitationFromShards(factId).then((citation) => {
+        if (openEpochRef.current !== epoch) return; // superseded by a newer open
+        if (citation) {
+          dynamicRef.current[factId] = citation;
+          setActiveCitation(citation);
+          setBodyState("ready");
+        } else {
+          setBodyState("error");
+        }
+      });
     },
-    [citations],
+    [open, activeFactId, lookup, showCitation],
   );
 
   // Derived-card input chips ask this before rendering a clickable chip —
   // calling openPanel again from inside the panel REPLACES the active card
-  // (stack/replace navigation).
+  // (stack navigation with Back).
   const hasCitation = useCallback(
-    (factId: string) => factId in citations,
-    [citations],
+    (factId: string) => lookup(factId) !== undefined,
+    [lookup],
   );
+
+  const goBack = useCallback(() => {
+    setBackStack((stack) => {
+      if (stack.length === 0) return stack;
+      const prev = stack[stack.length - 1];
+      const citation = lookup(prev);
+      if (citation) {
+        showCitation(prev, citation);
+      }
+      return stack.slice(0, -1);
+    });
+  }, [lookup, showCitation]);
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      // Invalidate any in-flight shard resolution and reset navigation.
+      openEpochRef.current++;
+      setBackStack([]);
+    }
+  }, []);
 
   const contextValue = React.useMemo(
     () => ({ openPanel, hasCitation }),
@@ -120,9 +201,12 @@ export function CitationPanelProvider({
         {children}
         <CitationPanelDialog
           open={open}
-          onOpenChange={setOpen}
+          onOpenChange={handleOpenChange}
           citation={activeCitation}
           factId={activeFactId}
+          bodyState={bodyState}
+          canGoBack={backStack.length > 0}
+          onBack={goBack}
         />
       </AssetConfigProvider>
     </CitationPanelContext.Provider>
@@ -179,6 +263,9 @@ interface CitationPanelDialogProps {
   onOpenChange: (open: boolean) => void;
   citation: Citation | null;
   factId: string | null;
+  bodyState: "ready" | "loading" | "error";
+  canGoBack: boolean;
+  onBack: () => void;
 }
 
 function kindLabel(citation: Citation): string {
@@ -227,6 +314,9 @@ function CitationPanelDialog({
   onOpenChange,
   citation,
   factId,
+  bodyState,
+  canGoBack,
+  onBack,
 }: CitationPanelDialogProps) {
   const shortId = factId ? factId.slice(0, 8) : null;
 
@@ -262,7 +352,21 @@ function CitationPanelDialog({
 
           {/* ── Header ── */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {/* Back — drill-down navigation (derived-input chips /
+                  breakdown-table row cites push onto the back stack). */}
+              {canGoBack && (
+                <button
+                  type="button"
+                  data-testid="panel-back"
+                  onClick={onBack}
+                  aria-label="Back to previous citation"
+                  className="flex items-center gap-1 rounded-sm p-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  Back
+                </button>
+              )}
               <h2 className="text-sm font-semibold">Citation</h2>
               {citation && (
                 <span
@@ -288,7 +392,43 @@ function CitationPanelDialog({
               (visual-judge nit, 2 judges). When content overflows, min-h-0
               lets the body shrink and scroll exactly as before. */}
           <div className="min-h-0 overflow-y-auto px-4 py-4">
-            {citation ? (
+            {bodyState === "loading" ? (
+              /* Shard fetch in flight — explicit loading body (skeleton +
+                 label), mirroring the PDF loading pattern. */
+              <div
+                data-testid="citation-loading"
+                className="animate-pulse space-y-2"
+                aria-label="Loading citation"
+              >
+                <div className="h-2 w-3/5 rounded bg-border" aria-hidden="true" />
+                <div className="h-2 w-full rounded bg-border" aria-hidden="true" />
+                <div className="h-2 w-4/5 rounded bg-border" aria-hidden="true" />
+                <p className="pt-1 text-xs text-muted-foreground">
+                  Loading citation…
+                </p>
+              </div>
+            ) : bodyState === "error" ? (
+              /* Degraded state — the shard was unreachable or the fact has no
+                 citation row. Explicit, never fake success (G3 pattern). */
+              <div
+                data-degraded="citation"
+                role="alert"
+                className="flex flex-col items-center gap-3 py-6 text-center"
+              >
+                <AlertCircle
+                  className="h-8 w-8 text-destructive"
+                  aria-hidden="true"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {"couldn't load this citation — check your connection and try again"}
+                </p>
+                {factId && (
+                  <p className="max-w-full truncate font-mono text-xs text-muted-foreground">
+                    fact #{factId.slice(0, 8)}
+                  </p>
+                )}
+              </div>
+            ) : citation ? (
               <CitationBody citation={citation} />
             ) : (
               <p className="text-sm text-muted-foreground">

@@ -150,6 +150,17 @@ if (fs.existsSync(detailsSrc)) {
   console.warn("⚠   program_details/ not found — skipping");
 }
 
+// ── 5b. Copy citation shards (Phase 5D — lazy panel resolution) ───────────────
+// cite-shards/{fact_id[:2]}.json — 256 shards covering EVERY citations.json
+// row. Served same-origin at /json/cite-shards/ (NOT /assets — the citation
+// panel must resolve even when the heavy asset bundle is degraded).
+const jsonDestDir = path.join(siteDir, "public", "json");
+const shardsSrc = path.join(jsonDir, "cite-shards");
+copyDir(shardsSrc, path.join(jsonDestDir, "cite-shards"));
+console.log(
+  `✓  cite-shards/ (${fs.readdirSync(shardsSrc).length} files) → public/json/`
+);
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
