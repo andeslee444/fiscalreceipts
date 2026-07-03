@@ -190,6 +190,7 @@ _CITED_DATASETS = {
     "jbook_details",
     "jbook_narratives",
     "budget_lines",
+    "budget_lines_decade",  # Phase 5E — every row carries a workbook citation
     "fct_program_lobbying",
     "fct_budget_trajectory",
     "dim_programs",
@@ -650,6 +651,36 @@ def export_site(
             ))
         citation_rows = updated
 
+    # --- 4b2. Decade citation tier (Phase 5E Task 6) ---
+    # Old-edition (PB2017–PB2025) workbook facts + derived decade sums +
+    # book-diff facts, built from the Task 5 marts and the jbooks lake.
+    # Ships in data/budget_lines_decade.parquet (a SIBLING of the fenced
+    # budget_lines.parquet — the PB2026 fence above stays intact; editions
+    # never merge silently, spec §2 rule 1).
+    (decade_bl_rows, decade_cit_rows, decade_grains,
+     decade_side_meta) = _build_decade_citation_rows(
+        duckdb_path=duckdb_path,
+        existing_fids={r[0] for r in citation_rows},
+        scope_pes={r[8] for r in bl_rows},
+    )
+    citation_rows.extend(decade_cit_rows)
+    if decade_bl_rows:
+        _write_typed_parquet(
+            data_dir / "budget_lines_decade.parquet",
+            columns=[
+                ("fact_id", "varchar"), ("exhibit", "varchar"),
+                ("fiscal_year", "integer"), ("account", "varchar"),
+                ("account_title", "varchar"), ("organization", "varchar"),
+                ("budget_activity", "varchar"), ("budget_activity_title", "varchar"),
+                ("pe_bli", "varchar"), ("title", "varchar"),
+                ("amount_type", "varchar"), ("amount_thousands", "double"),
+                ("units", "varchar"), ("document_sha256", "varchar"),
+                ("source_sheet", "varchar"), ("source_cells", "varchar"),
+            ],
+            rows=decade_bl_rows,
+        )
+        dataset_counts["budget_lines_decade"] = len(decade_bl_rows)
+
     # --- 4c. LDA filing citations (from duckdb fct_program_lobbying) ---
     lda_con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
@@ -891,6 +922,9 @@ def export_site(
         citation_rows=citation_rows,
         manifest=manifest,
         flow_payload=flow_payload,
+        decade_bl_rows=decade_bl_rows,
+        decade_grains=decade_grains,
+        decade_side_meta=decade_side_meta,
     )
 
     # Update manifest with json_sidecars count
@@ -1553,6 +1587,279 @@ def _build_derived_citation_rows(
 
 
 # ---------------------------------------------------------------------------
+# Decade citation tier (Phase 5E Task 6)
+# ---------------------------------------------------------------------------
+
+# How many globally-largest request-vs-actuals gaps stay mintable even when
+# their PE has no PB2026 page (the /feed/ "largest gaps" surface must not be
+# silently truncated to the page universe).
+_DECADE_TOP_RVA = 100
+
+
+def _build_decade_citation_rows(
+    *,
+    duckdb_path,
+    existing_fids: set,
+    scope_pes: set,
+) -> tuple[list, list, list, dict]:
+    """Build the Phase 5E decade fact space from fct_decade_series +
+    fct_book_diff (Task 5 marts) and the jbooks parquet lake.
+
+    Returns (decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta):
+      decade_bl_rows   — budget_lines_decade.parquet rows (16-tuple, same
+                         shape as bl_rows; fiscal_year == edition_year); ALL
+                         source rows behind in-scope grains, every edition.
+      decade_cit_rows  — citation rows: kind='workbook' for source rows not
+                         already cited (edition-2026 rows dedupe against the
+                         main pass), kind='derived' decade sums for
+                         multi-source grains (surface='decade',
+                         key='{pe}|{edition}', metric=amount_type slug,
+                         formula 'sum(budget_lines…' → rule-4c recompute),
+                         and kind='derived' book-diff facts
+                         (surface='book_diff', key='{pe}|{from}|{to}',
+                         metric=diff_kind, formula '… - …' with inputs
+                         [to_fid, from_fid] → rule-4b recompute).
+      decade_grains    — (pe_bli, fy, edition_year, amount_type_kind,
+                         amount_thousands, fid) per in-scope grain; fid is
+                         the grain's citable identity (workbook fact for
+                         single-source, derived decade sum otherwise).
+      decade_side_meta — fid → (label, pe_bli) for _emit_breakdowns
+                         difference-row labels ('PB2024 FY2022 actuals').
+
+    Scope (stated Task 6 decision): grains/diffs are minted for PEs in
+    scope_pes (the PB2026 page universe — every PE with a program page of
+    either tier) PLUS the PEs of the top-{_DECADE_TOP_RVA} global
+    request-vs-actuals gaps (3 PEs beyond the universe at build time), so
+    the Task 7 feed's "largest gaps" claim stays globally honest. Diffs for
+    dead PEs beyond that have no rendering surface and are NOT minted —
+    fct_book_diff remains the queryable source of truth.
+
+    Consistency contract (STOP conditions, per the Task 5 handoff): the
+    lake rows joined per grain must count exactly n_source_rows, and a
+    single-source grain's recomputed workbook fact_id must equal the mart's
+    source_fact_id — any drift raises ValueError (mart/lake disagreement is
+    a data bug, never papered over).
+    """
+    import datetime
+    import duckdb as _duckdb
+    import json as _json
+
+    empty: tuple[list, list, list, dict] = ([], [], [], {})
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        try:
+            series = con.execute(
+                "select pe_bli, fy, edition_year, amount_type_kind, amount,"
+                " amount_type, n_source_rows, source_fact_id"
+                " from fct_decade_series"
+            ).fetchall()
+        except _duckdb.CatalogException:
+            print("decade: fct_decade_series not in warehouse — decade tier skipped")
+            return empty
+        try:
+            diffs = con.execute(
+                "select pe_bli, from_edition, to_edition, diff_kind,"
+                " from_fy, to_fy, from_value, to_value, delta,"
+                " from_amount_type, to_amount_type"
+                " from fct_book_diff"
+            ).fetchall()
+        except _duckdb.CatalogException:
+            diffs = []
+    finally:
+        con.close()
+
+    if not series:
+        return empty
+
+    bl_lake = _stage_parquet_path(duckdb_path, "jbooks", "budget_lines.parquet")
+    doc_lake = _stage_parquet_path(duckdb_path, "jbooks", "documents.parquet")
+    if bl_lake is None or doc_lake is None:
+        raise ValueError(
+            "decade: fct_decade_series exists but the jbooks lake parquets"
+            " (budget_lines.parquet / documents.parquet) are missing next to"
+            f" {duckdb_path} — run export-facts first (the decade citation"
+            " tier must be built from the same lake the marts read)"
+        )
+
+    bl_lake_s = str(bl_lake).replace("'", "''")
+    doc_lake_s = str(doc_lake).replace("'", "''")
+    src_rows = _duckdb.sql(
+        f"""
+        select b.exhibit, cast(b.fiscal_year as integer) as edition_year,
+               b.account, b.account_title, b.organization,
+               b.budget_activity, b.budget_activity_title, b.pe_bli, b.title,
+               b.amount_type,
+               try_cast(b.amount_thousands as double) as amount_thousands,
+               d.sha256, b.source_sheet, b.source_cells,
+               d.source_url, d.downloaded_at
+        from read_parquet('{bl_lake_s}') b
+        join read_parquet('{doc_lake_s}') d on d.id = b.source_document_id
+        where b.exhibit in ('R-1', 'P-1')
+          and b.pe_bli <> '9999999999'
+          and d.sha256 is not null
+        """
+    ).fetchall()
+
+    src_by_key: dict[tuple, list] = {}
+    for r in src_rows:
+        src_by_key.setdefault((r[7], r[1], r[9]), []).append(r)
+
+    # ---- scope: page universe + top-N global request-vs-actuals PEs --------
+    rva = sorted(
+        (d for d in diffs if d[3] == "request_vs_actuals" and d[8] is not None),
+        key=lambda d: -abs(d[8]),
+    )
+    top_rva_pes = {d[0] for d in rva[:_DECADE_TOP_RVA]}
+    pes = set(scope_pes) | top_rva_pes
+
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+    decade_bl_rows: list[tuple] = []
+    decade_cit_rows: list[tuple] = []
+    decade_grains: list[tuple] = []
+    decade_side_meta: dict[str, tuple] = {}
+    grain_fid_by_key: dict[tuple, str] = {}
+    minted_fids: set[str] = set(existing_fids)
+
+    n_wb_new = 0
+    n_wb_dedup = 0
+    n_derived_sum = 0
+
+    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid in series:
+        if pe_bli not in pes:
+            continue
+        key_rows = src_by_key.get((pe_bli, edition, at), [])
+        if len(key_rows) != n_src:
+            raise ValueError(
+                f"decade: grain ({pe_bli}, PB{edition}, {at}) has"
+                f" {len(key_rows)} lake source rows but fct_decade_series"
+                f" says n_source_rows={n_src} — mart/lake drift; refusing"
+                " to mint (rebuild the marts against the current lake)"
+            )
+
+        input_fids: list[str] = []
+        # deterministic breakdown order: largest row first, fid tiebreak
+        for r in sorted(key_rows, key=lambda r: (-(r[10] or 0.0), r[11])):
+            (exhibit, ed_year, account, account_title, organization,
+             budget_activity, ba_title, _pe, title, _at, amount_thousands,
+             sha256, source_sheet, source_cells, source_url,
+             downloaded_at) = r
+            if amount_thousands is None:
+                raise ValueError(
+                    f"decade: NULL amount_thousands source row for grain"
+                    f" ({pe_bli}, PB{edition}, {at}) — unmintable input"
+                )
+            w_fid = fact_id_workbook(
+                sha256, exhibit, ed_year, account, organization,
+                budget_activity, pe_bli, at,
+            )
+            input_fids.append(w_fid)
+            decade_bl_rows.append((
+                w_fid, exhibit, int(ed_year), account, account_title,
+                organization, budget_activity, ba_title, pe_bli, title, at,
+                float(amount_thousands), "USD thousands", sha256,
+                source_sheet, source_cells,
+            ))
+            if w_fid in minted_fids:
+                n_wb_dedup += 1
+            else:
+                minted_fids.add(w_fid)
+                n_wb_new += 1
+                ret_at = (
+                    str(downloaded_at).replace(" ", "T", 1)
+                    if downloaded_at else None
+                )
+                decade_cit_rows.append((
+                    w_fid, "workbook", "USD thousands",
+                    None,  # amount_text
+                    None, None, None, None, None, None, None,  # page bbox
+                    None,  # resolution
+                    source_sheet,
+                    source_cells,
+                    float(amount_thousands),
+                    sha256,
+                    None,       # hosted_pdf_url
+                    source_url,  # official_url
+                    None,       # xml_path
+                    ret_at,     # retrieved_at
+                    None, None, None, None,  # formula/inputs/query_body/recorded
+                    pe_bli,  # pe_bli
+                    None,    # scenario
+                    at,      # amount_type
+                ))
+
+        if n_src == 1:
+            grain_fid = input_fids[0]
+            if src_fid is not None and grain_fid != src_fid:
+                raise ValueError(
+                    f"decade: fact-id derivation mismatch for grain"
+                    f" ({pe_bli}, PB{edition}, {at}) — exporter computed"
+                    f" {grain_fid} but fct_decade_series.source_fact_id is"
+                    f" {src_fid}; the mart's sha256 derivation and"
+                    " fact_id_workbook disagree (STOP: fix the derivation,"
+                    " never ship mismatched identities)"
+                )
+        else:
+            grain_fid = fact_id_derived("decade", f"{pe_bli}|{edition}", at)
+            if grain_fid not in minted_fids:
+                minted_fids.add(grain_fid)
+                n_derived_sum += 1
+                decade_cit_rows.append(_null_derived_row(
+                    grain_fid, "derived", "USD thousands",
+                    f"sum(budget_lines.amount_thousands where"
+                    f" amount_type={at} and edition={edition})",
+                    _json.dumps(input_fids),
+                    f"{amount:.3f}",
+                    built_at,
+                ))
+
+        grain_fid_by_key[(pe_bli, edition, at)] = grain_fid
+        decade_grains.append(
+            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid)
+        )
+        decade_side_meta[grain_fid] = (f"PB{edition} FY{fy} {kind}", pe_bli)
+
+    # ---- book-diff derived facts -------------------------------------------
+    n_diffs = 0
+    for (pe_bli, from_ed, to_ed, diff_kind, from_fy, to_fy,
+         _from_val, _to_val, delta, from_at, to_at) in diffs:
+        if pe_bli not in pes or delta is None:
+            continue
+        from_fid = grain_fid_by_key.get((pe_bli, from_ed, from_at))
+        to_fid = grain_fid_by_key.get((pe_bli, to_ed, to_at))
+        if from_fid is None or to_fid is None:
+            raise ValueError(
+                f"decade: fct_book_diff row ({pe_bli}, PB{from_ed}→PB{to_ed},"
+                f" {diff_kind}) references a side grain missing from"
+                " fct_decade_series — join completeness violated"
+            )
+        diff_fid = fact_id_derived(
+            "book_diff", f"{pe_bli}|{from_ed}|{to_ed}", diff_kind,
+        )
+        if diff_fid in minted_fids:
+            continue
+        minted_fids.add(diff_fid)
+        n_diffs += 1
+        to_kind = "actuals" if diff_kind == "request_vs_actuals" else "request"
+        decade_cit_rows.append(_null_derived_row(
+            diff_fid, "derived", "USD thousands",
+            f"PB{to_ed} FY{to_fy} {to_kind} - PB{from_ed} FY{from_fy} request"
+            f" (fct_book_diff {diff_kind})",
+            _json.dumps([to_fid, from_fid]),
+            f"{delta:.3f}",
+            built_at,
+        ))
+
+    print(
+        f"decade: {len(decade_grains)} grains for {len(pes & {g[0] for g in decade_grains})}"
+        f" in-scope PEs → {len(decade_bl_rows)} source rows"
+        f" ({n_wb_new} new workbook citations, {n_wb_dedup} deduped),"
+        f" {n_derived_sum} derived decade sums, {n_diffs} book-diff facts"
+    )
+    return decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta
+
+
+# ---------------------------------------------------------------------------
 # Geography citation tier (uncited-ledger clearance)
 # ---------------------------------------------------------------------------
 
@@ -2134,6 +2441,9 @@ def _emit_json_sidecars(
     citation_rows: list,
     manifest: dict,
     flow_payload: dict | None = None,
+    decade_bl_rows: list | None = None,
+    decade_grains: list | None = None,
+    decade_side_meta: dict | None = None,
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
 
@@ -2161,6 +2471,9 @@ def _emit_json_sidecars(
             citation_rows=citation_rows,
             manifest=manifest,
             flow_payload=flow_payload,
+            decade_bl_rows=decade_bl_rows,
+            decade_grains=decade_grains,
+            decade_side_meta=decade_side_meta,
         )
     finally:
         con.close()
@@ -2177,6 +2490,9 @@ def _write_all_sidecars(
     citation_rows: list,
     manifest: dict,
     flow_payload: dict | None = None,
+    decade_bl_rows: list | None = None,
+    decade_grains: list | None = None,
+    decade_side_meta: dict | None = None,
 ) -> int:
     """Core sidecar writer; called from _emit_json_sidecars."""
 
@@ -2211,6 +2527,21 @@ def _write_all_sidecars(
     # Set of fact_ids that have a valid citation row (resolution unique/ambiguous_first)
     # Only these are safe to emit as data-fact-id (gate 2 Cite state A contract).
     _cited_fact_ids: set[str] = {row[0] for row in citation_rows}
+
+    # Decade series index (Phase 5E): pe_bli → {amount_type_kind: [entry…]}.
+    # Entries are {fy, v, fid, edition} sorted by fy; absent editions are
+    # GAPS (no entry), never zeros; uncited grains never render (honesty —
+    # every emitted fid resolves in the citation set).
+    decade_series_by_pe: dict[str, dict] = {}
+    for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid in (decade_grains or []):
+        if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
+            continue
+        decade_series_by_pe.setdefault(d_pe, {}).setdefault(d_kind, []).append({
+            "fy": d_fy, "v": d_amount, "fid": d_fid, "edition": d_edition,
+        })
+    for _pe, kinds in decade_series_by_pe.items():
+        for _kind, entries in kinds.items():
+            entries.sort(key=lambda e: e["fy"])
 
     # fy2024_fact_id index: pe_bli → fact_id (jbook_details WHERE
     # project_number IS NULL AND scenario='PriorYear'; nullable if absent).
@@ -2616,6 +2947,8 @@ def _write_all_sidecars(
             ),
             "narratives": _narratives_with_links(pe_bli),
         }
+        if pe_bli in decade_series_by_pe:
+            obj["decade_series"] = decade_series_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
 
@@ -2685,6 +3018,8 @@ def _write_all_sidecars(
                 if service_org else None
             ),
         }
+        if pe_bli in decade_series_by_pe:
+            obj["decade_series"] = decade_series_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
     if rollup_pes:
@@ -3119,6 +3454,7 @@ def _write_all_sidecars(
         detail_rows=detail_rows,
         bl_rows=bl_rows,
         cited_fact_ids=_cited_fact_ids,
+        decade_grains=decade_grains,
     )
     n_files += 1
 
@@ -3131,6 +3467,8 @@ def _write_all_sidecars(
         citation_rows=citation_rows,
         bl_rows=bl_rows,
         detail_rows=detail_rows,
+        decade_bl_rows=decade_bl_rows,
+        decade_side_meta=decade_side_meta,
     )
 
     # ------------------------------------------------------------------ #
@@ -4237,10 +4575,23 @@ def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = No
 # Phase 5D: years matrix + sharded citation slices + derived breakdowns
 # ---------------------------------------------------------------------------
 
-# Size budget for years_matrix.json (spec §3: ≤ 900 KB raw, fetched lazily
-# by the /years/ client island). Loud guard — a payload over budget means
-# the matrix design regressed, not that the budget should move.
-_YEARS_MATRIX_MAX_BYTES = 900 * 1024
+# Size budget for years_matrix.json (fetched lazily by the /years/ client
+# island). Phase 5E raised the 5D 900 KB budget to 2 MB raw (5E spec §6:
+# the decade adds ~7 columns × existing rows, same lazy-fetch pattern).
+# Loud guard — a payload over budget means the matrix design regressed,
+# not that the budget should move.
+_YEARS_MATRIX_MAX_BYTES = 2 * 1024 * 1024
+
+# Decade column keys: fy + kind suffix ('fy2020a'). The (kind, fy) pair
+# determines the edition uniquely by the year-shift rule (actuals for FY N
+# come from PB(N+2), enacted from PB(N+1), request from PB(N)) — the
+# per-column edition field in the payload header makes it explicit.
+_DECADE_KIND_SUFFIX = {"actuals": "a", "enacted": "e", "request": "r"}
+_DECADE_KIND_ORDER = {"actuals": 0, "enacted": 1, "request": 2}
+
+
+def _decade_column_key(fy: int, kind: str) -> str:
+    return f"fy{fy}{_DECADE_KIND_SUFFIX[kind]}"
 
 # Canonical column order for the matrix (workbook amount_types). Types not
 # present in the data are dropped; unknown new types are appended sorted.
@@ -4288,6 +4639,7 @@ def _emit_years_matrix(
     detail_rows: list,
     bl_rows: list,
     cited_fact_ids: set,
+    decade_grains: list | None = None,
 ) -> dict:
     """Emit json/years_matrix.json — the /years/ CapIQ-style grid payload.
 
@@ -4312,6 +4664,19 @@ def _emit_years_matrix(
         zero_amount rows carry xp (xml_path — Cite state B). Duplicate
         (project, scenario) rows resolve last-wins in detail_rows order,
         matching the program-page ProgramDetailsTable behavior.
+
+    Phase 5E decade columns (additive — 5D consumers render unchanged):
+      decade_grains rows are (pe_bli, fy, edition_year, amount_type_kind,
+      amount_thousands, fid) from fct_decade_series (fid minted by
+      _build_decade_citation_rows: the workbook fact for single-source
+      grains, the derived decade sum otherwise). Cited grains become
+      program cells under keys 'fy{fy}{a|e|r}'; the payload header gains
+      "decade_columns" [{key, fy, kind, edition}] (edition-honest rule:
+      actuals FY N ← PB(N+2)) and "decade_default_columns" (spec §1:
+      FY2015A…FY2024A + FY2025E + FY2026R). Grains absent from an edition
+      simply have no cell — "–", never 0; uncited grains never render.
+      The existing amount_types/default_columns lists are BYTE-STABLE:
+      Task 7 adopts the decade keys, current clients ignore them.
 
     Returns the payload dict (also written to disk). Raises ValueError when
     the serialized payload exceeds _YEARS_MATRIX_MAX_BYTES.
@@ -4372,6 +4737,25 @@ def _emit_years_matrix(
             proj["title"] = project_title
         proj["scenarios"][scenario] = (fid, amount_millions, xml_path)
 
+    # ---- decade cells: pe_bli → {column_key: cell}; column key → meta ------
+    decade_cells_by_pe: dict[str, dict] = defaultdict(dict)
+    decade_col_meta: dict[str, dict] = {}
+    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid in (decade_grains or []):
+        key = _decade_column_key(d_fy, d_kind)
+        meta = decade_col_meta.setdefault(
+            key, {"key": key, "fy": d_fy, "kind": d_kind, "edition": d_edition}
+        )
+        if meta["edition"] != d_edition:
+            raise ValueError(
+                f"years_matrix decade column {key} maps to two editions"
+                f" ({meta['edition']} and {d_edition}) — the year-shift rule"
+                " makes (kind, fy) → edition unique; refusing to emit an"
+                " ambiguous column"
+            )
+        # honesty: only cited grains become cells (missing renders '–')
+        if d_fid is not None and d_fid in cited_fact_ids and d_amount is not None:
+            decade_cells_by_pe[pe_bli][key] = {"v": d_amount, "fid": d_fid}
+
     def _program_cells(pe_bli: str, translated_org: str) -> dict:
         traj = traj_index.get((pe_bli, translated_org))
         cells: dict[str, dict] = {}
@@ -4409,6 +4793,10 @@ def _emit_years_matrix(
                     cells["fy2526_pct_change"] = {
                         "v": traj["fy2526_pct_change"],
                     }
+
+        # decade columns (keys 'fy{fy}{a|e|r}' — disjoint from amount_type
+        # slugs and Δ keys by format)
+        cells.update(decade_cells_by_pe.get(pe_bli, {}))
         return cells
 
     def _project_rows(pe_bli: str) -> list[dict]:
@@ -4480,6 +4868,39 @@ def _emit_years_matrix(
         "orgs": orgs_out,
     }
 
+    # ---- decade header (Phase 5E — only when decade grains were passed) ----
+    if decade_grains:
+        # columns with ≥1 emitted cell among matrix programs (a dead all-dash
+        # column is dead UI, not honesty — same rule as used_ats above)
+        used_decade = {
+            key
+            for o in orgs_out
+            for p in o["programs"]
+            for key in p["cells"]
+            if key in decade_col_meta
+        }
+        decade_columns = sorted(
+            (decade_col_meta[k] for k in used_decade),
+            key=lambda c: (c["fy"], _DECADE_KIND_ORDER[c["kind"]]),
+        )
+        # Default set (spec §1): per-edition actuals FY(e-2)A, then the
+        # latest edition's FY(L-1)E enacted + FY(L)R request ≈ 12 columns
+        # with the full 2017–2026 run; filtered to emitted columns.
+        editions = sorted({c["edition"] for c in decade_col_meta.values()})
+        default_candidates = [
+            _decade_column_key(e - 2, "actuals") for e in editions
+        ]
+        if editions:
+            latest = editions[-1]
+            default_candidates += [
+                _decade_column_key(latest - 1, "enacted"),
+                _decade_column_key(latest, "request"),
+            ]
+        payload["decade_columns"] = decade_columns
+        payload["decade_default_columns"] = [
+            k for k in default_candidates if k in used_decade
+        ]
+
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     if len(raw.encode("utf-8")) > _YEARS_MATRIX_MAX_BYTES:
         raise ValueError(
@@ -4541,6 +4962,8 @@ def _emit_breakdowns(
     citation_rows: list,
     bl_rows: list,
     detail_rows: list,
+    decade_bl_rows: list | None = None,
+    decade_side_meta: dict | None = None,
 ) -> int:
     """Emit json/breakdowns/{fact_id}.json — "show your work" tables (spec §3b).
 
@@ -4557,6 +4980,12 @@ def _emit_breakdowns(
     facts, <2 inputs, and any row whose inputs do not actually sum to
     recorded_value (skipped LOUDLY — the 5B-1 derived gate owns that failure;
     a breakdown that does not sum must never ship).
+
+    Phase 5E decade extension: decade_bl_rows (budget_lines_decade rows,
+    same 16-tuple shape as bl_rows) resolve old-edition workbook inputs;
+    decade_side_meta (fid → (label, pe_bli)) labels book-diff difference
+    rows by side ("PB2024 FY2022 actuals") — both sides share the program,
+    so the title alone cannot distinguish them.
 
     Returns the number of breakdown files written.
     """
@@ -4581,10 +5010,13 @@ def _emit_breakdowns(
         if row[24]:
             pe_by_fid[fid] = row[24]
 
-    # workbook fid → (amount_thousands, title, pe_bli)
+    # workbook fid → (amount_thousands, title, pe_bli); decade rows (old
+    # editions) share the shape and extend the same lookup
     bl_by_fid: dict[str, tuple] = {}
     for r in bl_rows:
         bl_by_fid[r[0]] = (r[11], r[9], r[8])
+    for r in (decade_bl_rows or []):
+        bl_by_fid.setdefault(r[0], (r[11], r[9], r[8]))
 
     # dim_pe_titles (single deterministic title mart)
     try:
@@ -4626,6 +5058,10 @@ def _emit_breakdowns(
 
     def _input_meta(fid: str, *, op: str) -> tuple:
         """(label, pe_bli) for an input fact_id."""
+        if op == "difference" and decade_side_meta and fid in decade_side_meta:
+            # book-diff rows: the side (edition + fy + kind) is the
+            # distinguishing label — both sides share the program
+            return decade_side_meta[fid]
         if fid in bl_by_fid:
             _amt, title, pe = bl_by_fid[fid]
             return (title or titles.get(pe) or pe, pe)

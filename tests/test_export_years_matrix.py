@@ -67,6 +67,31 @@ D_DARPA_CHG = fact_id_derived("trajectory", "0601101E|DARPA", "fy2526_change")
 D_ARMY_CHG = fact_id_derived("trajectory", "0602303A|A", "fy2526_change")
 D_CYBER_CHG = fact_id_derived("trajectory", "0303140K|CYBER", "fy2526_change")
 
+# ---------------------------------------------------------------------------
+# Phase 5E Task 6 decade fixtures — grains are
+# (pe_bli, fy, edition_year, amount_type_kind, amount_thousands, fid)
+# ---------------------------------------------------------------------------
+
+W_DEC_20A = "ea11000000000010"   # single-source FY2020 actuals (PB2022)
+W_DEC_25E = "eb11000000000011"   # single-source FY2025 enacted (PB2026)
+UNCITED_DEC = "ec11000000000012"  # decade grain with NO citation row
+D_DEC_15A = fact_id_derived("decade", "0601101E|2017", "fy_2015_actuals")
+
+
+def _decade_grains() -> list[tuple]:
+    return [
+        # FY2020 actuals from PB2022 (edition-authoritative rule: PB(N+2))
+        ("0601101E", 2020, 2022, "actuals", 150000.0, W_DEC_20A),
+        # FY2015 actuals from PB2017 — multi-source grain → derived decade fid
+        ("0601101E", 2015, 2017, "actuals", 90000.0, D_DEC_15A),
+        # FY2025 enacted from PB2026 CurrentYear
+        ("0601101E", 2025, 2026, "enacted", 200000.0, W_DEC_25E),
+        # FY2026 request from PB2026 BudgetYearOne — reuses the workbook fid
+        ("0601101E", 2026, 2026, "request", 400000.0, W_DARPA_26),
+        # UNCITED grain — the cell must be honestly absent
+        ("0303140K", 2020, 2022, "actuals", 30000.0, UNCITED_DEC),
+    ]
+
 
 def _make_duckdb_with_trajectory(tmp_path: Path) -> Path:
     db_path = tmp_path / "govbudget.duckdb"
@@ -151,6 +176,7 @@ def _cited_fact_ids() -> set[str]:
     return {
         W_DARPA_24, W_DARPA_25A, W_DARPA_25B, W_DARPA_26,
         W_DARPA_25E_A, W_DARPA_25E_B, W_ARMY_24, W_CYBER_24,
+        W_DEC_20A, W_DEC_25E, D_DEC_15A,  # decade fids (UNCITED_DEC absent)
         J_P1_PRIOR,  # J_P1_BY1 is zero_amount → NOT cited
         "dc1100000000000b",
         fact_id_derived("trajectory", "0601101E|DARPA", "fy2024_actuals"),
@@ -168,7 +194,7 @@ def _cited_fact_ids() -> set[str]:
     }
 
 
-def _emit(tmp_path: Path) -> dict:
+def _emit(tmp_path: Path, decade_grains: list | None = None) -> dict:
     db_path = _make_duckdb_with_trajectory(tmp_path)
     json_dir = tmp_path / "json"
     json_dir.mkdir(exist_ok=True)
@@ -181,6 +207,7 @@ def _emit(tmp_path: Path) -> dict:
             detail_rows=_detail_rows(),
             bl_rows=_bl_rows(),
             cited_fact_ids=_cited_fact_ids(),
+            decade_grains=decade_grains,
         )
     finally:
         con.close()
@@ -472,7 +499,174 @@ class TestSizeBudget:
         not (_ROOT / "data" / "site" / "json" / "years_matrix.json").exists(),
         reason="live export not present",
     )
-    def test_live_payload_under_900kb(self):
+    def test_live_payload_under_2mb(self):
+        """Phase 5E raised the budget from 900 KB to 2 MB raw (spec §6:
+        ~7 more decade columns × existing rows, same lazy-fetch pattern)."""
         path = _ROOT / "data" / "site" / "json" / "years_matrix.json"
         size = path.stat().st_size
-        assert size < 900 * 1024, f"years_matrix.json is {size} bytes (≥900KB)"
+        assert size < 2 * 1024 * 1024, f"years_matrix.json is {size} bytes (≥2MB)"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5E Task 6: decade columns (edition-honest FY2015A…FY2026R)
+# ---------------------------------------------------------------------------
+
+
+class TestDecadeColumns:
+    def test_no_decade_grains_no_decade_keys(self, tmp_path):
+        """Backward compat: without decade grains the payload is byte-stable
+        with the 5D shape — no decade_columns/decade_default_columns keys."""
+        payload = _emit(tmp_path)
+        assert "decade_columns" not in payload
+        assert "decade_default_columns" not in payload
+
+    def test_decade_columns_header_carries_edition(self, tmp_path):
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        cols = {c["key"]: c for c in payload["decade_columns"]}
+        assert cols["fy2020a"] == {
+            "key": "fy2020a", "fy": 2020, "kind": "actuals", "edition": 2022,
+        }
+        for c in payload["decade_columns"]:
+            assert isinstance(c["edition"], int), f"{c['key']} missing edition"
+
+    def test_decade_columns_only_emitted_columns(self, tmp_path):
+        """Columns appear only when ≥1 cited cell exists among matrix
+        programs (no dead all-dash columns); ordering is (fy, kind)."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        keys = [c["key"] for c in payload["decade_columns"]]
+        assert keys == ["fy2015a", "fy2020a", "fy2025e", "fy2026r"]
+
+    def test_decade_default_columns_spec_order(self, tmp_path):
+        """Default set = FY(e-2)A per edition + latest-edition FY(L-1)E and
+        FY(L)R, filtered to present columns (spec §1: ≈12 with the full
+        2017–2026 edition run)."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        assert payload["decade_default_columns"] == [
+            "fy2015a", "fy2020a", "fy2025e", "fy2026r",
+        ]
+
+    def test_fy2020a_cell_value_and_fid_from_pb2022(self, tmp_path):
+        """The FY2020A cell comes from the PB2022 edition (PB(N+2) rule) —
+        value + fid are the fct_decade_series grain's."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        cell = _program(payload, "0601101E")["cells"]["fy2020a"]
+        assert cell == {"v": 150000.0, "fid": W_DEC_20A}
+        col = next(c for c in payload["decade_columns"] if c["key"] == "fy2020a")
+        assert col["edition"] == 2022
+
+    def test_multi_source_grain_uses_derived_decade_fid(self, tmp_path):
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        cell = _program(payload, "0601101E")["cells"]["fy2015a"]
+        assert cell == {"v": 90000.0, "fid": D_DEC_15A}
+
+    def test_absent_edition_cell_absent_never_zero(self, tmp_path):
+        """A PE absent from an edition has NO cell for that column — missing
+        renders '–', never 0."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        army = _program(payload, "0602303A")["cells"]
+        assert "fy2020a" not in army
+        assert "fy2015a" not in army
+        # and no decade cell anywhere fabricates a zero
+        for org in payload["orgs"]:
+            for p in org["programs"]:
+                for key, cell in p["cells"].items():
+                    if key[:2] == "fy" and key[-1] in "aer" and "_" not in key:
+                        assert cell["v"] != 0.0 or key == "fy_2026_total"
+
+    def test_uncited_decade_cell_absent(self, tmp_path):
+        """A grain whose fid has no citation row NEVER becomes a cell."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        cyber = _program(payload, "0303140K")["cells"]
+        assert "fy2020a" not in cyber
+
+    def test_existing_columns_unchanged_by_decade(self, tmp_path):
+        """amount_types / default_columns / delta_columns are byte-identical
+        with and without decade grains — existing /years/ consumers render
+        unchanged until Task 7 adopts the decade keys."""
+        base_dir = tmp_path / "base"
+        dec_dir = tmp_path / "dec"
+        base_dir.mkdir()
+        dec_dir.mkdir()
+        base = _emit(base_dir)
+        withd = _emit(dec_dir, decade_grains=_decade_grains())
+        assert withd["amount_types"] == base["amount_types"]
+        assert withd["default_columns"] == base["default_columns"]
+        assert withd["delta_columns"] == base["delta_columns"]
+        for key in ("fy2015a", "fy2020a", "fy2025e", "fy2026r"):
+            assert key not in withd["amount_types"]
+
+    def test_conflicting_edition_for_column_raises(self, tmp_path):
+        """Two grains mapping one column key to different editions is data
+        corruption (the edition-authoritative rule makes the mapping unique)
+        — the exporter must fail loudly, never emit an ambiguous column."""
+        bad = _decade_grains() + [
+            ("0602303A", 2020, 2023, "actuals", 1.0, W_ARMY_24),
+        ]
+        with pytest.raises(ValueError, match="edition"):
+            _emit(tmp_path, decade_grains=bad)
+
+    def test_decade_fids_resolve_in_shards(self, tmp_path):
+        """Every decade cell fid resolves in its cite-shard (the /years/
+        lazy-resolution contract extends to decade columns)."""
+        payload = _emit(tmp_path, decade_grains=_decade_grains())
+        json_dir = tmp_path / "json"
+        _emit_cite_shards(json_dir=json_dir, citations_dict=_citations_dict())
+        for org in payload["orgs"]:
+            for p in org["programs"]:
+                for key, cell in p["cells"].items():
+                    if cell and cell.get("fid"):
+                        shard = json_dir / "cite-shards" / f"{cell['fid'][:2]}.json"
+                        assert shard.exists(), f"shard missing for {cell['fid']}"
+                        assert cell["fid"] in json.loads(shard.read_text())
+
+
+class TestDecadeLive:
+    """Live-payload checks (skipped until the 5E export lands)."""
+
+    _live = _ROOT / "data" / "site" / "json" / "years_matrix.json"
+
+    @pytest.mark.skipif(not _live.exists(), reason="live export not present")
+    def test_live_decade_header_editions(self):
+        payload = json.loads(self._live.read_text())
+        if "decade_columns" not in payload:
+            pytest.skip("live payload predates the 5E decade export")
+        cols = {c["key"]: c for c in payload["decade_columns"]}
+        # the edition-authoritative rule: actuals for FY N come from PB(N+2)
+        assert cols["fy2020a"]["edition"] == 2022
+        assert cols["fy2015a"]["edition"] == 2017
+        for c in payload["decade_columns"]:
+            if c["kind"] == "actuals":
+                assert c["edition"] == c["fy"] + 2
+            elif c["kind"] == "enacted":
+                assert c["edition"] == c["fy"] + 1
+            else:
+                assert c["edition"] == c["fy"]
+
+    @pytest.mark.skipif(not _live.exists(), reason="live export not present")
+    def test_live_decade_default_columns(self):
+        payload = json.loads(self._live.read_text())
+        if "decade_default_columns" not in payload:
+            pytest.skip("live payload predates the 5E decade export")
+        # FY2015A…FY2024A + FY2025E + FY2026R (spec §1 — 12 columns)
+        expected = [f"fy{y}a" for y in range(2015, 2025)] + ["fy2025e", "fy2026r"]
+        assert payload["decade_default_columns"] == expected
+
+    @pytest.mark.skipif(not _live.exists(), reason="live export not present")
+    def test_live_decade_cell_fids_resolve_in_shards(self):
+        payload = json.loads(self._live.read_text())
+        if "decade_columns" not in payload:
+            pytest.skip("live payload predates the 5E decade export")
+        decade_keys = {c["key"] for c in payload["decade_columns"]}
+        shard_dir = _ROOT / "data" / "site" / "json" / "cite-shards"
+        checked = 0
+        for org in payload["orgs"]:
+            for p in org["programs"]:
+                for key in decade_keys & set(p["cells"].keys()):
+                    fid = p["cells"][key].get("fid")
+                    assert fid, f"decade cell {p['pe_bli']}/{key} lacks fid"
+                    shard = json.loads((shard_dir / f"{fid[:2]}.json").read_text())
+                    assert fid in shard, f"{fid} unresolvable in shard"
+                    checked += 1
+                    if checked >= 25:
+                        return
+        assert checked, "no decade cells found in live payload"

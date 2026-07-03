@@ -1448,3 +1448,248 @@ def test_json_sort_keys(pg_dsn, tmp_path):
     if programs and isinstance(programs[0], dict):
         keys = list(programs[0].keys())
         assert keys == sorted(keys), f"programs.json[0] keys not sorted: {keys}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5E Task 6: decade tier — budget_lines_decade.parquet, decade/diff
+# fact minting, matrix decade columns, sidecar decade_series, breakdowns
+# ---------------------------------------------------------------------------
+
+_LAKE_BL_COLS = (
+    "exhibit varchar, fiscal_year varchar, account varchar,"
+    " account_title varchar, organization varchar, budget_activity varchar,"
+    " budget_activity_title varchar, pe_bli varchar, title varchar,"
+    " amount_type varchar, amount_thousands varchar,"
+    " source_document_id varchar, source_sheet varchar, source_cells varchar"
+)
+
+_LAKE_DOC_COLS = (
+    "id varchar, org varchar, exhibit_family varchar, fiscal_year varchar,"
+    " title varchar, source_url varchar, sha256 varchar, bytes varchar,"
+    " downloaded_at varchar, rel_path varchar"
+)
+
+
+def _write_lake_parquet(path: Path, col_defs: str, rows: list[tuple]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect()
+    try:
+        con.execute(f"create table _t ({col_defs})")
+        if rows:
+            ph = ", ".join("?" for _ in rows[0])
+            con.executemany(f"insert into _t values ({ph})", rows)
+        p = str(path).replace("'", "''")
+        con.execute(f"copy _t to '{p}' (format parquet, compression zstd)")
+    finally:
+        con.close()
+
+
+def _seed_decade_fixture(db_path: Path) -> dict:
+    """Add fct_decade_series + fct_book_diff to the fixture duckdb and the
+    jbooks lake parquets next to it ({duckdb_dir}/parquet/jbooks/). Returns
+    the expected fact_ids."""
+    from govbudget.export_site import fact_id_derived
+
+    sha22, sha24 = "sha_pb2022_wb", "sha_pb2024_wb"
+    w_req = fact_id_workbook(sha22, "R-1", 2022, "0400", "DARPA", "01",
+                             "0601101E", "fy_2022_total")
+    w_act = fact_id_workbook(sha24, "R-1", 2024, "0400", "DARPA", "01",
+                             "0601101E", "fy_2022_actuals")
+    d_sum = fact_id_derived("decade", "0601101E|2024", "fy_2024_total")
+    d_diff = fact_id_derived("book_diff", "0601101E|2022|2024",
+                             "request_vs_actuals")
+
+    # lake parquets (the decade builder reads sources from the lake — the
+    # same files the dbt marts read)
+    lake = db_path.parent / "parquet" / "jbooks"
+    _write_lake_parquet(lake / "budget_lines.parquet", _LAKE_BL_COLS, [
+        ("R-1", "2022", "0400", "RDT&E Defense-Wide", "DARPA", "01",
+         "Basic Research", "0601101E", "OLD REQ LINE", "fy_2022_total",
+         "90000", "41", "Exhibit R-1", "J4"),
+        ("R-1", "2024", "0400", "RDT&E Defense-Wide", "DARPA", "01",
+         "Basic Research", "0601101E", "OLD ACT LINE", "fy_2022_actuals",
+         "100000", "42", "Exhibit R-1", "J4"),
+        ("R-1", "2024", "0400", "RDT&E Defense-Wide", "DARPA", "01",
+         "Basic Research", "0601101E", "REQ LINE A", "fy_2024_total",
+         "150000", "42", "Exhibit R-1", "K4"),
+        ("R-1", "2024", "0400", "RDT&E Defense-Wide", "DARPA", "02",
+         "Applied Research", "0601101E", "REQ LINE B", "fy_2024_total",
+         "50000", "42", "Exhibit R-1", "K5"),
+    ])
+    _write_lake_parquet(lake / "documents.parquet", _LAKE_DOC_COLS, [
+        ("41", "DARPA", "rdte", "2022", "r1_display",
+         "https://example.mil/fy2022/r1_display.xlsx", sha22, "1000",
+         "2026-07-01 00:00:00-04:00", "fy2022/r1_display.xlsx"),
+        ("42", "DARPA", "rdte", "2024", "r1_display",
+         "https://example.mil/fy2024/r1_display.xlsx", sha24, "1000",
+         "2026-07-01 00:00:00-04:00", "fy2024/r1_display.xlsx"),
+    ])
+
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "create table fct_decade_series ("
+        " pe_bli varchar, fy integer, edition_year integer,"
+        " amount_type_kind varchar, amount double, amount_thousands double,"
+        " scenario varchar, amount_type varchar, n_source_rows bigint,"
+        " source_fact_id varchar)"
+    )
+    con.execute(
+        "insert into fct_decade_series values "
+        f"('0601101E', 2022, 2022, 'request', 90000.0, 90000.0,"
+        f" 'BudgetYearOne', 'fy_2022_total', 1, '{w_req}'),"
+        f"('0601101E', 2022, 2024, 'actuals', 100000.0, 100000.0,"
+        f" 'PriorYear', 'fy_2022_actuals', 1, '{w_act}'),"
+        f"('0601101E', 2024, 2024, 'request', 200000.0, 200000.0,"
+        f" 'BudgetYearOne', 'fy_2024_total', 2, NULL)"
+    )
+    con.execute(
+        "create table fct_book_diff ("
+        " pe_bli varchar, from_edition integer, to_edition integer,"
+        " diff_kind varchar, from_fy integer, to_fy integer,"
+        " from_value double, to_value double, delta double,"
+        " from_amount_type varchar, to_amount_type varchar,"
+        " from_source_fact_id varchar, to_source_fact_id varchar)"
+    )
+    con.execute(
+        "insert into fct_book_diff values "
+        f"('0601101E', 2022, 2024, 'request_vs_actuals', 2022, 2022,"
+        f" 90000.0, 100000.0, 10000.0, 'fy_2022_total', 'fy_2022_actuals',"
+        f" '{w_req}', '{w_act}')"
+    )
+    con.close()
+    return {"w_req": w_req, "w_act": w_act, "d_sum": d_sum, "d_diff": d_diff,
+            "sha22": sha22, "sha24": sha24}
+
+
+def _run_decade_export(pg_dsn, tmp_path):
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    build_provenance_pages(pg_dsn)
+
+    db = tmp_path / "wh.duckdb"
+    _make_test_duckdb(db)
+    fids = _seed_decade_fixture(db)
+
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    return site, fids
+
+
+def test_decade_parquet_and_citations(pg_dsn, tmp_path):
+    """budget_lines_decade.parquet ships every decade source row; single-
+    source grains cite the workbook fid, multi-source grains mint a derived
+    decade sum, diffs mint a derived difference fact."""
+    site, fids = _run_decade_export(pg_dsn, tmp_path)
+
+    pq = site / "data" / "budget_lines_decade.parquet"
+    assert pq.exists(), "budget_lines_decade.parquet missing"
+    rows = duckdb.sql(
+        f"select fact_id, fiscal_year, amount_type from read_parquet('{pq}')"
+    ).fetchall()
+    assert len(rows) == 4
+    assert {r[1] for r in rows} == {2022, 2024}
+
+    cit = site / "citations" / "citations.parquet"
+    cit_rows = {
+        r[0]: r for r in duckdb.sql(
+            f"select fact_id, kind, recorded_value, inputs, formula"
+            f" from read_parquet('{cit}')").fetchall()
+    }
+    assert cit_rows[fids["w_req"]][1] == "workbook"
+    assert cit_rows[fids["w_act"]][1] == "workbook"
+    # multi-source grain → derived sum over its two source rows
+    d_sum = cit_rows[fids["d_sum"]]
+    assert d_sum[1] == "derived"
+    assert d_sum[2] == "200000.000"
+    assert d_sum[4].startswith("sum(budget_lines")
+    assert len(json.loads(d_sum[3])) == 2
+    # book-diff fact: delta = to − from, inputs = the two side fids
+    d_diff = cit_rows[fids["d_diff"]]
+    assert d_diff[1] == "derived"
+    assert d_diff[2] == "10000.000"
+    assert json.loads(d_diff[3]) == [fids["w_act"], fids["w_req"]]
+    assert " - " in d_diff[4]
+
+    man = json.loads((site / "manifest.json").read_text())
+    assert "budget_lines_decade" not in man["uncited_datasets"]
+    assert man["datasets"]["budget_lines_decade"] == 4
+
+
+def test_decade_sidecar_series(pg_dsn, tmp_path):
+    """program_details sidecars gain decade_series arrays keyed by
+    amount_type_kind; entries carry (fy, v, fid, edition); absent editions
+    are gaps (no entry), never zeros."""
+    site, fids = _run_decade_export(pg_dsn, tmp_path)
+    det = json.loads(
+        (site / "json" / "program_details" / "0601101E.json").read_text())
+    ds = det["decade_series"]
+    assert ds["actuals"] == [
+        {"fy": 2022, "v": 100000.0, "fid": fids["w_act"], "edition": 2024},
+    ]
+    assert ds["request"] == [
+        {"fy": 2022, "v": 90000.0, "fid": fids["w_req"], "edition": 2022},
+        {"fy": 2024, "v": 200000.0, "fid": fids["d_sum"], "edition": 2024},
+    ]
+    assert "enacted" not in ds  # no enacted grains → gap, not zeros
+
+
+def test_decade_matrix_columns(pg_dsn, tmp_path):
+    """years_matrix.json carries the decade columns with per-column edition
+    and per-cell fids."""
+    site, fids = _run_decade_export(pg_dsn, tmp_path)
+    matrix = json.loads(
+        (site / "json" / "years_matrix.json").read_text())
+    cols = {c["key"]: c for c in matrix["decade_columns"]}
+    assert cols["fy2022a"]["edition"] == 2024
+    assert cols["fy2022r"]["edition"] == 2022
+    assert cols["fy2024r"]["edition"] == 2024
+    prog = None
+    for org in matrix["orgs"]:
+        for p in org["programs"]:
+            if p["pe_bli"] == "0601101E":
+                prog = p
+    assert prog is not None
+    assert prog["cells"]["fy2022a"] == {"v": 100000.0, "fid": fids["w_act"]}
+    assert prog["cells"]["fy2022r"] == {"v": 90000.0, "fid": fids["w_req"]}
+    assert prog["cells"]["fy2024r"] == {"v": 200000.0, "fid": fids["d_sum"]}
+
+
+def test_decade_breakdowns_and_shards(pg_dsn, tmp_path):
+    """Multi-source decade sums and book-diff facts get show-your-work
+    breakdowns; every decade fid resolves in its cite-shard."""
+    site, fids = _run_decade_export(pg_dsn, tmp_path)
+
+    b_sum = json.loads(
+        (site / "json" / "breakdowns" / f"{fids['d_sum']}.json").read_text())
+    assert b_sum["op"] == "sum"
+    assert len(b_sum["rows"]) == 2
+    assert sum(r["v"] for r in b_sum["rows"]) == 200000.0
+
+    b_diff = json.loads(
+        (site / "json" / "breakdowns" / f"{fids['d_diff']}.json").read_text())
+    assert b_diff["op"] == "difference"
+    labels = {r["fid"]: r["label"] for r in b_diff["rows"]}
+    assert labels[fids["w_act"]] == "PB2024 FY2022 actuals"
+    assert labels[fids["w_req"]] == "PB2022 FY2022 request"
+    minus = next(r for r in b_diff["rows"] if r["fid"] == fids["w_req"])
+    assert minus["v"] == -90000.0 and minus["subtracted"] is True
+
+    for key in ("w_req", "w_act", "d_sum", "d_diff"):
+        fid = fids[key]
+        shard = site / "json" / "cite-shards" / f"{fid[:2]}.json"
+        assert shard.exists(), f"shard missing for {fid}"
+        assert fid in json.loads(shard.read_text()), f"{fid} not in shard"
+
+
+def test_decade_integrity_gate_set_equality(pg_dsn, tmp_path):
+    """verify_phase5b1 integrity: the workbook fact universe is
+    budget_lines ∪ budget_lines_decade — the new export passes both
+    directions."""
+    from govbudget.verify_phase5b1 import integrity_gate5b1
+
+    site, _fids = _run_decade_export(pg_dsn, tmp_path)
+    result = integrity_gate5b1(site)
+    assert result["checks"]["workbook_set_equality"] is True, result["failures"]
+    assert result["checks"]["citation_distinctness"] is True, result["failures"]

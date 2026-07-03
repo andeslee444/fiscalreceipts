@@ -247,7 +247,12 @@ def _citation_rows() -> list[tuple]:
     ]
 
 
-def _emit(tmp_path: Path, citation_rows: list | None = None) -> int:
+def _emit(
+    tmp_path: Path,
+    citation_rows: list | None = None,
+    decade_bl_rows: list | None = None,
+    decade_side_meta: dict | None = None,
+) -> int:
     db_path = _make_duckdb(tmp_path)
     json_dir = tmp_path / "json"
     json_dir.mkdir(exist_ok=True)
@@ -259,6 +264,8 @@ def _emit(tmp_path: Path, citation_rows: list | None = None) -> int:
             citation_rows=citation_rows or _citation_rows(),
             bl_rows=_bl_rows(),
             detail_rows=_detail_rows(),
+            decade_bl_rows=decade_bl_rows,
+            decade_side_meta=decade_side_meta,
         )
     finally:
         con.close()
@@ -420,3 +427,157 @@ class TestExclusions:
         assert n == len(list(json_dir.glob("*.json")))
         # F24 sum, CHG difference, A24 agency, A26 agency-fy26, DIST district
         assert n == 5
+
+
+# ---------------------------------------------------------------------------
+# Phase 5E Task 6: decade sum + book-diff difference breakdowns
+# ---------------------------------------------------------------------------
+
+DW1 = "ea11000000000021"  # PB2017 workbook line A (60000.0 thousands)
+DW2 = "eb11000000000022"  # PB2017 workbook line B (30000.0 thousands)
+DW3 = "ec11000000000023"  # PB2022 workbook single-source actuals (150000.0)
+DEC_SUM = fact_id_derived("decade", "0601101E|2017", "fy_2015_actuals")
+DIFF = fact_id_derived("book_diff", "0601101E|2020|2022", "request_vs_actuals")
+
+
+def _decade_workbook_row(fid, amount, sha, at):
+    """27-tuple decade workbook citation row (old-edition tier)."""
+    return (
+        fid, "workbook", "USD thousands",
+        None, None, None, None, None, None, None, None,
+        None, "Exhibit R-1", "J4", amount,
+        sha, None, "https://example.mil/old/r1.xlsx", None,
+        "2026-07-01T00:00:00-04:00",
+        None, None, None, None,
+        "0601101E", None, at,
+    )
+
+
+def _decade_bl_rows() -> list[tuple]:
+    """16-tuple decade budget-line rows (budget_lines_decade.parquet shape)."""
+    return [
+        (DW1, "R-1", 2017, "0400", "RDT&E", "DARPA", "1", "Basic Research",
+         "0601101E", "Old Line A", "fy_2015_actuals", 60000.0, "USD thousands",
+         "sha_pb2017", "Exhibit R-1", "J4"),
+        (DW2, "R-1", 2017, "0400", "RDT&E", "DARPA", "2", "Applied Research",
+         "0601101E", "Old Line B", "fy_2015_actuals", 30000.0, "USD thousands",
+         "sha_pb2017", "Exhibit R-1", "J5"),
+        (DW3, "R-1", 2022, "0400", "RDT&E", "DARPA", "1", "Basic Research",
+         "0601101E", "PB22 Line", "fy_2020_actuals", 150000.0, "USD thousands",
+         "sha_pb2022", "Exhibit R-1", "J4"),
+    ]
+
+
+def _decade_side_meta() -> dict:
+    return {
+        DW3: ("PB2022 FY2020 actuals", "0601101E"),
+        DEC_SUM: ("PB2017 FY2015 actuals", "0601101E"),
+        "fa11000000000024": ("PB2020 FY2020 request", "0601101E"),
+    }
+
+
+def _decade_citation_rows() -> list[tuple]:
+    ts = "2026-07-03T00:00:00+00:00"
+    return _citation_rows() + [
+        _decade_workbook_row(DW1, 60000.0, "sha_pb2017", "fy_2015_actuals"),
+        _decade_workbook_row(DW2, 30000.0, "sha_pb2017", "fy_2015_actuals"),
+        _decade_workbook_row(DW3, 150000.0, "sha_pb2022", "fy_2020_actuals"),
+        # PB2020 FY2020 request side — single-source workbook fid, but here we
+        # model it as a derived decade fact carrying recorded_value so the
+        # difference test covers the derived-side path too
+        _null_derived_row(
+            "fa11000000000024", "derived", "USD thousands",
+            "sum(budget_lines.amount_thousands where"
+            " amount_type=fy_2020_total and edition=2020)",
+            json.dumps([DW1]), "140000.000", ts,
+        ),
+        # multi-source decade grain sum (PB2017 FY2015 actuals)
+        _null_derived_row(
+            DEC_SUM, "derived", "USD thousands",
+            "sum(budget_lines.amount_thousands where"
+            " amount_type=fy_2015_actuals and edition=2017)",
+            json.dumps([DW1, DW2]), "90000.000", ts,
+        ),
+        # book-diff: PB2022 FY2020 actuals − PB2020 FY2020 request
+        _null_derived_row(
+            DIFF, "derived", "USD thousands",
+            "PB2022 FY2020 actuals - PB2020 FY2020 request"
+            " (fct_book_diff request_vs_actuals)",
+            json.dumps([DW3, "fa11000000000024"]), "10000.000", ts,
+        ),
+    ]
+
+
+class TestDecadeSumBreakdown:
+    def test_rows_and_exact_sum(self, tmp_path):
+        _emit(tmp_path, citation_rows=_decade_citation_rows(),
+              decade_bl_rows=_decade_bl_rows(),
+              decade_side_meta=_decade_side_meta())
+        obj = _load(tmp_path, DEC_SUM)
+        assert obj["op"] == "sum"
+        assert obj["units"] == "USD thousands"
+        assert obj["recorded_value"] == "90000.000"
+        assert len(obj["rows"]) == 2
+        assert abs(_sum_rows(obj) - Decimal("90000.000")) <= Decimal("0.005")
+
+    def test_rows_labeled_from_decade_lines(self, tmp_path):
+        """Input labels resolve through the decade budget-line rows (the
+        old-edition workbook titles) — never blank ⁂ rows."""
+        _emit(tmp_path, citation_rows=_decade_citation_rows(),
+              decade_bl_rows=_decade_bl_rows(),
+              decade_side_meta=_decade_side_meta())
+        obj = _load(tmp_path, DEC_SUM)
+        by_fid = {r["fid"]: r for r in obj["rows"]}
+        assert by_fid[DW1]["v"] == 60000.0
+        assert by_fid[DW1]["label"] == "Old Line A"
+        assert by_fid[DW2]["label"] == "Old Line B"
+        assert by_fid[DW1]["pe_bli"] == "0601101E"
+
+    def test_without_decade_rows_no_breakdown(self, tmp_path):
+        """If the decade rows are NOT threaded through, the sum inputs are
+        unresolvable → no breakdown file ships (never a wrong table)."""
+        _emit(tmp_path, citation_rows=_decade_citation_rows())
+        assert not (tmp_path / "json" / "breakdowns" / f"{DEC_SUM}.json").exists()
+
+
+class TestBookDiffBreakdown:
+    def test_difference_rows_sum_to_delta(self, tmp_path):
+        _emit(tmp_path, citation_rows=_decade_citation_rows(),
+              decade_bl_rows=_decade_bl_rows(),
+              decade_side_meta=_decade_side_meta())
+        obj = _load(tmp_path, DIFF)
+        assert obj["op"] == "difference"
+        assert len(obj["rows"]) == 2
+        assert abs(_sum_rows(obj) - Decimal("10000.000")) <= Decimal("0.005")
+
+    def test_side_rows_carry_edition_labels(self, tmp_path):
+        """Diff input rows are labeled by side (PB edition + FY + kind) via
+        decade_side_meta — both sides share the program so the title alone
+        cannot distinguish them."""
+        _emit(tmp_path, citation_rows=_decade_citation_rows(),
+              decade_bl_rows=_decade_bl_rows(),
+              decade_side_meta=_decade_side_meta())
+        obj = _load(tmp_path, DIFF)
+        plus = next(r for r in obj["rows"] if r["fid"] == DW3)
+        minus = next(r for r in obj["rows"] if r["fid"] == "fa11000000000024")
+        assert plus["v"] == 150000.0
+        assert plus["label"] == "PB2022 FY2020 actuals"
+        assert not plus.get("subtracted")
+        assert minus["v"] == -140000.0
+        assert minus["subtracted"] is True
+        assert minus["label"] == "PB2020 FY2020 request"
+        assert plus["pe_bli"] == "0601101E"
+
+    def test_existing_breakdowns_unchanged(self, tmp_path):
+        """The decade params leave the 5D breakdown set byte-compatible."""
+        base_dir = tmp_path / "base"
+        dec_dir = tmp_path / "dec"
+        base_dir.mkdir()
+        dec_dir.mkdir()
+        n_base = _emit(base_dir)
+        assert n_base == 5
+        n_dec = _emit(dec_dir, citation_rows=_decade_citation_rows(),
+                      decade_bl_rows=_decade_bl_rows(),
+                      decade_side_meta=_decade_side_meta())
+        # + DEC_SUM, DIFF, and the modeled derived request side (1 input → no file)
+        assert n_dec == 7
