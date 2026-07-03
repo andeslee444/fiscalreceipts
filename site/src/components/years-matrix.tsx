@@ -331,8 +331,25 @@ interface SortState {
   dir: "desc" | "asc";
 }
 
-const STICKY_COL_CLASS =
-  "sticky left-0 z-10 bg-background border-r border-border";
+/**
+ * Sticky first-column cells must be FULLY OPAQUE out to their right border:
+ * with border-collapse, collapsed borders do NOT travel with sticky cells,
+ * so scrolling glyphs peeked through the border strip at the column's right
+ * edge (the 390px glyph-bleed judge finding). The table is border-separate
+ * (border-spacing-0) so each sticky cell carries its own border-r/border-b,
+ * and sticky backgrounds are opaque color-mix equivalents of the translucent
+ * row tints they must match (zebra muted/30, project muted/20, org muted/60)
+ * — a translucent bg would let the glyphs show through.
+ */
+const STICKY_PROGRAM_COL_CLASS =
+  "sticky left-0 z-10 border-b border-r border-border bg-background " +
+  "group-even:bg-[color-mix(in_oklab,var(--muted)_30%,var(--background))]";
+const STICKY_PROJECT_COL_CLASS =
+  "sticky left-0 z-10 border-b border-r border-border " +
+  "bg-[color-mix(in_oklab,var(--muted)_20%,var(--background))]";
+const STICKY_ORG_COL_CLASS =
+  "sticky left-0 z-10 border-r border-border " +
+  "bg-[color-mix(in_oklab,var(--muted)_60%,var(--background))]";
 
 export function YearsMatrix() {
   const [load, setLoad] = useState<LoadState>({ s: "loading" });
@@ -543,8 +560,12 @@ export function YearsMatrix() {
         aria-label="Choose visible columns"
       >
         <span className="text-xs text-muted-foreground">Columns:</span>
+        {/* Group headers get a deliberately HEAVIER treatment than the chips
+            (bold small-caps, darker ink, divider before the second group) —
+            the earlier muted labels blended into the chip stream (5E visual
+            judge). */}
         {decadeKeys.length > 0 && (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-foreground/70">
             Decade
           </span>
         )}
@@ -571,7 +592,7 @@ export function YearsMatrix() {
           );
         })}
         {decadeKeys.length > 0 && (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          <span className="ml-2 border-l border-border pl-2.5 text-[10px] font-bold uppercase tracking-widest text-foreground/70">
             PB2026 detail
           </span>
         )}
@@ -624,7 +645,9 @@ export function YearsMatrix() {
       <div className="relative max-h-[75vh] overflow-auto rounded-lg border border-border">
         <table
           data-testid="years-matrix"
-          className="w-full border-collapse text-xs"
+          // border-separate (NOT collapse): collapsed borders stay in the
+          // scrolled layer when cells are sticky — see STICKY_*_COL_CLASS.
+          className="w-full border-separate border-spacing-0 text-xs"
           aria-label="Program budgets by fiscal year"
         >
           <caption className="sr-only">
@@ -739,7 +762,7 @@ export function YearsMatrix() {
                           // py-1 (not 1.5): org section headers are landmarks,
                           // not data — tighter than program rows reads better
                           // at this grid density (visual-judge minor finding).
-                          className="sticky left-0 z-10 border-r border-border bg-muted px-2.5 py-1"
+                          className={`${STICKY_ORG_COL_CLASS} px-2.5 py-1`}
                         >
                           <button
                             type="button"
@@ -830,9 +853,12 @@ function ProgramRows({
       <tr
         data-program-row
         data-pe={program.pe_bli}
-        className="border-b border-border transition-colors even:bg-muted/30 hover:bg-muted/50"
+        // `group` lets the sticky cell mirror the row's zebra stripe with an
+        // OPAQUE bg (group-even in STICKY_PROGRAM_COL_CLASS); row borders
+        // live on the cells (border-separate table).
+        className="group transition-colors even:bg-muted/30 hover:bg-muted/50"
       >
-        <td data-sticky-col className={`${STICKY_COL_CLASS} px-2.5 py-1`}>
+        <td data-sticky-col className={`${STICKY_PROGRAM_COL_CLASS} px-2.5 py-1`}>
           {/* Fixed width — see the Program header comment. */}
           <span className="flex w-[170px] items-center gap-1 sm:w-[240px]">
             {hasProjects ? (
@@ -889,9 +915,9 @@ function ProgramRows({
           <tr
             key={project.project_number}
             data-project-row
-            className="border-b border-border bg-muted/20 transition-colors hover:bg-muted/40"
+            className="bg-muted/20 transition-colors hover:bg-muted/40"
           >
-            <td data-sticky-col className={`${STICKY_COL_CLASS} py-1 pl-8 pr-2.5`}>
+            <td data-sticky-col className={`${STICKY_PROJECT_COL_CLASS} py-1 pl-8 pr-2.5`}>
               <span className="block w-[140px] sm:w-[210px]">
                 <span
                   className="block truncate text-muted-foreground"
@@ -912,7 +938,7 @@ function ProgramRows({
                   key={key}
                   data-col={projKey ?? key}
                   {...(cell ? { "data-v": cell.v } : {})}
-                  className="px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+                  className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
                 >
                   {cell ? (
                     <Cite
@@ -968,7 +994,7 @@ function ProgramCellTd({
       <td
         data-col={colKey}
         {...(decade ? { title: `Not in the PB${decade.edition} edition` } : {})}
-        className="px-2.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
+        className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
       >
         –
       </td>
@@ -982,7 +1008,7 @@ function ProgramCellTd({
       <td
         data-col={colKey}
         data-v={cell.v}
-        className="px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
+        className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
       >
         <Cite
           value={cell.v}
@@ -1002,7 +1028,7 @@ function ProgramCellTd({
       <td
         data-col={colKey}
         data-v={cell.v}
-        className={`px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${deltaColorClass(cell.v)}`}
+        className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${deltaColorClass(cell.v)}`}
       >
         {fmtPct(cell.v)}
       </td>
@@ -1014,7 +1040,7 @@ function ProgramCellTd({
     <td
       data-col={colKey}
       data-v={cell.v}
-      className={`px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${
+      className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${
         isDelta ? deltaColorClass(cell.v) : ""
       }`}
     >

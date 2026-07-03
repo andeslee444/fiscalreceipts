@@ -105,6 +105,27 @@ describe("DecadeTrajectory", () => {
     expect(gapCell.querySelector("[data-amount]")).toBeNull();
   });
 
+  it("disambiguates blank (out-of-window) cells from in-window – gaps", () => {
+    const { container } = render(
+      <DecadeTrajectory series={SERIES} bookDiff={null} />,
+    );
+    // FY2025 actuals would live in PB2027 — no loaded edition could carry
+    // it → structurally blank, NOT a "–" gap.
+    const blankCell = container.querySelector(
+      '[data-decade-cell="actuals-2025"]',
+    ) as HTMLElement;
+    expect(blankCell).not.toBeNull();
+    expect(blankCell.textContent).toBe("");
+    // The one-line grid note makes the blank-vs-dash distinction decodable
+    // without the methodology page.
+    const note = container.querySelector(
+      '[data-testid="decade-grid-note"]',
+    ) as HTMLElement;
+    expect(note).not.toBeNull();
+    expect(note.textContent).toContain("blank = series not published");
+    expect(note.textContent).toContain("– = absent from that edition");
+  });
+
   it("renders the asked-vs-spent line citing the book-diff fid", () => {
     const { container } = render(
       <DecadeTrajectory series={SERIES} bookDiff={BOOK_DIFF} />,

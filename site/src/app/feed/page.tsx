@@ -273,7 +273,10 @@ export default function FeedPage() {
             if (section_cards.length === 0) return null;
 
             return (
-              <section key={etype} id={meta.anchorId}>
+              // scroll-mt-16 clears the sticky header when navigating to the
+              // #feed-{type} anchors directly (site-wide anchored-section
+              // pattern — methodology/home sections use the same value).
+              <section key={etype} id={meta.anchorId} className="scroll-mt-16">
                 <div className="mb-3">
                   <h2 className="text-xl font-semibold">
                     {meta.label}{" "}

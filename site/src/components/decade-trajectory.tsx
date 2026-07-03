@@ -353,6 +353,18 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
         </table>
       </div>
 
+      {/* Blank-vs-dash disambiguation — one quiet line (5E visual-judge E3):
+          blank cells are structurally impossible (no loaded book could carry
+          them); "–" cells are honest per-edition gaps. The distinction must
+          be decodable without the methodology page. */}
+      <p
+        data-testid="decade-grid-note"
+        className="text-[10px] leading-4 text-muted-foreground"
+      >
+        blank = series not published for this year; – = absent from that
+        edition.
+      </p>
+
       {/* Asked vs spent — the PE's largest request-vs-actuals gap, fully cited */}
       {showDiff && bookDiff && diffSides?.request && diffSides?.actuals && (
         <p
