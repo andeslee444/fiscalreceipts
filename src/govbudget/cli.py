@@ -970,6 +970,92 @@ def cmd_verify_phase5b1(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_verify_phase5e(args) -> None:
+    from govbudget.verify_phase5e import (
+        book_diff_gate5e,
+        decade_series_gate5e,
+        edition_coverage_gate5e,
+        leakage_gate5e,
+    )
+
+    manifest_path = config.RESEARCH_DIR / "edition_manifest.json"
+    lake_budget_lines = config.PARQUET_DIR / "jbooks" / "budget_lines.parquet"
+    gates_ok = True
+
+    # Gate a: edition coverage
+    ec = edition_coverage_gate5e(config.PG_DSN, manifest_path)
+    ga_ok = ec["ok"]
+    if ec.get("reason"):
+        print(f"gate a edition-coverage: {ec['reason']} → FAIL")
+    else:
+        states = [e["state"] for e in ec["editions"].values()]
+        print(
+            f"gate a edition-coverage: loaded={states.count('loaded')}"
+            f" excused={states.count('excused')}"
+            f" missing={states.count('missing')}"
+            f"/{len(states)} editions → {'PASS' if ga_ok else 'FAIL'}"
+        )
+        for fy, row in ec["editions"].items():
+            print(
+                f"  PB{fy}: state={row['state']} discovered={row['discovered']}"
+                f" terminal={row['terminal']} recon_checks={row['recon_checks']}"
+            )
+        for fy, status, reason in ec["warns"]:
+            print(f"  WARN PB{fy} excused (status={status}): {reason}")
+        for failure in ec["failures"]:
+            print(f"  FAIL: {failure}")
+    gates_ok = gates_ok and ga_ok
+
+    # Gate b: no cross-edition leakage
+    lg = leakage_gate5e(config.PG_DSN)
+    gb_ok = lg["ok"]
+    if lg.get("reason"):
+        print(f"gate b no-cross-edition-leakage: {lg['reason']} → FAIL")
+    else:
+        print(
+            f"gate b no-cross-edition-leakage: sampled={lg['sampled']}"
+            f"/{lg['joinable']} joinable mismatches={lg['mismatch_count']}"
+            f" unjoined={lg['unjoined']} → {'PASS' if gb_ok else 'FAIL'}"
+        )
+        for bl_id, bl_fy, doc_fy in lg["mismatches"]:
+            print(f"  FAIL budget_lines id={bl_id}: fy={bl_fy} but document fy={doc_fy}")
+    gates_ok = gates_ok and gb_ok
+
+    # Gate c: book-diff conservation
+    bd = book_diff_gate5e(config.DUCKDB_PATH)
+    gc_ok = bd["ok"]
+    if bd.get("reason"):
+        print(f"gate c book-diff-conservation: {bd['reason']} → FAIL")
+    else:
+        print(
+            f"gate c book-diff-conservation: rows={bd['total_rows']}"
+            f" sampled={bd['sampled']} passed={bd['passed']}"
+            f" → {'PASS' if gc_ok else 'FAIL'}"
+        )
+        for grain, reason in bd["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gc_ok
+
+    # Gate d: decade-series integrity
+    ds = decade_series_gate5e(config.DUCKDB_PATH, lake_budget_lines)
+    gd_ok = ds["ok"]
+    if ds.get("reason"):
+        print(f"gate d decade-series-integrity: {ds['reason']} → FAIL")
+    else:
+        print(
+            f"gate d decade-series-integrity: rows={ds['total_rows']}"
+            f" duplicate_grains={ds['duplicate_grains']}"
+            f" sampled={ds['sampled']} passed={ds['passed']}"
+            f" → {'PASS' if gd_ok else 'FAIL'}"
+        )
+        for grain, reason in ds["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gd_ok
+
+    print("verify-phase5e:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_export_site(args) -> None:
     from govbudget.export_site import export_site, refresh_usaspending_ids
 
@@ -1140,6 +1226,13 @@ def main(argv=None) -> None:
         help="phase 5B-3 acceptance gates (dossier artifacts + feed/district/filing/og/animation gates)",
     )
     v5b3.set_defaults(func=cmd_verify_phase5b3)
+
+    v5e = sub.add_parser(
+        "verify-phase5e",
+        help="phase 5E acceptance gates (decade backfill: edition coverage,"
+             " leakage, book-diff conservation, decade-series integrity)",
+    )
+    v5e.set_defaults(func=cmd_verify_phase5e)
 
     v5 = sub.add_parser(
         "verify-phase5",
