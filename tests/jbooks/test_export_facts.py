@@ -47,16 +47,24 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
         # Row WITHOUT source_cells (NULL array) — should export as empty string
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s)",
-            (Decimal("280494"),),
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
         )
         # Row WITH source_cells — should export as comma-joined string
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands, source_cells)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2025_enacted',%s,%s)",
-            (Decimal("300000"), ["J4", "J5"]),
+            " pe_bli, amount_type, amount_thousands, source_cells, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2025_enacted',%s,%s,%s)",
+            (Decimal("300000"), ["J4", "J5"], doc_id),
+        )
+        # Provenance-less orphan row: the lake export must EXCLUDE it
+        # (budget_lines provenance invariant — Phase 5E Task 5).
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2026_total',%s)",
+            (Decimal("999999"),),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
@@ -71,7 +79,7 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
     n = duckdb.sql(
         f"select count(*) from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"
     ).fetchone()[0]
-    assert n == 2
+    assert n == 2, "provenance-less row must not export (got orphan in lake)"
     # NULL source_cells exports as empty string (not NULL)
     no_cells_row = duckdb.sql(
         f"select source_cells from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"
@@ -101,9 +109,9 @@ def test_export_facts_path_with_single_quote(pg_dsn, tmp_path):
         doc_id = con.execute("select id from jbook_documents").fetchone()[0]
         con.execute(
             "insert into budget_lines (exhibit, fiscal_year, account, organization,"
-            " pe_bli, amount_type, amount_thousands)"
-            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s)",
-            (Decimal("280494"),),
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('R-1',2026,'0400','DARPA','0601101E','fy_2024_actuals',%s,%s)",
+            (Decimal("280494"), doc_id),
         )
     run_id = load_document_details(pg_dsn, document_id=doc_id, xml_path=FIXTURE)
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)

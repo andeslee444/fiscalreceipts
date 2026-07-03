@@ -1,4 +1,15 @@
-"""Export live Postgres jbook facts to Parquet for the DuckDB mart layer."""
+"""Export live Postgres jbook facts to Parquet for the DuckDB mart layer.
+
+Lake provenance invariant (Phase 5E Task 5): every exported budget_lines
+row must trace to a source document (source_document_id is not null) — the
+same document-join contract the details/detail_narratives exports already
+enforce. A provenance-less row can never mint a citation (fact_id_workbook
+needs the document sha256) and cannot be independently recomputed by the
+verify-phase5e lake gates. The live warehouse carries one known legacy
+orphan (budget_lines id 13541, a title-NULL duplicate of the PB2026
+0601101E fy_2024_actuals row from an early 5C load); it stays out of the
+lake by this filter until a cleanup migration removes it.
+"""
 from pathlib import Path
 
 import duckdb
@@ -10,6 +21,7 @@ EXPORTS: dict[str, str] = {
         " budget_activity, budget_activity_title, pe_bli, title, amount_type,"
         " amount_thousands, source_document_id, source_sheet,"
         " coalesce(array_to_string(source_cells, ','), '') as source_cells from budget_lines"
+        " where source_document_id is not null"
     ),
     "details": (
         "select d.pe_bli, d.project_number, d.project_title, d.scenario,"
