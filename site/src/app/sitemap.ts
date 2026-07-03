@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { SITE_URL } from "@/lib/site";
+import { isZeroContentDetails } from "@/lib/program-tier";
+import type { ProgramDetails } from "@/lib/data";
 
 export const dynamic = "force-static";
 
@@ -13,9 +15,6 @@ function readJson<T>(rel: string): T {
   return JSON.parse(readFileSync(join(jsonDir(), rel), "utf8")) as T;
 }
 
-interface ProgramRow {
-  pe_bli: string;
-}
 interface EntityTop {
   slug: string;
 }
@@ -45,16 +44,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/about/`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
   ];
 
-  // ── Dynamic program pages ─────────────────────────────────────────────────
+  // ── Dynamic program pages (Phase 5F §2a: the full 1,995-sidecar universe,
+  //    both tiers). Zero-content pages are noindex and therefore EXCLUDED —
+  //    same policy as zero-mention filings. ─────────────────────────────────
   let programPages: MetadataRoute.Sitemap = [];
   try {
-    const programs = readJson<ProgramRow[]>("programs.json");
-    programPages = programs.map((p) => ({
-      url: `${base}/program/${p.pe_bli}/`,
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
+    const detailsDir = join(jsonDir(), "program_details");
+    programPages = readdirSync(detailsDir)
+      .filter((f) => f.endsWith(".json"))
+      .sort()
+      .filter((f) => {
+        const details = readJson<ProgramDetails>(join("program_details", f));
+        return !isZeroContentDetails(details);
+      })
+      .map((f) => ({
+        url: `${base}/program/${f.slice(0, -".json".length)}/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.8,
+      }));
   } catch {
     // sidecars not yet generated — sitemap will be incomplete
   }

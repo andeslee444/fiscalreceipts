@@ -318,6 +318,43 @@ async function main() {
     );
   }
 
+  // ── Rollup-tier program cards (Phase 5F §2a) ────────────────────────────────
+  // Every program_details sidecar NOT in programs.json is a rollup page
+  // (tier:'rollup' with title/service_org/trajectory on the sidecar).
+  // Same card template — title, service + PE, FY2026 figure when known.
+  {
+    const fullTier = new Set(programs.map((p) => p.pe_bli));
+    const detailsDir = path.join(jsonDir, "program_details");
+    const serviceName = (code) =>
+      ({ A: "Army", N: "Navy", F: "Air Force" })[code] ?? (code || "DoD");
+    const rollupSlugs = fs.existsSync(detailsDir)
+      ? fs
+          .readdirSync(detailsDir)
+          .filter((f) => f.endsWith(".json"))
+          .map((f) => f.slice(0, -".json".length))
+          .filter((pe) => !fullTier.has(pe))
+          .sort()
+      : [];
+    for (const pe of rollupSlugs) {
+      const d = JSON.parse(
+        fs.readFileSync(path.join(detailsDir, `${pe}.json`), "utf8")
+      );
+      const fy26 = d.trajectory?.fy2026_total;
+      await emit(
+        `program-${sanitize(pe)}`,
+        card({
+          kind: "Program",
+          title: d.title || pe,
+          subtitle: `${serviceName(d.service_org ?? "")} · ${pe}`,
+          figure: fy26 != null ? fmtUsd(fy26 * 1000) : null,
+          figureLabel: fy26 != null ? "FY2026 request" : null,
+          tagline: TAGLINE,
+        })
+      );
+    }
+    console.log(`  ↳ rollup-tier program cards: ${rollupSlugs.length}`);
+  }
+
   // ── Company cards ──────────────────────────────────────────────────────────
   for (const e of entities) {
     await emit(
