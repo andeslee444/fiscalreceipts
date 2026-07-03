@@ -352,3 +352,49 @@ Planted-defect proofs live in tests/test_verify_phase5b1.py::TestNarrativeGate5b
 wrong cited page → "opening text not found"; tampered exported body → FAIL;
 missing jbook_narratives row → FAIL (never skip); sha-named PDF corrupted →
 "sha256 mismatch"; all-pageless bundle → FAIL with the pre-5F reason.
+
+=== Phase 5F Batch B — new site-gate legs proof-can-fail (2026-07-03) ===
+
+Method: gates built FIRST, run against the PRE-5F out/ bundle (the Phase 5D
+build still on disk before the 5F rebuild) with the Batch-A data sidecars in
+place — the real pre-fix state each leg was built to catch. No source files
+modified; the one planted defect (render-static a1, which has no organic
+pre-5F instance) was injected into a built HTML file and reverted (verified
+by byte-identical restore). Established legs on the same bundle still PASS
+(coverage's seven prior ids, linkgraph a–d), proving the FAILs are the new
+legs, not bundle rot.
+
+--- gate 21 program-skeleton (NEW) — run on pre-5F out/ ---
+PASS: false
+NOTE: universe: 462 full + 1533 rollup pages, 1 zero-content (noindex)
+NOTE: sampled 16 pages (8/tier target): 0 fully conformant
+  ✗ program-skeleton(a): /program/0101213F/ (full) sections != canonical order — got []; missing: answer-strip, figures, trajectory, description, justification, line-items, follow-dollar, awards, lobbying, oversight, dossier, sources
+  ✗ (…same for 7 more sampled full-tier pages)
+  ✗ program-skeleton: sampled page /program/000042/ not built
+  ✗ (…same for 7 more rollup slugs + zero-content page MGBSD0 not built)
+
+--- gate 13 linkgraph NEW leg (f) — run on pre-5F out/ ---
+PASS: false  (legs a–d all ✓ on the same bundle)
+  ✗ (f) pe-linking: 196 PE-shaped token(s) with pages are NOT <a>-wrapped on sampled pages:
+  ✗   /program/0208059JCY/: "0306250JCY" in "In FY 2025, $35.7M was realigned from to project CY04 CYBERCOM Activities…"
+  ✗   /program/0601101E/: "0601122E" in "The Math and Computer Sciences project supports scientific study and experimenta…"
+  ✗   /program/0305104D8Z/: "0606771D8Z" / "0303140D8Z" in DIB-cybersecurity narrative
+  (this is complaint #3 verbatim — the pre-5F pages render cross-PE references as plain text)
+
+--- gate 14 coverage — NEW service-books id + years-matrix numbers check — pre-5F out/ ---
+PASS: false  (all seven prior coverage ids ✓ on the same bundle)
+  ✗ methodology: missing anchor id="coverage-service-books"
+  ✗ coverage[years-matrix]: note text does not contain "The matrix covers the 462 programs with detail-grade data; all 1995 program pages are browsable."
+
+--- gate 2 render-static NEW leg (a1) — PLANTED defect (reverted) ---
+Method: injected <span data-prose-cite data-fact-id="0000000000000000">42.0</span>
+into out/about/index.html (no organic pre-5F instance exists — the leg guards
+a new element class). Reverted from .bak after the run.
+PASS: false
+  ✗ about/index.html: [data-prose-cite] fact_id "0000000000000000" does not resolve in citations.json
+
+--- gate 1 build — updated program-universe counts — pre-5F out/ ---
+PASS: false
+NOTE: sidecars: 1995 program pages (462 full tier, 1 zero-content/noindex), …
+  ✗ program pages: found 462, expected 1995
+  ✗ sitemap URL count: found 3886, expected 5418 (…1994 programs (1995 pages − 1 zero-content noindex)…)
