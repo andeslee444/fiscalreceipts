@@ -16,7 +16,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "playwright>=1.61.0",
+    "pytest>=8",
+]
 
 [build-system]
 requires = ["hatchling"]

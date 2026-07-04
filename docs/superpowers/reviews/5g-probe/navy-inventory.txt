@@ -1,0 +1,42 @@
+# NAVY FY2026 J-book PDF inventory (Phase 5G Task 1 probe)
+# generated 2026-07-04T14:53:54-0400
+# STATUS: reachable — 36 PDF links
+# page: https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/ (status=200, 292646 bytes)
+# page: https://www.secnav.navy.mil/fmc/fmb/Pages/Pres-Budget.aspx (status=200, 119711 bytes)
+
+APN_BA1-4_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/APN_BA1-4_Book.pdf
+APN_BA5_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/APN_BA5_Book.pdf
+APN_BA6-7_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/APN_BA6-7_Book.pdf
+BRAC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/BRAC_Book.pdf
+DON_Budget_Card	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/DON_Budget_Card.pdf
+DON_Press_Brief	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/DON_Press_Brief.pdf
+Highlights_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/Highlights_Book.pdf
+MCNR_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/MCNR_Book.pdf
+MCON_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/MCON_Book.pdf
+MPMC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/MPMC_Book.pdf
+MPN_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/MPN_Book.pdf
+NWCF_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/NWCF_Book.pdf
+OMMCR_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMMCR_Book.pdf
+OMMC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMMC_Book.pdf
+OMMC_Vol2_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMMC_Vol2_Book.pdf
+OMNR_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMNR_Book.pdf
+OMN_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMN_Book.pdf
+OMN_Vol2_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OMN_Vol2_Book.pdf
+OPN_BA1_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OPN_BA1_Book.pdf
+OPN_BA2_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OPN_BA2_Book.pdf
+OPN_BA3_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OPN_BA3_Book.pdf
+OPN_BA4_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OPN_BA4_Book.pdf
+OPN_BA5-8_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/OPN_BA5-8_Book.pdf
+PANMC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/PANMC_Book.pdf
+PMC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/PMC_Book.pdf
+RDTEN_BA1-3_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RDTEN_BA1-3_Book.pdf
+RDTEN_BA4_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RDTEN_BA4_Book.pdf
+RDTEN_BA5_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RDTEN_BA5_Book.pdf
+RDTEN_BA6_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RDTEN_BA6_Book.pdf
+RDTEN_BA7-8_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RDTEN_BA7-8_Book.pdf
+RPMC_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RPMC_Book.pdf
+RPN_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/RPN_Book.pdf
+SCN_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/SCN_Book.pdf
+Supp_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/Supp_Book.pdf
+The_Bottom_Line	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/The_Bottom_Line.pdf
+WPN_Book	https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/WPN_Book.pdf

@@ -1,0 +1,9 @@
+# ARMY FY2026 J-book PDF inventory (Phase 5G Task 1 probe)
+# generated 2026-07-04T14:55:40-0400
+# STATUS: BLOCKED (see PROBE-REPORT.md)
+# url: https://www.asafm.army.mil/Budget-Materials/
+# status: 403
+# title: Access Denied
+# screenshot: evidence/army-blocked.png
+
+

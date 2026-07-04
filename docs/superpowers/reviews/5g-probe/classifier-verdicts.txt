@@ -1,0 +1,40 @@
+# _classify_jbook() verdict per inventoried filename (Task 1 probe)
+
+## NAVY
+None	APN_BA1-4_Book.pdf
+None	APN_BA5_Book.pdf
+None	APN_BA6-7_Book.pdf
+None	BRAC_Book.pdf
+None	DON_Budget_Card.pdf
+None	DON_Press_Brief.pdf
+None	Highlights_Book.pdf
+None	MCNR_Book.pdf
+None	MCON_Book.pdf
+None	MPMC_Book.pdf
+None	MPN_Book.pdf
+None	NWCF_Book.pdf
+None	OMMCR_Book.pdf
+None	OMMC_Book.pdf
+None	OMMC_Vol2_Book.pdf
+None	OMNR_Book.pdf
+None	OMN_Book.pdf
+None	OMN_Vol2_Book.pdf
+None	OPN_BA1_Book.pdf
+None	OPN_BA2_Book.pdf
+None	OPN_BA3_Book.pdf
+None	OPN_BA4_Book.pdf
+None	OPN_BA5-8_Book.pdf
+None	PANMC_Book.pdf
+None	PMC_Book.pdf
+None	RDTEN_BA1-3_Book.pdf
+None	RDTEN_BA4_Book.pdf
+None	RDTEN_BA5_Book.pdf
+None	RDTEN_BA6_Book.pdf
+None	RDTEN_BA7-8_Book.pdf
+None	RPMC_Book.pdf
+None	RPN_Book.pdf
+None	SCN_Book.pdf
+None	Supp_Book.pdf
+None	The_Bottom_Line.pdf
+None	WPN_Book.pdf
+
