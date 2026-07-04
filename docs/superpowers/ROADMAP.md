@@ -379,11 +379,21 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     sitemap-origin leg alone would false-pass a placeholder build verified
     without the env, since its fallback is the same placeholder).
     Pre-failure proof in reviews/5c-gates-pre-failure.txt.
-19. **LDA re-pull to activate curated aliases (from backlog #1):** run
-    `govbudget influence pull` + dbt influence marts + mentions + export-site +
-    dossier-citation check; then raise match_gate5a to 0.85 and move the boundary
-    tests to 43/50. Fix first-query-wins attribution (see findings) or verify
-    VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
+19. **LDA re-pull to activate curated aliases (from backlog #1):** **PARTIAL
+    (2026-07-04).** ✅ The first-query-wins attribution bug is FIXED + committed
+    (7bb1582): best-match-tier resolution (exact_family > curated_alias >
+    normalized > family_raw_name > suffix_residue > none; ties → higher
+    obligation), query-order independent, 3 TDD regression tests — VECTRUS's
+    'V2X' query no longer starves VERTEX AEROSPACE's curated alias.
+    ⏸ DEFERRED — the live `influence pull` + dbt/mentions rebuild + export-site
+    + dossier-citation check + match-gate raise to 0.85: the re-pull can change
+    filing amounts, and fact identity includes amount, so it can orphan the 50
+    static dossier claims that cite lobbying facts. Regenerating dossiers needs
+    the Anthropic API (capped until 2026-08-01 — see #22). Rather than start a
+    long live warehouse mutation that might leave dossiers broken with no repair
+    path, run this as ONE unit after the cap resets: pull → ripple → dossier
+    gate → (regenerate any orphaned dossiers) → measure live match rate → raise
+    gate to 0.85 + boundary tests 43/50 only if the measured rate supports it.
 20. **Render-level sankey label bbox gate leg (5H judge hardening):** ~~the
     exporter TDD bbox test proves the *precomputed* layout is collision-free,
     but if the site font or node metrics ever drift from the exporter's
