@@ -70,8 +70,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   fix collisions in the client** — thickness-threshold suppression + placement
   at export time made "no label overlaps" a TDD-able bbox-intersection test
   instead of a rendering hope. Rendering-metric drift (font change) is the
-  residual risk — judge flagged; a render-level bbox gate leg is a backlog
-  hardening candidate (5H F3 fix round, 3→5/4/5).
+  residual risk — judge flagged; closed 2026-07-03 by G9 leg f (backlog #20),
+  which promptly caught a real Avenir-Next under-measurement on its first
+  clean run (5H F3 fix round, 3→5/4/5).
 - **Negative net flows need an explicit rule** — TACOM→Boeing FY2017 nets to
   −$97.6M; sankeys can't draw negative width. Rule: draw at zero width, label
   "net de-obligation", keep the citation (5H).
@@ -366,26 +367,52 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     as plain text in the program header, never a dead link. This also completes the
     page-generation half of backlog #14 (dim_programs entries themselves still
     require R-2/P-40 detail by design).
-18. **llms.txt / sitemap origin gate:** a build without NEXT_PUBLIC_SITE_URL bakes
+18. **llms.txt / sitemap origin gate:** ~~a build without NEXT_PUBLIC_SITE_URL bakes
     the placeholder origin into tracked/deployed artifacts (caught once in a fleet
     straggler, 2026-07-02). Add a verify leg: production artifacts must not contain
-    `govbudget-placeholder.example`.
+    `govbudget-placeholder.example`.~~
+    **DONE 2026-07-03:** two layers — verify-phase5b3 defaults
+    NEXT_PUBLIC_SITE_URL for its wrapped npm verify (920c225), and gate 1
+    now carries the requested UNCONDITIONAL placeholder scan
+    (sitemap.xml/llms.txt/robots.txt/index.html must not contain the
+    placeholder host, independent of the verify-time env — the env-relative
+    sitemap-origin leg alone would false-pass a placeholder build verified
+    without the env, since its fallback is the same placeholder).
+    Pre-failure proof in reviews/5c-gates-pre-failure.txt.
 19. **LDA re-pull to activate curated aliases (from backlog #1):** run
     `govbudget influence pull` + dbt influence marts + mentions + export-site +
     dossier-citation check; then raise match_gate5a to 0.85 and move the boundary
     tests to 43/50. Fix first-query-wins attribution (see findings) or verify
     VERTEX ranks above VECTRUS by obligation before relying on the Vertex match.
-20. **Render-level sankey label bbox gate leg (5H judge hardening):** the
+20. **Render-level sankey label bbox gate leg (5H judge hardening):** ~~the
     exporter TDD bbox test proves the *precomputed* layout is collision-free,
     but if the site font or node metrics ever drift from the exporter's
     assumptions, labels could re-collide at render time. Add a G9 Playwright
-    leg asserting no two rendered flow-label bounding boxes intersect at 1440.
-21. **favicon.ico 404:** browsers request /favicon.ico by default; the site
+    leg asserting no two rendered flow-label bounding boxes intersect at 1440.~~
+    **DONE 2026-07-03:** G9 leg f — getBoundingClientRect on every rendered
+    label (one <text> per node group), same-river pairs, ≤1px tolerance,
+    collected at initial render AND after the FY switch; zero labels found
+    fails loudly. The first clean run caught a REAL shipped collision
+    (b:a:CLASSIFIED|3080F × b:ba:F|3600F|05, 9.9×2.5px) — root cause was the
+    exporter model under-measuring "Avenir Next" (LABEL_H 10 vs 13.09-unit
+    rendered em box; several width buckets below measured advances). Fixed
+    exporter-side (LABEL_H 13.2, buckets re-derived to dominate measured
+    advances, GUTTER_MAX 250→270) + re-export. Pre-failure (CSS font
+    injection, 166 errors) + live-catch record in
+    reviews/5c-gates-pre-failure.txt.
+21. **favicon.ico 404:** ~~browsers request /favicon.ico by default; the site
     ships only the Next.js app-dir icon. Add a favicon.ico to site/public/
     (or a redirect) — found as the sole console error during 5H live
     verification. Also from judge advisories: include print-CSS +
     reduced-motion captures in visual-judge evidence packs; consider pinning
-    the breakdown-overlay filter box in the sticky header.
+    the breakdown-overlay filter box in the sticky header.~~
+    **DONE 2026-07-03:** real favicon.ico (16/32/48 PNG-entry ICO, brand
+    receipt mark on the OG palette; scripts/generate-favicon.mjs for
+    provenance) + explicit icons metadata; breakdown-overlay filter input
+    moved into the overlay's non-scrolling header (state lifted to
+    BreakdownOverlay, reset on close; 4 new vitest cases); evidence-pack
+    print + reduced-motion capture requirement documented in
+    reviews/EVIDENCE-CONVENTIONS.md.
 22. **Confirm eval robustness fixes post API-cap reset (2026-08-01):** run
     `verify-phase5` once the Anthropic monthly usage cap resets — the
     table-equivalence groups, temperature-0 determinism, SQL-determinism
