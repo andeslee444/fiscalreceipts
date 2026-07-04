@@ -395,14 +395,14 @@ def _navy_service_exclusions(inventory, plan) -> list[dict]:
     """Build the edition-manifest service exclusion rows from a plan.
 
     Non-justification appropriations (O&M/MilPers/etc.) carry rule
-    'non-justification-appropriation'; deduped RDTE BA-splits carry
-    'rdte-ba-split-duplicate'."""
+    'non-justification-appropriation'; deduped BA-splits (RDTE and procurement,
+    each embedding the same full family master XML) carry 'ba-split-duplicate'."""
     rows = [
         {"filename": name, "rule": "non-justification-appropriation", "reason": reason}
         for name, reason in plan.excluded
     ]
     rows += [
-        {"filename": name, "rule": "rdte-ba-split-duplicate", "reason": reason}
+        {"filename": name, "rule": "ba-split-duplicate", "reason": reason}
         for name, reason in plan.deduped
     ]
     return rows
@@ -441,7 +441,7 @@ def _jbooks_backfill_service(args) -> None:
     )
     print(
         f"jbooks backfill {service} FY{fy}: {len(plan.to_download)} to download,"
-        f" {len(plan.skipped)} already present, {len(plan.deduped)} rdte-dupes,"
+        f" {len(plan.skipped)} already present, {len(plan.deduped)} ba-split-dupes,"
         f" {len(plan.excluded)} excluded"
     )
     edition_probe.record_service_exclusions(
@@ -543,7 +543,7 @@ def cmd_jbooks(args) -> None:
 
         from govbudget.jbooks.provenance_pages import build_narrative_provenance
 
-        n = build_narrative_provenance(config.PG_DSN)
+        n = build_narrative_provenance(config.PG_DSN, fiscal_year=args.fiscal_year)
         with psycopg.connect(config.PG_DSN) as _con:
             by_res = dict(_con.execute(
                 "select resolution, count(*) from provenance_pages"
@@ -1512,8 +1512,9 @@ def main(argv=None) -> None:
     j.add_argument("--org", default=None)
     j.add_argument("--fiscal-year", type=int, default=None, dest="fiscal_year",
                    help="PB edition year. scrape/backfill default to"
-                        f" {config.JBOOK_FY}; provenance-pages defaults to all"
-                        " editions (unfiltered)")
+                        f" {config.JBOOK_FY}; provenance-pages and"
+                        " narrative-provenance default to all editions"
+                        " (unfiltered)")
     j.add_argument("--service", default=None, choices=["navy", "army", "af"],
                    help="backfill: automate a service J-book set (only 'navy'"
                         " is reachable via Playwright — Army/AF use ingest-local);"

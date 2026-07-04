@@ -20,9 +20,20 @@ FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks" / "darpa_p
 
 
 def test_amount_strings():
-    assert amount_strings(Decimal("280.494")) == ["280.494"]
-    assert amount_strings(Decimal("1234.5")) == ["1,234.500", "1234.500"]
-    assert amount_strings(Decimal("-1.2")) == ["-1.200"]
+    # Millions forms stay FIRST (defense-wide pages render millions, e.g.
+    # '280.494'); the thousands-integer forms are APPENDED for Navy-style
+    # pages that render the same amount in thousands ('280,494').
+    assert amount_strings(Decimal("280.494")) == ["280.494", "280,494", "280494"]
+    assert amount_strings(Decimal("1234.5")) == [
+        "1,234.500", "1234.500", "1,234,500", "1234500"
+    ]
+    # a whole-million amount: millions '15.000'/'16.000' and thousands
+    # '15,000' — the Navy P-40/R-2 rendering.
+    assert amount_strings(Decimal("16.000")) == ["16.000", "16,000", "16000"]
+    # sub-million: 0.150M renders as '150' thousands on a Navy page.
+    assert amount_strings(Decimal("0.150")) == ["0.150", "150"]
+    # negatives keep the millions form; thousands are appended too.
+    assert amount_strings(Decimal("-1.2")) == ["-1.200", "-1,200", "-1200"]
 
 
 def test_find_fact_page_resolves_with_anchor():

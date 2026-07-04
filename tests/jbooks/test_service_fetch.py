@@ -144,43 +144,47 @@ def test_classify_inventory_partitions_navy():
     assert "not R/D" in ex["BRAC_Book.pdf"]
 
 
-def test_dedup_rdte_ba_splits_keeps_lowest_ba():
+def test_dedup_ba_splits_keeps_lowest_ba_per_family():
     from govbudget.jbooks.service_fetch import (
         classify_inventory,
-        dedup_rdte_ba_splits,
+        dedup_ba_splits,
     )
 
     reg, _ = classify_inventory(_navy_links(
         "RDTEN_BA7-8_Book.pdf", "RDTEN_BA4_Book.pdf", "RDTEN_BA1-3_Book.pdf",
         "RDTEN_BA6_Book.pdf", "RDTEN_BA5_Book.pdf",
-        "APN_BA1-4_Book.pdf", "WPN_Book.pdf",  # procurement is untouched
+        # procurement books ALSO each embed the same full master (Task 4 live
+        # evidence) — they dedup too, to one book (lowest BA: APN_BA1-4).
+        "APN_BA1-4_Book.pdf", "APN_BA5_Book.pdf", "OPN_BA2_Book.pdf",
+        "WPN_Book.pdf", "SCN_Book.pdf",
     ))
-    kept, deduped = dedup_rdte_ba_splits(reg)
+    kept, deduped = dedup_ba_splits(reg)
     kept_names = {c.name for c in kept}
-    # exactly ONE RDTE book survives — the lowest starting budget activity —
-    # plus both procurement books (dedup is RDTE-only).
-    assert kept_names == {
-        "RDTEN_BA1-3_Book.pdf", "APN_BA1-4_Book.pdf", "WPN_Book.pdf",
-    }
+    # exactly ONE book per master-duplicating family survives.
+    assert kept_names == {"RDTEN_BA1-3_Book.pdf", "APN_BA1-4_Book.pdf"}
     assert sum(1 for c in kept if c.exhibit_family == "rdte") == 1
+    assert sum(1 for c in kept if c.exhibit_family == "procurement") == 1
     deduped_names = {name for name, _ in deduped}
     assert deduped_names == {
         "RDTEN_BA4_Book.pdf", "RDTEN_BA5_Book.pdf",
         "RDTEN_BA6_Book.pdf", "RDTEN_BA7-8_Book.pdf",
+        "APN_BA5_Book.pdf", "OPN_BA2_Book.pdf",
+        "WPN_Book.pdf", "SCN_Book.pdf",
     }
     for _, reason in deduped:
         assert "master" in reason.lower()
 
 
-def test_dedup_single_rdte_book_keeps_it():
-    """One RDTE candidate (or none) means nothing to dedup."""
+def test_dedup_single_book_per_family_keeps_it():
+    """One candidate in each master-duplicating family means nothing to dedup."""
     from govbudget.jbooks.service_fetch import (
         classify_inventory,
-        dedup_rdte_ba_splits,
+        dedup_ba_splits,
     )
 
     reg, _ = classify_inventory(_navy_links("RDTEN_BA5_Book.pdf", "SCN_Book.pdf"))
-    kept, deduped = dedup_rdte_ba_splits(reg)
+    kept, deduped = dedup_ba_splits(reg)
+    # one RDTE + one procurement, nothing to collapse.
     assert {c.name for c in kept} == {"RDTEN_BA5_Book.pdf", "SCN_Book.pdf"}
     assert deduped == []
 

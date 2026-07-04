@@ -84,7 +84,7 @@ def test_backfill_service_navy_registers_dedups_downloads_extracts(
     assert set(rows) == {"RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"}
     assert all(v == "playwright" for v in rows.values())
 
-    # service exclusions recorded: 2 non-justification + 2 rdte-ba-split dupes
+    # service exclusions recorded: 2 non-justification + 2 ba-split dupes
     svc = json.loads(manifest.read_text())["services"]["navy_2026"]["exclusions"]
     by_rule = {}
     for e in svc:
@@ -92,7 +92,7 @@ def test_backfill_service_navy_registers_dedups_downloads_extracts(
     assert set(by_rule["non-justification-appropriation"]) == {
         "OMN_Book.pdf", "BRAC_Book.pdf"
     }
-    assert set(by_rule["rdte-ba-split-duplicate"]) == {
+    assert set(by_rule["ba-split-duplicate"]) == {
         "RDTEN_BA4_Book.pdf", "RDTEN_BA7-8_Book.pdf"
     }
 

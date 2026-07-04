@@ -236,10 +236,13 @@ def record_service_exclusions(manifest_path: Path, service: str, fy: int,
     Service rule vocabulary:
       non-justification-appropriation — O&M/MilPers/MilCon/BRAC/working-capital
         /overview volume; not an R&D or procurement justification book.
-      rdte-ba-split-duplicate — a Navy BA-split RDTE PDF that embeds the same
-        full master book already registered from the lowest-BA volume.
+      ba-split-duplicate — a Navy BA-split PDF (RDTE or procurement) that embeds
+        the same full family master book already registered from the lowest-BA
+        volume. (rdte-ba-split-duplicate is the pre-5G-Task-4 label, kept
+        accepted so the existing on-disk manifest stays valid.)
     """
-    allowed = {"non-justification-appropriation", "rdte-ba-split-duplicate"}
+    allowed = {"non-justification-appropriation", "ba-split-duplicate",
+               "rdte-ba-split-duplicate"}
     for e in exclusions:
         if set(e) != {"filename", "rule", "reason"} or e["rule"] not in allowed:
             raise ValueError(f"malformed service exclusion entry: {e!r}")

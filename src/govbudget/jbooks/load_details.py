@@ -123,13 +123,18 @@ def load_procurement_details(dsn: str, *, document_id: int, xml_path: Path) -> i
                 )
             else:
                 key = li.number.strip() if li.number else li.number
+            # The appropriation (account) disambiguates P-1 line numbers that
+            # collide within an org (Navy FY2026: line 2210 = JATM in 1507N AND
+            # Submarine Acoustic in 1810N). Gate B scopes its P-1 control lookup
+            # by this account; it equals budget_lines.account byte-for-byte.
+            account = (li.appropriation_number or "").strip() or None
             for f in li.funding:
                 con.execute(
                     "insert into budget_line_details (extraction_run_id, document_id,"
                     " pe_bli, project_number, project_title, scenario, amount_millions,"
-                    " xml_path) values (%s,%s,%s,null,null,%s,%s,%s)",
+                    " xml_path, account) values (%s,%s,%s,null,null,%s,%s,%s,%s)",
                     (run_id, document_id, key, f.scenario, f.amount_millions,
-                     li.xml_path),
+                     li.xml_path, account),
                 )
             for kind, body in (("description", li.description),
                                ("justification", li.justification)):

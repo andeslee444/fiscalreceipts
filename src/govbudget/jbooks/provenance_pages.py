@@ -59,10 +59,26 @@ def fact_anchor(pe_bli: str | None) -> str | None:
 
 
 def amount_strings(amount: Decimal) -> list[str]:
-    """Candidate page renderings, 3-decimal J-book style; comma form first."""
-    grouped = f"{amount:,.3f}"
-    bare = f"{amount:.3f}"
-    return [grouped] if grouped == bare else [grouped, bare]
+    """Candidate page renderings for a millions amount.
+
+    Millions forms FIRST (comma then bare, 3-decimal J-book style) — the
+    defense-wide comptroller books render dollars in millions ('280.494'), and
+    trying them first keeps their resolution byte-identical. The thousands
+    integer forms are APPENDED because the Navy comptroller renders R-2/P-40
+    dollar figures in THOUSANDS with comma grouping ('280,494' for 280.494M,
+    '16,000' for 16.000M). J-book amounts are whole thousands, so amount*1000
+    is an integer rendering. Additive: a thousands form only matches when the
+    millions form found no page, so defense-wide behavior is unchanged.
+    """
+    out: list[str] = []
+    for s in (f"{amount:,.3f}", f"{amount:.3f}"):  # millions: comma, then bare
+        if s not in out:
+            out.append(s)
+    thousands = amount * 1000
+    for s in (f"{thousands:,.0f}", f"{thousands:.0f}"):  # thousands: comma, bare
+        if s not in out:
+            out.append(s)
+    return out
 
 
 def _page_texts(pdf_path: Path) -> list[str]:
@@ -456,13 +472,17 @@ def find_narrative_page(pdf_path: Path, *, pe_bli: str, body: str,
             pdf_handle.close()
 
 
-def build_narrative_provenance(dsn: str) -> int:
+def build_narrative_provenance(dsn: str, *, fiscal_year: int | None = None) -> int:
     """Resolve every non-superseded narrative lacking a narrative provenance row.
 
     Identity is (document_sha256, pe_bli, narrative_kind, xml_path) — the same
     key fact_id_narrative hashes. Grouped by document (one text pass per PDF;
     per-document word cache since narratives of one book share pages). Returns
     rows actually inserted. Missing document files raise loudly.
+
+    fiscal_year scopes the run to one PB edition's documents (Phase 5G
+    per-service backfill — mirrors build_provenance_pages); None keeps the
+    historical whole-corpus behavior.
     """
     import pdfplumber
 
@@ -475,6 +495,7 @@ def build_narrative_provenance(dsn: str) -> int:
             from detail_narratives n
             join jbook_documents j on j.id = n.document_id
             where not n.superseded and j.sha256 is not null
+              and (%(fy)s::int is null or j.fiscal_year = %(fy)s)
               and not exists (
                 select 1 from provenance_pages p
                 where p.target_kind = 'narrative'
@@ -482,7 +503,8 @@ def build_narrative_provenance(dsn: str) -> int:
                   and p.narrative_kind = n.kind and p.xml_path = n.xml_path
               )
             order by j.sha256
-            """
+            """,
+            {"fy": fiscal_year},
         ).fetchall()
         for sha, doc_group in groupby(rows, key=lambda r: r[0]):
             narratives = list(doc_group)

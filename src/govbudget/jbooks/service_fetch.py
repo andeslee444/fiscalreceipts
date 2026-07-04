@@ -206,44 +206,69 @@ def classify_inventory(
 
 _RDTE_BA = re.compile(r"(?i)_BA(\d+)")
 
+# Families whose Navy appropriation books EACH embed the same full master XML.
+# Both must dedup to one registered detail book per family: the 5 RDTEN_BA*
+# volumes AND the 12 procurement appropriation books (APN/OPN/WPN/SCN/PMC/
+# PANMC) were each verified live (Task 4) to embed the identical master —
+# RDTE 252 PEs, procurement 135 line items (same master sha picked from every
+# book by pick_book_xml). Registering all would load the same master N times
+# (procurement was loaded 12× before this dedup was generalized).
+_MASTER_DUP_FAMILIES = ("rdte", "procurement")
+
 
 def _first_ba(name: str) -> int:
-    """Lowest starting budget-activity number in an RDTE BA-split filename.
+    """Lowest starting budget-activity number in a BA-split filename.
 
-    'RDTEN_BA1-3_Book.pdf' -> 1, 'RDTEN_BA7-8_Book.pdf' -> 7. Names without a
-    BA marker sort last (large sentinel) so a master-named volume, if present,
-    is never displaced by a BA-split.
+    'RDTEN_BA1-3_Book.pdf' -> 1, 'RDTEN_BA7-8_Book.pdf' -> 7,
+    'APN_BA6-7_Book.pdf' -> 6. Names without a BA marker (WPN/SCN/PMC/PANMC)
+    sort last (large sentinel) so a BA-numbered volume wins deterministically.
     """
     m = _RDTE_BA.search(name)
     return int(m.group(1)) if m else 10_000
 
 
-def dedup_rdte_ba_splits(
+def dedup_ba_splits(
     registrable: list[Candidate],
 ) -> tuple[list[Candidate], list[tuple[str, str]]]:
-    """Collapse the Navy RDTE BA-split PDFs to ONE registered book.
+    """Collapse each master-duplicating family's BA-split PDFs to ONE book.
 
-    Each of the five RDTEN_BA*_Book.pdf files embeds the SAME full 252-PE
-    master justification book (probe sample-extraction.md), so registering all
-    five would load the identical master five times. Deterministic rule: keep
-    the RDTE candidate with the LOWEST starting budget activity (BA1-3), which
-    sorts first and is stable; the rest are duplicates.
+    Every Navy RDTE BA-split PDF embeds the SAME full 252-PE master; every
+    Navy procurement appropriation PDF embeds the SAME full 135-line master
+    (Task 4 live evidence). Registering all would load the identical master
+    once per book. Per family, keep the candidate with the LOWEST starting
+    budget activity (stable, deterministic); the rest are duplicates recorded
+    for the manifest exclusion ledger.
 
-    Non-RDTE candidates (procurement) pass through untouched. Returns
+    Families NOT in _MASTER_DUP_FAMILIES pass through untouched. Returns
     (kept, [(name, reason)]) where reason names the master-book duplication.
+
+    NOTE: the deduped sibling PDFs are the ONLY source of their own budget
+    activities' rendered R-2/R-2A/P-40 exhibit pages. Because each family is
+    registered/loaded once (from the winner's PDF), page provenance can only
+    locate facts whose exhibit page is rendered in the winner's PDF; the other
+    BAs' facts resolve 'unresolved' (recorded honest gap) — the detail data
+    is complete (the embedded master carries every fact), only the page
+    highlight is missing. Cross-sibling page resolution is out of scope
+    (it would require re-keying provenance to the detail sha; see the 5G
+    review note).
     """
-    rdte = [c for c in registrable if c.exhibit_family == "rdte"]
-    others = [c for c in registrable if c.exhibit_family != "rdte"]
-    if len(rdte) <= 1:
-        return list(registrable), []
-    winner = min(rdte, key=lambda c: (_first_ba(c.name), c.name))
-    deduped = [
-        (c.name,
-         f"BA-split RDTE volume embedding the same full Navy RDTE master book"
-         f" as {winner.name} (registered once)")
-        for c in rdte if c.name != winner.name
-    ]
-    kept = others + [winner]
+    kept: list[Candidate] = []
+    deduped: list[tuple[str, str]] = []
+    for family in _MASTER_DUP_FAMILIES:
+        fam = [c for c in registrable if c.exhibit_family == family]
+        if len(fam) <= 1:
+            kept += fam
+            continue
+        winner = min(fam, key=lambda c: (_first_ba(c.name), c.name))
+        kept.append(winner)
+        deduped += [
+            (c.name,
+             f"BA-split {family} volume embedding the same full Navy {family}"
+             f" master book as {winner.name} (registered once)")
+            for c in fam if c.name != winner.name
+        ]
+    kept += [c for c in registrable
+             if c.exhibit_family not in _MASTER_DUP_FAMILIES]
     # preserve input order for stable, diff-friendly plans
     order = {c.name: i for i, c in enumerate(registrable)}
     kept.sort(key=lambda c: order[c.name])
@@ -256,12 +281,12 @@ def build_download_plan(
 ) -> DownloadPlan:
     """Full inventory -> resume-safe DownloadPlan.
 
-    classify -> dedup RDTE BA-splits -> drop anything whose URL is already
-    downloaded (`known_urls`, resume safety). Every candidate carries
-    acquisition='playwright'.
+    classify -> dedup BA-splits (RDTE and procurement) -> drop anything whose
+    URL is already downloaded (`known_urls`, resume safety). Every candidate
+    carries acquisition='playwright'.
     """
     registrable, excluded = classify_inventory(links)
-    kept, deduped = dedup_rdte_ba_splits(registrable)
+    kept, deduped = dedup_ba_splits(registrable)
     to_download, skipped = [], []
     for c in kept:
         (skipped if c.href in known_urls else to_download).append(c)

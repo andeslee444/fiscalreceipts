@@ -125,8 +125,12 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
 
         # ---------- Gate B: PE-level amount matches R-1 control rows ----------
         # Split-funded PEs have one R-1 row per budget activity: sum them.
+        # `account` disambiguates procurement P-1 line numbers that collide
+        # within an org (Navy FY2026: line 2210 under 1507N vs 1810N); it is
+        # NULL for R-1/RDT&E and legacy era-namespaced rows, where the prior
+        # cross-account behavior is kept.
         pe_rows = con.execute(
-            "select pe_bli, scenario, amount_millions from budget_line_details "
+            "select pe_bli, scenario, amount_millions, account from budget_line_details "
             "where document_id=%s and not superseded and project_number is null",
             (document_id,),
         ).fetchall()
@@ -135,10 +139,10 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
         # OSD PB2026 0605755D8Z PriorYear; DW PB2022 0303430V PriorYear/
         # CurrentYear). Neither gate would ever see those facts: reconcile the
         # project-level sum as the PE amount so they get a verdict too.
-        pe_seen = {(p, s) for p, s, _ in pe_rows}
+        pe_seen = {(p, s) for p, s, _, _ in pe_rows}
         proj_only_rows = [
             r for r in con.execute(
-                "select pe_bli, scenario, sum(amount_millions) "
+                "select pe_bli, scenario, sum(amount_millions), min(account) "
                 "from budget_line_details "
                 "where document_id=%s and not superseded "
                 "and project_number is not null "
@@ -150,7 +154,7 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
         edition_map = scenario_map(fy)
         total_type = f"fy_{fy}_total"
         recon_type = f"fy_{fy}_reconciliation_request"
-        for pe_bli, scenario, amount_m, basis in (
+        for pe_bli, scenario, amount_m, account, basis in (
             [(*r, "") for r in pe_rows]
             + [(*r, " [PE funding absent: sum(projects) basis]")
                for r in proj_only_rows]
@@ -159,23 +163,29 @@ def reconcile_document(dsn: str, *, document_id: int, extraction_run_id: int) ->
             if not candidates:
                 continue
             fetch_types = list(candidates) + [total_type, recon_type]
+            # Procurement P-1 line numbers are unique only within an account:
+            # scope the control lookup by account when the detail carries one
+            # (NULL for R-1/RDT&E and era rows, where cross-account sum stands).
+            acct_clause = " and account=%s" if account is not None else ""
+            acct_param = (account,) if account is not None else ()
             if consolidated:
                 rows = con.execute(
                     "select amount_type, organization, sum(amount_thousands) "
                     "from budget_lines "
                     "where pe_bli=%s and amount_type = any(%s) "
-                    "and exhibit=%s and fiscal_year=%s "
+                    "and exhibit=%s and fiscal_year=%s" + acct_clause + " "
                     "group by amount_type, organization",
-                    (pe_bli, fetch_types, exhibit, fy),
+                    (pe_bli, fetch_types, exhibit, fy) + acct_param,
                 ).fetchall()
             else:
                 rows = [
                     (t, org, v) for t, v in con.execute(
                         "select amount_type, sum(amount_thousands) from budget_lines "
                         "where pe_bli=%s and amount_type = any(%s) "
-                        "and exhibit=%s and organization=%s and fiscal_year=%s "
+                        "and exhibit=%s and organization=%s and fiscal_year=%s"
+                        + acct_clause + " "
                         "group by amount_type",
-                        (pe_bli, fetch_types, exhibit, org, fy),
+                        (pe_bli, fetch_types, exhibit, org, fy) + acct_param,
                     ).fetchall()
                 ]
             control_orgs = sorted({o for _, o, _ in rows})

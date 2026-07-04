@@ -612,6 +612,102 @@ def test_gate_b_project_only_scenario_nonzero_mismatch_queues_review(pg_dsn):
     assert rec is False
 
 
+def _seed_proc_detail(pg_dsn, doc_id, *, pe_bli, account, scenario, amount_m, xml_path):
+    """Insert one PE-level procurement detail row (project_number null) directly,
+    mimicking what load_procurement_details writes — including the account."""
+    with psycopg.connect(pg_dsn) as con:
+        run_id = con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions)"
+            " values (%s, 0, '{}') returning id",
+            (doc_id,),
+        ).fetchone()[0]
+        con.execute(
+            "insert into budget_line_details (extraction_run_id, document_id, pe_bli,"
+            " project_number, project_title, scenario, amount_millions, xml_path, account)"
+            " values (%s,%s,%s,null,null,%s,%s,%s,%s)",
+            (run_id, doc_id, pe_bli, scenario, amount_m, xml_path, account),
+        )
+    return run_id
+
+
+def test_gate_b_procurement_scopes_control_lookup_by_account(pg_dsn):
+    """Navy FY2026 collision: the bare P-1 line number is unique only within an
+    appropriation account, not across the org. Two budget_lines P-1 rows share
+    pe_bli='2210' under different accounts (1507N JATM 301.858M, 1810N Submarine
+    Acoustic 56.482M). The procurement detail carries its account, so Gate B must
+    match the 56.482M detail against ONLY the 1810N control row — not the
+    cross-account sum (358.34M). Without account scoping this FAILS."""
+    upsert_documents(pg_dsn, [{
+        "org": "N", "exhibit_family": "procurement", "fiscal_year": 2026,
+        "title": "apn.pdf", "source_url": "https://example.test/apn.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        # two P-1 control rows sharing pe_bli 2210 across accounts
+        for account, amt in (("1507N", Decimal("301858")), ("1810N", Decimal("56482"))):
+            con.execute(
+                "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+                " pe_bli, amount_type, amount_thousands, source_document_id)"
+                " values ('P-1',2026,%s,'N','2210','fy_2026_disc_request',%s,%s)",
+                (account, amt, doc_id),
+            )
+    run_id = _seed_proc_detail(
+        pg_dsn, doc_id, pe_bli="2210", account="1810N",
+        scenario="BudgetYearOne", amount_m=Decimal("56.482"), xml_path="LineItem[39]",
+    )
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed, expected, detail from reconciliation_checks where gate='B'"
+            " and pe_bli='2210' and scenario='BudgetYearOne'"
+        ).fetchone()
+    assert check[0] is True, f"account-scoping should match 1810N alone: {check}"
+    assert check[1] == Decimal("56.482")  # NOT the 358.34M cross-account sum
+
+
+def test_gate_b_procurement_account_mismatch_still_fails(pg_dsn):
+    """Guard: account scoping must not rubber-stamp. A detail whose account's
+    control row genuinely disagrees still FAILS (56.482M detail vs a 999.0M
+    1810N control row)."""
+    upsert_documents(pg_dsn, [{
+        "org": "N", "exhibit_family": "procurement", "fiscal_year": 2026,
+        "title": "apn.pdf", "source_url": "https://example.test/apn.pdf",
+    }])
+    with psycopg.connect(pg_dsn) as con:
+        doc_id = con.execute("select id from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, amount_type, amount_thousands, source_document_id)"
+            " values ('P-1',2026,'1810N','N','2210','fy_2026_disc_request',999000,%s)",
+            (doc_id,),
+        )
+    run_id = _seed_proc_detail(
+        pg_dsn, doc_id, pe_bli="2210", account="1810N",
+        scenario="BudgetYearOne", amount_m=Decimal("56.482"), xml_path="LineItem[39]",
+    )
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='2210' and scenario='BudgetYearOne'"
+        ).fetchone()
+    assert check == (False,)
+
+
+def test_gate_b_null_account_keeps_cross_account_sum(pg_dsn):
+    """Back-compat: R-1/RDT&E details carry no account (NULL). Gate B must keep
+    the prior behavior — sum all control rows sharing pe_bli — when the detail's
+    account is NULL. Split-BA R-1 rows (0601101E across BAs) still sum."""
+    doc_id, run_id = seed(pg_dsn, Decimal("280494"))  # RDT&E, account NULL on details
+    reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
+    with psycopg.connect(pg_dsn) as con:
+        check = con.execute(
+            "select passed from reconciliation_checks where gate='B'"
+            " and pe_bli='0601101E' and scenario='PriorYear'"
+        ).fetchone()
+    assert check == (True,)
+
+
 def test_gate_a_failure_blocks_reconciled_even_when_gate_b_passes(pg_dsn):
     doc_id, run_id = seed(pg_dsn, Decimal("280494"))
     # corrupt one project row so Gate A fails for (0601101E, PriorYear)

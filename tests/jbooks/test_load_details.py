@@ -93,6 +93,22 @@ def test_load_procurement_details(pg_dsn):
         assert path.startswith("LineItem[")
 
 
+def test_load_procurement_details_captures_account(pg_dsn):
+    """The P-40 AppropriationNumber must land in budget_line_details.account so
+    Gate B can scope its P-1 control lookup by account (Navy FY2026 line-number
+    collision). The fixture's LineItem carries AppropriationNumber=0300D."""
+    from govbudget.jbooks.load_details import load_procurement_details
+
+    doc_id = seed_proc_doc(pg_dsn)
+    load_procurement_details(pg_dsn, document_id=doc_id, xml_path=P40_FIXTURE)
+    with psycopg.connect(pg_dsn) as con:
+        accts = {r[0] for r in con.execute(
+            "select distinct account from budget_line_details"
+            " where pe_bli='7001SA1000' and not superseded"
+        )}
+    assert accts == {"0300D"}
+
+
 def test_reload_procurement_supersedes(pg_dsn):
     from govbudget.jbooks.load_details import load_procurement_details
 

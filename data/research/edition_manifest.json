@@ -1110,5 +1110,220 @@
       "sample_pe_count": 8,
       "status": "loaded"
     }
+  },
+  "services": {
+    "navy_2026": {
+      "coverage_gain": {
+        "display_pe_bli_covered": 387,
+        "display_pe_bli_total": 593,
+        "p1_blis_total": 335,
+        "p1_blis_with_detail": 135,
+        "r1_pes_total": 258,
+        "r1_pes_with_detail": 252
+      },
+      "date": "2026-07-04",
+      "detail_facts": 5810,
+      "detail_facts_note": "deduped, non-superseded: 5135 rdte + 675 procurement",
+      "documents_downloaded": 13,
+      "documents_downloaded_note": "13 PDFs fetched via Playwright (WAF-warmed). 11 procurement siblings beyond the winner remain registered/downloaded but their duplicate detail rows are superseded; a targeted cleanup DELETE of those 11 jbook_documents rows is pending (blocked by the destructive-write guardrail during this run).",
+      "exclusions": [
+        {
+          "filename": "APN_BA5_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "APN_BA6-7_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "BRAC_Book.pdf",
+          "reason": "Base Realignment & Closure \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "DON_Budget_Card.pdf",
+          "reason": "DON budget card \u2014 one-page summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "DON_Press_Brief.pdf",
+          "reason": "DON press brief \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Highlights_Book.pdf",
+          "reason": "DON budget highlights \u2014 overview volume, no R-2/P-40 detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "MCNR_Book.pdf",
+          "reason": "Military Personnel, Marine Corps Reserve \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "MCON_Book.pdf",
+          "reason": "Military Construction, Navy \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "MPMC_Book.pdf",
+          "reason": "Military Personnel, Marine Corps \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "MPN_Book.pdf",
+          "reason": "Military Personnel, Navy \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "NWCF_Book.pdf",
+          "reason": "Navy Working Capital Fund \u2014 revolving fund, not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMMCR_Book.pdf",
+          "reason": "Operation & Maintenance, Marine Corps Reserve \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMMC_Book.pdf",
+          "reason": "Operation & Maintenance, Marine Corps \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMMC_Vol2_Book.pdf",
+          "reason": "Operation & Maintenance, Marine Corps vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMNR_Book.pdf",
+          "reason": "Operation & Maintenance, Navy Reserve \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMN_Book.pdf",
+          "reason": "Operation & Maintenance, Navy \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OMN_Vol2_Book.pdf",
+          "reason": "Operation & Maintenance, Navy vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "OPN_BA1_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "OPN_BA2_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "OPN_BA3_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "OPN_BA4_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "OPN_BA5-8_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "PANMC_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "PMC_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "RDTEN_BA4_Book.pdf",
+          "reason": "BA-split rdte volume embedding the same full Navy rdte master book as RDTEN_BA1-3_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "RDTEN_BA5_Book.pdf",
+          "reason": "BA-split rdte volume embedding the same full Navy rdte master book as RDTEN_BA1-3_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "RDTEN_BA6_Book.pdf",
+          "reason": "BA-split rdte volume embedding the same full Navy rdte master book as RDTEN_BA1-3_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "RDTEN_BA7-8_Book.pdf",
+          "reason": "BA-split rdte volume embedding the same full Navy rdte master book as RDTEN_BA1-3_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "RPMC_Book.pdf",
+          "reason": "Reserve Personnel, Marine Corps \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "RPN_Book.pdf",
+          "reason": "Reserve Personnel, Navy \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "SCN_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        },
+        {
+          "filename": "Supp_Book.pdf",
+          "reason": "Supplemental request \u2014 not a base R/D or procurement justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "The_Bottom_Line.pdf",
+          "reason": "DON 'The Bottom Line' \u2014 overview summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "WPN_Book.pdf",
+          "reason": "BA-split procurement volume embedding the same full Navy procurement master book as APN_BA1-4_Book.pdf (registered once)",
+          "rule": "ba-split-duplicate"
+        }
+      ],
+      "fiscal_year": 2026,
+      "narratives": 2066,
+      "provenance": {
+        "amount": {
+          "ambiguous_first": 380,
+          "total": 5810,
+          "unique": 28,
+          "unresolved": 4004,
+          "zero_amount": 1398
+        },
+        "narrative": {
+          "ambiguous_first": 122,
+          "total": 2066,
+          "unique": 339,
+          "unresolved": 1605
+        },
+        "note": "Page provenance is limited to the registered winner PDF per family: each BA-split PDF renders exhibit pages ONLY for its own budget activities, so facts in the deduped-away BAs resolve unresolved (honest gap). Every fact retains full document+xml_path provenance; only the page highlight is absent. Cross-sibling page resolution is a citation-model re-architecture, out of scope (see reviews/5g-probe/navy-recon-account-scoping.md)."
+      },
+      "recon_checks": 2808,
+      "recon_note": "Gate B account-scoping fix (migration 007) resolved 204 false procurement failures from colliding P-1 line numbers across accounts; all 2808 live checks pass, silent_unreconciled=0.",
+      "recon_passed": 2808,
+      "registered_detail_books": 2,
+      "registered_detail_books_note": "RDTEN_BA1-3 (rdte master, 252 PEs) + APN_BA1-4 (procurement master, 135 line items). All 5 RDTE and all 12 procurement BA-split PDFs each embed the same full family master XML (Task 4 live evidence); deduped to one detail book per family.",
+      "service": "navy",
+      "silent_unreconciled": 0,
+      "status": "loaded"
+    }
   }
 }
