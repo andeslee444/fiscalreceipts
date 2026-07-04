@@ -1959,3 +1959,92 @@ class TestDecadeDerivedRecompute:
         assert result["ok"] is False, "tampered book-diff delta must FAIL"
         assert any(f[0] == diff_fid and "difference" in f[1]
                    for f in result["failures"])
+
+
+# ---------------------------------------------------------------------------
+# Backlog #24 — budget_lines ↔ budget_lines_decade overlap equality
+# ---------------------------------------------------------------------------
+
+from govbudget.verify_phase5b1 import _load_fid_to_bl_amount
+
+_BL_COL_DEFS = (
+    "fact_id varchar, exhibit varchar, fiscal_year integer, account varchar,"
+    " account_title varchar, organization varchar, budget_activity varchar,"
+    " budget_activity_title varchar, pe_bli varchar, title varchar,"
+    " amount_type varchar, amount_thousands double, units varchar,"
+    " document_sha256 varchar, source_sheet varchar, source_cells varchar"
+)
+
+
+def _bl_row(fid: str, amount: float) -> tuple:
+    return (fid, "R-1", 2026, "0400", "RDT&E Defense-Wide", "DARPA", "01",
+            "Basic Research", "0601101E", "TITLE", "fy_2024_actuals",
+            amount, "USD thousands", "sha", "Exhibit R-1", "J2")
+
+
+class TestOverlapEquality:
+    """5,257 fids exist in both budget_lines and budget_lines_decade
+    (edition-2026 decade grains dedupe against the main export). setdefault
+    alone let a divergent decade amount hide behind the budget_lines copy —
+    the overlap must be exactly Decimal-equal or the gate FAILs."""
+
+    def test_helper_equal_overlap_no_divergence(self, tmp_path):
+        site = tmp_path / "site"
+        _write_parquet(site / "data" / "budget_lines.parquet", _BL_COL_DEFS,
+                       [_bl_row("aaaa000011110000", 280494.0)])
+        _write_parquet(site / "data" / "budget_lines_decade.parquet", _BL_COL_DEFS,
+                       [_bl_row("aaaa000011110000", 280494.0),
+                        _bl_row("bbbb000022220000", 5.0)])
+        mapping, overlap, divergences = _load_fid_to_bl_amount(site)
+        assert overlap == 1
+        assert divergences == []
+        assert mapping["aaaa000011110000"] == "280494.0"
+        assert mapping["bbbb000022220000"] == "5.0"
+
+    def test_helper_divergent_overlap_reported(self, tmp_path):
+        site = tmp_path / "site"
+        _write_parquet(site / "data" / "budget_lines.parquet", _BL_COL_DEFS,
+                       [_bl_row("aaaa000011110000", 280494.0)])
+        _write_parquet(site / "data" / "budget_lines_decade.parquet", _BL_COL_DEFS,
+                       [_bl_row("aaaa000011110000", 280495.0)])  # divergent
+        _, overlap, divergences = _load_fid_to_bl_amount(site)
+        assert overlap == 1
+        assert divergences == [("aaaa000011110000", "280494.0", "280495.0")]
+
+    def test_helper_no_decade_parquet_is_clean(self, tmp_path):
+        site = tmp_path / "site"
+        _write_parquet(site / "data" / "budget_lines.parquet", _BL_COL_DEFS,
+                       [_bl_row("aaaa000011110000", 280494.0)])
+        mapping, overlap, divergences = _load_fid_to_bl_amount(site)
+        assert overlap == 0
+        assert divergences == []
+        assert len(mapping) == 1
+
+    def test_gate_fails_on_divergent_decade_copy(self, tmp_path):
+        """Proof-can-fail: an otherwise-green site whose decade parquet
+        carries a divergent amount for an overlapping fid FAILs gate 1,
+        naming the fid."""
+        site = tmp_path / "site"
+        _, fid = _make_site_with_workbook(site)
+        # decade copy of the SAME fid with a tampered amount
+        _write_parquet(site / "data" / "budget_lines_decade.parquet", _BL_COL_DEFS,
+                       [_bl_row(fid, 280495.0)])
+        result = citation_gate5b1(site)
+        assert result["ok"] is False, "divergent overlap must FAIL the gate"
+        assert result["overlap_fids"] == 1
+        assert result["overlap_divergent"] == 1
+        assert any(f[0] == fid and "divergent amount_thousands" in f[1]
+                   for f in result["failures"])
+        # the sampled citation itself still re-derives — passed reflects
+        # sample results only, the overlap failure is additive
+        assert result["passed"] == result["sampled"]
+
+    def test_gate_passes_with_equal_decade_copy(self, tmp_path):
+        site = tmp_path / "site"
+        _, fid = _make_site_with_workbook(site)
+        _write_parquet(site / "data" / "budget_lines_decade.parquet", _BL_COL_DEFS,
+                       [_bl_row(fid, 280494.0)])
+        result = citation_gate5b1(site)
+        assert result["ok"] is True, result["failures"]
+        assert result["overlap_fids"] == 1
+        assert result["overlap_divergent"] == 0

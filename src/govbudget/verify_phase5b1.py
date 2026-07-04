@@ -12,7 +12,11 @@ Gates (CLI: verify-phase5b1):
                             https://lda.senate.gov/ and contains filing_uuid
                             (shape-only; no network in gates)
                           PASS iff 100% of sampled citations pass AND at least
-                          one citation was sampled.
+                          one citation was sampled AND every fact_id present
+                          in BOTH budget_lines.parquet and
+                          budget_lines_decade.parquet carries exactly equal
+                          amounts (backlog #24 — a divergent decade copy
+                          must not hide behind the setdefault load).
 
   2. integrity_gate5b1  — set-level checks:
                           - jbook: resolved details rows have exactly one
@@ -74,8 +78,10 @@ def citation_gate5b1(
     Returns:
         ok: bool
         sampled: int
-        passed: int
-        failures: list[(fact_id, reason)]
+        passed: int (sample results only — overlap failures are additive)
+        failures: list[(fact_id, reason)] (overlap divergences first)
+        overlap_fids: int (fids in both budget_lines and decade parquets)
+        overlap_divergent: int (backlog #24 equality check; must be 0)
         reason: str (only when ok is False for structural reasons like missing dir)
     """
     site_dir = Path(site_dir)
@@ -183,27 +189,19 @@ def citation_gate5b1(
     # docs/superpowers/reviews/5c-gates-pre-failure.txt): the decade tier
     # ships old-edition workbook rows in data/budget_lines_decade.parquet —
     # the same fact universe extension integrity_gate5b1 applies.
-    fid_to_bl_amount: dict[str, str] = {}
-    for bl_name in ("budget_lines.parquet", "budget_lines_decade.parquet"):
-        bl_pq = site_dir / "data" / bl_name
-        if not bl_pq.exists():
-            continue
-        try:
-            import duckdb as _duckdb
-            _con = _duckdb.connect()
-            try:
-                bl_rows = _con.execute(
-                    f"select fact_id, amount_thousands from read_parquet('{_sql_path(bl_pq)}')"
-                ).fetchall()
-            finally:
-                _con.close()
-            for _fid, _amt in bl_rows:
-                if _fid is not None and _amt is not None:
-                    fid_to_bl_amount.setdefault(_fid, str(_amt))
-        except Exception:
-            pass  # fail gracefully; _verify_derived will FAIL individual rows
+    (fid_to_bl_amount, bl_overlap_fids,
+     bl_overlap_divergences) = _load_fid_to_bl_amount(site_dir)
 
-    failures: list[tuple[str, str]] = []
+    # Backlog #24: overlap equality is a gate failure in its own right —
+    # setdefault alone would let a divergent decade amount hide behind the
+    # budget_lines copy. These failures print first (CLI shows the first 10).
+    failures: list[tuple[str, str]] = [
+        (fid, f"fid in both budget_lines and budget_lines_decade with"
+              f" divergent amount_thousands: {a} (budget_lines) vs"
+              f" {b} (decade)")
+        for fid, a, b in bl_overlap_divergences
+    ]
+    n_overlap_failures = len(failures)
 
     for row in sample:
         fact_id = row[col_idx["fact_id"]]
@@ -232,7 +230,7 @@ def citation_gate5b1(
             failures.append((fact_id, reason))
 
     sampled = len(sample)
-    passed = sampled - len(failures)
+    passed = sampled - (len(failures) - n_overlap_failures)
     ok = sampled > 0 and len(failures) == 0
 
     return {
@@ -240,7 +238,84 @@ def citation_gate5b1(
         "sampled": sampled,
         "passed": passed,
         "failures": failures,
+        "overlap_fids": bl_overlap_fids,
+        "overlap_divergent": len(bl_overlap_divergences),
     }
+
+
+def _load_fid_to_bl_amount(
+    site_dir: Path,
+) -> tuple[dict[str, str], int, list[tuple[str, str, str]]]:
+    """fact_id → amount_thousands across budget_lines ∪ budget_lines_decade.
+
+    Edition-2026 decade grains share workbook fact_ids with the main
+    export (5,257 overlapping fids at 5E close). Backlog #24: the old
+    setdefault-only load made a divergent decade amount invisible — the
+    budget_lines copy always won. Every fid present in BOTH parquets must
+    now carry exactly equal amounts (exact Decimal comparison); any
+    divergence is returned for citation_gate5b1 to FAIL on.
+
+    Returns (fid→amount str, overlap_count, divergences
+    [(fid, budget_lines_amount, decade_amount)] — first 10, sorted by fid
+    for determinism).
+    """
+    from decimal import Decimal as _Decimal, InvalidOperation as _InvalidOperation
+
+    fid_to_bl_amount: dict[str, str] = {}
+    divergences: list[tuple[str, str, str]] = []
+    overlap = 0
+    for bl_name in ("budget_lines.parquet", "budget_lines_decade.parquet"):
+        bl_pq = site_dir / "data" / bl_name
+        if not bl_pq.exists():
+            continue
+        try:
+            import duckdb as _duckdb
+            _con = _duckdb.connect()
+            try:
+                bl_rows = _con.execute(
+                    f"select fact_id, amount_thousands from read_parquet('{_sql_path(bl_pq)}')"
+                ).fetchall()
+            finally:
+                _con.close()
+            for _fid, _amt in bl_rows:
+                if _fid is None or _amt is None:
+                    continue
+                existing = fid_to_bl_amount.setdefault(_fid, str(_amt))
+                if bl_name == "budget_lines_decade.parquet" and existing != str(_amt):
+                    # existing may only come from budget_lines.parquet here
+                    # (decade fact_ids are unique within the decade export).
+                    try:
+                        equal = _Decimal(existing) == _Decimal(str(_amt))
+                    except _InvalidOperation:
+                        equal = False
+                    if not equal:
+                        divergences.append((_fid, existing, str(_amt)))
+        except Exception:
+            pass  # fail gracefully; _verify_derived will FAIL individual rows
+
+    # Overlap count: decade fids already present from budget_lines. Recount
+    # cheaply only when both parquets loaded rows.
+    bl_pq = site_dir / "data" / "budget_lines.parquet"
+    dec_pq = site_dir / "data" / "budget_lines_decade.parquet"
+    if bl_pq.exists() and dec_pq.exists():
+        try:
+            import duckdb as _duckdb
+            _con = _duckdb.connect()
+            try:
+                overlap = _con.execute(
+                    f"""
+                    select count(*)
+                    from read_parquet('{_sql_path(bl_pq)}') a
+                    join read_parquet('{_sql_path(dec_pq)}') b using (fact_id)
+                    """
+                ).fetchone()[0]
+            finally:
+                _con.close()
+        except Exception:
+            pass
+
+    divergences.sort(key=lambda d: d[0])
+    return fid_to_bl_amount, overlap, divergences[:10]
 
 
 def _verify_jbook_pdf(site_dir: Path, row: tuple, idx: dict) -> str | None:
