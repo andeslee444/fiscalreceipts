@@ -67,6 +67,22 @@ GENERIC_RESIDUE = {
 # Path to the curated alias seed CSV (relative to this file's repo root).
 _ALIASES_CSV = Path(__file__).resolve().parents[3] / "dbt" / "seeds" / "client_aliases.csv"
 
+# Match-tier ranking for cross-family attribution (lower = stronger claim).
+# When two families' queries return the same filing UUID (the LDA client_name
+# filter is contains-style, so this happens for name-sharing families like
+# VECTRUS / VERTEX AEROSPACE SERVICES post-V2X-merger), the family with the
+# STRONGEST match tier wins the attribution; ties go to the family processed
+# first (higher total_obligation — dim_entities ordering), which is
+# deterministic and preserves the pre-fix behavior for equal-tier claims.
+_TIER_RANK = {
+    "exact_family": 0,
+    "curated_alias": 1,
+    "normalized": 2,
+    "family_raw_name": 3,
+    "suffix_residue": 4,
+    "none": 5,
+}
+
 
 def _get_with_backoff(client: httpx.Client, url: str, params: dict | None = None) -> dict:
     """GET a URL with exponential backoff on 429, polite rate-limiting floor."""
@@ -415,11 +431,22 @@ def _pull_families_with_client(
     When duckdb_path is provided, loads entity_xwalk raw names for query expansion
     and family_raw_name matching.  When aliases_csv is provided (or the default
     path exists), loads curated aliases.
+
+    Attribution (fix round A3, backlog #19): a filing UUID returned by queries
+    for multiple families is attributed ONCE, to the family with the strongest
+    match tier (_TIER_RANK; exact_family strongest, none weakest).  Ties go to
+    the first-processed family (highest obligation).  This replaces the old
+    first-query-wins global dedup, under which VECTRUS's contains-style 'V2X'
+    query consumed the 'V2X, Inc. (formerly known as Vertex Aerospace)' filings
+    at match 'none', starving VERTEX AEROSPACE SERVICES' curated alias
+    (ROADMAP finding 2026-07-02).  Claims are collected during the fetch pass
+    and resolved in a single emit pass afterwards, so the result is independent
+    of which family's query happened to fetch a filing first.
     """
-    all_filings: list[tuple] = []
-    all_activities: list[tuple] = []
-    all_lobbyists: list[tuple] = []
-    seen_uuids: set[str] = set()
+    # uuid → trimmed filing payload, in first-fetch order (deterministic output order)
+    filings_by_uuid: dict[str, dict] = {}
+    # uuid → (tier_rank, family_key, match_method) — the strongest claim so far
+    best_claim: dict[str, tuple[int, str, str]] = {}
 
     family_keys = [fk for fk, _ in families if fk]
 
@@ -465,57 +492,72 @@ def _pull_families_with_client(
 
             for f in filings:
                 uuid = f["filing_uuid"]
-                # Dedupe within family across query strings
+                # Dedupe within family across query strings (match_method is
+                # family-level, so re-computing for the same family is a no-op)
                 if uuid in family_seen_uuids:
                     continue
                 family_seen_uuids.add(uuid)
-                # Also dedupe globally across families
-                if uuid in seen_uuids:
-                    continue
-                seen_uuids.add(uuid)
 
+                # Keep the first-fetched payload; the filing content is
+                # identical regardless of which query string returned it.
+                if uuid not in filings_by_uuid:
+                    filings_by_uuid[uuid] = f
+
+                # Register this family's claim; strongest tier wins, ties keep
+                # the earlier (higher-obligation) family — strict < comparison.
                 match_method = _match_method(
                     f["client_name"],
                     family_key_val,
                     family_raw_names=fam_raw_names,
                     alias_norms=fam_alias_norms,
                 )
-                income_usd = _normalize_dollar(f.get("income"))
-                expenses_usd = _normalize_dollar(f.get("expenses"))
+                rank = _TIER_RANK.get(match_method, len(_TIER_RANK))
+                prev = best_claim.get(uuid)
+                if prev is None or rank < prev[0]:
+                    best_claim[uuid] = (rank, family_key_val, match_method)
 
-                all_filings.append((
-                    uuid,
-                    f["url"],
-                    f["client_name"],
-                    f["registrant_name"],
-                    str(f["filing_year"] or ""),
-                    f["filing_period"],
-                    f["filing_type"],
-                    income_usd,
-                    expenses_usd,
-                    family_key_val,
-                    match_method,
-                ))
+    # Emit pass: one row per UUID, attributed to the winning claim.
+    all_filings: list[tuple] = []
+    all_activities: list[tuple] = []
+    all_lobbyists: list[tuple] = []
+    for uuid, f in filings_by_uuid.items():
+        _rank, family_key_val, match_method = best_claim[uuid]
+        income_usd = _normalize_dollar(f.get("income"))
+        expenses_usd = _normalize_dollar(f.get("expenses"))
 
-                for act in f.get("lobbying_activities") or []:
-                    all_activities.append((
-                        uuid,
-                        act.get("issue_code") or "",
-                        act.get("issue_display") or "",
-                        act.get("description") or "",
-                        json.dumps(act.get("government_entities") or []),
-                    ))
+        all_filings.append((
+            uuid,
+            f["url"],
+            f["client_name"],
+            f["registrant_name"],
+            str(f["filing_year"] or ""),
+            f["filing_period"],
+            f["filing_type"],
+            income_usd,
+            expenses_usd,
+            family_key_val,
+            match_method,
+        ))
 
-                # Dedup lobbyists within the filing (same name can appear in multiple activities)
-                seen_lobbyists: set[str] = set()
-                for act in f.get("lobbying_activities") or []:
-                    for lb in act.get("lobbyists") or []:
-                        name = lb.get("name") or ""
-                        cov = lb.get("covered_position") or ""
-                        key = f"{name}|||{cov}"
-                        if key not in seen_lobbyists:
-                            seen_lobbyists.add(key)
-                            all_lobbyists.append((uuid, name, cov))
+        for act in f.get("lobbying_activities") or []:
+            all_activities.append((
+                uuid,
+                act.get("issue_code") or "",
+                act.get("issue_display") or "",
+                act.get("description") or "",
+                json.dumps(act.get("government_entities") or []),
+            ))
+
+        # Dedup lobbyists within the filing (same name can appear in multiple activities)
+        seen_lobbyists: set[str] = set()
+        for act in f.get("lobbying_activities") or []:
+            for lb in act.get("lobbyists") or []:
+                name = lb.get("name") or ""
+                cov = lb.get("covered_position") or ""
+                key = f"{name}|||{cov}"
+                if key not in seen_lobbyists:
+                    seen_lobbyists.add(key)
+                    all_lobbyists.append((uuid, name, cov))
 
     return all_filings, all_activities, all_lobbyists
 
@@ -625,11 +667,14 @@ def pull_top_families(
 
     Single-attribution note: families are processed in descending obligation order
     (matching the dim_entities query).  When a filing UUID is returned by queries
-    for two different families, it is attributed to the *first* family processed
-    (the higher-obligation family) via the global seen_uuids dedup set.  This is
-    intentional: single attribution prevents double-counting of lobbying spend
-    across families when the same registrant filing was returned for multiple
-    client_name search terms.
+    for two different families (the LDA client_name filter is contains-style),
+    it is attributed to exactly ONE family — the one with the strongest match
+    tier (_TIER_RANK: exact_family > curated_alias > normalized >
+    family_raw_name > suffix_residue > none); ties go to the higher-obligation
+    family.  Single attribution prevents double-counting of lobbying spend
+    across families; best-tier resolution ensures a curated alias can never be
+    starved by an earlier family's unmatched contains-hit (fix round A3,
+    backlog #19 — VECTRUS/VERTEX finding 2026-07-02).
 
     _client: optional injected httpx.Client (for testing; must already be open).
     _aliases_csv: optional path override for client_aliases.csv (for testing).

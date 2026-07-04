@@ -820,6 +820,165 @@ class TestAliasMatchIntegration:
 
 
 # ===========================================================================
+# Fix round A3 (backlog #19): best-match-tier attribution across families
+# ===========================================================================
+
+def _make_two_family_duckdb(tmp_path: Path, first: tuple, second: tuple) -> Path:
+    """dim_entities with exactly two families; `first` has the higher obligation
+    (and is therefore processed first by pull_top_families)."""
+    db_path = tmp_path / "two_family.duckdb"
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "create table dim_entities ("
+        "family_key varchar, display_name varchar, uei_count int,"
+        "total_obligation double, worst_confidence varchar)"
+    )
+    con.execute(
+        "insert into dim_entities values (?, ?, 1, 2000000000.0, 'high'), (?, ?, 1, 1000000000.0, 'high')",
+        [first[0], first[1], second[0], second[1]],
+    )
+    con.close()
+    return db_path
+
+
+def _fka_vertex_page() -> dict:
+    """A single-filing LDA page whose client is the post-merger fka-Vertex name.
+
+    The LDA client_name filter is contains-style, so in production this filing
+    is returned BOTH by VECTRUS's 'V2X' query and by VERTEX AEROSPACE SERVICES'
+    curated-alias query.
+    """
+    import copy
+
+    raw = copy.deepcopy(_RAW_FILING)
+    raw["filing_uuid"] = "fka00000-1111-2222-3333-444444444444"
+    raw["url"] = "https://lda.senate.gov/api/v1/filings/fka00000-1111-2222-3333-444444444444/"
+    raw["client"]["name"] = "V2X, Inc. (formerly known as Vertex Aerospace)"
+    return {"count": 1, "next": None, "previous": None, "results": [raw]}
+
+
+class TestBestMatchTierAttribution:
+    """Regression tests for the first-query-wins attribution bug (ROADMAP
+    finding 2026-07-02): a filing UUID fetched first by a higher-obligation
+    family's query used to be attributed to that family even at match 'none',
+    starving a later family whose curated alias matched it exactly
+    (VECTRUS starving VERTEX AEROSPACE SERVICES)."""
+
+    def test_later_family_better_tier_wins_same_uuid(self, tmp_path, monkeypatch):
+        """Two families, one UUID: VECTRUS (higher obligation, match 'none')
+        fetches it first; VERTEX AEROSPACE SERVICES holds the curated alias.
+        The filing must be attributed to VERTEX at tier curated_alias."""
+        db_path = _make_two_family_duckdb(
+            tmp_path,
+            ("VECTRUS", "VECTRUS SYSTEMS CORPORATION"),
+            ("VERTEX AEROSPACE SERVICES", "VERTEX AEROSPACE SERVICES LLC"),
+        )
+        out_dir = tmp_path / "influence"
+        page = _fka_vertex_page()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=page)
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as mock_client:
+            # default aliases CSV (the real dbt/seeds/client_aliases.csv) — this is
+            # exactly the production configuration for the VECTRUS/VERTEX pair
+            filings_path, _, _ = pull_top_families(
+                db_path, out_dir=out_dir, top_n=2, years=[2025], _client=mock_client
+            )
+
+        con = duckdb.connect()
+        rows = con.execute(
+            f"select family_key_guess, match_method from read_parquet('{filings_path}')"
+        ).fetchall()
+        con.close()
+
+        assert len(rows) == 1, f"UUID must appear exactly once, got {len(rows)} rows"
+        family, method = rows[0]
+        assert family == "VERTEX AEROSPACE SERVICES", (
+            f"best-match-tier attribution must beat query order; got {family!r}"
+        )
+        assert method == "curated_alias"
+
+    def test_equal_tier_tie_goes_to_higher_obligation_family(self, tmp_path, monkeypatch):
+        """When two families claim the same UUID at the SAME tier ('none' for
+        both here), the first-processed (higher-obligation) family wins —
+        deterministic and identical to the pre-fix behavior for equal tiers."""
+        db_path = _make_two_family_duckdb(
+            tmp_path,
+            ("ALPHA WIDGETS", "ALPHA WIDGETS CORPORATION"),
+            ("BETA GADGETS", "BETA GADGETS CORPORATION"),
+        )
+        out_dir = tmp_path / "influence"
+        # Fixture client LOCKHEED MARTIN CORPORATION matches neither family → 'none' for both
+        page = {**_FIXTURE, "next": None}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=page)
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as mock_client:
+            filings_path, _, _ = pull_top_families(
+                db_path, out_dir=out_dir, top_n=2, years=[2025],
+                _client=mock_client,
+                _aliases_csv=tmp_path / "no_aliases.csv",  # missing file → empty alias map
+            )
+
+        con = duckdb.connect()
+        rows = con.execute(
+            f"select family_key_guess, match_method from read_parquet('{filings_path}')"
+        ).fetchall()
+        con.close()
+
+        assert len(rows) == 1
+        family, method = rows[0]
+        assert family == "ALPHA WIDGETS", (
+            f"equal-tier tie must go to the higher-obligation family, got {family!r}"
+        )
+        assert method == "none"
+
+    def test_earlier_better_tier_not_displaced_by_later_worse(self, tmp_path, monkeypatch):
+        """The symmetric case: when the higher-obligation family already holds
+        the BETTER tier (exact_family), a later family's 'none' claim must not
+        displace it."""
+        db_path = _make_two_family_duckdb(
+            tmp_path,
+            ("LOCKHEED MARTIN", "LOCKHEED MARTIN CORPORATION"),
+            ("BETA GADGETS", "BETA GADGETS CORPORATION"),
+        )
+        out_dir = tmp_path / "influence"
+        page = {**_FIXTURE, "next": None}  # client LOCKHEED MARTIN CORPORATION
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=page)
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as mock_client:
+            filings_path, activities_path, lobbyists_path = pull_top_families(
+                db_path, out_dir=out_dir, top_n=2, years=[2025],
+                _client=mock_client,
+                _aliases_csv=tmp_path / "no_aliases.csv",
+            )
+
+        con = duckdb.connect()
+        rows = con.execute(
+            f"select family_key_guess, match_method from read_parquet('{filings_path}')"
+        ).fetchall()
+        # activities/lobbyists must still be emitted exactly once per uuid
+        act_count = con.execute(
+            f"select count(*) from read_parquet('{activities_path}')"
+        ).fetchone()[0]
+        lob_count = con.execute(
+            f"select count(*) from read_parquet('{lobbyists_path}') where name='MOSHE SCHWARTZ'"
+        ).fetchone()[0]
+        con.close()
+
+        assert rows == [("LOCKHEED MARTIN", "exact_family")]
+        assert act_count == 3  # fixture has 3 activities, emitted once
+        assert lob_count == 1  # deduped per filing, emitted once
+
+
+# ===========================================================================
 # Finding 1: _normalized_tier_match token-boundary tests
 # ===========================================================================
 
