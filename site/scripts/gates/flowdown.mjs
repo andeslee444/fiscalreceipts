@@ -43,6 +43,16 @@
  *        [data-flow-river="spend"][data-fy]   spend river container, data-fy
  *                                             switches with the selector
  *        [data-testid="citation-panel"]       opens from a node click
+ *  (f) render-level label bbox (backlog #20) — the exporter's TDD bbox test
+ *      proves the PRECOMPUTED layout is collision-free under its own font
+ *      metrics; this leg re-asserts it on the RENDERED page at 1440 via
+ *      getBoundingClientRect, at initial render and again after the FY
+ *      switch, so site font/metric drift cannot silently re-collide labels.
+ *      A "label" is the single <text> child of a [data-flow-node]/
+ *      [data-flow-other] group (name + value are tspans of that ONE element
+ *      — never counted as two); labels are compared within their own river
+ *      container only, with a ≤1px bilateral tolerance (halo/antialias
+ *      slop, not a masking tolerance).
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
  */
@@ -598,6 +608,72 @@ export async function runFlowdownGate({ baseUrl }) {
           );
         }
 
+        // ── Leg (f): render-level label bbox (backlog #20) ────────────────
+        // One rect per node group's single <text> label (value tspans share
+        // that element's bbox — a name+value pair can never self-collide).
+        // Tooltip-only nodes (no lbl in the payload) contribute nothing.
+        const collectLabelRects = () =>
+          page.evaluate(() => {
+            const rects = [];
+            const groups = document.querySelectorAll(
+              '[data-testid="flow-chart"] [data-flow-node], [data-testid="flow-chart"] [data-flow-other]'
+            );
+            for (const g of groups) {
+              const text = g.querySelector("text");
+              if (!text) continue;
+              const r = text.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) continue;
+              const river = g.closest("[data-flow-river]");
+              rects.push({
+                id: g.getAttribute("data-node-id"),
+                river: river
+                  ? `${river.getAttribute("data-flow-river")} FY${river.getAttribute("data-fy")}`
+                  : "(no river container)",
+                left: r.left,
+                top: r.top,
+                right: r.right,
+                bottom: r.bottom,
+              });
+            }
+            return rects;
+          });
+        const BBOX_TOL = 1; // px — halo/antialias slop, NOT a masking tolerance
+        const labelCollisions = (rects, tag) => {
+          const found = [];
+          for (let i = 0; i < rects.length; i++) {
+            for (let j = i + 1; j < rects.length; j++) {
+              const a = rects[i];
+              const b2 = rects[j];
+              // distinct rivers are separate SVGs — they cannot legitimately
+              // interact, and vertical page flow already separates them.
+              if (a.river !== b2.river) continue;
+              const ow = Math.min(a.right, b2.right) - Math.max(a.left, b2.left);
+              const oh = Math.min(a.bottom, b2.bottom) - Math.max(a.top, b2.top);
+              if (ow > BBOX_TOL && oh > BBOX_TOL) {
+                found.push(
+                  `leg f: ${tag} ${a.river}: labels "${a.id}" and "${b2.id}" ` +
+                    `overlap ${ow.toFixed(1)}×${oh.toFixed(1)}px`
+                );
+              }
+            }
+          }
+          return found;
+        };
+        {
+          const rects = await collectLabelRects();
+          if (rects.length === 0) {
+            errors.push("leg f: no rendered flow labels found — leg cannot vacuously pass");
+          } else {
+            const found = labelCollisions(rects, "initial render");
+            errors.push(...found);
+            if (found.length === 0) {
+              notes.push(
+                `leg f: ${rects.length} rendered labels at 1440, 0 bbox collisions (initial) ✓`
+              );
+            }
+          }
+        }
+
         // offers honesty must be STATIC and adjacent to the legend — not
         // hover-only, not footer-only.
         const offers = page.locator('[data-testid="flow-offers-note"]');
@@ -655,6 +731,16 @@ export async function runFlowdownGate({ baseUrl }) {
             errors.push(`leg e: FY selector switched to ${targetFy} but spend river shows data-fy=${got}`);
           } else {
             notes.push(`leg e: FY selector switches the spend river (${spend.default_fy}→${targetFy}) ✓`);
+            // Leg (f) again on the re-rendered spend river: the FY switch
+            // remounts the SVG with a different node/label set.
+            const rects = await collectLabelRects();
+            const found = labelCollisions(rects, `after FY→${targetFy} switch`);
+            errors.push(...found);
+            if (found.length === 0) {
+              notes.push(
+                `leg f: ${rects.length} rendered labels, 0 bbox collisions (after FY→${targetFy}) ✓`
+              );
+            }
           }
         }
 

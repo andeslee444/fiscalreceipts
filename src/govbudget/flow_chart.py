@@ -81,10 +81,22 @@ NODE_PAD = 8.0
 #   - a global greedy pass suppresses any remaining label whose estimated
 #     bbox would intersect a higher-priority label.
 MIN_LABEL_H = 9.0       # node thickness below which mid-column labels hide
-LABEL_H = 10.0          # label bbox height (client fontSize 10)
+# Label bbox height: the RENDERED em box, not the nominal font size. Chromium
+# getBBox()/getBoundingClientRect() for a 10px "Avenir Next" SVG <text> spans
+# ascent+descent ≈ 1.31em → 13.09 viewBox units (measured on the shipped
+# /flow/ page, 2026-07-03, while closing backlog #20 — the 10.0 the model
+# previously assumed let two labels 11 units apart pass the greedy filter yet
+# overlap by ~2.1 units at render time; G9 leg f now asserts render-space
+# non-overlap, so the model must dominate the render).
+LABEL_H = 13.2
 LABEL_PAD_X = 5.0       # node face ↔ mid-column label gap
 GUTTER_GAP = 6.0        # last-column node face ↔ gutter label gap
-GUTTER_MAX = 250.0      # cap on the reserved right gutter
+GUTTER_MAX = 270.0      # cap on the reserved right gutter (raised 250→270
+                        # with the 2026-07-03 estimator re-derivation: the
+                        # widest real family label, NORTHROP GRUMMAN
+                        # CORPORATION + value, now estimates to ~263.6 —
+                        # under the old cap it would be suppressed, breaking
+                        # the families-labeled-in-the-gutter contract)
 GUTTER_MIN_H = 1.0      # zero/hairline nodes stay tooltip-only even there
 LABEL_STACK_GAP = 2.0   # min vertical gap between stacked gutter labels
 LEADER_MIN_DY = 6.0     # leader line when the label moved this far off-node
@@ -106,18 +118,26 @@ def _r2(x: float) -> float:
 # Label width estimation + amount formatting (mirrors the client)
 # ---------------------------------------------------------------------------
 
-_CH_NARROW = set("ijlI.,':;!|·")
-_CH_SEMI = set("tfr()[]- ")
-_CH_WIDE = set("mwMW")
+_CH_NARROW = set("ijlI.,'|·")
+_CH_SEMI = set("tfr()[]- :;!")
+_CH_BOWL = set("bdgopq")  # round/bowl lowercase — visibly wider than x-width
+_CH_WIDE = set("mwMWOQ")
 
 
 def _est_text_w(s: str) -> float:
     """Deterministic width estimate (viewBox units) for a 10px sans label.
 
-    Slightly generous per-character buckets — over-estimating is safe (it
-    can only suppress/nudge more), under-estimating would let collisions
-    through. NOT a font metric: the invariant this feeds (zero overlapping
-    label bboxes) is defined over THIS estimator, exporter and tests alike.
+    Per-character buckets that DOMINATE the shipped font's measured
+    advances — over-estimating is safe (it can only suppress/nudge more),
+    under-estimating would let collisions through. Buckets re-derived
+    2026-07-03 from Chromium getComputedTextLength() of 10px "Avenir Next"
+    (the site's --font-sans; worst offenders were o=6.11/b,d=6.37 vs the
+    old 5.3 lowercase bucket and O=8.49/W=9.71 vs the old 6.8/8.8): every
+    bucket now sits above its measured worst case. NOT a font metric: the
+    invariant this feeds (zero overlapping label bboxes) is defined over
+    THIS estimator, exporter and tests alike — and G9 leg f independently
+    re-asserts it on the rendered page, so any future font drift that
+    breaks the domination fails loudly there.
     """
     w = 0.0
     for ch in s:
@@ -126,19 +146,21 @@ def _est_text_w(s: str) -> float:
         elif ch in _CH_SEMI:
             w += 3.6
         elif ch in _CH_WIDE:
-            w += 8.8
+            w += 9.9      # W measured 9.71
+        elif ch in _CH_BOWL:
+            w += 6.5      # b/d measured 6.37
         elif ch == "—":
             w += 10.0
         elif ch == "–":
             w += 6.0
         elif ch.isupper():
-            w += 6.8
+            w += 7.9      # G measured 7.78
         elif ch.isdigit():
             w += 5.8
         elif ch in "&%@#":
-            w += 7.5
+            w += 8.5      # % measured 8.32
         else:
-            w += 5.3
+            w += 5.9      # h/n/u measured 5.83
     return w
 
 
