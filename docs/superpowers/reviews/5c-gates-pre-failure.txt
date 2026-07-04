@@ -731,3 +731,60 @@ surfaced two more required adaptations, both recorded here:
 Post-fix: all 22 gates PASS (npm run verify, /tmp/5e-task7-verify2.log);
 standalone G8 run: legs a–g + g-UI all green (36/36 decade cells across
 12 columns recomputed + edition-verified).
+
+================================================================================
+verify-phase5e gate e — decade-parquet ↔ lake integrity (backlog #23) +
+verify-phase5b1 gate 1 overlap equality (backlog #24)
+================================================================================
+Date: 2026-07-03. New leg (src/govbudget/verify_phase5e.py
+decade_parquet_gate5e): ≥30 sampled budget_lines_decade.parquet rows;
+each sampled row's grain (pe_bli, edition, amount_type) must sum across
+the WHOLE shipped parquet to a reconcile.scenario_map candidate sum in
+the jbooks lake (reuses _lake_candidate_match — any-candidate rule,
+P-1R excluded). Closes the residual artifact-tamper window between
+exporter STOP-conditions, gate d's mart recompute, and the 5B-1 sampled
+citation checks. Main budget_lines.parquet deliberately out of scope
+(direct Postgres export — different trust chain, anchored by
+verify-phase5b1's workbook re-derivation + set-equality; see docstring).
+
+Proof-can-fail (tampered a COPY of the real artifact; original backed
+up first, restored byte-identical after — shasum 60a2839b…3283 verified
+OK): one row's amount_thousands +1000 (fact_id 000032b9033343f4,
+0303367D8Z PB2020 fy_2020_total_base_oco, 0.0 → 1000.0), gate run with
+sample_size=32660 (full sweep, deterministic coverage of the single
+tampered row):
+  ok=False total_rows=32660 sampled=32660 passed=32659
+  FAIL 000032b9033343f4 (0303367D8Z PB2020 fy_2020_total_base_oco):
+    lake recompute mismatch: parquet grain sum=1000.0 but candidates
+    [fy_2020_total_base_oco=0.000]
+Post-restore: gate e PASS 30/30. Unit-level proofs pin the same paths
+(tests/test_verify_phase5e.py: tampered amount, fabricated extra row,
+P-1 + P-1R contaminated sum, fabricated slug, sub-sample guard, missing
+parquet/lake — 9 tests).
+
+Exhaustive off-gate validation (beyond the leg's 30-row sample): ALL
+32,233 decade-parquet grains recompute from the lake under the gate's
+exact semantics — 0 failures.
+
+Backlog #24 (same round): verify_phase5b1._load_fid_to_bl_amount now
+Decimal-compares every fid present in BOTH budget_lines.parquet and
+budget_lines_decade.parquet — the old setdefault-only load let a
+divergent decade amount hide behind the budget_lines copy. Any
+divergence FAILs gate 1 listing the offending fids (first 10).
+Proof-can-fail: tests/test_verify_phase5b1.py::TestOverlapEquality::
+test_gate_fails_on_divergent_decade_copy (280494.0 vs tampered decade
+copy 280495.0 → FAIL 'divergent amount_thousands'); helper-level
+divergent-fixture test pins the exact tuple reported. Live run:
+
+$ uv run python -m govbudget verify-phase5e
+gate a edition-coverage: loaded=10 excused=0 missing=0/10 editions → PASS
+gate b no-cross-edition-leakage: sampled=200/159502 joinable mismatches=0 unjoined=0 → PASS
+gate c book-diff-conservation: rows=18379 sampled=20 passed=20 → PASS
+gate d decade-series-integrity: rows=59068 duplicate_grains=0 sampled=20 passed=20 → PASS
+gate e decade-parquet-lake-integrity: rows=32660 sampled=30 passed=30 → PASS
+verify-phase5e: PASS
+
+$ uv run python -m govbudget verify-phase5b1
+gate 1 citations: sampled=50 passed=50 failures=0 bl_decade_overlap=5257 divergent=0 → PASS
+(gates 2/4 PASS unchanged; gate 3 coverage non-gating)
+verify-phase5b1: PASS

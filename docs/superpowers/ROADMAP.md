@@ -394,14 +394,32 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     consider a runner-side distinction between transport ERRORs and agent
     answers in the artifact (an ERROR currently scores "correct" on
     REFUSE-expected questions).
-23. **Decade-parquet ↔ lake integrity leg** (Task 6 review): a dedicated gate
+23. **Decade-parquet ↔ lake integrity leg** (Task 6 review): ~~a dedicated gate
     recomputing budget_lines_decade.parquet from the lake would close the
-    residual artifact-tamper window for both parquets symmetrically.
-24. **fid_to_bl_amount overlap equality assertion** (Task 6 review): 5,257
+    residual artifact-tamper window for both parquets symmetrically.~~
+    **DONE 2026-07-03:** verify-phase5e gate e (decade_parquet_gate5e) —
+    ≥30 sampled decade-parquet rows; each row's grain (pe_bli, edition,
+    amount_type) must sum across the whole parquet to a scenario_map
+    candidate sum in the lake (reuses _lake_candidate_match, P-1R
+    excluded). Main budget_lines.parquet deliberately out of scope (direct
+    Postgres export, anchored by verify-phase5b1 — see gate docstring).
+    Proof-can-fail recorded in reviews/5c-gates-pre-failure.txt; exhaustive
+    off-gate sweep: all 32,233 grains recompute, 0 failures.
+24. **fid_to_bl_amount overlap equality assertion** (Task 6 review): ~~5,257
     fids exist in both budget_lines and decade parquets; assert amount
-    equality so a divergent decade copy can't hide behind setdefault.
-25. **PB2024 P-1R title backfill** (582 title-NULL rows; P-1 was fixed in the
-    Task 5 improvements round; P-1R out of scope there).
+    equality so a divergent decade copy can't hide behind setdefault.~~
+    **DONE 2026-07-03:** _load_fid_to_bl_amount now Decimal-compares every
+    overlapping fid; any divergence FAILs verify-phase5b1 gate 1 with the
+    offending fids listed (first 10). Live run: 5,257 overlap, 0 divergent.
+25. **PB2024 P-1R title backfill** ~~(582 title-NULL rows; P-1 was fixed in the
+    Task 5 improvements round; P-1R out of scope there).~~
+    **DONE 2026-07-03:** the P-1R sheet uses the same 'Program
+    Element/Budget Line Item (BLI) Title' header the P-1 fix already
+    mapped, so scripts/backfill_pb2024_p1r_titles.py (wipe+reload,
+    self-verifying) sufficed: 582 rows, title-NULL 582 → 0, amount drift 0,
+    lake re-exported. Honest residual: PB2025 (450) and PB2026 (403) P-1R
+    rows are also title-NULL for the same historical reason — reload those
+    two documents with the same pattern if P-1R titles ever render.
 26. **Dead-PE 0605230F request_vs_request minting** if a feed claim ever
     covers request-vs-request swings (currently scoped to request-vs-actuals
     precisely because those are 100% minted).
