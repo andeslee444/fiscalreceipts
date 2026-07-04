@@ -112,6 +112,35 @@ const SUM_BREAKDOWN = {
   ],
 };
 
+const BIG_FID = "331155dd0099aabb";
+
+const BIG_CITATION: DerivedCitation = {
+  kind: "derived",
+  ...NON_DOC_NULLS,
+  official_url: null,
+  retrieved_at: "2026-06-12T22:09:13.330786+00:00",
+  units: "USD millions",
+  formula: "sum(dim_programs.fy2024_actual_millions) for org='Y'",
+  inputs: JSON.stringify(["1111111111111111"]),
+  query_body: null,
+  recorded_value: "435.000",
+};
+
+/** 30 rows (> FILTER_ROW_THRESHOLD 25) — the overlay gets a text filter. */
+const BIG_BREAKDOWN = {
+  fact_id: BIG_FID,
+  formula: "sum(dim_programs.fy2024_actual_millions) for org='Y'",
+  op: "sum",
+  recorded_value: "435.000",
+  units: "USD millions",
+  rows: Array.from({ length: 30 }, (_, i) => ({
+    fid: String(1000000000000000 + i),
+    label: `Big Program ${String(i + 1).padStart(2, "0")}`,
+    pe_bli: `0200${String(i + 1).padStart(2, "0")}F`,
+    v: 30 - i,
+  })),
+};
+
 function jsonResponse(body: unknown): Response {
   return {
     ok: true,
@@ -139,6 +168,9 @@ beforeEach(() => {
     }
     if (u === `/json/breakdowns/${SUM_FID}.json`) {
       return Promise.resolve(jsonResponse(SUM_BREAKDOWN));
+    }
+    if (u === `/json/breakdowns/${BIG_FID}.json`) {
+      return Promise.resolve(jsonResponse(BIG_BREAKDOWN));
     }
     if (u.startsWith("/json/breakdowns/")) {
       return Promise.resolve(notFound());
@@ -361,6 +393,81 @@ describe("DerivedCard breakdown — overlay (>5 rows)", () => {
     expect(
       scroll!.querySelector('[data-testid="breakdown-sum"]'),
     ).not.toBeNull();
+  });
+});
+
+// ── Overlay text filter — pinned in the sticky header (backlog #21) ──────────
+
+describe("DerivedCard breakdown — overlay filter pinning (>25 rows)", () => {
+  it("renders the filter INSIDE the overlay header, not the scrollport", async () => {
+    render(<DerivedCard citation={BIG_CITATION} factId={BIG_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    const overlay = await screen.findByTestId("breakdown-overlay");
+
+    const filter = screen.getByTestId("breakdown-filter");
+    // In the overlay…
+    expect(overlay.contains(filter)).toBe(true);
+    // …but NOT inside the scrollable row list — the scrollport scrolling
+    // must never carry the filter out of view (judge advisory).
+    const scroll = screen.getByTestId("breakdown-scroll");
+    expect(scroll.contains(filter)).toBe(false);
+    // Same non-scrolling header region as the recorded total.
+    const headerRegion = screen
+      .getByTestId("breakdown-overlay-total")
+      .closest(".shrink-0");
+    expect(headerRegion).not.toBeNull();
+    expect(headerRegion!.contains(filter)).toBe(true);
+  });
+
+  it("filter below the threshold is not rendered (small overlay sets)", async () => {
+    render(<DerivedCard citation={SUM_CITATION} factId={SUM_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    await screen.findByTestId("breakdown-overlay");
+    expect(screen.queryByTestId("breakdown-filter")).toBeNull();
+  });
+
+  it("typing in the pinned filter narrows the rows; sum row keeps the full count", async () => {
+    render(<DerivedCard citation={BIG_CITATION} factId={BIG_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    await screen.findByTestId("breakdown-overlay");
+
+    const table = screen.getByTestId("breakdown-table");
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(30);
+
+    fireEvent.change(screen.getByTestId("breakdown-filter"), {
+      target: { value: "Big Program 07" },
+    });
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(1);
+    expect(table.textContent).toContain("Big Program 07");
+    // Honesty note: the sum row still states it covers ALL line items.
+    expect(screen.getByTestId("breakdown-sum").textContent).toContain(
+      "(all 30 line items)",
+    );
+  });
+
+  it("closing and reopening the overlay resets the filter", async () => {
+    render(<DerivedCard citation={BIG_CITATION} factId={BIG_FID} />);
+    fireEvent.click(await screen.findByTestId("breakdown-open"));
+    await screen.findByTestId("breakdown-overlay");
+    fireEvent.change(screen.getByTestId("breakdown-filter"), {
+      target: { value: "Big Program 07" },
+    });
+
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId("breakdown-overlay")).toBeNull();
+    });
+
+    fireEvent.click(screen.getByTestId("breakdown-open"));
+    await screen.findByTestId("breakdown-overlay");
+    expect(
+      (screen.getByTestId("breakdown-filter") as HTMLInputElement).value,
+    ).toBe("");
+    expect(
+      screen.getByTestId("breakdown-table").querySelectorAll("tbody tr"),
+    ).toHaveLength(30);
   });
 });
 

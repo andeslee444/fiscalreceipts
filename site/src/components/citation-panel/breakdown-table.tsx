@@ -12,7 +12,9 @@
  *   - Larger sets → a "View all N line items →" button opens a full-screen
  *     overlay (Radix dialog — same pattern as the PDF zoom overlay: portal,
  *     token-driven fade, focus trap, Esc/click-outside closes). A text filter
- *     appears above the table when rows > FILTER_ROW_THRESHOLD.
+ *     appears when rows > FILTER_ROW_THRESHOLD, PINNED in the overlay's
+ *     sticky header (not the scrollport) so it stays visible mid-scroll
+ *     (judge advisory, backlog #21).
  *
  * Table contract (G8 leg e, BINDING — overlay legs STRENGTHENED 2026-07-02
  * after the visual-judge M2 finding):
@@ -148,6 +150,12 @@ export function BreakdownSection({ factId }: { factId: string }) {
 
 function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
   const [open, setOpen] = useState(false);
+  // Filter state lives HERE (not in BreakdownTable) so the input can render
+  // inside the overlay's non-scrolling header — pinned visible while the row
+  // list scrolls (judge advisory, backlog #21). Reset on close so a reopened
+  // overlay starts unfiltered (the pre-pin behavior, when the input unmounted
+  // with the table).
+  const [filter, setFilter] = useState("");
   const parentPanel = useContext(CitationPanelContext);
   const recorded = Number(breakdown.recorded_value);
 
@@ -176,7 +184,13 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
         View all {breakdown.rows.length} line items →
       </button>
 
-      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Root
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setFilter("");
+        }}
+      >
         <DialogPrimitive.Portal>
           {/* Token-driven fade (citation-panel-overlay keyframes, globals.css) —
               same pattern as the PDF zoom overlay. */}
@@ -220,6 +234,19 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
                 </DialogPrimitive.Close>
               </div>
               <CiteLegend />
+              {/* Text filter pinned in the sticky header region — stays
+                  visible while [data-testid="breakdown-scroll"] scrolls. */}
+              {breakdown.rows.length > FILTER_ROW_THRESHOLD && (
+                <input
+                  type="text"
+                  data-testid="breakdown-filter"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Filter line items…"
+                  aria-label="Filter line items by name or PE/BLI"
+                  className="mt-2 w-full max-w-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
             </div>
 
             {/* Scrollable table — THIS div is the vertical scrollport the
@@ -232,11 +259,7 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
               className="min-h-0 flex-1 overflow-auto p-4 pb-0"
             >
               <CitationPanelContext.Provider value={drillContext}>
-                <BreakdownTable
-                  breakdown={breakdown}
-                  withFilter={breakdown.rows.length > FILTER_ROW_THRESHOLD}
-                  stickySum
-                />
+                <BreakdownTable breakdown={breakdown} filter={filter} stickySum />
               </CitationPanelContext.Provider>
             </div>
           </DialogPrimitive.Content>
@@ -250,18 +273,20 @@ function BreakdownOverlay({ breakdown }: { breakdown: Breakdown }) {
 
 interface BreakdownTableProps {
   breakdown: Breakdown;
-  /** Show the text filter above the table (large overlay sets). */
-  withFilter?: boolean;
+  /**
+   * Filter text, controlled by the caller — the overlay owns the input and
+   * pins it in its sticky header (backlog #21). Inline tables pass nothing.
+   */
+  filter?: string;
   /** Pin the sum row while scrolling (overlay). */
   stickySum?: boolean;
 }
 
 export function BreakdownTable({
   breakdown,
-  withFilter = false,
+  filter = "",
   stickySum = false,
 }: BreakdownTableProps) {
-  const [filter, setFilter] = useState("");
   const units = asAmountUnits(breakdown.units);
   const recorded = Number(breakdown.recorded_value);
 
@@ -306,21 +331,8 @@ export function BreakdownTable({
 
   return (
     <div className="space-y-2">
-      {/* Filter (large sets) + CSV export */}
-      <div className="flex items-center justify-between gap-2">
-        {withFilter ? (
-          <input
-            type="text"
-            data-testid="breakdown-filter"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter line items…"
-            aria-label="Filter line items by name or PE/BLI"
-            className="w-full max-w-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        ) : (
-          <span aria-hidden="true" />
-        )}
+      {/* CSV export (the overlay's text filter lives in its pinned header) */}
+      <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           data-testid="breakdown-csv"
