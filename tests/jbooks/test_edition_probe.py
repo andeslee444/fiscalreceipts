@@ -504,3 +504,49 @@ def test_record_exclusions_shape_and_replacement(tmp_path):
         ])
     with pytest.raises(ValueError, match="malformed"):
         record_exclusions(manifest, 2017, [{"filename": "d.pdf"}])
+
+
+def test_record_service_exclusions_shape_and_isolation(tmp_path):
+    """Phase 5G: service J-book exclusions land in a separate
+    manifest['services'][f'{service}_{fy}'] section (services are not full PB
+    editions), sorted, whole-list replacement, malformed rules rejected —
+    mirroring record_exclusions but with a service-appropriate rule vocabulary
+    (non-justification-appropriation, rdte-ba-split-duplicate)."""
+    import json
+
+    from govbudget.jbooks.edition_probe import (
+        record_exclusions,
+        record_service_exclusions,
+    )
+
+    manifest = tmp_path / "edition_manifest.json"
+    # A prior full-edition exclusion must survive untouched.
+    record_exclusions(manifest, 2017, [
+        {"filename": "a.pdf", "rule": "niche-fund", "reason": "fund"},
+    ])
+    record_service_exclusions(manifest, "navy", 2026, [
+        {"filename": "OMN_Book.pdf", "rule": "non-justification-appropriation",
+         "reason": "O&M, Navy"},
+        {"filename": "APN_BA5_Book.pdf", "rule": "rdte-ba-split-duplicate",
+         "reason": "BA-split duplicate of the master book"},
+    ])
+    doc = json.loads(manifest.read_text())
+    # editions section untouched
+    assert doc["editions"]["2017"]["exclusions"][0]["filename"] == "a.pdf"
+    svc = doc["services"]["navy_2026"]["exclusions"]
+    assert [e["filename"] for e in svc] == ["APN_BA5_Book.pdf", "OMN_Book.pdf"]
+
+    # regeneration replaces wholesale within the service section only
+    record_service_exclusions(manifest, "navy", 2026, [
+        {"filename": "BRAC_Book.pdf", "rule": "non-justification-appropriation",
+         "reason": "BRAC"},
+    ])
+    doc = json.loads(manifest.read_text())
+    svc = doc["services"]["navy_2026"]["exclusions"]
+    assert [e["filename"] for e in svc] == ["BRAC_Book.pdf"]
+    assert doc["editions"]["2017"]["exclusions"][0]["filename"] == "a.pdf"
+
+    with pytest.raises(ValueError, match="malformed"):
+        record_service_exclusions(manifest, "navy", 2026, [
+            {"filename": "x.pdf", "rule": "nope", "reason": "no"},
+        ])

@@ -273,6 +273,101 @@ def test_classification_regression_fy2025_fy2026_full_inventories():
         assert len(got) == 34  # + 3 rollup workbooks = 37 discovered
 
 
+# --------------------------------------------------------------------------
+# Phase 5G — Navy FY2026 service J-books (appropriation-code naming)
+# --------------------------------------------------------------------------
+
+
+def test_classify_jbook_navy_rdte_and_procurement():
+    """Navy publishes by appropriation code (RDTEN / APN / OPN / …), which the
+    word-bounded RDTE/PROC token rule returns None for. The NAVY_NAMES allowlist
+    (Task 2, mirroring EVIDENCE_NAMES) maps each justification book to (family,
+    org='N'). Org 'N' is the display-workbook code — no ORG_ALIASES entry."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    # RDT&E, Navy — five BA-split PDFs, each embeds the full 252-PE master.
+    for ba in ("BA1-3", "BA4", "BA5", "BA6", "BA7-8"):
+        assert _classify_jbook(f"RDTEN_{ba}_Book.pdf") == ("rdte", "N")
+    # Procurement appropriations (Navy + Marine Corps).
+    for name in (
+        "APN_BA1-4_Book.pdf", "APN_BA5_Book.pdf", "APN_BA6-7_Book.pdf",   # Aircraft
+        "WPN_Book.pdf",                                                    # Weapons
+        "SCN_Book.pdf",                                                    # Shipbuilding
+        "OPN_BA1_Book.pdf", "OPN_BA2_Book.pdf", "OPN_BA3_Book.pdf",        # Other
+        "OPN_BA4_Book.pdf", "OPN_BA5-8_Book.pdf",
+        "PMC_Book.pdf",                                                    # Marine Corps
+        "PANMC_Book.pdf",                                                  # Ammunition N&MC
+    ):
+        assert _classify_jbook(name) == ("procurement", "N"), name
+
+
+def test_classify_jbook_navy_excludes_non_justification_books():
+    """O&M, MilPers, MilCon, BRAC, working-capital, and overview/summary
+    volumes are NOT R/D or procurement justification books. They are pinned to
+    NAVY_EXCLUSIONS so the token rule never accidentally registers them."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    for name in (
+        # O&M
+        "OMN_Book.pdf", "OMN_Vol2_Book.pdf", "OMNR_Book.pdf",
+        "OMMC_Book.pdf", "OMMC_Vol2_Book.pdf", "OMMCR_Book.pdf",
+        # Military / Reserve Personnel
+        "MPN_Book.pdf", "MPMC_Book.pdf", "MCNR_Book.pdf",
+        "RPN_Book.pdf", "RPMC_Book.pdf",
+        # MilCon / BRAC / working capital
+        "MCON_Book.pdf", "BRAC_Book.pdf", "NWCF_Book.pdf",
+        # overview / summary / supplemental
+        "Highlights_Book.pdf", "DON_Budget_Card.pdf", "DON_Press_Brief.pdf",
+        "The_Bottom_Line.pdf", "Supp_Book.pdf",
+    ):
+        assert _classify_jbook(name) is None, name
+
+
+def test_classify_navy_full_inventory_partitions_cleanly():
+    """Every one of the 36 real Navy FY2026 filenames (navy-inventory.txt)
+    either classifies to a justification (family, 'N') or is an explicit
+    exclusion — no filename falls through unhandled."""
+    from pathlib import Path
+
+    from govbudget.jbooks.registry import (
+        NAVY_EXCLUSIONS,
+        NAVY_NAMES,
+        _classify_jbook,
+    )
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks"
+    names = [
+        n for n in (fixtures / "navy_inventory_fy2026.txt").read_text().splitlines()
+        if n.strip()
+    ]
+    assert len(names) == 36
+    classified, excluded = {}, []
+    for name in names:
+        verdict = _classify_jbook(name)
+        if verdict is not None:
+            classified[name] = verdict
+        else:
+            excluded.append(name)
+    # 5 RDTE + 12 procurement books classify; the remaining 19 are excluded.
+    assert len(classified) == 17
+    assert sum(1 for v in classified.values() if v == ("rdte", "N")) == 5
+    assert sum(1 for v in classified.values() if v == ("procurement", "N")) == 12
+    assert len(excluded) == 19
+    # allowlist / exclusion sets exactly cover the inventory, nothing extra.
+    assert set(NAVY_NAMES) == set(classified)
+    assert set(NAVY_EXCLUSIONS) == set(excluded)
+
+
+def test_navy_allowlist_does_not_touch_defense_wide_names():
+    """The Navy allowlist keys are appropriation-code names unique to the
+    service inventory; none collide with a defense-wide filename, so the
+    regression pin above stays byte-identical (guard against accidental reuse)."""
+    from govbudget.jbooks.registry import NAVY_EXCLUSIONS, NAVY_NAMES
+
+    for name in list(NAVY_NAMES) + list(NAVY_EXCLUSIONS):
+        assert "RDTE_" not in name and "PROC" not in name.upper()[:4], name
+
+
 def test_upsert_is_idempotent(pg_dsn):
     docs = [
         {

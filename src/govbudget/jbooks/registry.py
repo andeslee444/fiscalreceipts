@@ -60,6 +60,86 @@ EVIDENCE_NAMES = {
         ("procurement", "Missile_Defense_Agency"),
 }
 
+# --------------------------------------------------------------------------
+# Phase 5G — Navy FY2026 service J-books.
+#
+# Navy publishes its budget on secnav.navy.mil/fmc/fmb by APPROPRIATION CODE
+# (RDTEN, APN, OPN, WPN, SCN, PMC, …), not the DoD RDTE_/PROC_ convention, so
+# the word-bounded token rule below returns None for every Navy filename
+# (probe evidence: docs/superpowers/reviews/5g-probe/classifier-verdicts.txt).
+# The fix mirrors EVIDENCE_NAMES exactly: an explicit filename -> (family, org)
+# allowlist. The org is the workbook code 'N' (probe confirmed A/N/F are the
+# display-workbook organization codes and 'N' matches budget_lines.organization
+# directly — no ORG_ALIASES entry is needed).
+#
+# Only R&D and procurement JUSTIFICATION books belong here. The appropriation
+# glossary (verified against the SECNAV FMB acronyms databook, live 2026-07-04):
+#   RDTEN = Research, Development, Test & Evaluation, Navy      -> rdte
+#   APN   = Aircraft Procurement, Navy                          -> procurement
+#   WPN   = Weapons Procurement, Navy                           -> procurement
+#   SCN   = Shipbuilding & Conversion, Navy                     -> procurement
+#   OPN   = Other Procurement, Navy                             -> procurement
+#   PMC   = Procurement, Marine Corps                           -> procurement
+#   PANMC = Procurement of Ammunition, Navy & Marine Corps      -> procurement
+NAVY_NAMES: dict[str, tuple[str, str]] = {
+    # RDT&E, Navy — five PDFs split by budget activity. Each BA-split PDF
+    # embeds the SAME full 252-PE master book (probe sample-extraction.md), so
+    # only ONE registers per family; the RDTEN dedup rule (service_fetch.py)
+    # selects the lowest-BA volume. Classification is per-file; dedup is a
+    # separate registration-time step.
+    "RDTEN_BA1-3_Book.pdf": ("rdte", "N"),
+    "RDTEN_BA4_Book.pdf": ("rdte", "N"),
+    "RDTEN_BA5_Book.pdf": ("rdte", "N"),
+    "RDTEN_BA6_Book.pdf": ("rdte", "N"),
+    "RDTEN_BA7-8_Book.pdf": ("rdte", "N"),
+    # Aircraft Procurement, Navy (three BA-split volumes).
+    "APN_BA1-4_Book.pdf": ("procurement", "N"),
+    "APN_BA5_Book.pdf": ("procurement", "N"),
+    "APN_BA6-7_Book.pdf": ("procurement", "N"),
+    # Weapons / Shipbuilding & Conversion.
+    "WPN_Book.pdf": ("procurement", "N"),
+    "SCN_Book.pdf": ("procurement", "N"),
+    # Other Procurement, Navy (five BA-split volumes).
+    "OPN_BA1_Book.pdf": ("procurement", "N"),
+    "OPN_BA2_Book.pdf": ("procurement", "N"),
+    "OPN_BA3_Book.pdf": ("procurement", "N"),
+    "OPN_BA4_Book.pdf": ("procurement", "N"),
+    "OPN_BA5-8_Book.pdf": ("procurement", "N"),
+    # Marine Corps procurement + Navy/Marine Corps ammunition.
+    "PMC_Book.pdf": ("procurement", "N"),
+    "PANMC_Book.pdf": ("procurement", "N"),
+}
+
+# Navy inventory filenames that are NOT justification books and must never
+# register (recorded in edition_manifest under service_2026, rule
+# 'non-justification-appropriation'). Each maps to a one-line reason so the
+# exclusion is self-documenting (5E manifest exclusions convention).
+NAVY_EXCLUSIONS: dict[str, str] = {
+    # Operation & Maintenance (Navy / Navy Reserve / Marine Corps / MC Reserve).
+    "OMN_Book.pdf": "Operation & Maintenance, Navy — not a justification book",
+    "OMN_Vol2_Book.pdf": "Operation & Maintenance, Navy vol.2 — not a justification book",
+    "OMNR_Book.pdf": "Operation & Maintenance, Navy Reserve — not a justification book",
+    "OMMC_Book.pdf": "Operation & Maintenance, Marine Corps — not a justification book",
+    "OMMC_Vol2_Book.pdf": "Operation & Maintenance, Marine Corps vol.2 — not a justification book",
+    "OMMCR_Book.pdf": "Operation & Maintenance, Marine Corps Reserve — not a justification book",
+    # Military / Reserve Personnel.
+    "MPN_Book.pdf": "Military Personnel, Navy — not R/D or procurement",
+    "MPMC_Book.pdf": "Military Personnel, Marine Corps — not R/D or procurement",
+    "MCNR_Book.pdf": "Military Personnel, Marine Corps Reserve — not R/D or procurement",
+    "RPN_Book.pdf": "Reserve Personnel, Navy — not R/D or procurement",
+    "RPMC_Book.pdf": "Reserve Personnel, Marine Corps — not R/D or procurement",
+    # Military Construction / BRAC / working capital fund.
+    "MCON_Book.pdf": "Military Construction, Navy — not R/D or procurement",
+    "BRAC_Book.pdf": "Base Realignment & Closure — not R/D or procurement",
+    "NWCF_Book.pdf": "Navy Working Capital Fund — revolving fund, not a justification book",
+    # Overview / summary / press / supplemental — no exhibit-line detail.
+    "Highlights_Book.pdf": "DON budget highlights — overview volume, no R-2/P-40 detail",
+    "DON_Budget_Card.pdf": "DON budget card — one-page summary, no detail",
+    "DON_Press_Brief.pdf": "DON press brief — summary, no detail",
+    "The_Bottom_Line.pdf": "DON 'The Bottom Line' — overview summary, no detail",
+    "Supp_Book.pdf": "Supplemental request — not a base R/D or procurement justification book",
+}
+
 # Evidence-classified books whose FILENAME is ambiguous across index paths:
 # PB2023 publishes tokenless '{ORG}_PB2023.pdf' twins under BOTH
 # 02_Procurement/ and 03_RDT_and_E/, so the name alone cannot classify.
@@ -108,6 +188,10 @@ def _classify_jbook(name: str) -> tuple[str, str] | None:
     name = unquote(name)
     if name in EVIDENCE_NAMES:
         return EVIDENCE_NAMES[name]
+    if name in NAVY_NAMES:
+        return NAVY_NAMES[name]
+    if name in NAVY_EXCLUSIONS:
+        return None
     if not name.lower().endswith(".pdf") or name in EXCLUDED_NAMES:
         return None
     if _NUMERIC_INDEX.match(name):

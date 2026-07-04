@@ -223,6 +223,42 @@ def record_exclusions(manifest_path: Path, fy: int,
     return _update_edition(manifest_path, fy, {"exclusions": ordered})
 
 
+def record_service_exclusions(manifest_path: Path, service: str, fy: int,
+                              exclusions: list[dict]) -> dict:
+    """Record a SERVICE J-book set's intentionally-excluded files (Phase 5G).
+
+    Services (Navy/Army/AF) are not full PB editions, so their exclusions live
+    in manifest['services'][f'{service}_{fy}'] rather than editions[fy] — the
+    editions section (and verify-phase5e's edition-coverage gate) is left
+    untouched. Same honesty contract as record_exclusions: each entry is
+    {filename, rule, reason}, sorted by filename, whole-list replacement.
+
+    Service rule vocabulary:
+      non-justification-appropriation — O&M/MilPers/MilCon/BRAC/working-capital
+        /overview volume; not an R&D or procurement justification book.
+      rdte-ba-split-duplicate — a Navy BA-split RDTE PDF that embeds the same
+        full master book already registered from the lowest-BA volume.
+    """
+    allowed = {"non-justification-appropriation", "rdte-ba-split-duplicate"}
+    for e in exclusions:
+        if set(e) != {"filename", "rule", "reason"} or e["rule"] not in allowed:
+            raise ValueError(f"malformed service exclusion entry: {e!r}")
+    ordered = sorted(exclusions, key=lambda e: e["filename"])
+    manifest_path = Path(manifest_path)
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+    else:
+        manifest = {"editions": {}}
+    services = manifest.setdefault("services", {})
+    key = f"{service}_{fy}"
+    entry = {**services.get(key, {}), "service": service, "fiscal_year": fy,
+             "exclusions": ordered}
+    services[key] = entry
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    return entry
+
+
 def record_failure(manifest_path: Path, fy: int, *, status: str, reason: str,
                    date: str | None = None) -> dict:
     """Record a structural load failure (post-probe) with a precise reason."""
