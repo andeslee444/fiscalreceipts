@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   deriveExhibitFamily,
+  isIngestedServiceOrg,
   isRollupDetails,
   isZeroContentDetails,
   rollupProgramRow,
@@ -60,6 +61,22 @@ describe("serviceOrgName", () => {
     expect(serviceOrgName("DHA")).toBe("DHA");
     expect(serviceOrgName("OSD")).toBe("OSD");
     expect(serviceOrgName("")).toBe("");
+  });
+});
+
+describe("isIngestedServiceOrg", () => {
+  it("is true for Navy (FY2026 books ingested in Phase 5G)", () => {
+    expect(isIngestedServiceOrg("N")).toBe(true);
+  });
+
+  it("is false for the still-uningested services and non-service codes", () => {
+    // Army and Air Force stay on the manual path.
+    expect(isIngestedServiceOrg("A")).toBe(false);
+    expect(isIngestedServiceOrg("F")).toBe(false);
+    // Defense-wide / other org codes are not service J-book codes.
+    expect(isIngestedServiceOrg("DHA")).toBe(false);
+    expect(isIngestedServiceOrg("OSD")).toBe(false);
+    expect(isIngestedServiceOrg("")).toBe(false);
   });
 });
 

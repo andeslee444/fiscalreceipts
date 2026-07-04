@@ -615,15 +615,22 @@ export default function MethodologyPage() {
               page — {serviceBooks.denominator} in total. Full J-book detail
               (mission prose, project tables, accomplishments) is ingested
               for {serviceBooks.numerator} of them, whose justification books
-              come from the sources already in the pipeline. The remaining
-              pages are mostly Army, Navy, and Air Force program elements:
-              their dollar figures come from the all-service R-1/P-1
-              workbooks (every figure cited), but their narrative books live
-              on the service comptroller sites and have not been ingested
-              yet. Those pages say so in place of a description — the
-              &ldquo;roadmap&rdquo; is exactly that ingestion: a feasibility
-              spike for the service books is recorded alongside the Phase 5F
-              design, and coverage grows as each service&apos;s books land.
+              come from the sources already in the pipeline. As of Phase 5G
+              this includes the Navy&apos;s FY2026 RDT&amp;E and procurement
+              books: 387 Navy program elements now carry full R-2/P-40 detail
+              with working PDF citations, where before they showed only cited
+              workbook figures. The remaining pages are mostly Army and Air
+              Force program elements: their dollar figures come from the
+              all-service R-1/P-1 workbooks (every figure cited), but their
+              narrative books live on the service comptroller sites and have
+              not been ingested yet — Army and Air Force are on the manual
+              ingestion path. A handful of Navy pages also stay figures-only
+              when a line has no matching R-2/P-40 narrative in the ingested
+              books (a procurement-only or summary line); those say so
+              explicitly rather than claiming the book is missing. Every
+              figures-only page says which case applies in place of a
+              description — the &ldquo;roadmap&rdquo; is exactly that
+              ingestion, and coverage grows as each service&apos;s books land.
               We never substitute generated prose for a missing source
               document.
             </p>

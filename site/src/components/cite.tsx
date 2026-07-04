@@ -215,15 +215,17 @@ export function Cite({
         data-dataset={dataset}
         title={title}
         className={["text-foreground", className].filter(Boolean).join(" ")}
-        aria-label={`${displayText} — zero-dollar line cited to budget justification XML`}
+        aria-label={`${displayText} — cited to budget justification XML (no page highlight)`}
       >
         {displayText}
         {/* Human label by default — the raw XML anchor reads like an error to
             visitors. The full path stays in data-xml-path (gate contract) and
-            the tooltip; receipts mode surfaces it inline for power users. */}
+            the tooltip; receipts mode surfaces it inline for power users.
+            Covers both state-B origins: zero-dollar lines and 'unresolved'
+            facts (non-zero, but no PDF bbox found) — neither has a page cite. */}
         <span
           className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"
-          title={`cited to the budget justification XML at ${xmlPath} — zero-dollar line, no page highlight`}
+          title={`cited to the budget justification XML at ${xmlPath} — no page highlight`}
           aria-hidden="true"
         >
           {receiptsOn ? xmlPath : "XML"}

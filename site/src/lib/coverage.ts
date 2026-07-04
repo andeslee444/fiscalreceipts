@@ -159,7 +159,7 @@ export function getCoverage(id: CoverageId): Coverage {
         id,
         numerator: num,
         denominator: den,
-        note: `Detailed J-book justification is ingested for ${num} of ${den} program pages — the rest carry cited R-1/P-1 workbook figures while the service J-books await ingestion.`,
+        note: `Detailed J-book justification is ingested for ${num} of ${den} program pages — the Navy FY2026 books are in; the rest carry cited R-1/P-1 workbook figures while the Army and Air Force J-books await ingestion.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-service-books",
         linkText: "why summary figures only? →",

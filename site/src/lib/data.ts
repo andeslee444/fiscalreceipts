@@ -156,7 +156,11 @@ export interface ProgramDetailRow {
   fact_id: string;
   project_number: string | null;
   project_title: string | null;
-  resolution: "unique" | "ambiguous_first" | "zero_amount";
+  // 'unique'/'ambiguous_first' → exporter emitted a jbook_pdf citation (state A).
+  // 'zero_amount'/'unresolved' → no citation emitted; the amount cites its
+  // xml_path chip (state B). Navy's FY2026 books (Phase 5G) first surfaced
+  // 'unresolved' on full-tier pages — a factId here would orphan.
+  resolution: "unique" | "ambiguous_first" | "zero_amount" | "unresolved";
   scenario: string;
   units: string;
   xml_path: string;

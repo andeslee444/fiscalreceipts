@@ -30,6 +30,21 @@ export function serviceOrgName(code: string): string {
   }
 }
 
+/**
+ * Service workbook org codes whose FY2026 J-books ARE ingested (Phase 5G).
+ * A rollup page for an ingested service is NOT "awaiting ingestion" — its
+ * PE simply has no matching R-2/P-40 narrative in the ingested books (e.g. a
+ * procurement-only or summary line). The uningested services (Army 'A', Air
+ * Force 'F') stay on the manual path and keep the "not yet ingested" wording.
+ * Codes outside this set that aren't service J-book codes (DHA, OSD, …) render
+ * the honest generic note. Single source of truth for the rollup note wording.
+ */
+export const INGESTED_SERVICE_ORGS: ReadonlySet<string> = new Set(["N"]);
+
+export function isIngestedServiceOrg(code: string): boolean {
+  return INGESTED_SERVICE_ORGS.has(code);
+}
+
 /** True when the sidecar is a Batch-A rollup-tier export. */
 export function isRollupDetails(details: ProgramDetails): boolean {
   return details.tier === "rollup";

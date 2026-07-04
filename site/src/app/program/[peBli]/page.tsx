@@ -25,6 +25,7 @@ import type {
   WorkbookCitation,
 } from "@/lib/data";
 import {
+  isIngestedServiceOrg,
   isRollupDetails,
   isZeroContentDetails,
   rollupProgramRow,
@@ -121,7 +122,13 @@ export async function generateMetadata({
         ? firstSentence.slice(0, 197) + "…"
         : firstSentence;
   } else if (tier === "rollup") {
-    description = `${program.org} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. Detailed service J-book not yet ingested.`;
+    // Honest per-service tail (Phase 5G): ingested services (Navy) have no
+    // matching R-2/P-40 narrative for this line; uningested services (Army,
+    // Air Force) have books not yet ingested.
+    const tail = isIngestedServiceOrg(details.service_org ?? "")
+      ? "No R-2/P-40 J-book narrative for this line."
+      : "Detailed service J-book not yet ingested.";
+    description = `${program.org} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. ${tail}`;
   } else {
     description = `${program.org} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
   }

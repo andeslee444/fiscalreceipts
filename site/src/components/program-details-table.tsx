@@ -7,8 +7,14 @@ import { projectAnchorId } from "@/lib/pe-link";
  *
  * Project rows with scenario columns; each amount:
  *   - State A via <Cite factId> when resolution is 'unique' or 'ambiguous_first'
- *   - State B via <Cite xmlPath={xml_path}> when resolution === 'zero_amount'
- *     (pass NO factId in this case per THREE-STATE contract)
+ *     (the exporter emits a jbook_pdf citation for exactly these two)
+ *   - State B via <Cite xmlPath={xml_path}> when resolution is 'zero_amount'
+ *     OR 'unresolved' — the exporter emits NO citation for either (both are
+ *     skipped in the jbook_pdf pass), but the J-book XML locator is known, so
+ *     the amount cites its xml_path chip. Passing a factId here would orphan
+ *     (fact-id not in citations.json → render-static Cite contract FAIL).
+ *     Navy's FY2026 books (Phase 5G) are the first corpus to surface
+ *     'unresolved' details on full-tier pages.
  *
  * Grouped by project_number / project_title.
  */
@@ -152,12 +158,16 @@ export function ProgramDetailsTable({ details }: ProgramDetailsTableProps) {
 
                     // Three-state logic:
                     // State A: resolution unique or ambiguous_first → use factId
-                    // State B: resolution zero_amount → use xmlPath, NO factId
-                    const isZeroAmount = row.resolution === "zero_amount";
+                    // State B: resolution zero_amount OR unresolved → use
+                    //   xmlPath, NO factId (the exporter emits no citation for
+                    //   either — a factId here would orphan against citations.json).
+                    const usesXmlPath =
+                      row.resolution === "zero_amount" ||
+                      row.resolution === "unresolved";
 
                     return (
                       <td key={scenario} className="py-2 px-2 text-right">
-                        {isZeroAmount ? (
+                        {usesXmlPath ? (
                           <Cite
                             value={row.amount_millions}
                             units="USD millions"

@@ -431,6 +431,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     consider a runner-side distinction between transport ERRORs and agent
     answers in the artifact (an ERROR currently scores "correct" on
     REFUSE-expected questions).
+    *Update 2026-07-04 (Phase 5G Task 5):* Navy J-book detail landed and the
+    marts were rebuilt; the mechanical grader-recompute (`evals check`) shows
+    **43 ok / 0 stale / 5 skipped** — the count-pinned questions (incl. q017
+    `fct_budget_trajectory` = 1982) did NOT drift, because Navy PEs were
+    already in the R-1/P-1 workbook marts the pins key off; the new
+    `jbook_details` narrative rows don't touch any pinned SQL. No expected-answer
+    edits were needed. The confirming live eval run stays deferred to this item
+    (API capped until 2026-08-01).
 23. **Decade-parquet ↔ lake integrity leg** (Task 6 review): ~~a dedicated gate
     recomputing budget_lines_decade.parquet from the lake would close the
     residual artifact-tamper window for both parquets symmetrically.~~
