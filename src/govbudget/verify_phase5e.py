@@ -30,6 +30,15 @@ Gates (CLI: verify-phase5e):
      scenario map (PriorYear=FY(N−2) actuals, CurrentYear=FY(N−1),
      BudgetYearOne=FY(N)). FAIL if the mart is absent.
 
+  5. decade_parquet_gate5e — the typed site export
+     data/site/data/budget_lines_decade.parquet recomputes from the
+     parquet-lake budget_lines: sample ≥30 rows; each sampled row's grain
+     (pe_bli, edition, amount_type) must sum, across the WHOLE decade
+     parquet, to a scenario_map candidate sum in the lake (P-1R excluded —
+     same _lake_candidate_match rule as gates 3/4). Closes the residual
+     artifact-tamper window between exporter STOP-conditions and the
+     sampled citation checks (backlog #23).
+
 All gate functions take explicit paths/DSNs — never read config.
 No network access in any gate.
 """
@@ -641,5 +650,151 @@ def decade_series_gate5e(
         "duplicate_grains": dupes,
         "sampled": sampled,
         "passed": sampled - len([f for f in failures if f[0] != "(grain)"]),
+        "failures": failures,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Gate 5: decade_parquet_gate5e
+# ---------------------------------------------------------------------------
+
+_DECADE_PARQUET_SAMPLE_SIZE = 30
+
+# Scenarios fct_decade_series (and therefore the decade parquet's grains)
+# can carry, in gate-4's edition-relative order (edition − fy = 2, 1, 0).
+_DECADE_SCENARIOS = ("PriorYear", "CurrentYear", "BudgetYearOne")
+
+
+def decade_parquet_gate5e(
+    decade_parquet: Path,
+    lake_budget_lines: Path,
+    *,
+    sample_size: int = _DECADE_PARQUET_SAMPLE_SIZE,
+) -> dict:
+    """budget_lines_decade.parquet ↔ jbooks-lake integrity (backlog #23).
+
+    The typed decade export (data/site/data/budget_lines_decade.parquet)
+    is EXPORTER output: _build_decade_citation_rows computes it from the
+    Task-5 marts plus the jbooks lake, anchored until now only by exporter
+    STOP-conditions, gate 4's mart recompute, and the 5B-1 sampled
+    citation checks. This gate closes the residual artifact-tamper window
+    by recomputing the shipped parquet directly from the lake, bypassing
+    the marts entirely.
+
+    Per sampled row (decade rows carry fiscal_year == edition_year):
+      - grain = (pe_bli, edition, amount_type); the grain's sum of
+        amount_thousands over the WHOLE decade parquet (so tampering ANY
+        row of a sampled grain — edit, add, or partial delete — surfaces);
+      - the row's amount_type slug must belong to scenario_map(edition)
+        for one of the gate-4 scenarios (a fabricated slug FAILs);
+      - the grain sum must recompute from the lake via
+        _lake_candidate_match (any-candidate rule, P-1R excluded — the
+        decade parquet ships only R-1/P-1 source rows, and P-1R is the
+        reserve-component subset of the P-1 line).
+
+    Scope note (backlog #23 decision): the main budget_lines.parquet is
+    deliberately NOT given this leg — it is exported directly from
+    Postgres (a different trust chain, already anchored by verify-phase5b1's
+    workbook re-derivation + integrity set-equality against citations),
+    whereas the decade parquet is computed FROM the lake, so the lake is
+    its natural ground truth.
+
+    Sub-sample guard: fewer than sample_size rows is a FAIL. FAIL if the
+    parquet or the lake is absent — the decade tier is a Phase 5E
+    deliverable and must not silently vanish.
+
+    Returns: ok, total_rows, sampled, passed, failures [(grain, reason)],
+             reason (structural failures only).
+    """
+    decade_parquet = Path(decade_parquet)
+    lake_budget_lines = Path(lake_budget_lines)
+    base = {"ok": False, "total_rows": 0, "sampled": 0, "passed": 0, "failures": []}
+    if not decade_parquet.exists():
+        return {**base, "reason": f"budget_lines_decade.parquet missing: {decade_parquet}"}
+    if not lake_budget_lines.exists():
+        return {
+            **base,
+            "reason": f"lake budget_lines parquet missing: {lake_budget_lines}",
+        }
+
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        total = con.execute(
+            f"select count(*) from read_parquet('{_sql_path(decade_parquet)}')"
+        ).fetchone()[0]
+        if total == 0:
+            return {**base, "reason": "budget_lines_decade.parquet is empty"}
+        rows = con.execute(
+            f"""
+            select fact_id, pe_bli, fiscal_year, amount_type
+            from read_parquet('{_sql_path(decade_parquet)}')
+            order by random()
+            limit ?
+            """,
+            [sample_size],
+        ).fetchall()
+        if len(rows) < sample_size:
+            return {
+                **base,
+                "total_rows": total,
+                "sampled": len(rows),
+                "reason": f"only {len(rows)} decade rows available —"
+                          f" fewer than sample_size={sample_size}",
+            }
+        grain_sums = {
+            (pe, fy, at): s
+            for pe, fy, at, s in con.execute(
+                f"""
+                select pe_bli, fiscal_year, amount_type, sum(amount_thousands)
+                from read_parquet('{_sql_path(decade_parquet)}')
+                group by 1, 2, 3
+                """
+            ).fetchall()
+        }
+    finally:
+        con.close()
+
+    from govbudget.jbooks.reconcile import scenario_map
+
+    failures: list[tuple[str, str]] = []
+    lake = duckdb.connect()
+    try:
+        for fact_id, pe_bli, edition, at in rows:
+            grain = f"{fact_id} ({pe_bli} PB{edition} {at})"
+            target = _dec(grain_sums.get((pe_bli, edition, at)))
+            if target is None:
+                failures.append((grain, "grain sum null/non-numeric"))
+                continue
+            smap = scenario_map(int(edition))
+            candidates = None
+            for scenario in _DECADE_SCENARIOS:
+                if at in smap[scenario]:
+                    candidates = smap[scenario]
+                    break
+            if candidates is None:
+                failures.append(
+                    (grain, f"amount_type {at!r} is not a scenario_map"
+                            f" candidate for edition {edition}")
+                )
+                continue
+            matched, detail = _lake_candidate_match(
+                lake, lake_budget_lines, pe_bli, int(edition), candidates, target
+            )
+            if not matched:
+                failures.append(
+                    (grain, f"lake recompute mismatch: parquet grain"
+                            f" sum={target} but candidates [{detail}]")
+                )
+    finally:
+        lake.close()
+
+    sampled = len(rows)
+    return {
+        "ok": len(failures) == 0,
+        "total_rows": total,
+        "sampled": sampled,
+        "passed": sampled - len(failures),
         "failures": failures,
     }

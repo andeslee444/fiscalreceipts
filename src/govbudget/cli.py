@@ -1025,7 +1025,10 @@ def cmd_verify_phase5b1(args) -> None:
     else:
         print(
             f"gate 1 citations: sampled={cg['sampled']} passed={cg['passed']}"
-            f" failures={len(cg['failures'])} → {'PASS' if g1_ok else 'FAIL'}"
+            f" failures={len(cg['failures'])}"
+            f" bl_decade_overlap={cg.get('overlap_fids', 0)}"
+            f" divergent={cg.get('overlap_divergent', 0)}"
+            f" → {'PASS' if g1_ok else 'FAIL'}"
         )
         for fid, reason in cg["failures"][:10]:
             print(f"  FAIL {fid}: {reason}")
@@ -1087,6 +1090,7 @@ def cmd_verify_phase5b1(args) -> None:
 def cmd_verify_phase5e(args) -> None:
     from govbudget.verify_phase5e import (
         book_diff_gate5e,
+        decade_parquet_gate5e,
         decade_series_gate5e,
         edition_coverage_gate5e,
         leakage_gate5e,
@@ -1165,6 +1169,24 @@ def cmd_verify_phase5e(args) -> None:
         for grain, reason in ds["failures"][:10]:
             print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gd_ok
+
+    # Gate e: decade-parquet ↔ lake integrity (backlog #23)
+    dp = decade_parquet_gate5e(
+        config.SITE_DIR / "data" / "budget_lines_decade.parquet",
+        lake_budget_lines,
+    )
+    ge_ok = dp["ok"]
+    if dp.get("reason"):
+        print(f"gate e decade-parquet-lake-integrity: {dp['reason']} → FAIL")
+    else:
+        print(
+            f"gate e decade-parquet-lake-integrity: rows={dp['total_rows']}"
+            f" sampled={dp['sampled']} passed={dp['passed']}"
+            f" → {'PASS' if ge_ok else 'FAIL'}"
+        )
+        for grain, reason in dp["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and ge_ok
 
     print("verify-phase5e:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)

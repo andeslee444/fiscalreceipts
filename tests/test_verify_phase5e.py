@@ -18,6 +18,7 @@ import pytest
 from govbudget.verify_phase5e import (
     TARGET_EDITIONS,
     book_diff_gate5e,
+    decade_parquet_gate5e,
     decade_series_gate5e,
     edition_coverage_gate5e,
     leakage_gate5e,
@@ -589,3 +590,149 @@ def test_decade_series_missing_lake_fails(tmp_path):
     g = decade_series_gate5e(db, tmp_path / "nope.parquet")
     assert g["ok"] is False
     assert "lake budget_lines parquet missing" in g["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Gate 5: decade-parquet ↔ lake integrity (backlog #23)
+# ---------------------------------------------------------------------------
+
+
+def make_decade_parquet(tmp_path: Path, rows: list[tuple]) -> Path:
+    """Typed site-export fixture matching data/site/data/
+    budget_lines_decade.parquet (the 16-column _write_typed_parquet schema).
+    Rows: (fact_id, pe_bli, edition_year, amount_type, amount_thousands)."""
+    pq = tmp_path / "budget_lines_decade.parquet"
+    con = duckdb.connect()
+    con.execute(
+        "create table t (fact_id varchar, exhibit varchar, fiscal_year integer,"
+        " account varchar, account_title varchar, organization varchar,"
+        " budget_activity varchar, budget_activity_title varchar,"
+        " pe_bli varchar, title varchar, amount_type varchar,"
+        " amount_thousands double, units varchar, document_sha256 varchar,"
+        " source_sheet varchar, source_cells varchar)"
+    )
+    if rows:
+        con.executemany(
+            "insert into t values (?, 'R-1', ?, '0400', 'RDT&E Defense-Wide',"
+            " 'DARPA', '01', 'Basic Research', ?, 'TITLE', ?, ?,"
+            " 'USD thousands', 'sha', 'Exhibit R-1', 'J2')",
+            [(r[0], int(r[2]), r[1], r[3], float(r[4])) for r in rows],
+        )
+    con.execute(f"copy t to '{pq}' (format parquet)")
+    con.close()
+    return pq
+
+
+def test_decade_parquet_gate_fails_when_parquet_missing(tmp_path):
+    g = decade_parquet_gate5e(tmp_path / "nope.parquet", make_lake_parquet(tmp_path, []))
+    assert g["ok"] is False
+    assert "budget_lines_decade.parquet missing" in g["reason"]
+
+
+def test_decade_parquet_gate_fails_when_lake_missing(tmp_path):
+    pq = make_decade_parquet(tmp_path, [("f1", "0601101E", 2026, "fy_2026_total", 300.0)])
+    g = decade_parquet_gate5e(pq, tmp_path / "nope.parquet", sample_size=1)
+    assert g["ok"] is False
+    assert "lake budget_lines parquet missing" in g["reason"]
+
+
+def test_decade_parquet_gate_fails_when_empty(tmp_path):
+    pq = make_decade_parquet(tmp_path, [])
+    g = decade_parquet_gate5e(pq, make_lake_parquet(tmp_path, []), sample_size=1)
+    assert g["ok"] is False
+    assert "empty" in g["reason"]
+
+
+def test_decade_parquet_gate_below_sample_size_fails(tmp_path):
+    """Sub-sample guard: 1 row with sample_size=5 → FAIL, never a quiet
+    PASS on a thin evidence base."""
+    lake = make_lake_parquet(tmp_path, [("0601101E", 2026, "fy_2026_total", "300")])
+    pq = make_decade_parquet(tmp_path, [("f1", "0601101E", 2026, "fy_2026_total", 300.0)])
+    g = decade_parquet_gate5e(pq, lake, sample_size=5)
+    assert g["ok"] is False
+    assert g["sampled"] == 1
+    assert "fewer than sample_size=5" in g["reason"]
+
+
+def test_decade_parquet_recompute_passes(tmp_path):
+    """Multi-row grains: the parquet's per-grain SUM recomputes from the
+    lake (PB2024 PriorYear split across two lake rows), single-row grains
+    match directly, and the any-candidate rule applies (fy_2026_disc_request
+    is the second BudgetYearOne candidate)."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2024, "fy_2022_actuals", "150.5"),
+        ("0601101E", 2024, "fy_2022_actuals", "49.5"),
+        ("0601102E", 2026, "fy_2026_disc_request", "80"),
+    ])
+    pq = make_decade_parquet(tmp_path, [
+        ("f1", "0601101E", 2024, "fy_2022_actuals", 150.5),
+        ("f2", "0601101E", 2024, "fy_2022_actuals", 49.5),
+        ("f3", "0601102E", 2026, "fy_2026_disc_request", 80.0),
+    ])
+    g = decade_parquet_gate5e(pq, lake, sample_size=3)
+    assert g["ok"] is True, g["failures"]
+    assert g["total_rows"] == 3
+    assert g["sampled"] == 3 and g["passed"] == 3
+
+
+def test_decade_parquet_tampered_amount_fails(tmp_path):
+    """Proof-can-fail: one shipped row's amount_thousands tampered (+1000)
+    → its grain sum no longer recomputes from the lake."""
+    lake = make_lake_parquet(tmp_path, [
+        ("0601101E", 2024, "fy_2022_actuals", "150.5"),
+        ("0601101E", 2024, "fy_2022_actuals", "49.5"),
+    ])
+    pq = make_decade_parquet(tmp_path, [
+        ("f1", "0601101E", 2024, "fy_2022_actuals", 1150.5),  # tampered
+        ("f2", "0601101E", 2024, "fy_2022_actuals", 49.5),
+    ])
+    g = decade_parquet_gate5e(pq, lake, sample_size=2)
+    assert g["ok"] is False
+    assert any("lake recompute mismatch" in reason for _, reason in g["failures"])
+
+
+def test_decade_parquet_fabricated_extra_row_fails(tmp_path):
+    """A fabricated EXTRA parquet row inflates its grain sum past the lake
+    — the whole-parquet grain sum catches additions, not just edits."""
+    lake = make_lake_parquet(tmp_path, [("0601101E", 2026, "fy_2026_total", "300")])
+    pq = make_decade_parquet(tmp_path, [
+        ("f1", "0601101E", 2026, "fy_2026_total", 300.0),
+        ("f9", "0601101E", 2026, "fy_2026_total", 25.0),  # fabricated
+    ])
+    g = decade_parquet_gate5e(pq, lake, sample_size=2)
+    assert g["ok"] is False
+    assert all("lake recompute mismatch" in reason for _, reason in g["failures"])
+
+
+def test_decade_parquet_unknown_amount_type_fails(tmp_path):
+    """A slug outside scenario_map(edition) is a fabricated column — FAIL,
+    never silently unmatched."""
+    lake = make_lake_parquet(tmp_path, [("0601101E", 2026, "fy_2019_total", "300")])
+    pq = make_decade_parquet(tmp_path, [("f1", "0601101E", 2026, "fy_2019_total", 300.0)])
+    g = decade_parquet_gate5e(pq, lake, sample_size=1)
+    assert g["ok"] is False
+    assert "not a scenario_map candidate" in g["failures"][0][1]
+
+
+def test_decade_parquet_recompute_excludes_p1r_rows(tmp_path):
+    """P-1R exclusion (same rule as gates 3/4): the decade parquet ships
+    only R-1/P-1 source rows, so the lake recompute must ignore the P-1R
+    reserve-component subset — and a parquet carrying the contaminated
+    P-1 + P-1R sum must FAIL."""
+    lake = make_lake_parquet(tmp_path, [
+        ("C130J0", 2025, "fy_2023_actuals", "1775293", "P-1"),
+        ("C130J0", 2025, "fy_2023_actuals", "1700000", "P-1R"),
+    ])
+    pq = make_decade_parquet(tmp_path, [
+        ("f1", "C130J0", 2025, "fy_2023_actuals", 1775293.0),
+    ])
+    g = decade_parquet_gate5e(pq, lake, sample_size=1)
+    assert g["ok"] is True, g["failures"]
+    bad_dir = tmp_path / "bad"
+    bad_dir.mkdir()
+    pq_bad = make_decade_parquet(bad_dir, [
+        ("f1", "C130J0", 2025, "fy_2023_actuals", 3475293.0),  # P-1 + P-1R
+    ])
+    g = decade_parquet_gate5e(pq_bad, lake, sample_size=1)
+    assert g["ok"] is False
+    assert "lake recompute mismatch" in g["failures"][0][1]
