@@ -292,10 +292,218 @@ def _jbooks_backfill(args) -> None:
     print(f"backfill PB{fy}: {entry['reason']}")
 
 
+# ---------------------------------------------------------------------------
+# Phase 5G — service J-books (Navy automated; Army/AF manual drop-dir).
+# ---------------------------------------------------------------------------
+
+# Workbook organization code per service (matches budget_lines.organization).
+SERVICE_ORG = {"navy": "N", "army": "A", "af": "F"}
+
+
+def _service_fetch_inventory(service: str, fiscal_year: int) -> list:
+    """Live Playwright fetch of a service's FY index -> [PdfLink] (Task 4).
+
+    Reuses the probe's browser setup (realistic UA/viewport/locale, no
+    evasion). Injected/monkeypatched in unit tests — the network fetch runs
+    only in the live backfill. Follows the service's index entry points,
+    collecting every PDF link; if a page has no PDFs it follows FY child links.
+    """
+    from playwright.sync_api import sync_playwright
+
+    from govbudget.jbooks.service_fetch import (
+        LOCALE,
+        REALISTIC_UA,
+        SERVICE_INDEX_URLS,
+        VIEWPORT,
+        fetch_rendered_html,
+        is_waf_block,
+        parse_pdf_links,
+        parse_year_links,
+    )
+
+    all_links: dict[str, object] = {}
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent=REALISTIC_UA, viewport=VIEWPORT, locale=LOCALE,
+            timezone_id="America/New_York",
+        )
+        page = context.new_page()
+        to_visit = list(SERVICE_INDEX_URLS[service])
+        visited: set[str] = set()
+        while to_visit and len(visited) < 8:
+            url = to_visit.pop(0)
+            if url in visited:
+                continue
+            visited.add(url)
+            res = fetch_rendered_html(page, url)
+            if is_waf_block(res.status, res.title, res.body_html):
+                raise RuntimeError(
+                    f"{service} index blocked at {url}"
+                    f" (status={res.status}, title={res.title!r}) — no stealth"
+                    " escalation; route this service through ingest-local"
+                )
+            page_links = parse_pdf_links(res.body_html, res.url)
+            for ln in page_links:
+                all_links.setdefault(ln.href, ln)
+            if not page_links:
+                for child in parse_year_links(res.body_html, res.url, fiscal_year=fiscal_year):
+                    if child not in visited and child not in to_visit:
+                        to_visit.append(child)
+        context.close()
+        browser.close()
+    return sorted(all_links.values(), key=lambda x: x.href)
+
+
+def _service_download(service: str, fiscal_year: int) -> tuple[int, list]:
+    """Live browser download of the registered playwright docs (Task 4).
+
+    Reuses the probe's browser context to fetch through the WAF. Injected in
+    unit tests. Returns (downloaded_count, failures)."""
+    from playwright.sync_api import sync_playwright
+
+    from govbudget.jbooks.service_fetch import (
+        LOCALE,
+        REALISTIC_UA,
+        SERVICE_INDEX_URLS,
+        VIEWPORT,
+        download_registered_playwright,
+        fetch_rendered_html,
+    )
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent=REALISTIC_UA, viewport=VIEWPORT, locale=LOCALE,
+            timezone_id="America/New_York",
+        )
+        page = context.new_page()
+        # Warm the context against the index so it carries WAF cookies before
+        # the direct PDF fetches.
+        fetch_rendered_html(page, SERVICE_INDEX_URLS[service][0])
+        result = download_registered_playwright(
+            context, config.PG_DSN,
+            raw_docs_dir=config.RAW_DOCS_DIR, fiscal_year=fiscal_year,
+            min_free_gb=config.MIN_FREE_GB,
+        )
+        context.close()
+        browser.close()
+    return result
+
+
+def _navy_service_exclusions(inventory, plan) -> list[dict]:
+    """Build the edition-manifest service exclusion rows from a plan.
+
+    Non-justification appropriations (O&M/MilPers/etc.) carry rule
+    'non-justification-appropriation'; deduped RDTE BA-splits carry
+    'rdte-ba-split-duplicate'."""
+    rows = [
+        {"filename": name, "rule": "non-justification-appropriation", "reason": reason}
+        for name, reason in plan.excluded
+    ]
+    rows += [
+        {"filename": name, "rule": "rdte-ba-split-duplicate", "reason": reason}
+        for name, reason in plan.deduped
+    ]
+    return rows
+
+
+def _jbooks_backfill_service(args) -> None:
+    """Phase 5G Navy backfill: Playwright inventory -> plan (classify + RDTE
+    dedup + resume skip) -> register (acquisition='playwright') + record
+    service exclusions -> browser download -> scoped extract/reconcile.
+
+    Army/AF are NOT reachable via headless Chromium (Akamai/CAC — probe
+    finding); they route through `jbooks ingest-local`. This command only
+    serves Navy."""
+    from govbudget.jbooks import edition_probe
+    from govbudget.jbooks.service_fetch import (
+        build_download_plan,
+        known_downloaded_urls,
+        register_service_documents,
+    )
+
+    service = args.service
+    fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
+    if service != "navy":
+        print(
+            f"jbooks backfill --service {service}: only 'navy' is automated"
+            f" (Army/AF are WAF/CAC-gated — use `jbooks ingest-local`)",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    manifest_path = config.RESEARCH_DIR / "edition_manifest.json"
+    org = SERVICE_ORG[service]
+
+    inventory = _service_fetch_inventory(service, fy)
+    plan = build_download_plan(
+        inventory, known_urls=known_downloaded_urls(config.PG_DSN, fiscal_year=fy)
+    )
+    print(
+        f"jbooks backfill {service} FY{fy}: {len(plan.to_download)} to download,"
+        f" {len(plan.skipped)} already present, {len(plan.deduped)} rdte-dupes,"
+        f" {len(plan.excluded)} excluded"
+    )
+    edition_probe.record_service_exclusions(
+        manifest_path, service, fy, _navy_service_exclusions(inventory, plan)
+    )
+    new = register_service_documents(config.PG_DSN, plan, fiscal_year=fy)
+    print(f"jbooks backfill {service}: {new} document(s) registered")
+
+    downloaded, failures = _service_download(service, fy)
+    print(f"jbooks backfill {service}: {downloaded} downloaded")
+    for doc_id, title, err in failures:
+        print(f"  FAILED #{doc_id} {title}: {err}")
+    if failures:
+        sys.exit(1)
+
+    processed, extract_failures = _jbooks_extract(org=org, fiscal_year=fy)
+    print(f"jbooks backfill {service} extract: {processed} document(s) processed")
+    if extract_failures:
+        for d, e in extract_failures:
+            print(f"  extract FAILED doc {d}: {e}")
+        sys.exit(1)
+
+
+def _jbooks_ingest_local(args) -> None:
+    """Phase 5G manual drop-dir path (Army + Air Force). Registers every
+    classifiable PDF in <dir> with acquisition='manual' and the operator's
+    source URL; the browser download step is skipped (files are already on
+    disk). Army is BLOCKED for automation (Akamai) — it routes here."""
+    from govbudget.jbooks.service_fetch import register_local_documents
+
+    if not args.service:
+        print("jbooks ingest-local requires --service {army|af}", file=sys.stderr)
+        sys.exit(2)
+    if not args.source_url:
+        print("jbooks ingest-local requires --source-url <operator source URL>",
+              file=sys.stderr)
+        sys.exit(2)
+    if not args.dir:
+        print("jbooks ingest-local requires a drop directory argument", file=sys.stderr)
+        sys.exit(2)
+    fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
+    n, skipped = register_local_documents(
+        config.PG_DSN, args.dir, fiscal_year=fy, source_url=args.source_url
+    )
+    print(
+        f"jbooks ingest-local {args.service} FY{fy}: {n} registered"
+        f" (acquisition=manual), {len(skipped)} unclassifiable"
+    )
+    for name in skipped:
+        print(f"  SKIPPED (unclassifiable): {name}")
+
+
 def cmd_jbooks(args) -> None:
     from govbudget.jbooks.db import migrate
 
     migrate()
+    if args.action == "backfill" and getattr(args, "service", None):
+        _jbooks_backfill_service(args)
+        return
+    if args.action == "ingest-local":
+        _jbooks_ingest_local(args)
+        return
     if args.action == "scrape":
         fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
         discovered, n = _jbooks_scrape(fy)
@@ -1298,12 +1506,21 @@ def main(argv=None) -> None:
     m.set_defaults(func=cmd_migrate)
 
     j = sub.add_parser("jbooks", help="phase 1 j-book pipeline")
-    j.add_argument("action", choices=["scrape", "backfill", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance"])
+    j.add_argument("action", choices=["scrape", "backfill", "acquire", "load-rollups", "extract", "export-facts", "crosswalk", "provenance-pages", "narrative-provenance", "ingest-local"])
+    j.add_argument("dir", nargs="?", default=None,
+                   help="ingest-local: directory of operator-dropped service PDFs")
     j.add_argument("--org", default=None)
     j.add_argument("--fiscal-year", type=int, default=None, dest="fiscal_year",
                    help="PB edition year. scrape/backfill default to"
                         f" {config.JBOOK_FY}; provenance-pages defaults to all"
                         " editions (unfiltered)")
+    j.add_argument("--service", default=None, choices=["navy", "army", "af"],
+                   help="backfill: automate a service J-book set (only 'navy'"
+                        " is reachable via Playwright — Army/AF use ingest-local);"
+                        " ingest-local: which service the drop-dir belongs to")
+    j.add_argument("--source-url", default=None, dest="source_url",
+                   help="ingest-local: operator-supplied source URL recorded on"
+                        " each manually-dropped document (required)")
     j.add_argument("--probe-only", action="store_true", dest="probe_only",
                    help="backfill: run + record the edition probe, skip the pipeline")
     j.add_argument("--fy-start", type=int, default=None, dest="fy_start",

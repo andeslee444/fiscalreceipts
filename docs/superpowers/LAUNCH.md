@@ -315,6 +315,68 @@ Expected terminal state after both complete:
 
 ---
 
+## Service J-books (Phase 5G) — Navy automated, Army/AF manual
+
+Beyond the defense-wide comptroller books, the site ingests the military
+services' own R&D and procurement justification books. Access differs per
+service (probe evidence: `docs/superpowers/reviews/5g-probe/PROBE-REPORT.md`):
+
+| Service | Path | Why |
+|---|---|---|
+| **Navy** | automated (`jbooks backfill --service navy`) | reachable via headless Chromium; the `/fmc` bot-WAF does not block a real browser |
+| **Army** | **manual** (`jbooks ingest-local --service army`) | Akamai edge WAF returns **403 to headless Chromium** at every entry point — a finding, not a challenge. No stealth/evasion transport is built or permitted. |
+| **Air Force** | **manual** (`jbooks ingest-local --service af`) | CAC-gated; no anonymous automated fetch |
+
+### Navy — automated backfill
+
+```bash
+govbudget jbooks backfill --fiscal-year 2026 --service navy
+```
+
+This Playwright-fetches the FY2026 Navy index
+(`https://www.secnav.navy.mil/fmc/fmb/Documents/26pres/`), builds a download
+plan, and:
+
+- classifies each PDF via the Navy appropriation-code allowlist (`NAVY_NAMES`
+  in `registry.py`): 5 RDTEN + 12 procurement books → `(family, org='N')`;
+- **de-duplicates the RDTE BA-splits** — the five `RDTEN_BA*_Book.pdf` files
+  each embed the SAME full 252-PE master book, so only the lowest-BA volume
+  (`RDTEN_BA1-3_Book.pdf`) registers; the other four are recorded in the
+  edition manifest under `services.navy_2026.exclusions`
+  (rule `rdte-ba-split-duplicate`);
+- excludes the 19 non-justification volumes (O&M / MilPers / MilCon / BRAC /
+  working-capital / overview), rule `non-justification-appropriation`;
+- registers each keeper with `acquisition='playwright'`, downloads through the
+  browser context (sha256 + size verified, 2–4 s throttle, **resume-safe** —
+  a re-run skips books already `downloaded`), then runs the standard
+  extract → reconcile scoped to org `N`.
+
+### Army / Air Force — manual drop-dir
+
+A human with normal browser (or CAC) access downloads the service's R&D and
+procurement justification PDFs to a directory, then:
+
+```bash
+govbudget jbooks ingest-local \
+  --service army --fiscal-year 2026 \
+  --source-url "https://www.asafm.army.mil/Budget-Materials/Budget2026/" \
+  /path/to/army-drop-dir
+```
+
+Every classifiable PDF in the directory is registered with
+`acquisition='manual'` and the operator-supplied `--source-url` (recorded on
+each document for provenance; a per-file `#<basename>` fragment keeps rows
+distinct under one URL). PDFs the classifier cannot place are **reported, not
+registered** — the operator sees exactly what was skipped. `--service`,
+`--source-url`, and the directory argument are all required.
+
+> Army routes here because its Akamai policy blocks even a real headless
+> browser. Do **not** attempt a stealth transport (undetected-chromedriver,
+> real-Chrome CDP attach, residential egress) without an explicit human
+> decision — a WAF that blocks a normal browser is a finding, not a challenge.
+
+---
+
 ## Step 10 — Domain cutover (TABLED)
 
 Domain selection is tabled.  Current shortlist: `outlays.us`,

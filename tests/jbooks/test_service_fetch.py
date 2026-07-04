@@ -110,3 +110,215 @@ def test_render_inventory_tab_separated():
     ]
     assert render_inventory(links) == "A\thttps://x/a.pdf\nB\thttps://x/b.pdf\n"
     assert render_inventory([]) == ""
+
+
+# --------------------------------------------------------------------------
+# Phase 5G Task 3 — acquisition adapter pure logic (download plan + dedup).
+# The live Playwright download is exercised in Task 4 (a script, not a test);
+# here we test the inventory -> plan and RDTE dedup selection deterministically.
+# --------------------------------------------------------------------------
+
+NAVY_BASE = "https://www.secnav.navy.mil/fmc/fmb/Documents/26pres"
+
+
+def _navy_links(*names):
+    return [PdfLink(text=n[:-4], href=f"{NAVY_BASE}/{n}") for n in names]
+
+
+def test_classify_inventory_partitions_navy():
+    from govbudget.jbooks.service_fetch import classify_inventory
+
+    links = _navy_links(
+        "RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf",
+        "OMN_Book.pdf", "BRAC_Book.pdf",
+    )
+    reg, excluded = classify_inventory(links)
+    names = {c.name: (c.exhibit_family, c.org) for c in reg}
+    assert names == {
+        "RDTEN_BA1-3_Book.pdf": ("rdte", "N"),
+        "APN_BA5_Book.pdf": ("procurement", "N"),
+    }
+    ex = {name: reason for name, reason in excluded}
+    assert set(ex) == {"OMN_Book.pdf", "BRAC_Book.pdf"}
+    assert "Operation & Maintenance" in ex["OMN_Book.pdf"]
+    assert "not R/D" in ex["BRAC_Book.pdf"]
+
+
+def test_dedup_rdte_ba_splits_keeps_lowest_ba():
+    from govbudget.jbooks.service_fetch import (
+        classify_inventory,
+        dedup_rdte_ba_splits,
+    )
+
+    reg, _ = classify_inventory(_navy_links(
+        "RDTEN_BA7-8_Book.pdf", "RDTEN_BA4_Book.pdf", "RDTEN_BA1-3_Book.pdf",
+        "RDTEN_BA6_Book.pdf", "RDTEN_BA5_Book.pdf",
+        "APN_BA1-4_Book.pdf", "WPN_Book.pdf",  # procurement is untouched
+    ))
+    kept, deduped = dedup_rdte_ba_splits(reg)
+    kept_names = {c.name for c in kept}
+    # exactly ONE RDTE book survives — the lowest starting budget activity —
+    # plus both procurement books (dedup is RDTE-only).
+    assert kept_names == {
+        "RDTEN_BA1-3_Book.pdf", "APN_BA1-4_Book.pdf", "WPN_Book.pdf",
+    }
+    assert sum(1 for c in kept if c.exhibit_family == "rdte") == 1
+    deduped_names = {name for name, _ in deduped}
+    assert deduped_names == {
+        "RDTEN_BA4_Book.pdf", "RDTEN_BA5_Book.pdf",
+        "RDTEN_BA6_Book.pdf", "RDTEN_BA7-8_Book.pdf",
+    }
+    for _, reason in deduped:
+        assert "master" in reason.lower()
+
+
+def test_dedup_single_rdte_book_keeps_it():
+    """One RDTE candidate (or none) means nothing to dedup."""
+    from govbudget.jbooks.service_fetch import (
+        classify_inventory,
+        dedup_rdte_ba_splits,
+    )
+
+    reg, _ = classify_inventory(_navy_links("RDTEN_BA5_Book.pdf", "SCN_Book.pdf"))
+    kept, deduped = dedup_rdte_ba_splits(reg)
+    assert {c.name for c in kept} == {"RDTEN_BA5_Book.pdf", "SCN_Book.pdf"}
+    assert deduped == []
+
+
+def test_build_download_plan_dedups_and_skips_known_shas():
+    """The full plan: classify -> dedup -> resume-safe skip of already-present
+    shas. Returns (to_download, deduped, excluded)."""
+    from govbudget.jbooks.service_fetch import build_download_plan
+
+    links = _navy_links(
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",  # dedup -> keep BA1-3
+        "APN_BA5_Book.pdf",                             # keep
+        "OMN_Book.pdf",                                 # exclude
+    )
+    plan = build_download_plan(links, known_urls=set())
+    assert {c.name for c in plan.to_download} == {
+        "RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"
+    }
+    assert {n for n, _ in plan.deduped} == {"RDTEN_BA4_Book.pdf"}
+    assert {n for n, _ in plan.excluded} == {"OMN_Book.pdf"}
+    for c in plan.to_download:
+        assert c.acquisition == "playwright"
+
+    # resume-safe: a URL already downloaded is not re-planned.
+    already = {f"{NAVY_BASE}/APN_BA5_Book.pdf"}
+    plan2 = build_download_plan(links, known_urls=already)
+    assert {c.name for c in plan2.to_download} == {"RDTEN_BA1-3_Book.pdf"}
+    assert {c.name for c in plan2.skipped} == {"APN_BA5_Book.pdf"}
+
+
+# --------------------------------------------------------------------------
+# Phase 5G Task 3 — registration into jbook_documents (DB-backed, no network).
+# --------------------------------------------------------------------------
+
+
+def test_register_service_documents_marks_playwright_and_registered(pg_dsn):
+    import psycopg
+
+    from govbudget.jbooks.service_fetch import (
+        build_download_plan,
+        register_service_documents,
+    )
+
+    links = _navy_links(
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",  # dedup
+        "APN_BA5_Book.pdf", "OMN_Book.pdf",            # excl
+    )
+    plan = build_download_plan(links, known_urls=set())
+    n = register_service_documents(pg_dsn, plan, fiscal_year=2026)
+    assert n == 2
+    with psycopg.connect(pg_dsn) as con:
+        rows = {
+            r[0]: r for r in con.execute(
+                "select title, org, exhibit_family, fiscal_year, status,"
+                " acquisition from jbook_documents order by title"
+            )
+        }
+    assert set(rows) == {"RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"}
+    for r in rows.values():
+        assert r[1] == "N" and r[3] == 2026
+        assert r[4] == "registered" and r[5] == "playwright"
+    assert rows["RDTEN_BA1-3_Book.pdf"][2] == "rdte"
+    assert rows["APN_BA5_Book.pdf"][2] == "procurement"
+
+    # idempotent: re-registering the same plan inserts nothing (unique URL).
+    n2 = register_service_documents(pg_dsn, plan, fiscal_year=2026)
+    assert n2 == 0
+
+
+def test_known_downloaded_urls_reads_existing_rows(pg_dsn):
+    """Resume safety pulls already-present source URLs from the DB so a re-run
+    plan skips them."""
+    import psycopg
+
+    from govbudget.jbooks.service_fetch import known_downloaded_urls
+
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+            " title, source_url, status, acquisition)"
+            " values ('N','procurement',2026,'APN_BA5_Book.pdf',%s,"
+            " 'downloaded','playwright')",
+            (f"{NAVY_BASE}/APN_BA5_Book.pdf",),
+        )
+        # a 'registered' (not yet downloaded) row is NOT resume-skippable
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+            " title, source_url, status, acquisition)"
+            " values ('N','rdte',2026,'RDTEN_BA1-3_Book.pdf',%s,"
+            " 'registered','playwright')",
+            (f"{NAVY_BASE}/RDTEN_BA1-3_Book.pdf",),
+        )
+    urls = known_downloaded_urls(pg_dsn, fiscal_year=2026)
+    assert urls == {f"{NAVY_BASE}/APN_BA5_Book.pdf"}
+
+
+def test_register_local_documents_manual_acquisition(pg_dsn, tmp_path):
+    """ingest-local registers operator-dropped PDFs with acquisition='manual'
+    and the operator-supplied source URL; the classifier assigns family/org."""
+    import psycopg
+
+    from govbudget.jbooks.service_fetch import register_local_documents
+
+    # two Navy-style PDFs dropped in a dir (Army routes here too — same shape)
+    (tmp_path / "RDTEN_BA1-3_Book.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "APN_BA5_Book.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "notes.txt").write_text("ignore me")  # non-pdf ignored
+
+    n, skipped = register_local_documents(
+        pg_dsn, tmp_path, fiscal_year=2026,
+        source_url="https://www.asafm.army.mil/Budget-Materials/Budget2026/",
+    )
+    assert n == 2
+    assert skipped == []
+    with psycopg.connect(pg_dsn) as con:
+        rows = {
+            r[0]: r for r in con.execute(
+                "select title, exhibit_family, org, acquisition, source_url,"
+                " status from jbook_documents"
+            )
+        }
+    assert set(rows) == {"RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"}
+    for r in rows.values():
+        assert r[3] == "manual"
+        assert r[4].startswith("https://www.asafm.army.mil/")
+        assert r[5] == "registered"
+
+
+def test_register_local_documents_reports_unclassifiable(pg_dsn, tmp_path):
+    """A dropped PDF the classifier can't place is reported, not registered."""
+    from govbudget.jbooks.service_fetch import register_local_documents
+
+    (tmp_path / "RDTEN_BA1-3_Book.pdf").write_bytes(b"%PDF-1.4 fake")
+    (tmp_path / "mystery_volume.pdf").write_bytes(b"%PDF-1.4 fake")
+
+    n, skipped = register_local_documents(
+        pg_dsn, tmp_path, fiscal_year=2026,
+        source_url="https://example.mil/army/",
+    )
+    assert n == 1
+    assert skipped == ["mystery_volume.pdf"]

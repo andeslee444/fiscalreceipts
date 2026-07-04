@@ -17,6 +17,7 @@ Split by testability:
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urljoin
@@ -143,6 +144,217 @@ def render_inventory(links: list[PdfLink]) -> str:
 
 
 # --------------------------------------------------------------------------
+# Phase 5G Task 3 — acquisition adapter (pure logic).
+#
+# Turn a service PDF inventory into a resume-safe download plan: classify each
+# link (registrable justification book vs. explicit exclusion), deduplicate the
+# Navy RDTE BA-split PDFs (each embeds the SAME full master book — probe
+# sample-extraction.md), and drop anything already downloaded. The live
+# Playwright download that consumes the plan is a Task-4 script, not a test.
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """A registrable service J-book: a classified PdfLink ready to download."""
+    name: str            # PDF basename (classifier key)
+    href: str            # absolute source URL
+    exhibit_family: str  # 'rdte' | 'procurement'
+    org: str             # workbook org code, e.g. 'N'
+    acquisition: str = "playwright"
+
+
+@dataclass(frozen=True)
+class DownloadPlan:
+    """Resume-safe plan: what to fetch, and why the rest was left out."""
+    to_download: list[Candidate]
+    skipped: list[Candidate]            # already present (known URL) — resume
+    deduped: list[tuple[str, str]]      # (name, reason) — RDTE BA-split dupes
+    excluded: list[tuple[str, str]]     # (name, reason) — non-justification
+
+
+def classify_inventory(
+    links: list[PdfLink],
+) -> tuple[list[Candidate], list[tuple[str, str]]]:
+    """Run the J-book classifier over an inventory.
+
+    Returns (registrable Candidates, [(name, exclusion_reason)]). Names that
+    the classifier maps to (family, org) become Candidates; names pinned in
+    NAVY_EXCLUSIONS are returned with their recorded reason. Any name the
+    classifier neither classifies nor explicitly excludes is dropped silently
+    (defensive: the Navy allowlist covers the full inventory by construction —
+    test_classify_navy_full_inventory_partitions_cleanly guards this).
+    """
+    # Imported here to avoid a module-load cycle (registry imports nothing from
+    # service_fetch, but keep the dependency edge one-directional and lazy).
+    from govbudget.jbooks.registry import NAVY_EXCLUSIONS, _classify_jbook
+
+    registrable: list[Candidate] = []
+    excluded: list[tuple[str, str]] = []
+    for ln in links:
+        name = unquote(ln.href).rsplit("/", 1)[-1]
+        verdict = _classify_jbook(name)
+        if verdict is not None:
+            family, org = verdict
+            registrable.append(
+                Candidate(name=name, href=ln.href, exhibit_family=family, org=org)
+            )
+        elif name in NAVY_EXCLUSIONS:
+            excluded.append((name, NAVY_EXCLUSIONS[name]))
+    return registrable, excluded
+
+
+_RDTE_BA = re.compile(r"(?i)_BA(\d+)")
+
+
+def _first_ba(name: str) -> int:
+    """Lowest starting budget-activity number in an RDTE BA-split filename.
+
+    'RDTEN_BA1-3_Book.pdf' -> 1, 'RDTEN_BA7-8_Book.pdf' -> 7. Names without a
+    BA marker sort last (large sentinel) so a master-named volume, if present,
+    is never displaced by a BA-split.
+    """
+    m = _RDTE_BA.search(name)
+    return int(m.group(1)) if m else 10_000
+
+
+def dedup_rdte_ba_splits(
+    registrable: list[Candidate],
+) -> tuple[list[Candidate], list[tuple[str, str]]]:
+    """Collapse the Navy RDTE BA-split PDFs to ONE registered book.
+
+    Each of the five RDTEN_BA*_Book.pdf files embeds the SAME full 252-PE
+    master justification book (probe sample-extraction.md), so registering all
+    five would load the identical master five times. Deterministic rule: keep
+    the RDTE candidate with the LOWEST starting budget activity (BA1-3), which
+    sorts first and is stable; the rest are duplicates.
+
+    Non-RDTE candidates (procurement) pass through untouched. Returns
+    (kept, [(name, reason)]) where reason names the master-book duplication.
+    """
+    rdte = [c for c in registrable if c.exhibit_family == "rdte"]
+    others = [c for c in registrable if c.exhibit_family != "rdte"]
+    if len(rdte) <= 1:
+        return list(registrable), []
+    winner = min(rdte, key=lambda c: (_first_ba(c.name), c.name))
+    deduped = [
+        (c.name,
+         f"BA-split RDTE volume embedding the same full Navy RDTE master book"
+         f" as {winner.name} (registered once)")
+        for c in rdte if c.name != winner.name
+    ]
+    kept = others + [winner]
+    # preserve input order for stable, diff-friendly plans
+    order = {c.name: i for i, c in enumerate(registrable)}
+    kept.sort(key=lambda c: order[c.name])
+    deduped.sort(key=lambda nr: order[nr[0]])
+    return kept, deduped
+
+
+def build_download_plan(
+    links: list[PdfLink], *, known_urls: set[str]
+) -> DownloadPlan:
+    """Full inventory -> resume-safe DownloadPlan.
+
+    classify -> dedup RDTE BA-splits -> drop anything whose URL is already
+    downloaded (`known_urls`, resume safety). Every candidate carries
+    acquisition='playwright'.
+    """
+    registrable, excluded = classify_inventory(links)
+    kept, deduped = dedup_rdte_ba_splits(registrable)
+    to_download, skipped = [], []
+    for c in kept:
+        (skipped if c.href in known_urls else to_download).append(c)
+    return DownloadPlan(
+        to_download=to_download, skipped=skipped,
+        deduped=deduped, excluded=excluded,
+    )
+
+
+# --------------------------------------------------------------------------
+# Registration into jbook_documents. Registered rows carry the acquisition
+# method; the download step (below) flips them to 'downloaded'.
+# --------------------------------------------------------------------------
+
+
+def known_downloaded_urls(dsn: str, *, fiscal_year: int) -> set[str]:
+    """Source URLs already fetched (status='downloaded') for an edition —
+    the resume-safe skip set for build_download_plan."""
+    import psycopg
+
+    with psycopg.connect(dsn) as con:
+        return {
+            r[0] for r in con.execute(
+                "select source_url from jbook_documents"
+                " where fiscal_year = %s and status = 'downloaded'",
+                (fiscal_year,),
+            )
+        }
+
+
+def register_service_documents(
+    dsn: str, plan: "DownloadPlan", *, fiscal_year: int
+) -> int:
+    """Insert each to-download Candidate as a 'registered' jbook_documents row
+    stamped acquisition='playwright'. Idempotent on source_url. Returns the
+    number of new rows."""
+    import psycopg
+
+    inserted = 0
+    with psycopg.connect(dsn) as con:
+        for c in plan.to_download:
+            cur = con.execute(
+                "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+                " title, source_url, status, acquisition)"
+                " values (%s,%s,%s,%s,%s,'registered','playwright')"
+                " on conflict (source_url) do nothing",
+                (c.org, c.exhibit_family, fiscal_year, c.name, c.href),
+            )
+            inserted += cur.rowcount
+    return inserted
+
+
+def register_local_documents(
+    dsn: str, drop_dir, *, fiscal_year: int, source_url: str
+) -> tuple[int, list[str]]:
+    """Register operator-dropped PDFs (Army / Air Force manual path).
+
+    Every *.pdf in `drop_dir` the classifier can place is inserted as a
+    'registered' row with acquisition='manual' and the operator-supplied
+    `source_url`. Files the classifier cannot place are reported (not
+    registered) so the operator sees exactly what was skipped. Idempotent on
+    source_url per file — the URL carries the basename as a fragment so
+    multiple files sharing one operator URL stay distinct. Returns
+    (registered_count, skipped_basenames)."""
+    import psycopg
+
+    from govbudget.jbooks.registry import _classify_jbook
+
+    drop = Path(drop_dir)
+    pdfs = sorted(p for p in drop.iterdir() if p.suffix.lower() == ".pdf")
+    inserted, skipped = 0, []
+    with psycopg.connect(dsn) as con:
+        for p in pdfs:
+            verdict = _classify_jbook(p.name)
+            if verdict is None:
+                skipped.append(p.name)
+                continue
+            family, org = verdict
+            # one operator URL can cover a whole drop-dir; disambiguate per
+            # file with a fragment so the unique(source_url) constraint holds.
+            per_file_url = f"{source_url}#{p.name}"
+            cur = con.execute(
+                "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+                " title, source_url, file_path, status, acquisition)"
+                " values (%s,%s,%s,%s,%s,%s,'registered','manual')"
+                " on conflict (source_url) do nothing",
+                (org, family, fiscal_year, p.name, per_file_url, str(p)),
+            )
+            inserted += cur.rowcount
+    return inserted, skipped
+
+
+# --------------------------------------------------------------------------
 # Live transport (Playwright). Not unit-tested; driven by the probe script.
 # --------------------------------------------------------------------------
 
@@ -189,3 +401,76 @@ def download_pdf(context, url: str, dest: Path) -> tuple[str, int]:
     data = resp.body()
     dest.write_bytes(data)
     return hashlib.sha256(data).hexdigest(), len(data)
+
+
+def download_registered_playwright(
+    context,
+    dsn: str,
+    *,
+    raw_docs_dir: Path,
+    fiscal_year: int,
+    min_free_gb: float,
+    throttle_s: float = 3.0,
+    log=print,
+) -> tuple[int, list[tuple[int, str, str]]]:
+    """Download every registered playwright document for an edition (Task 4).
+
+    The service equivalent of acquire.acquire_pending, but fetching through the
+    SAME browser context that cleared the WAF (httpx cannot). Per document:
+    sha256 + byte-count verification (download_pdf), embedded-XML extraction,
+    row flip to status='downloaded'. Resume-safe — only 'registered' rows are
+    touched, so a re-run after a crash skips what already landed. Polite:
+    `throttle_s` (2-4s) between fetches. Per-document failures mark the row
+    'failed' and continue (no aborted sweep). Returns (downloaded, failures).
+
+    NOT unit-tested: the network fetch is exercised only by the Task-4 live run
+    (scripts/probe_service_jbooks.py owns the browser lifecycle). The pure plan
+    logic it depends on is covered in test_service_fetch.py.
+    """
+    import datetime as dt
+    import time
+
+    import psycopg
+
+    from govbudget.download import ensure_free_space
+    from govbudget.jbooks.attachments import extract_jbook_xml
+
+    with psycopg.connect(dsn) as con:
+        pending = con.execute(
+            "select id, org, fiscal_year, title, source_url from jbook_documents"
+            " where status='registered' and acquisition='playwright'"
+            " and fiscal_year=%s order by id",
+            (fiscal_year,),
+        ).fetchall()
+
+    done = 0
+    failures: list[tuple[int, str, str]] = []
+    for i, (doc_id, org, fy, title, url) in enumerate(pending):
+        dest = raw_docs_dir / f"fy{fy}" / org.lower() / title
+        try:
+            ensure_free_space(dest.parent, min_free_gb)
+            log(f"[service-acquire] GET {title} ({url})")
+            sha, n = download_pdf(context, url, dest)
+            xmls = extract_jbook_xml(dest, dest.parent / "xml")
+            has_xml = bool(xmls)
+        except Exception as e:  # noqa: BLE001
+            failures.append((doc_id, title, f"{type(e).__name__}: {e}"))
+            with psycopg.connect(dsn) as con:
+                con.execute(
+                    "update jbook_documents set status='failed' where id=%s",
+                    (doc_id,),
+                )
+            log(f"[service-acquire] FAILED {title}: {type(e).__name__}: {e}")
+            continue
+        with psycopg.connect(dsn) as con:
+            con.execute(
+                "update jbook_documents set status='downloaded', file_path=%s,"
+                " sha256=%s, bytes=%s, downloaded_at=%s, has_embedded_xml=%s"
+                " where id=%s",
+                (str(dest), sha, n, dt.datetime.now(dt.UTC), has_xml, doc_id),
+            )
+        done += 1
+        log(f"[service-acquire] {title}: {n:,} bytes sha={sha[:16]}… xml={has_xml}")
+        if i < len(pending) - 1:
+            time.sleep(throttle_s)
+    return done, failures
