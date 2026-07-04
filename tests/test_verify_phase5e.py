@@ -71,15 +71,23 @@ def seed_edition(
     n_docs: int = 2,
     n_terminal: int | None = None,
     recon: bool = True,
+    n_superseded: int = 0,
 ) -> list[int]:
-    """Insert n_docs jbook_documents for edition fy; n_terminal of them reach
-    status='downloaded'; optionally one reconciliation check per edition."""
+    """Insert n_docs jbook_documents for edition fy; n_terminal reach
+    status='downloaded', the next n_superseded reach status='superseded' (5G
+    dedup — accounted-for terminal), the rest stay 'registered'; optionally one
+    reconciliation check per edition."""
     if n_terminal is None:
-        n_terminal = n_docs
+        n_terminal = n_docs - n_superseded
     doc_ids: list[int] = []
     with psycopg.connect(dsn, autocommit=True) as con:
         for i in range(n_docs):
-            status = "downloaded" if i < n_terminal else "registered"
+            if i < n_terminal:
+                status = "downloaded"
+            elif i < n_terminal + n_superseded:
+                status = "superseded"
+            else:
+                status = "registered"
             doc_id = con.execute(
                 "insert into jbook_documents (org, exhibit_family, fiscal_year,"
                 " title, source_url, status) values (%s, %s, %s, %s, %s, %s)"
@@ -165,6 +173,33 @@ def test_edition_coverage_partial_acquisition_fails(pg5e, tmp_path):
     assert g["ok"] is False
     assert g["editions"][2026]["state"] == "missing"
     assert any("2/3 documents in terminal state" in f for f in g["failures"])
+
+
+def test_edition_coverage_superseded_counts_as_terminal(pg5e, tmp_path):
+    """5G: a superseded (deduplicated) doc is accounted-for, not a coverage
+    gap — an edition of 2 downloaded + 1 superseded (with recon) is loaded."""
+    seed_edition(pg5e, 2026, n_docs=3, n_terminal=2, n_superseded=1)
+    manifest = write_manifest(tmp_path, {
+        str(fy): {"status": "blocked", "reason": "pending"}
+        for fy in range(2017, 2026)
+    })
+    g = edition_coverage_gate5e(pg5e, manifest)
+    assert g["editions"][2026]["state"] == "loaded"
+    assert g["editions"][2026]["terminal"] == 3  # downloaded + superseded
+    assert g["ok"] is True
+
+
+def test_edition_coverage_all_superseded_no_recon_still_missing(pg5e, tmp_path):
+    """The recon>0 guard holds: an edition where every doc is superseded and
+    nothing reconciled is NOT vacuously loaded — superseded can't be a loophole."""
+    seed_edition(pg5e, 2026, n_docs=2, n_superseded=2, recon=False)
+    manifest = write_manifest(tmp_path, {
+        str(fy): {"status": "blocked", "reason": "pending"}
+        for fy in range(2017, 2026)
+    })
+    g = edition_coverage_gate5e(pg5e, manifest)
+    assert g["ok"] is False
+    assert g["editions"][2026]["state"] == "missing"
 
 
 def test_edition_coverage_no_recon_checks_fails(pg5e, tmp_path):

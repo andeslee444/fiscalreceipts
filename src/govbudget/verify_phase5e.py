@@ -51,8 +51,17 @@ from pathlib import Path
 # PB editions the decade backfill promises (spec §1).
 TARGET_EDITIONS: tuple[int, ...] = tuple(range(2017, 2027))
 
-# jbook_documents.status lifecycle: 'registered' → 'downloaded' | 'failed'.
-# 'downloaded' is the only terminal success state the schema records.
+# jbook_documents.status lifecycle: 'registered' → 'downloaded' | 'failed',
+# plus 'superseded' (Phase 5G): a real, downloaded document whose embedded XML
+# duplicates a retained master's (the Navy BA-split books each embed the full
+# master), intentionally excluded from extraction/export. Both 'downloaded' and
+# 'superseded' are ACCOUNTED-FOR terminal states — a superseded doc is not a
+# coverage gap, it's a deliberately-deduplicated duplicate. Counting it as
+# missing would be a false failure. The `recon_checks > 0` requirement (below)
+# still guards against a vacuous edition where every doc was superseded and no
+# live facts loaded.
+TERMINAL_STATUSES = ("downloaded", "superseded")
+# Back-compat alias for the primary success state (used in failure messages).
 TERMINAL_STATUS = "downloaded"
 
 # Recompute tolerance. The 5E marts and the lake are both in USD thousands
@@ -202,7 +211,7 @@ def edition_coverage_gate5e(
 
     for fy in editions:
         discovered = sum(n for (f, _s), n in by_fy_status.items() if f == fy)
-        terminal = by_fy_status.get((fy, TERMINAL_STATUS), 0)
+        terminal = sum(by_fy_status.get((fy, s), 0) for s in TERMINAL_STATUSES)
         recon = recon_by_fy.get(fy, 0)
         row = {
             "discovered": discovered,
