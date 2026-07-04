@@ -80,10 +80,19 @@ Expected: `verify-phase5b1: PASS`
 
 ---
 
-## Step 4 — Upload assets to R2 ✅ DONE 2026-07-02
+## Step 4 — Upload assets to R2 ✅ DONE 2026-07-02 · RE-SYNCED 2026-07-04
 
 52 objects / 154 MiB uploaded to `govbudget-assets` bucket.
 Custom domain `assets.fiscalreceipts.com` live and Active.
+
+> **RE-SYNC 2026-07-04 (Phase 5G):** `upload_r2.sh --live` moved 190 files /
+> 1.48 GiB. The deploy drill rebuilds `site/out` + pushes to Vercel but does NOT
+> re-sync `data/site/pdfs → R2`, so every post-launch phase (5E decade editions,
+> 5F/5H, 5G Navy) had shipped citation metadata while the PDF binaries were
+> missing from the CDN — the panel degraded to "open official source". **Run
+> `R2_BUCKET=govbudget-assets ./scripts/launch/upload_r2.sh --live` after any
+> ingestion phase, before/with the Vercel deploy.** (Backlog #27 folds this into
+> the deploy sequence + adds a live-PDF-fetch gate.)
 
 ### 4a. Configure rclone (one-time)
 

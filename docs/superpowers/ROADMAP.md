@@ -23,6 +23,7 @@ backlog, and the evaluator framework. Every phase loop ends by updating this fil
 | 5F | Program-page normalization: pages for all 1,995 PEs (rollup + full tiers), narrative paragraph provenance, deterministic prose amount cites, universal PE linking, 12-section skeleton | program-skeleton gate (21st) + linkgraph leg f + render-static prose-cite leg | ✅ COMPLETE 2026-07-03 | 1,995 program pages both tiers; narrative provenance 2,449/2,457 = 99.7% (8 unresolved keep the non-paged card — never a fake location); 27 deterministic prose cites; universal PE linking (196 unlinked tokens pre-fix → 0); 12-section skeleton gate; visual judges 4.5/5/4.5 PASS; 21/21 gates; 1,039 pytest / 303 vitest; live at fiscalreceipts.com |
 | 5H | Experimental flowdown (/flow/): two-river sankey (budget intent vs contract obligations), honest 98.7% not-yet-crosswalked bridge band, FPDS competition overlay (FY2017–FY2026 selector), 1,965 minted flow derived facts, exporter-precomputed collision-free labels | G9 flowdown gate (22nd, legs a–e) + fct_flow_edges dbt conservation tests | ✅ COMPLETE 2026-07-03 | judges r1 PASS/PASS/PASS (F1 two-river honesty unanimous 5s) with F3 craftsmanship=3 on label collisions → fix round (exporter collision-free-by-construction labels + TDD bbox test, hue-split competition classes, value halos) → F3 re-score 5/4/5; G9 recomputes 55 budget + 40 spend nodes from the lake, bridge exact, 58/58 citations; 22/22 gates; 1,059 pytest / 335 vitest; live-verified node→panel (121.8B Navy derived formula + 532-input breakdown) and FY2025→FY2020 switch; live at fiscalreceipts.com/flow/ |
 | 5E | Decade backfill PB2017–PB2026: 10 J-book editions (371 books, 159,503 budget lines, 38,422 detail facts, amounts provenance for every edition, 185 manifest-recorded exclusions, era procurement re-keyed {account}-{org}-L{line} with disjointness guard); fct_decade_series 59,068 + fct_book_diff 18,379 (exhaustively lake-recomputed); /years/ 12 edition-tagged columns; decade sparklines on 1,994 program pages; 15 request-vs-actuals feed cards | verify-phase5e CLI (23rd gate, 4 legs, pre-failure recorded) + G8 legs f/g + edition-integrity | ✅ COMPLETE 2026-07-03 (one open confirmation, below) | Adversarial review rounds caught + fixed: edition-merging dbt fence (291 programs would have shipped wrong FY2024 actuals), PB2023 OSD/CBDP books wrongly excluded (sole detail carriers for 112 PEs), era pe_bli collisions with modern BLI codes, 27.8k-orphan citation-export hazard, P-1R subset rule (993 withheld grains published incl. C-130J $1.78B); visual judges first-round PASS medians E1:4 E2:5 E3:5 E4:5 E5:5 + 4 polish fixes shipped; 22/22 npm gates; 1,196 pytest / 352 vitest; eval 48/48 accuracy + 43/43 citations achieved (artifact eval-20260703T190641Z); ⚠️ OPEN: post-run-3 eval robustness fixes (table-equivalence groups, temperature-0 determinism, transient-error retries — all committed + unit-tested) await their confirming verify-phase5 exit-0 run, blocked by the Anthropic API monthly usage cap (resets 2026-08-01); first post-reset run must confirm |
+| 5G | Service J-books — Navy FY2026 (Army/AF manual path): Playwright download adapter past the secnav.navy.mil bot-WAF, classifier allowlist for appropriation-code naming (RDTEN/APN/OPN/…), per-family BA-split dedup, account-scoped Gate B, thousands-form provenance; 5,810 Navy detail facts + 2,066 narratives; 351 Navy PEs flipped rollup→full (full-tier universe 462→813; 387/593 Navy display PE-BLIs now carry book detail) | verify-phase5e gate a (superseded-terminal fix) + program-skeleton universe recount + render-static unresolved→state-B | ✅ COMPLETE 2026-07-04 (Navy live-verified; Army + AF on manual drop-dir path) | Probe-first: Playwright reached the live secnav SharePoint listing (spike URL dead); sample RDTE book confirmed Scenario-A embedded jb-2009 XML (252 PEs). Live-data fixes no fixture caught: per-family BA-split dedup (each PDF embeds the full master → 12× procurement over-load), account-scoped Gate B (Navy P-1 line numbers unique only within an appropriation → 204 false failures), thousands-form provenance. 11 duplicate doc rows non-destructively superseded (status flip, reversible — not DELETE); silent_unreconciled=0; verify-phase1/5b1/5e + 22 npm gates PASS; 1,244 pytest (1 pre-existing dossier-CSV failure, API-capped) / 363 vitest. Live-verified flagship 0601153N "Defense Research Sciences": full-tier, 108 R-2 narratives, cited amounts open derived-formula + breakdown panels, and the 40MB Navy RDTE PDF renders in the citation panel after the R2 sync. **R2 asset drift caught + fixed:** the deploy drill rebuilds site/out + Vercel but never re-synced data/site/pdfs → R2, so since the 2026-07-02 launch the 5E decade + Navy PDF citations silently degraded to "open official source" in production; re-ran upload_r2.sh (190 files / 1.48 GiB) → all PDF citations now full-fidelity. Army: asafm.army.mil Akamai blocks even a realistic headless Chromium (spike's "Playwright bypasses Akamai" premise disproven) → manual path, no stealth transport built. |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -78,6 +79,32 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   "net de-obligation", keep the citation (5H).
 - **max() on confidence strings is a trap** — lexicographic max('high','medium')
   = 'medium'; the flow marts needed an explicit ordinal mapping (5H dbt).
+- **R2 asset sync drifted out of the deploy loop (5G, caught 2026-07-04).** The
+  deploy drill rebuilds `site/out` and pushes to Vercel but never re-syncs
+  `data/site/pdfs → R2`. So every phase since the 2026-07-02 launch (5E decade
+  editions, 5F/5H additions, 5G Navy) shipped citation *metadata* while the PDF
+  *binaries* were missing from the CDN — the panel degraded to "open official
+  source" and no gate or live-check caught it (prior live-checks happened to
+  click workbook/XLSX and derived citations, which were in R2). Fixed by
+  re-running `upload_r2.sh` (190 files / 1.48 GiB). LESSON: the "deploy" step is
+  Vercel + R2, not Vercel alone — a gate should sample a live PDF fetch from a
+  recently-added citation, and the deploy drill must include the R2 sync
+  (backlog #27).
+- **Government WAFs are not uniform — probe each, never assume (5G).** Navy's
+  secnav bot-WAF yields to a realistic headless browser; Army's Akamai blocks
+  the identical browser with a 403. The feasibility spike's "Army ≈ Navy, both
+  bypass with Playwright" premise was disproven by the actual probe. A blocked
+  WAF is a finding routed to the manual path — never a prompt to build evasion.
+- **Live data finds bugs fixtures can't — ingest surfaces them (5G).** Three
+  Navy defects appeared only against real books: each BA-split PDF embeds the
+  full master (12× over-load → per-family dedup), P-1 line numbers reuse across
+  appropriations (204 false recon failures → account-scoped Gate B), and Navy
+  renders dollars in thousands not millions (provenance form). None were
+  reachable from fixtures.
+- **`superseded` is an accounted-for terminal state, not a coverage gap (5G).**
+  Deduplicated duplicate documents get a reversible status flip (never a
+  destructive DELETE); the edition-coverage gate counts them as terminal, with
+  a `recon>0` guard so an all-superseded edition still fails.
 - **The whole 2017–2023 J-book era embeds .zzz XML** — same renamed-zip +
   jb-2009 schema as 2026; the Mistral-OCR fallback was never needed (5E).
 - **Era editions publish consolidated volumes under unstable naming** — token
@@ -468,6 +495,15 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 26. **Dead-PE 0605230F request_vs_request minting** if a feed claim ever
     covers request-vs-request swings (currently scoped to request-vs-actuals
     precisely because those are 100% minted).
+27. **R2 sync belongs in the deploy loop + a live-PDF gate (5G, high value):**
+    the deploy drill (rebuild → Vercel `--prod`) never re-synced
+    `data/site/pdfs → R2`, so PDF citations for every post-launch phase silently
+    degraded in production until the 2026-07-04 catch. Two fixes: (a) fold
+    `scripts/launch/upload_r2.sh --live` into the standard deploy sequence (or a
+    `deploy` make-target that does both); (b) add a gate leg that fetches ONE
+    recently-added jbook_pdf citation's asset from assets.fiscalreceipts.com and
+    asserts 200 + non-zero body — so a missing-from-CDN PDF fails a gate instead
+    of a user. Until then, run upload_r2.sh --live after any ingestion phase.
 
 
 ## Remaining launch items
