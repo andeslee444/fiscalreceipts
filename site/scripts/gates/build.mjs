@@ -11,6 +11,11 @@
  * - sitemap URL count == emitted pages AND every URL starts with SITE_URL origin
  * - robots.txt present
  * - llms.txt contains /methodology/, /downloads/, ≥1 /program/ URL
+ * - placeholder-origin scan (backlog #18): sitemap.xml / llms.txt /
+ *   robots.txt / index.html must NOT contain govbudget-placeholder.example —
+ *   UNCONDITIONAL (env-independent), unlike the sitemap-origin leg below
+ *   which compares against the verify-time NEXT_PUBLIC_SITE_URL and would
+ *   false-pass a placeholder build verified without the env
  * - citations.json key count == manifest citation total (from site_meta.json, data-driven)
  * - download cards: citations.parquet href == /citations/citations.parquet (not /data/)
  * - stale-literal check: built downloads page must NOT contain hardcoded "44,754"
@@ -374,6 +379,36 @@ export async function runBuildGate() {
       errors.push("llms.txt has no /program/... URL");
     } else {
       notes.push("llms.txt: /methodology/ + /downloads/ + /program/... ✓");
+    }
+  }
+
+  // ── Placeholder-origin scan (backlog #18) ─────────────────────────────────
+  // A build without NEXT_PUBLIC_SITE_URL bakes https://govbudget-placeholder
+  // .example into sitemap/llms.txt/canonicals (src/lib/site.ts fallback).
+  // The sitemap-origin check above is relative to the verify-time env — and
+  // falls back to the SAME placeholder, so a placeholder build verified in a
+  // placeholder env would false-pass it. This scan is UNCONDITIONAL: the
+  // production artifacts must never contain the placeholder host, no matter
+  // what origin this verify run was given.
+  {
+    const PLACEHOLDER_HOST = "govbudget-placeholder.example";
+    const scanTargets = ["sitemap.xml", "llms.txt", "robots.txt", "index.html"];
+    let scanned = 0;
+    let hits = 0;
+    for (const rel of scanTargets) {
+      const p = path.join(outDir, rel);
+      if (!fileExists(p)) continue; // absence is reported by each file's own leg
+      scanned++;
+      if (fs.readFileSync(p, "utf8").includes(PLACEHOLDER_HOST)) {
+        hits++;
+        errors.push(
+          `placeholder origin: out/${rel} contains "${PLACEHOLDER_HOST}" — ` +
+            "the site was built without NEXT_PUBLIC_SITE_URL; rebuild with the production origin"
+        );
+      }
+    }
+    if (hits === 0) {
+      notes.push(`placeholder scan: ${scanned}/${scanTargets.length} artifacts free of ${PLACEHOLDER_HOST} ✓`);
     }
   }
 
