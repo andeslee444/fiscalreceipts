@@ -207,6 +207,56 @@ def test_p1_loader_pb2024_program_element_title_header(pg_dsn, tmp_path, doc_id)
     assert rows == [("Virginia Class Submarine",)]
 
 
+def test_p1r_loader_modern_program_element_title_header(pg_dsn, tmp_path, doc_id):
+    """Modern (PB2024–PB2026) P-1R workbooks use the SAME
+    'Program Element/Budget Line Item (BLI) Title' spelling as PB2024's P-1
+    (live workbook evidence: all three editions' p1r_display.xlsx, header
+    row 2). The variant must map to title — the pre-fix loader shipped
+    PB2024's 582 P-1R rows title-NULL (backlog #25); this pins the reload
+    path scripts/backfill_pb2024_p1r_titles.py depends on."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1R"
+    ws.append(["Total of Displayed Rows"])
+    ws.append([
+        "Account", "Account Title", "Organization", "Budget Activity",
+        "Budget Activity Title", "BSA", "Budget SubActivity (BSA) Title",
+        "Budget Line Item", "Program Element/Budget Line Item (BLI) Title",
+        "Cost Type", "Cost Type Title", "Add/Non-Add",
+        "FY 2022  Actuals Quantity", "FY 2022  Actuals Amount",
+        "FY 2023  Total Enacted Quantity", "FY 2023  Total Enacted Amount",
+        "FY 2024  Request Quantity", "FY 2024  Request Amount",
+        "Classification",
+    ])
+    ws.append(["2035A", "Other Procurement, Army", "A", "02",
+               "Communications and Electronics Equipment", "20", "Comm Systems",
+               "BZ7015", "Handheld Manpack Small Form Fit (HMS)", "A",
+               "Weapon System Cost", "Add", "", 114329, "", 98000, "", 105500, "U"])
+    ws.append(["2035A", "Other Procurement, Army", "A", "02",
+               "Communications and Electronics Equipment", "20", "Comm Systems",
+               "BZ7015", "Handheld Manpack Small Form Fit (HMS)", "Z",
+               "Memo", "Non-Add", "", 999999, "", 999999, "", 999999, "U"])
+    p = tmp_path / "p1r_display.xlsx"
+    wb.save(p)
+    n = load_p1_rollup(pg_dsn, p, exhibit="P-1R", fiscal_year=2024, source_document_id=doc_id)
+    assert n == 3
+    with psycopg.connect(pg_dsn) as con:
+        rows = con.execute(
+            "select distinct title from budget_lines"
+            " where exhibit='P-1R' and pe_bli='BZ7015'"
+        ).fetchall()
+        amounts = dict(con.execute(
+            "select amount_type, amount_thousands from budget_lines"
+            " where exhibit='P-1R' and pe_bli='BZ7015'"
+        ).fetchall())
+    assert rows == [("Handheld Manpack Small Form Fit (HMS)",)]
+    assert amounts == {
+        "fy_2022_actuals": Decimal("114329"),
+        "fy_2023_total_enacted": Decimal("98000"),
+        "fy_2024_request": Decimal("105500"),
+    }
+
+
 # --- PB2017–PB2023 era header variants (live workbook evidence, Task 4) ---
 
 ERA_P1_HEADERS = [
