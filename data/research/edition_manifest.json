@@ -1112,6 +1112,107 @@
     }
   },
   "services": {
+    "af_2026": {
+      "exclusions": [
+        {
+          "filename": "DAF PB26 Brief_RELEASED_5Aug.pdf",
+          "reason": "DAF budget brief \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force MILCON.pdf",
+          "reason": "MilCon \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force MILPERS.pdf",
+          "reason": "Military Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Operations and Maintenance Vol I.pdf",
+          "reason": "O&M \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Operations and Maintenance Vol II.pdf",
+          "reason": "O&M vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Reserve MILCON.pdf",
+          "reason": "MilCon (Reserve) \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Reserve Operations and Maintenance Vol I.pdf",
+          "reason": "O&M (Reserve) \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Reserve Operations and Maintenance Vol II.pdf",
+          "reason": "O&M (Reserve) vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Reserves MILPERS.pdf",
+          "reason": "Reserve Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air Force Working Capital Fund.pdf",
+          "reason": "Working capital \u2014 revolving fund, not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air National Guard MILCON.pdf",
+          "reason": "MilCon (ANG) \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air National Guard MILPERS.pdf",
+          "reason": "ANG Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air National Guard Operation and Maintenance Vol I.pdf",
+          "reason": "O&M (ANG) \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Air National Guard Operation and Maintenance Vol II.pdf",
+          "reason": "O&M (ANG) vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Budget Overview.pdf",
+          "reason": "Budget overview \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 PB Rollout Brief.pdf",
+          "reason": "PB rollout brief \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Space Force MILPERS.pdf",
+          "reason": "Space Force Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Space Force Operations and Maintenance Vol I.pdf",
+          "reason": "Space Force O&M \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Space Force Operations and Maintenance Vol II.pdf",
+          "reason": "Space Force O&M vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        }
+      ],
+      "fiscal_year": 2026,
+      "service": "af"
+    },
     "army_2026": {
       "exclusions": [
         {
