@@ -18,6 +18,7 @@ import {
   type SnapshotMeta,
 } from "./dossier";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
+import { setIngestedServiceOrgs } from "./program-tier";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -49,6 +50,13 @@ export interface SiteMetaCounts {
 export interface SiteMeta {
   built_at: string;
   counts: SiteMetaCounts;
+  /**
+   * Org codes (details.service_org / budget_lines.organization space) whose
+   * FY2026 J-book is loaded — data-derived single source of truth for the
+   * rollup-note wording (program-tier.isIngestedServiceOrg). Injected into
+   * program-tier via setIngestedServiceOrgs by getSiteMeta below.
+   */
+  ingested_service_orgs?: string[];
   /** Per-dataset row counts keyed by dataset name (e.g. "citations", "jbook_details"). */
   datasets?: Record<string, number>;
   /** Number of J-book PDFs copied into the site bundle (from manifest.pdf_count). */
@@ -73,6 +81,11 @@ export function getSiteMeta(): SiteMeta {
         `Re-run "uv run python -m govbudget export-site" to regenerate sidecars.`,
     );
   }
+  // Inject the data-derived ingested-org set into the universal program-tier
+  // module (it cannot read the payload itself — no fs). Every code path that
+  // reaches isIngestedServiceOrg first hits a data loader that calls
+  // getSiteMeta, so this runs before any rollup-note wording is decided.
+  setIngestedServiceOrgs(meta.ingested_service_orgs);
   _siteMeta = meta;
   return _siteMeta;
 }

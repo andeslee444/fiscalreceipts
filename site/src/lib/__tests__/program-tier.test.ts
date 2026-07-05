@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 
 import {
   deriveExhibitFamily,
@@ -7,6 +7,7 @@ import {
   isZeroContentDetails,
   rollupProgramRow,
   serviceOrgName,
+  setIngestedServiceOrgs,
 } from "@/lib/program-tier";
 import type { ProgramDetails } from "@/lib/data";
 
@@ -64,26 +65,53 @@ describe("serviceOrgName", () => {
   });
 });
 
-describe("isIngestedServiceOrg", () => {
-  it("is true for all three big service org codes (5G Navy + Army/AF/SF archive rounds)", () => {
-    // Navy (5G Navy round).
-    expect(isIngestedServiceOrg("N")).toBe(true);
-    // Army (5G Army/AF/SF archive round).
-    expect(isIngestedServiceOrg("A")).toBe(true);
-    // Air Force AND Space Force both live under the 'F' workbook org code;
-    // Space Force PEs carry an 'SF' suffix in the PE number, not a distinct org.
-    expect(isIngestedServiceOrg("F")).toBe(true);
+describe("isIngestedServiceOrg (data-derived from site_meta.ingested_service_orgs)", () => {
+  // The set is injected at build time from the exporter payload (data.ts calls
+  // setIngestedServiceOrgs). Restore the safe default after each test so the
+  // suite stays order-independent.
+  afterEach(() => {
+    setIngestedServiceOrgs(["A", "N", "F"]);
   });
 
-  it("is false for non-service / defense-wide org codes", () => {
+  it("reads the injected payload — defense-wide agency books are ingested too", () => {
+    // The live FY2026 set spans 27 loaded books collapsing to 25 workbook-org
+    // codes: the three services PLUS every defense-wide agency (OSD, DCSA, MDA,
+    // DISA, DARPA, …). The old hardcoded A/N/F set lied for all of them.
+    setIngestedServiceOrgs([
+      "A", "N", "F", "OSD", "DCSA", "MDA", "DISA", "DARPA", "CYBER", "SOCOM",
+    ]);
+    // Services.
+    expect(isIngestedServiceOrg("N")).toBe(true);
+    expect(isIngestedServiceOrg("A")).toBe(true);
+    expect(isIngestedServiceOrg("F")).toBe(true);
+    // Defense-wide agencies whose pages used to FALSELY say "not yet ingested".
+    expect(isIngestedServiceOrg("DCSA")).toBe(true);
+    expect(isIngestedServiceOrg("OSD")).toBe(true);
+    expect(isIngestedServiceOrg("MDA")).toBe(true);
+  });
+
+  it("is false for orgs with NO loaded FY2026 book (must stay 'not yet ingested')", () => {
+    setIngestedServiceOrgs([
+      "A", "N", "F", "OSD", "DCSA", "MDA", "DISA", "DARPA", "CYBER", "SOCOM",
+    ]);
+    // DHA / DEFW / IG appear in budget_lines but have no J-book — they MUST
+    // keep the honest generic wording.
     expect(isIngestedServiceOrg("DHA")).toBe(false);
-    expect(isIngestedServiceOrg("OSD")).toBe(false);
-    expect(isIngestedServiceOrg("MDA")).toBe(false);
-    expect(isIngestedServiceOrg("SOCOM")).toBe(false);
+    expect(isIngestedServiceOrg("DEFW")).toBe(false);
+    expect(isIngestedServiceOrg("IG")).toBe(false);
     expect(isIngestedServiceOrg("")).toBe(false);
-    // 'SF' is never an org code (Space Force folds under 'F'); guard against
-    // a future regression that mistakes the PE-number suffix for an org.
+    // 'SF' is never an org code (Space Force folds under 'F'); guard against a
+    // regression that mistakes the PE-number suffix for an org.
     expect(isIngestedServiceOrg("SF")).toBe(false);
+  });
+
+  it("falls back to the A/N/F default before any payload is injected", () => {
+    // Universal module: unit tests / any consumer that never injects still get
+    // sensible service-only behavior rather than an empty set.
+    expect(isIngestedServiceOrg("A")).toBe(true);
+    expect(isIngestedServiceOrg("N")).toBe(true);
+    expect(isIngestedServiceOrg("F")).toBe(true);
+    expect(isIngestedServiceOrg("DHA")).toBe(false);
   });
 });
 

@@ -32,32 +32,47 @@ export function serviceOrgName(code: string): string {
 }
 
 /**
- * Service workbook org codes whose FY2026 J-books ARE ingested (Phase 5G).
- * A rollup page for an ingested service is NOT "awaiting ingestion" — its
- * PE simply has no matching R-2/P-40 narrative in the ingested books (e.g. a
- * procurement-only or summary line).
+ * Org codes (in the details.service_org / budget_lines.organization code space)
+ * whose FY2026 J-book IS loaded. A rollup page for one of these is NOT
+ * "awaiting ingestion" — the book is loaded, this PE simply has no matching
+ * R-2/P-40 narrative in it (a procurement-only, summary, classified, or SBIR
+ * line, or an R-1-only workbook remainder).
  *
- * As of the Phase 5G Army/AF/SF archive round, ALL THREE big service org
- * codes are ingested: Navy 'N' (5G Navy round), Army 'A', and Air Force /
- * Space Force 'F' (both service books live under the 'F' workbook org code;
- * Space Force PEs carry an 'SF' suffix in the PE number, not a distinct org).
- * The FY2026 books were pulled from official comptroller sources and the
- * Internet Archive (a WAF-free public mirror). What remains figures-only is a
- * near-zero residual: classified / SBIR / spectrum lines that publish no R-2,
- * plus a handful of R-1-only workbook remainders — those legitimately have no
- * matching J-book narrative and say so honestly.
+ * DATA-DERIVED, NOT HARDCODED: the exporter emits the live set into
+ * site_meta.ingested_service_orgs — the distinct FY2026 status='downloaded'
+ * jbook_documents orgs, each translated through workbook_org() into this same
+ * code space (so CYBERCOM→CYBER, CHIPS/DPAP→OSD line up with service_org).
+ * That is ~25 codes: the three services PLUS every defense-wide agency book
+ * (OSD, DCSA, MDA, DISA, DARPA, …). data.ts injects it at build time via
+ * setIngestedServiceOrgs. A hardcoded A/N/F set previously lied on every
+ * defense-wide agency rollup page ("the {org} J-book is not yet ingested").
  *
- * Codes outside this set that aren't service J-book codes (DHA, OSD, …) render
- * the honest generic note. Single source of truth for the rollup note wording.
+ * This module is universal (no fs / no server-only), so it cannot read the
+ * payload itself; the build-time server layer (data.ts getSiteMeta) sets it.
+ * The default is the three services so any consumer that never injects (unit
+ * tests, a stray import) still behaves sensibly rather than seeing an empty
+ * set. Single source of truth for the rollup note wording.
  */
-export const INGESTED_SERVICE_ORGS: ReadonlySet<string> = new Set([
-  "A",
-  "N",
-  "F",
-]);
+const DEFAULT_INGESTED_SERVICE_ORGS: readonly string[] = ["A", "N", "F"];
+
+let _ingestedServiceOrgs: ReadonlySet<string> = new Set(
+  DEFAULT_INGESTED_SERVICE_ORGS,
+);
+
+/**
+ * Inject the data-derived ingested-org set (from
+ * site_meta.ingested_service_orgs). Called once at build time by data.ts.
+ * Empty/absent input falls back to the A/N/F default rather than blanking the
+ * set — a missing payload key must never silently make every service page lie.
+ */
+export function setIngestedServiceOrgs(orgs: readonly string[] | undefined): void {
+  _ingestedServiceOrgs = new Set(
+    orgs && orgs.length > 0 ? orgs : DEFAULT_INGESTED_SERVICE_ORGS,
+  );
+}
 
 export function isIngestedServiceOrg(code: string): boolean {
-  return INGESTED_SERVICE_ORGS.has(code);
+  return _ingestedServiceOrgs.has(code);
 }
 
 /** True when the sidecar is a Batch-A rollup-tier export. */

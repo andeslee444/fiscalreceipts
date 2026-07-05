@@ -267,6 +267,20 @@ def test_is_complete_pdf_requires_eof_trailer():
     assert af.is_complete_pdf(b"<!DOCTYPE html>") is False
 
 
+def test_is_complete_pdf_accepts_eof_far_from_end():
+    """A valid PDF whose final %%EOF sits well past the last 2KB — trailing
+    metadata, an incremental-update tail, or a linearized xref — must still be
+    recognized as complete. The tail scan window is 64KB, so a %%EOF ~40KB
+    from the end passes; a genuinely truncated body (no %%EOF anywhere) fails."""
+    far = b"%PDF-1.4\nbody\n%%EOF\n" + b"\x00" * 40_000  # EOF ~40KB from the end
+    assert af.is_complete_pdf(far) is True
+    # 64KB is the ceiling: an %%EOF >64KB from the end is beyond the window.
+    beyond = b"%PDF-1.4\n%%EOF\n" + b"\x00" * 70_000
+    assert af.is_complete_pdf(beyond) is False
+    # No trailer at all, regardless of size → still incomplete.
+    assert af.is_complete_pdf(b"%PDF-1.4\n" + b"\x00" * 40_000) is False
+
+
 def test_download_via_archive_skips_truncated_pdf(tmp_path):
     truncated = b"%PDF-1.4\nstarts fine but was cut off mid-stream"  # no %%EOF
     complete = b"%PDF-1.4\nwhole book\n" + b"y" * 100 + b"\n%%EOF\n"

@@ -108,7 +108,10 @@ def is_complete_pdf(data: bytes) -> bool:
     if not is_pdf_bytes(data):
         return False
     # %%EOF may be followed by a newline / a few trailing bytes; scan the tail.
-    return b"%%EOF" in data[-2048:]
+    # A 64KB window (not 2KB): a valid PDF's final %%EOF can sit well past the
+    # last 2KB — trailing metadata, an incremental-update tail, or a linearized
+    # xref — and a 2KB window false-negatives those into a spurious download gap.
+    return b"%%EOF" in data[-65536:]
 
 
 def cdx_snapshots(client: httpx.Client, original_url: str) -> list[Snapshot]:

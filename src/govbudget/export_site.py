@@ -895,10 +895,18 @@ def export_site(
         except Exception:
             final_counts[name] = 0
 
+    # Data-derived ingested-service-org set (single source of truth for the
+    # site's rollup-note wording). Computed here where the Postgres dsn is in
+    # scope, then threaded to the sidecar writer via manifest (that function
+    # only holds a duckdb connection). See _ingested_service_orgs.
+    with psycopg.connect(dsn) as pg_orgs:
+        ingested_service_orgs = _ingested_service_orgs(pg_orgs)
+
     manifest = {
         "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "datasets": final_counts,
         "citations": cit_by_kind,
+        "ingested_service_orgs": ingested_service_orgs,
         "pdf_count": n_pdfs,
         "workbook_count": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
@@ -949,6 +957,30 @@ def export_site(
 # ---------------------------------------------------------------------------
 
 from govbudget.jbooks.orgs import workbook_org as _workbook_org
+
+
+def _ingested_service_orgs(pg) -> list[str]:
+    """Sorted service_org codes whose FY2026 J-book IS loaded.
+
+    Single source of truth for the site's rollup-note wording: a rollup page
+    whose service_org is in this set is NOT "awaiting ingestion" — its book is
+    loaded, the PE simply carries no matching R-2/P-40 narrative. Emitted into
+    site_meta.json; program-tier.ts reads it (replacing a hardcoded A/N/F set
+    that lied for the ~24 defense-wide agency books — OSD, DCSA, MDA, …).
+
+    CRITICAL — code-space match: the site keys the note off
+    details.service_org, which is a budget_lines.organization code (the WORKBOOK
+    org). jbook_documents.org is the DOCUMENT org, so each is translated through
+    workbook_org() (CYBERCOM→CYBER, CHIPS/DPAP→OSD) before entering the set —
+    otherwise CYBERCOM's page never matches. Orgs with no loaded book (DHA,
+    DEFW, IG) are absent by construction and keep the honest "not yet ingested"
+    wording.
+    """
+    rows = pg.execute(
+        "select distinct org from jbook_documents"
+        " where fiscal_year = 2026 and status = 'downloaded'"
+    ).fetchall()
+    return sorted({_workbook_org(r[0]) for r in rows})
 
 
 # ---------------------------------------------------------------------------
@@ -3394,6 +3426,11 @@ def _write_all_sidecars(
     site_meta = {
         "built_at": manifest.get("built_at"),
         "counts": meta_counts,
+        # Data-derived ingested-service-org set (single source of truth for the
+        # rollup-note wording — replaces a hardcoded A/N/F set in
+        # program-tier.ts that lied for every defense-wide agency book).
+        # Computed in export_site (Postgres scope) and threaded via manifest.
+        "ingested_service_orgs": manifest.get("ingested_service_orgs", []),
         # datasets dict from manifest — single source of truth for per-dataset row counts.
         # The site build reads this for data-driven download card descriptions.
         "datasets": manifest.get("datasets", {}),

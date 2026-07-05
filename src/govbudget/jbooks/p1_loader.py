@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import defaultdict
 from decimal import Decimal
@@ -9,6 +10,30 @@ from openpyxl.utils import get_column_letter
 
 from govbudget.jbooks.era_keys import era_procurement_key
 from govbudget.jbooks.rollup_loader import norm_header
+
+logger = logging.getLogger(__name__)
+
+# Chars that never appear in a real P-1 BLI (or an era P-1 line number) but DO
+# appear in Army P-1 appropriation SECTION-HEADER labels ('RDT&E', 'O&M', …)
+# that mis-parse into the BLI cell. A valid BLI is alphanumeric; era line
+# numbers are digits plus optional hyphen sub-line forms ('46-1'), so the
+# hyphen is deliberately NOT rejected — only these label chars + whitespace.
+_INVALID_PE_BLI_CHARS = set("&/%#")
+
+
+def _is_valid_pe_bli(raw) -> bool:
+    """False for an appropriation-label / section-header cell wrongly in the
+    BLI slot (the '&' also breaks the /program/[peBli] static route). Applied
+    to the RAW workbook cell before era re-keying, so digits, letters and era
+    sub-line hyphens all pass; 'RDT&E', 'O&M', and any whitespace-bearing label
+    are rejected."""
+    s = str(raw).strip()
+    if not s:
+        return False
+    if _INVALID_PE_BLI_CHARS & set(s):
+        return False
+    return not any(c.isspace() for c in s)
+
 
 P1_ID_HEADERS = {
     "Account": "account",
@@ -106,12 +131,19 @@ def load_p1_rollup(
     # BLI aggregate into a single bucket before insert (avoiding last-write-wins collision).
     sums: dict[tuple, dict[str, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     cells: dict[tuple, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
+    skipped_invalid = 0
     for row_idx, row in enumerate(
         sheet.iter_rows(min_row=header_row + 1, values_only=True),
         start=header_row + 1,
     ):
         ids = {name: row[j] for j, name in id_cols.items() if j < len(row)}
         if not ids.get("pe_bli"):
+            continue
+        # Reject appropriation section-header rows ('RDT&E', 'O&M', …) whose
+        # label mis-parses into the BLI cell. Guard the RAW cell (before era
+        # re-keying), so a valid alphanumeric BLI / era line number survives.
+        if not _is_valid_pe_bli(ids.get("pe_bli")):
+            skipped_invalid += 1
             continue
         if add_col is not None and (
             add_col >= len(row) or str(row[add_col]).strip().lower() != "add"
@@ -143,6 +175,13 @@ def load_p1_rollup(
                 continue
             sums[key][amount_type] += amount
             cells[key][amount_type].append(f"{get_column_letter(j + 1)}{row_idx}")
+
+    if skipped_invalid:
+        logger.info(
+            "load_p1_rollup(%s): skipped %d row(s) with an invalid/non-BLI"
+            " pe_bli (appropriation section-header labels)",
+            xlsx_path.name, skipped_invalid,
+        )
 
     upserted = 0
     with psycopg.connect(dsn) as con:

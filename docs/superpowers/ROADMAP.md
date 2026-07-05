@@ -155,6 +155,38 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (813→1,741 programs, same ~1.6KB/program) — a budget raise, not a regression;
   pinning the pytest budget to the exporter constant stops the three copies from
   ever drifting apart again.
+- **A hardcoded "ingested-orgs" constant lies the moment the data outgrows it —
+  derive the set from the loaded books (audit-fix 2026-07-05).** `program-tier.ts`
+  pinned `INGESTED_SERVICE_ORGS = {A,N,F}` by hand, so every defense-wide agency
+  page whose FY2026 J-book WAS loaded (OSD, DCSA, MDA, DISA, DARPA, … — 27 books
+  → 25 workbook-org codes) still rendered the false "the {org} J-book is not yet
+  ingested". Three confirmed liars: 0604130V/0305133V (DCSA), 0303367D8Z (OSD).
+  Fix: the exporter emits `site_meta.ingested_service_orgs` — the distinct
+  `jbook_documents` FY2026 downloaded orgs, each run through `workbook_org()` so
+  the codes land in the SAME space as `details.service_org` (CYBERCOM→CYBER,
+  CHIPS/DPAP→OSD) — and `isIngestedServiceOrg` reads that payload (data.ts
+  injects it via a build-time setter, since program-tier is a universal no-fs
+  module). Orgs with no loaded book (DHA, DEFW, IG) stay absent → keep the
+  honest wording. Lesson: any "which things are ingested/covered/enabled" set
+  that a human maintains alongside the data it describes WILL drift; make it a
+  query, not a literal.
+- **Reject junk at the loader, not just at the exporter (audit-fix 2026-07-05).**
+  Army P-1 appropriation SECTION-HEADER rows ('RDT&E', 'O&M') mis-parsed the
+  label into the BLI cell and `p1_loader.load_p1_rollup` inserted them as real
+  `budget_lines` rows. The exporter's `_is_route_safe_pe` filter hid them from
+  PAGES (the '&' 404s a static route) but they still polluted every
+  budget_lines-by-pe_bli aggregate (and 30 phantom workbook citations). Root fix
+  is a pe_bli validity guard AT the loader (`_is_valid_pe_bli` rejects `& / % #`
+  + whitespace, before era re-keying so digits/letters/era sub-line hyphens
+  survive) plus a scoped one-shot cleanup of the 8 already-loaded rows
+  (`scripts/clean_junk_pe_bli.py`, fy2026-scoped so the FY2017–2023 hyphenated
+  era keys `0300D-CBDP-L70` are never in range). A route-safety filter that
+  masks bad data from the UI is belt; rejecting it at ingest is braces.
+- **A tail-scan window sized for the common case false-negatives the valid tail
+  (audit-fix 2026-07-05).** `is_complete_pdf` scanned only the last 2KB for
+  `%%EOF`; a valid PDF whose final `%%EOF` sits past 2KB (trailing metadata,
+  incremental-update tail, linearized xref) read as truncated → spurious
+  download gap. Widened to 64KB.
 - **The whole 2017–2023 J-book era embeds .zzz XML** — same renamed-zip +
   jb-2009 schema as 2026; the Mistral-OCR fallback was never needed (5E).
 - **Era editions publish consolidated volumes under unstable naming** — token
@@ -554,6 +586,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     recently-added jbook_pdf citation's asset from assets.fiscalreceipts.com and
     asserts 200 + non-zero body — so a missing-from-CDN PDF fails a gate instead
     of a user. Until then, run upload_r2.sh --live after any ingestion phase.
+28. **Agency PEs with ingested decade detail but no FY2026 page (coverage
+    enhancement, NOT a bug — surfaced by the 2026-07-05 audit).** A large set of
+    program elements carry FY2017–2025 J-book/workbook detail in the warehouse
+    but have no FY2026 `budget_lines` row, so they generate no `/program/`
+    page — the decade history exists but isn't browsable (the audit estimated
+    ~271 agency PEs under its criterion; a looser budget_lines-only cut is
+    larger). These are legitimately absent from FY2026 (zeroed, consolidated,
+    or renamed lines), so this is a decision about whether to build history-only
+    pages for a PE that no longer requests money, not a data defect. Scope if
+    taken: a "decade-only" page tier (or fold into the rollup tier with an
+    explicit "no FY2026 request" note), gated for citation-completeness like the
+    other tiers. Deferred — verify the exact eligible set and its editorial
+    value before building.
 
 
 ## Remaining launch items
