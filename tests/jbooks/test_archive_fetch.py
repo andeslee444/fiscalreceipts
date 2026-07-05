@@ -193,7 +193,7 @@ def test_download_via_archive_skips_html_and_takes_next_snapshot(tmp_path):
 
 
 def test_download_via_archive_resume_skips_existing(tmp_path):
-    good = b"%PDF-1.4\nalready here\n"
+    good = b"%PDF-1.4\nalready here\n%%EOF\n"  # complete PDF -> real resume
     dest = tmp_path / "book.pdf"
     dest.write_bytes(good)
     calls = {"n": 0}
@@ -292,3 +292,27 @@ def test_download_via_archive_skips_truncated_pdf(tmp_path):
     res = af.download_via_archive(client, ARMY_RDTE, dest, throttle_s=0)
     assert dest.read_bytes() == complete
     assert res.snapshot_timestamp == ts_good
+
+
+def test_download_via_archive_redownloads_truncated_resume(tmp_path):
+    """A truncated PDF already on disk (Wayback 5 MB-boundary cap) must NOT be
+    resumed — it fails extraction forever. Re-fetch a complete snapshot."""
+    truncated = b"%PDF-1.4\ncut off, no trailer"
+    complete = b"%PDF-1.4\nwhole book\n" + b"z" * 50 + b"\n%%EOF\n"
+    dest = tmp_path / "book.pdf"
+    dest.write_bytes(truncated)  # stale truncated resume
+    ts = "20251028043358"
+
+    def handler(request):
+        if "/wayback/available" in request.url.path:
+            return httpx.Response(200, json={"archived_snapshots": {}})
+        if "/cdx/search/cdx" in request.url.path:
+            return httpx.Response(200, text=f"{ARMY_RDTE} {ts} 200 application/pdf\n")
+        if f"{ts}id_" in str(request.url):
+            return httpx.Response(200, content=complete)
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    res = af.download_via_archive(client, ARMY_RDTE, dest, throttle_s=0)
+    assert res.resumed is False
+    assert dest.read_bytes() == complete

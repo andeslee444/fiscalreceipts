@@ -206,14 +206,18 @@ def download_via_archive(
     dest = Path(dest)
     if dest.exists() and dest.stat().st_size > 0:
         data = dest.read_bytes()
-        return DownloadResult(
-            original_url=original_url,
-            wayback_url="",
-            snapshot_timestamp="",
-            sha256=hashlib.sha256(data).hexdigest(),
-            bytes=len(data),
-            resumed=True,
-        )
+        # Resume only if the on-disk file is a COMPLETE PDF. A truncated resume
+        # (Wayback occasionally caps a body at a 5 MB boundary) would otherwise
+        # be returned forever and fail extraction on every run — re-download.
+        if is_complete_pdf(data):
+            return DownloadResult(
+                original_url=original_url,
+                wayback_url="",
+                snapshot_timestamp="",
+                sha256=hashlib.sha256(data).hexdigest(),
+                bytes=len(data),
+                resumed=True,
+            )
 
     snaps = snapshots_for(client, original_url)
     if not snaps:
