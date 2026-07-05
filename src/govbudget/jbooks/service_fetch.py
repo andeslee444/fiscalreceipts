@@ -283,16 +283,26 @@ def dedup_ba_splits(
 
 
 def build_download_plan(
-    links: list[PdfLink], *, known_urls: set[str]
+    links: list[PdfLink], *, known_urls: set[str], dedup_ba: bool = True
 ) -> DownloadPlan:
     """Full inventory -> resume-safe DownloadPlan.
 
-    classify -> dedup BA-splits (RDTE and procurement) -> drop anything whose
-    URL is already downloaded (`known_urls`, resume safety). Every candidate
-    carries acquisition='playwright'.
+    classify -> (optionally) dedup BA-splits -> drop anything whose URL is
+    already downloaded (`known_urls`, resume safety).
+
+    `dedup_ba` is the Navy filename-heuristic BA-split collapse (every Navy
+    RDTEN/APN/OPN volume embeds the SAME full master, so one wins). It is a
+    NAVY-SPECIFIC premise and MUST be off for the archive services: Army RDTE
+    volumes are genuinely BA-split (distinct PEs per volume), and AF/SF books
+    dedup by embedded-master identity POST-LOAD (dedup_service_master_dups),
+    not by filename. So the archive path passes dedup_ba=False and lets the
+    master-identity dedup collapse the real duplicates.
     """
     registrable, excluded = classify_inventory(links)
-    kept, deduped = dedup_ba_splits(registrable)
+    if dedup_ba:
+        kept, deduped = dedup_ba_splits(registrable)
+    else:
+        kept, deduped = registrable, []
     to_download, skipped = [], []
     for c in kept:
         (skipped if c.href in known_urls else to_download).append(c)
@@ -407,9 +417,9 @@ def _picked_master_sha(file_path: str, family: str) -> str | None:
     None if no XML is on disk (the book had no embedded master)."""
     import hashlib
 
-    from govbudget.jbooks.attachments import pick_book_xml
+    from govbudget.jbooks.attachments import pick_book_xml, resolve_xml_dir
 
-    xml_dir = Path(file_path).parent / "xml"
+    xml_dir = resolve_xml_dir(Path(file_path))
     book = pick_book_xml(xml_dir, family=family)
     if book is None or not book.exists():
         return None

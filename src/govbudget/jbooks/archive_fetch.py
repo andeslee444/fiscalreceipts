@@ -98,6 +98,19 @@ def is_pdf_bytes(data: bytes) -> bool:
     return data[:5] == b"%PDF-"
 
 
+def is_complete_pdf(data: bytes) -> bool:
+    """True iff the payload is a PDF that both starts with the magic AND ends
+    with the `%%EOF` trailer. Wayback occasionally returns a body that begins
+    with a valid PDF header but was truncated mid-stream (the download then
+    fails downstream with pypdf's 'Stream has ended unexpectedly'); a complete
+    PDF always carries `%%EOF` in its final bytes. This lets the downloader
+    treat a truncated snapshot as unusable and fall through to the next one."""
+    if not is_pdf_bytes(data):
+        return False
+    # %%EOF may be followed by a newline / a few trailing bytes; scan the tail.
+    return b"%%EOF" in data[-2048:]
+
+
 def cdx_snapshots(client: httpx.Client, original_url: str) -> list[Snapshot]:
     """Every status-200 application/pdf capture of an EXACT url, oldest first.
 
@@ -222,6 +235,12 @@ def download_via_archive(
         data = resp.content
         if not is_pdf_bytes(data):
             last_reason = "snapshot returned an HTML interstitial, not a PDF"
+            log(f"[archive] snapshot {snap.timestamp}: {last_reason}")
+            if throttle_s and i < len(snaps) - 1:
+                time.sleep(throttle_s)
+            continue
+        if not is_complete_pdf(data):
+            last_reason = "snapshot PDF was truncated (no %%EOF trailer)"
             log(f"[archive] snapshot {snap.timestamp}: {last_reason}")
             if throttle_s and i < len(snaps) - 1:
                 time.sleep(throttle_s)

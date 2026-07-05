@@ -157,7 +157,7 @@ def test_archive_snapshot_url_none_when_never_archived():
 
 
 def test_download_via_archive_skips_html_and_takes_next_snapshot(tmp_path):
-    good = b"%PDF-1.4\nreal book bytes\n" + b"x" * 100
+    good = b"%PDF-1.4\nreal book bytes\n" + b"x" * 100 + b"\n%%EOF\n"
     ts_html, ts_pdf = "20250712000000", "20250712062339"
 
     def handler(request):
@@ -254,3 +254,41 @@ def test_enumerate_prefix_dedups_query_variants_to_canonical():
     client = _cdx_client(rows)
     originals = af.enumerate_prefix(client, "saffm.hq.af.mil/Portals/84/documents/FY26*")
     assert originals == [base]
+
+
+# --------------------------------------------------------------------------
+# is_complete_pdf + truncation fallthrough (Wayback returns partial bodies).
+# --------------------------------------------------------------------------
+
+
+def test_is_complete_pdf_requires_eof_trailer():
+    assert af.is_complete_pdf(b"%PDF-1.4\nbody\n%%EOF\n") is True
+    assert af.is_complete_pdf(b"%PDF-1.4\nbody with no trailer") is False
+    assert af.is_complete_pdf(b"<!DOCTYPE html>") is False
+
+
+def test_download_via_archive_skips_truncated_pdf(tmp_path):
+    truncated = b"%PDF-1.4\nstarts fine but was cut off mid-stream"  # no %%EOF
+    complete = b"%PDF-1.4\nwhole book\n" + b"y" * 100 + b"\n%%EOF\n"
+    ts_bad, ts_good = "20250712000000", "20250712062339"
+
+    def handler(request):
+        if "/wayback/available" in request.url.path:
+            return httpx.Response(200, json={"archived_snapshots": {}})
+        if "/cdx/search/cdx" in request.url.path:
+            return httpx.Response(
+                200,
+                text=(f"{ARMY_RDTE} {ts_bad} 200 application/pdf\n"
+                      f"{ARMY_RDTE} {ts_good} 200 application/pdf\n"),
+            )
+        if f"{ts_bad}id_" in str(request.url):
+            return httpx.Response(200, content=truncated)
+        if f"{ts_good}id_" in str(request.url):
+            return httpx.Response(200, content=complete)
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    dest = tmp_path / "book.pdf"
+    res = af.download_via_archive(client, ARMY_RDTE, dest, throttle_s=0)
+    assert dest.read_bytes() == complete
+    assert res.snapshot_timestamp == ts_good

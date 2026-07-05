@@ -326,3 +326,21 @@ def test_register_local_documents_reports_unclassifiable(pg_dsn, tmp_path):
     )
     assert n == 1
     assert skipped == ["mystery_volume.pdf"]
+
+
+def test_build_download_plan_dedup_ba_false_keeps_all_army_volumes():
+    """The archive path (Army/AF) passes dedup_ba=False so genuinely BA-split
+    Army RDTE volumes are all kept — the Navy filename collapse must not fire."""
+    from govbudget.jbooks.service_fetch import PdfLink, build_download_plan
+
+    base = ("https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/"
+            "Discretionary%20Budget/rdte")
+    names = [f"RDTE - Vol 1 - Budget Activity {n}.pdf" for n in (1, 2, 3)]
+    links = [PdfLink(n, f"{base}/{n.replace(' ', '%20')}") for n in names]
+    plan = build_download_plan(links, known_urls=set(), dedup_ba=False)
+    assert len(plan.to_download) == 3
+    assert plan.deduped == []
+    # default (Navy) still collapses when the premise holds
+    plan_default = build_download_plan(links, known_urls=set())
+    assert len(plan_default.to_download) == 1
+    assert len(plan_default.deduped) == 2

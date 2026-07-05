@@ -181,7 +181,7 @@ def _jbooks_extract(org: str | None = None, fiscal_year: int | None = None
     import psycopg
 
     from govbudget.jbooks import load_details, reconcile
-    from govbudget.jbooks.attachments import pick_book_xml
+    from govbudget.jbooks.attachments import pick_book_xml, resolve_xml_dir
     from govbudget.jbooks.gaps import record_extraction_gaps
 
     conds, params = [], []
@@ -200,7 +200,7 @@ def _jbooks_extract(org: str | None = None, fiscal_year: int | None = None
     processed = 0
     failures: list[tuple[int, str]] = []
     for doc_id, file_path, family in rows:
-        book_xml = pick_book_xml(Path(file_path).parent / "xml", family=family)
+        book_xml = pick_book_xml(resolve_xml_dir(Path(file_path)), family=family)
         if book_xml is None:
             print(f"doc {doc_id}: no xml on disk, skipping")
             continue
@@ -520,10 +520,21 @@ def _service_archive_download(service: str, fiscal_year: int) -> tuple[int, list
         build_client,
         download_via_archive,
     )
-    from govbudget.jbooks.attachments import extract_jbook_xml
+    from govbudget.jbooks.attachments import doc_xml_dir, extract_jbook_xml
 
     org = SERVICE_ORG[service]
     with psycopg.connect(config.PG_DSN) as con:
+        # Retry transient failures: 504s from the CDX server and truncated
+        # Wayback bodies (status='failed') and never-resolved snapshots
+        # (status='missing') are frequently transient — a later run recovers
+        # them. Reset them to 'registered' so this pass re-attempts. A book that
+        # is GENUINELY unarchived will just fail again and land back in gaps.
+        con.execute(
+            "update jbook_documents set status='registered'"
+            " where status in ('failed','missing') and acquisition='archive'"
+            " and fiscal_year=%s and org=%s",
+            (fiscal_year, org),
+        )
         pending = con.execute(
             "select id, org, fiscal_year, title, source_url from jbook_documents"
             " where status='registered' and acquisition='archive'"
@@ -543,7 +554,9 @@ def _service_archive_download(service: str, fiscal_year: int) -> tuple[int, list
                 print(f"[archive-acquire] {title}")
                 res = download_via_archive(client, url, dest, throttle_s=3.0,
                                            log=lambda m: print("  " + m))
-                xmls = extract_jbook_xml(dest, dest.parent / "xml")
+                # Per-document xml dir: Army/AF pack many books into one org
+                # folder, so a shared xml/ dir would clobber masters.
+                xmls = extract_jbook_xml(dest, doc_xml_dir(dest))
                 has_xml = bool(xmls)
             except ArchiveFetchError as e:
                 gaps.append((doc_id, title, str(e)))
@@ -604,8 +617,13 @@ def _jbooks_backfill_service_archive(args) -> None:
     # Reuse the classify/plan machinery (dedup_ba_splits is a no-op here — the
     # service allowlists carry no Navy-style BA markers; real dup collapse
     # happens post-load in dedup_service_master_dups by master identity).
+    # dedup_ba=False: the Navy filename BA-split collapse is wrong for the
+    # archive services (Army RDTE volumes carry distinct PEs; AF/SF dedup by
+    # master identity post-load). The real duplicate collapse is
+    # dedup_service_master_dups after extraction.
     plan = build_download_plan(
-        inventory, known_urls=known_downloaded_urls(config.PG_DSN, fiscal_year=fy)
+        inventory, known_urls=known_downloaded_urls(config.PG_DSN, fiscal_year=fy),
+        dedup_ba=False,
     )
     registrable, excluded = classify_inventory(inventory)
     print(f"jbooks backfill {service} (archive) FY{fy}:"

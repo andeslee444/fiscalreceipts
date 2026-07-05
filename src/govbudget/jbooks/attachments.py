@@ -24,6 +24,28 @@ def _dest_path(out_dir: Path, base: str, attachment_name: str) -> Path:
 FAMILY_MARKERS = {"rdte": "U_RDTE_", "procurement": "U_PROCUREMENT_"}
 
 
+def doc_xml_dir(pdf_path: Path) -> Path:
+    """Per-document XML extraction dir, isolated by PDF stem.
+
+    Books that share one org directory (Army/AF service editions publish many
+    justification PDFs under a single org folder) would otherwise extract their
+    XML into a shared `xml/` dir and clobber each other — pick_book_xml would
+    then see every book's master and return the wrong one. A per-stem dir keeps
+    each book's masters isolated. Falls back to the legacy shared `xml/` dir at
+    read time (resolve_xml_dir) for editions extracted before this change
+    (defense-wide/Navy, one book per family per org)."""
+    return pdf_path.parent / f"{pdf_path.stem}__xml"
+
+
+def resolve_xml_dir(pdf_path: Path) -> Path:
+    """The XML dir to read for a downloaded PDF: prefer the per-document dir,
+    fall back to the legacy shared `xml/` dir if only that exists."""
+    per_doc = doc_xml_dir(pdf_path)
+    if per_doc.exists():
+        return per_doc
+    return pdf_path.parent / "xml"
+
+
 def pick_book_xml(xml_dir: Path, *, family: str) -> Path | None:
     """Choose the justification-book XML for the given exhibit family.
 
