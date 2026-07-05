@@ -1,0 +1,44 @@
+# ARMY FY2026 justification books — Internet-Archive canonical originals
+# Enumerated live via CDX 2026-07-05; 40 PDFs total, 20 registrable, 20 excluded
+# REGISTRABLE (family	org	original_url):
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Aircraft%20Procurement%20Army.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Missile%20Procurement%20Army.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Other%20Procurement%20-%20BA%203,%204%20&%206%20-%20Other%20Support%20Equipment,%20Initial%20Spares%20and%20Agile%20Portfolio%20Management.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Other%20Procurement%20-%20BA1%20-%20Tactical%20&%20Support%20Vehicles.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Other%20Procurement%20-%20BA2%20-%20Communications%20&%20Electronics.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Procurement%20of%20Ammunition.pdf
+procurement	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/Procurement/Procurement%20of%20Weapons%20and%20Tracked%20Combat%20Vehicles.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%201%20-%20Budget%20Activity%201.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%201%20-%20Budget%20Activity%202.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%201%20-%20Budget%20Activity%203.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%202%20-%20Budget%20Activity%204A.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%202%20-%20Budget%20Activity%204B.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%203%20-%20Budget%20Activity%205A.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%203%20-%20Budget%20Activity%205B.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%203%20-%20Budget%20Activity%205C.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%203%20-%20Budget%20Activity%205D.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%204%20-%20Budget%20Activity%206.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%204%20-%20Budget%20Activity%207.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%204%20-%20Budget%20Activity%208.pdf
+rdte	A	https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/Discretionary%20Budget/rdte/RDTE%20-%20Vol%204%20-%20Budget%20Activity%209.pdf
+# EXCLUDED (reason	filename):
+BRAC — not R/D or procurement	Base Realignment and Closure Account.pdf
+MilCon (ARNG) — not R/D or procurement	National Guard Army Military Construction.pdf
+MilCon / Family Housing — not R/D or procurement	Regular Army Military Construction, Army Family Housing and Homeowners Assistance.pdf
+MilCon (Reserve) — not R/D or procurement	Reserve Army Military Construction.pdf
+Military Personnel — not R/D or procurement	Military Personnel Army Volume 1.pdf
+ARNG Personnel — not R/D or procurement	National Guard Personnel Army Volume 1.pdf
+Reserve Personnel — not R/D or procurement	Reserve Personnel Army Volume 1.pdf
+O&M overview — no R-2/P-40 detail	National Guard Army Operation and Maintenance Overview.pdf
+O&M (ARNG) — not a justification book	National Guard Army Operation and Maintenance.pdf
+O&M — not a justification book	Regular Army Operation and Maintenance Volume 1.pdf
+O&M vol.2 — not a justification book	Regular Army Operation and Maintenance Volume 2.pdf
+O&M (re-upload variant) — not a justification book	Regular Army Operation and Maintenance Volume-1.pdf
+O&M overview — no R-2/P-40 detail	Reserve Army Operation and Maintenance Overview.pdf
+O&M (Reserve) — not a justification book	Reserve Army Operation and Maintenance.pdf
+CISTEF — not a base R/D or procurement book	Counter-Islamic State of Iraq and Syria Train and Equip Fund.pdf
+Cemeterial expenses — not R/D or procurement	U.S. Army Cemeterial Expenses and Construction.pdf
+Working capital — revolving fund, not a justification book	Army Working Capital Fund.pdf
+Chemical demilitarization (Defense-Wide account) — not an Army R/D or procurement book	Chemical Agents and Munitions Destruction, Defense.pdf
+Budget overview — summary, no detail	Army FY 2026 Budget Overview.pdf
+PB highlights — summary, no detail	FY26 Presidents Budget Highlights.pdf

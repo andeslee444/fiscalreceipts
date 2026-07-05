@@ -297,7 +297,21 @@ def _jbooks_backfill(args) -> None:
 # ---------------------------------------------------------------------------
 
 # Workbook organization code per service (matches budget_lines.organization).
-SERVICE_ORG = {"navy": "N", "army": "A", "af": "F"}
+# Air Force and Space Force both publish on saffm.hq.af.mil and load under
+# workbook org 'F' (Space Force books embed ServiceAgencyName 'Air Force' and
+# SF-suffixed PEs that already live under 'F' — no separate 'S' org).
+SERVICE_ORG = {"navy": "N", "army": "A", "af": "F", "spaceforce": "F"}
+
+# CDX prefix globs for the Internet-Archive mirror of each service's FY2026
+# public budget-book folder. Enumeration classifies each canonical (query-
+# stripped) original URL; only R&D/procurement justification books register.
+# Verified live 2026-07-05 (docs/superpowers/reviews/5g-archive/*-book-urls.txt).
+ARCHIVE_CDX_PREFIX = {
+    "army": "asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026*",
+    "af": "saffm.hq.af.mil/Portals/84/documents/FY26*",
+    # Space Force books live in the AF portal; the same prefix enumerates them.
+    "spaceforce": "saffm.hq.af.mil/Portals/84/documents/FY26*",
+}
 
 
 def _service_fetch_inventory(service: str, fiscal_year: int) -> list:
@@ -465,6 +479,186 @@ def _jbooks_backfill_service(args) -> None:
         sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# Phase 5G (archive round) — Army + Air Force / Space Force via the Internet
+# Archive. asafm.army.mil (Akamai) and saffm.hq.af.mil (CAC) block server-side
+# clients, but the IA mirrors their PUBLIC FY2026 books WAF-free. Provenance:
+# source_url records the ORIGINAL official gov URL (authoritative); the Wayback
+# URL is transport only. Pure enumeration/classify/download logic lives in
+# archive_fetch.py + service_fetch.py (unit-tested); these functions are the
+# thin live-net wiring, injected/monkeypatched in tests.
+# ---------------------------------------------------------------------------
+
+
+def _service_archive_enumerate(service: str, fiscal_year: int) -> list:
+    """CDX-enumerate a service's FY2026 book URLs -> [PdfLink] of the classified
+    justification books. Live net (Internet Archive CDX); injected in tests."""
+    from govbudget.jbooks.archive_fetch import build_client, enumerate_prefix
+    from govbudget.jbooks.service_fetch import PdfLink
+
+    prefix = ARCHIVE_CDX_PREFIX[service]
+    with build_client() as client:
+        originals = enumerate_prefix(client, prefix)
+    from urllib.parse import unquote
+    return [PdfLink(text=unquote(u.rsplit("/", 1)[-1]), href=u) for u in originals]
+
+
+def _service_archive_download(service: str, fiscal_year: int) -> tuple[int, list]:
+    """Download every registered archive document for the edition through the
+    Internet Archive. Verifies %PDF magic + sha/size, extracts embedded XML,
+    flips rows to 'downloaded'. Books never archived / no-PDF snapshot are
+    recorded as gaps (status='missing'), not crashes. Returns (done, gaps).
+
+    Live net; injected in tests. Mirrors download_registered_playwright's row
+    lifecycle but fetches via archive_fetch.download_via_archive."""
+    import datetime as dt
+
+    import psycopg
+
+    from govbudget.jbooks.archive_fetch import (
+        ArchiveFetchError,
+        build_client,
+        download_via_archive,
+    )
+    from govbudget.jbooks.attachments import extract_jbook_xml
+
+    org = SERVICE_ORG[service]
+    with psycopg.connect(config.PG_DSN) as con:
+        pending = con.execute(
+            "select id, org, fiscal_year, title, source_url from jbook_documents"
+            " where status='registered' and acquisition='archive'"
+            " and fiscal_year=%s and org=%s order by id",
+            (fiscal_year, org),
+        ).fetchall()
+
+    done = 0
+    gaps: list[tuple[int, str, str]] = []
+    with build_client() as client:
+        for doc_id, doc_org, fy, title, url in pending:
+            dest = config.RAW_DOCS_DIR / f"fy{fy}" / doc_org.lower() / title
+            try:
+                from govbudget.download import ensure_free_space
+
+                ensure_free_space(dest.parent, config.MIN_FREE_GB)
+                print(f"[archive-acquire] {title}")
+                res = download_via_archive(client, url, dest, throttle_s=3.0,
+                                           log=lambda m: print("  " + m))
+                xmls = extract_jbook_xml(dest, dest.parent / "xml")
+                has_xml = bool(xmls)
+            except ArchiveFetchError as e:
+                gaps.append((doc_id, title, str(e)))
+                with psycopg.connect(config.PG_DSN) as con:
+                    con.execute(
+                        "update jbook_documents set status='missing' where id=%s",
+                        (doc_id,),
+                    )
+                print(f"[archive-acquire] GAP {title}: {e}")
+                continue
+            except Exception as e:  # noqa: BLE001
+                gaps.append((doc_id, title, f"{type(e).__name__}: {e}"))
+                with psycopg.connect(config.PG_DSN) as con:
+                    con.execute(
+                        "update jbook_documents set status='failed' where id=%s",
+                        (doc_id,),
+                    )
+                print(f"[archive-acquire] FAILED {title}: {type(e).__name__}: {e}")
+                continue
+            with psycopg.connect(config.PG_DSN) as con:
+                con.execute(
+                    "update jbook_documents set status='downloaded', file_path=%s,"
+                    " sha256=%s, bytes=%s, downloaded_at=%s, has_embedded_xml=%s"
+                    " where id=%s",
+                    (str(dest), res.sha256, res.bytes, dt.datetime.now(dt.UTC),
+                     has_xml, doc_id),
+                )
+            done += 1
+            print(f"[archive-acquire] {title}: {res.bytes:,} bytes"
+                  f" sha={res.sha256[:16]}… ts={res.snapshot_timestamp} xml={has_xml}")
+    return done, gaps
+
+
+def _jbooks_backfill_service_archive(args) -> None:
+    """Phase 5G archive backfill (Army / Air Force / Space Force):
+    CDX-enumerate -> classify -> register (acquisition='archive', source_url =
+    ORIGINAL official gov URL) -> download via the Internet Archive ->
+    scoped extract/load/reconcile -> dedup identical-master duplicates."""
+    from govbudget.jbooks import edition_probe
+    from govbudget.jbooks.service_fetch import (
+        build_download_plan,
+        classify_inventory,
+        dedup_service_master_dups,
+        known_downloaded_urls,
+        register_service_documents,
+    )
+
+    service = args.service
+    fy = args.fiscal_year if args.fiscal_year is not None else config.JBOOK_FY
+    if service not in ARCHIVE_CDX_PREFIX:
+        print(f"jbooks backfill --service {service} --source archive: unsupported"
+              " service (army|af|spaceforce)", file=sys.stderr)
+        sys.exit(2)
+    org = SERVICE_ORG[service]
+    manifest_path = config.RESEARCH_DIR / "edition_manifest.json"
+
+    inventory = _service_archive_enumerate(service, fy)
+    # Reuse the classify/plan machinery (dedup_ba_splits is a no-op here — the
+    # service allowlists carry no Navy-style BA markers; real dup collapse
+    # happens post-load in dedup_service_master_dups by master identity).
+    plan = build_download_plan(
+        inventory, known_urls=known_downloaded_urls(config.PG_DSN, fiscal_year=fy)
+    )
+    registrable, excluded = classify_inventory(inventory)
+    print(f"jbooks backfill {service} (archive) FY{fy}:"
+          f" {len(plan.to_download)} to download, {len(plan.skipped)} already present,"
+          f" {len(excluded)} excluded (of {len(inventory)} enumerated)")
+    edition_probe.record_service_exclusions(
+        manifest_path, service, fy,
+        [{"filename": n, "rule": "non-justification-appropriation", "reason": r}
+         for n, r in excluded],
+    )
+    # Register with acquisition='archive' (source_url = ORIGINAL gov URL).
+    new = _register_archive_documents(config.PG_DSN, plan, fiscal_year=fy)
+    print(f"jbooks backfill {service} (archive): {new} document(s) registered")
+
+    downloaded, gaps = _service_archive_download(service, fy)
+    print(f"jbooks backfill {service} (archive): {downloaded} downloaded,"
+          f" {len(gaps)} gap(s)")
+    for doc_id, title, reason in gaps:
+        print(f"  GAP #{doc_id} {title}: {reason}")
+
+    processed, extract_failures = _jbooks_extract(org=org, fiscal_year=fy)
+    print(f"jbooks backfill {service} (archive) extract: {processed} processed")
+    if extract_failures:
+        for d, e in extract_failures:
+            print(f"  extract FAILED doc {d}: {e}")
+        sys.exit(1)
+
+    superseded = dedup_service_master_dups(config.PG_DSN, fiscal_year=fy, org=org)
+    print(f"jbooks backfill {service} (archive) dedup:"
+          f" {len(superseded)} duplicate-master book(s) superseded")
+
+
+def _register_archive_documents(dsn, plan, *, fiscal_year: int) -> int:
+    """Insert each to-download Candidate as a 'registered' row stamped
+    acquisition='archive'. source_url is the ORIGINAL official gov URL
+    (authoritative provenance); the Wayback URL used to fetch is recorded on the
+    download step's logs, not as the citable source. Idempotent on source_url."""
+    import psycopg
+
+    inserted = 0
+    with psycopg.connect(dsn) as con:
+        for c in plan.to_download:
+            cur = con.execute(
+                "insert into jbook_documents (org, exhibit_family, fiscal_year,"
+                " title, source_url, status, acquisition)"
+                " values (%s,%s,%s,%s,%s,'registered','archive')"
+                " on conflict (source_url) do nothing",
+                (c.org, c.exhibit_family, fiscal_year, c.name, c.href),
+            )
+            inserted += cur.rowcount
+    return inserted
+
+
 def _jbooks_ingest_local(args) -> None:
     """Phase 5G manual drop-dir path (Army + Air Force). Registers every
     classifiable PDF in <dir> with acquisition='manual' and the operator's
@@ -499,7 +693,10 @@ def cmd_jbooks(args) -> None:
 
     migrate()
     if args.action == "backfill" and getattr(args, "service", None):
-        _jbooks_backfill_service(args)
+        if getattr(args, "source", None) == "archive":
+            _jbooks_backfill_service_archive(args)
+        else:
+            _jbooks_backfill_service(args)
         return
     if args.action == "ingest-local":
         _jbooks_ingest_local(args)
@@ -1515,10 +1712,16 @@ def main(argv=None) -> None:
                         f" {config.JBOOK_FY}; provenance-pages and"
                         " narrative-provenance default to all editions"
                         " (unfiltered)")
-    j.add_argument("--service", default=None, choices=["navy", "army", "af"],
-                   help="backfill: automate a service J-book set (only 'navy'"
-                        " is reachable via Playwright — Army/AF use ingest-local);"
-                        " ingest-local: which service the drop-dir belongs to")
+    j.add_argument("--service", default=None,
+                   choices=["navy", "army", "af", "spaceforce"],
+                   help="backfill: automate a service J-book set. navy uses"
+                        " Playwright; army/af/spaceforce use --source archive"
+                        " (Internet-Archive mirror). ingest-local: which service"
+                        " the drop-dir belongs to")
+    j.add_argument("--source", default=None, choices=["archive"],
+                   help="backfill: fetch transport. 'archive' = Internet-Archive"
+                        " mirror (Army/AF/Space Force — WAF-blocked at origin)."
+                        " source_url still records the ORIGINAL official gov URL")
     j.add_argument("--source-url", default=None, dest="source_url",
                    help="ingest-local: operator-supplied source URL recorded on"
                         " each manually-dropped document (required)")

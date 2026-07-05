@@ -1,0 +1,34 @@
+# AF FY2026 justification books — Internet-Archive canonical originals
+# Enumerated live via CDX 2026-07-05; 30 PDFs total, 11 registrable, 19 excluded
+# REGISTRABLE (family	org	original_url):
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Aircraft%20Procurement%20Vol%20I.pdf
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Aircraft%20Procurement%20Vol%20II.pdf
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Ammunition%20Procurement.pdf
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Missile%20Procurement.pdf
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Other%20Procurement.pdf
+rdte	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Research%20and%20Development%20Test%20and%20Evaluation%20Vol%20I.pdf
+rdte	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Research%20and%20Development%20Test%20and%20Evaluation%20Vol%20II.pdf
+rdte	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Research%20and%20Development%20Test%20and%20Evaluation%20Vol%20III.pdf
+rdte	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Air%20Force%20Research%20and%20Development%20Test%20and%20Evaluation%20Vol%20IV.pdf
+procurement	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Space%20Force%20Procurement.pdf
+rdte	F	https://www.saffm.hq.af.mil/Portals/84/documents/FY26/FY26%20Space%20Force%20Research%20and%20Development%20Test%20and%20Evaluation.pdf
+# EXCLUDED (reason	filename):
+DAF budget brief — summary, no detail	DAF PB26 Brief_RELEASED_5Aug.pdf
+MilCon — not R/D or procurement	FY26 Air Force MILCON.pdf
+Military Personnel — not R/D or procurement	FY26 Air Force MILPERS.pdf
+O&M — not a justification book	FY26 Air Force Operations and Maintenance Vol I.pdf
+O&M vol.2 — not a justification book	FY26 Air Force Operations and Maintenance Vol II.pdf
+MilCon (Reserve) — not R/D or procurement	FY26 Air Force Reserve MILCON.pdf
+O&M (Reserve) — not a justification book	FY26 Air Force Reserve Operations and Maintenance Vol I.pdf
+O&M (Reserve) vol.2 — not a justification book	FY26 Air Force Reserve Operations and Maintenance Vol II.pdf
+Reserve Personnel — not R/D or procurement	FY26 Air Force Reserves MILPERS.pdf
+Working capital — revolving fund, not a justification book	FY26 Air Force Working Capital Fund.pdf
+MilCon (ANG) — not R/D or procurement	FY26 Air National Guard MILCON.pdf
+ANG Personnel — not R/D or procurement	FY26 Air National Guard MILPERS.pdf
+O&M (ANG) — not a justification book	FY26 Air National Guard Operation and Maintenance Vol I.pdf
+O&M (ANG) vol.2 — not a justification book	FY26 Air National Guard Operation and Maintenance Vol II.pdf
+Budget overview — summary, no detail	FY26 Budget Overview.pdf
+PB rollout brief — summary, no detail	FY26 PB Rollout Brief.pdf
+Space Force Personnel — not R/D or procurement	FY26 Space Force MILPERS.pdf
+Space Force O&M — not a justification book	FY26 Space Force Operations and Maintenance Vol I.pdf
+Space Force O&M vol.2 — not a justification book	FY26 Space Force Operations and Maintenance Vol II.pdf

@@ -179,16 +179,22 @@ def classify_inventory(
     """Run the J-book classifier over an inventory.
 
     Returns (registrable Candidates, [(name, exclusion_reason)]). Names that
-    the classifier maps to (family, org) become Candidates; names pinned in
-    NAVY_EXCLUSIONS are returned with their recorded reason. Any name the
-    classifier neither classifies nor explicitly excludes is dropped silently
-    (defensive: the Navy allowlist covers the full inventory by construction —
-    test_classify_navy_full_inventory_partitions_cleanly guards this).
+    the classifier maps to (family, org) become Candidates; names pinned in any
+    service exclusion map (Navy/Army/AF) are returned with their recorded
+    reason. Any name the classifier neither classifies nor explicitly excludes
+    is dropped silently (defensive: each service allowlist covers its full
+    inventory by construction — the full-inventory partition tests guard this).
     """
     # Imported here to avoid a module-load cycle (registry imports nothing from
     # service_fetch, but keep the dependency edge one-directional and lazy).
-    from govbudget.jbooks.registry import NAVY_EXCLUSIONS, _classify_jbook
+    from govbudget.jbooks.registry import (
+        AF_EXCLUSIONS,
+        ARMY_EXCLUSIONS,
+        NAVY_EXCLUSIONS,
+        _classify_jbook,
+    )
 
+    exclusion_reasons = {**NAVY_EXCLUSIONS, **ARMY_EXCLUSIONS, **AF_EXCLUSIONS}
     registrable: list[Candidate] = []
     excluded: list[tuple[str, str]] = []
     for ln in links:
@@ -199,8 +205,8 @@ def classify_inventory(
             registrable.append(
                 Candidate(name=name, href=ln.href, exhibit_family=family, org=org)
             )
-        elif name in NAVY_EXCLUSIONS:
-            excluded.append((name, NAVY_EXCLUSIONS[name]))
+        elif name in exclusion_reasons:
+            excluded.append((name, exclusion_reasons[name]))
     return registrable, excluded
 
 
@@ -377,6 +383,94 @@ def register_local_documents(
             )
             inserted += cur.rowcount
     return inserted, skipped
+
+
+# --------------------------------------------------------------------------
+# Phase 5G (archive round) — master-identity dedup at LOAD time.
+#
+# The Navy plan-time dedup_ba_splits collapsed by filename heuristic. That does
+# not generalize to Army/AF: Army RDTE volumes are genuinely BA-split (each
+# embeds ONLY its own budget activities — distinct masters, must all load),
+# while AF RDTE Vol I-IV embed the IDENTICAL master and AF Aircraft Procurement
+# Vol I/II embed the identical master (verified live 2026-07-05). The correct,
+# universal rule is EMPIRICAL: group downloaded books by the content sha256 of
+# the master XML pick_book_xml selects, and keep exactly one per identical
+# master. This keeps Army's 13 distinct RDTE volumes AND the distinct AF-vs-SF
+# masters (same org 'F', same family, but different master content) while
+# collapsing the true duplicates. Non-destructive (flips duplicates to
+# status='superseded' and supersedes their details) and idempotent.
+# --------------------------------------------------------------------------
+
+
+def _picked_master_sha(file_path: str, family: str) -> str | None:
+    """sha256 of the master XML pick_book_xml selects for a downloaded doc, or
+    None if no XML is on disk (the book had no embedded master)."""
+    import hashlib
+
+    from govbudget.jbooks.attachments import pick_book_xml
+
+    xml_dir = Path(file_path).parent / "xml"
+    book = pick_book_xml(xml_dir, family=family)
+    if book is None or not book.exists():
+        return None
+    return hashlib.sha256(book.read_bytes()).hexdigest()
+
+
+def dedup_service_master_dups(
+    dsn: str, *, fiscal_year: int, org: str, log=print
+) -> list[tuple[str, str]]:
+    """Collapse downloaded books that embed a byte-identical master XML.
+
+    Groups this edition+org's downloaded, XML-bearing documents by
+    (exhibit_family, master-XML sha256). For each group with more than one book,
+    keeps the lowest-title document and flips every other to status='superseded'
+    (marking its details/narratives superseded too — the same non-destructive,
+    reversible terminal state the Navy round used). Returns [(superseded_title,
+    kept_title)]. Idempotent: already-superseded rows are not re-selected.
+
+    Books with no embedded master (sha None) are left alone — they are handled
+    as extraction gaps elsewhere, never silently dropped.
+    """
+    import psycopg
+
+    with psycopg.connect(dsn) as con:
+        rows = con.execute(
+            "select id, title, exhibit_family, file_path from jbook_documents"
+            " where fiscal_year=%s and org=%s and status='downloaded'"
+            " and has_embedded_xml and file_path is not null"
+            " order by title",
+            (fiscal_year, org),
+        ).fetchall()
+
+        groups: dict[tuple[str, str], list[tuple[int, str]]] = {}
+        for doc_id, title, family, file_path in rows:
+            sha = _picked_master_sha(file_path, family)
+            if sha is None:
+                continue
+            groups.setdefault((family, sha), []).append((doc_id, title))
+
+        superseded: list[tuple[str, str]] = []
+        for (family, _sha), members in groups.items():
+            if len(members) <= 1:
+                continue
+            members.sort(key=lambda m: m[1])  # lowest title wins (stable)
+            keep_id, keep_title = members[0]
+            for dup_id, dup_title in members[1:]:
+                con.execute(
+                    "update budget_line_details set superseded=true where document_id=%s",
+                    (dup_id,),
+                )
+                con.execute(
+                    "update detail_narratives set superseded=true where document_id=%s",
+                    (dup_id,),
+                )
+                con.execute(
+                    "update jbook_documents set status='superseded' where id=%s",
+                    (dup_id,),
+                )
+                superseded.append((dup_title, keep_title))
+                log(f"[dedup] superseded {dup_title!r} (same master as {keep_title!r})")
+    return superseded
 
 
 # --------------------------------------------------------------------------

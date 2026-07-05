@@ -140,6 +140,119 @@ NAVY_EXCLUSIONS: dict[str, str] = {
     "Supp_Book.pdf": "Supplemental request — not a base R/D or procurement justification book",
 }
 
+# --------------------------------------------------------------------------
+# Phase 5G — Army + Air Force / Space Force FY2026 service J-books, mirrored
+# WAF-free on the Internet Archive (asafm.army.mil is Akamai-403, saffm.hq.af.mil
+# is CAC-gated to server clients). Naming is DESCRIPTIVE, not the DoD RDTE_/PROC_
+# token convention, so the word-bounded rule returns None for every one — the fix
+# mirrors NAVY_NAMES exactly: an explicit basename -> (family, org) allowlist,
+# verified live 2026-07-05 against the CDX inventories (army-book-urls.txt /
+# af-book-urls.txt) and the embedded jb-2009 XML (ServiceAgencyName decides org).
+#
+# ARMY (org 'A' — the display-workbook code, matches budget_lines.organization):
+#   RDTE volumes are GENUINELY BA-split — each PDF embeds ONLY its own budget
+#   activities (Vol1-BA1 = 56 PEs, BAs 1-3), NOT the full master. So all 13
+#   register and load distinct PEs; there is NO Army-RDTE dedup (unlike Navy/AF).
+#   Procurement books are per-appropriation (Aircraft/Missile/OtherProc-BA*/
+#   Ammunition/Weapons); each embeds its own U_PROCUREMENT master.
+ARMY_NAMES: dict[str, tuple[str, str]] = {
+    # RDT&E, Army — 13 BA-split volumes (distinct PEs per volume, keep all).
+    "RDTE - Vol 1 - Budget Activity 1.pdf": ("rdte", "A"),
+    "RDTE - Vol 1 - Budget Activity 2.pdf": ("rdte", "A"),
+    "RDTE - Vol 1 - Budget Activity 3.pdf": ("rdte", "A"),
+    "RDTE - Vol 2 - Budget Activity 4A.pdf": ("rdte", "A"),
+    "RDTE - Vol 2 - Budget Activity 4B.pdf": ("rdte", "A"),
+    "RDTE - Vol 3 - Budget Activity 5A.pdf": ("rdte", "A"),
+    "RDTE - Vol 3 - Budget Activity 5B.pdf": ("rdte", "A"),
+    "RDTE - Vol 3 - Budget Activity 5C.pdf": ("rdte", "A"),
+    "RDTE - Vol 3 - Budget Activity 5D.pdf": ("rdte", "A"),
+    "RDTE - Vol 4 - Budget Activity 6.pdf": ("rdte", "A"),
+    "RDTE - Vol 4 - Budget Activity 7.pdf": ("rdte", "A"),
+    "RDTE - Vol 4 - Budget Activity 8.pdf": ("rdte", "A"),
+    "RDTE - Vol 4 - Budget Activity 9.pdf": ("rdte", "A"),
+    # Procurement, Army — one book per appropriation.
+    "Aircraft Procurement Army.pdf": ("procurement", "A"),
+    "Missile Procurement Army.pdf": ("procurement", "A"),
+    "Other Procurement - BA1 - Tactical & Support Vehicles.pdf": ("procurement", "A"),
+    "Other Procurement - BA2 - Communications & Electronics.pdf": ("procurement", "A"),
+    "Other Procurement - BA 3, 4 & 6 - Other Support Equipment, Initial Spares and Agile Portfolio Management.pdf":
+        ("procurement", "A"),
+    "Procurement of Ammunition.pdf": ("procurement", "A"),
+    "Procurement of Weapons and Tracked Combat Vehicles.pdf": ("procurement", "A"),
+}
+
+# AIR FORCE + SPACE FORCE (org 'F' — Space Force books embed ServiceAgencyName
+# "Air Force" and carry SF-suffixed PEs, e.g. 1203154SF, which already live in
+# budget_lines under org 'F'; there is no separate 'S' org). AF RDTE Vol I-IV
+# each embed the SAME 268-PE master; AF Aircraft Procurement Vol I/II embed the
+# same 70-line master — both dedup at load time by embedded-master identity
+# (dedup_service_master_dups). Space Force R&D and Procurement are single books.
+AF_NAMES: dict[str, tuple[str, str]] = {
+    # RDT&E — 4 volumes, all embed the full AF master (deduped to one at load).
+    "FY26 Air Force Research and Development Test and Evaluation Vol I.pdf": ("rdte", "F"),
+    "FY26 Air Force Research and Development Test and Evaluation Vol II.pdf": ("rdte", "F"),
+    "FY26 Air Force Research and Development Test and Evaluation Vol III.pdf": ("rdte", "F"),
+    "FY26 Air Force Research and Development Test and Evaluation Vol IV.pdf": ("rdte", "F"),
+    # Procurement — per appropriation; Aircraft Vol I/II share one master.
+    "FY26 Air Force Aircraft Procurement Vol I.pdf": ("procurement", "F"),
+    "FY26 Air Force Aircraft Procurement Vol II.pdf": ("procurement", "F"),
+    "FY26 Air Force Ammunition Procurement.pdf": ("procurement", "F"),
+    "FY26 Air Force Missile Procurement.pdf": ("procurement", "F"),
+    "FY26 Air Force Other Procurement.pdf": ("procurement", "F"),
+    # Space Force — single R&D and single Procurement book (org 'F').
+    "FY26 Space Force Research and Development Test and Evaluation.pdf": ("rdte", "F"),
+    "FY26 Space Force Procurement.pdf": ("procurement", "F"),
+}
+
+# Army inventory filenames that are NOT R&D or procurement justification books.
+ARMY_EXCLUSIONS: dict[str, str] = {
+    "Base Realignment and Closure Account.pdf": "BRAC — not R/D or procurement",
+    "National Guard Army Military Construction.pdf": "MilCon (ARNG) — not R/D or procurement",
+    "Regular Army Military Construction, Army Family Housing and Homeowners Assistance.pdf":
+        "MilCon / Family Housing — not R/D or procurement",
+    "Reserve Army Military Construction.pdf": "MilCon (Reserve) — not R/D or procurement",
+    "Military Personnel Army Volume 1.pdf": "Military Personnel — not R/D or procurement",
+    "National Guard Personnel Army Volume 1.pdf": "ARNG Personnel — not R/D or procurement",
+    "Reserve Personnel Army Volume 1.pdf": "Reserve Personnel — not R/D or procurement",
+    "National Guard Army Operation and Maintenance Overview.pdf": "O&M overview — no R-2/P-40 detail",
+    "National Guard Army Operation and Maintenance.pdf": "O&M (ARNG) — not a justification book",
+    "Regular Army Operation and Maintenance Volume 1.pdf": "O&M — not a justification book",
+    "Regular Army Operation and Maintenance Volume 2.pdf": "O&M vol.2 — not a justification book",
+    "Regular Army Operation and Maintenance Volume-1.pdf": "O&M (re-upload variant) — not a justification book",
+    "Reserve Army Operation and Maintenance Overview.pdf": "O&M overview — no R-2/P-40 detail",
+    "Reserve Army Operation and Maintenance.pdf": "O&M (Reserve) — not a justification book",
+    "Counter-Islamic State of Iraq and Syria Train and Equip Fund.pdf": "CISTEF — not a base R/D or procurement book",
+    "U.S. Army Cemeterial Expenses and Construction.pdf": "Cemeterial expenses — not R/D or procurement",
+    "Army Working Capital Fund.pdf": "Working capital — revolving fund, not a justification book",
+    "Chemical Agents and Munitions Destruction, Defense.pdf":
+        "Chemical demilitarization (Defense-Wide account) — not an Army R/D or procurement book",
+    "Army FY 2026 Budget Overview.pdf": "Budget overview — summary, no detail",
+    "FY26 Presidents Budget Highlights.pdf": "PB highlights — summary, no detail",
+}
+
+# Air Force / Space Force inventory filenames that are NOT justification books.
+AF_EXCLUSIONS: dict[str, str] = {
+    "DAF PB26 Brief_RELEASED_5Aug.pdf": "DAF budget brief — summary, no detail",
+    "FY26 Air Force MILCON.pdf": "MilCon — not R/D or procurement",
+    "FY26 Air Force MILPERS.pdf": "Military Personnel — not R/D or procurement",
+    "FY26 Air Force Operations and Maintenance Vol I.pdf": "O&M — not a justification book",
+    "FY26 Air Force Operations and Maintenance Vol II.pdf": "O&M vol.2 — not a justification book",
+    "FY26 Air Force Reserve MILCON.pdf": "MilCon (Reserve) — not R/D or procurement",
+    "FY26 Air Force Reserve Operations and Maintenance Vol I.pdf": "O&M (Reserve) — not a justification book",
+    "FY26 Air Force Reserve Operations and Maintenance Vol II.pdf": "O&M (Reserve) vol.2 — not a justification book",
+    "FY26 Air Force Reserves MILPERS.pdf": "Reserve Personnel — not R/D or procurement",
+    "FY26 Air Force Working Capital Fund.pdf": "Working capital — revolving fund, not a justification book",
+    "FY26 Air National Guard MILCON.pdf": "MilCon (ANG) — not R/D or procurement",
+    "FY26 Air National Guard MILPERS.pdf": "ANG Personnel — not R/D or procurement",
+    "FY26 Air National Guard Operation and Maintenance Vol I.pdf": "O&M (ANG) — not a justification book",
+    "FY26 Air National Guard Operation and Maintenance Vol II.pdf": "O&M (ANG) vol.2 — not a justification book",
+    "FY26 Budget Overview.pdf": "Budget overview — summary, no detail",
+    "FY26 PB Rollout Brief.pdf": "PB rollout brief — summary, no detail",
+    "FY26 Space Force MILPERS.pdf": "Space Force Personnel — not R/D or procurement",
+    "FY26 Space Force Operations and Maintenance Vol I.pdf": "Space Force O&M — not a justification book",
+    "FY26 Space Force Operations and Maintenance Vol II.pdf": "Space Force O&M vol.2 — not a justification book",
+}
+
 # Evidence-classified books whose FILENAME is ambiguous across index paths:
 # PB2023 publishes tokenless '{ORG}_PB2023.pdf' twins under BOTH
 # 02_Procurement/ and 03_RDT_and_E/, so the name alone cannot classify.
@@ -191,6 +304,14 @@ def _classify_jbook(name: str) -> tuple[str, str] | None:
     if name in NAVY_NAMES:
         return NAVY_NAMES[name]
     if name in NAVY_EXCLUSIONS:
+        return None
+    if name in ARMY_NAMES:
+        return ARMY_NAMES[name]
+    if name in ARMY_EXCLUSIONS:
+        return None
+    if name in AF_NAMES:
+        return AF_NAMES[name]
+    if name in AF_EXCLUSIONS:
         return None
     if not name.lower().endswith(".pdf") or name in EXCLUDED_NAMES:
         return None

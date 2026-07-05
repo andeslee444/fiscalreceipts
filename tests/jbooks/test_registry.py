@@ -483,3 +483,130 @@ def test_scrape_cli_defaults_to_config_jbook_fy(monkeypatch):
         "https://comptroller.war.gov/Budget-Materials/FY2026BudgetJustification/",
     ]
     assert docs and all(d["fiscal_year"] == config.JBOOK_FY for d in docs)
+
+
+def test_classify_jbook_army_rdte_and_procurement():
+    """Army FY2026 books (Internet-Archive mirror) — descriptive names the token
+    rule returns None for; ARMY_NAMES maps each to (family, 'A'). Army RDTE is
+    genuinely BA-split (each volume = distinct PEs), so all 13 register."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    for ba in ("1 - Budget Activity 1", "1 - Budget Activity 2", "1 - Budget Activity 3",
+               "2 - Budget Activity 4A", "2 - Budget Activity 4B",
+               "3 - Budget Activity 5A", "3 - Budget Activity 5B",
+               "3 - Budget Activity 5C", "3 - Budget Activity 5D",
+               "4 - Budget Activity 6", "4 - Budget Activity 7",
+               "4 - Budget Activity 8", "4 - Budget Activity 9"):
+        assert _classify_jbook(f"RDTE - Vol {ba}.pdf") == ("rdte", "A")
+    for name in (
+        "Aircraft Procurement Army.pdf",
+        "Missile Procurement Army.pdf",
+        "Other Procurement - BA1 - Tactical & Support Vehicles.pdf",
+        "Other Procurement - BA2 - Communications & Electronics.pdf",
+        "Other Procurement - BA 3, 4 & 6 - Other Support Equipment, Initial Spares and Agile Portfolio Management.pdf",
+        "Procurement of Ammunition.pdf",
+        "Procurement of Weapons and Tracked Combat Vehicles.pdf",
+    ):
+        assert _classify_jbook(name) == ("procurement", "A"), name
+
+
+def test_classify_jbook_af_and_space_force():
+    """AF + Space Force FY2026 books (org 'F'). Space Force books embed
+    ServiceAgencyName 'Air Force' and SF-suffix PEs that live under 'F' —
+    there is no separate 'S' org."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    for vol in ("Vol I", "Vol II", "Vol III", "Vol IV"):
+        assert _classify_jbook(
+            f"FY26 Air Force Research and Development Test and Evaluation {vol}.pdf"
+        ) == ("rdte", "F")
+    assert _classify_jbook(
+        "FY26 Space Force Research and Development Test and Evaluation.pdf"
+    ) == ("rdte", "F")
+    for name in (
+        "FY26 Air Force Aircraft Procurement Vol I.pdf",
+        "FY26 Air Force Aircraft Procurement Vol II.pdf",
+        "FY26 Air Force Ammunition Procurement.pdf",
+        "FY26 Air Force Missile Procurement.pdf",
+        "FY26 Air Force Other Procurement.pdf",
+        "FY26 Space Force Procurement.pdf",
+    ):
+        assert _classify_jbook(name) == ("procurement", "F"), name
+
+
+def test_classify_jbook_army_af_exclusions():
+    """O&M / MilPers / MilCon / BRAC / working-capital / overview / brief
+    volumes are pinned to the exclusion sets and never register."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    for name in (
+        "Base Realignment and Closure Account.pdf",
+        "Military Personnel Army Volume 1.pdf",
+        "Regular Army Operation and Maintenance Volume 1.pdf",
+        "Army Working Capital Fund.pdf",
+        "Chemical Agents and Munitions Destruction, Defense.pdf",
+        "Army FY 2026 Budget Overview.pdf",
+        "FY26 Air Force MILCON.pdf",
+        "FY26 Air Force Operations and Maintenance Vol I.pdf",
+        "FY26 Space Force Operations and Maintenance Vol I.pdf",
+        "FY26 Air Force Working Capital Fund.pdf",
+        "FY26 PB Rollout Brief.pdf",
+        "DAF PB26 Brief_RELEASED_5Aug.pdf",
+    ):
+        assert _classify_jbook(name) is None, name
+
+
+def test_classify_army_full_inventory_partitions_cleanly():
+    """Every real Army FY2026 filename either classifies to ('rdte'|'procurement',
+    'A') or is an explicit exclusion — nothing falls through unhandled."""
+    from pathlib import Path
+
+    from govbudget.jbooks.registry import ARMY_EXCLUSIONS, ARMY_NAMES, _classify_jbook
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks"
+    names = [n for n in (fixtures / "army_inventory_fy2026.txt").read_text().splitlines() if n.strip()]
+    assert len(names) == 40
+    classified, excluded = {}, []
+    for name in names:
+        v = _classify_jbook(name)
+        (classified.__setitem__(name, v) if v is not None else excluded.append(name))
+    assert sum(1 for v in classified.values() if v == ("rdte", "A")) == 13
+    assert sum(1 for v in classified.values() if v == ("procurement", "A")) == 7
+    assert len(excluded) == 20
+    assert set(ARMY_NAMES) == set(classified)
+    assert set(ARMY_EXCLUSIONS) == set(excluded)
+
+
+def test_classify_af_full_inventory_partitions_cleanly():
+    """Every real Air Force / Space Force FY2026 filename classifies to
+    (family, 'F') or is an explicit exclusion."""
+    from pathlib import Path
+
+    from govbudget.jbooks.registry import AF_EXCLUSIONS, AF_NAMES, _classify_jbook
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "jbooks"
+    names = [n for n in (fixtures / "af_inventory_fy2026.txt").read_text().splitlines() if n.strip()]
+    assert len(names) == 30
+    classified, excluded = {}, []
+    for name in names:
+        v = _classify_jbook(name)
+        (classified.__setitem__(name, v) if v is not None else excluded.append(name))
+    assert sum(1 for v in classified.values() if v == ("rdte", "F")) == 5      # 4 AF + 1 SF
+    assert sum(1 for v in classified.values() if v == ("procurement", "F")) == 6  # 5 AF + 1 SF
+    assert len(excluded) == 19
+    assert set(AF_NAMES) == set(classified)
+    assert set(AF_EXCLUSIONS) == set(excluded)
+
+
+def test_navy_and_defensewide_classification_unchanged_by_service_allowlists():
+    """Byte-identity regression: adding ARMY/AF allowlists must not perturb any
+    Navy or Defense-Wide verdict."""
+    from govbudget.jbooks.registry import _classify_jbook
+
+    # Defense-wide (token rule) still classifies.
+    assert _classify_jbook("RDTE_Vol1_DARPA_MasterJustificationBook_PB_2026.pdf") == ("rdte", "DARPA")
+    assert _classify_jbook("PROC_OSD_PB_2026.pdf") == ("procurement", "OSD")
+    # Navy allowlist still classifies.
+    assert _classify_jbook("RDTEN_BA1-3_Book.pdf") == ("rdte", "N")
+    assert _classify_jbook("APN_BA1-4_Book.pdf") == ("procurement", "N")
+    assert _classify_jbook("OMN_Book.pdf") is None

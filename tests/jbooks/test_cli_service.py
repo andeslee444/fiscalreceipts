@@ -171,3 +171,120 @@ def test_ingest_local_requires_source_url(monkeypatch, tmp_path, pg_dsn):
             "jbooks", "ingest-local", "--service", "af",
             "--fiscal-year", "2026", str(drop),
         ])
+
+
+# --------------------------------------------------------------------------
+# Phase 5G (archive round) — Army / AF / Space Force via the Internet Archive.
+# --------------------------------------------------------------------------
+
+ARMY_BASE = ("https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/"
+             "Discretionary%20Budget")
+
+
+def _army_inventory(*names):
+    """Build a PdfLink inventory of Army archive originals (rdte/ + Procurement/)."""
+    out = []
+    for n in names:
+        sub = "rdte" if n.startswith("RDTE") else "Procurement"
+        out.append(PdfLink(text=n, href=f"{ARMY_BASE}/{sub}/{n.replace(' ', '%20')}"))
+    return out
+
+
+def _wire_archive_backfill(monkeypatch, tmp_path, pg_dsn, inventory):
+    import govbudget.jbooks.db
+    from govbudget import cli, config
+    from govbudget.jbooks import service_fetch
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(govbudget.jbooks.db, "migrate", lambda *a, **kw: [])
+    monkeypatch.setattr(config, "RESEARCH_DIR", tmp_path)
+    monkeypatch.setattr(config, "PG_DSN", pg_dsn)
+
+    monkeypatch.setattr(
+        cli, "_service_archive_enumerate",
+        lambda service, fy: (calls.append(("enum", service, fy)), inventory)[1],
+    )
+
+    def fake_download(service, fy):
+        calls.append(("download", service, fy))
+        with psycopg.connect(pg_dsn) as con:
+            con.execute(
+                "update jbook_documents set status='downloaded'"
+                " where status='registered' and acquisition='archive'"
+            )
+        return (2, [])
+
+    monkeypatch.setattr(cli, "_service_archive_download", fake_download)
+    monkeypatch.setattr(
+        cli, "_jbooks_extract",
+        lambda org=None, fiscal_year=None: (
+            calls.append(("extract", org, fiscal_year)), (2, [])
+        )[1],
+    )
+    monkeypatch.setattr(
+        service_fetch, "dedup_service_master_dups",
+        lambda dsn, *, fiscal_year, org, log=print: (
+            calls.append(("dedup", org, fiscal_year)), []
+        )[1],
+    )
+    return calls, tmp_path / "edition_manifest.json"
+
+
+def test_backfill_service_army_archive_registers_downloads_extracts_dedups(
+    monkeypatch, tmp_path, pg_dsn
+):
+    from govbudget import cli
+
+    inventory = _army_inventory(
+        "RDTE - Vol 1 - Budget Activity 1.pdf",
+        "Aircraft Procurement Army.pdf",
+        "Army Working Capital Fund.pdf",  # excluded
+    )
+    calls, manifest = _wire_archive_backfill(monkeypatch, tmp_path, pg_dsn, inventory)
+
+    cli.main(["jbooks", "backfill", "--fiscal-year", "2026",
+              "--service", "army", "--source", "archive"])
+
+    # ordering: enumerate -> download -> extract -> dedup
+    assert calls == [
+        ("enum", "army", 2026),
+        ("download", "army", 2026),
+        ("extract", "A", 2026),
+        ("dedup", "A", 2026),
+    ]
+    with psycopg.connect(pg_dsn) as con:
+        rows = list(con.execute(
+            "select title, acquisition, org, source_url from jbook_documents order by title"
+        ))
+    titles = {r[0] for r in rows}
+    assert titles == {"RDTE - Vol 1 - Budget Activity 1.pdf", "Aircraft Procurement Army.pdf"}
+    # acquisition stamped 'archive'; source_url is the ORIGINAL official gov URL
+    for title, acq, org, url in rows:
+        assert acq == "archive"
+        assert org == "A"
+        assert url.startswith("https://www.asafm.army.mil/")  # NOT web.archive.org
+        assert "web.archive.org" not in url
+
+    # excluded non-justification book recorded in the service manifest
+    svc = json.loads(manifest.read_text())["services"]["army_2026"]["exclusions"]
+    assert [e["filename"] for e in svc] == ["Army Working Capital Fund.pdf"]
+
+
+def test_backfill_service_spaceforce_archive_loads_as_org_f(monkeypatch, tmp_path, pg_dsn):
+    from govbudget import cli
+    from govbudget.jbooks.service_fetch import PdfLink
+
+    sf_base = "https://www.saffm.hq.af.mil/Portals/84/documents/FY26"
+    inventory = [
+        PdfLink("FY26 Space Force Research and Development Test and Evaluation.pdf",
+                f"{sf_base}/FY26%20Space%20Force%20Research%20and%20Development%20Test%20and%20Evaluation.pdf"),
+        PdfLink("FY26 Space Force Procurement.pdf",
+                f"{sf_base}/FY26%20Space%20Force%20Procurement.pdf"),
+    ]
+    calls, _ = _wire_archive_backfill(monkeypatch, tmp_path, pg_dsn, inventory)
+    cli.main(["jbooks", "backfill", "--fiscal-year", "2026",
+              "--service", "spaceforce", "--source", "archive"])
+    with psycopg.connect(pg_dsn) as con:
+        orgs = {r[0] for r in con.execute("select distinct org from jbook_documents")}
+    assert orgs == {"F"}  # Space Force loads under the AF workbook org
+    assert ("extract", "F", 2026) in calls
