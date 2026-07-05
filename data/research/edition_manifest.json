@@ -1112,6 +1112,112 @@
     }
   },
   "services": {
+    "army_2026": {
+      "exclusions": [
+        {
+          "filename": "Army FY 2026 Budget Overview.pdf",
+          "reason": "Budget overview \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Army Working Capital Fund.pdf",
+          "reason": "Working capital \u2014 revolving fund, not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Base Realignment and Closure Account.pdf",
+          "reason": "BRAC \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Chemical Agents and Munitions Destruction, Defense.pdf",
+          "reason": "Chemical demilitarization (Defense-Wide account) \u2014 not an Army R/D or procurement book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Counter-Islamic State of Iraq and Syria Train and Equip Fund.pdf",
+          "reason": "CISTEF \u2014 not a base R/D or procurement book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "FY26 Presidents Budget Highlights.pdf",
+          "reason": "PB highlights \u2014 summary, no detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Military Personnel Army Volume 1.pdf",
+          "reason": "Military Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "National Guard Army Military Construction.pdf",
+          "reason": "MilCon (ARNG) \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "National Guard Army Operation and Maintenance Overview.pdf",
+          "reason": "O&M overview \u2014 no R-2/P-40 detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "National Guard Army Operation and Maintenance.pdf",
+          "reason": "O&M (ARNG) \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "National Guard Personnel Army Volume 1.pdf",
+          "reason": "ARNG Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Regular Army Military Construction, Army Family Housing and Homeowners Assistance.pdf",
+          "reason": "MilCon / Family Housing \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Regular Army Operation and Maintenance Volume 1.pdf",
+          "reason": "O&M \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Regular Army Operation and Maintenance Volume 2.pdf",
+          "reason": "O&M vol.2 \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Regular Army Operation and Maintenance Volume-1.pdf",
+          "reason": "O&M (re-upload variant) \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Reserve Army Military Construction.pdf",
+          "reason": "MilCon (Reserve) \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Reserve Army Operation and Maintenance Overview.pdf",
+          "reason": "O&M overview \u2014 no R-2/P-40 detail",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Reserve Army Operation and Maintenance.pdf",
+          "reason": "O&M (Reserve) \u2014 not a justification book",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "Reserve Personnel Army Volume 1.pdf",
+          "reason": "Reserve Personnel \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        },
+        {
+          "filename": "U.S. Army Cemeterial Expenses and Construction.pdf",
+          "reason": "Cemeterial expenses \u2014 not R/D or procurement",
+          "rule": "non-justification-appropriation"
+        }
+      ],
+      "fiscal_year": 2026,
+      "service": "army"
+    },
     "navy_2026": {
       "coverage_gain": {
         "display_pe_bli_covered": 387,
