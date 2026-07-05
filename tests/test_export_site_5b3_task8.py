@@ -107,9 +107,9 @@ class TestCommittedSeed:
         _emit_categories_sidecar(json_dir=json_dir, categories_csv=SEED_CSV)
         obj = json.loads((json_dir / "categories.json").read_text())
         assert len(obj) == 50
-        assert obj["0603183D8Z"] == "hypersonics"
+        assert obj["1203154SF"] == "space"
         assert obj["0306250JCY"] == "cyber"
-        assert obj["1160483BB"] == "shipbuilding"
+        assert obj["1000"] == "shipbuilding"
         assert sorted(set(obj.values()) - {"default"}) == [
-            "cyber", "hypersonics", "shipbuilding",
+            "cyber", "shipbuilding", "space",
         ]

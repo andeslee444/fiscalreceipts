@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-3050",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Ship Communications Automation (budget line 3050) is a U.S. Navy procurement line funded primarily in the Other Procurement, Navy appropriation.\", \"citation\": {\"fact_id\": \"5ac6cd688542d987\"}}, {\"text\": \"As afloat network programs migrate into the Consolidated Afloat Networks and Enterprise Services program, the Ship Communications Automation line continues to support the Automated Digital Network System, legacy network operations, tactical messaging, shore tactical assured command and control, and enterprise pier connectivity programs.\", \"citation\": {\"fact_id\": \"bc1f5a2faa4d4844\"}}, {\"text\": \"The Automated Digital Network System (ADNS) provides cyber-hardened, warfighting-critical afloat-to-shore wide-area networking — routing, switching, and monitoring that interconnect Fleet tactical and coalition-partner enclaves worldwide using commercial and government off-the-shelf equipment.\", \"citation\": {\"fact_id\": \"bc1f5a2faa4d4844\"}}, {\"text\": \"In FY 2026, ADNS procures 30 Increment III afloat units, 15 ashore Increment III units, 125 Agile Enclave units, and other technical-insertion and refresh hardware, with the sharp increase in quantities driven specifically by Agile Enclave deployment (up from 2 units in FY 2025 to 125 in FY 2026).\", \"citation\": {\"fact_id\": \"3ff6f4bb0447a9e9\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The program's total funding is $2,126,016 thousand (about $2.13 billion) requested for FY 2026 across its two appropriations.\", \"citation\": {\"fact_id\": \"044c21ac955960e1\"}}, {\"text\": \"In FY 2024 the program recorded actual spending of $103,352 thousand (about $103 million), so the FY 2026 request is roughly twenty times its recent execution level.\", \"citation\": {\"fact_id\": \"918af02f28ff6758\"}}, {\"text\": \"The bulk of the FY 2026 request is a $1,963,941 thousand (about $1.96 billion) reconciliation (mandatory) request carried in the Shipbuilding and Conversion, Navy account.\", \"citation\": {\"fact_id\": \"38bc5c5824258572\"}}, {\"text\": \"The remainder is a $162,075 thousand (about $162 million) discretionary request in the Other Procurement, Navy account, the traditional home of this line.\", \"citation\": {\"fact_id\": \"978a0845620f29d5\"}}, {\"text\": \"The FY 2026 request was reduced by $7.665 million for Advisory and Assistance Services under Executive Order 14222 and by $3.189 million for civilian personnel under Executive Order 14210 on workforce optimization.\", \"citation\": {\"fact_id\": \"3ff6f4bb0447a9e9\"}}]}, \"players\": {\"claims\": [{\"text\": \"The program is run by the U.S. Navy, with its FY 2026 funding split between the Other Procurement, Navy appropriation and the Shipbuilding and Conversion, Navy appropriation.\", \"citation\": {\"fact_id\": \"0cad4b7bdf230a8f\"}}, {\"text\": \"ADNS Increment III converges Navy tactical voice, video, and data into a single IP data stream with assured command-and-control capabilities, aligning surface, subsurface, airborne platforms, and Aegis Ashore sites to the Global Information Grid with gateways to joint and coalition networks.\", \"citation\": {\"fact_id\": \"bc1f5a2faa4d4844\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

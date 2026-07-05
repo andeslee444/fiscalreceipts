@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-0603525N",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"PILOT FISH (program element 0603525N) is a U.S. Navy research-and-development program funded in the Research, Development, Test and Evaluation, Navy account.\", \"citation\": {\"fact_id\": \"3b60902cb4acba07\"}}, {\"text\": \"The program is classified: its budget justification states that the details are classified per Executive Order 13526, Sec. 1.4(a), and are submitted annually to Congress in the classified budget justification book.\", \"citation\": {\"fact_id\": \"117341d8522db1bd\"}}, {\"text\": \"Because the justification is classified, no public description of the program's specific mission, projects, or deliverables is available in the unclassified budget exhibits.\", \"citation\": {\"fact_id\": \"02ae349a762a11c5\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The program's total funding rises from $982,324 thousand (about $982 million) in FY2025 to $1,218,486 thousand (about $1.22 billion) requested for FY2026.\", \"citation\": {\"fact_id\": \"374b07d0a293f180\"}}, {\"text\": \"That is a year-over-year increase of $236,162 thousand (about $236 million) from FY2025 to FY2026.\", \"citation\": {\"fact_id\": \"3b4d40fe3362b5b0\"}}, {\"text\": \"In FY2024 the program recorded actual spending of $877,003 thousand (about $877 million), so funding has grown steadily across the three years despite the classified nature of the work.\", \"citation\": {\"fact_id\": \"15545c196d0600c6\"}}, {\"text\": \"The entire FY2026 request of $1,218,486 thousand is discretionary funding; the program element carries no reconciliation (mandatory) request for FY2026.\", \"citation\": {\"fact_id\": \"fab5407c5312658d\"}}]}, \"players\": {\"claims\": [{\"text\": \"The program is run by the U.S. Navy, with funding drawn from the Research, Development, Test and Evaluation, Navy appropriation.\", \"citation\": {\"fact_id\": \"fab5407c5312658d\"}}, {\"text\": \"No external players, offices, or partners are named in the unclassified record because the program's justification is classified per Executive Order 13526.\", \"citation\": {\"fact_id\": \"117341d8522db1bd\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-6005C64400",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Guided MLRS Rocket (GMLRS) (budget line 6005C64400) is a U.S. Army procurement line funded in the Missile Procurement, Army account.\", \"citation\": {\"fact_id\": \"244150bbbcb7335f\"}}, {\"text\": \"GMLRS rockets are surface-to-surface artillery rockets fired from the Multiple Launch Rocket System (MLRS) and High Mobility Artillery Rocket System (HIMARS) launchers, providing all-weather precision fires against area and point targets at short, medium, and long ranges.\", \"citation\": {\"fact_id\": \"6358c42f33eb09ac\"}}, {\"text\": \"The program has two variants in full-rate production — the GMLRS Unitary, with a 200-pound high-explosive warhead for point targets, and the GMLRS Alternative Warhead (AW), a non-cluster munition for area targets — plus an Extended Range (ER) GMLRS Unitary variant now in production.\", \"citation\": {\"fact_id\": \"6358c42f33eb09ac\"}}, {\"text\": \"The FY2026 base request supports procurement of 5,974 rockets, with Army guidance to buy 2,814 Standard Unitary, 2,934 Standard AW, and 228 ER GMLRS Unitary rounds in support of the Army's Total Munitions Requirement.\", \"citation\": {\"fact_id\": \"f0dca1b9c104b3ff\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The line's total funding is $1,168,227 thousand (about $1.17 billion) requested for FY2026, down slightly from $1,198,264 thousand enacted in FY2025.\", \"citation\": {\"fact_id\": \"f54551e9bebee1cb\"}}, {\"text\": \"In FY2024 the line recorded actual spending of $1,398,086 thousand (about $1.40 billion), so the FY2026 request continues below recent execution levels.\", \"citation\": {\"fact_id\": \"804399e3b42e7f92\"}}, {\"text\": \"The entire FY2026 request is discretionary funding — the P-1 exhibit shows a discretionary request of $1,168,227 thousand and no separate reconciliation (mandatory) request for this line.\", \"citation\": {\"fact_id\": \"5b7726c15c6e710d\"}}, {\"text\": \"The program's justification attributes the funding decrease from $1,198.264 million in FY2025 to $1,168.227 million in FY2026 to a decrease in the quantity of rockets to be procured.\", \"citation\": {\"fact_id\": \"f0dca1b9c104b3ff\"}}, {\"text\": \"The line matters because GMLRS is a high-demand precision-fires munition covered by a four-year Multi-Year Procurement contract spanning FY2024 through FY2027, and it is part of the Army Transformation Initiative.\", \"citation\": {\"fact_id\": \"f0dca1b9c104b3ff\"}}]}, \"players\": {\"claims\": [{\"text\": \"The line is run by the U.S. Army, with funding drawn from the Missile Procurement, Army appropriation.\", \"citation\": {\"fact_id\": \"244150bbbcb7335f\"}}, {\"text\": \"The U.S. Marine Corps also procures GMLRS rockets through the Army project office, making it a shared precision-fires acquisition.\", \"citation\": {\"fact_id\": \"6358c42f33eb09ac\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

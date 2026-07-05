@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-000075",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Other Production Charges (budget line 000075) is a U.S. Air Force procurement line funded in the Aircraft Procurement, Air Force account.\", \"citation\": {\"fact_id\": \"e4e9df975136d796\"}}, {\"text\": \"The Miscellaneous Production Charges program covers items not directly related to other procurement line items in the appropriation — end items that cannot reasonably be charged elsewhere, some classified programs, and alternate mission equipment for out-of-production systems.\", \"citation\": {\"fact_id\": \"797e9a7019bb90fa\"}}, {\"text\": \"Major efforts supported include Electronic Attack pods and associated test equipment; depot-activation efforts for B-2, F-15E, F-16, and C-5 systems; T-7A depot activation; aerial targets; and the required U.S. contribution to NATO Airborne Early Warning and Control projects.\", \"citation\": {\"fact_id\": \"797e9a7019bb90fa\"}}, {\"text\": \"For FY2026, the P-40A C-5 Airlift Squadrons item is a new start, with efforts including funding of the Electronic Warfare Reprogramming Enterprise and the EW/Cyber Combat Assessment via COMBAT SHIELD across multiple combat airframes.\", \"citation\": {\"fact_id\": \"4b9df3ee4bfd97cf\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The line's total funding is $940,190 thousand (about $940 million) requested for FY2026, down from $1,612,819 thousand enacted in FY2025.\", \"citation\": {\"fact_id\": \"44b88a373d009447\"}}, {\"text\": \"In FY2024 the line recorded actual spending of $1,206,090 thousand (about $1.21 billion), so the FY2026 request falls below both recent years.\", \"citation\": {\"fact_id\": \"e4e9df975136d796\"}}, {\"text\": \"The entire FY2026 request is discretionary funding — the P-1 exhibit shows a discretionary request of $940,190 thousand and no separate reconciliation (mandatory) request for this line.\", \"citation\": {\"fact_id\": \"39d55fe69ba4f5b5\"}}, {\"text\": \"The line matters because it is a catch-all procurement account that funds cross-cutting Air Force items — from electronic-attack pods to depot activations and the U.S. NATO early-warning contribution — that do not fit neatly into a single weapon-system line.\", \"citation\": {\"fact_id\": \"797e9a7019bb90fa\"}}]}, \"players\": {\"claims\": [{\"text\": \"The line is run by the U.S. Air Force, with funding drawn from the Aircraft Procurement, Air Force appropriation.\", \"citation\": {\"fact_id\": \"e4e9df975136d796\"}}, {\"text\": \"The program is tied to a broad set of Air Force research efforts, with associated Research, Development, Test and Evaluation funding spread across numerous program elements including 0101113F, 0207040F, and 0305116F, among others.\", \"citation\": {\"fact_id\": \"797e9a7019bb90fa\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

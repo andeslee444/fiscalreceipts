@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-B02100",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"B-21 Raider (budget line B02100) is a U.S. Air Force procurement line funded in the Aircraft Procurement, Air Force account.\", \"citation\": {\"fact_id\": \"d1f004919881e332\"}}, {\"text\": \"The line funds procurement of the B-21 Raider, the Air Force's next-generation strategic bomber, including aircraft flyaway costs, producibility improvements, support equipment, alternate mission equipment, training, spares, depot standup, and engineering change orders.\", \"citation\": {\"fact_id\": \"2598f582b2303d46\"}}, {\"text\": \"Funding may also address Diminishing Manufacturing Sources and Material Shortages (DMSMS) and obsolescence, through activities such as bridge buys, life-of-type buys, and buys to protect the production schedule.\", \"citation\": {\"fact_id\": \"2598f582b2303d46\"}}, {\"text\": \"The B-21 is a special-access program: it is reported to Congress in accordance with Title 10, United States Code, Section 119(a)(1) in the Special Access Program Annual Report, and detailed public justification is limited.\", \"citation\": {\"fact_id\": \"e3175556cf2d2604\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The line's total funding is $5,551,242 thousand (about $5.55 billion) requested for FY2026, up from $2,600,468 thousand enacted in FY2025.\", \"citation\": {\"fact_id\": \"473e68bd3c3640a3\"}}, {\"text\": \"In FY2024 the line recorded actual spending of $2,270,693 thousand (about $2.27 billion), so the FY2026 request roughly doubles the recent execution level.\", \"citation\": {\"fact_id\": \"a8cb19a7838209c0\"}}, {\"text\": \"The FY2026 request is split between a discretionary request of $3,452,116 thousand (about $3.45 billion) and a reconciliation (mandatory) request of $2,099,126 thousand (about $2.10 billion).\", \"citation\": {\"fact_id\": \"8b63088cef978beb\"}}, {\"text\": \"The mandatory (reconciliation) portion of the request is $2,099,126 thousand, a large share of the year's growth.\", \"citation\": {\"fact_id\": \"816009b0aa9b4074\"}}, {\"text\": \"The program's own justification states that the enhancement portion of the FY2026 request funds expansion of production capacity for the B-21, with further detail provided in Section 20008 of the Reconciliation Exhibit.\", \"citation\": {\"fact_id\": \"2598f582b2303d46\"}}, {\"text\": \"The near-doubling of the line signals a ramp toward full production of a new nuclear-capable strategic bomber, one of the Air Force's largest procurement commitments.\", \"citation\": {\"fact_id\": \"36d310773a87426b\"}}]}, \"players\": {\"claims\": [{\"text\": \"The line is run by the U.S. Air Force, with funding drawn from the Aircraft Procurement, Air Force appropriation.\", \"citation\": {\"fact_id\": \"d1f004919881e332\"}}, {\"text\": \"Because the B-21 is a special-access program, oversight and public reporting run through the Director of Special Programs in the Office of the Under Secretary of Defense for Acquisition and Sustainment (OUSD(A&S)/DSP).\", \"citation\": {\"fact_id\": \"e3175556cf2d2604\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

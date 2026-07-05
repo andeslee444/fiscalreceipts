@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-9020",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Spares and Repair Parts (budget line item 9020) is a U.S. Navy procurement line funded in the Other Procurement, Navy account.\", \"citation\": {\"fact_id\": \"0cc79ec958ba96f7\"}}, {\"text\": \"The line procures spares for systems and equipment budgeted across Budget Activities 01–07 as a follow-on account supporting end-item hardware procurements, broken down into Initial Spares, Coordinated Shipboard Allowance List outfitting spares, Lay-In Spares, and Vendor-Direct replenishment spares.\", \"citation\": {\"fact_id\": \"99b8e5bf6e6b7821\"}}, {\"text\": \"Its purpose is to maintain the operational availability of new and existing spares and repair parts for systems fielded to operational warfighters — providing onboard repair parts, interim depot spares, and installation-and-checkout spares to sustain the Navy's mission readiness and information-dominance posture.\", \"citation\": {\"fact_id\": \"d4c323309fb7f37d\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The line's total FY2026 request is $883,630 thousand (about $884 million), down from $705,144 thousand (about $705 million) enacted in FY2025 on a discretionary basis but higher once mandatory funds are included.\", \"citation\": {\"fact_id\": \"0cc79ec958ba96f7\"}}, {\"text\": \"The FY2026 request splits into a discretionary request of $585,865 thousand (about $586 million) and a reconciliation (mandatory) request of $297,765 thousand (about $298 million).\", \"citation\": {\"fact_id\": \"fc2fd68765e8085c\"}}, {\"text\": \"The $297,765 thousand reconciliation request is additional mandatory funding on top of the discretionary base, together making up the line's $883,630 thousand FY2026 total.\", \"citation\": {\"fact_id\": \"88bd2ba9ba6bacd7\"}}, {\"text\": \"In FY2024 the line recorded actual obligations of $736,770 thousand (about $737 million).\", \"citation\": {\"fact_id\": \"9464e044bf26ec86\"}}, {\"text\": \"The program's own budget narrative states the mandatory funds partially fund BLI 9020, with further detail provided in Section 20002 (Shipbuilding) and Section 20010 (Readiness) of the Reconciliation Exhibit.\", \"citation\": {\"fact_id\": \"d4c323309fb7f37d\"}}, {\"text\": \"The FY2026 request was reduced by $2.9 million for Advisory and Assistance Services and by $1.5 million for civilian personnel in alignment with Executive Orders 14222 and 14210, the President's Department of Government Efficiency cost- and workforce-optimization initiatives.\", \"citation\": {\"fact_id\": \"d4c323309fb7f37d\"}}]}, \"players\": {\"claims\": [{\"text\": \"The program is run by the U.S. Navy, with funding drawn from the Other Procurement, Navy appropriation.\", \"citation\": {\"fact_id\": \"fc2fd68765e8085c\"}}, {\"text\": \"Initial spares are procured by Naval Sea Systems Command (NAVSEA) program offices and other systems commands, while Coordinated Shipboard Allowance List outfitting spares are procured through the Navy Working Capital Fund to provide onboard repair parts.\", \"citation\": {\"fact_id\": \"99b8e5bf6e6b7821\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-1000",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Ship Maintenance, Repair and Modernization (budget line 1000) is a U.S. Navy procurement line funded in the Other Procurement, Navy appropriation.\", \"citation\": {\"fact_id\": \"911ddd2458e3c74f\"}}, {\"text\": \"The line funds private contracted ship maintenance for the U.S. Pacific Fleet and U.S. Fleet Forces Command, paying for ship overhauls and restricted/technical availabilities performed at private shipyards that restore ships, including systems affecting safety or combat capability, to established performance standards.\", \"citation\": {\"fact_id\": \"30748db80a2d678e\"}}, {\"text\": \"The program traces to Division A of the Consolidated Appropriations Act, 2020 (Public Law 116-93), which appropriated Other Procurement, Navy funding to initiate privately contracted ship maintenance in the U.S. Pacific Fleet, later continued and then expanded in 2022 to include U.S. Fleet Forces Command.\", \"citation\": {\"fact_id\": \"b59189f4578fa4dc\"}}, {\"text\": \"Using Other Procurement, Navy funds for this work lets the Navy apply commercial best practices, extend contract lead times, address emergent repair requirements, and strengthen industry partnerships in depot-level ship maintenance.\", \"citation\": {\"fact_id\": \"b59189f4578fa4dc\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The program's total funding is $2,392,620 thousand (about $2.39 billion) requested for FY 2026.\", \"citation\": {\"fact_id\": \"9ab386383cc008b3\"}}, {\"text\": \"In FY 2024 the program recorded actual spending of $2,839,179 thousand (about $2.84 billion), so the FY 2026 request is somewhat below its recent execution level.\", \"citation\": {\"fact_id\": \"bb0a1a416c345e44\"}}, {\"text\": \"The entire FY 2026 request is discretionary: the P-1 exhibit shows a $2,392,620 thousand discretionary request and no reconciliation (mandatory) request.\", \"citation\": {\"fact_id\": \"0ebecdd020eaff0d\"}}, {\"text\": \"The FY 2026 request of about $2,392.6 million is essentially flat against the current-year enacted level of about $2,392.2 million.\", \"citation\": {\"fact_id\": \"4ace2f153e9dde6e\"}}, {\"text\": \"The FY 2026 request was reduced by $163.538 million for Advisory and Assistance Services in alignment with Executive Order 14222 on government-efficiency cost initiatives.\", \"citation\": {\"fact_id\": \"30748db80a2d678e\"}}]}, \"players\": {\"claims\": [{\"text\": \"The program is run by the U.S. Navy, with funding drawn from the Other Procurement, Navy appropriation.\", \"citation\": {\"fact_id\": \"4ace2f153e9dde6e\"}}, {\"text\": \"The work is executed for U.S. Pacific Fleet and U.S. Fleet Forces Command at private shipyards, and the Navy uses the program to meet its A-120 contracting policy while improving depot-level maintenance and overall readiness.\", \"citation\": {\"fact_id\": \"b59189f4578fa4dc\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

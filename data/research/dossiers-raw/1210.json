@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-1210",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Standard Boats (budget line 1210) is a U.S. Navy procurement line funded in the Other Procurement, Navy account.\", \"citation\": {\"fact_id\": \"645d640d9ea0a173\"}}, {\"text\": \"The Naval Sea Systems Command (NAVSEA) procures these boats to fill allowances set by the Chief of Naval Operations and NAVSEA and to replace boats now in service that are beyond economical repair at shore activities and aboard ships.\", \"citation\": {\"fact_id\": \"c2279c707cb33043\"}}, {\"text\": \"The line buys a range of small craft, including Force Protection Boats — light aluminum outboard-powered boats roughly 7 to 11 meters in length used for fleet force protection, maritime interdiction, and law-enforcement operations at Naval activities and adjacent ports and waterways.\", \"citation\": {\"fact_id\": \"c2279c707cb33043\"}}, {\"text\": \"The FY2026 request supports boats for Base Operating Forces, Amphibious Assault Ships, Explosive Ordnance forces, Naval Special Warfare, Fleet Logistics Support, Submarine Warfare, training activities, and force protection.\", \"citation\": {\"fact_id\": \"7a414c6259a1e8cc\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The line's total funding is $866,515 thousand (about $867 million) requested for FY2026, up sharply from $422,832 thousand enacted in FY2025.\", \"citation\": {\"fact_id\": \"a74c44f0b9c8d4dd\"}}, {\"text\": \"In FY2024 the line recorded actual spending of $223,529 thousand (about $224 million), so the FY2026 request is nearly four times its recent execution level.\", \"citation\": {\"fact_id\": \"759c2bb3ef194d8a\"}}, {\"text\": \"Almost all of the growth is mandatory funding: the FY2026 request splits into a discretionary request of $51,546 thousand (about $52 million) and a much larger reconciliation (mandatory) request of $814,969 thousand (about $815 million).\", \"citation\": {\"fact_id\": \"4ffb59af833ccb01\"}}, {\"text\": \"The reconciliation (mandatory) portion of the FY2026 request is $814,969 thousand, with further detail provided in the Shipbuilding and Readiness sections of the Reconciliation Exhibit.\", \"citation\": {\"fact_id\": \"4e9406ab7f16ed3e\"}}, {\"text\": \"The program's justification notes that the FY2026 request was reduced by $0.062 million for advisory and assistance services and by $0.072 million for civilian personnel in alignment with the Administration's Department of Government Efficiency executive orders.\", \"citation\": {\"fact_id\": \"7a414c6259a1e8cc\"}}]}, \"players\": {\"claims\": [{\"text\": \"The line is run by the U.S. Navy, with funding drawn from the Other Procurement, Navy appropriation.\", \"citation\": {\"fact_id\": \"645d640d9ea0a173\"}}, {\"text\": \"The Naval Sea Systems Command (NAVSEA) manages the procurement, buying boats to fill inventory objectives that change based on Fleet requirements.\", \"citation\": {\"fact_id\": \"c2279c707cb33043\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}

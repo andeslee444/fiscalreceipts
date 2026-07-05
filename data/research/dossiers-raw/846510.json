@@ -1,0 +1,18 @@
+{
+ "custom_id": "dossier-846510",
+ "batch_id": "subagent-authored-2026-07-05",
+ "collected_at": "2026-07-05T21:51:05.902162+00:00",
+ "provenance": "Claude Code subagent (not Anthropic Batch API); cited-or-absent gate enforced; reproducible via `dossiers submit` for future API runs",
+ "message": {
+  "id": null,
+  "content": [
+   {
+    "type": "text",
+    "text": "{\"what_it_is\": {\"claims\": [{\"text\": \"Special Update Program (budget line 846510) is a U.S. Air Force procurement line funded in the Other Procurement, Air Force appropriation.\", \"citation\": {\"fact_id\": \"9f300c0abbc6ee6c\"}}, {\"text\": \"The program is a classified effort: its published budget documentation states only that it is reported in accordance with Title 10, United States Code, Section 119(a)(1) in the Special Access Program Annual Report to Congress.\", \"citation\": {\"fact_id\": \"3d66066580ce6509\"}}, {\"text\": \"Because the program is reported through the Special Access Program channel, its detailed description and justification are withheld from the public budget exhibit and provided only in the classified annual report.\", \"citation\": {\"fact_id\": \"04edf1b48a855787\"}}]}, \"why_it_matters\": {\"claims\": [{\"text\": \"The program's total funding is $1,178,397 thousand (about $1.18 billion) requested for FY 2026.\", \"citation\": {\"fact_id\": \"70b25d530e6e19f9\"}}, {\"text\": \"In FY 2024 the program recorded actual spending of $1,042,833 thousand (about $1.04 billion), so the FY 2026 request is a modest increase over recent execution.\", \"citation\": {\"fact_id\": \"0c60292c86c4c66c\"}}, {\"text\": \"The entire FY 2026 request is discretionary: the P-1 exhibit shows a $1,178,397 thousand discretionary request and no reconciliation (mandatory) request.\", \"citation\": {\"fact_id\": \"43449802a923b661\"}}, {\"text\": \"The FY 2026 request of about $1,178.4 million is below the current-year level of about $1,503.3 million, so year-over-year the classified line steps down even as it stays above its FY 2024 execution.\", \"citation\": {\"fact_id\": \"9301382b45a2eb22\"}}]}, \"players\": {\"claims\": [{\"text\": \"The program is run by the U.S. Air Force, with funding drawn from the Other Procurement, Air Force appropriation.\", \"citation\": {\"fact_id\": \"69ff07b494c91471\"}}, {\"text\": \"No external contractors or partner organizations are named in the public exhibit, consistent with the program being reported under the Title 10 Section 119(a)(1) Special Access Program process.\", \"citation\": {\"fact_id\": \"04edf1b48a855787\"}}]}, \"recent_developments\": {\"claims\": []}}"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "type": "message"
+ }
+}
