@@ -316,3 +316,53 @@ def test_download_via_archive_redownloads_truncated_resume(tmp_path):
     res = af.download_via_archive(client, ARMY_RDTE, dest, throttle_s=0)
     assert res.resumed is False
     assert dest.read_bytes() == complete
+
+
+def test_download_falls_back_to_query_variant_when_canonical_unarchived(tmp_path):
+    """Some books were only archived with a DNN ?ver=... variant (AF RDTE Vol I):
+    the canonical URL has zero exact snapshots, so the fetch must adopt the
+    archived variant and download IT."""
+    ver_url = ARMY_RDTE + "?ver=0thfb_FYbJr2fS2UCL8KhQ%3d%3d"
+    complete = b"%PDF-1.4\nvariant book\n" + b"v" * 40 + b"\n%%EOF\n"
+    ts = "20250701013042"
+
+    def handler(request):
+        if "/wayback/available" in request.url.path:
+            return httpx.Response(200, json={"archived_snapshots": {}})
+        if "/cdx/search/cdx" in request.url.path:
+            q = str(request.url.query)
+            # canonical exact lookup -> empty; the *-prefix variant lookup -> the ver row
+            if "%2A" in q or "*" in q:  # url=<canonical>*
+                return httpx.Response(200, text=f"{ver_url} {ts} 200 application/pdf\n")
+            return httpx.Response(200, text="")
+        if f"{ts}id_" in str(request.url) and "ver=" in str(request.url):
+            return httpx.Response(200, content=complete)
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    dest = tmp_path / "af_rdte_v1.pdf"
+    res = af.download_via_archive(client, ARMY_RDTE, dest, throttle_s=0)
+    assert dest.read_bytes() == complete
+    assert "ver=" in res.wayback_url  # fetched the archived variant
+    # provenance still points at the ORIGINAL canonical gov URL
+    assert res.original_url == ARMY_RDTE
+
+
+def test_variant_snapshots_excludes_prefix_collisions():
+    """A `<path>*` prefix search must not adopt a DIFFERENT file that merely
+    shares the name prefix — only true query-variants of the exact path."""
+    other = ARMY_RDTE.replace("Activity%201", "Activity%2010")  # different book
+    ver = ARMY_RDTE + "?ver=abc"
+
+    def handler(request):
+        if "/cdx/search/cdx" in request.url.path:
+            return httpx.Response(
+                200,
+                text=(f"{ver} 20250701000000 200 application/pdf\n"
+                      f"{other} 20250702000000 200 application/pdf\n"),
+            )
+        return httpx.Response(404)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    snaps = af.variant_snapshots(client, ARMY_RDTE)
+    assert [s.original for s in snaps] == [ver]  # the collision is dropped

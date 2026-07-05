@@ -172,7 +172,43 @@ def snapshots_for(client: httpx.Client, original_url: str) -> list[Snapshot]:
         if s.timestamp not in seen:
             ordered.append(s)
             seen.add(s.timestamp)
+    # Last resort: some books were ONLY archived with a DNN `?ver=...` query
+    # variant, so the canonical (stripped) URL has zero exact snapshots (AF RDTE
+    # Vol I). Fall back to a prefix search for archived variants of this exact
+    # path and adopt their snapshots (each carries its own `original`, so the
+    # download fetches the variant URL that actually exists).
+    if not ordered:
+        ordered.extend(variant_snapshots(client, original_url))
     return ordered
+
+
+def variant_snapshots(client: httpx.Client, original_url: str) -> list[Snapshot]:
+    """Snapshots of `?...`-query variants of an exact canonical path.
+
+    Only variants whose canonical (query-stripped) form equals `original_url`
+    qualify — a prefix match must not pull in a different file that merely
+    shares a name prefix. Oldest first."""
+    params = {
+        "url": original_url + "*",
+        "output": "text",
+        "fl": "original,timestamp,statuscode,mimetype",
+        "filter": ["statuscode:200", "mimetype:application/pdf"],
+        "collapse": "digest",
+    }
+    r = client.get(CDX_API, params=params)
+    r.raise_for_status()
+    out: list[Snapshot] = []
+    seen_ts: set[str] = set()
+    for line in r.text.splitlines():
+        parts = line.split(" ")
+        if len(parts) < 2:
+            continue
+        original, timestamp = parts[0], parts[1]
+        if canonical_url(original) != original_url or timestamp in seen_ts:
+            continue
+        seen_ts.add(timestamp)
+        out.append(Snapshot(original=original, timestamp=timestamp))
+    return out
 
 
 def archive_snapshot_url(client: httpx.Client, original_url: str) -> str | None:
@@ -183,7 +219,7 @@ def archive_snapshot_url(client: httpx.Client, original_url: str) -> str | None:
     snaps = snapshots_for(client, original_url)
     if not snaps:
         return None
-    return raw_wayback_url(snaps[0].timestamp, original_url)
+    return raw_wayback_url(snaps[0].timestamp, snaps[0].original)
 
 
 def download_via_archive(
@@ -225,7 +261,9 @@ def download_via_archive(
 
     last_reason = "no snapshot returned PDF bytes"
     for i, snap in enumerate(snaps[:max_snapshots]):
-        wb = raw_wayback_url(snap.timestamp, original_url)
+        # snap.original is the exact archived URL — usually == original_url, but
+        # for variant-only books it is the `?ver=...` form that actually exists.
+        wb = raw_wayback_url(snap.timestamp, snap.original)
         try:
             resp = client.get(wb)
         except httpx.HTTPError as e:  # noqa: BLE001
