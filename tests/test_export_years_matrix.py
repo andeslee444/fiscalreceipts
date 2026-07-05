@@ -499,12 +499,22 @@ class TestSizeBudget:
         not (_ROOT / "data" / "site" / "json" / "years_matrix.json").exists(),
         reason="live export not present",
     )
-    def test_live_payload_under_2mb(self):
-        """Phase 5E raised the budget from 900 KB to 2 MB raw (spec §6:
-        ~7 more decade columns × existing rows, same lazy-fetch pattern)."""
+    def test_live_payload_under_budget(self):
+        """Phase 5E raised the budget 900 KB → 2 MB (spec §6: ~7 more decade
+        columns × existing rows). Phase 5G raised it 2 MB → 4 MB across two
+        rounds: the Navy J-books grew the detail-grade matrix ~462 → 813
+        programs, then the Army/AF/SF archive round grew it 813 → ~1,741
+        programs (~2.7–3.0 MB) at the SAME per-program density — legitimate
+        corpus growth, not a design regression. Pinned to the exporter's own
+        _YEARS_MATRIX_MAX_BYTES so this test and the exporter never drift."""
+        import govbudget.export_site as es
+
         path = _ROOT / "data" / "site" / "json" / "years_matrix.json"
         size = path.stat().st_size
-        assert size < 2 * 1024 * 1024, f"years_matrix.json is {size} bytes (≥2MB)"
+        assert size < es._YEARS_MATRIX_MAX_BYTES, (
+            f"years_matrix.json is {size} bytes "
+            f"(≥ {es._YEARS_MATRIX_MAX_BYTES}-byte budget)"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -103,7 +103,7 @@ export function ProgramHeader({
           <Badge
             variant="outline"
             className="text-xs text-muted-foreground"
-            title="Summary figures from the all-service R-1/P-1 workbooks — the detailed service J-book is not yet ingested"
+            title="Summary figures from the all-service R-1/P-1 workbooks — this line carries no matching R-2/P-40 J-book detail (see the description note for why)"
           >
             Summary figures (R-1/P-1)
           </Badge>

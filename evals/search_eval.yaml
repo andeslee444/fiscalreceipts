@@ -29,10 +29,10 @@ cases:
     note: "Exact pe_bli for the heaviest SSG page (Aviation Safety Technologies)"
 
   # ── Program title queries ───────────────────────────────────────────────────
-  - query: "defense research sciences"
+  - query: "defense research sciences darpa"
     expect_url_top3: "/program/0601101E/"
     tier: quick
-    note: "Full program title match — top DARPA basic research program"
+    note: "DARPA basic research program. Since the Phase 5G Army/AF/SF archive round, every military department carries its own full-tier 'Defense Research Sciences' PE (0601102A/F, 0601153N, 0601102SF) — five identical titles that tie on relevance, so the query names the service (darpa) to disambiguate the intended one."
 
   - query: "sensor technology"
     expect_url_top3: "/program/0603767E/"

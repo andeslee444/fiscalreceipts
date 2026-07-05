@@ -70,9 +70,10 @@ import { ProgramConcentration } from "@/components/program-concentration";
 export const dynamicParams = false;
 
 /**
- * Phase 5F §2a: the page universe is EVERY program_details sidecar (1,995) —
- * the 462 full-tier programs from programs.json plus the 1,533 rollup-tier
- * sidecars (R-1/P-1 figures + trajectory, service J-book not yet ingested).
+ * Phase 5F §2a: the page universe is EVERY program_details sidecar (~1,995
+ * after the Phase 5G Army/AF/SF archive round) — the ~1,741 full-tier
+ * programs from programs.json plus the ~254 remaining rollup-tier sidecars
+ * (R-1/P-1 figures + trajectory only, no matching R-2/P-40 J-book detail).
  */
 export function generateStaticParams(): { peBli: string }[] {
   return getProgramPeBlis().map((peBli) => ({ peBli }));
@@ -122,9 +123,11 @@ export async function generateMetadata({
         ? firstSentence.slice(0, 197) + "…"
         : firstSentence;
   } else if (tier === "rollup") {
-    // Honest per-service tail (Phase 5G): ingested services (Navy) have no
-    // matching R-2/P-40 narrative for this line; uningested services (Army,
-    // Air Force) have books not yet ingested.
+    // Honest per-service tail (Phase 5G): the ingested service books (Navy,
+    // Army, Air Force / Space Force) have no matching R-2/P-40 narrative for
+    // this particular line (classified, SBIR, spectrum, or a workbook
+    // remainder). Any non-service org code with no J-book concept still falls
+    // back to the "not yet ingested" tail.
     const tail = isIngestedServiceOrg(details.service_org ?? "")
       ? "No R-2/P-40 J-book narrative for this line."
       : "Detailed service J-book not yet ingested.";
@@ -286,6 +289,11 @@ export default async function ProgramPage({
   const descriptionNarratives = narrativesInGroup(details.narratives, "description");
   const justificationNarratives = narrativesInGroup(details.narratives, "justification");
   const serviceName = serviceOrgName(details.service_org ?? "") || "service";
+  // Ingested services (Navy, Army, Air Force / Space Force) have their FY2026
+  // books in the pipeline — a rollup line for one of them has no matching
+  // R-2/P-40 narrative, it is NOT "awaiting ingestion". Drives the honest
+  // empty-state wording in the justification section (5G archive round).
+  const serviceIngested = isIngestedServiceOrg(details.service_org ?? "");
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -395,9 +403,19 @@ export default async function ProgramPage({
           />
         ) : tier === "rollup" ? (
           <SectionEmpty title="Justification">
-            Accomplishments and planned-program narratives live in the{" "}
-            {serviceName} J-book, which is not yet ingested — see the
-            description note above for the roadmap.
+            {serviceIngested ? (
+              <>
+                The {serviceName} FY2026 J-book is ingested, but this program
+                element carries no matching R-2/P-40 accomplishments or
+                planned-program narrative — see the description note above.
+              </>
+            ) : (
+              <>
+                Accomplishments and planned-program narratives live in the{" "}
+                {serviceName} J-book, which is not yet ingested — see the
+                description note above for the roadmap.
+              </>
+            )}
           </SectionEmpty>
         ) : (
           <SectionEmpty title="Justification">

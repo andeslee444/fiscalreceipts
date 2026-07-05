@@ -269,10 +269,10 @@ export interface ProgramDetails {
   /** Phase 5E: largest cited request-vs-actuals gap (requires decade_series). */
   book_diff?: ProgramBookDiff;
   /**
-   * Phase 5F rollup-tier fields (Batch A): present ONLY on the 1,533
-   * rollup sidecars (R-1/P-1 figures + trajectory, no J-book detail).
-   * The 462 full-tier sidecars carry none of these — their program row
-   * lives in programs.json.
+   * Phase 5F rollup-tier fields (Batch A): present ONLY on the rollup
+   * sidecars (R-1/P-1 figures + trajectory, no J-book detail) — ~254 after
+   * the Phase 5G Army/AF/SF archive round. The ~1,741 full-tier sidecars
+   * carry none of these — their program row lives in programs.json.
    */
   tier?: "rollup";
   service_org?: string;
@@ -292,9 +292,10 @@ export function getProgramDetails(peBli: string): ProgramDetails {
 }
 
 // ── Program page universe (Phase 5F §2a) ─────────────────────────────────────
-// Every distinct PE in budget_lines has a program_details sidecar (1,995):
-// the 462 full-tier programs from programs.json PLUS 1,533 rollup-tier
-// sidecars. generateStaticParams / sitemap / OG all enumerate THIS set.
+// Every distinct PE in budget_lines has a program_details sidecar (~1,995
+// after the Phase 5G Army/AF/SF archive round): the ~1,741 full-tier programs
+// from programs.json PLUS ~254 rollup-tier sidecars. generateStaticParams /
+// sitemap / OG all enumerate THIS set.
 
 let _programPeBlis: string[] | null = null;
 

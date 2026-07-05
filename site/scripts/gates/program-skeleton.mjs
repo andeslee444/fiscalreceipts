@@ -180,7 +180,19 @@ export async function runProgramSkeletonGate() {
       } else {
         const svc = serviceName(d.service_org ?? "");
         const text = note.text ?? "";
-        if (!text.includes(`lives in the ${svc} J-book`)) {
+        // The note must name the service and its J-book, in one of two honest
+        // wordings (Phase 5G): the UNINGESTED wording ("…lives in the {svc}
+        // J-book, which is not yet ingested…") OR the INGESTED wording ("The
+        // {svc} FY2026 J-books are ingested, but this program element carries
+        // no R-2/P-40 narrative…"). Army 'A', Navy 'N', and Air Force / Space
+        // Force 'F' now render the ingested wording; other org codes keep the
+        // uningested wording. Accept either, but require the service name + the
+        // phrase "J-book" so the note is never generic.
+        const namesUningested = text.includes(`lives in the ${svc} J-book`);
+        const namesIngested =
+          text.includes(`The ${svc} FY2026 J-book`) &&
+          text.includes("no R-2/P-40 narrative");
+        if (!namesUningested && !namesIngested) {
           pageOk = false;
           errors.push(
             `program-skeleton(c): /program/${slug}/ note does not name the ${svc} J-book (got: "${text.slice(0, 100)}")`

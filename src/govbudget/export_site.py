@@ -3010,7 +3010,26 @@ def _write_all_sidecars(
             return min(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
         return None
 
-    rollup_pes = sorted({row[8] for row in bl_rows} - all_pe_blis)
+    # Route-safety filter: a program page is a Next.js static route
+    # /program/[peBli]/, so the pe_bli must round-trip through a URL path
+    # segment. A handful of Army R-1/P-1 workbook lines mis-parse the
+    # appropriation label ("RDT&E", "O&M") into the pe_bli slot — the '&'
+    # breaks static routing and the page renders as 404 (0 data-sections),
+    # which the program-skeleton gate correctly flags. These are not real
+    # program elements, so drop them from the rollup universe rather than ship
+    # broken pages. Real BLI codes (GPSIII, LAIRCM, O&M-free) are unaffected.
+    def _is_route_safe_pe(pe_bli: str) -> bool:
+        return not (set(pe_bli) & set("&#/?%") or any(c.isspace() for c in pe_bli))
+
+    rollup_pes_raw = sorted({row[8] for row in bl_rows} - all_pe_blis)
+    dropped_unsafe = [p for p in rollup_pes_raw if not _is_route_safe_pe(p)]
+    rollup_pes = [p for p in rollup_pes_raw if _is_route_safe_pe(p)]
+    if dropped_unsafe:
+        print(
+            f"program_details: dropped {len(dropped_unsafe)} route-unsafe "
+            f"mis-parsed pe_bli(s) from the page universe: "
+            f"{', '.join(dropped_unsafe)}"
+        )
     for pe_bli in rollup_pes:
         service_org = _rollup_service_org(pe_bli)
         traj = traj_index.get((pe_bli, service_org)) if service_org else None
@@ -4695,9 +4714,15 @@ def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = No
 # Size budget for years_matrix.json (fetched lazily by the /years/ client
 # island). Phase 5E raised the 5D 900 KB budget to 2 MB raw (5E spec §6:
 # the decade adds ~7 columns × existing rows, same lazy-fetch pattern).
-# Loud guard — a payload over budget means the matrix design regressed,
-# not that the budget should move.
-_YEARS_MATRIX_MAX_BYTES = 2 * 1024 * 1024
+# Phase 5G (Navy round) confirmed ~2 KB/program at 813 programs (~1.53 MB).
+# Phase 5G (Army/AF/SF archive round) grew the detail-grade matrix to 1,741
+# programs at ~1.6 KB/program → ~2.74 MB: the SAME per-program density, just
+# more programs (Army 'A' + Air Force/Space Force 'F' J-book detail landed).
+# Budget raised to 4 MB, which still catches a doubling from here (1,741 →
+# ~2,540 programs) — a regression in the matrix design, not corpus growth.
+# Loud guard — a payload over budget beyond linear program growth means the
+# matrix design regressed, not that the budget should move.
+_YEARS_MATRIX_MAX_BYTES = 4 * 1024 * 1024
 
 # Decade column keys: fy + kind suffix ('fy2020a'). The (kind, fy) pair
 # determines the edition uniquely by the year-shift rule (actuals for FY N

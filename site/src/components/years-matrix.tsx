@@ -500,7 +500,7 @@ export function YearsMatrix() {
           <div key={i} className="h-4 rounded bg-muted" aria-hidden="true" />
         ))}
         <p className="pt-1 text-xs text-muted-foreground">
-          Loading 462 programs…
+          Loading the budget-over-time matrix…
         </p>
       </div>
     );

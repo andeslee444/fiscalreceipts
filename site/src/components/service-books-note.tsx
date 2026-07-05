@@ -4,12 +4,14 @@
  * Rollup pages carry R-1/P-1 workbook figures but no R-2/P-40 J-book detail.
  * The reason depends on the service:
  *
- *   • Uningested services (Army, Air Force) — the narrative books live on the
- *     service comptroller sites and are not yet ingested (manual path).
- *   • Ingested services (Navy, Phase 5G) — the FY2026 J-books ARE ingested;
- *     this particular PE simply has no matching R-2/P-40 narrative in them
- *     (e.g. a procurement-only or summary line). Saying it is "not yet
- *     ingested" would now be false, so the note says so honestly instead.
+ *   • Ingested services (Navy 'N', Army 'A', Air Force / Space Force 'F') —
+ *     as of the Phase 5G archive round, all three military-department FY2026
+ *     J-books ARE ingested; this particular PE simply has no matching
+ *     R-2/P-40 narrative in them (e.g. a procurement-only, summary,
+ *     classified, or SBIR line). Saying it is "not yet ingested" would be
+ *     false, so the note says so honestly instead.
+ *   • Other org codes with no service J-book concept (DHA, OSD, …) keep the
+ *     generic honest note.
  *
  * Either way the word 'roadmap' links to the methodology coverage anchor.
  *

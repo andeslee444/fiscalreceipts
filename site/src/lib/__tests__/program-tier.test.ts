@@ -65,18 +65,25 @@ describe("serviceOrgName", () => {
 });
 
 describe("isIngestedServiceOrg", () => {
-  it("is true for Navy (FY2026 books ingested in Phase 5G)", () => {
+  it("is true for all three big service org codes (5G Navy + Army/AF/SF archive rounds)", () => {
+    // Navy (5G Navy round).
     expect(isIngestedServiceOrg("N")).toBe(true);
+    // Army (5G Army/AF/SF archive round).
+    expect(isIngestedServiceOrg("A")).toBe(true);
+    // Air Force AND Space Force both live under the 'F' workbook org code;
+    // Space Force PEs carry an 'SF' suffix in the PE number, not a distinct org.
+    expect(isIngestedServiceOrg("F")).toBe(true);
   });
 
-  it("is false for the still-uningested services and non-service codes", () => {
-    // Army and Air Force stay on the manual path.
-    expect(isIngestedServiceOrg("A")).toBe(false);
-    expect(isIngestedServiceOrg("F")).toBe(false);
-    // Defense-wide / other org codes are not service J-book codes.
+  it("is false for non-service / defense-wide org codes", () => {
     expect(isIngestedServiceOrg("DHA")).toBe(false);
     expect(isIngestedServiceOrg("OSD")).toBe(false);
+    expect(isIngestedServiceOrg("MDA")).toBe(false);
+    expect(isIngestedServiceOrg("SOCOM")).toBe(false);
     expect(isIngestedServiceOrg("")).toBe(false);
+    // 'SF' is never an org code (Space Force folds under 'F'); guard against
+    // a future regression that mistakes the PE-number suffix for an org.
+    expect(isIngestedServiceOrg("SF")).toBe(false);
   });
 });
 

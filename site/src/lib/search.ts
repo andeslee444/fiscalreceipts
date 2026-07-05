@@ -151,12 +151,21 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
       return { ...r, score: 10000 };
     }
     // Near-exact boost: agency or company title starts with query (catches "darpa" → "DARPA")
-    // or query starts with title (catches typos like "darppa" matching "DARPA")
+    // or query starts with title (catches typos like "darppa" matching "DARPA").
     if (r.kind === "agency" || r.kind === "company") {
       const queryLen = queryNorm.length;
       const titleLen = titleLow.length;
-      // If the title and query are within 2 chars of each other, it's likely an agency match
-      if (Math.abs(queryLen - titleLen) <= 2 && (titleLow.startsWith(queryNorm.slice(0, 3)) || queryNorm.startsWith(titleLow.slice(0, 3)))) {
+      // Require a *strong* head overlap: the shorter of {query, title} must be
+      // a near-prefix (minus 1-2 fuzzy chars) of the longer. A 3-char stub is
+      // too weak — "general dynamics" and "GENERAL ATOMICS" share "gen" and
+      // sit within 2 chars of length, so the old rule wrongly boosted Atomics
+      // over the far-better-scoring Dynamics match. Multi-word company names
+      // like "GENERAL DYNAMICS CORP" (len 21 vs query 16, diff 5) never
+      // qualified for the boost anyway; their raw BM25 score already wins.
+      const shorter = queryLen <= titleLen ? queryNorm : titleLow;
+      const longer = queryLen <= titleLen ? titleLow : queryNorm;
+      const headLen = Math.max(3, shorter.length - 2);
+      if (Math.abs(queryLen - titleLen) <= 2 && longer.startsWith(shorter.slice(0, headLen))) {
         return { ...r, score: 5000 };
       }
     }

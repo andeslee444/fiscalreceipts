@@ -1,9 +1,10 @@
 /**
  * program-tier.ts — pure helpers for the two program-page tiers (Phase 5F §2a).
  *
- *   full   — 462 programs in programs.json with R-2/P-40 J-book detail.
- *   rollup — 1,533 sidecars carrying only R-1/P-1 workbook figures +
- *            trajectory (tier:'rollup', service_org, title on the sidecar).
+ *   full   — programs in programs.json with R-2/P-40 J-book detail (~1,741
+ *            after the Phase 5G Army/AF/SF archive round; grows as books land).
+ *   rollup — sidecars carrying only R-1/P-1 workbook figures + trajectory
+ *            (tier:'rollup', service_org, title on the sidecar).
  *
  * Universal module (no fs, no server-only): data.ts, sitemap.ts, and the
  * program page all consume these; unit tests construct sidecar objects
@@ -34,12 +35,26 @@ export function serviceOrgName(code: string): string {
  * Service workbook org codes whose FY2026 J-books ARE ingested (Phase 5G).
  * A rollup page for an ingested service is NOT "awaiting ingestion" — its
  * PE simply has no matching R-2/P-40 narrative in the ingested books (e.g. a
- * procurement-only or summary line). The uningested services (Army 'A', Air
- * Force 'F') stay on the manual path and keep the "not yet ingested" wording.
+ * procurement-only or summary line).
+ *
+ * As of the Phase 5G Army/AF/SF archive round, ALL THREE big service org
+ * codes are ingested: Navy 'N' (5G Navy round), Army 'A', and Air Force /
+ * Space Force 'F' (both service books live under the 'F' workbook org code;
+ * Space Force PEs carry an 'SF' suffix in the PE number, not a distinct org).
+ * The FY2026 books were pulled from official comptroller sources and the
+ * Internet Archive (a WAF-free public mirror). What remains figures-only is a
+ * near-zero residual: classified / SBIR / spectrum lines that publish no R-2,
+ * plus a handful of R-1-only workbook remainders — those legitimately have no
+ * matching J-book narrative and say so honestly.
+ *
  * Codes outside this set that aren't service J-book codes (DHA, OSD, …) render
  * the honest generic note. Single source of truth for the rollup note wording.
  */
-export const INGESTED_SERVICE_ORGS: ReadonlySet<string> = new Set(["N"]);
+export const INGESTED_SERVICE_ORGS: ReadonlySet<string> = new Set([
+  "A",
+  "N",
+  "F",
+]);
 
 export function isIngestedServiceOrg(code: string): boolean {
   return INGESTED_SERVICE_ORGS.has(code);

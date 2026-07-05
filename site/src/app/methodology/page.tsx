@@ -616,23 +616,24 @@ export default function MethodologyPage() {
               (mission prose, project tables, accomplishments) is ingested
               for {serviceBooks.numerator} of them, whose justification books
               come from the sources already in the pipeline. As of Phase 5G
-              this includes the Navy&apos;s FY2026 RDT&amp;E and procurement
-              books: 387 Navy program elements now carry full R-2/P-40 detail
-              with working PDF citations, where before they showed only cited
-              workbook figures. The remaining pages are mostly Army and Air
-              Force program elements: their dollar figures come from the
-              all-service R-1/P-1 workbooks (every figure cited), but their
-              narrative books live on the service comptroller sites and have
-              not been ingested yet — Army and Air Force are on the manual
-              ingestion path. A handful of Navy pages also stay figures-only
-              when a line has no matching R-2/P-40 narrative in the ingested
-              books (a procurement-only or summary line); those say so
-              explicitly rather than claiming the book is missing. Every
-              figures-only page says which case applies in place of a
-              description — the &ldquo;roadmap&rdquo; is exactly that
-              ingestion, and coverage grows as each service&apos;s books land.
-              We never substitute generated prose for a missing source
-              document.
+              the FY2026 justification books for all three military
+              departments are ingested: the Navy&apos;s RDT&amp;E and
+              procurement books, the Army&apos;s, and the Air Force and Space
+              Force books — over 1,400 service program elements now carry full
+              R-2/P-40 detail with working PDF citations, where before they
+              showed only cited workbook figures. The books were pulled from
+              the official service comptroller sites where reachable and from
+              the Internet Archive&apos;s WAF-free public mirror where the
+              comptroller sites sat behind CAC or Akamai access walls; the
+              embedded XML that anchors every figure to its page survives the
+              mirror intact. What remains figures-only is a near-zero residual:
+              a handful of lines that publish no R-2/P-40 narrative at all —
+              classified, SBIR, or spectrum program elements, plus a small
+              number of R-1/P-1 workbook remainders with no matching book
+              entry. Those pages say which case applies in place of a
+              description rather than claiming a book is missing. We never
+              substitute generated prose for a missing source document, and
+              coverage grows as any residual book lands.
             </p>
           </section>
 

@@ -56,12 +56,20 @@ function allResults(groups: GroupedResults) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("quick search — index build & basic cases", () => {
-  it("returns results for 'defense research sciences'", async () => {
+  it("returns a 'Defense Research Sciences' program for that query", async () => {
     const groups = await search("defense research sciences");
     const results = allResults(groups);
     expect(results.length).toBeGreaterThan(0);
-    const urls = results.map((r) => r.url);
-    expect(urls.some((u) => u.includes("/program/0601101E/"))).toBe(true);
+    // Since the Phase 5G Army/AF/SF archive round, every military department
+    // carries its own full-tier "Defense Research Sciences" PE (0601102A Army,
+    // 0601102F Air Force, 0601153N Navy, 0601102SF Space Force) alongside
+    // DARPA's 0601101E — five identical titles that tie on relevance. The
+    // MAX_PER_GROUP=2 cap means DARPA's PE is no longer guaranteed in the top
+    // two, so assert on the title (the quick index surfaces the right program)
+    // rather than pinning the one PE that only won on a sparser corpus.
+    const topProgram = groups.programs[0];
+    expect(topProgram).toBeDefined();
+    expect(topProgram.title).toBe("Defense Research Sciences");
   });
 
   it("returns DARPA agency for query 'darpa'", async () => {

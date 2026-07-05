@@ -296,12 +296,14 @@ export async function runYearsMatrixGate({ baseUrl }) {
   const citations = readJson(path.join(jsonDir, "citations.json"));
 
   const size = fs.statSync(matrixPath).size;
-  // Payload budget: ~2KB/program. Raised 900KB → 2MB in Phase 5G when the
+  // Payload budget: ~1.6–2KB/program. Raised 900KB → 2MB in Phase 5G when the
   // Navy FY2026 J-book ingestion grew the detail-grade matrix from ~462 to 813
-  // programs (~1.53MB) — legitimate corpus growth, same per-program density.
-  // Still catches runaway bloat (a doubling from here).
-  if (size >= 2048 * 1024) {
-    errors.push(`years_matrix.json is ${size} bytes — over the 2MB budget`);
+  // programs (~1.53MB). Raised 2MB → 4MB in the Phase 5G Army/AF/SF archive
+  // round: the matrix grew 813 → 1,741 programs (~2.74MB) at the SAME
+  // per-program density — legitimate corpus growth, not design regression.
+  // Still catches runaway bloat (a doubling from here, 1,741 → ~2,540+).
+  if (size >= 4096 * 1024) {
+    errors.push(`years_matrix.json is ${size} bytes — over the 4MB budget`);
   }
   const nPrograms = [...iterPrograms(matrix)].length;
   notes.push(`matrix: ${nPrograms} programs / ${matrix.orgs.length} orgs / ${size} bytes`);
