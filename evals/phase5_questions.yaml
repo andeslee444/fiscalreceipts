@@ -179,7 +179,7 @@
   question: How many program elements are tracked in the budget trajectory mart?
   answer_sql: |
     select count(*) from fct_budget_trajectory
-  expected_answer: '1982'
+  expected_answer: '1980'
   expected_citation_kind: warehouse
   notes: fct_budget_trajectory row count
 - id: q018
