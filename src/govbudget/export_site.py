@@ -2469,6 +2469,252 @@ def _trajectory_only_feed_programs(con, existing_pe_blis: set) -> list[tuple]:
     return synth
 
 
+def _lineage_ba(pe_bli: str, bl_by_pe: dict | None = None) -> str | None:
+    """Best-effort budget-activity for a rail entry's OTHER PE.
+
+    Prefers a budget_activity read off the PE's own budget_lines (most
+    authoritative); falls back to the RDT&E convention where the 4th char of a
+    ``06xxABCd`` PE is the BA digit (e.g. 0604818A → '4'). Returns None when
+    neither is available — the site then omits the BA chip rather than guess.
+    """
+    if bl_by_pe:
+        for b in bl_by_pe.get(pe_bli, []):
+            ba = b.get("budget_activity") if isinstance(b, dict) else None
+            if ba:
+                return str(ba)
+    # RDT&E R-2 convention: PE = 06<BA><...>; the digit after "06" is the BA.
+    if len(pe_bli) >= 4 and pe_bli[:2] == "06" and pe_bli[3].isdigit():
+        return pe_bli[3]
+    return None
+
+
+def _emit_lineage(
+    *,
+    edges: list,
+    families: dict[str, int],
+    all_pe_blis: set[str],
+    rollup_pes: set[str],
+    titles_by_pe: dict[str, str],
+    decade_series_by_pe: dict[str, dict],
+    cited_fact_ids: set[str],
+    bl_by_pe: dict | None = None,
+) -> dict[str, dict]:
+    """Build the per-program ``lineage`` sidecar block (program-lineage Task 6).
+
+    Pure function (no DB) so it is unit-testable in isolation. Returns
+    ``{pe_bli: lineage_block}`` for every PE that has ≥1 edge OR is in a family.
+
+    Block shape (spec §):
+      rail.predecessors / rail.successors — one entry per edge touching THIS pe,
+        entry.pe = the OTHER PE. resolved = (pe in the page universe). STATED
+        edges carry evidence {fact_id,page,sentence} (fact_id nulled — logged —
+        if not in cited_fact_ids, so no dead <Cite> ships); INFERRED edges carry
+        evidence: None (the honesty contract — inferred edges are NEVER cited).
+      family — only when THIS pe is in a family. chain = one_to_one_chain from
+        the family ROOT (stated in-degree 0; lexicographically-smallest member
+        if the family is cyclic). funding_line sums the request trajectory
+        across ONLY the chain members (a non-chain family member is excluded);
+        has_split = any split/merge edge OR any stated node with out-degree > 1.
+      Per-family chain/funding_line/has_split are computed ONCE (cached by
+      family_id), not per-PE.
+    """
+    from collections import defaultdict
+
+    from govbudget.lineage.family import one_to_one_chain
+
+    universe = all_pe_blis | rollup_pes
+
+    def _rail_entry(other_pe: str, e) -> dict:
+        # evidence: stated → {fact_id,page,sentence} (fact_id nulled if uncited);
+        #           inferred → None (never cited — the honesty contract).
+        evidence = None
+        if e.confidence == "stated":
+            fid = e.evidence_fact_id
+            if fid is not None and fid not in cited_fact_ids:
+                # Should not happen (all 25 stated cites resolve; verified) — log
+                # and null the fact_id so the site never ships a dead <Cite>.
+                print(
+                    f"lineage: stated edge {e.from_pe_bli}->{e.to_pe_bli} cites"
+                    f" fact_id {fid} not in cite-shards; emitting evidence with"
+                    " fact_id=null (Cite state C) instead of a dangling cite"
+                )
+                fid = None
+            evidence = {
+                "fact_id": fid,
+                "page": e.evidence_page,
+                "sentence": e.evidence_sentence,
+            }
+        return {
+            "pe": other_pe,
+            "title": titles_by_pe.get(other_pe),
+            "ba": _lineage_ba(other_pe, bl_by_pe),
+            "fy": e.fiscal_year,
+            "relation": e.relation,
+            "confidence": e.confidence,
+            "resolved": other_pe in universe,
+            "evidence": evidence,
+        }
+
+    # -- rail: index edges by the PE they touch ---------------------------- #
+    preds_by_pe: dict[str, list] = defaultdict(list)
+    succs_by_pe: dict[str, list] = defaultdict(list)
+    for e in edges:
+        # from_pe_bli's OUT-edge → a successor of from; an IN-edge of to.
+        succs_by_pe[e.from_pe_bli].append(_rail_entry(e.to_pe_bli, e))
+        preds_by_pe[e.to_pe_bli].append(_rail_entry(e.from_pe_bli, e))
+
+    # -- family: group members, compute chain/funding_line/has_split once -- #
+    members_by_family: dict[int, list[str]] = defaultdict(list)
+    for pe_bli, fam_id in families.items():
+        members_by_family[fam_id].append(pe_bli)
+
+    # stated edges per family (chain + has_split both need only stated edges)
+    stated_by_family: dict[int, list] = defaultdict(list)
+    for e in edges:
+        if e.confidence != "stated":
+            continue
+        fam_id = families.get(e.from_pe_bli)
+        if fam_id is None:
+            fam_id = families.get(e.to_pe_bli)
+        if fam_id is not None:
+            stated_by_family[fam_id].append(e)
+
+    family_cache: dict[int, dict] = {}
+    for fam_id, members in members_by_family.items():
+        fam_edges = stated_by_family.get(fam_id, [])
+        member_set = set(members)
+
+        # ROOT = the member with stated in-degree 0 (over this family's stated
+        # edges). If the family is cyclic (no in-degree-0 member — carried from
+        # Task 3's review), fall back to the lexicographically smallest member
+        # so the chain walk is deterministic and doesn't under-attribute.
+        in_deg: dict[str, int] = defaultdict(int)
+        out_deg: dict[str, int] = defaultdict(int)
+        for e in fam_edges:
+            in_deg[e.to_pe_bli] += 1
+            out_deg[e.from_pe_bli] += 1
+        roots = sorted(m for m in members if in_deg[m] == 0)
+        root = roots[0] if roots else min(members)
+
+        chain = one_to_one_chain(root, fam_edges)
+
+        # funding_line: sum the request trajectory across ONLY the chain
+        # members. In the clean 1:1 case each fy has one active member (the
+        # predecessor tapers as the successor rises), so its point cites that
+        # member's fid. When two chain members overlap on an fy, sum their v and
+        # cite the LATER (successor) member's fid — the chain is ordered
+        # predecessor→successor, so iterating in chain order and letting a later
+        # member overwrite the cited fid yields the successor's fid.
+        by_fy_v: dict[int, float] = defaultdict(float)
+        by_fy_fid: dict[int, str] = {}
+        for member in chain:
+            for pt in decade_series_by_pe.get(member, {}).get("request", []):
+                fid = pt.get("fid")
+                if fid is None or fid not in cited_fact_ids:
+                    continue  # only resolving fids (they already are — belt & braces)
+                fy = pt["fy"]
+                by_fy_v[fy] += pt["v"]
+                by_fy_fid[fy] = fid  # later chain member wins → successor's fid on overlap
+        funding_line = [
+            {"fy": fy, "v": by_fy_v[fy], "fid": by_fy_fid[fy]}
+            for fy in sorted(by_fy_v)
+        ]
+
+        # has_split: any split/merge edge, OR any stated node fanning out
+        # (stated out-degree > 1) — a one-to-many hand-off.
+        has_split = any(e.relation in ("split", "merged") for e in fam_edges) or any(
+            out_deg[m] > 1 for m in member_set
+        )
+
+        family_cache[fam_id] = {
+            "family_id": fam_id,
+            "funding_line": funding_line,
+            "chain": chain,
+            "has_split": has_split,
+        }
+
+    # -- assemble per-PE blocks ------------------------------------------- #
+    pes: set[str] = set(preds_by_pe) | set(succs_by_pe) | set(families)
+    out: dict[str, dict] = {}
+    for pe_bli in pes:
+        block: dict = {
+            "rail": {
+                "predecessors": preds_by_pe.get(pe_bli, []),
+                "successors": succs_by_pe.get(pe_bli, []),
+            }
+        }
+        fam_id = families.get(pe_bli)
+        if fam_id is not None:
+            block["family"] = family_cache[fam_id]
+        out[pe_bli] = block
+    return out
+
+
+def _load_lineage_for_export(duckdb_path) -> tuple[list, dict[str, int]]:
+    """Read program_lineage + program_family from the jbooks parquet lake and
+    return (edges, families).
+
+    The sidecar writer only has the DuckDB mart connection in scope; the lineage
+    tables live in Postgres and are staged to parquet alongside the other jbooks
+    lake tables (same access pattern as budget_lines/documents at
+    ``_stage_parquet_path(duckdb_path, "jbooks", …)``). All lake columns are
+    VARCHAR, so numeric fields are parsed here into the LineageEdge types.
+    """
+    from govbudget.lineage.model import LineageEdge
+
+    lin_pq = _stage_parquet_path(duckdb_path, "jbooks", "program_lineage.parquet")
+    fam_pq = _stage_parquet_path(duckdb_path, "jbooks", "program_family.parquet")
+    if lin_pq is None or fam_pq is None:
+        return [], {}
+
+    import duckdb as _duckdb_lin
+
+    con = _duckdb_lin.connect()
+    try:
+        lin_s = str(lin_pq).replace("'", "''")
+        fam_s = str(fam_pq).replace("'", "''")
+        lin_rows = con.execute(
+            "select from_pe_bli, to_pe_bli, fiscal_year, relation, confidence,"
+            " evidence_fact_id, evidence_sentence, evidence_page, portion_amount,"
+            f" inference_basis from read_parquet('{lin_s}')"
+        ).fetchall()
+        fam_rows = con.execute(
+            f"select pe_bli, family_id from read_parquet('{fam_s}')"
+        ).fetchall()
+    finally:
+        con.close()
+
+    def _int(v):
+        try:
+            return int(v) if v is not None and str(v) != "" else None
+        except (TypeError, ValueError):
+            return None
+
+    def _float(v):
+        try:
+            return float(v) if v is not None and str(v) != "" else None
+        except (TypeError, ValueError):
+            return None
+
+    edges = [
+        LineageEdge(
+            from_pe_bli=r[0],
+            to_pe_bli=r[1],
+            fiscal_year=_int(r[2]) or 0,
+            relation=r[3],
+            confidence=r[4],
+            evidence_fact_id=r[5],
+            evidence_sentence=r[6],
+            evidence_page=_int(r[7]),
+            portion_amount=_float(r[8]),
+            inference_basis=r[9],
+        )
+        for r in lin_rows
+    ]
+    families = {r[0]: _int(r[1]) for r in fam_rows if _int(r[1]) is not None}
+    return edges, families
+
+
 def _emit_json_sidecars(
     *,
     out_dir: Path,
@@ -2980,6 +3226,49 @@ def _write_all_sidecars(
     rva_by_pe = _rva_gap_index(con, _cited_fact_ids)
 
     all_pe_blis = {r[0] for r in all_prog_rows}
+
+    # -- Program-lineage universe + titles (hoisted above the full-tier loop
+    #    because _emit_lineage needs the FULL page universe — full-tier PLUS
+    #    rollup-tier — to set each rail entry's `resolved` flag, and the
+    #    full-tier sidecars attach the lineage block too. The rollup section
+    #    below reuses these same objects.) --------------------------------- #
+    titles_by_pe: dict[str, str] = {}
+    try:
+        titles_by_pe = dict(
+            con.execute("select pe_bli, title from dim_pe_titles").fetchall()
+        )
+    except Exception as exc:
+        print(
+            f"program_details rollup: dim_pe_titles unavailable ({exc});"
+            " rollup titles will be null"
+        )
+
+    # Route-safety filter (used for both the rollup universe and the lineage
+    # `resolved` check): a program page is a Next.js static route, so the pe_bli
+    # must round-trip through a URL path segment.
+    def _is_route_safe_pe(pe_bli: str) -> bool:
+        return not (set(pe_bli) & set("&#/?%") or any(c.isspace() for c in pe_bli))
+
+    rollup_pes_raw = sorted({row[8] for row in bl_rows} - all_pe_blis)
+    dropped_unsafe = [p for p in rollup_pes_raw if not _is_route_safe_pe(p)]
+    rollup_pes = [p for p in rollup_pes_raw if _is_route_safe_pe(p)]
+
+    # program-lineage sidecar blocks (Task 6): read edges+families from the
+    # jbooks parquet lake (the writer only holds the DuckDB mart connection; the
+    # lineage tables are Postgres, staged to the lake). Emit once — chain /
+    # funding_line / has_split are cached per family inside _emit_lineage.
+    _lin_edges, _lin_families = _load_lineage_for_export(duckdb_path)
+    lineage_by_pe = _emit_lineage(
+        edges=_lin_edges,
+        families=_lin_families,
+        all_pe_blis=all_pe_blis,
+        rollup_pes=set(rollup_pes),
+        titles_by_pe=titles_by_pe,
+        decade_series_by_pe=decade_series_by_pe,
+        cited_fact_ids=_cited_fact_ids,
+        bl_by_pe=bl_by_pe,
+    )
+
     for pe_bli in all_pe_blis:
         obj = {
             "awards": awards_by_pe.get(pe_bli, []),
@@ -2995,6 +3284,8 @@ def _write_all_sidecars(
             obj["decade_series"] = decade_series_by_pe[pe_bli]
             if pe_bli in rva_by_pe:
                 obj["book_diff"] = rva_by_pe[pe_bli]
+        if pe_bli in lineage_by_pe:
+            obj["lineage"] = lineage_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
 
@@ -3007,16 +3298,8 @@ def _write_all_sidecars(
     # agencies.json and years_matrix.json stay programs.json-scoped by
     # construction — growing the /years/ matrix to all PEs is a site-batch
     # decision, not made here.
-    titles_by_pe: dict[str, str] = {}
-    try:
-        titles_by_pe = dict(
-            con.execute("select pe_bli, title from dim_pe_titles").fetchall()
-        )
-    except Exception as exc:
-        print(
-            f"program_details rollup: dim_pe_titles unavailable ({exc});"
-            " rollup titles will be null"
-        )
+    # (titles_by_pe + rollup_pes + _is_route_safe_pe are computed above the
+    # full-tier loop so _emit_lineage can share the same page universe.)
 
     bl_org_counts: dict[str, Counter] = defaultdict(Counter)
     for row in bl_rows:
@@ -3042,20 +3325,11 @@ def _write_all_sidecars(
             return min(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
         return None
 
-    # Route-safety filter: a program page is a Next.js static route
-    # /program/[peBli]/, so the pe_bli must round-trip through a URL path
-    # segment. A handful of Army R-1/P-1 workbook lines mis-parse the
-    # appropriation label ("RDT&E", "O&M") into the pe_bli slot — the '&'
-    # breaks static routing and the page renders as 404 (0 data-sections),
-    # which the program-skeleton gate correctly flags. These are not real
-    # program elements, so drop them from the rollup universe rather than ship
-    # broken pages. Real BLI codes (GPSIII, LAIRCM, O&M-free) are unaffected.
-    def _is_route_safe_pe(pe_bli: str) -> bool:
-        return not (set(pe_bli) & set("&#/?%") or any(c.isspace() for c in pe_bli))
-
-    rollup_pes_raw = sorted({row[8] for row in bl_rows} - all_pe_blis)
-    dropped_unsafe = [p for p in rollup_pes_raw if not _is_route_safe_pe(p)]
-    rollup_pes = [p for p in rollup_pes_raw if _is_route_safe_pe(p)]
+    # Route-safety filter + rollup universe are computed above the full-tier
+    # loop (so _emit_lineage shares the same page universe). A handful of Army
+    # R-1/P-1 workbook lines mis-parse the appropriation label ("RDT&E", "O&M")
+    # into the pe_bli slot — the '&' breaks static routing and the page renders
+    # as 404, so those are dropped from the page universe. Report the drops here.
     if dropped_unsafe:
         print(
             f"program_details: dropped {len(dropped_unsafe)} route-unsafe "
@@ -3087,6 +3361,8 @@ def _write_all_sidecars(
             obj["decade_series"] = decade_series_by_pe[pe_bli]
             if pe_bli in rva_by_pe:
                 obj["book_diff"] = rva_by_pe[pe_bli]
+        if pe_bli in lineage_by_pe:
+            obj["lineage"] = lineage_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
     if rollup_pes:
