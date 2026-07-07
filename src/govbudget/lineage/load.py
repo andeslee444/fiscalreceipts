@@ -4,9 +4,14 @@ Fully derived tables — build_lineage TRUNCATEs and rebuilds program_lineage an
 program_family from scratch each run, so there are never stale rows.
 
 Sources:
-  - Stated edges: detail_narratives (Postgres). evidence_fact_id is the canonical
-    narrative fact_id (fact_id_narrative) so it resolves in the site's citation
-    universe; evidence_page is LEFT-JOINed from provenance_pages.
+  - Stated edges: detail_narratives (Postgres), fenced to FY2026 narratives. The
+    fence mirrors the BINDING PB2026 cite-shard edition fence in export_site.py:
+    only FY2026 narrative fact_ids enter the site's cite-shard universe, so a
+    stated edge citing a pre-2026 narrative would not resolve. evidence_fact_id
+    is the canonical narrative fact_id (fact_id_narrative) so it resolves in that
+    universe; evidence_page is LEFT-JOINed from provenance_pages. FY2026 J-books
+    narrate historical predecessors, so YoY lineage is still captured — just with
+    resolvable PB2026-edition citations.
   - Inferred edges: fct_decade_series request rows across ALL editions (DuckDB,
     joined to dim_pe_titles for the title). Each edition's BudgetYearOne request
     is fy == edition_year, so request rows are edition-disjoint on (pe_bli, fy) —
@@ -40,6 +45,13 @@ select j.sha256 as sha, n.pe_bli, n.kind, n.xml_path, j.fiscal_year, n.body,
    and pp.target_kind = 'narrative'
  where not n.superseded
    and n.xml_path is not null
+   -- Fence to FY2026 narratives: this aligns stated-edge citations with the
+   -- BINDING PB2026 cite-shard edition fence in export_site.py, so every stated
+   -- edge's <Cite> resolves. Pre-2026 narratives are not in the FY2026
+   -- cite-shard universe, so a stated edge citing one would not resolve on the
+   -- site (violating "no stated edge without a resolvable citation"). FY2026
+   -- J-books still narrate historical predecessors, so YoY lineage is captured.
+   and j.fiscal_year = 2026
  order by j.fiscal_year desc, n.pe_bli, n.xml_path
 """
 

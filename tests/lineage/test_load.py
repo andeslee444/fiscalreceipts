@@ -39,8 +39,8 @@ def pg_lineage():
             "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
             " source_url, sha256, status) values (%s, %s, %s, %s, %s, %s, %s)"
             " returning id",
-            ("DARPA", "rdte", 2019, "doc-2019-0", "https://example.test/2019/doc0.pdf",
-             "sha_lineage_2019", "downloaded"),
+            ("DARPA", "rdte", 2026, "doc-2026-0", "https://example.test/2026/doc0.pdf",
+             "sha_lineage_2026", "downloaded"),
         ).fetchone()[0]
         run_id = con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions, status)"
