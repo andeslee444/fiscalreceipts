@@ -38,10 +38,11 @@ def one_to_one_chain(start: str, edges: list[LineageEdge]) -> list[str]:
             continue
         nxt.setdefault(e.from_pe_bli, e.to_pe_bli)
     chain = [start]
+    seen = {start}
     cur = start
     while cur in nxt:
         succ = nxt[cur]
-        if out_deg[cur] != 1 or in_deg[succ] != 1:
-            break  # split (cur has >1 out) or merge (succ has >1 in) → stop honestly
-        chain.append(succ); cur = succ
+        if out_deg[cur] != 1 or in_deg[succ] != 1 or succ in seen:
+            break  # split, merge, or cycle → stop honestly
+        chain.append(succ); seen.add(succ); cur = succ
     return chain
