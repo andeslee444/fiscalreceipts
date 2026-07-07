@@ -7,8 +7,12 @@ Sources:
   - Stated edges: detail_narratives (Postgres). evidence_fact_id is the canonical
     narrative fact_id (fact_id_narrative) so it resolves in the site's citation
     universe; evidence_page is LEFT-JOINed from provenance_pages.
-  - Inferred edges: fct_decade_series + dim_pe_titles (DuckDB, edition 2026,
-    request rows). Deterministic BA-maturation hand-offs, never cited.
+  - Inferred edges: fct_decade_series request rows across ALL editions (DuckDB,
+    joined to dim_pe_titles for the title). Each edition's BudgetYearOne request
+    is fy == edition_year, so request rows are edition-disjoint on (pe_bli, fy) —
+    the cross-edition slice is a clean per-PE request trajectory (FY2017..FY2026)
+    with no (pe_bli, fy) collisions, which is what infer_edges' ba_maturation
+    taper needs. Deterministic BA-maturation hand-offs, never cited.
 
 Ordering of the narrative query is DETERMINISTIC (fiscal_year desc, pe_bli,
 xml_path) so extract_stated_edges' first-seen dedup is reproducible across runs.
