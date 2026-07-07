@@ -24,3 +24,15 @@ def test_ignores_self_reference_and_non_pe_tokens():
     narr = [{"pe_bli": "0602702E", "fiscal_year": 2024, "fact_id": "f3", "page": 3,
              "body": "Funds transferred to O&M; PE 0602702E continues research."}]
     assert extract_stated_edges(narr) == []  # 'O&M' is not a PE; self-ref dropped
+
+def test_extracts_edge_from_unterminated_final_clause():
+    narr = [{"pe_bli": "0603178C", "fiscal_year": 2018, "fact_id": "f4", "page": 12,
+             "body": "Baseline effort continues. This work was transferred to PE 0603294C"}]
+    edges = extract_stated_edges(narr)
+    assert edges and edges[0].to_pe_bli == "0603294C"
+
+def test_pe_token_captures_digit_bearing_agency_suffix():
+    narr = [{"pe_bli": "0605294D8Z", "fiscal_year": 2020, "fact_id": "f5", "page": 7,
+             "body": "The sensor work was transferred from PE 0604294D8Z last cycle."}]
+    edges = extract_stated_edges(narr)
+    assert any(e.from_pe_bli == "0604294D8Z" for e in edges)
