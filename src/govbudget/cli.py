@@ -1615,6 +1615,73 @@ def cmd_verify_phase5e(args) -> None:
     sys.exit(0 if gates_ok else 1)
 
 
+def cmd_verify_lineage(args) -> None:
+    from govbudget.verify_lineage import (
+        family_integrity_leg,
+        one_to_one_sum_leg,
+        stated_cite_leg,
+    )
+
+    gates_ok = True
+
+    # Leg a: stated-cite
+    a = stated_cite_leg(config.PG_DSN)
+    ga_ok = a["ok"]
+    if a.get("reason"):
+        print(f"leg a stated-cite: {a['reason']} → FAIL")
+    else:
+        print(
+            f"leg a stated-cite: checked={a['checked']} passed={a['passed']}"
+            f" failures={len(a['failures'])} → {'PASS' if ga_ok else 'FAIL'}"
+        )
+        for grain, reason in a["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and ga_ok
+
+    # Leg b: family-integrity
+    b = family_integrity_leg(config.PG_DSN)
+    gb_ok = b["ok"]
+    if b.get("reason"):
+        print(f"leg b family-integrity: {b['reason']} → FAIL")
+    else:
+        print(
+            f"leg b family-integrity: recomputed_pes={b['recomputed_pes']}"
+            f" persisted_pes={b['persisted_pes']} failures={len(b['failures'])}"
+            f" → {'PASS' if gb_ok else 'FAIL'}"
+        )
+        for kind, detail in b["failures"][:10]:
+            print(f"  FAIL [{kind}] {detail}")
+    gates_ok = gates_ok and gb_ok
+
+    # Leg c: one-to-one-sum
+    c = one_to_one_sum_leg(config.PG_DSN, config.DUCKDB_PATH)
+    gc_ok = c["ok"]
+    if c.get("reason"):
+        print(f"leg c one-to-one-sum: {c['reason']} → FAIL")
+    else:
+        note = ""
+        if c["families_checked"] < c["target_families"]:
+            note = (f" (only {c['families_checked']} multi-member families exist;"
+                    f" target ≥{c['target_families']} — ALL checked)")
+        print(
+            f"leg c one-to-one-sum: families_checked={c['families_checked']}"
+            f" cyclic_fallbacks={len(c['cyclic_fallbacks'])}"
+            f" dangling_terminals={len(c['dangling_terminals'])}"
+            f" failures={len(c['failures'])} → {'PASS' if gc_ok else 'FAIL'}{note}"
+        )
+        for root in c["cyclic_fallbacks"]:
+            print(f"  NOTE cyclic family — fell back to lexicographically-smallest root {root}")
+        for froot, member in c["dangling_terminals"]:
+            print(f"  NOTE dangling terminal successor {member} (family root {froot})"
+                  f" cited but absent from fct_decade_series — not-yet-ingested destination")
+        for grain, reason in c["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gc_ok
+
+    print("verify-lineage:", "PASS" if gates_ok else "FAIL")
+    sys.exit(0 if gates_ok else 1)
+
+
 def cmd_export_site(args) -> None:
     from govbudget.export_site import export_site, refresh_usaspending_ids
 
@@ -1820,6 +1887,13 @@ def main(argv=None) -> None:
              " leakage, book-diff conservation, decade-series integrity)",
     )
     v5e.set_defaults(func=cmd_verify_phase5e)
+
+    vlin = sub.add_parser(
+        "verify-lineage",
+        help="program-lineage acceptance gate (stated-cite + family-integrity"
+             " + 1:1-sum honesty)",
+    )
+    vlin.set_defaults(func=cmd_verify_lineage)
 
     v5 = sub.add_parser(
         "verify-phase5",

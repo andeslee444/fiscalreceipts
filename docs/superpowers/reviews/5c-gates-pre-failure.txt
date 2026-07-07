@@ -878,3 +878,120 @@ Restore verified byte-identical (sha256 67b22d3c…eaa1 matches); clean
 re-run:
 PASS: true
   note: placeholder scan: 4/4 artifacts free of govbudget-placeholder.example ✓
+
+══════════════════════════════════════════════════════════════════════════
+verify-lineage (program-lineage Task 5)
+Date: 2026-07-06
+══════════════════════════════════════════════════════════════════════════
+New honesty gate (src/govbudget/verify_lineage.py; CLI: verify-lineage),
+built evaluator-first — FAIL FIRST, then made to PASS on the real warehouse.
+Three legs (spec §7):
+  (a) stated-cite — every program_lineage stated edge's evidence_sentence
+      contains its from/to PE token AND its evidence_fact_id re-derives (via
+      export_site.fact_id_narrative) to a real detail_narratives row whose
+      body contains that sentence. ALL 53 stated edges checked (not sampled).
+  (b) family-integrity — build_families(live stated edges) partition ==
+      persisted program_family partition, compared by the same-family-or-not
+      equivalence relation (id-agnostic). Missing/extra/regrouped PE → FAIL.
+  (c) one-to-one-sum — for every multi-member family: root = STATED
+      in-degree-0 member (cyclic fallback = lexicographically smallest,
+      noted); chain = one_to_one_chain(root); assert NO chain member is a
+      split/merge/partial-transfer target and NO chain member is an
+      INFERRED-edge successor (the honesty teeth — a summed funding total
+      must never pull in a non-1:1 member); and the funding line is summable
+      (root resolves in the request series; every member resolves OR is a
+      documented terminal dangling forward-reference — out-degree 0, absent
+      from the entire series). Mid-chain gap / non-resolving root → FAIL.
+Exit code 0 iff all three legs pass; nonzero otherwise (mirrors
+verify-phase5e's aggregation).
+
+--- PROOF-CAN-FAIL (captured SAFELY) ---
+Method: seeded a THROWAWAY postgres DB (govbudget_prefail_lineage — NEVER
+config.PG_DSN) with one known violation per leg and ran the real CLI against
+it via GOVBUDGET_PG_DSN + a tmp GOVBUDGET_DATA duckdb (minimal
+fct_decade_series). The real warehouse was never modified. Verbatim CLI
+output for each leg (each violation is isolated to its own leg; the other two
+legs correctly PASS on the same seed, proving the FAIL is the leg under test,
+not seed rot):
+
+$ GOVBUDGET_PG_DSN=…/govbudget_prefail_lineage python -m govbudget verify-lineage
+===== LEG (a) stated-cite — bogus evidence_fact_id (re-derives to no narrative) =====
+leg a stated-cite: checked=1 passed=0 failures=1 → FAIL
+  FAIL 0601101E->0601102E (realigned): evidence_fact_id deadbeefdeadbeef re-derives to no narrative
+leg b family-integrity: recomputed_pes=2 persisted_pes=2 failures=0 → PASS
+leg c one-to-one-sum: families_checked=1 cyclic_fallbacks=0 dangling_terminals=0 failures=0 → PASS (only 1 multi-member families exist; target ≥10 — ALL checked)
+verify-lineage: FAIL
+(exit code 1)
+
+===== LEG (b) family-integrity — 0601102E moved to the wrong family id =====
+leg a stated-cite: checked=3 passed=3 failures=0 → PASS
+leg b family-integrity: recomputed_pes=5 persisted_pes=5 failures=5 → FAIL
+  FAIL [regroup] PE 0601101E groups with ['0601101E', '0601102E'] (recomputed) but ['0601101E'] (persisted)
+  FAIL [regroup] PE 0601102E groups with ['0601101E', '0601102E'] (recomputed) but ['0601102E', '0700001F', '0700002F', '0700003F'] (persisted)
+  FAIL [regroup] PE 0700001F groups with ['0700001F', '0700002F', '0700003F'] (recomputed) but ['0601102E', '0700001F', '0700002F', '0700003F'] (persisted)
+  FAIL [regroup] PE 0700002F groups with ['0700001F', '0700002F', '0700003F'] (recomputed) but ['0601102E', '0700001F', '0700002F', '0700003F'] (persisted)
+  FAIL [regroup] PE 0700003F groups with ['0700001F', '0700002F', '0700003F'] (recomputed) but ['0601102E', '0700001F', '0700002F', '0700003F'] (persisted)
+leg c one-to-one-sum: families_checked=2 cyclic_fallbacks=0 dangling_terminals=0 failures=0 → PASS (only 2 multi-member families exist; target ≥10 — ALL checked)
+verify-lineage: FAIL
+(exit code 1)
+
+===== LEG (c) one-to-one-sum — chain includes an INFERRED-edge successor =====
+leg a stated-cite: checked=1 passed=1 failures=0 → PASS
+leg b family-integrity: recomputed_pes=2 persisted_pes=2 failures=0 → PASS
+leg c one-to-one-sum: families_checked=1 cyclic_fallbacks=0 dangling_terminals=0 failures=1 → FAIL (only 1 multi-member families exist; target ≥10 — ALL checked)
+  FAIL family 0 root=0601101E: chain member 0601102E is an INFERRED-edge successor — must not be summed
+verify-lineage: FAIL
+(exit code 1)
+
+The throwaway DB was dropped after capture.
+
+Unit-level proofs pin every leg's teeth (tests/test_verify_lineage.py, 16
+tests, all against a dedicated throwaway PG DB govbudget_test_lineage + tmp
+duckdb):
+  leg a — bogus fact_id → "re-derives to no narrative"; sentence lacking its
+    PE token → "cites neither PE token"; narrative body lacking the cited
+    sentence (fabricated verbatim citation) → "does not contain
+    evidence_sentence"; clean citation → PASS.
+  leg b — wrong grouping → regroup FAIL; dropped PE → missing FAIL; extra PE
+    with no stated edge → extra FAIL; identical grouping under DIFFERENT
+    integer ids → PASS (proves id-agnostic).
+  leg c — chain pulling in an inferred successor → FAIL; root absent from the
+    request series → FAIL; MID-chain member absent from series (out-deg > 0)
+    → "not a terminal dangling reference" FAIL; TERMINAL dangling reference
+    (out-deg 0, absent from entire series) → noted, PASS; split successor
+    correctly excluded by one_to_one_chain → PASS; clean family → PASS.
+
+Note on the leg-(c) split/merge/partial re-assertion: one_to_one_chain, by
+construction, never yields a member that is a split/merge/partial-transfer
+target (such a target has stated in-degree 1 via that non-1:1 edge, so the
+helper stops before it). The gate re-asserts this independently anyway as a
+REGRESSION GUARD against a future change to one_to_one_chain; the reachable
+honesty teeth in normal operation is the INFERRED-successor check (an inferred
+edge is invisible to one_to_one_chain's stated-only in-degree, so a stated 1:1
+chain CAN land on a node that also carries an inferred in-edge — proven by
+test_leg_c_fails_when_chain_pulls_in_inferred_successor).
+
+--- MADE TO PASS ON THE REAL WAREHOUSE ---
+$ uv run python -m govbudget verify-lineage
+leg a stated-cite: checked=53 passed=53 failures=0 → PASS
+leg b family-integrity: recomputed_pes=73 persisted_pes=73 failures=0 → PASS
+leg c one-to-one-sum: families_checked=29 cyclic_fallbacks=0 dangling_terminals=1 failures=0 → PASS
+  NOTE dangling terminal successor 0207429F (family root 834190) cited but absent from fct_decade_series — not-yet-ingested destination
+verify-lineage: PASS
+(exit code 0)
+
+Real finding (leg c, honestly handled — NOT a gate weakening): family 3 =
+{834190, 0207429F} is a single STATED realigned edge 834190 → 0207429F (full
+transfer, no portion). 834190 ("Combat Training Ranges") is a real
+procurement BLI with 58 budget_lines and a full request series; its 1:1
+successor 0207429F is the cited DESTINATION PE ("…transferred to PE
+0207429F") and appears NOWHERE in budget_lines / fct_decade_series / the
+decade parquet — it is a forward-reference to a program in a not-yet-ingested
+edition. Leg (c) classifies it as a terminal dangling forward-reference
+(out-degree 0, absent from the entire series): the family's summable funding
+line is 834190's series alone; the honest note records the un-ingested
+destination rather than fabricating a series for it or failing the whole gate
+on an honest citation. A MID-chain gap, a non-resolving root, or an
+inferred/split/merge/partial member all still FAIL (proven above), so the
+carve-out is narrow and cannot become a loophole. All 29 multi-member
+families (well above the ≥10 target) checked; 0 cyclic fallbacks.
