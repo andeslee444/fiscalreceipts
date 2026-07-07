@@ -48,6 +48,12 @@ EXPORTS: dict[str, str] = {
         " 'fy' || fiscal_year || '/' || lower(org) || '/' || title as rel_path"
         " from jbook_documents where status = 'downloaded' and sha256 is not null"
     ),
+    "program_lineage": (
+        "select from_pe_bli, to_pe_bli, fiscal_year, relation, portion_amount,"
+        " confidence, evidence_fact_id, evidence_sentence, evidence_page, inference_basis"
+        " from program_lineage"
+    ),
+    "program_family": "select pe_bli, family_id from program_family",
 }
 
 

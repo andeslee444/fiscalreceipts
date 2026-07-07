@@ -1681,6 +1681,14 @@ def cmd_analyst(args) -> None:
     print(f"  turns: {result['turns']}")
 
 
+def cmd_lineage(args) -> None:
+    if args.action == "build":
+        from govbudget.lineage.load import build_lineage
+
+        counts = build_lineage(config.PG_DSN, config.DUCKDB_PATH)
+        print(f"lineage built: {counts}")
+
+
 def cmd_evals(args) -> None:
     """Phase 5B-4 eval refresh / check commands."""
     from govbudget.evals_refresh import cmd_evals_check, cmd_evals_refresh
@@ -1851,6 +1859,10 @@ def main(argv=None) -> None:
     an = sub.add_parser("analyst", help="text-to-SQL analyst agent (phase 5B-4)")
     an.add_argument("question", help="Natural-language question to answer")
     an.set_defaults(func=cmd_analyst)
+
+    lin = sub.add_parser("lineage", help="program lineage pipeline")
+    lin.add_argument("action", choices=["build"])
+    lin.set_defaults(func=cmd_lineage)
 
     ev = sub.add_parser("evals", help="phase 5B-4 eval refresh/check pipeline")
     ev_sub = ev.add_subparsers(dest="evals_action", required=True)
