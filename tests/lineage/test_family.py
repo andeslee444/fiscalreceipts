@@ -44,3 +44,10 @@ def test_one_to_one_chain_terminates_on_a_cycle():
     with _hard_timeout(5):
         chain = one_to_one_chain("A", edges)
     assert chain == ["A", "B"]  # walks once, then stops when it would revisit A
+
+def test_one_to_one_chain_excludes_partial_transfers():
+    # spec §5.3: a partial transfer (portion_amount set) must NOT extend the 1:1 line
+    edges = [LineageEdge(from_pe_bli="A", to_pe_bli="B", fiscal_year=2024,
+                         relation="appropriation_transfer", confidence="stated",
+                         portion_amount=0.41)]
+    assert one_to_one_chain("A", edges) == ["A"]

@@ -30,11 +30,14 @@ def one_to_one_chain(start: str, edges: list[LineageEdge]) -> list[str]:
     out_deg: dict[str, int] = defaultdict(int)
     in_deg: dict[str, int] = defaultdict(int)
     nxt: dict[str, str] = {}
+    # out_deg/in_deg/nxt are rebuilt per call; Task 6 calls this once per family, so this is intentional.
     for e in stated:
         out_deg[e.from_pe_bli] += 1
         in_deg[e.to_pe_bli] += 1
     for e in stated:
-        if e.relation in ("split", "merged"):
+        # a labeled split/merge, or a PARTIAL transfer (portion_amount set), ends the
+        # 1:1 line even at degree 1:1 (spec §5.3: partial transfers never reparent the line)
+        if e.relation in ("split", "merged") or e.portion_amount is not None:
             continue
         nxt.setdefault(e.from_pe_bli, e.to_pe_bli)
     chain = [start]
