@@ -356,7 +356,7 @@ export default async function ProgramPage({
       </div>
 
       {/* ═══ Canonical section skeleton (Phase 5F §2d) — every program page,
-          both tiers, renders these twelve data-section blocks in this order;
+          both tiers, renders these thirteen data-section blocks in this order;
           absent data renders a quiet explained empty state, never silence. ═══ */}
 
       {/* 1 · Answer strip — above-the-fold WHAT/CHANGED/WHO (G6 contract). */}
