@@ -580,3 +580,84 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     ).not.toBeNull();
   });
 });
+
+// ── Program-lineage — family-thread affordance on the /years/ matrix ─────────
+// A row whose PE belongs to a tracked lineage family gets a per-row signpost
+// (data-family-badge) linking to that program's Lineage section. A lone PE
+// gets none. family_id is a sparse, UI-only overlay: it is NOT a column, NOT
+// a cell data-v, NOT in the CSV export (that keeps the yearsmatrix gate green).
+
+const MATRIX_FAMILY: YearsMatrixData = {
+  ...MATRIX,
+  orgs: [
+    {
+      org: "DARPA",
+      programs: [
+        // Two programs in the SAME family (id 1) — NOT adjacent-dependent:
+        // each row must carry its own badge (per-row, not a connector line).
+        { ...MATRIX.orgs[0].programs[0], family_id: 1 },
+        { ...MATRIX.orgs[0].programs[1] }, // lone PE — no family_id
+      ],
+    },
+    {
+      org: "MDA",
+      programs: [
+        // Second member of family 1, in a different org section (proves the
+        // affordance is per-row and independent of row adjacency).
+        { ...MATRIX.orgs[1].programs[0], family_id: 1 },
+      ],
+    },
+  ],
+};
+
+describe("YearsMatrix — family-thread affordance (program-lineage)", () => {
+  beforeEach(() => {
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url) === "/json/years_matrix.json") {
+        return Promise.resolve(jsonResponse(MATRIX_FAMILY));
+      }
+      return Promise.reject(new Error(`unmocked fetch ${url}`));
+    });
+  });
+
+  it("family-member rows carry [data-family-badge]; lone rows do not", async () => {
+    await renderMatrix();
+
+    const famRow = document.querySelector(
+      'tr[data-program-row][data-pe="0601101E"]',
+    ) as HTMLElement;
+    const famBadge = famRow.querySelector("[data-family-badge]") as HTMLElement;
+    expect(famBadge).not.toBeNull();
+    expect(famBadge.getAttribute("data-family-badge")).toBe("1");
+
+    // Second family member lives in a different org section — still badged.
+    const famRow2 = document.querySelector(
+      'tr[data-program-row][data-pe="0603882C"]',
+    ) as HTMLElement;
+    expect(famRow2.querySelector("[data-family-badge]")).not.toBeNull();
+
+    // The lone PE (no family_id) has NO badge.
+    const loneRow = document.querySelector(
+      'tr[data-program-row][data-pe="0602702E"]',
+    ) as HTMLElement;
+    expect(loneRow.querySelector("[data-family-badge]")).toBeNull();
+  });
+
+  it("badge is honest + accessible: it does not expose the opaque id as text", async () => {
+    await renderMatrix();
+    const badge = document.querySelector(
+      'tr[data-pe="0601101E"] [data-family-badge]',
+    ) as HTMLElement;
+    // The user-facing label points at the Lineage section, never the raw id.
+    const label = badge.getAttribute("aria-label") ?? badge.getAttribute("title") ?? "";
+    expect(label.toLowerCase()).toContain("lineage");
+    expect(badge.textContent).not.toContain("1");
+  });
+
+  it("family_id never leaks into the CSV export (not a column)", async () => {
+    const entries = flattenPrograms(MATRIX_FAMILY);
+    const csv = buildYearsCsv(entries, ["fy_2026_total"]);
+    expect(csv).not.toContain("family_id");
+    expect(csv).not.toContain("family");
+  });
+});

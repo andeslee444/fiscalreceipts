@@ -680,3 +680,44 @@ class TestDecadeLive:
                     if checked >= 25:
                         return
         assert checked, "no decade cells found in live payload"
+
+
+# ---------------------------------------------------------------------------
+# (g) program-lineage — sparse family_id overlay (Task 8, /years/ badge)
+# ---------------------------------------------------------------------------
+
+
+class TestFamilyOverlay:
+    """The `families` kwarg threads a sparse pe_bli→family_id map into the
+    program dicts. It is a UI-only overlay for the /years/ family-thread
+    badge — never a column, cell value, or CSV field."""
+
+    def test_family_id_present_only_for_mapped_pes(self, tmp_path):
+        db_path = _make_duckdb_with_trajectory(tmp_path)
+        json_dir = tmp_path / "json"
+        json_dir.mkdir(exist_ok=True)
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            payload = _emit_years_matrix(
+                json_dir=json_dir,
+                con=con,
+                all_prog_rows=_all_prog_rows(),
+                detail_rows=_detail_rows(),
+                bl_rows=_bl_rows(),
+                cited_fact_ids=_cited_fact_ids(),
+                # Two PEs share family 7; 0602303A is lone (absent from map).
+                families={"0601101E": 7, "0303140K": 7},
+            )
+        finally:
+            con.close()
+        assert _program(payload, "0601101E")["family_id"] == 7
+        assert _program(payload, "0303140K")["family_id"] == 7
+        # Lone PE has NO family_id key (sparse — not None, absent).
+        assert "family_id" not in _program(payload, "0602303A")
+
+    def test_no_families_map_emits_no_family_id(self, tmp_path):
+        """Default (no `families`) → no program carries family_id at all."""
+        payload = _emit(tmp_path)  # _emit passes no families kwarg
+        for org in payload["orgs"]:
+            for p in org["programs"]:
+                assert "family_id" not in p

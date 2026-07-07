@@ -3806,6 +3806,10 @@ def _write_all_sidecars(
         bl_rows=bl_rows,
         cited_fact_ids=_cited_fact_ids,
         decade_grains=decade_grains,
+        # program-lineage Task 8: sparse pe_bli→family_id map (from
+        # _load_lineage_for_export above). Drives the /years/ family-thread
+        # badge — a UI-only overlay, NOT a column / cell value / CSV field.
+        families=_lin_families,
     )
     n_files += 1
 
@@ -5095,6 +5099,7 @@ def _emit_years_matrix(
     bl_rows: list,
     cited_fact_ids: set,
     decade_grains: list | None = None,
+    families: dict[str, int] | None = None,
 ) -> dict:
     """Emit json/years_matrix.json — the /years/ CapIQ-style grid payload.
 
@@ -5137,6 +5142,9 @@ def _emit_years_matrix(
     the serialized payload exceeds _YEARS_MATRIX_MAX_BYTES.
     """
     from collections import defaultdict
+
+    # program-lineage Task 8: sparse pe_bli→family_id overlay (UI-only badge).
+    fam_map: dict[str, int] = families or {}
 
     # ---- trajectory index: (pe_bli, organization) → metrics dict ----------
     try:
@@ -5290,12 +5298,19 @@ def _emit_years_matrix(
         translated = _workbook_org(org)
         programs = []
         for pe_bli, title in sorted(by_org[org]):
-            programs.append({
+            prog = {
                 "pe_bli": pe_bli,
                 "title": title,
                 "cells": _program_cells(pe_bli, translated),
                 "projects": _project_rows(pe_bli),
-            })
+            }
+            # program-lineage Task 8: sparse family_id overlay — present only
+            # for PEs in a tracked lineage family (most are not). UI-only: the
+            # /years/ client renders a per-row family-thread badge. Never a
+            # column, cell data-v, or CSV field (yearsmatrix gate contract).
+            if fam_map and pe_bli in fam_map:
+                prog["family_id"] = fam_map[pe_bli]
+            programs.append(prog)
         orgs_out.append({"org": org, "programs": programs})
 
     # Drop amount_types that produced NO cells across the whole program set

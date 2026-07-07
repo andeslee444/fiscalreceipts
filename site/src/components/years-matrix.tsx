@@ -44,7 +44,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Download } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, GitBranch } from "lucide-react";
 import { Cite, CiteLegend } from "@/components/cite";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
@@ -70,6 +70,14 @@ export interface YearsProgram {
   /** Keyed by amount_type + delta columns. */
   cells: Record<string, YearsCell | undefined>;
   projects: YearsProject[];
+  /**
+   * Program-lineage overlay (sparse — present only when this PE belongs to a
+   * tracked lineage family). UI-only: drives the per-row family-thread badge
+   * that signposts the program page's Lineage section. NOT a column, NOT a
+   * cell value, NOT in the CSV export — the yearsmatrix DOM/CSV contract is
+   * unchanged. The opaque integer id is a data attribute only, never shown.
+   */
+  family_id?: number;
 }
 
 export interface YearsOrg {
@@ -886,13 +894,34 @@ function ProgramRows({
               <span className="w-4 shrink-0" aria-hidden="true" />
             )}
             <span className="min-w-0">
-              <Link
-                href={`/program/${program.pe_bli}/`}
-                className="block truncate text-foreground hover:underline"
-                title={program.title}
-              >
-                {program.title}
-              </Link>
+              <span className="flex items-center gap-1">
+                <Link
+                  href={`/program/${program.pe_bli}/`}
+                  className="block min-w-0 flex-1 truncate text-foreground hover:underline"
+                  title={program.title}
+                >
+                  {program.title}
+                </Link>
+                {program.family_id !== undefined && (
+                  // Family-thread signpost: this PE belongs to a tracked
+                  // lineage family. Primary accent (the STATED tier — never
+                  // amber, which is the inferred/candidate lineage color) and
+                  // a branch glyph mark it as one identity in a lineage. The
+                  // opaque family id is a data attribute only; the label points
+                  // the reader at the program page's Lineage section. Per-row —
+                  // family members are not necessarily adjacent, so there is no
+                  // connector line between rows.
+                  <Link
+                    href={`/program/${program.pe_bli}/`}
+                    data-family-badge={program.family_id}
+                    aria-label="Part of a tracked lineage family — see this program's Lineage section"
+                    title="Part of a tracked lineage family — see this program's Lineage section"
+                    className="inline-flex shrink-0 text-primary/70 transition-colors hover:text-primary focus:outline-none focus:ring-1 focus:ring-ring rounded-sm"
+                  >
+                    <GitBranch className="h-3 w-3" aria-hidden="true" />
+                  </Link>
+                )}
+              </span>
               <span className="font-mono text-[10px] text-muted-foreground">
                 {showOrg ? `${org} · ` : ""}
                 {program.pe_bli}
