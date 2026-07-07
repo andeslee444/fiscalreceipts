@@ -19,6 +19,7 @@ import {
 } from "./dossier";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
 import { setIngestedServiceOrgs } from "./program-tier";
+import type { LineageBlock } from "./lineage";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -281,6 +282,13 @@ export interface ProgramDetails {
   decade_series?: DecadeSeries;
   /** Phase 5E: largest cited request-vs-actuals gap (requires decade_series). */
   book_diff?: ProgramBookDiff;
+  /**
+   * program-lineage (Task 7): evidence-tiered YoY money-flow block — a rail of
+   * predecessor/successor edges (stated-with-citation or inferred-without) plus
+   * a 1:1 family funding line. Absent on programs with no lineage. See
+   * ./lineage.ts for the honesty invariants.
+   */
+  lineage?: LineageBlock;
   /**
    * Phase 5F rollup-tier fields (Batch A): present ONLY on the rollup
    * sidecars (R-1/P-1 figures + trajectory, no J-book detail) — ~254 after

@@ -1,0 +1,269 @@
+"use client";
+
+/**
+ * <LineageRail> — the program-page lineage rail (program-lineage Task 7).
+ *
+ * Renders predecessors → THIS program → successors as an evidence-tiered
+ * money-flow chain. The three honesty treatments are load-bearing:
+ *
+ *   - STATED edge (confidence "stated"): a solid entry whose source sentence is
+ *     citable. A small clickable citation marker opens the citation panel on
+ *     evidence.fact_id (no amount to show — mirrors NarrativeSourceChip /
+ *     ProseCite, which cite a sentence, not a figure).
+ *
+ *   - INFERRED edge (confidence "inferred"): NO citation exists. Rendered dashed
+ *     / amber, carries data-inferred="true", shows a visible
+ *     "candidate (unverified)" label, and lives inside a COLLAPSED
+ *     <details>"Show possible connections" disclosure — opt-in, never asserted
+ *     as fact. (The render-static inferred-honesty leg asserts every
+ *     [data-inferred] element carries the candidate/unverified label.)
+ *
+ *   - resolved:false: the linked PE has no program page. Rendered as plain text
+ *     "PE <code> (unresolved)" — NEVER an <a>/<Link> (avoids a 404 + the
+ *     dead-link gate). We trust the exporter's `resolved` flag verbatim.
+ *
+ * An honest empty state (never silence) renders when there are no edges.
+ */
+
+import React, { useContext } from "react";
+import Link from "next/link";
+import { CitationPanelContext } from "@/components/cite";
+import type { LineageRail as LineageRailData, LineageRailEntry } from "@/lib/lineage";
+
+/** Plain-language edge relation label (falls back to the raw token). */
+function relationLabel(relation: string): string {
+  switch (relation) {
+    case "realigned":
+      return "realigned from";
+    case "transferred":
+      return "transferred from";
+    case "matured_ba":
+      return "BA-maturation";
+    case "renamed":
+      return "renamed from";
+    case "split":
+      return "split from";
+    case "merged":
+      return "merged from";
+    default:
+      return relation.replace(/_/g, " ");
+  }
+}
+
+/** The PE identity of an edge: internal link when resolved, else plain text
+ *  + an "(unresolved)" marker (never a dead link). */
+function EdgePe({
+  entry,
+  linkablePes,
+}: {
+  entry: LineageRailEntry;
+  linkablePes: ReadonlySet<string>;
+}) {
+  const label = entry.title ? `${entry.pe} — ${entry.title}` : `PE ${entry.pe}`;
+  // resolved:false OR the PE simply isn't a built page → plain text, no link.
+  if (!entry.resolved || !linkablePes.has(entry.pe)) {
+    return (
+      <span className="text-muted-foreground">
+        <code className="font-mono text-xs">{entry.pe}</code>{" "}
+        <span className="text-[11px] italic">(unresolved)</span>
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/program/${entry.pe}/`}
+      className="font-medium text-primary hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
+/** The clickable sentence-citation marker for a stated edge (no amount). */
+function StatedCiteMarker({ factId }: { factId: string }) {
+  const { openPanel } = useContext(CitationPanelContext);
+  return (
+    <button
+      type="button"
+      data-lineage-cite=""
+      data-fact-id={factId}
+      className="ml-1 inline-flex items-center rounded border border-border bg-card px-1 py-0.5 font-mono text-[10px] text-muted-foreground align-middle whitespace-nowrap cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid hover:bg-muted transition-colors"
+      title="View the source sentence stating this transfer (official J-book page)"
+      aria-label="View source citation for this lineage link"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPanel(factId);
+      }}
+    >
+      cited
+    </button>
+  );
+}
+
+/** One stated (solid, cited) rail entry. */
+function StatedEdge({
+  entry,
+  linkablePes,
+}: {
+  entry: LineageRailEntry;
+  linkablePes: ReadonlySet<string>;
+}) {
+  return (
+    <li className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+        {relationLabel(entry.relation)} · FY{entry.fy}
+        {entry.ba ? ` · BA${entry.ba}` : ""}
+      </span>
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <EdgePe entry={entry} linkablePes={linkablePes} />
+        {entry.evidence?.fact_id ? (
+          <StatedCiteMarker factId={entry.evidence.fact_id} />
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+/** One inferred (dashed, amber, opt-in) rail entry. Never cited. */
+function InferredEdge({
+  entry,
+  linkablePes,
+}: {
+  entry: LineageRailEntry;
+  linkablePes: ReadonlySet<string>;
+}) {
+  return (
+    <li
+      data-inferred="true"
+      className="rounded-md border border-dashed border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+    >
+      <span className="text-xs uppercase tracking-wide">
+        {relationLabel(entry.relation)} · FY{entry.fy}
+        {entry.ba ? ` · BA${entry.ba}` : ""}
+        <span className="ml-1.5 rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-semibold not-italic">
+          candidate (unverified)
+        </span>
+      </span>
+      <div className="mt-0.5">
+        <EdgePe entry={entry} linkablePes={linkablePes} />
+      </div>
+    </li>
+  );
+}
+
+export function LineageRail({
+  selfPe,
+  selfTitle,
+  rail,
+  linkablePes,
+}: {
+  selfPe: string;
+  selfTitle: string;
+  rail: LineageRailData;
+  /**
+   * PEs that ARE built pages — a plain string[] (functions are not
+   * serializable across the RSC server→client boundary). Any edge PE not in
+   * this list, OR marked resolved:false, renders as plain text (no link).
+   */
+  linkablePes: readonly string[];
+}) {
+  const linkable = new Set(linkablePes);
+  const predecessors = rail?.predecessors ?? [];
+  const successors = rail?.successors ?? [];
+
+  const statedPred = predecessors.filter((e) => e.confidence === "stated");
+  const inferredPred = predecessors.filter((e) => e.confidence === "inferred");
+  const statedSucc = successors.filter((e) => e.confidence === "stated");
+  const inferredSucc = successors.filter((e) => e.confidence === "inferred");
+
+  const inferred = [...inferredPred, ...inferredSucc];
+  const hasStated = statedPred.length > 0 || statedSucc.length > 0;
+
+  if (predecessors.length === 0 && successors.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No predecessor or successor lineage edges are recorded for this program
+        element — no FY-to-FY transfer into or out of this line was stated in
+        the ingested J-books, and none was inferred.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {hasStated ? (
+        <div className="space-y-3">
+          {statedPred.length > 0 && (
+            <div>
+              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Predecessors (funding flowed in)
+              </h3>
+              <ul className="space-y-1.5">
+                {statedPred.map((e) => (
+                  <StatedEdge key={`p-${e.pe}`} entry={e} linkablePes={linkable} />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* THIS program — the pivot of the rail. */}
+          <div className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              This program
+            </span>
+            <div className="mt-0.5 font-semibold text-foreground">
+              <code className="font-mono text-xs">{selfPe}</code>
+              {selfTitle ? ` — ${selfTitle}` : ""}
+            </div>
+          </div>
+
+          {statedSucc.length > 0 && (
+            <div>
+              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Successors (funding flowed out)
+              </h3>
+              <ul className="space-y-1.5">
+                {statedSucc.map((e) => (
+                  <StatedEdge key={`s-${e.pe}`} entry={e} linkablePes={linkable} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No <em>stated</em> lineage edges for this program element — only the
+          candidate connections below, which are inferred and unverified.
+        </p>
+      )}
+
+      {/* Inferred edges — opt-in disclosure, collapsed by default. Server-
+          rendered so the markup is in the static HTML (the render-static
+          inferred-honesty leg scans it); visually collapsed = the opt-in
+          affordance. */}
+      {inferred.length > 0 && (
+        <details className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-amber-800 dark:text-amber-200">
+            Show possible connections ({inferred.length} candidate
+            {inferred.length === 1 ? "" : "s"}, unverified)
+          </summary>
+          <p className="mt-1.5 mb-2 text-xs text-amber-800/80 dark:text-amber-200/80">
+            These edges are inferred from program-element and budget-activity
+            structure, not stated in any J-book sentence — treat them as leads,
+            not facts.
+          </p>
+          <ul className="space-y-1.5">
+            {inferred.map((e) => (
+              <InferredEdge
+                key={`i-${e.pe}-${e.fy}`}
+                entry={e}
+                linkablePes={linkable}
+              />
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}

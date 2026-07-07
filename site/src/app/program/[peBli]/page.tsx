@@ -32,7 +32,10 @@ import {
   serviceOrgName,
 } from "@/lib/program-tier";
 import { findPeLinks } from "@/lib/pe-link";
+import { hasLineage } from "@/lib/lineage";
 import { Cite } from "@/components/cite";
+import { LineageRail } from "@/components/lineage/lineage-rail";
+import { FamilyFundingLine } from "@/components/lineage/family-funding-line";
 import { dossierFactIds } from "@/lib/dossier";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { programOgImages } from "@/lib/og";
@@ -236,6 +239,23 @@ export default async function ProgramPage({
   }
   if (bookDiff?.fid) pageFactIds.push(bookDiff.fid);
 
+  // Lineage (Task 7): every stated rail edge's evidence.fact_id (sentence
+  // citation, opened from the rail marker) AND every family funding_line point
+  // fid (a state-A Cite amount) must be in the page slice or the panel won't
+  // resolve at runtime. Inferred edges carry no fact_id (evidence:null).
+  const lineage = details.lineage ?? null;
+  if (lineage) {
+    for (const edge of [
+      ...(lineage.rail?.predecessors ?? []),
+      ...(lineage.rail?.successors ?? []),
+    ]) {
+      if (edge.evidence?.fact_id) pageFactIds.push(edge.evidence.fact_id);
+    }
+    for (const p of lineage.family?.funding_line ?? []) {
+      if (p.fid) pageFactIds.push(p.fid);
+    }
+  }
+
   // Details table: resolution ∈ {unique, ambiguous_first} → state A (fact_id resolves)
   for (const d of details.details) {
     if (d.resolution !== "zero_amount" && d.fact_id) {
@@ -362,6 +382,47 @@ export default async function ProgramPage({
             No year-over-year trajectory row for this line — the FY2026
             R-1/P-1 trajectory workbooks carry no entry for it, so no
             FY24→FY26 series can be drawn.
+          </SectionEmpty>
+        )}
+      </ProgramSection>
+
+      {/* 3b · Lineage — evidence-tiered YoY money-flow rail + 1:1 family
+          funding line (program-lineage Task 7). Stated edges are cited
+          (clickable → panel), inferred edges are dashed/amber behind an
+          opt-in disclosure, resolved:false links stay plain text. Absent
+          lineage renders the honest empty state (never silence). */}
+      <ProgramSection id="lineage">
+        {hasLineage(details) && lineage ? (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-3 text-foreground">
+              Program Lineage
+            </h2>
+            <LineageRail
+              selfPe={peBli}
+              selfTitle={program.title}
+              rail={lineage.rail}
+              linkablePes={[
+                ...lineage.rail.predecessors,
+                ...lineage.rail.successors,
+              ]
+                .map((e) => e.pe)
+                .filter((pe) => peIndex.has(pe))}
+            />
+            {(lineage.family?.funding_line?.length ?? 0) > 0 && (
+              <div className="mt-5">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Family Funding Line
+                </h3>
+                <FamilyFundingLine family={lineage.family} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <SectionEmpty title="Program Lineage">
+            No predecessor/successor lineage was recorded for this program
+            element — no FY-to-FY transfer into or out of this line was stated
+            in the ingested J-books, and none was inferred from the program
+            structure.
           </SectionEmpty>
         )}
       </ProgramSection>

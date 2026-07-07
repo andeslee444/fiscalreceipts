@@ -1015,3 +1015,51 @@ test proving a genuinely-CITED terminal still PASSES. The real
 genuinely cited (verified). The typo-vs-forward-reference ambiguity itself is
 deliberately NOT guessed by the gate — it is handled at render time (Task
 6/7): a dangling successor renders as "-> <PE> (unresolved)", never a link.
+
+
+================================================================================
+render-static leg (inferred-lineage) — 2026-07-06
+================================================================================
+
+program-lineage Task 7 adds an ADDITIVE leg (inf) to gate 2 (render-static,
+scripts/gates/render-static.mjs): every element marked [data-inferred="true"]
+(an inferred lineage edge — a candidate connection with NO stated-source
+citation) MUST carry, in its own subtree text, a "candidate" or "unverified"
+label (regex /candidate|unverified/i). An inferred edge rendered without the
+honesty label reads as an asserted fact and FAILS. This keeps the
+inferred/stated distinction present in the static HTML itself, not just in the
+amber/dashed styling.
+
+--- PROOF-CAN-FAIL (leg is genuinely capable of failing) ---
+Method: on the real production build (out/, NEXT_PUBLIC_SITE_URL=
+https://fiscalreceipts.com), backed up one built page to a .bak, injected an
+UNLABELLED inferred span into out/program/0602203F/index.html —
+
+    <span data-inferred="true">PE 0603xxx</span>
+
+inserted immediately before </body> (no "candidate"/"unverified" text in its
+subtree) — then ran runRenderStaticGate() over out/**.
+
+Verbatim gate output on the corrupted build:
+
+    PASS: false
+      1 [data-inferred] element(s) lack a candidate/unverified honesty label (first 10):
+        program/0602203F/index.html: [data-inferred="true"] element without a "candidate"/"unverified" honesty label — "PE 0603xxx"
+
+Then REVERTED by restoring the .bak (mv "$TARGET.bak" "$TARGET"); no injected
+markup remains in the build. Re-ran the gate on the restored build → PASS: true.
+
+--- MADE TO PASS ON THE REAL BUILD ---
+On the untouched production build the leg passes — every real inferred lineage
+edge carries the "candidate (unverified)" label (rendered by
+src/components/lineage/lineage-rail.tsx InferredEdge, inside the collapsed
+"Show possible connections" <details>). Verbatim:
+
+    PASS: true
+      inferred-lineage honesty: 6 [data-inferred] element(s), all labelled candidate/unverified ✓
+    --- ERRORS (0) ---
+
+The leg cannot be a no-op: with 6 real [data-inferred] elements in the build it
+has live subjects, and the injection above proves a single unlabelled one flips
+the gate to FAIL. NEVER weakened — the label requirement is a real teeth on the
+inferred/stated honesty boundary.

@@ -17,6 +17,7 @@ export const PROGRAM_SECTIONS = [
   "answer-strip",
   "figures",
   "trajectory",
+  "lineage",
   "description",
   "justification",
   "line-items",

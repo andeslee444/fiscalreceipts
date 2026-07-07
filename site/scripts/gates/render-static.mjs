@@ -42,6 +42,14 @@
  *      export regression that silently drops a citation tier (re-growing the
  *      ledger) fails the build instead of quietly re-legalizing ⁂ renders.
  *      Growing EXPECTED_UNCITED_DATASETS requires a deliberate, reviewed edit.
+ *
+ * (inf) INFERRED-LINEAGE HONESTY (program-lineage Task 7): every element
+ *      marked [data-inferred="true"] (an inferred lineage edge — a candidate
+ *      connection with NO stated-source citation) must carry, in its OWN
+ *      subtree text, a "candidate" or "unverified" label. An inferred edge
+ *      rendered without the honesty label reads as an asserted fact → FAIL.
+ *      This keeps the inferred/stated distinction visible in the static HTML
+ *      itself, not just the styling.
  */
 
 import fs from "fs";
@@ -129,10 +137,17 @@ export async function runRenderStaticGate() {
   let negativeErrors = 0;
   let ledgerErrors = 0;
   let proseCiteCount = 0;
+  let inferredCount = 0;
+  let inferredErrors = 0;
   const positiveFailures = [];
   const negativeFailures = [];
   const ledgerFailures = [];
   const titleFailures = [];
+  const inferredFailures = [];
+
+  // (inf) An inferred-lineage element is honest iff its own subtree text names
+  // the connection as a candidate / unverified — never asserted as fact.
+  const INFERRED_HONESTY_RE = /candidate|unverified/i;
 
   for (const filePath of htmlFiles) {
     const relPath = path.relative(outDir, filePath);
@@ -212,6 +227,23 @@ export async function runRenderStaticGate() {
         positiveFailures.push({
           file: relPath,
           issue: `[data-prose-cite] element also carries data-amount — prose cites must never be amount-marked (a0)`,
+        });
+      }
+    }
+
+    // ── (inf) Inferred-lineage honesty (program-lineage Task 7) ─────────────
+    // Every [data-inferred="true"] element must name itself a candidate /
+    // unverified connection in its own subtree text. An inferred edge without
+    // the label reads as an asserted fact → FAIL.
+    for (const infEl of root.querySelectorAll('[data-inferred="true"]')) {
+      inferredCount++;
+      const text = infEl.text ?? "";
+      if (!INFERRED_HONESTY_RE.test(text)) {
+        inferredErrors++;
+        inferredFailures.push({
+          file: relPath,
+          issue: `[data-inferred="true"] element without a "candidate"/"unverified" honesty label`,
+          snippet: text.trim().slice(0, 100),
         });
       }
     }
@@ -461,6 +493,22 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`dataset ledger: all [data-amount] elements consistent with uncited_datasets ✓`);
+  }
+
+  if (inferredErrors > 0) {
+    errors.push(
+      `${inferredErrors} [data-inferred] element(s) lack a candidate/unverified honesty label (first 10):`
+    );
+    for (const f of inferredFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue} — "${f.snippet}"`);
+    }
+    if (inferredFailures.length > 10) {
+      errors.push(`  ... and ${inferredFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(
+      `inferred-lineage honesty: ${inferredCount} [data-inferred] element(s), all labelled candidate/unverified ✓`
+    );
   }
 
   if (titleFailures.length > 0) {
