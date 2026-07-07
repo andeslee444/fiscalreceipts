@@ -89,6 +89,66 @@ def _load_edges(dsn: str) -> list[LineageEdge]:
     ]
 
 
+def _load_narrative_index(con) -> dict[str, list[str]]:
+    """fact_id -> list of narrative bodies, keyed by the canonical
+    fact_id_narrative(sha256, pe_bli, kind, xml_path).
+
+    A fact_id is unique per narrative row, but a list keeps us honest if two
+    rows ever collide on the derived id. Shared by leg (a) and leg (c) so both
+    apply the SAME citation-resolution rule against the SAME narrative universe.
+    """
+    narratives = con.execute(
+        """
+        select j.sha256, n.pe_bli, n.kind, n.xml_path, n.body
+          from detail_narratives n
+          join jbook_documents j on j.id = n.document_id
+         where not n.superseded
+           and n.xml_path is not null
+        """
+    ).fetchall()
+    fid_to_bodies: dict[str, list[str]] = defaultdict(list)
+    for sha, pe_bli, kind, xml_path, body in narratives:
+        fid = fact_id_narrative(sha, pe_bli, kind, xml_path)
+        fid_to_bodies[fid].append(body or "")
+    return fid_to_bodies
+
+
+def _edge_citation_resolves(
+    edge: LineageEdge, fid_to_bodies: dict[str, list[str]]
+) -> tuple[bool, str | None]:
+    """True iff a stated edge is genuinely cited (spec §7 leg a rule).
+
+    Genuinely cited means ALL of:
+      1. evidence_sentence is non-empty and contains the from_pe_bli OR
+         to_pe_bli token;
+      2. evidence_fact_id is non-empty and present in the narrative index; AND
+      3. that narrative's body contains evidence_sentence verbatim.
+
+    Returns (ok, reason) — reason is None on success, else a human-readable
+    failure string (so leg (a) can report the specific violation). This is the
+    LOCAL citation invariant: leg (c)'s dangling-terminal carve-out reuses it
+    so the exemption can never depend on leg (a) having run in the same CLI.
+    """
+    sent = edge.evidence_sentence
+    if not sent:
+        return False, "stated edge has no evidence_sentence"
+    if edge.from_pe_bli not in sent and edge.to_pe_bli not in sent:
+        return False, f"evidence_sentence cites neither PE token: {sent[:120]!r}"
+    if not edge.evidence_fact_id:
+        return False, "stated edge has no evidence_fact_id"
+    bodies = fid_to_bodies.get(edge.evidence_fact_id)
+    if not bodies:
+        return False, (
+            f"evidence_fact_id {edge.evidence_fact_id} re-derives to no narrative"
+        )
+    if not any(sent in body for body in bodies):
+        return False, (
+            f"narrative body for fact_id {edge.evidence_fact_id} does not contain"
+            f" evidence_sentence"
+        )
+    return True, None
+
+
 # ---------------------------------------------------------------------------
 # Leg (a): stated-cite — every gold edge is genuinely cited
 # ---------------------------------------------------------------------------
@@ -97,11 +157,11 @@ def _load_edges(dsn: str) -> list[LineageEdge]:
 def stated_cite_leg(dsn: str) -> dict:
     """Every stated edge cites a real narrative sentence (spec §7 leg a).
 
-    Loads all narratives once (there are far fewer than a full-text scan would
-    cost), builds a fact_id -> body index, and checks every stated edge:
-      1. evidence_sentence must contain the from_pe_bli OR to_pe_bli token;
-      2. evidence_fact_id must be present in the narrative index AND that
-         narrative's body must contain evidence_sentence.
+    Loads the narrative index once and applies _edge_citation_resolves to every
+    stated edge (evidence_sentence contains a PE token AND evidence_fact_id
+    re-derives to a narrative whose body contains the sentence). The same helper
+    backs leg (c)'s dangling-terminal carve-out, so the two legs share one
+    citation-resolution rule.
 
     Returns: ok, checked, passed, failures [(edge, reason)].
     """
@@ -111,50 +171,14 @@ def stated_cite_leg(dsn: str) -> dict:
     stated = [e for e in edges if e.confidence == "stated"]
 
     with psycopg.connect(dsn) as con:
-        narratives = con.execute(
-            """
-            select j.sha256, n.pe_bli, n.kind, n.xml_path, n.body
-              from detail_narratives n
-              join jbook_documents j on j.id = n.document_id
-             where not n.superseded
-               and n.xml_path is not null
-            """
-        ).fetchall()
-
-    # fact_id -> list of bodies (a fact_id is unique per narrative row, but a
-    # list keeps us honest if two rows ever collide on the derived id).
-    fid_to_bodies: dict[str, list[str]] = defaultdict(list)
-    for sha, pe_bli, kind, xml_path, body in narratives:
-        fid = fact_id_narrative(sha, pe_bli, kind, xml_path)
-        fid_to_bodies[fid].append(body or "")
+        fid_to_bodies = _load_narrative_index(con)
 
     failures: list[tuple[str, str]] = []
     for e in stated:
         grain = f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation})"
-        sent = e.evidence_sentence
-        if not sent:
-            failures.append((grain, "stated edge has no evidence_sentence"))
-            continue
-        if e.from_pe_bli not in sent and e.to_pe_bli not in sent:
-            failures.append(
-                (grain, f"evidence_sentence cites neither PE token: {sent[:120]!r}")
-            )
-            continue
-        if not e.evidence_fact_id:
-            failures.append((grain, "stated edge has no evidence_fact_id"))
-            continue
-        bodies = fid_to_bodies.get(e.evidence_fact_id)
-        if not bodies:
-            failures.append(
-                (grain, f"evidence_fact_id {e.evidence_fact_id} re-derives to no"
-                        f" narrative")
-            )
-            continue
-        if not any(sent in body for body in bodies):
-            failures.append(
-                (grain, f"narrative body for fact_id {e.evidence_fact_id} does not"
-                        f" contain evidence_sentence")
-            )
+        ok, reason = _edge_citation_resolves(e, fid_to_bodies)
+        if not ok:
+            failures.append((grain, reason))
 
     checked = len(stated)
     return {
@@ -282,14 +306,21 @@ def one_to_one_sum_leg(
         INFERRED-edge successor. Either is a FAIL — an inferred/split/merge/
         partial member must never enter a summed funding total;
       - SUMMABILITY: the root must resolve in the request series; every other
-        chain member must resolve in the request series OR be a terminal
-        dangling forward-reference (out-degree 0, absent from the ENTIRE
-        series — a cited destination PE in a not-yet-ingested edition). A
-        missing member that is mid-chain, or a non-resolving root, is a FAIL.
+        chain member must resolve in the request series OR be a citation-gated
+        terminal dangling reference. The carve-out fires ONLY when the member
+        has out-degree 0, is absent from the ENTIRE series, AND the STATED edge
+        that introduced it (whose to_pe_bli == the member) itself passes
+        _edge_citation_resolves. An UNcited/garbage terminal — or a mid-chain
+        gap, or a non-resolving root — is a FAIL. Making the exemption depend on
+        the incoming edge's own citation keeps leg (c) safe in ISOLATION: a
+        caller invoking it standalone (without leg a) can never wave through a
+        fabricated terminal.
 
     Returns: ok, families_checked, target_families, cyclic_fallbacks [str],
              dangling_terminals [(family_root, member)], failures [(grain, reason)].
     """
+    import psycopg
+
     duckdb_path = Path(duckdb_path)
     edges = _load_edges(dsn)
     stated = [e for e in edges if e.confidence == "stated"]
@@ -315,12 +346,20 @@ def one_to_one_sum_leg(
 
     req_pes, all_series_pes = _request_series_pes(duckdb_path)
 
-    # Degree bookkeeping over the STATED edges.
+    # Narrative index — so leg (c)'s dangling-terminal carve-out can require the
+    # INCOMING edge to be genuinely cited (the same rule leg a applies).
+    with psycopg.connect(dsn) as con:
+        fid_to_bodies = _load_narrative_index(con)
+
+    # Degree bookkeeping over the STATED edges + a map from each stated
+    # successor PE to the edge(s) that introduced it (its incoming edges).
     in_deg: dict[str, int] = defaultdict(int)
     out_deg: dict[str, int] = defaultdict(int)
+    incoming: dict[str, list[LineageEdge]] = defaultdict(list)
     for e in stated:
         in_deg[e.to_pe_bli] += 1
         out_deg[e.from_pe_bli] += 1
+        incoming[e.to_pe_bli].append(e)
 
     # Targets of a split/merge or partial-transfer edge, and INFERRED
     # successors — the members that must NEVER appear in a summed 1:1 chain.
@@ -368,13 +407,27 @@ def one_to_one_sum_leg(
         for m in chain[1:]:
             if m in req_pes:
                 continue
-            # Not in the request series. A genuine terminal dangling
-            # forward-reference (out-degree 0, absent from the entire series)
-            # is an honest cited destination in a not-yet-ingested edition —
-            # noted, not failed. Anything else (mid-chain, or present in the
-            # series but no request row) is a FAIL.
-            if out_deg[m] == 0 and m not in all_series_pes:
+            # Not in the request series. The dangling-terminal carve-out fires
+            # ONLY for a genuinely-cited terminal: out-degree 0, absent from the
+            # ENTIRE series, AND the STATED edge that introduced m is itself a
+            # resolving citation. That last clause makes the exemption a LOCAL
+            # invariant of leg (c) — an uncited/garbage terminal is never waved
+            # through, even when this leg runs standalone. Anything else
+            # (mid-chain, present-but-no-request-row, or uncited) is a FAIL.
+            is_terminal = out_deg[m] == 0 and m not in all_series_pes
+            incoming_cited = any(
+                _edge_citation_resolves(e, fid_to_bodies)[0] for e in incoming[m]
+            )
+            if is_terminal and incoming_cited:
                 dangling_terminals.append((root, m))
+            elif is_terminal and not incoming_cited:
+                failures.append(
+                    (grain, f"chain member {m} is an UNcited dangling terminal —"
+                            f" its incoming stated edge does not resolve to a real"
+                            f" cited narrative, so it cannot be exempted; the"
+                            f" funding line must not sum or thread a fabricated"
+                            f" successor")
+                )
             else:
                 failures.append(
                     (grain, f"chain member {m} does not resolve in the request"

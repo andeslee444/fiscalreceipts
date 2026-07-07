@@ -411,6 +411,48 @@ def test_leg_c_terminal_dangling_reference_is_noted_not_failed(pg, tmp_path):
     assert ("0700001F", "0700003F") in g["dangling_terminals"]
 
 
+def test_leg_c_uncited_dangling_terminal_fails_LOCALLY(pg, tmp_path):
+    """proof-can-fail (LOCAL safety): a dangling terminal whose INCOMING stated
+    edge is UNcited (bogus fact_id) must make leg c FAIL when called directly —
+    NOT waved through as a dangling reference. This proves the carve-out is a
+    local invariant of leg c, not merely emergent from leg a running in the
+    same CLI. Adversarial-review closure: 000042 -> 9999999Z with an uncited
+    incoming edge is fabricated lineage and must never sum/thread."""
+    # A well-formed but nonexistent terminal 9999999Z whose incoming edge is
+    # UNCITED (bogus fact_id, no matching narrative). Root 000042 is real.
+    seed_edge(
+        pg, "000042", "9999999Z", relation="realigned",
+        fact_id="deadbeefdeadbeef",
+        sentence="Funding for PE 000042 was realigned to PE 9999999Z.",
+    )
+    # Note: NO narrative seeded for that fact_id — the incoming edge does not
+    # resolve. Family groups the two; 000042 resolves in the request series,
+    # 9999999Z appears nowhere in the series (a terminal).
+    seed_family(pg, {"000042": 1, "9999999Z": 1})
+    db = make_series_db(tmp_path, ["000042"])  # 9999999Z absent from series
+    g = one_to_one_sum_leg(pg, db)
+    assert g["ok"] is False
+    assert ("000042", "9999999Z") not in g["dangling_terminals"]
+    assert any("UNcited dangling terminal" in r for _, r in g["failures"])
+
+
+def test_leg_c_cited_dangling_terminal_still_passes(pg, tmp_path):
+    """Companion to the LOCAL-safety test: the SAME shape but with a genuinely
+    CITED incoming edge is exempted (noted, PASS) — mirrors the real
+    834190 -> 0207429F warehouse case. Proves the hardening did not over-tighten
+    the honest carve-out."""
+    body = "Funding for PE 000042 was realigned to PE 9999999Z."
+    fid = seed_narrative(pg, sha="s9", pe_bli="000042", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=body)
+    seed_edge(pg, "000042", "9999999Z", relation="realigned", fact_id=fid,
+              sentence=body)
+    seed_family(pg, {"000042": 1, "9999999Z": 1})
+    db = make_series_db(tmp_path, ["000042"])
+    g = one_to_one_sum_leg(pg, db)
+    assert g["ok"] is True, g["failures"]
+    assert ("000042", "9999999Z") in g["dangling_terminals"]
+
+
 # ===========================================================================
 # All-pass end-to-end
 # ===========================================================================

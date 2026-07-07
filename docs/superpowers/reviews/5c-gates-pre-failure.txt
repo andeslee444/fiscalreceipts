@@ -995,3 +995,23 @@ on an honest citation. A MID-chain gap, a non-resolving root, or an
 inferred/split/merge/partial member all still FAIL (proven above), so the
 carve-out is narrow and cannot become a loophole. All 29 multi-member
 families (well above the ≥10 target) checked; 0 cyclic fallbacks.
+
+Hardening (adversarial-review closure, 2026-07-06): the dangling-terminal
+carve-out is now LOCALLY citation-gated — it fires only when the STATED edge
+that introduced the terminal itself passes _edge_citation_resolves (the same
+per-edge rule leg a runs, factored into a shared helper). This closes two
+gaps: (1) leg (c) alone previously accepted an UNCITED garbage terminal (e.g.
+000042 -> 9999999Z with a bogus fact_id) — its safety was only emergent from
+leg a running in the same CLI; now an uncited/unresolved incoming edge makes
+leg (c) FAIL in ISOLATION ("chain member … is an UNcited dangling terminal");
+(2) the NOTE no longer asserts "not-yet-ingested destination" as fact (an
+OCR-typo / extraction-hallucination is an equally-consistent reading, spec
+§5.4) — it now states only that the successor is cited-but-unresolved and must
+be rendered as an unresolved reference, never a clean thread. New proof-can-
+fail: tests/test_verify_lineage.py::test_leg_c_uncited_dangling_terminal_
+fails_LOCALLY (calls one_to_one_sum_leg directly → FAIL), with a companion
+test proving a genuinely-CITED terminal still PASSES. The real
+834190 -> 0207429F case stays exit-0 because that incoming edge IS
+genuinely cited (verified). The typo-vs-forward-reference ambiguity itself is
+deliberately NOT guessed by the gate — it is handled at render time (Task
+6/7): a dangling successor renders as "-> <PE> (unresolved)", never a link.

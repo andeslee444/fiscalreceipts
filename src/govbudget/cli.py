@@ -1672,8 +1672,10 @@ def cmd_verify_lineage(args) -> None:
         for root in c["cyclic_fallbacks"]:
             print(f"  NOTE cyclic family — fell back to lexicographically-smallest root {root}")
         for froot, member in c["dangling_terminals"]:
-            print(f"  NOTE dangling terminal successor {member} (family root {froot})"
-                  f" cited but absent from fct_decade_series — not-yet-ingested destination")
+            print(f"  NOTE successor {member} (family root {froot}) is cited but"
+                  f" unresolved in the ingested request series (dangling terminal);"
+                  f" the funding line ends here and the successor must be rendered"
+                  f" as an unresolved reference, not a clean thread")
         for grain, reason in c["failures"][:10]:
             print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gc_ok
