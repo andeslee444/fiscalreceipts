@@ -913,10 +913,16 @@ function ProgramRows({
                   // connector line between rows.
                   <Link
                     href={`/program/${program.pe_bli}/`}
+                    // Decorative signpost to the SAME destination the title
+                    // link already reaches — not its own keyboard tab stop
+                    // (avoids a redundant adjacent tab stop per family row).
+                    // Keyboard users reach the destination via the title link;
+                    // mouse/hover still works on the badge.
+                    tabIndex={-1}
                     data-family-badge={program.family_id}
                     aria-label="Part of a tracked lineage family — see this program's Lineage section"
                     title="Part of a tracked lineage family — see this program's Lineage section"
-                    className="inline-flex shrink-0 text-primary/70 transition-colors hover:text-primary focus:outline-none focus:ring-1 focus:ring-ring rounded-sm"
+                    className="inline-flex shrink-0 rounded-sm text-primary/70 transition-colors hover:text-primary"
                   >
                     <GitBranch className="h-3 w-3" aria-hidden="true" />
                   </Link>
