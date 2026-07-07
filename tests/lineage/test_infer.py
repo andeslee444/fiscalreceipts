@@ -19,3 +19,11 @@ def test_no_edge_when_titles_differ():
         {"pe_bli": "0604XYZ", "title": "Unrelated Gadget", "fy": 2025, "kind": "request", "amount": 40.0},
     ]
     assert infer_edges(series) == []
+
+def test_no_edge_when_predecessor_lacks_prior_year_baseline():
+    # successor rises in 2025 but predecessor only appears in 2025 -> no prior-year taper baseline
+    series = [
+        {"pe_bli": "0603ABC", "title": "Widget Science", "fy": 2025, "kind": "request", "amount": 100.0},
+        {"pe_bli": "0604ABC", "title": "Widget Science", "fy": 2025, "kind": "request", "amount": 40.0},
+    ]
+    assert infer_edges(series) == []

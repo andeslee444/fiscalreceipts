@@ -1,6 +1,6 @@
 """Deterministic Inferred edges (spec §4). NEVER cited, NEVER summed into a total.
 
-- ba_maturation_same_title: 06Nxxx… and 06(N+1)xxx… (or ...Nxxx→...(N+1)xxx) share a
+- ba_maturation_same_title: 06Nxxx… and 06(N+1)xxx… share a
   normalized title across adjacent budget activities, with the predecessor's request
   tapering as the successor's rises (a funding hand-off).
 """
@@ -40,7 +40,9 @@ def infer_edges(series: list[dict]) -> list[LineageEdge]:
                 frm_by_fy = {r["fy"]: r["amount"] for r in rows if r["pe_bli"] == frm}
                 to_by_fy = {r["fy"]: r["amount"] for r in rows if r["pe_bli"] == to}
                 handoff_fy = next((fy for fy in sorted(to_by_fy)
-                                   if to_by_fy[fy] > 0 and frm_by_fy.get(fy, 0) < frm_by_fy.get(fy - 1, 1e9)), None)
+                                   if to_by_fy[fy] > 0
+                                   and (fy - 1) in frm_by_fy
+                                   and frm_by_fy.get(fy, 0) < frm_by_fy[fy - 1]), None)
                 if handoff_fy is None:
                     continue
                 out.append(LineageEdge(
