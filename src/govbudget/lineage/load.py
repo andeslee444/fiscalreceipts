@@ -43,8 +43,7 @@ _SERIES_SQL = """
 select f.pe_bli, t.title, f.fy, 'request' as kind, f.amount_thousands as amount
   from fct_decade_series f
   join dim_pe_titles t using(pe_bli)
- where f.edition_year = 2026
-   and f.amount_type_kind = 'request'
+ where f.amount_type_kind = 'request'
    and t.title is not null
 """
 

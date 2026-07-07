@@ -27,3 +27,31 @@ def test_no_edge_when_predecessor_lacks_prior_year_baseline():
         {"pe_bli": "0604ABC", "title": "Widget Science", "fy": 2025, "kind": "request", "amount": 40.0},
     ]
     assert infer_edges(series) == []
+
+def test_no_edge_for_non_rdte_codes_even_with_taper():
+    # procurement/O&M line numbers are not RDT&E PEs; _ba_digit must reject them
+    series = [
+        {"pe_bli": "6670", "title": "Widget System", "fy": 2024, "kind": "request", "amount": 30.0},
+        {"pe_bli": "6670", "title": "Widget System", "fy": 2025, "kind": "request", "amount": 5.0},
+        {"pe_bli": "0981", "title": "Widget System", "fy": 2025, "kind": "request", "amount": 40.0},
+    ]
+    assert infer_edges(series) == []
+
+def test_no_edge_across_different_agency_suffix():
+    # same title, adjacent BA, taper, but different service (F vs N) -> coincidence, not a maturation
+    series = [
+        {"pe_bli": "0602602F", "title": "Shared Title", "fy": 2024, "kind": "request", "amount": 30.0},
+        {"pe_bli": "0602602F", "title": "Shared Title", "fy": 2025, "kind": "request", "amount": 5.0},
+        {"pe_bli": "0603602N", "title": "Shared Title", "fy": 2025, "kind": "request", "amount": 40.0},
+    ]
+    assert infer_edges(series) == []
+
+def test_ba_maturation_requires_same_agency_suffix_positive():
+    # same agency suffix (N), adjacent BA, same title, taper -> one inferred edge
+    series = [
+        {"pe_bli": "0603654N", "title": "Ordnance Dev", "fy": 2024, "kind": "request", "amount": 30.0},
+        {"pe_bli": "0603654N", "title": "Ordnance Dev", "fy": 2025, "kind": "request", "amount": 5.0},
+        {"pe_bli": "0604654N", "title": "Ordnance Dev", "fy": 2025, "kind": "request", "amount": 40.0},
+    ]
+    e = infer_edges(series)
+    assert len(e) == 1 and e[0].from_pe_bli == "0603654N" and e[0].to_pe_bli == "0604654N"
