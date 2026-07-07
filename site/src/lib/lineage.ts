@@ -60,6 +60,12 @@ export interface LineageFamily {
   family_id: number;
   /** The 1:1 chain of PE identities, in order, the funding line is drawn for. */
   chain: string[];
+  /**
+   * Short title of the chain HEAD (chain[0], the family root) — lets the
+   * funding-chain summary label itself self-descriptively rather than as a
+   * bare id. null when the head carries no title (renderer shows the id alone).
+   */
+  chain_head_title?: string | null;
   /** One cited point per FY along the 1:1 chain. */
   funding_line: LineageFundingPoint[];
   /** True when the family branches — the line is the 1:1 chain only. */

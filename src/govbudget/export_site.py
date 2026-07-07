@@ -2626,10 +2626,18 @@ def _emit_lineage(
             out_deg[m] > 1 for m in member_set
         )
 
+        # chain_head_title: the short title of the chain HEAD (chain[0], the
+        # family root). Lets the /years/-linked family funding line label its
+        # summed line self-descriptively ("FUNDING CHAIN: 0203728A — Joint …")
+        # instead of forcing a bare-id cross-reference. None when the head has
+        # no title in titles_by_pe (renderer falls back to the id alone).
+        chain_head_title = titles_by_pe.get(chain[0]) if chain else None
+
         family_cache[fam_id] = {
             "family_id": fam_id,
             "funding_line": funding_line,
             "chain": chain,
+            "chain_head_title": chain_head_title,
             "has_split": has_split,
         }
 

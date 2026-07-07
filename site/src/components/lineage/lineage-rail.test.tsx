@@ -150,6 +150,62 @@ describe("LineageRail", () => {
     expect(container.textContent?.toLowerCase()).toContain("realigned");
   });
 
+  // ── Directional-honesty guard (visual-judge round) ─────────────────────────
+  // The relation is stored direction-NEUTRAL; the preposition MUST come from
+  // the entry's rail POSITION. A predecessor reads "…from" (funding flowed in),
+  // a successor reads "…to" (funding flowed out). Rendering "from" under a
+  // successor asserts the opposite money-flow — a directional-honesty bug.
+  it('renders a PREDECESSOR edge with a "from" phrasing (funding flowed in)', () => {
+    const { container } = renderRail({ predecessors: [statedResolved], successors: [] });
+    const text = container.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("realigned from");
+    expect(text).not.toContain("realigned to");
+  });
+
+  it('renders a SUCCESSOR edge with a "to" phrasing (funding flowed out)', () => {
+    // Same direction-neutral relation ("realigned"), now as a SUCCESSOR.
+    const succ = { ...statedResolved, pe: "0602203G" };
+    const { container } = renderRail({ predecessors: [], successors: [succ] });
+    const text = container.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("realigned to");
+    expect(text).not.toContain("realigned from");
+  });
+
+  it("keeps the SAME relation direction-aware across both rail positions", () => {
+    // One relation token, rendered in BOTH positions on one rail: pred → from,
+    // succ → to. Proves the preposition tracks position, not the relation.
+    const { container } = renderRail({
+      predecessors: [statedResolved],
+      successors: [{ ...statedResolved, pe: "0602203G" }],
+    });
+    const text = container.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("realigned from");
+    expect(text).toContain("realigned to");
+  });
+
+  it("renders an inferred SUCCESSOR direction-aware, not directionless-wrong", () => {
+    // matured_ba stays directionless; use a from/to relation to prove inferred
+    // successors also read "to" (the bug was uniform "from" everywhere).
+    const infSucc = {
+      ...inferredResolved,
+      pe: "0604294E9Z",
+      relation: "realigned",
+    };
+    const { container } = renderRail({ predecessors: [], successors: [infSucc] });
+    const el = container.querySelector('[data-inferred="true"]') as HTMLElement;
+    const text = el.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("realigned to");
+    expect(text).not.toContain("realigned from");
+  });
+
+  it("keeps matured_ba directionless (no forced from/to)", () => {
+    const { container } = renderRail({ predecessors: [], successors: [inferredResolved] });
+    const text = container.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("ba-maturation");
+    expect(text).not.toContain("matured_ba to");
+    expect(text).not.toContain("matured_ba from");
+  });
+
   it("renders an honest empty state when there are no edges", () => {
     const { container } = renderRail({ predecessors: [], successors: [] });
     // no rail entries, but a stated non-silent explanation

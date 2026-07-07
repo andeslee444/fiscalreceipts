@@ -18,6 +18,7 @@ import type { LineageFamily } from "@/lib/lineage";
 const family: LineageFamily = {
   family_id: 6,
   chain: ["0602201F", "0602203F"],
+  chain_head_title: "Aerospace Vehicle Technologies",
   funding_line: [
     { fy: 2024, v: 346135, fid: "e32f2488e7ecb682" },
     { fy: 2025, v: 344712, fid: "35adeab4a79b9a89" },
@@ -63,6 +64,25 @@ describe("FamilyFundingLine", () => {
     expect(iFirst).toBeGreaterThanOrEqual(0);
     expect(iSecond).toBeGreaterThanOrEqual(0);
     expect(iFirst).toBeLessThan(iSecond);
+  });
+
+  it("labels the funding chain with the chain-head short title (self-describing)", () => {
+    const { container } = render(<FamilyFundingLine family={family} />);
+    const text = container.textContent ?? "";
+    // The head title appears on the FUNDING CHAIN line so it is not a bare id.
+    expect(text).toContain("Aerospace Vehicle Technologies");
+    // …after the head id, in the chain summary (not appearing before the chain).
+    expect(text.indexOf("Aerospace Vehicle Technologies")).toBeGreaterThan(
+      text.indexOf("0602201F"),
+    );
+  });
+
+  it("falls back to the bare chain when no chain_head_title is present", () => {
+    const noTitle: LineageFamily = { ...family, chain_head_title: null };
+    const { container } = render(<FamilyFundingLine family={noTitle} />);
+    // Chain ids still render; no dangling em-dash tail.
+    expect(container.textContent).toContain("0602201F");
+    expect(container.textContent).not.toContain("Aerospace Vehicle Technologies");
   });
 
   it("shows each funding-line fiscal year", () => {

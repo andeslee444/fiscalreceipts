@@ -130,6 +130,31 @@ def test_funding_line_sums_only_chain_members():
         assert p["fid"] is not None
 
 
+def test_family_carries_chain_head_title():
+    # The family payload labels its funding line with the chain HEAD's title so
+    # the /years/-linked summary is self-describing, not a bare-id reference.
+    by_pe = _chain_fixture()
+    fam = by_pe["PRED"]["family"]
+    # chain head is PRED (root); its title comes from titles_by_pe.
+    assert fam["chain"][0] == "PRED"
+    assert fam["chain_head_title"] == "Predecessor"
+
+
+def test_chain_head_title_none_when_head_untitled():
+    # Head with no title in titles_by_pe → chain_head_title None (renderer
+    # falls back to the bare id). Family root here is untitled.
+    edges = [
+        LineageEdge("H", "T", 2025, "realigned", "stated",
+                    evidence_fact_id="fHT", evidence_page=1),
+    ]
+    families = {"H": 2, "T": 2}
+    by_pe = _emit(edges, families, all_pe_blis={"H", "T"}, rollup_pes=set(),
+                  titles={"T": "Tail only"}, series={}, cited={"fHT"})  # H untitled
+    fam = by_pe["H"]["family"]
+    assert fam["chain"][0] == "H"
+    assert fam["chain_head_title"] is None
+
+
 def test_out_of_universe_successor_is_unresolved():
     by_pe = _chain_fixture()
     # SUCC -> DANGLE; DANGLE has no page → resolved must be False.

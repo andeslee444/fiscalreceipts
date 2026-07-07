@@ -23,6 +23,7 @@ import type { LineageFamily } from "@/lib/lineage";
 export function FamilyFundingLine({ family }: { family: LineageFamily }) {
   const points = family.funding_line ?? [];
   const chain = family.chain ?? [];
+  const headTitle = family.chain_head_title ?? null;
 
   if (points.length === 0) {
     return (
@@ -35,7 +36,8 @@ export function FamilyFundingLine({ family }: { family: LineageFamily }) {
 
   return (
     <div className="space-y-3">
-      {/* Chain identities in order. */}
+      {/* Chain identities in order, followed by the chain HEAD's short title so
+          the summed line is self-describing (not a bare-id cross-reference). */}
       {chain.length > 0 && (
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold uppercase tracking-wider">
@@ -47,6 +49,9 @@ export function FamilyFundingLine({ family }: { family: LineageFamily }) {
               <code className="font-mono">{pe}</code>
             </React.Fragment>
           ))}
+          {headTitle ? (
+            <span className="text-foreground"> — {headTitle}</span>
+          ) : null}
         </p>
       )}
 

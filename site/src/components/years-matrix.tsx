@@ -649,6 +649,21 @@ export function YearsMatrix() {
       {/* ── Honesty-marker legend (visual-judge M2 finding) ── */}
       <CiteLegend />
 
+      {/* ── Family-thread legend — decodes the per-row branch glyph so the
+          signpost is learnable (visual-judge round). Mirrors CiteLegend's
+          style; the glyph uses the same primary accent + size as the row
+          badge so the legend doubles as a swatch. ── */}
+      <p
+        data-testid="family-legend"
+        className="flex items-center gap-1 text-[11px] leading-5 text-muted-foreground"
+      >
+        <GitBranch className="h-3 w-3 text-primary/70" aria-hidden="true" />
+        <span>
+          = part of a tracked program family — view its lineage on the program
+          page
+        </span>
+      </p>
+
       {/* ── The grid ── */}
       <div className="relative max-h-[75vh] overflow-auto rounded-lg border border-border">
         <table

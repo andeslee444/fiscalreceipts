@@ -272,6 +272,15 @@ describe("YearsMatrix — render contract", () => {
     expect(legend.textContent).toContain("uncited input (still counted)");
   });
 
+  it("renders a family-thread legend decoding the branch glyph", async () => {
+    // The per-row GitBranch signpost ([data-family-badge]) needs a legend so
+    // users can learn what it means (visual-judge round).
+    await renderMatrix();
+    const legend = screen.getByTestId("family-legend");
+    expect(legend.textContent?.toLowerCase()).toContain("tracked program family");
+    expect(legend.textContent?.toLowerCase()).toContain("lineage");
+  });
+
   it("renders program rows with data-pe under collapsible org sections", async () => {
     await renderMatrix();
     const rows = document.querySelectorAll("tr[data-program-row]");
