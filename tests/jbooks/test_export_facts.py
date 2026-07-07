@@ -80,6 +80,8 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
         "detail_narratives.parquet",
         "details.parquet",
         "documents.parquet",
+        "program_family.parquet",
+        "program_lineage.parquet",
     ]
     n = duckdb.sql(
         f"select count(*) from read_parquet('{tmp_path}/jbooks/budget_lines.parquet')"
