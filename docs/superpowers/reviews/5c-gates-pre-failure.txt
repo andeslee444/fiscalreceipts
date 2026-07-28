@@ -1063,3 +1063,97 @@ The leg cannot be a no-op: with 6 real [data-inferred] elements in the build it
 has live subjects, and the injection above proves a single unlabelled one flips
 the gate to FAIL. NEVER weakened — the label requirement is a real teeth on the
 inferred/stated honesty boundary.
+
+
+================================================================================
+Defect 1 — both-named-endpoint extraction + leg (a) endpoint-contradiction
+check — 2026-07-28
+================================================================================
+
+CONFIRMED CRITICAL honesty defect (live on fiscalreceipts.com): when a sentence
+names BOTH endpoints ("…PE 0207436F…, efforts were transferred to PE
+0303004F…") inside a THIRD line's narrative (rollup lines 837300/834190
+aggregate statements about other PEs), extract_stated_edges paired the matched
+PE with the narrative's own line (`this`) and silently discarded the true
+endpoint the sentence names. 3 of the 25 live stated edges were wrong:
+  837300 -> 0303004F  (sentence names 0207436F as the true source)
+  837300 -> 0303005F  (sentence names 0208550F)
+  834190 -> 0207429F  (sentence names 0207604)
+
+--- PRE-FIX FAILING TESTS (extraction, verbatim) ---
+$ uv run pytest tests/lineage/test_extract.py -q
+(4 new tests FAIL against the pre-fix extractor; first failure verbatim:)
+
+    _________ test_both_endpoints_named_pairs_them_not_the_narrative_line __________
+        narr = [{"pe_bli": "837300", "fiscal_year": 2026, "fact_id": "f6", "page": 21,
+                 "body": "In FY2021, PE 0207436F (Engineering and Installation Support AF), "
+                         "efforts were transferred to PE 0303004F (EIT Connect)."}]
+        edges = extract_stated_edges(narr)
+    >       assert [(e.from_pe_bli, e.to_pe_bli) for e in edges] == [("0207436F", "0303004F")]
+    E       AssertionError: assert [('837300', '0303004F')] == [('0207436F', '0303004F')]
+    E
+    E         At index 0 diff: ('837300', '0303004F') != ('0207436F', '0303004F')
+
+    FAILED tests/lineage/test_extract.py::test_both_endpoints_named_pairs_them_not_the_narrative_line
+    FAILED tests/lineage/test_extract.py::test_subject_position_source_with_intervening_words
+    FAILED tests/lineage/test_extract.py::test_header_prefixed_clause_names_source_not_its_own_header_pe
+    FAILED tests/lineage/test_extract.py::test_previously_funded_plus_transferred_to_cross_pairs_as_realigned
+    4 failed, 7 passed in 0.04s
+
+Fix: per-sentence, collect ALL pred-direction and succ-direction _RULES matches;
+if the sentence yields >=1 from-PE and >=1 to-PE (after dropping self-pairs),
+mint the cross-pairs f -> t and do NOT involve `this` at all (both endpoints
+named = stronger evidence). A new subject-position pred rule ("PE X …,
+efforts were transferred/realigned to PE …") captures the third-person source;
+it is lookahead-anchored on a later same-clause to-construction (can never fire
+alone) and lookbehind-guarded so a "to PE X"/"from PE X" OBJECT token never
+masquerades as a subject (a two-transfer sentence must not chain dest1 ->
+dest2 — pinned by test_two_transfer_sentence_does_not_chain_destinations).
+Single-direction sentences keep today's behavior (pair with `this`; correct
+for first-person R-2 narratives) — regression-pinned by the original tests +
+test_single_direction_still_pairs_with_this. Relation choice for a cross-pair
+is the from-rule's classification, except a 'formerly/previously' rename
+from-rule defers to the to-rule's (an explicit directional transfer verb beats
+an identity note — deterministic, documented in sentence_named_pairs).
+Post-fix: tests/lineage 22 passed.
+
+--- TIGHTENED LEG (a) — endpoint-contradiction check ---
+_edge_citation_resolves now imports the extractor's sentence_named_pairs
+(same _RULES object — no duplicated regexes): if the evidence_sentence names
+BOTH directions, the edge's (from_pe_bli, to_pe_bli) MUST be one of the
+sentence-named pairs, else "edge endpoints contradict the both-named sentence".
+
+Unit proof-can-fail (throwaway DB govbudget_test_lineage): new test
+test_leg_a_fails_when_edge_endpoints_contradict_both_named_sentence seeds the
+live-defect shape (837300 -> 0303004F citing the 0207436F/0303004F sentence)
+and demands leg a FAIL. Run BEFORE the tightening, the test itself failed —
+verbatim:
+
+        g = stated_cite_leg(pg)
+    >       assert g["ok"] is False
+    E       assert True is False
+    FAILED tests/test_verify_lineage.py::test_leg_a_fails_when_edge_endpoints_contradict_both_named_sentence
+    1 failed, 1 passed, 18 deselected in 0.28s
+
+(i.e. pre-tightening leg a waved the fabricated edge through). Companion
+test_leg_a_passes_when_edge_matches_both_named_pair proves the same sentence
+backing the pair it actually names still PASSES. Post-tightening: 20 passed.
+
+--- PROOF-CAN-FAIL ON THE REAL WAREHOUSE (pre-rebuild, verbatim) ---
+$ uv run python -m govbudget verify-lineage
+leg a stated-cite: checked=25 passed=22 failures=3 → FAIL
+  FAIL 834190->0207429F (realigned): edge endpoints contradict the both-named sentence — it names [('0207604', '0207429F')] , not ('834190', '0207429F')
+  FAIL 837300->0303004F (realigned): edge endpoints contradict the both-named sentence — it names [('0207436F', '0303004F')] , not ('837300', '0303004F')
+  FAIL 837300->0303005F (realigned): edge endpoints contradict the both-named sentence — it names [('0208550F', '0303005F')] , not ('837300', '0303005F')
+leg b family-integrity: recomputed_pes=44 persisted_pes=44 failures=0 → PASS
+leg c one-to-one-sum: families_checked=19 cyclic_fallbacks=0 dangling_terminals=0 failures=1 → FAIL
+  FAIL family 3 root=834190: chain member 0207429F is an UNcited dangling terminal — its incoming stated edge does not resolve to a real cited narrative, so it cannot be exempted; the funding line must not sum or thread a fabricated successor
+verify-lineage: FAIL
+(exit code 1)
+
+Exactly the 3 known-bad live edges fail the tightened leg (a) — and the
+shared-helper design means leg (c)'s citation-gated dangling-terminal
+carve-out inherits the strictness for free (the 834190 terminal exemption
+correctly collapses once its incoming edge's citation is contradicted).
+Made-to-pass comes from `lineage build` re-extraction (recorded in the
+Defect-2 section below alongside the rebuilt-warehouse run).

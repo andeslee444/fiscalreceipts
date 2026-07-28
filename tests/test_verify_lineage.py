@@ -227,6 +227,37 @@ def test_leg_a_fails_when_body_lacks_sentence(pg):
     assert any("does not contain evidence_sentence" in r for _, r in g["failures"])
 
 
+def test_leg_a_fails_when_edge_endpoints_contradict_both_named_sentence(pg):
+    """proof-can-fail (Defect 1 gate teeth, 2026-07-28): an edge whose evidence
+    sentence names BOTH endpoints ("PE 0207436F ... transferred to PE 0303004F")
+    but whose (from, to) pair involves a THIRD PE (the rollup narrative line)
+    must FAIL leg a — the citation contradicts the edge it claims to back."""
+    body = ("In FY2021, PE 0207436F (Engineering and Installation Support AF), "
+            "efforts were transferred to PE 0303004F (EIT Connect).")
+    fid = seed_narrative(
+        pg, sha="bn1", pe_bli="837300", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    # The fabricated live-defect shape: rollup 837300 minted as the source.
+    seed_edge(pg, "837300", "0303004F", fact_id=fid, sentence=body)
+    g = stated_cite_leg(pg)
+    assert g["ok"] is False
+    assert any("contradict" in r for _, r in g["failures"])
+
+
+def test_leg_a_passes_when_edge_matches_both_named_pair(pg):
+    """Companion: the SAME sentence backing the pair it actually names PASSES."""
+    body = ("In FY2021, PE 0207436F (Engineering and Installation Support AF), "
+            "efforts were transferred to PE 0303004F (EIT Connect).")
+    fid = seed_narrative(
+        pg, sha="bn2", pe_bli="837300", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    seed_edge(pg, "0207436F", "0303004F", fact_id=fid, sentence=body)
+    g = stated_cite_leg(pg)
+    assert g["ok"] is True, g["failures"]
+
+
 # ===========================================================================
 # Leg (b) — family-integrity
 # ===========================================================================

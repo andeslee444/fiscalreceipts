@@ -121,19 +121,34 @@ def _edge_citation_resolves(
     Genuinely cited means ALL of:
       1. evidence_sentence is non-empty and contains the from_pe_bli OR
          to_pe_bli token;
-      2. evidence_fact_id is non-empty and present in the narrative index; AND
-      3. that narrative's body contains evidence_sentence verbatim.
+      2. when the evidence_sentence itself names BOTH endpoints (it matches a
+         from-direction AND a to-direction rule — decided by the extractor's
+         own sentence_named_pairs over the SAME _RULES, never a duplicated
+         regex set), the edge's (from_pe_bli, to_pe_bli) is one of the
+         sentence-named pairs — an edge whose endpoints contradict its
+         both-named sentence is a fabrication (Defect 1, 2026-07-28);
+      3. evidence_fact_id is non-empty and present in the narrative index; AND
+      4. that narrative's body contains evidence_sentence verbatim.
 
     Returns (ok, reason) — reason is None on success, else a human-readable
     failure string (so leg (a) can report the specific violation). This is the
     LOCAL citation invariant: leg (c)'s dangling-terminal carve-out reuses it
     so the exemption can never depend on leg (a) having run in the same CLI.
     """
+    from govbudget.lineage.extract import sentence_named_pairs
+
     sent = edge.evidence_sentence
     if not sent:
         return False, "stated edge has no evidence_sentence"
     if edge.from_pe_bli not in sent and edge.to_pe_bli not in sent:
         return False, f"evidence_sentence cites neither PE token: {sent[:120]!r}"
+    named = sentence_named_pairs(sent)
+    if named and (edge.from_pe_bli, edge.to_pe_bli) not in named:
+        return False, (
+            f"edge endpoints contradict the both-named sentence — it names"
+            f" {sorted(named)} , not"
+            f" ({edge.from_pe_bli!r}, {edge.to_pe_bli!r})"
+        )
     if not edge.evidence_fact_id:
         return False, "stated edge has no evidence_fact_id"
     bodies = fid_to_bodies.get(edge.evidence_fact_id)
