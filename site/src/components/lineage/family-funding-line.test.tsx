@@ -117,6 +117,18 @@ describe("FamilyFundingLine", () => {
     expect(container.textContent?.toLowerCase()).toContain("branch");
   });
 
+  it("branch note covers BOTH directions — splits AND merges (fan-in honesty)", () => {
+    // has_split now also fires for a many-to-one FAN-IN (Fix B, 2026-07-28):
+    // the note's copy must not claim the branching is splits-only, or a merge
+    // family's funding chain would carry a note describing the wrong shape.
+    const { container } = render(<FamilyFundingLine family={splitFamily} />);
+    const text =
+      container.querySelector('[data-has-split="true"]')?.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("splits or merges");
+    expect(text).toContain("1:1");
+    expect(text).not.toContain("multiple successors"); // old splits-only wording
+  });
+
   it("renders NO split marker when has_split is false", () => {
     const { container } = render(<FamilyFundingLine family={family} />);
     expect(container.querySelector('[data-has-split="true"]')).toBeNull();

@@ -249,7 +249,8 @@ export default async function ProgramPage({
       ...(lineage.rail?.predecessors ?? []),
       ...(lineage.rail?.successors ?? []),
     ]) {
-      if (edge.evidence?.fact_id) pageFactIds.push(edge.evidence.fact_id);
+      // evidence is present iff stated; its fact_id is never null (type-accurate)
+      if (edge.evidence) pageFactIds.push(edge.evidence.fact_id);
     }
     for (const p of lineage.family?.funding_line ?? []) {
       if (p.fid) pageFactIds.push(p.fid);
@@ -408,7 +409,7 @@ export default async function ProgramPage({
                 .map((e) => e.pe)
                 .filter((pe) => peIndex.has(pe))}
             />
-            {(lineage.family?.funding_line?.length ?? 0) > 0 && (
+            {lineage.family && lineage.family.funding_line.length > 0 && (
               <div className="mt-5">
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Family Funding Line
@@ -574,8 +575,9 @@ export default async function ProgramPage({
         ) : (
           <SectionEmpty title="Oversight">
             No GAO high-risk areas or improper-payment overlays map to{" "}
-            {program.org} in the ingested GAO data — absence of an overlay is
-            not a clean bill of health, only absence from those two lists.
+            {serviceOrgName(program.org)} in the ingested GAO data — absence of
+            an overlay is not a clean bill of health, only absence from those
+            two lists.
           </SectionEmpty>
         )}
       </ProgramSection>
@@ -745,13 +747,16 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
       {/* WHAT IT IS — title + org + exhibit family in plain language.
           data-program-name: official titles may contain dollar strings
-          (e.g. "ORDNANCE ITEMS <$5M") — currency-scan exemption. */}
+          (e.g. "ORDNANCE ITEMS <$5M") — currency-scan exemption.
+          serviceOrgName humanizes the raw org code in prose ("run by Army",
+          not "run by A."); agency acronyms (OSD, DARPA, …) pass through
+          unchanged — the same mapping the rollup tier already uses. */}
       <AnswerItem label="What it is" testId="answer-what">
         <span data-program-name>{program.title}</span>
         {" — a "}
         {answerFamilyPlain(program.exhibit_family)}
         {" program run by "}
-        {program.org}.
+        {serviceOrgName(program.org)}.
       </AnswerItem>
 
       {/* WHAT CHANGED — FY25→26 delta with its existing derived citation. */}

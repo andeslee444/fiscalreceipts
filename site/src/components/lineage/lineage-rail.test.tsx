@@ -212,4 +212,95 @@ describe("LineageRail", () => {
     expect(container.querySelector('[data-fact-id]')).toBeNull();
     expect(container.textContent?.toLowerCase()).toMatch(/no .*(lineage|predecessor|successor|edge)/);
   });
+
+  // ── FY-chip honesty (Fix C, 2026-07-28) ────────────────────────────────────
+  // A stated edge's fiscal_year is the J-BOOK EDITION the link is asserted in
+  // (the FY2026 narrative fence), NOT the transfer year. A bare "FY2026" chip
+  // reads as the transfer year — the eyebrow must say what the year actually
+  // is: "per FY2026 J-book".
+  it("stated eyebrow reads 'per FY<year> J-book', never a bare FY chip", () => {
+    const { container } = renderRail({ predecessors: [statedResolved], successors: [] });
+    const stated = container.querySelector("[data-lineage-stated]") as HTMLElement;
+    expect(stated).not.toBeNull();
+    expect(stated.textContent?.toLowerCase()).toContain("per fy2026 j-book");
+  });
+
+  it("inferred eyebrow keeps its bare FY (the inferred handoff year IS a year, not an edition)", () => {
+    const { container } = renderRail({ predecessors: [], successors: [inferredResolved] });
+    const el = container.querySelector('[data-inferred="true"]') as HTMLElement;
+    const text = el.textContent?.toLowerCase() ?? "";
+    expect(text).toContain("fy2021");
+    // an inferred edge is stated in NO J-book — it must never claim one
+    expect(text).not.toContain("j-book");
+  });
+
+  // ── Evidence sentence shown to the reader (Fix D, 2026-07-28) ──────────────
+  // The gate-verified verbatim transfer sentence ships in the sidecar; the
+  // stated card must let the reader SEE it — a collapsed-by-default native
+  // <details> containing the quoted sentence. Inferred cards have no sentence.
+  it("stated card carries the evidence sentence in a collapsed <details>", () => {
+    const { container } = renderRail({ predecessors: [statedResolved], successors: [] });
+    const stated = container.querySelector("[data-lineage-stated]") as HTMLElement;
+    const details = stated.querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open"); // collapsed by default
+    const summary = details!.querySelector("summary");
+    expect(summary?.textContent?.toLowerCase()).toContain("sentence");
+    const quote = details!.querySelector("blockquote");
+    expect(quote).not.toBeNull();
+    expect(quote!.textContent).toContain(statedResolved.evidence.sentence);
+  });
+
+  it("evidence blockquote is anchored source text (a0 contract: data-source-text + data-cite-fact-id)", () => {
+    // The verbatim J-book sentence may quote dollar figures (e.g. "The
+    // remaining $19.8M … was realigned to PE 0306250JCY"). Quoted source
+    // prose must carry data-source-text with a citation anchor so the
+    // render-static currency scan treats it as source text, not an
+    // unattributed site-computed figure.
+    const { container } = renderRail({ predecessors: [statedResolved], successors: [] });
+    const quote = container.querySelector(
+      "[data-lineage-stated] blockquote",
+    ) as HTMLElement;
+    expect(quote).not.toBeNull();
+    expect(quote.getAttribute("data-source-text")).toBeTruthy();
+    expect(quote.getAttribute("data-cite-fact-id")).toBe(
+      statedResolved.evidence.fact_id,
+    );
+  });
+
+  it("inferred card has NO sentence block (no details, no blockquote)", () => {
+    const { container } = renderRail({ predecessors: [], successors: [inferredResolved] });
+    const el = container.querySelector('[data-inferred="true"]') as HTMLElement;
+    expect(el.querySelector("blockquote")).toBeNull();
+    expect(el.querySelector("details")).toBeNull();
+  });
+
+  // ── Stated-card gate marker (Fix F, 2026-07-28) ────────────────────────────
+  // render-static's stated-side positive leg identifies stated rail entries
+  // via [data-lineage-stated] and requires each to contain the
+  // [data-lineage-cite][data-fact-id] marker. Pin both halves of the contract.
+  it("stated card carries data-lineage-stated with the cite marker inside", () => {
+    const { container } = renderRail({ predecessors: [statedResolved], successors: [] });
+    const stated = container.querySelector("[data-lineage-stated]") as HTMLElement;
+    expect(stated).not.toBeNull();
+    expect(stated.querySelector("[data-lineage-cite][data-fact-id]")).not.toBeNull();
+  });
+
+  it("inferred card never carries data-lineage-stated", () => {
+    const { container } = renderRail({ predecessors: [], successors: [inferredResolved] });
+    expect(container.querySelector("[data-lineage-stated]")).toBeNull();
+  });
+
+  // ── React key uniqueness under the DB schema (Fix G, 2026-07-28) ───────────
+  // The schema permits two edges sharing (pe, direction) with different
+  // relation/fy — keys must not collide (a collision drops/duplicates a card).
+  it("renders BOTH edges when two stated predecessors share the same PE", () => {
+    const twin = { ...statedResolved, relation: "transferred", fy: 2025 };
+    const { container } = renderRail({
+      predecessors: [statedResolved, twin],
+      successors: [],
+    });
+    const cards = container.querySelectorAll("[data-lineage-stated]");
+    expect(cards.length).toBe(2);
+  });
 });

@@ -2473,20 +2473,17 @@ def _trajectory_only_feed_programs(con, existing_pe_blis: set) -> list[tuple]:
     return synth
 
 
-def _lineage_ba(pe_bli: str, bl_by_pe: dict | None = None) -> str | None:
+def _lineage_ba(pe_bli: str) -> str | None:
     """Best-effort budget-activity for a rail entry's OTHER PE.
 
-    Prefers a budget_activity read off the PE's own budget_lines (most
-    authoritative); falls back to the RDT&E convention where the 4th char of a
-    ``06xxABCd`` PE is the BA digit (e.g. 0604818A → '4'). Returns None when
-    neither is available — the site then omits the BA chip rather than guess.
+    RDT&E R-2 convention ONLY: PE = ``06<x><BA>...``; the 4th char of a
+    ``06``-prefixed PE is the BA digit (e.g. 0604818A → '4'). Returns None
+    otherwise — the site then omits the BA chip rather than guess.
+
+    (2026-07-28: a bl_by_pe budget_activity branch was removed as confirmed
+    dead — the bl_by_pe row dicts built in export_site never carry a
+    "budget_activity" key, so this convention was always the sole live path.)
     """
-    if bl_by_pe:
-        for b in bl_by_pe.get(pe_bli, []):
-            ba = b.get("budget_activity") if isinstance(b, dict) else None
-            if ba:
-                return str(ba)
-    # RDT&E R-2 convention: PE = 06<BA><...>; the digit after "06" is the BA.
     if len(pe_bli) >= 4 and pe_bli[:2] == "06" and pe_bli[3].isdigit():
         return pe_bli[3]
     return None
@@ -2501,7 +2498,6 @@ def _emit_lineage(
     titles_by_pe: dict[str, str],
     decade_series_by_pe: dict[str, dict],
     cited_fact_ids: set[str],
-    bl_by_pe: dict | None = None,
 ) -> dict[str, dict]:
     """Build the per-program ``lineage`` sidecar block (program-lineage Task 6).
 
@@ -2526,7 +2522,9 @@ def _emit_lineage(
         entries (the renderer shows the handoff), because a summed number would
         display a value its single citation does not back. Sorted by
         (fy, chain position); a non-chain family member is excluded.
-        has_split = any split/merge edge OR any stated node with out-degree > 1.
+        has_split = "this family branches": any split/merge edge, OR any
+        stated node with out-degree > 1 (fan-out), OR any stated node with
+        in-degree > 1 (fan-in / merge).
       Per-family chain/funding_line/has_split are computed ONCE (cached by
       family_id), not per-PE.
     """
@@ -2566,7 +2564,7 @@ def _emit_lineage(
         return {
             "pe": other_pe,
             "title": titles_by_pe.get(other_pe),
-            "ba": _lineage_ba(other_pe, bl_by_pe),
+            "ba": _lineage_ba(other_pe),
             "fy": e.fiscal_year,
             "relation": e.relation,
             "confidence": e.confidence,
@@ -2639,10 +2637,16 @@ def _emit_lineage(
         funding_entries.sort(key=lambda p: (p["fy"], chain_pos[p["pe"]]))
         funding_line = funding_entries
 
-        # has_split: any split/merge edge, OR any stated node fanning out
-        # (stated out-degree > 1) — a one-to-many hand-off.
-        has_split = any(e.relation in ("split", "merged") for e in fam_edges) or any(
-            out_deg[m] > 1 for m in member_set
+        # has_split ("this family branches"): any split/merge edge, OR any
+        # stated node fanning OUT (stated out-degree > 1 — a one-to-many
+        # hand-off), OR any stated node fanning IN (stated in-degree > 1 —
+        # a many-to-one MERGE, e.g. the 5-source fan-in into 0303005F). All
+        # three mean the funding line above is the 1:1 chain only, with branch
+        # arms not summed in — so all three must raise the branch note.
+        has_split = (
+            any(e.relation in ("split", "merged") for e in fam_edges)
+            or any(out_deg[m] > 1 for m in member_set)
+            or any(in_deg[m] > 1 for m in member_set)
         )
 
         # chain_head_title: the short title of the chain HEAD (chain[0], the
@@ -3293,7 +3297,6 @@ def _write_all_sidecars(
         titles_by_pe=titles_by_pe,
         decade_series_by_pe=decade_series_by_pe,
         cited_fact_ids=_cited_fact_ids,
-        bl_by_pe=bl_by_pe,
     )
 
     for pe_bli in all_pe_blis:

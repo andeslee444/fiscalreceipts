@@ -17,8 +17,17 @@
 
 /** A stated edge's source-sentence citation (page + verbatim sentence). */
 export interface LineageEvidence {
+  /**
+   * Always a resolving cite-universe fact_id — never null in shipped
+   * payloads: the exporter hard-errors on a stated edge whose fact_id is
+   * outside the cite universe, and verify-lineage leg (a) fails any stated
+   * edge without one (verified against the live sidecars, 2026-07-28:
+   * 50/50 stated entries carry a non-null fact_id).
+   */
   fact_id: string;
-  page: number;
+  /** Source page number — null when the narrative row records no page
+   *  (31/50 live stated entries ship page: null). */
+  page: number | null;
   sentence: string;
 }
 
@@ -83,7 +92,12 @@ export interface LineageFamily {
 
 export interface LineageBlock {
   rail: LineageRail;
-  family: LineageFamily;
+  /**
+   * Present only when this PE belongs to a lineage family — the exporter
+   * attaches `family` iff the PE is in the family map (6 of the 50 live
+   * lineage blocks ship without it: edge-only PEs outside any family).
+   */
+  family?: LineageFamily;
 }
 
 /** Minimal shape hasLineage inspects (a ProgramDetails-like carrier). */

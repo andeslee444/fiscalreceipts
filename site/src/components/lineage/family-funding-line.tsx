@@ -18,8 +18,9 @@
  *   - A point is minted ONLY for what is in funding_line — NEVER for a chain PE
  *     that carries no funding_line entry (the chain may list more identities
  *     than the 1:1 line has cited points).
- *   - has_split → an honest branch marker: the family branches, so the line is
- *     drawn for the 1:1 chain only (the split arms are not summed in).
+ *   - has_split → an honest branch marker: the family branches (a split, a
+ *     merge/fan-in, or any stated fan-out), so the line is drawn for the 1:1
+ *     chain only (branch arms — splits or merges — are not summed in).
  */
 
 import React from "react";
@@ -114,8 +115,8 @@ export function FamilyFundingLine({ family }: { family: LineageFamily }) {
           className="rounded-md border border-dashed border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
         >
           This family branches — the funding line above is shown for the 1:1
-          chain only. Where the line splits into multiple successors, the branch
-          arms are not summed into this series.
+          chain only. Branch arms (splits or merges) are not summed into this
+          series.
         </p>
       )}
     </div>

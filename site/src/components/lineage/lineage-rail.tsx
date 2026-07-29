@@ -130,7 +130,17 @@ function StatedCiteMarker({ factId }: { factId: string }) {
   );
 }
 
-/** One stated (solid, cited) rail entry. */
+/** One stated (solid, cited) rail entry.
+ *
+ * data-lineage-stated is the render-static gate's handle: every element
+ * carrying it must contain the [data-lineage-cite][data-fact-id] marker
+ * (the stated-side positive leg) — a stated edge may never render bare.
+ *
+ * The eyebrow year is honest about WHAT the year is: a stated edge's
+ * fiscal_year is the J-BOOK EDITION the link is asserted in (the FY2026
+ * narrative fence), not the transfer year — so it reads "per FY2026 J-book"
+ * (CSS uppercases it like the rest of the eyebrow).
+ */
 function StatedEdge({
   entry,
   direction,
@@ -142,17 +152,41 @@ function StatedEdge({
   linkablePes: ReadonlySet<string>;
 }) {
   return (
-    <li className="rounded-md border border-border bg-card px-3 py-2 text-sm">
+    <li
+      data-lineage-stated=""
+      className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+    >
       <span className="text-xs uppercase tracking-wide text-muted-foreground">
-        {relationLabel(entry.relation, direction)} · FY{entry.fy}
+        {relationLabel(entry.relation, direction)} · per FY{entry.fy} J-book
         {entry.ba ? ` · BA${entry.ba}` : ""}
       </span>
       <div className="mt-0.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
         <EdgePe entry={entry} linkablePes={linkablePes} />
-        {entry.evidence?.fact_id ? (
+        {entry.evidence ? (
           <StatedCiteMarker factId={entry.evidence.fact_id} />
         ) : null}
       </div>
+      {/* The gate-verified verbatim transfer sentence (server-rendered into
+          the static HTML; collapsed by default — an opt-in read). The "cited"
+          chip above still opens the citation panel for full provenance.
+          data-source-text + data-cite-fact-id (a0 contract): the sentence is
+          quoted J-book prose and may itself quote dollar figures — the
+          currency scan must treat them as source text, anchored to the same
+          evidence fact the "cited" chip opens. */}
+      {entry.evidence?.sentence ? (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
+            show sentence
+          </summary>
+          <blockquote
+            data-source-text="lineage-evidence"
+            data-cite-fact-id={entry.evidence.fact_id}
+            className="mt-1 border-l-2 border-border pl-2 text-xs italic text-muted-foreground"
+          >
+            &ldquo;{entry.evidence.sentence}&rdquo;
+          </blockquote>
+        </details>
+      ) : null}
     </li>
   );
 }
@@ -240,9 +274,9 @@ export function LineageRail({
                 Predecessors (funding flowed in)
               </h3>
               <ul className="space-y-1.5">
-                {statedPred.map((e) => (
+                {statedPred.map((e, i) => (
                   <StatedEdge
-                    key={`p-${e.pe}`}
+                    key={`p-${e.pe}-${e.relation}-${e.fy}-${i}`}
                     entry={e}
                     direction="pred"
                     linkablePes={linkable}
@@ -269,9 +303,9 @@ export function LineageRail({
                 Successors (funding flowed out)
               </h3>
               <ul className="space-y-1.5">
-                {statedSucc.map((e) => (
+                {statedSucc.map((e, i) => (
                   <StatedEdge
-                    key={`s-${e.pe}`}
+                    key={`s-${e.pe}-${e.relation}-${e.fy}-${i}`}
                     entry={e}
                     direction="succ"
                     linkablePes={linkable}
@@ -304,9 +338,9 @@ export function LineageRail({
             not facts.
           </p>
           <ul className="space-y-1.5">
-            {inferred.map(({ entry, direction }) => (
+            {inferred.map(({ entry, direction }, i) => (
               <InferredEdge
-                key={`i-${direction}-${entry.pe}-${entry.fy}`}
+                key={`i-${direction}-${entry.pe}-${entry.relation}-${entry.fy}-${i}`}
                 entry={entry}
                 direction={direction}
                 linkablePes={linkable}

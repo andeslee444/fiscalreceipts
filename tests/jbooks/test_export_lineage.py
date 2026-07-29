@@ -220,6 +220,29 @@ def test_has_split_true_for_fan_out_family():
     assert by_pe["ROOT"]["family"]["has_split"] is True
 
 
+def test_has_split_true_for_fan_in_merge_family():
+    """A many-to-one FAN-IN (multiple stated in-edges converging on one member,
+    like the 5-source family into 0303005F) is a branch too: the funding line
+    is drawn for the 1:1 chain only, so the family MUST carry has_split=True
+    even though no member fans OUT and no edge is labeled split/merged.
+    (Fix B, 2026-07-28 — a merge family previously rendered its funding chain
+    with no branch note.)"""
+    edges = [
+        LineageEdge("SRC1", "TGT", 2026, "realigned", "stated",
+                    evidence_fact_id="f1T", evidence_page=1,
+                    evidence_sentence="SRC1 realigned into TGT."),
+        LineageEdge("SRC2", "TGT", 2026, "realigned", "stated",
+                    evidence_fact_id="f2T", evidence_page=2,
+                    evidence_sentence="SRC2 realigned into TGT."),
+    ]
+    families = {"SRC1": 5, "SRC2": 5, "TGT": 5}
+    by_pe = _emit(edges, families, all_pe_blis={"SRC1", "SRC2", "TGT"},
+                  rollup_pes=set(), titles={"SRC1": "S1", "SRC2": "S2", "TGT": "T"},
+                  series={}, cited={"f1T", "f2T"})
+    # No stated out-degree > 1, no split/merged relation — only IN-degree > 1.
+    assert by_pe["TGT"]["family"]["has_split"] is True
+
+
 def test_stated_edge_with_uncited_fact_id_raises():
     """A stated edge whose evidence_fact_id is NOT in the cite universe is a
     build-breaking contract violation (2026-07-28): with the narrative fence
