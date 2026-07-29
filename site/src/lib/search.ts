@@ -61,9 +61,36 @@ const MAX_PER_GROUP = 2;
 const RECENTS_KEY = "govbudget-search-recents";
 const MAX_RECENTS = 5;
 
+// ── Kind → group label (Fix H1, 2026-07-28) ──────────────────────────────────
+// Proper category labels — the old `kind + "s"` naive pluralization emitted
+// "Companys" / "Agencys" in the palette's per-row category line.
+
+const KIND_GROUP_LABELS: Record<string, string> = {
+  program: "Programs",
+  company: "Companies",
+  agency: "Agencies",
+  district: "Districts",
+  alias: "Alias",
+  // page-like kinds all group under "Pages" in the palette
+  page: "Pages",
+  static: "Pages",
+  feed: "Pages",
+};
+
+/** Display label for a search-doc kind. Unknown kinds fall back to the
+ *  capitalized kind itself — never a naive `+ "s"` plural. */
+export function kindGroupLabel(kind: string): string {
+  return KIND_GROUP_LABELS[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
 // ── Module-level singleton ────────────────────────────────────────────────────
 
 let indexPromise: Promise<MiniSearch<SearchDoc>> | null = null;
+
+// url → title map over the SAME quick-index docs (Fix H2, 2026-07-28): lets
+// deep-search (pagefind) hits display the page's real title instead of its
+// raw URL path when the URL is a quick-index doc (e.g. /program/<pe>/).
+let urlTitles: Map<string, string> | null = null;
 
 function buildIndex(): Promise<MiniSearch<SearchDoc>> {
   if (indexPromise) return indexPromise;
@@ -85,10 +112,40 @@ function buildIndex(): Promise<MiniSearch<SearchDoc>> {
     });
 
     ms.addAll(data.docs);
+    urlTitles = new Map(data.docs.map((d) => [d.url, d.title]));
     return ms;
   })();
 
   return indexPromise;
+}
+
+/** Normalize a pagefind-style URL to the quick-index url shape:
+ *  path only, no `index.html` suffix, with a trailing slash. */
+function normalizeDocUrl(url: string): string {
+  let u = url;
+  // Strip an origin if present (pagefind normally emits path-only URLs).
+  try {
+    if (/^https?:\/\//i.test(u)) u = new URL(u).pathname;
+  } catch {
+    // keep as-is
+  }
+  u = u.replace(/index\.html$/, "");
+  if (!u.endsWith("/")) u += "/";
+  return u;
+}
+
+/**
+ * Resolve a URL (e.g. a pagefind deep hit) to its quick-index title, or null
+ * when the URL is not a quick-index doc — the caller falls back to the path.
+ * Never throws: an index-load failure resolves null.
+ */
+export async function titleForUrl(url: string): Promise<string | null> {
+  try {
+    await buildIndex();
+  } catch {
+    return null;
+  }
+  return urlTitles?.get(normalizeDocUrl(url)) ?? null;
 }
 
 /** Pre-warm the index (call on mount). */
@@ -110,7 +167,7 @@ function highlightTerms(text: string, terms: string[]): string {
   );
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

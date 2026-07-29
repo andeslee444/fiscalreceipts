@@ -116,14 +116,27 @@ export function ProgramNarratives({
         {/* Primary narratives (mission, description, justification) */}
         {primary.map((n, i) => (
           <div key={i} className="mb-6">
+            {/* Explicit space text-nodes between the heading fragments: the
+                visual gaps are CSS margins, but text extraction (Pagefind
+                excerpts, copy/paste, screen readers) concatenates adjacent
+                text without them — "Mission— Long Range Kill Chainssource"
+                was the shipped join (Fix H2, 2026-07-28). */}
             <h3 className="text-sm font-semibold text-foreground mb-2">
               {humanizeKind(n.kind)}
               {n.title && n.title !== n.kind && (
-                <span className="ml-2 font-normal text-muted-foreground">
-                  — {n.title}
-                </span>
+                <>
+                  {" "}
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    — {n.title}
+                  </span>
+                </>
               )}
-              {n.fact_id && <NarrativeSourceChip factId={n.fact_id} />}
+              {n.fact_id && (
+                <>
+                  {" "}
+                  <NarrativeSourceChip factId={n.fact_id} />
+                </>
+              )}
             </h3>
             <NarrativeBody
               body={n.body}
@@ -152,7 +165,14 @@ export function ProgramNarratives({
                   <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors rounded-lg list-none flex items-center justify-between">
                     <span>
                       {n.title}
-                      {n.fact_id && <NarrativeSourceChip factId={n.fact_id} />}
+                      {/* space text-node: keeps the accomplishment title and
+                          the "source" chip separate words in text extraction */}
+                      {n.fact_id && (
+                        <>
+                          {" "}
+                          <NarrativeSourceChip factId={n.fact_id} />
+                        </>
+                      )}
                     </span>
                     <span
                       className="text-muted-foreground text-xs group-open:rotate-180 transition-transform"

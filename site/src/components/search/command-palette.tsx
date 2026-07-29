@@ -33,7 +33,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { quickSearch, warmIndex, getRecents, addRecent } from "@/lib/search";
+import {
+  quickSearch,
+  warmIndex,
+  getRecents,
+  addRecent,
+  kindGroupLabel,
+  titleForUrl,
+  escapeHtml,
+} from "@/lib/search";
 import type { GroupedResults, RecentItem, SearchResult } from "@/lib/search";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -106,9 +114,9 @@ function flattenGroups(groups: GroupedResults): FlatItem[] {
     url: r.url,
     label: r.title,
     labelHtml: r.titleHtml,
-    sub: r.kind === "alias"
-      ? "Alias"
-      : r.kind.charAt(0).toUpperCase() + r.kind.slice(1) + "s",
+    // Proper category labels (Fix H1) — the old naive `kind + "s"`
+    // pluralization emitted "Companys" / "Agencys".
+    sub: kindGroupLabel(r.kind),
     kind: r.kind,
   }));
 }
@@ -205,13 +213,18 @@ function useTier2(query: string) {
         const results = await Promise.all(
           search.results.slice(0, 5).map((r) => r.data()),
         );
+        // Deep hits arrive titled with their raw URL path (Fix H2) — resolve
+        // the display title from the quick-search index already loaded
+        // client-side (it has program titles); fall back to the path only
+        // when the URL is not a quick-index doc.
+        const titles = await Promise.all(results.map((r) => titleForUrl(r.url)));
         if (!cancelled) {
           setItems(
             results.map((r, i) => ({
               id: `pf-${i}`,
               url: r.url,
-              label: r.url,
-              labelHtml: r.url,
+              label: titles[i] ?? r.url,
+              labelHtml: titles[i] ? escapeHtml(titles[i]) : escapeHtml(r.url),
               sub: r.excerpt,
               kind: "page",
             })),

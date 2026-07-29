@@ -55,6 +55,56 @@ function allResults(groups: GroupedResults) {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+describe("kindGroupLabel — proper category labels (Fix H1, 2026-07-28)", () => {
+  it("never naively pluralizes: Company → Companies, Agency → Agencies", async () => {
+    const { kindGroupLabel } = await import("@/lib/search");
+    expect(kindGroupLabel("company")).toBe("Companies");
+    expect(kindGroupLabel("agency")).toBe("Agencies");
+    // the old `kind + "s"` code emitted "Companys" / "Agencys"
+    expect(kindGroupLabel("company")).not.toBe("Companys");
+  });
+
+  it("maps the known kinds", async () => {
+    const { kindGroupLabel } = await import("@/lib/search");
+    expect(kindGroupLabel("program")).toBe("Programs");
+    expect(kindGroupLabel("district")).toBe("Districts");
+    expect(kindGroupLabel("alias")).toBe("Alias");
+    // page-like kinds all group under Pages in the palette
+    expect(kindGroupLabel("page")).toBe("Pages");
+    expect(kindGroupLabel("static")).toBe("Pages");
+    expect(kindGroupLabel("feed")).toBe("Pages");
+  });
+
+  it("falls back to a capitalized kind (no naive plural) for unknown kinds", async () => {
+    const { kindGroupLabel } = await import("@/lib/search");
+    expect(kindGroupLabel("widget")).toBe("Widget");
+  });
+});
+
+describe("titleForUrl — deep-hit title resolution (Fix H2, 2026-07-28)", () => {
+  it("resolves a /program/<pe>/ URL to the program's quick-index title", async () => {
+    const { titleForUrl } = await import("@/lib/search");
+    // Real doc from search_quick.json (served by the fetch mock above).
+    const title = await titleForUrl("/program/0203801A/");
+    expect(title).toBe("Missile/Air Defense Product Improvement Program");
+  });
+
+  it("normalizes pagefind-style URLs (index.html suffix, missing slash)", async () => {
+    const { titleForUrl } = await import("@/lib/search");
+    expect(await titleForUrl("/program/0203801A/index.html")).toBe(
+      "Missile/Air Defense Product Improvement Program",
+    );
+    expect(await titleForUrl("/program/0203801A")).toBe(
+      "Missile/Air Defense Product Improvement Program",
+    );
+  });
+
+  it("returns null for a URL outside the quick index (caller falls back to the path)", async () => {
+    const { titleForUrl } = await import("@/lib/search");
+    expect(await titleForUrl("/program/NOTAREALPE/")).toBeNull();
+  });
+});
+
 describe("quick search — index build & basic cases", () => {
   it("returns a 'Defense Research Sciences' program for that query", async () => {
     const groups = await search("defense research sciences");
