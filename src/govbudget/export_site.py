@@ -308,6 +308,10 @@ def export_site(
     # of these queries filters fiscal_year = 2026 — never merge editions
     # silently (spec §2 rule 1). The PB2017–PB2025 editions ship through
     # the edition-aware 5E Task 5 marts, which supersede this fence.
+    # The lineage layer shares this fence via the single constant
+    # govbudget.lineage.model.CITED_NARRATIVE_FY (= 2026), imported by
+    # lineage/load.py (stated-edge extraction) and verify_lineage.py (leg a's
+    # narrative index) — keep this filter and that constant in lockstep.
     with psycopg.connect(dsn) as pg:
         # ---- 2a. jbook_details.parquet ----
         rows_details = pg.execute(
@@ -2507,13 +2511,21 @@ def _emit_lineage(
     Block shape (spec §):
       rail.predecessors / rail.successors — one entry per edge touching THIS pe,
         entry.pe = the OTHER PE. resolved = (pe in the page universe). STATED
-        edges carry evidence {fact_id,page,sentence} (fact_id nulled — logged —
-        if not in cited_fact_ids, so no dead <Cite> ships); INFERRED edges carry
-        evidence: None (the honesty contract — inferred edges are NEVER cited).
+        edges carry evidence {fact_id,page,sentence}; a stated edge whose
+        fact_id is NOT in cited_fact_ids RAISES (2026-07-28 — with the
+        narrative fence aligned end-to-end via CITED_NARRATIVE_FY this is
+        unreachable, so it fails the export loudly rather than silently
+        shipping an uncited stated edge); INFERRED edges carry evidence: None
+        (the honesty contract — inferred edges are NEVER cited).
       family — only when THIS pe is in a family. chain = one_to_one_chain from
         the family ROOT (stated in-degree 0; lexicographically-smallest member
-        if the family is cyclic). funding_line sums the request trajectory
-        across ONLY the chain members (a non-chain family member is excluded);
+        if the family is cyclic). funding_line (Defect 2, 2026-07-28) emits one
+        entry PER (fy, chain member) with a cited request fact — {fy, pe, v,
+        fid} where v is EXACTLY that member's fact value. NOTHING is ever
+        summed: an fy where two chain members coexist yields two labeled
+        entries (the renderer shows the handoff), because a summed number would
+        display a value its single citation does not back. Sorted by
+        (fy, chain position); a non-chain family member is excluded.
         has_split = any split/merge edge OR any stated node with out-degree > 1.
       Per-family chain/funding_line/has_split are computed ONCE (cached by
       family_id), not per-PE.
@@ -2525,20 +2537,27 @@ def _emit_lineage(
     universe = all_pe_blis | rollup_pes
 
     def _rail_entry(other_pe: str, e) -> dict:
-        # evidence: stated → {fact_id,page,sentence} (fact_id nulled if uncited);
+        # evidence: stated → {fact_id,page,sentence};
         #           inferred → None (never cited — the honesty contract).
         evidence = None
         if e.confidence == "stated":
             fid = e.evidence_fact_id
             if fid is not None and fid not in cited_fact_ids:
-                # Should not happen (all 25 stated cites resolve; verified) — log
-                # and null the fact_id so the site never ships a dead <Cite>.
-                print(
+                # HARD ERROR (2026-07-28): with the narrative fence aligned
+                # end-to-end (CITED_NARRATIVE_FY in lineage/model.py governs
+                # load.py, verify-lineage leg a, AND this file's cite-shard
+                # pass) a stated edge citing an out-of-universe fact is
+                # unreachable — if it happens the pipeline is broken, and the
+                # export must FAIL LOUDLY rather than silently shipping a
+                # stated edge stripped of its citation (the print-and-null
+                # degrade this replaced).
+                raise ValueError(
                     f"lineage: stated edge {e.from_pe_bli}->{e.to_pe_bli} cites"
-                    f" fact_id {fid} not in cite-shards; emitting evidence with"
-                    " fact_id=null (Cite state C) instead of a dangling cite"
+                    f" fact_id {fid} which is not in the cite-shard universe —"
+                    " the CITED_NARRATIVE_FY fence is broken (rebuild lineage"
+                    " against the current narratives); refusing to export a"
+                    " stated edge without a resolvable citation"
                 )
-                fid = None
             evidence = {
                 "fact_id": fid,
                 "page": e.evidence_page,
@@ -2598,27 +2617,27 @@ def _emit_lineage(
 
         chain = one_to_one_chain(root, fam_edges)
 
-        # funding_line: sum the request trajectory across ONLY the chain
-        # members. In the clean 1:1 case each fy has one active member (the
-        # predecessor tapers as the successor rises), so its point cites that
-        # member's fid. When two chain members overlap on an fy, sum their v and
-        # cite the LATER (successor) member's fid — the chain is ordered
-        # predecessor→successor, so iterating in chain order and letting a later
-        # member overwrite the cited fid yields the successor's fid.
-        by_fy_v: dict[int, float] = defaultdict(float)
-        by_fy_fid: dict[int, str] = {}
+        # funding_line (Defect 2, 2026-07-28): one entry PER (fy, chain member)
+        # with a cited request fact — v is EXACTLY that member's fact value and
+        # fid is that fact's id, so every displayed number equals the fact its
+        # citation backs. NOTHING is summed: when two chain members coexist on
+        # an fy (realigned pairs coexist for whole decades — the "overlap is
+        # rare" premise behind the old summed point was false), BOTH members'
+        # points ship, labeled per member, and the renderer shows the handoff.
+        # Sorted by (fy, chain position) so an overlap fy lists the
+        # predecessor's point before the successor's.
+        chain_pos = {member: i for i, member in enumerate(chain)}
+        funding_entries: list[dict] = []
         for member in chain:
             for pt in decade_series_by_pe.get(member, {}).get("request", []):
                 fid = pt.get("fid")
                 if fid is None or fid not in cited_fact_ids:
                     continue  # only resolving fids (they already are — belt & braces)
-                fy = pt["fy"]
-                by_fy_v[fy] += pt["v"]
-                by_fy_fid[fy] = fid  # later chain member wins → successor's fid on overlap
-        funding_line = [
-            {"fy": fy, "v": by_fy_v[fy], "fid": by_fy_fid[fy]}
-            for fy in sorted(by_fy_v)
-        ]
+                funding_entries.append(
+                    {"fy": pt["fy"], "pe": member, "v": pt["v"], "fid": fid}
+                )
+        funding_entries.sort(key=lambda p: (p["fy"], chain_pos[p["pe"]]))
+        funding_line = funding_entries
 
         # has_split: any split/merge edge, OR any stated node fanning out
         # (stated out-degree > 1) — a one-to-many hand-off.

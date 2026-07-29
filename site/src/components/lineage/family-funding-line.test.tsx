@@ -20,9 +20,9 @@ const family: LineageFamily = {
   chain: ["0602201F", "0602203F"],
   chain_head_title: "Aerospace Vehicle Technologies",
   funding_line: [
-    { fy: 2024, v: 346135, fid: "e32f2488e7ecb682" },
-    { fy: 2025, v: 344712, fid: "35adeab4a79b9a89" },
-    { fy: 2026, v: 321059, fid: "bf242daa9213a7c2" },
+    { fy: 2024, pe: "0602201F", v: 346135, fid: "e32f2488e7ecb682" },
+    { fy: 2025, pe: "0602203F", v: 344712, fid: "35adeab4a79b9a89" },
+    { fy: 2026, pe: "0602203F", v: 321059, fid: "bf242daa9213a7c2" },
   ],
   has_split: false,
 };
@@ -31,10 +31,28 @@ const splitFamily: LineageFamily = {
   family_id: 4,
   chain: ["837300"],
   funding_line: [
-    { fy: 2024, v: 113563, fid: "2c3bcac28b6306f9" },
-    { fy: 2025, v: 60744, fid: "4c0c005988ecd63a" },
+    { fy: 2024, pe: "837300", v: 113563, fid: "2c3bcac28b6306f9" },
+    { fy: 2025, pe: "837300", v: 60744, fid: "4c0c005988ecd63a" },
   ],
   has_split: true,
+};
+
+/**
+ * Defect-2 coexistence shape (2026-07-28): FY2024 carries BOTH chain members'
+ * cited points (realigned pairs coexist for whole decades). 100000 + 200000
+ * thousands would render "$300.0M" if anything summed — the tests assert that
+ * NEVER appears; each member's own value renders as its own labeled Cite.
+ */
+const coexistFamily: LineageFamily = {
+  family_id: 9,
+  chain: ["0602201F", "0602203F"],
+  chain_head_title: "Aerospace Vehicle Technologies",
+  funding_line: [
+    { fy: 2024, pe: "0602201F", v: 100000, fid: "fidPRED2024aaaa" },
+    { fy: 2024, pe: "0602203F", v: 200000, fid: "fidSUCC2024bbbb" },
+    { fy: 2025, pe: "0602203F", v: 250000, fid: "fidSUCC2025cccc" },
+  ],
+  has_split: false,
 };
 
 describe("FamilyFundingLine", () => {
@@ -109,7 +127,7 @@ describe("FamilyFundingLine", () => {
     const stray: LineageFamily = {
       family_id: 9,
       chain: ["0601111X", "0602222Y"],
-      funding_line: [{ fy: 2026, v: 1000, fid: "onlyfid0000abcd" }],
+      funding_line: [{ fy: 2026, pe: "0601111X", v: 1000, fid: "onlyfid0000abcd" }],
       has_split: false,
     };
     const { container } = render(<FamilyFundingLine family={stray} />);
@@ -117,5 +135,49 @@ describe("FamilyFundingLine", () => {
     // exactly one point (funding_line has one entry) — NOT one per chain PE
     expect(cites.length).toBe(1);
     expect(container.querySelector('[data-fact-id="onlyfid0000abcd"]')).not.toBeNull();
+  });
+
+  // ── Defect-2 coexistence rendering (2026-07-28) ─────────────────────────
+
+  it("renders one Cite per member on a coexistence fy, each with its own fid", () => {
+    const { container } = render(<FamilyFundingLine family={coexistFamily} />);
+    // Every entry's fid renders as its own state-A Cite…
+    for (const p of coexistFamily.funding_line) {
+      const cite = container.querySelector(`[data-fact-id="${p.fid}"]`);
+      expect(cite).not.toBeNull();
+      expect(cite).toHaveAttribute("data-amount");
+    }
+    // …and exactly as many cited amounts as funding_line entries (3 — the
+    // coexistence fy contributes TWO, never a single blended point).
+    const cites = container.querySelectorAll("[data-amount][data-fact-id]");
+    expect(cites.length).toBe(coexistFamily.funding_line.length);
+  });
+
+  it("labels each coexisting member's value with its PE code", () => {
+    const { container } = render(<FamilyFundingLine family={coexistFamily} />);
+    const multi = container.querySelector('[data-multi-member-fy="2024"]');
+    expect(multi).not.toBeNull();
+    const text = multi?.textContent ?? "";
+    // Both members' codes label their own values inside the FY2024 group.
+    expect(text).toContain("0602201F");
+    expect(text).toContain("0602203F");
+  });
+
+  it("NEVER renders an arithmetic sum of coexisting members", () => {
+    const { container } = render(<FamilyFundingLine family={coexistFamily} />);
+    const text = container.textContent ?? "";
+    // 100000 + 200000 USD thousands → "$300.0M" would be the old defect's
+    // fabricated single number; each member renders its own cited value.
+    expect(text).not.toContain("$300.0M");
+    expect(text).toContain("$100.0M");
+    expect(text).toContain("$200.0M");
+  });
+
+  it("renders a single-entry fy exactly as before (no member sub-labels)", () => {
+    const { container } = render(<FamilyFundingLine family={coexistFamily} />);
+    // FY2025 has one entry — no multi-member group wrapper for it.
+    expect(container.querySelector('[data-multi-member-fy="2025"]')).toBeNull();
+    const cite = container.querySelector('[data-fact-id="fidSUCC2025cccc"]');
+    expect(cite).not.toBeNull();
   });
 });

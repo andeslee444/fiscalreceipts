@@ -38,8 +38,24 @@ always-pass.
         — a cited destination PE in a not-yet-ingested edition). A missing
         member that is mid-chain, or whose root does not resolve, is a FAIL.
 
+  Leg (d) — funding-point-value (Defect 2, 2026-07-28). Every funding_line
+    entry emitted into the BUILT site artifact (data/site/json/program_details/
+    *.json) must display EXACTLY the value of the fact it cites: entry.v ==
+    the fct_decade_series request row whose source_fact_id == entry.fid (and,
+    for the per-member shape, entry.pe/entry.fy must be that fact's own pe/fy).
+    This leg deliberately audits the built artifact — not the exporter's
+    in-memory inputs — so a regression anywhere between the warehouse and the
+    shipped JSON (summing, member mislabeling, stale artifact) FAILS.
+
+  Leg (e) — lake↔DB binding (2026-07-28). The staged jbooks parquet lake
+    (program_lineage.parquet + program_family.parquet — what export-site
+    actually reads) must EQUAL the Postgres tables: multiset equality on
+    (from, to, fy, relation, confidence) and pe-set + partition equality for
+    families. A MISSING parquet is a FAIL, never a skip — an un-staged lake
+    silently decouples the site from the verified warehouse.
+
 All gate functions take explicit DSNs/paths — never read config. No network.
-Exit code 0 iff all three legs pass; nonzero otherwise.
+Exit code 0 iff all legs pass; nonzero otherwise.
 """
 from __future__ import annotations
 
@@ -48,7 +64,7 @@ from pathlib import Path
 
 from govbudget.export_site import fact_id_narrative
 from govbudget.lineage.family import build_families, one_to_one_chain
-from govbudget.lineage.model import LineageEdge
+from govbudget.lineage.model import CITED_NARRATIVE_FY, LineageEdge
 
 # Relations that end a 1:1 line even at degree 1:1 (mirror one_to_one_chain):
 # a labeled split/merge, or a PARTIAL transfer (portion_amount set), can never
@@ -96,6 +112,13 @@ def _load_narrative_index(con) -> dict[str, list[str]]:
     A fact_id is unique per narrative row, but a list keeps us honest if two
     rows ever collide on the derived id. Shared by leg (a) and leg (c) so both
     apply the SAME citation-resolution rule against the SAME narrative universe.
+
+    Fenced to CITED_NARRATIVE_FY (fence alignment, 2026-07-28): the site's
+    cite-shard universe only contains fiscal_year = CITED_NARRATIVE_FY
+    narratives (export_site's citation pass) and lineage/load.py extracts
+    stated edges from the same fence — so the gate's narrative universe must
+    match, or an edge citing a pre-fence narrative would pass leg (a) while
+    shipping a silently-dead <Cite> on the site.
     """
     narratives = con.execute(
         """
@@ -104,7 +127,9 @@ def _load_narrative_index(con) -> dict[str, list[str]]:
           join jbook_documents j on j.id = n.document_id
          where not n.superseded
            and n.xml_path is not null
-        """
+           and j.fiscal_year = %s
+        """,
+        (CITED_NARRATIVE_FY,),
     ).fetchall()
     fid_to_bodies: dict[str, list[str]] = defaultdict(list)
     for sha, pe_bli, kind, xml_path, body in narratives:
@@ -352,6 +377,7 @@ def one_to_one_sum_leg(
         "target_families": target_families,
         "cyclic_fallbacks": [],
         "dangling_terminals": [],
+        "dangling_origins": [],
         "failures": [],
     }
     if not multi:
@@ -366,15 +392,17 @@ def one_to_one_sum_leg(
     with psycopg.connect(dsn) as con:
         fid_to_bodies = _load_narrative_index(con)
 
-    # Degree bookkeeping over the STATED edges + a map from each stated
-    # successor PE to the edge(s) that introduced it (its incoming edges).
+    # Degree bookkeeping over the STATED edges + maps from each PE to the
+    # edge(s) that introduce it (incoming) / that it asserts (outgoing).
     in_deg: dict[str, int] = defaultdict(int)
     out_deg: dict[str, int] = defaultdict(int)
     incoming: dict[str, list[LineageEdge]] = defaultdict(list)
+    outgoing: dict[str, list[LineageEdge]] = defaultdict(list)
     for e in stated:
         in_deg[e.to_pe_bli] += 1
         out_deg[e.from_pe_bli] += 1
         incoming[e.to_pe_bli].append(e)
+        outgoing[e.from_pe_bli].append(e)
 
     # Targets of a split/merge or partial-transfer edge, and INFERRED
     # successors — the members that must NEVER appear in a summed 1:1 chain.
@@ -387,6 +415,7 @@ def one_to_one_sum_leg(
     failures: list[tuple[str, str]] = []
     cyclic_fallbacks: list[str] = []
     dangling_terminals: list[tuple[str, str]] = []
+    dangling_origins: list[str] = []
 
     for fid, pes in sorted(multi.items()):
         roots = sorted(p for p in pes if in_deg[p] == 0)
@@ -413,12 +442,39 @@ def one_to_one_sum_leg(
                             f" must not be summed")
                 )
 
-        # SUMMABILITY: root must resolve in the request series.
+        # COMPOSABILITY: the root must resolve in the request series — OR be a
+        # citation-gated dangling ORIGIN (2026-07-28, the mirror of the
+        # terminal carve-out, forced by Defect-1's corrected extraction: a
+        # sentence-named historical source like 0207436F has no ingested
+        # series at all). The exemption fires ONLY when the root is absent
+        # from the ENTIRE series AND at least one of its OUTGOING stated
+        # edges itself passes _edge_citation_resolves — the same LOCAL rule
+        # the terminal exemption applies to the incoming edge. This is not a
+        # loosening of the funding-line honesty: since Defect 2's fix the
+        # funding line is per-member cited points (never a sum pivoting on the
+        # root), so an un-ingested cited origin simply contributes no points.
+        # An UNcited origin, or a root PRESENT in the series without a request
+        # row (a real warehouse gap), still FAILS.
         if root not in req_pes:
-            failures.append(
-                (grain, f"family root {root} does not resolve in the request"
-                        f" series (fct_decade_series amount_type_kind='request')")
+            is_uningested = root not in all_series_pes
+            outgoing_cited = any(
+                _edge_citation_resolves(e, fid_to_bodies)[0] for e in outgoing[root]
             )
+            if is_uningested and outgoing_cited:
+                dangling_origins.append(root)
+            elif is_uningested:
+                failures.append(
+                    (grain, f"family root {root} is an UNcited dangling origin —"
+                            f" no outgoing stated edge resolves to a real cited"
+                            f" narrative, so its absence from the series cannot"
+                            f" be exempted; the family must not thread a"
+                            f" fabricated origin")
+                )
+            else:
+                failures.append(
+                    (grain, f"family root {root} does not resolve in the request"
+                            f" series (fct_decade_series amount_type_kind='request')")
+                )
         for m in chain[1:]:
             if m in req_pes:
                 continue
@@ -462,5 +518,230 @@ def one_to_one_sum_leg(
         "target_families": target_families,
         "cyclic_fallbacks": cyclic_fallbacks,
         "dangling_terminals": dangling_terminals,
+        "dangling_origins": dangling_origins,
+        "failures": failures,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Leg (d): funding-point-value — every shipped point equals its cited fact
+# ---------------------------------------------------------------------------
+
+
+def funding_point_value_leg(duckdb_path: Path, program_details_dir: Path) -> dict:
+    """Every funding_line point in the BUILT sidecars equals its cited fact.
+
+    Reads data/site/json/program_details/*.json (the artifact export-site
+    actually shipped — chosen over recomputing the exporter's inputs precisely
+    so the gate has teeth against the built file) and, for each
+    lineage.family.funding_line entry:
+      1. entry.fid must resolve to a fct_decade_series REQUEST grain's citable
+         identity — source_fact_id for a single-source grain, or the derived
+         decade-sum fact fact_id_derived('decade', '{pe}|{edition}', amount_type)
+         for a multi-source grain (the SAME derivation _decade_fact_space
+         mints, itself lake-cross-checked with a hard ValueError). An unknown
+         fid is a FAIL;
+      2. entry.v must EQUAL that grain's recorded amount — a summed/blended
+         value the citation does not back (Defect 2) is a FAIL;
+      3. when the entry carries the per-member labels (pe / fy), they must be
+         the cited grain's own pe_bli / fy — a point labeled one member but
+         citing another's fact is a FAIL even if the dollar value coincides.
+
+    Family blocks are duplicated across member pages; EVERY copy is checked.
+    Returns: ok, files_scanned, points_checked, failures [(grain, reason)].
+    Non-vacuous: zero checkable points is a FAIL (reason reported).
+    """
+    import json
+
+    import duckdb
+
+    from govbudget.export_site import fact_id_derived
+
+    duckdb_path = Path(duckdb_path)
+    program_details_dir = Path(program_details_dir)
+    base = {"ok": False, "files_scanned": 0, "points_checked": 0, "failures": []}
+    if not duckdb_path.exists():
+        return {**base, "reason": f"duckdb warehouse missing: {duckdb_path}"}
+    if not program_details_dir.is_dir():
+        return {**base, "reason": f"program_details dir missing: {program_details_dir}"}
+
+    con = duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        fact_rows = con.execute(
+            "select source_fact_id, pe_bli, fy, amount, edition_year,"
+            " amount_type, n_source_rows"
+            " from fct_decade_series where amount_type_kind = 'request'"
+        ).fetchall()
+    finally:
+        con.close()
+    facts: dict[str, tuple[str, int, float]] = {}
+    for src_fid, pe, fy, amount, edition, amount_type, n_src in fact_rows:
+        if int(n_src or 1) == 1:
+            fid = src_fid
+        else:  # multi-source grain → the derived decade-sum fact is the cite
+            fid = fact_id_derived("decade", f"{pe}|{int(edition)}", amount_type)
+        if fid is not None:
+            facts[fid] = (pe, int(fy), float(amount))
+
+    failures: list[tuple[str, str]] = []
+    files_scanned = 0
+    points_checked = 0
+    for path in sorted(program_details_dir.glob("*.json")):
+        files_scanned += 1
+        try:
+            doc = json.loads(path.read_text())
+        except (OSError, ValueError) as exc:
+            failures.append((path.name, f"unreadable sidecar: {exc}"))
+            continue
+        funding_line = (
+            ((doc.get("lineage") or {}).get("family") or {}).get("funding_line") or []
+        )
+        for i, pt in enumerate(funding_line):
+            points_checked += 1
+            grain = f"{path.name} funding_line[{i}] fy={pt.get('fy')} fid={pt.get('fid')}"
+            fid = pt.get("fid")
+            fact = facts.get(fid)
+            if fact is None:
+                failures.append(
+                    (grain, "cites no request fact — fid has no fct_decade_series"
+                            " request row (source_fact_id)")
+                )
+                continue
+            fact_pe, fact_fy, fact_amount = fact
+            v = pt.get("v")
+            if v is None or float(v) != fact_amount:
+                failures.append(
+                    (grain, f"displayed value {v} does not equal the cited fact's"
+                            f" recorded value {fact_amount} (fact {fid}:"
+                            f" {fact_pe} FY{fact_fy})")
+                )
+                continue
+            if "pe" in pt and pt["pe"] != fact_pe:
+                failures.append(
+                    (grain, f"labeled pe {pt['pe']} but the cited fact belongs to"
+                            f" {fact_pe} — a point must cite its OWN member's fact")
+                )
+                continue
+            if pt.get("fy") is not None and int(pt["fy"]) != fact_fy:
+                failures.append(
+                    (grain, f"labeled fy {pt['fy']} but the cited fact is FY{fact_fy}")
+                )
+
+    result = {
+        "ok": points_checked > 0 and len(failures) == 0,
+        "files_scanned": files_scanned,
+        "points_checked": points_checked,
+        "failures": failures,
+    }
+    if points_checked == 0:
+        result["reason"] = "no funding_line points found in program_details — vacuous"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Leg (e): lake↔DB binding — the staged parquet equals the Postgres tables
+# ---------------------------------------------------------------------------
+
+
+def lake_binding_leg(dsn: str, duckdb_path: Path) -> dict:
+    """program_lineage.parquet + program_family.parquet == the Postgres tables.
+
+    export-site reads lineage from the staged jbooks parquet lake, NOT from
+    Postgres — so the verified warehouse and the exported site can silently
+    diverge if the lake is stale. This leg binds them: multiset equality on
+    (from_pe_bli, to_pe_bli, fiscal_year, relation, confidence) for edges, and
+    pe-set + same-family-partition equality for families (id-agnostic, like
+    leg b). A missing parquet file is a FAIL — never a skip.
+
+    Returns: ok, lineage_rows_db, lineage_rows_lake, family_pes_db,
+             family_pes_lake, failures [(kind, reason)].
+    """
+    from collections import Counter
+
+    import psycopg
+
+    from govbudget.export_site import _stage_parquet_path
+
+    failures: list[tuple[str, str]] = []
+    lin_pq = _stage_parquet_path(duckdb_path, "jbooks", "program_lineage.parquet")
+    fam_pq = _stage_parquet_path(duckdb_path, "jbooks", "program_family.parquet")
+    if lin_pq is None:
+        failures.append(("lineage", "program_lineage.parquet missing from the lake"))
+    if fam_pq is None:
+        failures.append(("family", "program_family.parquet missing from the lake"))
+
+    base = {
+        "ok": False,
+        "lineage_rows_db": 0,
+        "lineage_rows_lake": 0,
+        "family_pes_db": 0,
+        "family_pes_lake": 0,
+        "failures": failures,
+    }
+    if failures:
+        return base
+
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        lin_s = str(lin_pq).replace("'", "''")
+        fam_s = str(fam_pq).replace("'", "''")
+        lake_edges = Counter(
+            (r[0], r[1], str(int(r[2])), r[3], r[4])
+            for r in con.execute(
+                "select from_pe_bli, to_pe_bli, fiscal_year, relation, confidence"
+                f" from read_parquet('{lin_s}')"
+            ).fetchall()
+        )
+        lake_fams = {
+            r[0]: str(r[1])
+            for r in con.execute(
+                f"select pe_bli, family_id from read_parquet('{fam_s}')"
+            ).fetchall()
+        }
+    finally:
+        con.close()
+
+    with psycopg.connect(dsn) as pg:
+        db_edges = Counter(
+            (r[0], r[1], str(int(r[2])), r[3], r[4])
+            for r in pg.execute(
+                "select from_pe_bli, to_pe_bli, fiscal_year, relation, confidence"
+                " from program_lineage"
+            ).fetchall()
+        )
+        db_fams = {
+            pe: str(fid)
+            for pe, fid in pg.execute("select pe_bli, family_id from program_family")
+        }
+
+    for row in sorted((db_edges - lake_edges).elements()):
+        failures.append(("lineage", f"db-only edge not in lake parquet: {row}"))
+    for row in sorted((lake_edges - db_edges).elements()):
+        failures.append(("lineage", f"lake-only edge not in Postgres: {row}"))
+
+    db_pes, lake_pes = set(db_fams), set(lake_fams)
+    for pe in sorted(db_pes - lake_pes):
+        failures.append(("family", f"db-only family PE not in lake parquet: {pe}"))
+    for pe in sorted(lake_pes - db_pes):
+        failures.append(("family", f"lake-only family PE not in Postgres: {pe}"))
+    db_sig = _partition_signature({pe: gid for pe, gid in db_fams.items() if pe in lake_pes})
+    lake_sig = _partition_signature({pe: gid for pe, gid in lake_fams.items() if pe in db_pes})
+    for pe in sorted(set(db_sig) & set(lake_sig)):
+        if db_sig[pe] != lake_sig[pe]:
+            failures.append(
+                ("family", f"partition drift: PE {pe} groups with"
+                           f" {sorted(db_sig[pe])} in Postgres but"
+                           f" {sorted(lake_sig[pe])} in the lake")
+            )
+
+    n_db_edges = sum(db_edges.values())
+    return {
+        "ok": len(failures) == 0 and n_db_edges > 0,
+        "lineage_rows_db": n_db_edges,
+        "lineage_rows_lake": sum(lake_edges.values()),
+        "family_pes_db": len(db_pes),
+        "family_pes_lake": len(lake_pes),
         "failures": failures,
     }

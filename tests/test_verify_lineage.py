@@ -9,6 +9,7 @@ fct_decade_series so the request-series resolution is exercised.
 Each seeded-violation test PROVES a leg can FAIL (the proof-can-fail), and the
 all-pass test proves a clean mini-warehouse passes with exit 0.
 """
+import json
 import os
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -20,6 +21,8 @@ import pytest
 from govbudget.export_site import fact_id_narrative
 from govbudget.verify_lineage import (
     family_integrity_leg,
+    funding_point_value_leg,
+    lake_binding_leg,
     one_to_one_sum_leg,
     stated_cite_leg,
 )
@@ -70,7 +73,8 @@ def pg(pg_dsn_lineage):
 
 
 def seed_narrative(
-    dsn: str, *, sha: str, pe_bli: str, kind: str, xml_path: str, body: str
+    dsn: str, *, sha: str, pe_bli: str, kind: str, xml_path: str, body: str,
+    fiscal_year: int = 2026,
 ) -> str:
     """Insert a jbook_documents + extraction_run + detail_narratives row and
     return the canonical fact_id_narrative for it (so a stated edge can cite a
@@ -78,9 +82,9 @@ def seed_narrative(
     with psycopg.connect(dsn, autocommit=True) as con:
         doc_id = con.execute(
             "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
-            " source_url, sha256, status) values ('DARPA', 'rdte', 2026, %s, %s, %s,"
+            " source_url, sha256, status) values ('DARPA', 'rdte', %s, %s, %s, %s,"
             " 'downloaded') returning id",
-            (f"doc-{sha}", f"https://example.test/{sha}.pdf", sha),
+            (fiscal_year, f"doc-{sha}", f"https://example.test/{sha}.pdf", sha),
         ).fetchone()[0]
         run_id = con.execute(
             "insert into extraction_runs (document_id, tier, tool_versions, status)"
@@ -245,6 +249,27 @@ def test_leg_a_fails_when_edge_endpoints_contradict_both_named_sentence(pg):
     assert any("contradict" in r for _, r in g["failures"])
 
 
+def test_leg_a_fails_when_citation_is_pre2026_narrative(pg):
+    """proof-can-fail (fence alignment, 2026-07-28): the site's cite-shard
+    universe is fenced to CITED_NARRATIVE_FY (= 2026) narratives, so a stated
+    edge citing a PB2025 narrative would ship a silently-dead <Cite>. Leg (a)'s
+    narrative index must apply the SAME fence: a PB2025-narrative-cited edge
+    FAILS ("re-derives to no narrative")."""
+    fid = seed_narrative(
+        pg, sha="fy25", pe_bli="0601101E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]",
+        body="Funding was realigned to PE 0601102E for the follow-on effort.",
+        fiscal_year=2025,  # a PB2025 narrative — OUTSIDE the cite-shard fence
+    )
+    seed_edge(
+        pg, "0601101E", "0601102E", fact_id=fid,
+        sentence="Funding was realigned to PE 0601102E for the follow-on effort.",
+    )
+    g = stated_cite_leg(pg)
+    assert g["ok"] is False
+    assert any("re-derives to no narrative" in r for _, r in g["failures"])
+
+
 def test_leg_a_passes_when_edge_matches_both_named_pair(pg):
     """Companion: the SAME sentence backing the pair it actually names PASSES."""
     body = ("In FY2021, PE 0207436F (Engineering and Installation Support AF), "
@@ -402,16 +427,74 @@ def test_leg_c_fails_when_chain_pulls_in_inferred_successor(pg, tmp_path):
 
 
 def test_leg_c_fails_when_root_not_in_request_series(pg, tmp_path):
-    """proof-can-fail: the family root does not resolve in the request series."""
+    """proof-can-fail: a family root PRESENT in the series but lacking a
+    request row is a real warehouse gap — never an exemptible dangling origin
+    (the origin carve-out requires absence from the ENTIRE series)."""
     _seed_clean_two_family_warehouse(pg, tmp_path)
-    # Series that OMITS root 0601101E from the request set.
+    # Series that keeps root 0601101E in the series (actuals) but NOT in the
+    # request set — an in-series root with no request row must FAIL.
+    db = make_series_db(
+        tmp_path,
+        ["0601102E", "0700001F", "0700002F", "0700003F"],
+        other_pes=["0601101E"],
+    )
+    g = one_to_one_sum_leg(pg, db)
+    assert g["ok"] is False
+    assert any("does not resolve in the request series" in r for _, r in g["failures"])
+
+
+def test_leg_c_cited_dangling_origin_is_noted_not_failed(pg, tmp_path):
+    """A family ROOT absent from the ENTIRE series whose outgoing stated edge
+    is genuinely cited is a dangling ORIGIN (the mirror of the terminal
+    carve-out): a cited historical predecessor in a not-yet-ingested edition.
+    With per-member cited funding points (Defect 2 — no summed line exists),
+    the line simply starts at the first ingested member; noted, PASS.
+    Mirrors the re-extracted 0207436F -> 0303004F warehouse family."""
+    _seed_clean_two_family_warehouse(pg, tmp_path)
+    # Series omits root 0601101E ENTIRELY (not even an actuals row).
     db = make_series_db(
         tmp_path,
         ["0601102E", "0700001F", "0700002F", "0700003F"],
     )
     g = one_to_one_sum_leg(pg, db)
+    assert g["ok"] is True, g["failures"]
+    assert "0601101E" in g["dangling_origins"]
+
+
+def test_leg_c_uncited_dangling_origin_fails(pg, tmp_path):
+    """proof-can-fail (LOCAL safety, mirror of the terminal rule): a dangling
+    ORIGIN whose OUTGOING stated edge is UNcited (bogus fact_id) must FAIL —
+    an un-ingested root is only exemptible on the strength of its own cited
+    edge, never waved through."""
+    seed_edge(
+        pg, "0000042Z", "0601102E", relation="realigned",
+        fact_id="deadbeefdeadbeef",
+        sentence="Funding for PE 0000042Z was realigned to PE 0601102E.",
+    )
+    seed_family(pg, {"0000042Z": 1, "0601102E": 1})
+    db = make_series_db(tmp_path, ["0601102E"])  # 0000042Z absent from series
+    g = one_to_one_sum_leg(pg, db)
     assert g["ok"] is False
-    assert any("does not resolve in the request series" in r for _, r in g["failures"])
+    assert "0000042Z" not in g["dangling_origins"]
+    assert any("UNcited dangling origin" in r for _, r in g["failures"])
+
+
+def test_leg_c_fully_dangling_family_passes_when_all_exempted(pg, tmp_path):
+    """A two-member family where the root is a cited dangling ORIGIN and the
+    successor a cited dangling TERMINAL has ZERO fundable points — the site
+    renders the honest empty state. Both exemptions are citation-gated; noted,
+    PASS. Mirrors the re-extracted 0208550F -> 0303005F warehouse family."""
+    body = "Funding for PE 0000042Z was realigned to PE 0000043Z."
+    fid = seed_narrative(pg, sha="sfd", pe_bli="0000042Z", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=body)
+    seed_edge(pg, "0000042Z", "0000043Z", relation="realigned", fact_id=fid,
+              sentence=body)
+    seed_family(pg, {"0000042Z": 1, "0000043Z": 1})
+    db = make_series_db(tmp_path, ["0601101E"])  # neither member in the series
+    g = one_to_one_sum_leg(pg, db)
+    assert g["ok"] is True, g["failures"]
+    assert "0000042Z" in g["dangling_origins"]
+    assert ("0000042Z", "0000043Z") in g["dangling_terminals"]
 
 
 def test_leg_c_fails_when_midchain_member_missing_from_series(pg, tmp_path):
@@ -485,13 +568,197 @@ def test_leg_c_cited_dangling_terminal_still_passes(pg, tmp_path):
 
 
 # ===========================================================================
+# Leg (d) — funding-point value == cited fact (Defect 2, 2026-07-28)
+# ===========================================================================
+
+
+def make_facts_db(tmp_path: Path, request_rows: list[tuple[str, int, float, str]],
+                  *, multi_source_rows: list[tuple[str, int, float, str]] | None = None) -> Path:
+    """fct_decade_series with grain identities: rows are (pe, fy, amount, fid).
+
+    request_rows are single-source grains (source_fact_id = fid).
+    multi_source_rows are n_source_rows=2 grains whose citable identity is the
+    DERIVED decade-sum fact — their 4th element is the amount_type (the fid is
+    fact_id_derived('decade', '{pe}|{edition}', amount_type), recomputed by the
+    leg exactly as _decade_fact_space mints it)."""
+    _series_db_counter[0] += 1
+    db = tmp_path / f"facts{_series_db_counter[0]}.duckdb"
+    con = duckdb.connect(str(db))
+    con.execute(
+        "create table fct_decade_series (pe_bli varchar, fy int, edition_year int,"
+        " amount_type_kind varchar, amount double, amount_type varchar,"
+        " n_source_rows int, source_fact_id varchar)"
+    )
+    for pe, fy, amount, fid in request_rows:
+        con.execute(
+            "insert into fct_decade_series values (?, ?, ?, 'request', ?, 'fy_x', 1, ?)",
+            [pe, fy, fy, amount, fid],
+        )
+    for pe, fy, amount, amount_type in (multi_source_rows or []):
+        con.execute(
+            "insert into fct_decade_series values (?, ?, ?, 'request', ?, ?, 2, null)",
+            [pe, fy, fy, amount, amount_type],
+        )
+    con.close()
+    return db
+
+
+def write_program_details(tmp_path: Path, name: str, funding_line: list[dict]) -> Path:
+    d = tmp_path / "program_details"
+    d.mkdir(exist_ok=True)
+    payload = {"lineage": {"family": {"family_id": 1, "chain": [],
+                                      "funding_line": funding_line,
+                                      "has_split": False}}}
+    (d / f"{name}.json").write_text(json.dumps(payload))
+    return d
+
+
+def test_leg_d_passes_when_every_point_equals_its_cited_fact(tmp_path):
+    db = make_facts_db(tmp_path, [("0601101E", 2024, 100.0, "fidA"),
+                                  ("0601102E", 2024, 40.0, "fidB")])
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2024, "pe": "0601101E", "v": 100.0, "fid": "fidA"},
+        {"fy": 2024, "pe": "0601102E", "v": 40.0, "fid": "fidB"},
+    ])
+    g = funding_point_value_leg(db, details)
+    assert g["ok"] is True, g["failures"]
+    assert g["points_checked"] == 2
+
+
+def test_leg_d_fails_on_summed_point(tmp_path):
+    """proof-can-fail (THE Defect-2 shape): a point displaying the SUM of two
+    members' facts while citing only one member's fid must FAIL — the displayed
+    value is not backed by the citation."""
+    db = make_facts_db(tmp_path, [("0601101E", 2024, 100.0, "fidA"),
+                                  ("0601102E", 2024, 40.0, "fidB")])
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2024, "v": 140.0, "fid": "fidB"},  # 100+40 summed, cites fidB (=40)
+    ])
+    g = funding_point_value_leg(db, details)
+    assert g["ok"] is False
+    assert any("does not equal the cited fact" in r for _, r in g["failures"])
+
+
+def test_leg_d_multi_source_grain_resolves_via_derived_fact(tmp_path):
+    """A multi-source request grain's citable identity is the DERIVED
+    decade-sum fact — the leg recomputes fact_id_derived('decade',
+    '{pe}|{edition}', amount_type) exactly as the exporter mints it."""
+    from govbudget.export_site import fact_id_derived
+
+    db = make_facts_db(tmp_path, [],
+                       multi_source_rows=[("0601101E", 2020, 250.0, "fy_2020_total")])
+    fid = fact_id_derived("decade", "0601101E|2020", "fy_2020_total")
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2020, "pe": "0601101E", "v": 250.0, "fid": fid},
+    ])
+    g = funding_point_value_leg(db, details)
+    assert g["ok"] is True, g["failures"]
+
+
+def test_leg_d_fails_on_unknown_fid(tmp_path):
+    db = make_facts_db(tmp_path, [("0601101E", 2024, 100.0, "fidA")])
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2024, "pe": "0601101E", "v": 100.0, "fid": "ghost"},
+    ])
+    g = funding_point_value_leg(db, details)
+    assert g["ok"] is False
+    assert any("no request fact" in r for _, r in g["failures"])
+
+
+def test_leg_d_fails_on_pe_or_fy_mismatch(tmp_path):
+    """A per-member point must cite ITS OWN member's fact — a point labeled
+    with one PE but citing another member's fid (or another fy's) FAILS even
+    when the dollar value happens to coincide."""
+    db = make_facts_db(tmp_path, [("0601101E", 2024, 100.0, "fidA"),
+                                  ("0601102E", 2024, 100.0, "fidB")])
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2024, "pe": "0601101E", "v": 100.0, "fid": "fidB"},  # wrong member's fid
+    ])
+    g = funding_point_value_leg(db, details)
+    assert g["ok"] is False
+    assert any("labeled pe" in r for _, r in g["failures"])
+
+
+def test_leg_d_fails_when_details_dir_missing(tmp_path):
+    db = make_facts_db(tmp_path, [("0601101E", 2024, 100.0, "fidA")])
+    g = funding_point_value_leg(db, tmp_path / "nope")
+    assert g["ok"] is False
+
+
+# ===========================================================================
+# Leg (e) — lake ↔ DB binding (2026-07-28)
+# ===========================================================================
+
+
+def _seed_edges_and_export_lake(pg, tmp_path: Path) -> Path:
+    """Seed a small stated warehouse and stage the jbooks parquet lake next to
+    a tmp duckdb path (layout: {duckdb_dir}/parquet/jbooks/*.parquet)."""
+    from govbudget.jbooks.export_facts import export_facts
+
+    _seed_clean_two_family_warehouse(pg, tmp_path)
+    base = tmp_path / f"lake{_series_db_counter[0]}"
+    base.mkdir()
+    export_facts(pg, parquet_dir=base / "parquet")
+    return base / "wh.duckdb"  # need not exist; only its parent dir matters
+
+
+def test_leg_e_passes_when_lake_matches_db(pg, tmp_path):
+    db = _seed_edges_and_export_lake(pg, tmp_path)
+    g = lake_binding_leg(pg, db)
+    assert g["ok"] is True, g["failures"]
+    assert g["lineage_rows_db"] == g["lineage_rows_lake"] == 3
+
+
+def test_leg_e_fails_when_parquet_missing(pg, tmp_path):
+    """proof-can-fail: a missing lake parquet is a FAIL (never a skip) — an
+    un-staged lake would silently decouple the site export from Postgres."""
+    _seed_clean_two_family_warehouse(pg, tmp_path)
+    base = tmp_path / "emptylake"
+    base.mkdir()
+    g = lake_binding_leg(pg, base / "wh.duckdb")
+    assert g["ok"] is False
+    assert any("missing" in r for _, r in g["failures"])
+
+
+def test_leg_e_fails_on_lineage_row_drift(pg, tmp_path):
+    """proof-can-fail: an edge present in Postgres but not in the staged lake
+    (stale lake after a rebuild) must FAIL the binding."""
+    db = _seed_edges_and_export_lake(pg, tmp_path)
+    seed_edge(pg, "0601102E", "0699999E", fact_id="late", sentence="PE x.")
+    g = lake_binding_leg(pg, db)
+    assert g["ok"] is False
+    assert any("db-only" in r for _, r in g["failures"])
+
+
+def test_leg_e_fails_on_family_partition_drift(pg, tmp_path):
+    """proof-can-fail: a family regrouped in Postgres after staging must FAIL."""
+    db = _seed_edges_and_export_lake(pg, tmp_path)
+    with psycopg.connect(pg, autocommit=True) as con:
+        con.execute("update program_family set family_id=7 where pe_bli='0700003F'")
+    g = lake_binding_leg(pg, db)
+    assert g["ok"] is False
+    assert any("partition" in r for _, r in g["failures"])
+
+
+# ===========================================================================
 # All-pass end-to-end
 # ===========================================================================
 
 
-def test_all_three_legs_pass_on_clean_mini_warehouse(pg, tmp_path):
+def test_all_legs_pass_on_clean_mini_warehouse(pg, tmp_path):
+    from govbudget.jbooks.export_facts import export_facts
+
     db = _seed_clean_two_family_warehouse(pg, tmp_path)
+    base = tmp_path / "e2e-lake"
+    base.mkdir()
+    export_facts(pg, parquet_dir=base / "parquet")
+    facts_db = make_facts_db(tmp_path, [("0601101E", 2026, 100.0, "fidA")])
+    details = write_program_details(tmp_path, "0601101E", [
+        {"fy": 2026, "pe": "0601101E", "v": 100.0, "fid": "fidA"},
+    ])
     a = stated_cite_leg(pg)
     b = family_integrity_leg(pg)
     c = one_to_one_sum_leg(pg, db)
-    assert a["ok"] and b["ok"] and c["ok"], (a, b, c)
+    d = funding_point_value_leg(facts_db, details)
+    e = lake_binding_leg(pg, base / "wh.duckdb")
+    assert a["ok"] and b["ok"] and c["ok"] and d["ok"] and e["ok"], (a, b, c, d, e)

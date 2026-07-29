@@ -1157,3 +1157,179 @@ carve-out inherits the strictness for free (the 834190 terminal exemption
 correctly collapses once its incoming edge's citation is contradicted).
 Made-to-pass comes from `lineage build` re-extraction (recorded in the
 Defect-2 section below alongside the rebuilt-warehouse run).
+
+
+================================================================================
+Defect 2 — per-member cited funding points + leg (d) value==fact +
+fence constant + leg (e) lake binding + loud cite-degrade — 2026-07-28
+================================================================================
+
+CONFIRMED CRITICAL honesty defect (live on fiscalreceipts.com): _emit_lineage
+built each family funding_line point by SUMMING all chain members' request
+values per FY while citing only ONE member's fact — 148 of 329 shipped points
+(75 of 148 unique per-family points; family blocks are duplicated across member
+pages) displayed a value their citation does not back. The "overlap is rare"
+premise was false: realigned pairs coexist for the whole decade (family 6
+FY2021 displayed $349,225K while citing 0602203F's fact backing $0).
+
+--- NEW GATE LEG (d) — funding-point-value == cited fact ---
+verify_lineage.funding_point_value_leg reads the BUILT artifact
+(data/site/json/program_details/*.json — deliberately the shipped file, so the
+gate has teeth against what users see) and asserts every funding_line entry's
+v EQUALS the fct_decade_series request grain its fid cites (grain identity
+recomputed exactly as _decade_fact_space mints it: source_fact_id for
+single-source grains, fact_id_derived('decade','{pe}|{edition}',amount_type)
+for multi-source grains — itself lake-cross-checked with a hard ValueError),
+and that the per-member labels pe/fy are the cited fact's own.
+
+PROOF-CAN-FAIL against the CURRENT deployed-shape export (before the exporter
+fix), verbatim:
+
+    leg d funding-point-value: files_scanned=1993 points_checked=329 failures=148 -> FAIL
+      FAIL 0204136N.json funding_line[2] fy=2019 fid=3841eba03386925f: displayed value 301786.0 does not equal the cited fact's recorded value 108700.0 (fact 3841eba03386925f: 0604014N FY2019)
+      FAIL 0204136N.json funding_line[3] fy=2020 fid=d4f1f29ea34304c7: displayed value 327171.0 does not equal the cited fact's recorded value 113456.0 (fact d4f1f29ea34304c7: 0604014N FY2020)
+      FAIL 0204136N.json funding_line[4] fy=2021 fid=94b66e0566a5963e: displayed value 255220.0 does not equal the cited fact's recorded value 84190.0 (fact 94b66e0566a5963e: 0604014N FY2021)
+      FAIL 0204136N.json funding_line[5] fy=2022 fid=4ae388895e2dd478: displayed value 238017.0 does not equal the cited fact's recorded value 48793.0 (fact 4ae388895e2dd478: 0604014N FY2022)
+      ... (148 total failures)
+
+Unit proofs (tests/test_verify_lineage.py): test_leg_d_fails_on_summed_point
+(the exact defect shape: v=140 citing the fact backing 40 → FAIL "does not
+equal the cited fact"), test_leg_d_fails_on_unknown_fid, test_leg_d_fails_on_
+pe_or_fy_mismatch (a point labeled one member but citing another's fact fails
+even when the dollar value coincides), test_leg_d_fails_when_details_dir_
+missing, test_leg_d_multi_source_grain_resolves_via_derived_fact, and the
+pass case. Non-vacuous: zero checkable points is a FAIL.
+
+--- EXPORTER FIX — per-member cited points, nothing summed ---
+funding_line now emits one entry PER (fy, chain member) with a cited request
+fact: {fy, pe, v, fid} where v is EXACTLY that member's fact value, sorted by
+(fy, chain position). Pre-fix failing tests (verbatim excerpts):
+
+    FAILED tests/jbooks/test_export_lineage.py::test_funding_line_emits_per_member_cited_points
+      (KeyError: 'pe' — the old shape shipped a single summed {fy, v, fid})
+    FAILED tests/jbooks/test_export_lineage.py::test_no_funding_point_value_differs_from_its_cited_fact
+    FAILED tests/jbooks/test_export_lineage.py::test_stated_edge_with_uncited_fact_id_raises
+      (Failed: DID NOT RAISE <class 'ValueError'> — captured stdout showed the
+       old silent degrade: "lineage: stated edge X->Y cites fact_id ghost not
+       in cite-shards; emitting evidence with fact_id=null ...")
+
+Renderer (site/src/components/lineage/family-funding-line.tsx): groups entries
+by fy; a single-entry fy renders exactly as before; a coexistence fy renders
+EACH member's value as its own labeled state-A <Cite> (small PE-code label,
+[data-multi-member-fy]) — the reader SEES the handoff. An arithmetic sum is
+NEVER rendered (a bare summed currency string outside a Cite would also trip
+render-static). Pre-fix vitest proof: the new test "labels each coexisting
+member's value with its PE code" FAILED against the old component
+(data-multi-member-fy group absent):
+
+     Tests  1 failed | 12 passed (13)
+
+--- EXPORTER CITE-DEGRADE IS NOW A HARD ERROR ---
+A stated edge whose evidence_fact_id is not in cited_fact_ids now RAISES
+ValueError and fails the export (was: print + fact_id=null). With the fence
+aligned end-to-end this is unreachable; loud, never silent. Pinned by
+test_stated_edge_with_uncited_fact_id_raises (pre-fix DID-NOT-RAISE above).
+
+--- FENCE ALIGNMENT — CITED_NARRATIVE_FY ---
+The cite-shard edition fence is now a single shared constant
+govbudget.lineage.model.CITED_NARRATIVE_FY (= 2026), imported by
+lineage/load.py (stated-edge extraction SQL, parametrized) and
+verify_lineage._load_narrative_index (leg a's narrative universe — previously
+UNFENCED, so an edge citing a pre-2026 narrative would pass the gate while
+shipping a dead <Cite>); export_site.py's PB2026 edition-fence comment
+references the constant. Unit proof-can-fail (throwaway DB), run BEFORE the
+fence was applied to the gate — verbatim:
+
+        g = stated_cite_leg(pg)
+    >       assert g["ok"] is False
+    E       assert True is False
+    FAILED tests/test_verify_lineage.py::test_leg_a_fails_when_citation_is_pre2026_narrative
+
+(i.e. the unfenced index accepted a PB2025-narrative citation). Post-fence the
+test passes: the PB2025-cited edge fails leg (a) with "re-derives to no
+narrative".
+
+--- NEW GATE LEG (e) — lake↔DB binding ---
+verify_lineage.lake_binding_leg: the staged jbooks parquet lake
+(program_lineage.parquet + program_family.parquet — what export-site actually
+reads) must EQUAL the Postgres tables: multiset equality on
+(from, to, fy, relation, confidence) and pe-set + id-agnostic partition
+equality for families. A MISSING parquet is a FAIL, never a skip.
+
+PROOF-CAN-FAIL — pointed at an EMPTY tmp lake (live config PG DSN, throwaway
+tmp dir; nothing to restore — the real lake was never touched), verbatim:
+
+    === leg (e) pointed at an EMPTY tmp lake (proof-can-fail) ===
+    leg e lake-binding: -> FAIL
+      FAIL [lineage] program_lineage.parquet missing from the lake
+      FAIL [family] program_family.parquet missing from the lake
+
+Unit proofs: test_leg_e_fails_when_parquet_missing, test_leg_e_fails_on_
+lineage_row_drift (db-only edge after staging), test_leg_e_fails_on_family_
+partition_drift, and the pass case (staged via the real export_facts).
+
+--- LEG (c) DANGLING-ORIGIN CARVE-OUT (forced by Defect 1's corrected edges) ---
+The corrected extraction names historical sources (0207436F, 0208550F,
+0207604, …) that are absent from the ENTIRE ingested series — family roots
+with no request row. The old leg (c) "root must resolve" rule served the
+SUMMED-line semantics this round removed (per-member points never pivot on the
+root); an un-ingested cited origin now mirrors the terminal carve-out:
+exempt (noted as a dangling ORIGIN) ONLY when the root is absent from the
+ENTIRE series AND one of its OUTGOING stated edges itself passes
+_edge_citation_resolves — the same LOCAL citation-gating as the terminal rule.
+An UNcited origin, or a root PRESENT in the series without a request row (a
+real warehouse gap), still FAILS. This is a documented semantic change, not a
+silent weakening — its teeth are proven:
+
+Pre-implementation verbatim (the origin tests against the OLD leg):
+
+    FAILED tests/test_verify_lineage.py::test_leg_c_cited_dangling_origin_is_noted_not_failed
+      E       AssertionError: [('family 0 root=0601101E', "family root 0601101E does not
+              resolve in the request series (fct_decade_series amount_type_kind='request')")]
+    FAILED tests/test_verify_lineage.py::test_leg_c_uncited_dangling_origin_fails
+    FAILED tests/test_verify_lineage.py::test_leg_c_fully_dangling_family_passes_when_all_exempted
+
+Post-implementation: test_leg_c_uncited_dangling_origin_fails is the NEW
+proof-can-fail teeth ("family root … is an UNcited dangling origin"), the
+cited-origin case is noted-not-failed, a fully-dangling-but-cited family
+passes with an EMPTY funding line (the site renders the honest empty state),
+and test_leg_c_fails_when_root_not_in_request_series still pins the
+in-series-no-request FAIL.
+
+--- MADE TO PASS ON THE REBUILT WAREHOUSE + FRESH EXPORT (verbatim) ---
+Sequence: lineage build → jbooks export-facts → export-site → verify-lineage.
+(Ordering note: leg (d) audits the BUILT artifact, so verify-lineage must run
+AFTER export-site — running it between export-facts and export-site correctly
+FAILED leg (d) alone against the stale pre-fix artifact [148 failures, legs
+a/b/c/e already PASS], which is leg (d)'s teeth working as designed.)
+
+$ uv run python -m govbudget lineage build
+lineage built: {'stated': 31, 'inferred': 3, 'families': 22, 'edges': 34}
+
+$ uv run python -m govbudget verify-lineage
+leg a stated-cite: checked=31 passed=31 failures=0 → PASS
+leg b family-integrity: recomputed_pes=53 persisted_pes=53 failures=0 → PASS
+leg c one-to-one-sum: families_checked=22 cyclic_fallbacks=0 dangling_terminals=1 failures=0 → PASS
+  NOTE successor 0207429F (family root 0207604) is cited but unresolved in the ingested request series (dangling terminal); the funding line ends here and the successor must be rendered as an unresolved reference, not a clean thread
+  NOTE family root 0207604 is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0207436F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0208550F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0101101F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+leg d funding-point-value: files_scanned=1993 points_checked=528 failures=0 → PASS
+leg e lake-binding: lineage_rows_db=34 lineage_rows_lake=34 family_pes_db=53 family_pes_lake=53 failures=0 → PASS
+verify-lineage: PASS
+(exit code 0)
+
+Re-extraction result (Defect 1 corrections + honest growth): the 3 fabricated
+edges (837300->0303004F, 837300->0303005F, 834190->0207429F) are GONE,
+replaced by the sentence-named pairs 0207436F->0303004F, 0208550F->0303005F,
+0207604->0207429F. Six MORE both-named edges surfaced that the old
+self-reference drop was silently discarding (destination narratives naming
+their own sources): 0101101F->0604033F, 0207522F->0604617F,
+0604617F->0208036F, 0305550F->0303005F, 0408550F->0303005F,
+0708550F->0303005F. 0204136N->0604014N reclassified renamed→realigned (the
+sentence's explicit directional transfer verb outranks the identity note —
+documented in sentence_named_pairs). 25→31 stated, 3 inferred (unchanged),
+19→22 families. 837300/834190 rollup pages now render the honest empty state.
+528 shipped funding points (per-member), every one equal to its cited fact.
+Full suites: pytest 1351 passed; vitest 395 passed (28 files); tsc clean.

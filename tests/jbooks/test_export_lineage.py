@@ -105,29 +105,58 @@ def test_inferred_rail_entry_has_no_evidence():
     assert inf["evidence"] is None                          # inferred is NEVER cited
 
 
-def test_funding_line_sums_only_chain_members():
+def test_funding_line_emits_per_member_cited_points():
+    """Defect 2 (2026-07-28): the funding line NEVER sums — it emits one entry
+    per (fy, chain member) with a request fact, each carrying EXACTLY that
+    member's fact value and fid. An fy where two chain members coexist yields
+    TWO labeled entries (the reader sees the handoff), never a single summed
+    number whose citation backs only one member."""
     by_pe = _chain_fixture()
     fam = by_pe["PRED"]["family"]
     # Root is PRED (stated in-degree 0). one_to_one_chain walks every clean 1:1
-    # stated hop: PRED -> MID -> SUCC -> DANGLE (SUCC->DANGLE is itself 1:1, so
-    # the reviewed helper legitimately extends to the dangling successor). DANGLE
-    # has no request series, so it contributes nothing to the funding line — but
-    # it IS a chain member per the stated evidence.
+    # stated hop: PRED -> MID -> SUCC -> DANGLE. DANGLE has no request series,
+    # so it contributes no points — but it IS a chain member per the evidence.
     assert fam["chain"] == ["PRED", "MID", "SUCC", "DANGLE"]
-    fl = {p["fy"]: p["v"] for p in fam["funding_line"]}
-    # Per-fy sums across chain members ONLY:
-    assert fl[2023] == 100.0                       # PRED only
-    assert fl[2024] == 50.0 + 40.0                 # PRED + MID overlap
-    assert fl[2025] == 60.0 + 30.0                 # MID + SUCC overlap
-    assert fl[2026] == 90.0                        # SUCC only
-    # NONCHAIN (family 99) must NOT leak into family 7's funding line.
-    assert 999.0 not in fl.values()
-    # sorted by fy
-    fys = [p["fy"] for p in fam["funding_line"]]
-    assert fys == sorted(fys)
-    # every point cites a resolving fid
+    # One entry PER member per fy — the overlap fys carry BOTH members' points.
+    assert [(p["fy"], p["pe"], p["v"], p["fid"]) for p in fam["funding_line"]] == [
+        (2023, "PRED", 100.0, "fidPRED2023"),
+        (2024, "PRED", 50.0, "fidPRED2024"),
+        (2024, "MID", 40.0, "fidMID2024"),
+        (2025, "MID", 60.0, "fidMID2025"),
+        (2025, "SUCC", 30.0, "fidSUCC2025"),
+        (2026, "SUCC", 90.0, "fidSUCC2026"),
+    ]
+    # No summed value appears within any overlap fy: the old defect emitted a
+    # single {fy, v: sum} point, so an overlap fy must never carry an entry
+    # whose v is the cross-member sum instead of a member's own fact value.
+    from collections import defaultdict
+    by_fy = defaultdict(list)
     for p in fam["funding_line"]:
-        assert p["fid"] is not None
+        by_fy[p["fy"]].append(p["v"])
+    assert sorted(by_fy[2024]) == [40.0, 50.0]     # never [90.0]
+    assert sorted(by_fy[2025]) == [30.0, 60.0]     # never [90.0]
+    # NONCHAIN (family 99) must NOT leak into family 7's funding line.
+    assert 999.0 not in {p["v"] for p in fam["funding_line"]}
+
+
+def test_no_funding_point_value_differs_from_its_cited_fact():
+    """Every emitted point's v equals ITS OWN cited fact's value — the exporter
+    can never display a number the citation does not back (Defect 2 teeth)."""
+    by_pe = _chain_fixture()
+    # Rebuild the fact table the fixture seeded: fid -> (pe, fy, v).
+    facts = {}
+    series = {
+        "PRED": [(2023, 100.0, "fidPRED2023"), (2024, 50.0, "fidPRED2024")],
+        "MID": [(2024, 40.0, "fidMID2024"), (2025, 60.0, "fidMID2025")],
+        "SUCC": [(2025, 30.0, "fidSUCC2025"), (2026, 90.0, "fidSUCC2026")],
+        "NONCHAIN": [(2025, 999.0, "fidNON2025")],
+    }
+    for pe, pts in series.items():
+        for fy, v, fid in pts:
+            facts[fid] = (pe, fy, v)
+    for p in by_pe["PRED"]["family"]["funding_line"]:
+        pe, fy, v = facts[p["fid"]]
+        assert p["pe"] == pe and p["fy"] == fy and p["v"] == v
 
 
 def test_family_carries_chain_head_title():
@@ -191,21 +220,23 @@ def test_has_split_true_for_fan_out_family():
     assert by_pe["ROOT"]["family"]["has_split"] is True
 
 
-def test_stated_evidence_nulled_when_fact_id_uncited():
-    # Defensive: a stated edge whose evidence_fact_id is NOT in cited set must
-    # ship evidence with fact_id None (no dead <Cite>), but still stated.
+def test_stated_edge_with_uncited_fact_id_raises():
+    """A stated edge whose evidence_fact_id is NOT in the cite universe is a
+    build-breaking contract violation (2026-07-28): with the narrative fence
+    aligned end-to-end (CITED_NARRATIVE_FY) this is unreachable, so it must be
+    LOUD — the export fails — never a silent print-and-null degrade that ships
+    a stated edge without its citation."""
+    import pytest
+
     edges = [
         LineageEdge("X", "Y", 2025, "realigned", "stated",
                     evidence_fact_id="ghost", evidence_page=5,
                     evidence_sentence="X to Y."),
     ]
     families = {"X": 1, "Y": 1}
-    by_pe = _emit(edges, families, all_pe_blis={"X", "Y"}, rollup_pes=set(),
-                  titles={"X": "X", "Y": "Y"}, series={}, cited=set())  # ghost uncited
-    succ = by_pe["X"]["rail"]["successors"][0]
-    assert succ["confidence"] == "stated"
-    assert succ["evidence"]["fact_id"] is None        # nulled, not dropped
-    assert succ["evidence"]["page"] == 5              # page/sentence still carried
+    with pytest.raises(ValueError, match="ghost"):
+        _emit(edges, families, all_pe_blis={"X", "Y"}, rollup_pes=set(),
+              titles={"X": "X", "Y": "Y"}, series={}, cited=set())  # ghost uncited
 
 
 def test_cyclic_family_falls_back_to_lexicographically_smallest_root():

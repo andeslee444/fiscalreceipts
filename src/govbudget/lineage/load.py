@@ -30,7 +30,7 @@ from govbudget.export_site import fact_id_narrative
 from govbudget.lineage.extract import extract_stated_edges
 from govbudget.lineage.family import build_families
 from govbudget.lineage.infer import infer_edges
-from govbudget.lineage.model import LineageEdge
+from govbudget.lineage.model import CITED_NARRATIVE_FY, LineageEdge
 
 _NARRATIVE_SQL = """
 select j.sha256 as sha, n.pe_bli, n.kind, n.xml_path, j.fiscal_year, n.body,
@@ -45,13 +45,16 @@ select j.sha256 as sha, n.pe_bli, n.kind, n.xml_path, j.fiscal_year, n.body,
    and pp.target_kind = 'narrative'
  where not n.superseded
    and n.xml_path is not null
-   -- Fence to FY2026 narratives: this aligns stated-edge citations with the
+   -- Fence to CITED_NARRATIVE_FY narratives (parametrized below — the shared
+   -- constant in lineage/model.py): this aligns stated-edge citations with the
    -- BINDING PB2026 cite-shard edition fence in export_site.py, so every stated
-   -- edge's <Cite> resolves. Pre-2026 narratives are not in the FY2026
-   -- cite-shard universe, so a stated edge citing one would not resolve on the
-   -- site (violating "no stated edge without a resolvable citation"). FY2026
+   -- edge's <Cite> resolves. Pre-fence narratives are not in the cite-shard
+   -- universe, so a stated edge citing one would not resolve on the site
+   -- (violating "no stated edge without a resolvable citation"). Current-fence
    -- J-books still narrate historical predecessors, so YoY lineage is captured.
-   and j.fiscal_year = 2026
+   -- verify_lineage._load_narrative_index applies the SAME constant, so the
+   -- extractor, the site, and the gate can never fence to different editions.
+   and j.fiscal_year = %(cited_narrative_fy)s
  order by j.fiscal_year desc, n.pe_bli, n.xml_path
 """
 
@@ -67,7 +70,9 @@ select f.pe_bli, t.title, f.fy, 'request' as kind, f.amount_thousands as amount
 def _load_stated(dsn: str) -> list[LineageEdge]:
     narratives: list[dict] = []
     with psycopg.connect(dsn) as con:
-        for sha, pe_bli, kind, xml_path, fy, body, page in con.execute(_NARRATIVE_SQL):
+        for sha, pe_bli, kind, xml_path, fy, body, page in con.execute(
+            _NARRATIVE_SQL, {"cited_narrative_fy": CITED_NARRATIVE_FY}
+        ):
             narratives.append({
                 "pe_bli": pe_bli,
                 "fiscal_year": int(fy),

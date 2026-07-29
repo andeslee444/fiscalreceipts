@@ -1618,6 +1618,8 @@ def cmd_verify_phase5e(args) -> None:
 def cmd_verify_lineage(args) -> None:
     from govbudget.verify_lineage import (
         family_integrity_leg,
+        funding_point_value_leg,
+        lake_binding_leg,
         one_to_one_sum_leg,
         stated_cite_leg,
     )
@@ -1676,9 +1678,44 @@ def cmd_verify_lineage(args) -> None:
                   f" unresolved in the ingested request series (dangling terminal);"
                   f" the funding line ends here and the successor must be rendered"
                   f" as an unresolved reference, not a clean thread")
+        for root in c.get("dangling_origins", []):
+            print(f"  NOTE family root {root} is a cited dangling ORIGIN — named as"
+                  f" a source in a genuinely-cited sentence but absent from the"
+                  f" ingested series; the funding line starts at the first ingested"
+                  f" member and the origin must render as an unresolved reference")
         for grain, reason in c["failures"][:10]:
             print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gc_ok
+
+    # Leg d: funding-point-value — every shipped point equals its cited fact
+    d = funding_point_value_leg(
+        config.DUCKDB_PATH, config.SITE_DIR / "json" / "program_details"
+    )
+    gd_ok = d["ok"]
+    if d.get("reason"):
+        print(f"leg d funding-point-value: {d['reason']} → FAIL")
+    else:
+        print(
+            f"leg d funding-point-value: files_scanned={d['files_scanned']}"
+            f" points_checked={d['points_checked']} failures={len(d['failures'])}"
+            f" → {'PASS' if gd_ok else 'FAIL'}"
+        )
+    for grain, reason in d["failures"][:10]:
+        print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gd_ok
+
+    # Leg e: lake↔DB binding — the staged parquet equals the Postgres tables
+    e = lake_binding_leg(config.PG_DSN, config.DUCKDB_PATH)
+    ge_ok = e["ok"]
+    print(
+        f"leg e lake-binding: lineage_rows_db={e['lineage_rows_db']}"
+        f" lineage_rows_lake={e['lineage_rows_lake']}"
+        f" family_pes_db={e['family_pes_db']} family_pes_lake={e['family_pes_lake']}"
+        f" failures={len(e['failures'])} → {'PASS' if ge_ok else 'FAIL'}"
+    )
+    for kind, reason in e["failures"][:10]:
+        print(f"  FAIL [{kind}] {reason}")
+    gates_ok = gates_ok and ge_ok
 
     print("verify-lineage:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)

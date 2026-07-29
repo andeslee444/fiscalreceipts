@@ -47,10 +47,19 @@ export interface LineageRail {
   successors: LineageRailEntry[];
 }
 
-/** One cited point on the family funding line (a dollar amount → Cite). */
+/**
+ * One cited point on the family funding line (a dollar amount → Cite).
+ *
+ * Defect-2 shape (2026-07-28): one entry PER (fy, chain member) with a cited
+ * request fact — `v` is EXACTLY that member's fact value (nothing is ever
+ * summed). An fy where two chain members coexist carries multiple entries;
+ * the renderer groups by fy and labels each member's value with its `pe`.
+ */
 export interface LineageFundingPoint {
   fy: number;
-  /** Value in USD thousands (the decade-series unit). */
+  /** The chain member this point belongs to (its fact's own PE). */
+  pe: string;
+  /** Value in USD thousands (the decade-series unit) — the cited fact's value. */
   v: number;
   /** Fact_id — resolves in the cite universe (state-A Cite). */
   fid: string;
