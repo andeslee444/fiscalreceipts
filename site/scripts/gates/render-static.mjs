@@ -50,6 +50,17 @@
  *      rendered without the honesty label reads as an asserted fact → FAIL.
  *      This keeps the inferred/stated distinction visible in the static HTML
  *      itself, not just the styling.
+ *
+ * (st) STATED-LINEAGE POSITIVE LEG (Fix F, 2026-07-28): every element marked
+ *      [data-lineage-stated] (a stated lineage rail card) must CONTAIN a
+ *      [data-lineage-cite][data-fact-id] marker with a non-empty fact id —
+ *      a stated edge rendered bare (no clickable citation) → FAIL.
+ *      Non-vacuity (both lineage legs): the emitted program_details sidecars
+ *      are the count expectation. If the sidecars carry stated rail entries
+ *      but ZERO [data-lineage-stated] elements render site-wide, the leg is
+ *      vacuous → FAIL. If the sidecars carry inferred rail entries but ZERO
+ *      [data-inferred] elements render site-wide, WARN LOUDLY (still pass —
+ *      the (inf) leg is per-element and cannot see what never rendered).
  */
 
 import fs from "fs";
@@ -139,11 +150,43 @@ export async function runRenderStaticGate() {
   let proseCiteCount = 0;
   let inferredCount = 0;
   let inferredErrors = 0;
+  let statedCount = 0;
+  let statedErrors = 0;
   const positiveFailures = [];
   const negativeFailures = [];
   const ledgerFailures = [];
   const titleFailures = [];
   const inferredFailures = [];
+  const statedFailures = [];
+
+  // ── (st)/(inf) non-vacuity expectation from the emitted sidecars ─────────
+  // Count stated / inferred rail entries across data/site/json/program_details
+  // — the payloads the program pages render from. These are the DOM-count
+  // expectations: sidecar entries exist but zero corresponding elements
+  // site-wide means the leg is scanning nothing.
+  let sidecarStatedEntries = 0;
+  let sidecarInferredEntries = 0;
+  try {
+    const detDir = path.join(jsonDir, "program_details");
+    for (const name of fs.readdirSync(detDir)) {
+      if (!name.endsWith(".json")) continue;
+      let doc;
+      try {
+        doc = readJson(path.join(detDir, name));
+      } catch {
+        continue; // unreadable sidecars are verify-lineage leg (d)'s problem
+      }
+      const rail = doc?.lineage?.rail;
+      if (!rail) continue;
+      for (const e of [...(rail.predecessors ?? []), ...(rail.successors ?? [])]) {
+        if (e?.confidence === "stated") sidecarStatedEntries++;
+        else if (e?.confidence === "inferred") sidecarInferredEntries++;
+      }
+    }
+  } catch {
+    // program_details dir missing — verify-lineage leg (d) fails that case;
+    // here the expectation simply stays 0 (no vacuity claim can be made).
+  }
 
   // (inf) An inferred-lineage element is honest iff its own subtree text names
   // the connection as a candidate / unverified — never asserted as fact.
@@ -244,6 +287,26 @@ export async function runRenderStaticGate() {
           file: relPath,
           issue: `[data-inferred="true"] element without a "candidate"/"unverified" honesty label`,
           snippet: text.trim().slice(0, 100),
+        });
+      }
+    }
+
+    // ── (st) Stated-lineage positive leg (Fix F, 2026-07-28) ────────────────
+    // Every stated rail card must contain its clickable sentence-citation
+    // marker: [data-lineage-cite] with a non-empty data-fact-id. A stated
+    // edge rendered bare asserts a transfer with no reachable source → FAIL.
+    for (const stEl of root.querySelectorAll("[data-lineage-stated]")) {
+      statedCount++;
+      const cite = stEl.querySelector("[data-lineage-cite]");
+      const factId = cite ? cite.getAttribute("data-fact-id") : null;
+      if (!cite || !factId || factId.trim() === "") {
+        statedErrors++;
+        statedFailures.push({
+          file: relPath,
+          issue: cite
+            ? `[data-lineage-stated] card's [data-lineage-cite] marker has an empty data-fact-id`
+            : `[data-lineage-stated] card renders BARE — no [data-lineage-cite][data-fact-id] marker inside`,
+          snippet: (stEl.text ?? "").trim().slice(0, 100),
         });
       }
     }
@@ -505,9 +568,47 @@ export async function runRenderStaticGate() {
     if (inferredFailures.length > 10) {
       errors.push(`  ... and ${inferredFailures.length - 10} more`);
     }
+  } else if (inferredCount === 0 && sidecarInferredEntries > 0) {
+    // Zero-count honesty (Fix F, 2026-07-28): the per-element check above is
+    // vacuous when nothing rendered. The sidecars expect inferred cards —
+    // WARN LOUDLY (still pass; the per-element leg has nothing to fail on).
+    notes.push(
+      `WARNING — inferred-lineage leg is VACUOUS: 0 [data-inferred] elements ` +
+        `site-wide, but the program_details sidecars carry ` +
+        `${sidecarInferredEntries} inferred rail entr${sidecarInferredEntries === 1 ? "y" : "ies"}. ` +
+        `Verify non-vacuity: the inferred disclosure may have stopped rendering.`
+    );
   } else {
     notes.push(
-      `inferred-lineage honesty: ${inferredCount} [data-inferred] element(s), all labelled candidate/unverified ✓`
+      `inferred-lineage honesty: ${inferredCount} [data-inferred] element(s) ` +
+        `(sidecars expect ${sidecarInferredEntries} entries), all labelled candidate/unverified ✓`
+    );
+  }
+
+  // ── (st) stated-lineage summary ──────────────────────────────────────────
+  if (statedErrors > 0) {
+    errors.push(
+      `${statedErrors} [data-lineage-stated] card(s) render without a [data-lineage-cite][data-fact-id] marker (first 10):`
+    );
+    for (const f of statedFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue} — "${f.snippet}"`);
+    }
+    if (statedFailures.length > 10) {
+      errors.push(`  ... and ${statedFailures.length - 10} more`);
+    }
+  } else if (statedCount === 0 && sidecarStatedEntries > 0) {
+    // The positive leg found nothing to check while the sidecars carry stated
+    // entries — the leg is vacuous, which for STATED cards is a hard FAIL:
+    // a cited-edge rail that silently stopped rendering must not pass.
+    errors.push(
+      `stated-lineage leg is VACUOUS: 0 [data-lineage-stated] elements site-wide, ` +
+        `but the program_details sidecars carry ${sidecarStatedEntries} stated rail ` +
+        `entries — the stated rail (or its gate marker) stopped rendering.`
+    );
+  } else {
+    notes.push(
+      `stated-lineage cites: ${statedCount} [data-lineage-stated] card(s) ` +
+        `(sidecars expect ${sidecarStatedEntries} entries), every one carries its cite marker ✓`
     );
   }
 

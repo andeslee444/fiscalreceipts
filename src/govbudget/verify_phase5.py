@@ -19,8 +19,11 @@ Gates (CLI: verify-phase5):
      URL-column map. 100% resolution required.
 
   3. assembly_gate — subprocess-invokes verify-phase{1,2,3,4,5a,5b1,5b3} (NOT
-     5b2 — 5b3 runs the same npm suite). Parses each full output with the
-     verdict regex; BLOCKED propagates. Prints a result table.
+     5b2 — 5b3 runs the same npm suite) PLUS verify-lineage (the program-
+     lineage honesty legs a–e; its leg d audits the built export, so a
+     missing built artifact FAILs the leg — same treatment as the other
+     build-dependent phase gates). Parses each full output with the verdict
+     regex; BLOCKED propagates. Prints a result table.
 
 Exit codes:
   0  — all gates PASS
@@ -98,7 +101,12 @@ _URL_COLUMN_MAP: dict[str, str] = {
 # Population-related questions: use url_column='pop_source_url' in the eval entry
 # (q037 sets url_column: pop_source_url; state spend questions use map default)
 
-# Sub-phases to check in assembly gate (NOT 5b2 — 5b3 runs same npm suite)
+# Sub-phases to check in assembly gate (NOT 5b2 — 5b3 runs same npm suite).
+# verify-lineage (the 24th gate — program-lineage honesty legs a–e) is part of
+# the automated assembly, not a manual-only CLI a release could skip. Its leg
+# (d) audits the BUILT export artifact, so a missing/stale build FAILs the
+# leg (and thus this assembly) — consistent with how the other build-dependent
+# phase gates already behave (they FAIL on missing artifacts, never skip).
 _ASSEMBLY_PHASES = [
     "verify-phase1",
     "verify-phase2",
@@ -107,10 +115,15 @@ _ASSEMBLY_PHASES = [
     "verify-phase5a",
     "verify-phase5b1",
     "verify-phase5b3",
+    "verify-lineage",
 ]
 
-# Verdict token regex: parse full output for verdict line
-_VERDICT_RE = re.compile(r"verify-phase\w+:\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE)
+# Verdict token regex: parse full output for verdict line. Matches both the
+# verify-phaseN family and verify-lineage (whose CLI prints
+# "verify-lineage: PASS|FAIL" in the same verdict-line format).
+_VERDICT_RE = re.compile(
+    r"verify-(?:phase\w+|lineage):\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE
+)
 
 
 # ---------------------------------------------------------------------------

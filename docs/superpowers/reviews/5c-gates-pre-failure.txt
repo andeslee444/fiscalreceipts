@@ -1333,3 +1333,66 @@ documented in sentence_named_pairs). 25→31 stated, 3 inferred (unchanged),
 19→22 families. 837300/834190 rollup pages now render the honest empty state.
 528 shipped funding points (per-member), every one equal to its cited fact.
 Full suites: pytest 1351 passed; vitest 395 passed (28 files); tsc clean.
+
+=== 2026-07-28 — FIX ROUND 2: assembly lineage leg + render-static stated-side leg ===
+
+--- ASSEMBLY LINEAGE LEG (verify-phase5 gate 3 now includes verify-lineage) ---
+verify-lineage joins _ASSEMBLY_PHASES (same invocation as the other phase
+gates: subprocess + verdict-regex parse; _VERDICT_RE extended to also match
+"verify-lineage:"). Its leg (d) audits the BUILT export, so a missing built
+artifact FAILs the leg and therefore the assembly — consistent with how the
+other build-dependent phase gates treat missing artifacts (FAIL, never skip).
+
+PROOF-CAN-FAIL — data/site/json/program_details temporarily moved aside, then
+assembly_gate run through the REAL subprocess path (restricted to the lineage
+phase only; the other sub-phases are untouched by this change and each take
+minutes), verbatim:
+
+    verify-lineage: FAIL (returncode 1)
+    output tail: resolved reference
+    leg d funding-point-value: program_details dir missing: /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site/json/program_details → FAIL
+    leg e lake-binding: lineage_rows_db=34 lineage_rows_lake=34 family_pes_db=53 family_pes_lake=53 failures=0 → PASS
+    verify-lineage: FAIL
+    assembly ok: False blocked: False
+
+The directory was restored immediately after; verify-lineage re-ran PASS
+(exit 0). Unit proofs (all RED before the implementation — TDD):
+test_assembly_phases_include_verify_lineage,
+test_verdict_regex_parses_verify_lineage_{pass,fail},
+test_assembly_gate_fails_when_lineage_fails (all-phases-PASS-except-lineage →
+ok False AND blocked False — a lineage FAIL is a hard assembly FAIL),
+test_assembly_gate_passes_with_lineage_green.
+
+--- RENDER-STATIC (st) STATED-LINEAGE POSITIVE LEG ---
+Every [data-lineage-stated] card (a stated lineage rail entry) must CONTAIN a
+[data-lineage-cite][data-fact-id] marker with a non-empty fact id — a stated
+edge rendered bare (asserting a transfer with no reachable source) FAILs.
+Zero-count honesty (both lineage legs, expectations read from the emitted
+program_details sidecars): sidecar stated entries > 0 with 0
+[data-lineage-stated] elements site-wide → FAIL (the positive leg would be
+vacuous — a cited-edge rail that silently stopped rendering must not pass);
+sidecar inferred entries > 0 with 0 [data-inferred] site-wide → LOUD WARN
+(still pass — the per-element inferred leg cannot see what never rendered).
+
+PROOF-CAN-FAIL — the two cite markers stripped (attribute removal) from a
+BUILT page copy-in-place (byte-identical backup taken first), gate 2 re-run,
+verbatim:
+
+    pass: false
+    ERROR: 2 [data-lineage-stated] card(s) render without a [data-lineage-cite][data-fact-id] marker (first 10):
+    ERROR:   program/1203154SF/index.html: [data-lineage-stated] card renders BARE — no [data-lineage-cite][data-fact-id] marker inside — "realigned to · per FY2026 J-book1203155SF — Ground Moving Target Indicator (GMTI)“citedshow sentence"
+    ERROR:   program/1203154SF/index.html: [data-lineage-stated] card renders BARE — no [data-lineage-cite][data-fact-id] marker inside — "realigned to · per FY2026 J-book1203609SF — pLEO SATCOM (MILNET)“citedshow sentence“In FY 2026, Proj"
+
+Restored byte-identical (cmp-verified); clean re-run on the final build:
+
+    pass: true
+    NOTE: stated-lineage cites: 50 [data-lineage-stated] card(s) (sidecars expect 50 entries), every one carries its cite marker ✓
+    NOTE: inferred-lineage honesty: 6 [data-inferred] element(s) (sidecars expect 6 entries), all labelled candidate/unverified ✓
+
+Related honesty catch during this round: the new evidence-sentence blockquote
+(Fix D) quoted "$19.8M" from the 0208059JCY→0306250JCY transfer sentence and
+the NEGATIVE currency scan correctly FAILED the build (2 hits) until the
+blockquote was marked data-source-text="lineage-evidence" +
+data-cite-fact-id={evidence.fact_id} — quoted J-book prose anchored to the
+same evidence fact the "cited" chip opens (the a0 contract). The scan's teeth
+fired exactly as designed on new quoted-source dollars.

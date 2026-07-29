@@ -661,6 +661,75 @@ def test_verdict_regex_no_match():
 
 
 # ---------------------------------------------------------------------------
+# Tests: assembly lineage leg (verify-lineage is the 24th gate — Fix A,
+# 2026-07-28). The assembly invokes it exactly like the other phase gates
+# (subprocess + verdict-regex parse), so a lineage FAIL fails the assembly.
+# ---------------------------------------------------------------------------
+
+
+def test_assembly_phases_include_verify_lineage():
+    """verify-lineage is wired into the automated assembly — not a manual-only
+    gate that a release could silently skip."""
+    from govbudget.verify_phase5 import _ASSEMBLY_PHASES
+
+    assert "verify-lineage" in _ASSEMBLY_PHASES
+
+
+def test_verdict_regex_parses_verify_lineage_pass():
+    m = _VERDICT_RE.search("leg e lake-binding: ... → PASS\nverify-lineage: PASS\n")
+    assert m is not None
+    assert m.group(1).upper() == "PASS"
+
+
+def test_verdict_regex_parses_verify_lineage_fail():
+    """PROOF-IT-CAN-FAIL (regex arm): a verify-lineage FAIL verdict is parsed,
+    not silently missed (a miss would fall back to returncode inference)."""
+    m = _VERDICT_RE.search("  FAIL grain: reason\nverify-lineage: FAIL\n")
+    assert m is not None
+    assert m.group(1).upper() == "FAIL"
+
+
+def _fake_run_factory(fail_phases: set[str]):
+    """subprocess.run stand-in: each phase prints its own verdict line."""
+    def _fake_run(cmd, **kwargs):  # noqa: ANN001
+        phase = cmd[-1]
+        verdict = "FAIL" if phase in fail_phases else "PASS"
+        return SimpleNamespace(
+            stdout=f"{phase}: {verdict}\n",
+            stderr="",
+            returncode=1 if verdict == "FAIL" else 0,
+        )
+    return _fake_run
+
+
+def test_assembly_gate_fails_when_lineage_fails(monkeypatch):
+    """PROOF-IT-CAN-FAIL (assembly arm): every other phase PASSes but
+    verify-lineage FAILs → the assembly is a hard FAIL (never ok/blocked)."""
+    import govbudget.verify_phase5 as vp5
+
+    monkeypatch.setattr(vp5.subprocess, "run", _fake_run_factory({"verify-lineage"}))
+    result = assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert result["ok"] is False
+    assert result["blocked"] is False
+    lineage_rows = [r for r in result["results"] if r["phase"] == "verify-lineage"]
+    assert len(lineage_rows) == 1
+    assert lineage_rows[0]["verdict"] == "FAIL"
+
+
+def test_assembly_gate_passes_with_lineage_green(monkeypatch):
+    """All phases (incl. verify-lineage) PASS → assembly ok."""
+    import govbudget.verify_phase5 as vp5
+
+    monkeypatch.setattr(vp5.subprocess, "run", _fake_run_factory(set()))
+    result = assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert result["ok"] is True
+    phases_run = [r["phase"] for r in result["results"]]
+    assert "verify-lineage" in phases_run
+    lineage_row = next(r for r in result["results"] if r["phase"] == "verify-lineage")
+    assert lineage_row["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
 # Tests: eval_gate BLOCKED without key
 # ---------------------------------------------------------------------------
 
