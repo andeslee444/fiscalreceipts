@@ -151,6 +151,145 @@ def fact_id_narrative(document_sha256: str, pe_bli: str, kind: str, xml_path: st
 _TRAJECTORY_FY_LABEL = "FY25→26"
 
 # ---------------------------------------------------------------------------
+# Basis vocabulary (PM-review Sprint 1 Task 2, spec §P0-1 — locked design):
+# every emitted figure payload carries basis / fy / measure / edition so the
+# site can render data-basis / data-fy / data-measure and gate 23
+# (site/scripts/gates/basis.mjs) can enforce one-label-one-basis.
+#
+#   basis   'toa'          — R-1/P-1 display-workbook facts (Total Obligation
+#                            Authority, USD thousands): budget_lines rows,
+#                            decade grains, trajectory pivots.
+#           'jbook-detail' — R-2/P-40 J-book detail rows (USD millions).
+#   measure 'actuals' | 'enacted' | 'request' | 'total' | 'change' for the
+#           headline pots; component pots that legitimately differ from a
+#           headline value on the SAME page get their own honest tokens so
+#           the gate never groups them into a false collision
+#           ('disc-request', 'reconciliation-request', 'supplemental',
+#           'base-request', 'all-prior-years').
+#   edition PB edition year (int) the figure was published in.
+#
+# Canonical basis for KPI cards / homepage hero / OG cards / feed = 'toa'
+# (PM call: "it is what Congress provides"); jbook-detail values render in a
+# reconciliation strip when they differ (P0-1 fix 2/3).
+# ---------------------------------------------------------------------------
+
+_BASIS_TOA = "toa"
+_BASIS_DETAIL = "jbook-detail"
+
+# P0-5 corpus scope qualifier — hero / OG / feed superlatives must carry it.
+# n_lines is the programs.json corpus count (dynamic, never a hardcoded
+# literal that rots when the corpus grows).
+_SCOPE_QUALIFIER_TEMPLATE = (
+    "largest single R&D or procurement program element in our corpus"
+    " ({n_lines} lines; excludes personnel, O&M, and appropriations not"
+    " covered by the R-1/P-1 rollups)"
+)
+
+
+def scope_qualifier(n_lines: int) -> str:
+    """The P0-5 scope-qualifier string with a live corpus count."""
+    return _SCOPE_QUALIFIER_TEMPLATE.format(n_lines=f"{n_lines:,}")
+
+
+def _amount_type_meta(amount_type: str, edition: int) -> tuple[int | None, str | None]:
+    """(fy, measure) for a workbook amount_type slug within one PB edition.
+
+    Slug → measure decisions (verified against the PB2026 slug inventory:
+    fy_2024_actuals / fy_2025_enacted / fy_2025_supplemental / fy_2025_total /
+    fy_2026_disc_request / fy_2026_reconciliation_request / fy_2026_request /
+    fy_2026_total):
+
+      * 'actual*'                → actuals
+      * '*enact*'                → enacted (enacted, total_enacted, enactment…)
+      * 'reconciliation_request' → reconciliation-request (component pot —
+        157 live grains differ from fy_2026_total; mapping it to 'request'
+        would mint a same-basis collision the reconciliation strip cannot
+        explain)
+      * 'disc_request'           → disc-request (discretionary component,
+        same rationale)
+      * 'request'                → request
+      * 'supplemental'           → supplemental (component)
+      * 'total'                  → 'request' when fy == edition (a PB book's
+        own-year total IS the request total — the slug fct_decade_series
+        picks for the request series and fct_budget_trajectory pivots into
+        fy2026_total); 'total' otherwise (e.g. fy_2025_total in PB2026 =
+        enacted + supplemental).
+      * anything else            → the slug suffix with '_'→'-' (honest
+        token; era slugs like base_oco never reach the PB2026 sidecar
+        tables, decade points map through their grain's chosen slug).
+
+    Returns (None, None) when the slug doesn't parse.
+    """
+    m = re.match(r"^fy_(\d{4})_(.+)$", amount_type or "")
+    if not m:
+        return None, None
+    fy = int(m.group(1))
+    rest = m.group(2)
+    if "actual" in rest:
+        return fy, "actuals"
+    if "enact" in rest:
+        return fy, "enacted"
+    if rest == "reconciliation_request":
+        return fy, "reconciliation-request"
+    if rest == "disc_request":
+        return fy, "disc-request"
+    if "request" in rest:
+        return fy, "request"
+    if "supplemental" in rest:
+        return fy, "supplemental"
+    if rest == "total":
+        return fy, ("request" if fy == edition else "total")
+    return fy, rest.replace("_", "-")
+
+
+def _scenario_meta(scenario: str, edition: int) -> tuple[int | None, str | None]:
+    """(fy, measure) for a J-book detail scenario within one PB edition.
+
+    Scenario names are edition-RELATIVE (the year-shift rule): for edition N,
+    PriorYear = FY(N-2) actuals, CurrentYear = FY(N-1) enacted,
+    BudgetYearOne = FY(N) request. BudgetYearOneBase is the base component of
+    the request (44 live grains differ from BudgetYearOne — own token, same
+    false-collision rationale as disc-request). AllPriorYears is cumulative:
+    no single fiscal year (fy None), honest 'all-prior-years' token.
+    """
+    return {
+        "PriorYear": (edition - 2, "actuals"),
+        "CurrentYear": (edition - 1, "enacted"),
+        "BudgetYearOne": (edition, "request"),
+        "BudgetYearOneBase": (edition, "base-request"),
+        "AllPriorYears": (None, "all-prior-years"),
+    }.get(scenario, (None, None))
+
+
+# Trajectory metric → (fy, measure) under PB2026 semantics — the single
+# payload-level source for the trajectory block's basis attributes (site_meta
+# 'trajectory_measures'; the spark/card components must never re-derive).
+# fy2026_total maps to 'request' for the same reason fy_2026_total does above.
+_TRAJECTORY_METRIC_META = {
+    "fy2024_actuals": {"fy": 2024, "measure": "actuals"},
+    "fy2025_total": {"fy": 2025, "measure": "total"},
+    "fy2026_total": {"fy": 2026, "measure": "request"},
+    "fy2526_change": {"fy": 2026, "measure": "change"},
+}
+
+
+def _display_values_agree(a_dollars: float, b_dollars: float) -> bool:
+    """Two figures "agree" iff they round to the same 3-significant-digit
+    display — the exact rule gate 23 uses (basis.mjs valuesAgree):
+    |a−b| ≤ 0.5·10^(floor(log10(max))−2). $5.25B vs $5,247.07M agree;
+    $5.25B vs $5.57B do not. Inputs in DOLLARS (callers convert units)."""
+    import math
+
+    if a_dollars == b_dollars:
+        return True
+    mag = max(abs(a_dollars), abs(b_dollars))
+    if mag == 0:
+        return True
+    granularity = 0.5 * 10 ** (math.floor(math.log10(mag)) - 2)
+    return abs(a_dollars - b_dollars) <= granularity
+
+
+# ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
 
@@ -685,6 +824,19 @@ def export_site(
         )
         dataset_counts["budget_lines_decade"] = len(decade_bl_rows)
 
+    # --- 4b3. Summary-card union (PM-review Sprint 1 Task 2, §P0-1/§P0-2) ---
+    # Per-PE answer-strip/Budget-Figures cards from the union of workbook
+    # (toa) + detail facts, the reconciliation payload, and the minted
+    # union-change derived facts (must join citation_rows BEFORE
+    # citations.parquet is written).
+    summary_by_pe, summary_cit_rows = _build_summary_blocks(
+        duckdb_path=duckdb_path,
+        detail_rows=detail_rows,
+        bl_rows=bl_rows,
+        decade_grains=decade_grains,
+    )
+    citation_rows.extend(summary_cit_rows)
+
     # --- 4c. LDA filing citations (from duckdb fct_program_lobbying) ---
     lda_con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
@@ -937,6 +1089,7 @@ def export_site(
         decade_bl_rows=decade_bl_rows,
         decade_grains=decade_grains,
         decade_side_meta=decade_side_meta,
+        summary_by_pe=summary_by_pe,
     )
 
     # Update manifest with json_sidecars count
@@ -1661,9 +1814,11 @@ def _build_decade_citation_rows(
                          metric=diff_kind, formula '… - …' with inputs
                          [to_fid, from_fid] → rule-4b recompute).
       decade_grains    — (pe_bli, fy, edition_year, amount_type_kind,
-                         amount_thousands, fid) per in-scope grain; fid is
-                         the grain's citable identity (workbook fact for
-                         single-source, derived decade sum otherwise).
+                         amount_thousands, fid, amount_type) per in-scope
+                         grain; fid is the grain's citable identity (workbook
+                         fact for single-source, derived decade sum
+                         otherwise); amount_type is the grain's chosen slug
+                         (consumers derive slug-accurate `measure` from it).
       decade_side_meta — fid → (label, pe_bli) for _emit_breakdowns
                          difference-row labels ('PB2024 FY2022 actuals').
 
@@ -1855,8 +2010,13 @@ def _build_decade_citation_rows(
                 ))
 
         grain_fid_by_key[(pe_bli, edition, at)] = grain_fid
+        # 7-tuple: the trailing amount_type is the grain's CHOSEN slug —
+        # consumers derive the point's `measure` from it (slug-accurate:
+        # a CurrentYear grain built from fy_2025_total is measure 'total',
+        # matching the P-1 table row it must agree with; one built from
+        # fy_2025_enacted is 'enacted').
         decade_grains.append(
-            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid)
+            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid, at)
         )
         decade_side_meta[grain_fid] = (f"PB{edition} FY{fy} {kind}", pe_bli)
 
@@ -1898,6 +2058,456 @@ def _build_decade_citation_rows(
         f" {n_derived_sum} derived decade sums, {n_diffs} book-diff facts"
     )
     return decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta
+
+
+# ---------------------------------------------------------------------------
+# Summary-card union (PM-review Sprint 1 Task 2 — §P0-1 / §P0-2)
+# ---------------------------------------------------------------------------
+
+# Card-slot defaults: (fy, measure) rendered on an ABSENT card so gate 23's
+# leg-b2 permanent contract ([data-absence][data-fy][data-measure]) always
+# has attributes to match on.
+_SUMMARY_SLOTS = (
+    ("fy2024", 2024, "actuals"),
+    ("fy2025", 2025, "enacted"),
+    ("fy2026", 2026, "request"),
+)
+
+# Ordered budget_lines slug fallback per slot (used only when neither a
+# decade grain nor a trajectory value covers the slot — e.g. withheld decade
+# grains). Order mirrors reconcile.scenario_map's candidate priority.
+_SLOT_BL_SLUGS = {
+    "fy2024": ("fy_2024_actuals",),
+    "fy2025": ("fy_2025_total", "fy_2025_enacted"),
+    "fy2026": ("fy_2026_total", "fy_2026_request", "fy_2026_disc_request"),
+}
+
+# Detail scenario whose value reconciles against each slot's toa figure —
+# paired ONLY when the slot's measure equals the scenario's mapped measure
+# (a 'total' card vs an 'enacted' detail row is a different pot, not a
+# two-basis restatement).
+_SLOT_DETAIL_SCENARIO = {
+    "fy2024": "PriorYear",
+    "fy2025": "CurrentYear",
+    "fy2026": "BudgetYearOne",
+}
+
+_SUMMARY_EDITION = 2026  # the PB2026 fence — same constant the sidecars use
+
+
+def _summary_card(key, fy, measure, *, value=None, units=None, basis=None,
+                  fid=None, xml_path=None, dataset=None, absence=None,
+                  pct=None) -> dict:
+    """One summary-card payload (shared by the union builder and the
+    absence-only fallback block — single source for the field set)."""
+    card = {
+        "key": key,
+        "fy": fy,
+        "measure": measure,
+        "basis": basis,
+        "value": value,
+        "units": units,
+        "fid": fid,
+        "public_id": fid[:8] if fid else None,
+        "dataset": dataset,
+        "edition": _SUMMARY_EDITION,
+        "absence_reason": absence,
+    }
+    if xml_path:
+        card["xml_path"] = xml_path  # Cite state B (zero/unlocated rows)
+    if pct is not None:
+        card["pct"] = pct
+    return card
+
+
+def _summary_absence_block() -> dict:
+    """All-absent summary block — the belt-and-braces fallback for a sidecar
+    PE outside every union source (should be unreachable by construction:
+    the union universe spans bl_rows ∪ details ∪ trajectory ∪ decade)."""
+    cards = [
+        _summary_card(key, fy, measure, absence="not-published")
+        for key, fy, measure in _SUMMARY_SLOTS
+    ]
+    cards.append(_summary_card("change", 2026, "change", absence="no-comparison"))
+    return {
+        "edition": _SUMMARY_EDITION,
+        "basis_preference": _BASIS_TOA,
+        "cards": cards,
+        "reconciliation": [],
+    }
+
+
+def _build_summary_blocks(
+    *,
+    duckdb_path,
+    detail_rows: list,
+    bl_rows: list,
+    decade_grains: list | None,
+) -> tuple[dict, list[tuple]]:
+    """Compute the per-PE summary block: answer-strip/Budget-Figures cards
+    from the UNION of workbook (toa) + J-book detail facts, preferring toa
+    (§P0-2 fix 1), plus the per-(fy, measure) reconciliation payload where
+    the two bases disagree beyond display rounding (§P0-1 fix 2).
+
+    Returns (summary_by_pe, union_change_citation_rows).
+
+    Card slot resolution (deterministic, documented):
+      1. PB2026 decade grain (pe-scoped, document-backed, and BY CONSTRUCTION
+         the value the decade table renders — card/table agreement, gate 23
+         leg b1). fy2024 ← kind 'actuals'; fy2025 ← 'enacted'; fy2026 ←
+         'request'. measure = the grain's chosen slug, mapped.
+      2. fct_budget_trajectory metric (derived toa fact) for the PE's primary
+         org (largest fy2026_total, org-ascending tiebreak — the
+         _rollup_service_org rule).
+      3. A SINGLE PB2026 budget_lines row for the slot's slug list (its
+         workbook fact cites directly; multi-row grains are already covered
+         by 1's derived decade sums, so no uncitable ad-hoc sums are minted).
+      4. Deduped PE-root J-book detail row (jbook-detail basis, USD
+         millions) — used and labeled, per the union rule.
+      5. Absent — with a reason enum, never a bare null (§P0-2 fix 2):
+         'not-published' (the FY2026 books we ingested carry no such row —
+         the only value-card absence the exporter can honestly derive: every
+         program page exists BECAUSE its org's R-1/P-1 workbook is ingested,
+         so 'not-ingested' is unreachable for these slots, and 'classified'
+         is not derivable from the lake at all — classified lines simply
+         never appear; both documented rather than fabricated) /
+         'no-comparison' (change card missing an endpoint or endpoints on
+         mixed bases).
+
+    The FY25→26 change card reuses the trajectory change fact when the mart
+    has one; otherwise, when BOTH endpoint cards resolved on the toa basis
+    with citable fids, a derived union-change fact is minted
+    (surface='summary', metric='fy2526_change_union', formula 'a - b' with
+    the two endpoint fids as inputs → verify rule-4b recomputes it). Change
+    across bases (toa vs detail) is never computed — 'no-comparison'.
+
+    ONE public id (§P0-4 groundwork): every emitted fid is the full 16-hex
+    citation fact id — the id the drawer resolves — and `public_id` is its
+    FIRST 8 hex chars (the /fact/{id8} permalink id). The live chip/drawer
+    mismatch (#8b2746cb vs #bb54b165) was two different truncations of ONE
+    id: cite.tsx sliced the LAST 8, panel.tsx the FIRST 8. Components must
+    render public_id verbatim and never re-slice.
+    """
+    import duckdb as _duckdb
+    import json as _json
+
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+    ed = _SUMMARY_EDITION
+
+    # ---- source indexes ----------------------------------------------------
+    # decade: pe → {kind: (value, fid, measure)} for the PB2026 edition
+    decade_slot: dict[str, dict] = {}
+    for d_pe, _d_fy, d_edition, d_kind, d_amount, d_fid, d_at in (decade_grains or []):
+        if d_edition != ed or d_fid is None or d_amount is None:
+            continue
+        _, measure = _amount_type_meta(d_at, d_edition)
+        decade_slot.setdefault(d_pe, {})[d_kind] = (d_amount, d_fid, measure or d_kind)
+
+    # trajectory: pe → primary-org metrics (largest fy2026_total, org asc)
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        traj_rows = con.execute(
+            "select pe_bli, organization, fy2024_actuals, fy2025_total,"
+            " fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_budget_trajectory"
+        ).fetchall()
+    except _duckdb.CatalogException:
+        traj_rows = []
+    finally:
+        con.close()
+    traj_primary: dict[str, tuple] = {}
+    for row in sorted(
+        traj_rows, key=lambda r: (r[0], r[4] is None, -(r[4] or 0.0), r[1])
+    ):
+        traj_primary.setdefault(row[0], row)
+
+    # budget_lines: (pe, amount_type) → [(fid, amount)] (titled AND rollup
+    # rows both render on the P-1 table; slot fallback 3 requires exactly one)
+    bl_by_key: dict[tuple, list] = {}
+    for r in bl_rows:
+        bl_by_key.setdefault((r[8], r[10]), []).append((r[0], r[11]))
+
+    # detail roots: pe → {scenario: {"v", "fid", "xml_path"}} — deduped by
+    # DISTINCT (amount, xml_path) tuple (the dual-volume rule: identical
+    # tuples under 2+ documents are ONE fact; the first document in sha
+    # order supplies the citing fid). >1 DISTINCT amount → ambiguous → slot
+    # skipped (never sum project rows onto one member's fact).
+    detail_root: dict[str, dict] = {}
+    _root_seen: dict[tuple, set] = {}
+    for (fid, pe_bli, project_number, _pt, scenario, amount_millions,
+         _units, xml_path, _org, _ef, fiscal_year, _sha, resolution) in detail_rows:
+        if fiscal_year != ed or project_number is not None:
+            continue
+        if scenario not in ("PriorYear", "CurrentYear", "BudgetYearOne"):
+            continue
+        if amount_millions is None:
+            continue
+        tup = (pe_bli, scenario)
+        seen = _root_seen.setdefault(tup, set())
+        key = (amount_millions, xml_path)
+        if key in seen:
+            continue  # dual-volume duplicate of an already-kept row
+        seen.add(key)
+        slot = detail_root.setdefault(pe_bli, {})
+        if scenario in slot:
+            slot[scenario] = None  # ≥2 distinct root values → ambiguous
+            continue
+        slot[scenario] = {
+            "v": float(amount_millions),
+            "fid": fid if resolution in ("unique", "ambiguous_first") else None,
+            "xml_path": xml_path,
+        }
+
+    universe = (
+        set(decade_slot)
+        | set(traj_primary)
+        | set(detail_root)
+        | {r[8] for r in bl_rows}
+    )
+
+    _TRAJ_METRIC_BY_SLOT = {
+        "fy2024": "fy2024_actuals",
+        "fy2025": "fy2025_total",
+        "fy2026": "fy2026_total",
+    }
+    _DECADE_KIND_BY_SLOT = {
+        "fy2024": "actuals",
+        "fy2025": "enacted",
+        "fy2026": "request",
+    }
+
+    _card = _summary_card
+
+    summary_by_pe: dict[str, dict] = {}
+    union_cit_rows: list[tuple] = []
+
+    for pe in sorted(universe):
+        traj = traj_primary.get(pe)
+        cards = []
+        slot_cards: dict[str, dict] = {}
+
+        for key, default_fy, default_measure in _SUMMARY_SLOTS:
+            # 1. decade grain
+            grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+            if grain is not None:
+                v, fid, measure = grain
+                slot_cards[key] = _card(
+                    key, default_fy, measure, value=v, units="USD thousands",
+                    basis=_BASIS_TOA, fid=fid, dataset="fct_decade_series",
+                )
+                continue
+            # 2. trajectory metric
+            metric = _TRAJ_METRIC_BY_SLOT[key]
+            t_val = None
+            if traj is not None:
+                t_val = {"fy2024_actuals": traj[2], "fy2025_total": traj[3],
+                         "fy2026_total": traj[4]}[metric]
+            if t_val is not None:
+                meta = _TRAJECTORY_METRIC_META[metric]
+                slot_cards[key] = _card(
+                    key, meta["fy"], meta["measure"], value=t_val,
+                    units="USD thousands", basis=_BASIS_TOA,
+                    fid=fact_id_derived("trajectory", f"{pe}|{traj[1]}", metric),
+                    dataset="fct_budget_trajectory",
+                )
+                continue
+            # 3. single budget_lines row
+            bl_hit = None
+            for slug in _SLOT_BL_SLUGS[key]:
+                rows_for = bl_by_key.get((pe, slug), [])
+                if len(rows_for) == 1 and rows_for[0][1] is not None:
+                    bl_hit = (slug, rows_for[0])
+                    break
+            if bl_hit is not None:
+                slug, (fid, amount) = bl_hit
+                fy, measure = _amount_type_meta(slug, ed)
+                slot_cards[key] = _card(
+                    key, fy, measure, value=float(amount),
+                    units="USD thousands", basis=_BASIS_TOA, fid=fid,
+                    dataset="budget_lines",
+                )
+                continue
+            # 4. detail root row (jbook-detail basis — used and labeled)
+            root = detail_root.get(pe, {}).get(_SLOT_DETAIL_SCENARIO[key])
+            if root is not None:
+                fy, measure = _scenario_meta(_SLOT_DETAIL_SCENARIO[key], ed)
+                slot_cards[key] = _card(
+                    key, fy, measure, value=root["v"], units="USD millions",
+                    basis=_BASIS_DETAIL, fid=root["fid"],
+                    xml_path=None if root["fid"] else root["xml_path"],
+                    dataset="jbook_details",
+                )
+                continue
+            # 5. honest absence
+            slot_cards[key] = _card(
+                key, default_fy, default_measure, absence="not-published"
+            )
+
+        cards.extend(slot_cards[k] for k, _, _ in _SUMMARY_SLOTS)
+
+        # ---- FY25→26 change card ----
+        fy25, fy26 = slot_cards["fy2025"], slot_cards["fy2026"]
+        chg = traj[5] if traj is not None else None
+        if chg is not None and traj[3] is not None and traj[4] is not None:
+            cards.append(_card(
+                "change", 2026, "change", value=chg, units="USD thousands",
+                basis=_BASIS_TOA,
+                fid=fact_id_derived("trajectory", f"{pe}|{traj[1]}", "fy2526_change"),
+                dataset="fct_budget_trajectory", pct=traj[6],
+            ))
+        elif (
+            fy25["basis"] == _BASIS_TOA and fy26["basis"] == _BASIS_TOA
+            and fy25["fid"] and fy26["fid"]
+        ):
+            value = round(fy26["value"] - fy25["value"], 3)
+            pct = (
+                round(value / fy25["value"] * 100.0, 2)
+                if fy25["value"] else None
+            )
+            fid = fact_id_derived("summary", pe, "fy2526_change_union")
+            union_cit_rows.append(_null_derived_row(
+                fid, "derived", "USD thousands",
+                f"FY2026 {fy26['measure']} - FY2025 {fy25['measure']}"
+                " (P-1/R-1 workbook toa basis, USD thousands; summary union)",
+                _json.dumps([fy26["fid"], fy25["fid"]]),
+                f"{value:.3f}",
+                built_at,
+            ))
+            cards.append(_card(
+                "change", 2026, "change", value=value, units="USD thousands",
+                basis=_BASIS_TOA, fid=fid,
+                dataset=fy26["dataset"], pct=pct,
+            ))
+        else:
+            cards.append(_card("change", 2026, "change", absence="no-comparison"))
+
+        # ---- reconciliation payload (§P0-1) ----
+        reconciliation = []
+        for key, _fy, _m in _SUMMARY_SLOTS:
+            card = slot_cards[key]
+            if card["basis"] != _BASIS_TOA or card["value"] is None:
+                continue
+            scenario = _SLOT_DETAIL_SCENARIO[key]
+            root = detail_root.get(pe, {}).get(scenario)
+            if root is None or root["fid"] is None:
+                continue  # no citable single detail fact — never fabricate a side
+            fy, measure = _scenario_meta(scenario, ed)
+            if measure != card["measure"] or fy != card["fy"]:
+                continue  # different pot, not a two-basis restatement
+            toa_dollars = card["value"] * 1_000.0
+            detail_dollars = root["v"] * 1_000_000.0
+            if _display_values_agree(toa_dollars, detail_dollars):
+                continue
+            reconciliation.append({
+                "fy": fy,
+                "measure": measure,
+                "toa": {
+                    "v": card["value"], "units": "USD thousands",
+                    "fid": card["fid"], "public_id": card["public_id"],
+                    "dataset": card["dataset"],
+                },
+                "detail": {
+                    "v": root["v"], "units": "USD millions",
+                    "fid": root["fid"], "public_id": root["fid"][:8],
+                    "dataset": "jbook_details", "scenario": scenario,
+                },
+                "delta_thousands": round((toa_dollars - detail_dollars) / 1_000.0, 3),
+            })
+
+        summary_by_pe[pe] = {
+            "edition": ed,
+            "basis_preference": _BASIS_TOA,
+            "cards": cards,
+            "reconciliation": reconciliation,
+        }
+
+    if union_cit_rows:
+        print(
+            f"summary union: {len(summary_by_pe)} PE blocks,"
+            f" {len(union_cit_rows)} union-change derived facts minted"
+        )
+    return summary_by_pe, union_cit_rows
+
+
+def _build_named_primes(
+    *,
+    json_dir: Path,
+    entity_rows: list,
+    hhi_by_pe: dict,
+    cited_fact_ids: set,
+) -> dict[str, list]:
+    """WHO-GETS-IT fallback (§P0-2 fix 3): when the budget→award crosswalk
+    has no high-confidence linkage for a program (no fct_program_concentration
+    row with a citable program_dollars fact — exactly the condition under
+    which the answer strip renders "No award linkage at high confidence"),
+    but the program has a GATED dossier whose key-players claims name a
+    known contractor family, emit named_primes: [{name, family_key, fact_id,
+    public_id}] so the card can say "Named in the J-book: … — uncrosswalked".
+
+    Matching is DETERMINISTIC lexicon matching — the same
+    word-boundary-substring discipline fct_program_lobbying uses — against
+    dim_entities' top-200 family_key and display_name strings
+    (case-insensitive). No NLP, no extraction beyond the site's own entity
+    lexicon; a dossier that names no known family honestly emits nothing
+    (the live F-35 dossier's players claims name only USAF/Navy authority —
+    named_primes stays empty there).
+
+    fact_id = the naming CLAIM's citation fact id (dossier claims are
+    fact-cited by the dossier gate); claims whose fid does not resolve in
+    the citation set are skipped — never a dangling citation.
+    """
+    import json as _json
+
+    dossier_dir = json_dir / "dossiers"
+    if not dossier_dir.is_dir():
+        return {}
+
+    # (family_key, display_name, compiled word-boundary patterns)
+    lexicon = []
+    for r in entity_rows:
+        family_key, display_name = r[0], r[1]
+        pats = []
+        for term in {family_key, display_name}:
+            if term and len(term) >= 4:  # guard degenerate short keys
+                pats.append(re.compile(
+                    r"(?<![A-Za-z0-9])" + re.escape(term) + r"(?![A-Za-z0-9])",
+                    re.IGNORECASE,
+                ))
+        if pats:
+            lexicon.append((family_key, display_name, pats))
+
+    out: dict[str, list] = {}
+    for path in sorted(dossier_dir.glob("*.json")):
+        pe_bli = path.stem
+        hhi = hhi_by_pe.get(pe_bli)
+        if hhi is not None and hhi.get("program_dollars_fact_id"):
+            continue  # crosswalk answers WHO-GETS-IT — no fallback needed
+        try:
+            dossier = _json.loads(path.read_text()).get("dossier", {})
+        except Exception:
+            continue  # unreadable dossier — gate territory, not ours
+        claims = (dossier.get("players") or {}).get("claims", [])
+        primes: list[dict] = []
+        seen_fk: set[str] = set()
+        for claim in claims:
+            text = claim.get("text") or ""
+            fid = (claim.get("citation") or {}).get("fact_id")
+            if not fid or fid not in cited_fact_ids:
+                continue
+            for family_key, display_name, pats in lexicon:
+                if family_key in seen_fk:
+                    continue
+                if any(p.search(text) for p in pats):
+                    seen_fk.add(family_key)
+                    primes.append({
+                        "name": display_name,
+                        "family_key": family_key,
+                        "fact_id": fid,
+                        "public_id": fid[:8],
+                    })
+        if primes:
+            out[pe_bli] = primes
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -2758,6 +3368,7 @@ def _emit_json_sidecars(
     decade_bl_rows: list | None = None,
     decade_grains: list | None = None,
     decade_side_meta: dict | None = None,
+    summary_by_pe: dict | None = None,
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
 
@@ -2788,6 +3399,7 @@ def _emit_json_sidecars(
             decade_bl_rows=decade_bl_rows,
             decade_grains=decade_grains,
             decade_side_meta=decade_side_meta,
+            summary_by_pe=summary_by_pe,
         )
     finally:
         con.close()
@@ -2807,10 +3419,12 @@ def _write_all_sidecars(
     decade_bl_rows: list | None = None,
     decade_grains: list | None = None,
     decade_side_meta: dict | None = None,
+    summary_by_pe: dict | None = None,
 ) -> int:
     """Core sidecar writer; called from _emit_json_sidecars."""
 
     n_files = 0
+    summary_by_pe = summary_by_pe or {}
 
     # ------------------------------------------------------------------ #
     # 0. Build in-memory indexes from already-fetched data                #
@@ -2827,6 +3441,13 @@ def _write_all_sidecars(
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, units, xml_path, org, exhibit_family,
          fiscal_year, document_sha256, resolution) = row
+        # Basis threading (PM Sprint 1): every detail figure is a J-book
+        # R-2/P-40 row → basis 'jbook-detail'; (fy, measure) from the
+        # edition-relative scenario map. `entity` scopes gate-23 grouping:
+        # the PE-root row (project_number null) IS the program's (fy,
+        # measure) value; project rows are components and must never be
+        # grouped against the cards ('{pe}/{project}').
+        d_fy, d_measure = _scenario_meta(scenario, 2026)
         details_by_pe[pe_bli].append({
             "fact_id": fid,
             "project_number": project_number,
@@ -2836,6 +3457,14 @@ def _write_all_sidecars(
             "units": units,
             "resolution": resolution,
             "xml_path": xml_path,
+            "basis": _BASIS_DETAIL,
+            "fy": d_fy,
+            "measure": d_measure,
+            "edition": 2026,
+            "entity": (
+                pe_bli if project_number is None
+                else f"{pe_bli}/{project_number}"
+            ),
         })
 
     # Set of fact_ids that have a valid citation row (resolution unique/ambiguous_first)
@@ -2843,15 +3472,20 @@ def _write_all_sidecars(
     _cited_fact_ids: set[str] = {row[0] for row in citation_rows}
 
     # Decade series index (Phase 5E): pe_bli → {amount_type_kind: [entry…]}.
-    # Entries are {fy, v, fid, edition} sorted by fy; absent editions are
-    # GAPS (no entry), never zeros; uncited grains never render (honesty —
-    # every emitted fid resolves in the citation set).
+    # Entries are {fy, v, fid, edition, basis, measure} sorted by fy; absent
+    # editions are GAPS (no entry), never zeros; uncited grains never render
+    # (honesty — every emitted fid resolves in the citation set).
+    # basis/measure (PM Sprint 1): every point is a workbook grain → 'toa';
+    # measure comes from the grain's CHOSEN slug (slug-accurate — see the
+    # decade_grains 7-tuple comment), never blindly from the series kind.
     decade_series_by_pe: dict[str, dict] = {}
-    for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid in (decade_grains or []):
+    for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid, d_at in (decade_grains or []):
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
             continue
+        _, d_measure = _amount_type_meta(d_at, d_edition)
         decade_series_by_pe.setdefault(d_pe, {}).setdefault(d_kind, []).append({
             "fy": d_fy, "v": d_amount, "fid": d_fid, "edition": d_edition,
+            "basis": _BASIS_TOA, "measure": d_measure or d_kind,
         })
     for _pe, kinds in decade_series_by_pe.items():
         for _kind, entries in kinds.items():
@@ -2898,12 +3532,20 @@ def _write_all_sidecars(
     #                organization, budget_activity, budget_activity_title,
     #                pe_bli, title, amount_type, amount_thousands, units,
     #                document_sha256, source_sheet, source_cells)
+    # Per-(pe, amount_type) row counts: a PE whose slug has exactly ONE row
+    # renders the program-level value (entity = pe, groups with the cards);
+    # multi-account/org splits are components ('{pe}/{org}/{account}' —
+    # legitimately different values must never collide in gate 23).
+    _bl_key_counts: Counter = Counter((r[8], r[10]) for r in bl_rows)
+
     bl_by_pe: dict[str, list] = defaultdict(list)
     for row in bl_rows:
         (fid, exhibit, fiscal_year, account, account_title,
          organization, budget_activity, budget_activity_title,
          pe_bli, title, amount_type, amount_thousands, units,
          document_sha256, source_sheet, source_cells) = row
+        # Basis threading (PM Sprint 1): every workbook row is R-1/P-1 TOA.
+        b_fy, b_measure = _amount_type_meta(amount_type, 2026)
         bl_by_pe[pe_bli].append({
             "fact_id": fid,
             "exhibit": exhibit,
@@ -2914,6 +3556,14 @@ def _write_all_sidecars(
             "organization": organization,
             "source_sheet": source_sheet,
             "source_cells": source_cells,
+            "basis": _BASIS_TOA,
+            "fy": b_fy,
+            "measure": b_measure,
+            "edition": 2026,
+            "entity": (
+                pe_bli if _bl_key_counts[(pe_bli, amount_type)] == 1
+                else f"{pe_bli}/{organization}/{account}"
+            ),
         })
 
     # ------------------------------------------------------------------ #
@@ -3256,6 +3906,23 @@ def _write_all_sidecars(
     # render an uncitable claim.
     rva_by_pe = _rva_gap_index(con, _cited_fact_ids)
 
+    # WHO-GETS-IT named-primes fallback (PM Sprint 1, §P0-2 fix 3) — needs
+    # the dossier sidecars (written by the dossier CLI before export), the
+    # entity lexicon, and the crosswalk coverage in hhi_by_pe.
+    named_primes_by_pe = _build_named_primes(
+        json_dir=json_dir,
+        entity_rows=entity_rows,
+        hhi_by_pe=hhi_by_pe,
+        cited_fact_ids=_cited_fact_ids,
+    )
+
+    def _summary_block(pe_bli: str) -> dict:
+        """The sidecar's summary payload: union block + named_primes (always
+        a list — honest empty when no dossier names a known family)."""
+        block = dict(summary_by_pe.get(pe_bli) or _summary_absence_block())
+        block["named_primes"] = named_primes_by_pe.get(pe_bli, [])
+        return block
+
     all_pe_blis = {r[0] for r in all_prog_rows}
 
     # -- Program-lineage universe + titles (hoisted above the full-tier loop
@@ -3309,6 +3976,7 @@ def _write_all_sidecars(
                 top200_family_keys,
             ),
             "narratives": _narratives_with_links(pe_bli),
+            "summary": _summary_block(pe_bli),
         }
         if pe_bli in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[pe_bli]
@@ -3378,6 +4046,7 @@ def _write_all_sidecars(
                 top200_family_keys,
             ),
             "narratives": _narratives_with_links(pe_bli),
+            "summary": _summary_block(pe_bli),
             "service_org": service_org,
             "tier": "rollup",
             "title": titles_by_pe.get(pe_bli),
@@ -3729,9 +4398,60 @@ def _write_all_sidecars(
         "programs": len(programs_list),
     }
 
+    # ---- Canonical-TOA hero (PM Sprint 1, §P0-5) -------------------------
+    # The homepage superlative: the LARGEST FY2024-actuals figure in the
+    # programs.json corpus, computed on the toa basis (the canonical basis
+    # for hero/OG/feed) from the same union cards the program pages render —
+    # by construction the hero value equals the program page's FY24 card.
+    # Live: F-35 (ATA000) 5,565,655 USD thousands, its P-1 workbook fact.
+    _corpus_qualifier = scope_qualifier(len(programs_list))
+    hero = None
+    for p in programs_list:
+        block = summary_by_pe.get(p["pe_bli"])
+        if not block:
+            continue
+        fy24 = next(
+            (c for c in block["cards"] if c["key"] == "fy2024"), None
+        )
+        if (
+            fy24 is None or fy24["basis"] != _BASIS_TOA
+            or fy24["value"] is None or not fy24["fid"]
+            or fy24["fid"] not in _cited_fact_ids
+        ):
+            continue
+        if hero is None or fy24["value"] > hero["value"] or (
+            fy24["value"] == hero["value"] and p["pe_bli"] < hero["pe_bli"]
+        ):
+            hero = {
+                "pe_bli": p["pe_bli"],
+                "title": p["title"],
+                "org": p["org"],
+                "value": fy24["value"],
+                "units": fy24["units"],
+                "basis": fy24["basis"],
+                "fy": fy24["fy"],
+                "measure": fy24["measure"],
+                "edition": fy24["edition"],
+                "fid": fy24["fid"],
+                "public_id": fy24["public_id"],
+                "dataset": fy24["dataset"],
+                "scope_qualifier": _corpus_qualifier,
+            }
+
     site_meta = {
         "built_at": manifest.get("built_at"),
         "counts": meta_counts,
+        # PM Sprint 1 (P0-5): the canonical-toa hero figure + the corpus
+        # scope qualifier every hero/OG/feed superlative must carry, and the
+        # static trajectory-metric → (fy, measure) map (single payload-level
+        # source for the trajectory block's basis attributes — components
+        # must never re-derive it).
+        "hero": hero,
+        "scope_qualifier": _corpus_qualifier,
+        "trajectory_measures": {
+            metric: {**meta, "basis": _BASIS_TOA, "edition": 2026}
+            for metric, meta in _TRAJECTORY_METRIC_META.items()
+        },
         # Data-derived ingested-service-org set (single source of truth for the
         # rollup-note wording — replaces a hardcoded A/N/F set in
         # program-tier.ts that lied for every defense-wide agency book).
@@ -3780,6 +4500,9 @@ def _write_all_sidecars(
         # The program-page universe (full-tier + rollup-tier sidecars) —
         # request_vs_actuals_gap cards link only where a page exists.
         page_pe_blis=all_pe_blis | set(rollup_pes),
+        # P0-5: the feed's superlative claims carry the corpus scope
+        # qualifier (same dynamic string as the hero).
+        corpus_scope_qualifier=_corpus_qualifier,
     )
     n_files += 1
 
@@ -4342,6 +5065,12 @@ def _rva_gap_index(con, cited_fact_ids: set) -> dict:
             "to_edition": g["to_edition"],
             "delta": g["delta"],
             "fid": g["fid"],
+            # PM Sprint 1 basis threading: both diff sides are workbook
+            # grains (toa); the delta is a change measure published by the
+            # later edition.
+            "basis": _BASIS_TOA,
+            "measure": "change",
+            "edition": g["to_edition"],
         }
     return index
 
@@ -4353,6 +5082,7 @@ def _emit_feed_sidecar(
     prog_titles: dict,
     cited_fact_ids: set,
     page_pe_blis: set | None = None,
+    corpus_scope_qualifier: str | None = None,
 ) -> None:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
@@ -4480,6 +5210,20 @@ def _emit_feed_sidecar(
             figure_units = units or "unknown"
             figure_fact_id = None
 
+        # PM Sprint 1 basis threading: budget-basis figures declare
+        # (basis, fy, measure, edition); non-budget figures (HHI,
+        # USAspending obligations, year labels) honestly carry nulls —
+        # they have no toa/jbook-detail basis to claim.
+        if event_type == "yoy_swing":
+            figure_basis = {"basis": _BASIS_TOA, "fy": 2026,
+                            "measure": "change", "edition": 2026}
+        elif event_type == "zeroed_fy2026":
+            figure_basis = {"basis": _BASIS_TOA, "fy": 2025,
+                            "measure": "total", "edition": 2026}
+        else:
+            figure_basis = {"basis": None, "fy": None,
+                            "measure": None, "edition": None}
+
         card = {
             "event_type": event_type,
             "family_key": family_key,
@@ -4491,6 +5235,7 @@ def _emit_feed_sidecar(
             "organization": organization,
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli else None,
+            **figure_basis,
             # Resolved program title (null for family_key-based cards and
             # unresolvable pe_blis). The headline already leads with this
             # title — the field exists so the site can key on it without
@@ -4524,11 +5269,23 @@ def _emit_feed_sidecar(
             "organization": None,
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli in pages else None,
+            # Both diff sides are workbook grains — toa change, published
+            # by the later (to_) edition.
+            "basis": _BASIS_TOA,
+            "fy": g["fy"],
+            "measure": "change",
+            "edition": g["to_edition"],
             "title": program_title or None,
             "why_url": f"{_WHY_BASE}-request_vs_actuals_gap",
         })
 
-    _write_json(json_dir / "feed.json", {"cards": cards, "total": len(cards)})
+    _write_json(json_dir / "feed.json", {
+        "cards": cards,
+        "total": len(cards),
+        # P0-5: the feed's superlative framing ("largest gaps", "biggest
+        # swings") is corpus-scoped — the qualifier travels with the payload.
+        "scope_qualifier": corpus_scope_qualifier,
+    })
 
 
 def _fmt_thousands(v) -> str:
@@ -5157,7 +5914,7 @@ def _emit_years_matrix(
 
     Phase 5E decade columns (additive — 5D consumers render unchanged):
       decade_grains rows are (pe_bli, fy, edition_year, amount_type_kind,
-      amount_thousands, fid) from fct_decade_series (fid minted by
+      amount_thousands, fid, amount_type) from fct_decade_series (fid minted by
       _build_decade_citation_rows: the workbook fact for single-source
       grains, the derived decade sum otherwise). Cited grains become
       program cells under keys 'fy{fy}{a|e|r}'; the payload header gains
@@ -5233,7 +5990,7 @@ def _emit_years_matrix(
     # ---- decade cells: pe_bli → {column_key: cell}; column key → meta ------
     decade_cells_by_pe: dict[str, dict] = defaultdict(dict)
     decade_col_meta: dict[str, dict] = {}
-    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid in (decade_grains or []):
+    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid, _d_at in (decade_grains or []):
         key = _decade_column_key(d_fy, d_kind)
         meta = decade_col_meta.setdefault(
             key, {"key": key, "fy": d_fy, "kind": d_kind, "edition": d_edition}

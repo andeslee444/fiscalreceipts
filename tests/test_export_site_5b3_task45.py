@@ -463,6 +463,11 @@ class TestFeedRvaGapEvents:
             "to_edition": 2022,
             "delta": 500000.0,
             "fid": _rva_fid("0601101E", 2020, 2022),
+            # PM Sprint 1 basis threading: both diff sides are workbook
+            # grains → toa change, published by the later edition.
+            "basis": "toa",
+            "measure": "change",
+            "edition": 2022,
         }
 
     def test_rva_gap_index_uncited_dropped(self, tmp_path):

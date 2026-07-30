@@ -69,7 +69,9 @@ D_CYBER_CHG = fact_id_derived("trajectory", "0303140K|CYBER", "fy2526_change")
 
 # ---------------------------------------------------------------------------
 # Phase 5E Task 6 decade fixtures — grains are
-# (pe_bli, fy, edition_year, amount_type_kind, amount_thousands, fid)
+# (pe_bli, fy, edition_year, amount_type_kind, amount_thousands, fid,
+#  amount_type) (7-tuple since PM Sprint 1: the trailing chosen slug feeds
+# slug-accurate `measure` derivation in the sidecar/summary consumers)
 # ---------------------------------------------------------------------------
 
 W_DEC_20A = "ea11000000000010"   # single-source FY2020 actuals (PB2022)
@@ -81,15 +83,20 @@ D_DEC_15A = fact_id_derived("decade", "0601101E|2017", "fy_2015_actuals")
 def _decade_grains() -> list[tuple]:
     return [
         # FY2020 actuals from PB2022 (edition-authoritative rule: PB(N+2))
-        ("0601101E", 2020, 2022, "actuals", 150000.0, W_DEC_20A),
+        ("0601101E", 2020, 2022, "actuals", 150000.0, W_DEC_20A,
+         "fy_2020_actuals"),
         # FY2015 actuals from PB2017 — multi-source grain → derived decade fid
-        ("0601101E", 2015, 2017, "actuals", 90000.0, D_DEC_15A),
+        ("0601101E", 2015, 2017, "actuals", 90000.0, D_DEC_15A,
+         "fy_2015_actuals"),
         # FY2025 enacted from PB2026 CurrentYear
-        ("0601101E", 2025, 2026, "enacted", 200000.0, W_DEC_25E),
+        ("0601101E", 2025, 2026, "enacted", 200000.0, W_DEC_25E,
+         "fy_2025_enacted"),
         # FY2026 request from PB2026 BudgetYearOne — reuses the workbook fid
-        ("0601101E", 2026, 2026, "request", 400000.0, W_DARPA_26),
+        ("0601101E", 2026, 2026, "request", 400000.0, W_DARPA_26,
+         "fy_2026_total"),
         # UNCITED grain — the cell must be honestly absent
-        ("0303140K", 2020, 2022, "actuals", 30000.0, UNCITED_DEC),
+        ("0303140K", 2020, 2022, "actuals", 30000.0, UNCITED_DEC,
+         "fy_2020_actuals"),
     ]
 
 
@@ -610,7 +617,8 @@ class TestDecadeColumns:
         corruption (the edition-authoritative rule makes the mapping unique)
         — the exporter must fail loudly, never emit an ambiguous column."""
         bad = _decade_grains() + [
-            ("0602303A", 2020, 2023, "actuals", 1.0, W_ARMY_24),
+            ("0602303A", 2020, 2023, "actuals", 1.0, W_ARMY_24,
+             "fy_2020_actuals"),
         ]
         with pytest.raises(ValueError, match="edition"):
             _emit(tmp_path, decade_grains=bad)

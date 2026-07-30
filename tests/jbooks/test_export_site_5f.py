@@ -336,7 +336,8 @@ def test_rollup_sidecar_without_trajectory_is_honest(pg_dsn, tmp_path):
 
 def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
     """Existing (programs.json) sidecars keep their exact pre-5F key set —
-    byte-stability of the 462 depends on it."""
+    byte-stability of the 462 depends on it. (PM Sprint 1 adds exactly ONE
+    key: the union `summary` block — every full-tier sidecar carries it.)"""
     doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
     _seed_budget_line(pg_dsn, doc_id, sha)
     _seed_rollup_budget_line(pg_dsn, doc_id)
@@ -346,7 +347,8 @@ def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
     full = json.loads(
         (site / "json" / "program_details" / "0601101E.json").read_text())
     assert set(full.keys()) == {
-        "awards", "budget_lines", "details", "mentions", "narratives"
+        "awards", "budget_lines", "details", "mentions", "narratives",
+        "summary",
     }
 
 

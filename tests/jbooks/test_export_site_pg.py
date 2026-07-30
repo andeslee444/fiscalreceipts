@@ -1619,18 +1619,23 @@ def test_decade_parquet_and_citations(pg_dsn, tmp_path):
 
 def test_decade_sidecar_series(pg_dsn, tmp_path):
     """program_details sidecars gain decade_series arrays keyed by
-    amount_type_kind; entries carry (fy, v, fid, edition); absent editions
+    amount_type_kind; entries carry (fy, v, fid, edition) plus the PM
+    Sprint 1 basis threading (basis 'toa', slug-accurate measure — an
+    own-edition fy_%d_total slug IS the request total); absent editions
     are gaps (no entry), never zeros."""
     site, fids = _run_decade_export(pg_dsn, tmp_path)
     det = json.loads(
         (site / "json" / "program_details" / "0601101E.json").read_text())
     ds = det["decade_series"]
     assert ds["actuals"] == [
-        {"fy": 2022, "v": 100000.0, "fid": fids["w_act"], "edition": 2024},
+        {"fy": 2022, "v": 100000.0, "fid": fids["w_act"], "edition": 2024,
+         "basis": "toa", "measure": "actuals"},
     ]
     assert ds["request"] == [
-        {"fy": 2022, "v": 90000.0, "fid": fids["w_req"], "edition": 2022},
-        {"fy": 2024, "v": 200000.0, "fid": fids["d_sum"], "edition": 2024},
+        {"fy": 2022, "v": 90000.0, "fid": fids["w_req"], "edition": 2022,
+         "basis": "toa", "measure": "request"},
+        {"fy": 2024, "v": 200000.0, "fid": fids["d_sum"], "edition": 2024,
+         "basis": "toa", "measure": "request"},
     ]
     assert "enacted" not in ds  # no enacted grains → gap, not zeros
 
