@@ -1,0 +1,8 @@
+@misc{fiscalreceipts_cde21cb5,
+  title = {F-35 (ATA000), FY2024 actuals vs. PB2024 request (derived): \$286,534 thousand},
+  author = {{Fiscal Receipts}},
+  howpublished = {Derived: PB2026 FY2024 actuals - PB2024 FY2024 request (fct\_book\_diff request\_vs\_actuals); inputs https://fiscalreceipts.com/fact/5b532c52, https://fiscalreceipts.com/fact/666be822},
+  note = {retrieved 2026-07-29 via Fiscal Receipts},
+  url = {https://fiscalreceipts.com/fact/cde21cb5},
+  year = {2026}
+}

@@ -1,0 +1,15 @@
+{
+  "source": "Fiscal Receipts",
+  "fact_id": "bb54b1658b2746cb",
+  "permalink": "https://fiscalreceipts.com/fact/bb54b165",
+  "program": "F-35",
+  "program_code": "ATA000",
+  "fiscal_year": 2024,
+  "row": "Net Procurement (P-1)",
+  "value": "$5,247.070 million",
+  "publisher": "Office of the Under Secretary of Defense (Comptroller)",
+  "document": "FY2026 Air Force Aircraft Procurement, Vol. I",
+  "locator": "Exhibit P-40, p. 55",
+  "sha256": "528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e",
+  "retrieved": "2026-07-05"
+}

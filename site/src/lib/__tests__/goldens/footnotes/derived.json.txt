@@ -1,0 +1,16 @@
+{
+  "source": "Fiscal Receipts",
+  "fact_id": "cde21cb5a87292ec",
+  "permalink": "https://fiscalreceipts.com/fact/cde21cb5",
+  "program": "F-35",
+  "program_code": "ATA000",
+  "fiscal_year": 2024,
+  "row": "actuals vs. PB2024 request (derived)",
+  "value": "$286,534 thousand",
+  "derivation": "PB2026 FY2024 actuals - PB2024 FY2024 request (fct_book_diff request_vs_actuals)",
+  "inputs": [
+    "https://fiscalreceipts.com/fact/5b532c52",
+    "https://fiscalreceipts.com/fact/666be822"
+  ],
+  "retrieved": "2026-07-29"
+}

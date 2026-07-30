@@ -27,7 +27,11 @@
  *   - Header: "Citation" title + kind badge + close button
  *   - Body: dispatches to PdfView / WorkbookCard / LdaCard
  *   - Footer: retrieved_at, sha256 8-char prefix (mono), official-source link
- *     (jbook: official_url already carries #page=N — render as-is)
+ *     (jbook: official_url already carries #page=N — render as-is), and the
+ *     copy-as-footnote button + style picker (§P0-3: ONE formatter for all
+ *     tiers — lib/footnote.ts, the gate-23 leg (c) golden contract — fed by
+ *     the figure context threaded through openPanel and the page's program
+ *     context on the provider)
  *
  * The Dialog is rendered via a portal so it doesn't clip inside containers.
  */
@@ -36,7 +40,14 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from "rea
 import { X, ExternalLink, Copy, Check, ArrowLeft, AlertCircle } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { Citation, CitationsMap } from "@/lib/data";
-import { formatFootnote, footnoteInputFromCitation } from "./footnote";
+import {
+  formatFootnote,
+  footnoteInputFromCitation,
+  FOOTNOTE_STYLES,
+  type FootnoteFigure,
+  type FootnoteProgram,
+  type FootnoteStyle,
+} from "@/lib/footnote";
 import {
   isJbookPdf,
   isWorkbook,
@@ -66,6 +77,12 @@ import { JbookNarrativeCard } from "./jbook-narrative-card";
 interface CitationPanelProviderProps {
   /** Pre-sliced citations for the current page (from collectCitations()). */
   citations: CitationsMap;
+  /**
+   * Program context for the copy-as-footnote formatter (§P0-3) — the page's
+   * program title + PE/BLI code. Optional: non-program pages omit it and the
+   * footnote falls back to the trimmed page title as its head.
+   */
+  program?: FootnoteProgram | null;
   children: React.ReactNode;
 }
 
@@ -85,17 +102,27 @@ interface CitationPanelProviderProps {
 /** Body display state: ready (card), loading (shard fetch), error (degraded). */
 type PanelBodyState = "ready" | "loading" | "error";
 
+/** Back-stack entry: the fact + its clicked-figure context (restored on Back). */
+interface StackEntry {
+  factId: string;
+  figure: FootnoteFigure | null;
+}
+
 export function CitationPanelProvider({
   citations,
+  program = null,
   children,
 }: CitationPanelProviderProps) {
   const [open, setOpen] = useState(false);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [activeFactId, setActiveFactId] = useState<string | null>(null);
+  // The clicked figure's declared context (fy/measure/basis/units…) — the
+  // footnote formatter's non-citation half. Null for drill-down opens.
+  const [activeFigure, setActiveFigure] = useState<FootnoteFigure | null>(null);
   const [bodyState, setBodyState] = useState<PanelBodyState>("ready");
-  // Drill-down back stack (fact_ids UNDER the active one). State so the Back
+  // Drill-down back stack (facts UNDER the active one). State so the Back
   // button re-renders; ref-free because updates only happen in handlers.
-  const [backStack, setBackStack] = useState<string[]>([]);
+  const [backStack, setBackStack] = useState<StackEntry[]>([]);
 
   // Citations resolved lazily via cite-shards — merged view for lookups.
   // A ref (not state): resolved rows are only read inside handlers, and the
@@ -110,27 +137,31 @@ export function CitationPanelProvider({
     [citations],
   );
 
-  const showCitation = useCallback((factId: string, citation: Citation) => {
-    setActiveCitation(citation);
-    setActiveFactId(factId);
-    setBodyState("ready");
-    setOpen(true);
-  }, []);
+  const showCitation = useCallback(
+    (factId: string, citation: Citation, figure: FootnoteFigure | null) => {
+      setActiveCitation(citation);
+      setActiveFactId(factId);
+      setActiveFigure(figure);
+      setBodyState("ready");
+      setOpen(true);
+    },
+    [],
+  );
 
   const openPanel = useCallback(
-    (factId: string) => {
+    (factId: string, figure?: FootnoteFigure) => {
       // Drill-down: opening a NEW fact while the panel is already showing one
-      // pushes the current fact onto the back stack (Back returns to it).
+      // pushes the current fact (with its figure context) onto the back stack.
       setBackStack((stack) => {
         if (!open || !activeFactId || activeFactId === factId) return stack;
-        return [...stack, activeFactId];
+        return [...stack, { factId: activeFactId, figure: activeFigure }];
       });
 
       const embedded = lookup(factId);
       if (embedded) {
         // Fast path — embedded slice (or an already-fetched shard row).
         // Behavior identical to the pre-5D panel: no fetch.
-        showCitation(factId, embedded);
+        showCitation(factId, embedded, figure ?? null);
         return;
       }
 
@@ -139,6 +170,7 @@ export function CitationPanelProvider({
       const epoch = ++openEpochRef.current;
       setActiveCitation(null);
       setActiveFactId(factId);
+      setActiveFigure(figure ?? null);
       setBodyState("loading");
       setOpen(true);
       resolveCitationFromShards(factId).then((citation) => {
@@ -152,7 +184,7 @@ export function CitationPanelProvider({
         }
       });
     },
-    [open, activeFactId, lookup, showCitation],
+    [open, activeFactId, activeFigure, lookup, showCitation],
   );
 
   // Derived-card input chips ask this before rendering a clickable chip —
@@ -167,9 +199,9 @@ export function CitationPanelProvider({
     setBackStack((stack) => {
       if (stack.length === 0) return stack;
       const prev = stack[stack.length - 1];
-      const citation = lookup(prev);
+      const citation = lookup(prev.factId);
       if (citation) {
-        showCitation(prev, citation);
+        showCitation(prev.factId, citation, prev.figure);
       }
       return stack.slice(0, -1);
     });
@@ -204,6 +236,8 @@ export function CitationPanelProvider({
           onOpenChange={handleOpenChange}
           citation={activeCitation}
           factId={activeFactId}
+          figure={activeFigure}
+          program={program}
           bodyState={bodyState}
           canGoBack={backStack.length > 0}
           onBack={goBack}
@@ -263,6 +297,8 @@ interface CitationPanelDialogProps {
   onOpenChange: (open: boolean) => void;
   citation: Citation | null;
   factId: string | null;
+  figure: FootnoteFigure | null;
+  program: FootnoteProgram | null;
   bodyState: "ready" | "loading" | "error";
   canGoBack: boolean;
   onBack: () => void;
@@ -314,6 +350,8 @@ function CitationPanelDialog({
   onOpenChange,
   citation,
   factId,
+  figure,
+  program,
   bodyState,
   canGoBack,
   onBack,
@@ -475,7 +513,12 @@ function CitationPanelDialog({
                   </a>
                 )}
                 {factId && (
-                  <CopyFootnoteButton citation={citation} factId={factId} />
+                  <CopyFootnoteButton
+                    citation={citation}
+                    factId={factId}
+                    figure={figure}
+                    program={program}
+                  />
                 )}
               </div>
 
@@ -534,17 +577,27 @@ function CitationBody({
 }
 
 // ── CopyFootnoteButton — copy a quotable footnote to the clipboard ──────────
+//
+// §P0-3: ONE formatter for every tier (lib/footnote.ts — the gate-23 golden
+// contract), full field set: program, fiscal year, row name, value WITH
+// unit, document title, locator, SHA-256, retrieved date, /fact/ permalink.
+// The style picker offers Chicago (default) / AP / BibTeX / JSON.
 
 type CopyState = "idle" | "copied" | "failed";
 
 function CopyFootnoteButton({
   citation,
   factId,
+  figure,
+  program,
 }: {
   citation: Citation;
   factId: string;
+  figure: FootnoteFigure | null;
+  program: FootnoteProgram | null;
 }) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [style, setStyle] = useState<FootnoteStyle>("chicago");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clear the transient-state timer on unmount.
@@ -555,14 +608,19 @@ function CopyFootnoteButton({
   }, []);
 
   const handleCopy = useCallback(async () => {
-    // Canonical permalink: origin + pathname (no hash/query).
-    const url = `${window.location.origin}${window.location.pathname}`;
-    // Human label from the page title, trimmed of site-name suffixes
-    // ("{Program} — FY2026 Budget… | Fiscal Receipts" → "{Program}").
-    const label =
+    // Fallback head when the page provides no program context: the page
+    // title trimmed of site-name suffixes ("{Program} — FY2026… | Fiscal
+    // Receipts" → "{Program}").
+    const pageLabel =
       document.title.split(" | ")[0].split(" — ")[0].trim() || null;
     const text = formatFootnote(
-      footnoteInputFromCitation(citation, factId, { url, label }),
+      footnoteInputFromCitation(citation, factId, {
+        origin: window.location.origin,
+        program,
+        figure,
+        pageLabel,
+      }),
+      style,
     );
     if (timerRef.current) clearTimeout(timerRef.current);
     try {
@@ -574,7 +632,7 @@ function CopyFootnoteButton({
       setCopyState("failed");
       timerRef.current = setTimeout(() => setCopyState("idle"), 2000);
     }
-  }, [citation, factId]);
+  }, [citation, factId, figure, program, style]);
 
   // Icon swaps outside the live region; label text swaps inside it.
   const icon =
@@ -594,17 +652,33 @@ function CopyFootnoteButton({
         : "Copy as footnote";
 
   return (
-    <button
-      type="button"
-      data-testid="copy-footnote"
-      onClick={handleCopy}
-      className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      aria-label="Copy this citation as a formatted footnote"
-    >
-      {icon}
-      {/* Always-mounted live region: screen readers announce state changes. */}
-      <span aria-live="polite">{label}</span>
-    </button>
+    <span className="flex min-w-0 shrink-0 items-center gap-1.5">
+      <button
+        type="button"
+        data-testid="copy-footnote"
+        onClick={handleCopy}
+        className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Copy this citation as a formatted footnote"
+      >
+        {icon}
+        {/* Always-mounted live region: screen readers announce state changes. */}
+        <span aria-live="polite">{label}</span>
+      </button>
+      {/* Style picker — unobtrusive native select in the footer's type scale. */}
+      <select
+        data-testid="footnote-style"
+        value={style}
+        onChange={(e) => setStyle(e.target.value as FootnoteStyle)}
+        aria-label="Footnote style"
+        className="h-5 shrink-0 cursor-pointer rounded border border-border bg-background px-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {FOOTNOTE_STYLES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 

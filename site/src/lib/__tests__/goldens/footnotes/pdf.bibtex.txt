@@ -1,0 +1,8 @@
+@misc{fiscalreceipts_bb54b165,
+  title = {F-35 (ATA000), FY2024 Net Procurement (P-1): \$5,247.070 million},
+  author = {{Office of the Under Secretary of Defense (Comptroller)}},
+  howpublished = {FY2026 Air Force Aircraft Procurement, Vol. I, Exhibit P-40, p. 55},
+  note = {SHA-256 528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e; retrieved 2026-07-05 via Fiscal Receipts},
+  url = {https://fiscalreceipts.com/fact/bb54b165},
+  year = {2026}
+}

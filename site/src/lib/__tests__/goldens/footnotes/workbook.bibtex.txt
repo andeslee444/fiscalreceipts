@@ -1,0 +1,8 @@
+@misc{fiscalreceipts_5b532c52,
+  title = {F-35 (ATA000), FY2024 Total Obligation Authority (P-1): \$5,565,655 thousand},
+  author = {{Office of the Under Secretary of Defense (Comptroller)}},
+  howpublished = {FY2026 Department of Defense Budget: Procurement Programs (P-1), sheet Exhibit P-1, cells O839,O840,O841},
+  note = {SHA-256 4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0; retrieved 2026-06-10 via Fiscal Receipts},
+  url = {https://fiscalreceipts.com/fact/5b532c52},
+  year = {2026}
+}

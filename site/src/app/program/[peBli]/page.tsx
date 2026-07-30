@@ -334,7 +334,12 @@ export default async function ProgramPage({
   const serviceIngested = isIngestedServiceOrg(details.service_org ?? "");
 
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    <CitationPanelProvider
+      citations={citationsSlice}
+      // §P0-3: program context for the copy-as-footnote formatter — the
+      // footnote head is `{title} ({pe_bli})`, never a re-derived page title.
+      program={{ name: program.title, code: program.pe_bli }}
+    >
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       {/* Breadcrumbs */}
       <Breadcrumbs

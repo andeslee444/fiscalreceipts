@@ -1582,3 +1582,44 @@ with 7 collisions (e.g. 0207522F (2026, request): $30.8M toa vs $15.8M
 jbook-detail with the funding-line repeat of the decade figure unmarked) —
 the attribute path catches real unmarked members, it did not pass
 vacuously.
+
+════════════════════════════════════════════════════════════════════════════
+MADE TO PASS (leg c → gate 23 complete) — 2026-07-30, PM-review Sprint 1 Task 4
+════════════════════════════════════════════════════════════════════════════
+
+The unified copy-as-footnote formatter (§P0-3) now exists:
+site/src/lib/footnote.ts — erasable TS, zero runtime imports, loaded by the
+gate via Node's native type stripping. formatFootnote(input) reproduces all
+three goldens in scripts/gates/goldens/footnotes/ byte-for-byte (the goldens
+were NOT touched — they remain the contract). The panel's copy button
+(citation-panel/panel.tsx) now uses THIS formatter for every tier, fed by
+the figure context (fy/measure/basis/units/entity/edition) threaded through
+<Cite>'s openPanel call and the page's program context on the provider —
+the pdf tier's missing unit/FY/row/title/permalink defect is gone. A style
+picker offers Chicago (default) / AP / BibTeX / JSON; the three variants are
+pinned by vitest goldens (site/src/lib/__tests__/goldens/footnotes/).
+
+Full-corpus run (node scripts/gates/basis.mjs against the rebuilt out/,
+1,993 program pages, exit 0). Verbatim:
+
+    gate 23 basis: scanning 1993 program pages; leg a1: all 80253 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → PASS
+      note: scanning 1993 program pages
+      note: leg a1: all 80253 program-page figures carry basis attrs ✓
+      note: leg a2 (attribute path): no unreconciled collisions ✓
+      note: leg a2 (bootstrap): no FY24-actuals collision detected on /program/ATA000/
+      note: leg b1: 7145 numeric summary cards agree with detail figures ✓
+      note: leg b2: 0 absence cards, none contradicted by details ✓
+      note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+      note: leg c: pdf footnote matches golden ✓
+      note: leg c: workbook footnote matches golden ✓
+      note: leg c: derived footnote matches golden ✓
+
+Gate 23 is fully green — all three legs. The full verify suite
+(NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify) reports
+23/23: overall: PASS.
+
+Live-DOM proof (static build served, real click path): clicking the P0-3
+repro figure ($5.25B, fact bb54b165) on /program/ATA000/ and pressing Copy
+now yields the spec's suggested target footnote verbatim (modulo runtime
+origin) — unit, fiscal year, row name, document title, exhibit + page,
+SHA-256, retrieved date, /fact/ permalink all present.

@@ -39,12 +39,21 @@
 
 import React, { createContext, useContext } from "react";
 import { formatAmount, exactTitle, type AmountUnits } from "@/lib/format";
+import type { FootnoteFigure } from "@/lib/footnote";
 
 // ── Citation Panel Context ─────────────────────────────────────────────────
 // The panel provider (citation-panel/panel.tsx) implements the real openPanel.
 
 interface CitationPanelContextValue {
-  openPanel: (factId: string) => void;
+  /**
+   * Open the citation panel for a fact. `figure` is the clicked figure's own
+   * declared context (value/units/fy/measure/basis/entity/edition — the same
+   * vocabulary as the data-* attributes) — the copy-as-footnote formatter
+   * (§P0-3) needs it because the citation payload alone cannot supply the
+   * fiscal year or row identity. Optional: drill-down opens (derived-input
+   * chips) have no figure context and the footnote omits those fields.
+   */
+  openPanel: (factId: string, figure?: FootnoteFigure) => void;
   /**
    * True when the given fact_id is available in the current page's citation
    * slice (derived-card input chips use this to decide clickability).
@@ -294,6 +303,18 @@ export function Cite({
     // uses. Never re-slice differently: the live chip/drawer id mismatch
     // (#8b2746cb vs #bb54b165) was two truncations of one id.
     const publicId = factId.slice(0, 8);
+    // Figure context for the copy-as-footnote formatter (§P0-3): thread the
+    // figure's own declared basis vocabulary through the panel open call.
+    const figureCtx: FootnoteFigure = {
+      value,
+      units,
+      display: display ?? null,
+      fy: fy ?? null,
+      measure: measure ?? null,
+      basis: basis ?? null,
+      entity: entity ?? null,
+      edition: edition ?? null,
+    };
     return (
       <>
       <span
@@ -315,11 +336,11 @@ export function Cite({
         role="button"
         tabIndex={0}
         aria-label={`${displayText} — click to view citation`}
-        onClick={() => openPanel(factId)}
+        onClick={() => openPanel(factId, figureCtx)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            openPanel(factId);
+            openPanel(factId, figureCtx);
           }
         }}
       >
