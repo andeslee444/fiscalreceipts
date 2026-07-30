@@ -1623,3 +1623,53 @@ repro figure ($5.25B, fact bb54b165) on /program/ATA000/ and pressing Copy
 now yields the spec's suggested target footnote verbatim (modulo runtime
 origin) — unit, fiscal year, row name, document title, exhibit + page,
 SHA-256, retrieved date, /fact/ permalink all present.
+
+════════════════════════════════════════════════════════════════════════════
+GATE 1 (build) — NEW FACT-PERMALINK LEG (P0-4) — BUILT FAILING
+2026-07-30, PM-review Sprint 1 Task 5
+════════════════════════════════════════════════════════════════════════════
+
+New leg added to scripts/gates/build.mjs: out/vercel.json must exist AND
+carry the {"source": "/fact/:id", "destination": "/fact/"} rewrite AND
+out/fact/index.html must exist. out/ is the deploy root (vercel --prod from
+site/out) and Next copies public/vercel.json into out/ at build — without
+both artifacts every footnote /fact/{fid8} permalink 404s on deploy (the
+exact live defect §P0-4 reproduces).
+
+Pre-failure run: the leg was added BEFORE the /fact/ route or the rewrite
+file existed in out/ (out/ = the Task-4 build, which predates both — the
+same artifact state as the live site's 404). Verbatim (fact-leg lines):
+
+    gate 1 build: → FAIL
+      ✗ fact permalinks: out/vercel.json missing — /fact/{id} URLs will 404 on deploy (site/public/vercel.json must ship the /fact/:id rewrite)
+      ✗ fact permalinks: out/fact/index.html missing — the /fact/ resolver page did not build
+
+(The same run also showed the EXPECTED environmental noise of checking a
+stale artifact: build-meta git_head/staleness errors from the in-progress
+Task-5 src edits, and the sitemap-origin error because the check ran
+without NEXT_PUBLIC_SITE_URL. Those legs are pre-existing; the two fact
+lines above are the new leg's own teeth.)
+
+MADE TO PASS: site/public/vercel.json (the rewrite, filesystem-precedence
+verified against Vercel's vercel.json docs: files win before rewrites, so
+/fact/ itself keeps serving the static explainer page while /fact/{id}
+falls through to the rewrite) + site/src/app/fact/page.tsx (static /fact/
+explainer + client resolver fact-resolver.tsx). See the Task-5 verify run
+for the green gate output.
+
+MADE TO PASS (fact-permalink leg → gate 1 green) — 2026-07-30, Task 5:
+site/public/vercel.json now ships the rewrite (Next copies public/ → out/ at
+build; out/ is the deploy root) and site/src/app/fact/ builds the resolver
+page. Verbatim from the full verify run (NEXT_PUBLIC_SITE_URL set):
+
+    gate 1 build: sidecars: 1993 program pages (1741 full tier, 0 zero-content/noindex), 200 companies, 23 agencies, 134896 citations; build-meta git_head: b4cf164b ✓; build freshness: out/ is newer than all watched source files ✓ → PASS
+      note: fact permalinks: /fact/:id rewrite present in out/vercel.json ✓
+      note: fact permalinks: out/fact/index.html present ✓
+
+Full suite: 23/23, overall: PASS. Local smoke (serve-static + Playwright):
+/fact/ → 200 explainer; /fact/?id=bb54b1658b2746cb renders $5,247.070
+million + doc title + Exhibit P-40 p. 55 + full SHA-256 + permalink; the
+8-hex form ?id=bb54b165 resolves the same fact; /program/ATA000/#fact-bb54b165
+scrolls the figure into the viewport and opens the citation drawer; the
+drawer footer links /fact/bb54b165. The LIVE /fact/bb54b165 rewrite check
+(edge behavior, unreachable locally) is the Task-7 deploy-verify item.

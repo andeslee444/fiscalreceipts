@@ -637,6 +637,15 @@ export interface CitationBase {
   retrieved_at: string | null;
   units: string | null;
   /**
+   * PM Sprint 1 Task 5 (§P0-4): the program (PE/BLI) this fact appears on,
+   * emitted for the kinds whose citation rows carry it (jbook_pdf, workbook,
+   * lda_filing). Optional: shards built before the exporter started emitting
+   * it lack the key entirely, and derived/geography kinds have no single
+   * parent program. The /fact/{id} resolver renders an "Appears on"
+   * /program/{pe_bli}/#fact-{id} link only when present.
+   */
+  pe_bli?: string | null;
+  /**
    * Phase 5B-3 citation-tier fields (nullable; populated for the
    * derived / usaspending / state_soql / state_file kinds only):
    *   formula        — human-readable derivation formula or pointer note

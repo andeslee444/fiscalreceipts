@@ -37,7 +37,7 @@
  *     State C: the ⁂ gains a visible "uncited" text label
  */
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { formatAmount, exactTitle, type AmountUnits } from "@/lib/format";
 import type { FootnoteFigure } from "@/lib/footnote";
 
@@ -247,6 +247,51 @@ export function CiteLegend({ className }: { className?: string }) {
 }
 
 /**
+ * ReceiptsChip — the inline public-id chip shown in Receipts mode.
+ *
+ * P0-4.3: the fact permalink lives "behind a click on the Receipts-mode
+ * chip" — clicking the chip copies {origin}/fact/{fid8} (copy-with-toast,
+ * consistent with the panel's copy buttons) and STOPS PROPAGATION so the
+ * figure's own click-to-open-panel wiring does not fire. The chip stays
+ * aria-hidden and non-focusable (no nested-interactive violation inside the
+ * role="button" figure span): screen-reader / keyboard users reach the same
+ * permalink through the citation drawer's footer link.
+ */
+function ReceiptsChip({ publicId }: { publicId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      navigator.clipboard.writeText(
+        `${window.location.origin}/fact/${publicId}`,
+      ).then(
+        () => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        },
+        () => undefined, // clipboard denied — chip stays as-is
+      );
+    } catch {
+      // Clipboard unavailable (insecure context) — chip stays as-is.
+    }
+  };
+
+  return (
+    <span
+      data-receipts-chip
+      onClick={handleCopy}
+      title={`Copy fact permalink /fact/${publicId}`}
+      className="ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-[10px] text-blue-700 align-middle"
+      aria-hidden="true"
+    >
+      {copied ? "copied ✓" : `#${publicId}`}
+    </span>
+  );
+}
+
+/**
  * Render a cited monetary amount with full three-state provenance signaling.
  *
  * The rendered span ALWAYS has:
@@ -345,14 +390,7 @@ export function Cite({
         }}
       >
         {displayText}
-        {receiptsOn && (
-          <span
-            className="ml-1 inline-block rounded bg-blue-100 px-1 py-0.5 font-mono text-[10px] text-blue-700 align-middle"
-            aria-hidden="true"
-          >
-            #{publicId}
-          </span>
-        )}
+        {receiptsOn && <ReceiptsChip publicId={publicId} />}
       </span>
       {basisChip}
       </>

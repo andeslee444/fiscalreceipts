@@ -59,6 +59,7 @@ import {
   isJbookNarrative,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
+import { FactAnchor } from "@/components/fact-anchor";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
   AssetConfigProvider,
@@ -230,6 +231,10 @@ export function CitationPanelProvider({
       */}
       <AssetConfigProvider>
         <AssetPreconnect />
+        {/* #fact-{id} deep links (P0-4.2): scroll + highlight + synthesized
+            click on the figure — mounted here so EVERY provider-wrapped page
+            (all figure-bearing pages) gets the behavior. */}
+        <FactAnchor />
         {children}
         <CitationPanelDialog
           open={open}
@@ -522,11 +527,20 @@ function CitationPanelDialog({
                 )}
               </div>
 
-              {/* fact_id short — debugging aid */}
+              {/* fact_id short — the PUBLIC id (fid[:8]), same truncation as
+                  the Receipts chip, linked to its /fact/{fid8} permalink
+                  (P0-4.3: the id must be addressable everywhere it shows). */}
               {/* Note: muted-foreground/60 fails WCAG AA contrast; use muted-foreground at full opacity */}
               {shortId && (
                 <p className="text-[11px] font-mono text-muted-foreground">
-                  fact #{shortId}
+                  <a
+                    href={`/fact/${shortId}`}
+                    data-testid="panel-fact-permalink"
+                    className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground hover:decoration-solid"
+                    title="Open this fact's permalink page"
+                  >
+                    fact #{shortId}
+                  </a>
                 </p>
               )}
             </div>

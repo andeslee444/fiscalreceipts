@@ -194,6 +194,31 @@ span.interactive-raise:hover {
   box-shadow: none; /* raise only — a shadowed number reads as a button */
 }
 
+/* ── #fact-{id} anchor highlight (PM Sprint 1 Task 5, §P0-4.2) ─────────────
+   Applied by components/fact-anchor.tsx to the deep-linked figure for ~2.4s:
+   a ring that fades out, drawing the eye to the exact figure the permalink
+   addresses. The ring is a pseudo-element and the fade animates OPACITY
+   only (gate 17 motion: keyframes may touch compositor properties only —
+   never outline/border colors). Non-layout-affecting; respects reduced
+   motion via the global reduced-motion override below. */
+.fact-anchor-highlight {
+  position: relative;
+}
+.fact-anchor-highlight::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--ring);
+  border-radius: 4px;
+  pointer-events: none;
+  animation: fact-anchor-fade var(--motion-story) var(--ease-standard) 1.6s forwards;
+}
+@keyframes fact-anchor-fade {
+  to {
+    opacity: 0;
+  }
+}
+
 /* Scroll-triggered once-reveal (components/reveal.tsx). The .reveal class is
    applied only after hydration for below-viewport elements — SSR/no-JS
    renders content visible. Compositor-only: opacity + transform. */

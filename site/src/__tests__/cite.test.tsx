@@ -9,8 +9,8 @@
  * These tests verify the DOM attributes exactly so the gate script can rely on them.
  */
 
-import { describe, it, expect } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { Cite, CitationPanelContext, ReceiptsContext } from "@/components/cite";
 
@@ -323,6 +323,62 @@ describe("Cite three-state contract", () => {
         </ReceiptsContext.Provider>,
       );
       expect(container.textContent).not.toContain("#abc123de");
+    });
+
+    it("chip click copies the /fact/{fid8} permalink WITHOUT opening the panel (P0-4.3)", async () => {
+      // Spec §P0-4.3: the fact permalink lives "behind a click on the
+      // Receipts-mode chip" — copy-with-toast, least disruptive. The click
+      // must stop propagation so the figure's own openPanel does not fire.
+      const factId = "abc123def456789f";
+      const openPanel = vi.fn();
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText },
+        configurable: true,
+      });
+      const { container } = render(
+        <CitationPanelContext.Provider value={{ openPanel }}>
+          <ReceiptsContext.Provider value={{ receiptsOn: true }}>
+            <Cite
+              value={100}
+              units="USD millions"
+              dataset="test_dataset"
+              factId={factId}
+            />
+          </ReceiptsContext.Provider>
+        </CitationPanelContext.Provider>,
+      );
+      const chip = container.querySelector(
+        "[data-receipts-chip]",
+      ) as HTMLElement;
+      expect(chip).not.toBeNull();
+      fireEvent.click(chip);
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/fact/abc123de`,
+      );
+      expect(openPanel).not.toHaveBeenCalled();
+      // Transient copied feedback appears on the chip.
+      await waitFor(() => expect(chip.textContent).toContain("copied"));
+    });
+
+    it("clicking the figure itself (not the chip) still opens the panel", () => {
+      const factId = "abc123def456789f";
+      const openPanel = vi.fn();
+      const { container } = render(
+        <CitationPanelContext.Provider value={{ openPanel }}>
+          <ReceiptsContext.Provider value={{ receiptsOn: true }}>
+            <Cite
+              value={100}
+              units="USD millions"
+              dataset="test_dataset"
+              factId={factId}
+            />
+          </ReceiptsContext.Provider>
+        </CitationPanelContext.Provider>,
+      );
+      fireEvent.click(container.querySelector("[data-amount]") as HTMLElement);
+      expect(openPanel).toHaveBeenCalledTimes(1);
+      expect(openPanel.mock.calls[0][0]).toBe(factId);
     });
 
     it("State C shows a single 'uncited' chip when receipts ON", () => {

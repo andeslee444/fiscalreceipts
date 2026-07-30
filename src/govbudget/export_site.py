@@ -4351,6 +4351,12 @@ def _write_all_sidecars(
             "page_height": page_height,
             "page_number": page_number,
             "page_width": page_width,
+            # PM Sprint 1 Task 5 (§P0-4): the parent program for the
+            # /fact/{id} resolver's "Appears on" link. Already threaded on
+            # every citation_rows tuple (jbook_pdf/workbook/lda carry it;
+            # derived/geography rows carry None) — the JSON payload just
+            # never shipped it before. The parquet always had it.
+            "pe_bli": row_pe_bli,
             "query_body": query_body,
             "recorded_value": recorded_value,
             "resolution": resolution,

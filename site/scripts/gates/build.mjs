@@ -19,6 +19,9 @@
  * - citations.json key count == manifest citation total (from site_meta.json, data-driven)
  * - download cards: citations.parquet href == /citations/citations.parquet (not /data/)
  * - stale-literal check: built downloads page must NOT contain hardcoded "44,754"
+ * - fact-permalink route (PM Sprint 1 Task 5, §P0-4): out/vercel.json exists
+ *   AND carries the `/fact/:id` → `/fact/` rewrite AND out/fact/index.html
+ *   exists — the deploy can never ship footnote permalinks that 404
  */
 
 import fs from "fs";
@@ -409,6 +412,46 @@ export async function runBuildGate() {
     }
     if (hits === 0) {
       notes.push(`placeholder scan: ${scanned}/${scanTargets.length} artifacts free of ${PLACEHOLDER_HOST} ✓`);
+    }
+  }
+
+  // ── Fact-permalink route (PM Sprint 1 Task 5, spec §P0-4) ─────────────────
+  // The footnote formatter emits https://…/fact/{fid8} permalinks (gate 23
+  // leg c goldens). Those URLs resolve ONLY when the deploy root carries the
+  // Vercel rewrite AND the /fact/ resolver page built. out/ is the deploy
+  // root (`vercel --prod` from site/out), and Next copies public/vercel.json
+  // into out/ — so both artifacts must be in out/ or the permalinks 404.
+  {
+    const vercelJsonPath = path.join(outDir, "vercel.json");
+    if (!fileExists(vercelJsonPath)) {
+      errors.push(
+        "fact permalinks: out/vercel.json missing — /fact/{id} URLs will 404 on deploy " +
+          "(site/public/vercel.json must ship the /fact/:id rewrite)"
+      );
+    } else {
+      let rewriteOk = false;
+      try {
+        const vercelConfig = readJson(vercelJsonPath);
+        rewriteOk = (vercelConfig.rewrites ?? []).some(
+          (r) => r.source === "/fact/:id" && r.destination === "/fact/"
+        );
+      } catch (e) {
+        errors.push(`fact permalinks: out/vercel.json is corrupt: ${e.message}`);
+      }
+      if (!rewriteOk) {
+        errors.push(
+          'fact permalinks: out/vercel.json lacks the {"source": "/fact/:id", "destination": "/fact/"} rewrite'
+        );
+      } else {
+        notes.push("fact permalinks: /fact/:id rewrite present in out/vercel.json ✓");
+      }
+    }
+    if (!fileExists(path.join(outDir, "fact", "index.html"))) {
+      errors.push(
+        "fact permalinks: out/fact/index.html missing — the /fact/ resolver page did not build"
+      );
+    } else {
+      notes.push("fact permalinks: out/fact/index.html present ✓");
     }
   }
 
