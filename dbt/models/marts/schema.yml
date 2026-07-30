@@ -18,6 +18,12 @@ models:
     columns:
       - name: pe_bli
         data_tests: [not_null]
+  - name: dim_programs
+    description: "PB2026-edition program dimension (R-2/P-40 detail universe). Grain: one row per pe_bli. fy2024_actual_millions is the PriorYear root-row sum over DISTINCT detail tuples (pe_bli, project_number, scenario, amount, xml_path) — dual-volume J-books embed the same XML in 2+ documents and the raw per-row sum double-counts (PM-review Sprint 1: 47 Army PEs at 2×; assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin guard it)."
+    columns:
+      - name: pe_bli
+        data_tests: [unique, not_null]
+        description: "Program element / budget line identifier. Unique — one program row per pe_bli."
   - name: dim_pe_titles
     description: "Canonical display title per pe_bli, resolved from titled detail rows in fct_budget_lines. Deterministic rule: largest fy_2024_actuals detail row's title; no-fy24/tie fallback is the alphabetically-first title. Single source for program-title resolution (feed exporter consumes this); covers every trajectory pe_bli, unlike dim_programs (R-2/P-40 only)."
     columns:

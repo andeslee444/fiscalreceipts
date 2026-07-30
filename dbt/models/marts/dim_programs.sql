@@ -10,7 +10,34 @@
 -- launch-certified 280.494 — pinned by assert_dim_programs_pb2026_pin).
 -- The PB2017–PB2025 editions get their own edition-aware marts in 5E
 -- Task 5, which supersede this fence.
-with details as (
+--
+-- Dual-volume dedup (BINDING, 5E: "any mart aggregating jbook details must
+-- dedupe by distinct tuple or prefer exactly one document"; applied here in
+-- PM-review Sprint 1 Task 2): some service J-books ship the SAME embedded
+-- XML in more than one PDF volume (FY2026 Army RDT&E Vol 1 BA-1/BA-2 —
+-- live docs 344/351), so identical (pe_bli, project_number, scenario,
+-- amount, xml_path) detail tuples appear under 2+ non-superseded documents
+-- and a raw per-row sum double-counts: 0601102A fy2024 = 644.682 = 2 × the
+-- true 322.341 (47 Army PEs affected; fct_budget_trajectory and
+-- fct_decade_series were already single-copy). details_dedup aggregates
+-- over the DISTINCT tuple set; reconciled uses bool_and across copies so a
+-- disagreeing duplicate degrades honestly. Guarded by
+-- assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin.
+with details_dedup as (
+    select
+        pe_bli,
+        project_number,
+        scenario,
+        amount_millions,
+        xml_path,
+        max(org) as org,
+        max(exhibit_family) as exhibit_family,
+        bool_and(reconciled) as reconciled
+    from {{ ref('stg_budget_details') }}
+    where fiscal_year = 2026
+    group by pe_bli, project_number, scenario, amount_millions, xml_path
+),
+details as (
     select
         pe_bli,
         max(org) as org,
@@ -19,8 +46,7 @@ with details as (
         sum(amount_millions) filter (where scenario = 'PriorYear' and project_number is null)
             as fy2024_actual_millions,
         bool_and(reconciled) as fully_reconciled
-    from {{ ref('stg_budget_details') }}
-    where fiscal_year = 2026
+    from details_dedup
     group by pe_bli
 )
 select

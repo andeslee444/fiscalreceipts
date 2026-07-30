@@ -109,7 +109,15 @@ def make_lake(data_dir: Path):
         f"('279','OSD','rdte','2019','vol3b.pdf',"
         f"'https://example.test/2019/vol3b.pdf','sha-osd-2019-b','1000','2026-06-01','fy2019/osd/vol3b.pdf'),"
         f"('300','AF','rollup','2025','p1_display.xlsx',"
-        f"'https://example.test/2025/p1_display.xlsx','sha-af-2025','1000','2026-06-01','fy2025/af/p1_display.xlsx'))"
+        f"'https://example.test/2025/p1_display.xlsx','sha-af-2025','1000','2026-06-01','fy2025/af/p1_display.xlsx'),"
+        # PM-review Sprint 1: FY2026 Army dual-volume pair — docs 344/351
+        # EACH embed the same RDT&E XML (live: Vol 1 BA-1 / BA-2 PDFs), so
+        # identical fy2026 detail tuples appear under both. dim_programs
+        # must dedupe (assert_dim_programs_dual_volume_dedup_pin).
+        f"('344','A','rdte','2026','RDTE - Vol 1 - Budget Activity 1.pdf',"
+        f"'https://example.test/2026/army-vol1-ba1.pdf','sha-army-2026-ba1','1000','2026-06-01','fy2026/army/vol1ba1.pdf'),"
+        f"('351','A','rdte','2026','RDTE - Vol 1 - Budget Activity 2.pdf',"
+        f"'https://example.test/2026/army-vol1-ba2.pdf','sha-army-2026-ba2','1000','2026-06-01','fy2026/army/vol1ba2.pdf'))"
         f" t({JBOOK_DOCUMENT_COLS})) to '{jbooks}/documents.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -127,7 +135,16 @@ def make_lake(data_dir: Path):
         f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
         f"'ProgramElement[0]','True','OSD','rdte','2019','278'),"
         f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
-        f"'ProgramElement[0]','True','OSD','rdte','2019','279'))"
+        f"'ProgramElement[0]','True','OSD','rdte','2019','279'),"
+        # PM-review Sprint 1: FY2026 dual-volume duplication INSIDE the
+        # PB2026 fence — docs 344/351 each carry the identical PriorYear
+        # root tuple for 0601102A (live: 47 Army PEs doubled to 2× in
+        # dim_programs). The distinct-tuple dedup must report 322.341,
+        # never the raw both-volumes sum 644.682.
+        f"('0601102A',null,'University Research Initiatives','PriorYear','322.341',"
+        f"'ProgramElement[1]','True','A','rdte','2026','344'),"
+        f"('0601102A',null,'University Research Initiatives','PriorYear','322.341',"
+        f"'ProgramElement[1]','True','A','rdte','2026','351'))"
         f" t({JBOOK_DETAIL_COLS})) to '{jbooks}/details.parquet' (format parquet)"
     )
     duckdb.sql(
