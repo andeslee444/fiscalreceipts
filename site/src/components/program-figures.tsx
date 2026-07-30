@@ -1,56 +1,145 @@
 import { Cite } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
 import { DecadeTrajectory } from "@/components/decade-trajectory";
+import { ReconciliationStrip } from "@/components/reconciliation-strip";
 import { CoverageNote } from "@/components/coverage-note";
-import type { DecadeSeries, ProgramBookDiff, ProgramRow } from "@/lib/data";
+import type {
+  DecadeSeries,
+  ProgramBookDiff,
+  ProgramRow,
+  ProgramSummary,
+  SummaryCard,
+} from "@/lib/data";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
 /**
  * ProgramFigures — top-line financial figures grid (data-section="figures").
  *
- * FY24 actuals: State A (cited via fy2024_fact_id), State B via fy2024_xml_path
- *   (zero-amount jbook facts), dataset jbook_details. Rollup-tier pages (and
- *   full-tier lines without a J-book FY24 detail row) fall back to the
- *   trajectory FY24 figure with its derived citation — never an uncited value.
- * FY25 total + FY26 total + FY25→26 change: State A via the derived
- *   trajectory_fact_ids (Phase 5B-3 flip), dataset fct_budget_trajectory.
+ * PM Sprint 1 (§P0-1/§P0-2): the four cards render the sidecar's SUMMARY
+ * UNION payload — computed in the exporter from workbook (toa) + J-book
+ * detail facts, preferring toa — never a narrower upstream table. Each card
+ * carries full basis attributes + the visible basis chip; absences render
+ * the honest reason label (never a bare "—"); the reconciliation strip
+ * declares every (fy, measure) where the two bases disagree, with both
+ * receipts. Cards whose (fy, measure) appears in the reconciliation payload
+ * carry data-reconciliation (gate 23 leg a2: every member of a declared
+ * collision group is marked).
  *
- * trajectory_fact_ids are minted in Python (export_site.fact_id_derived) and
- * carried on the sidecar — NEVER recomputed in TS.
- *
- * Phase 5F §2d: the sparkline moved to <ProgramTrajectorySection>
+ * Phase 5F §2d: the sparkline lives in <ProgramTrajectoryCard>
  * (data-section="trajectory") so the two skeleton sections stay distinct.
  */
 
-interface ProgramFiguresProps {
-  program: ProgramRow;
+/** Human measure labels for the card titles ("FY25 Enacted", "FY25 Total"). */
+const CARD_MEASURE_LABEL: Record<string, string> = {
+  actuals: "Actuals",
+  enacted: "Enacted",
+  request: "Request",
+  total: "Total",
+  "base-request": "Base Request",
+};
+
+/**
+ * Honest absence labels (§P0-2 fix 2) — never a bare "—".
+ *
+ * DELIBERATELY free of em/en dashes and "$": gate 23 leg b2's bootstrap
+ * matcher treats a dash-bearing card as an absence claim to test against the
+ * page's detail figures. These ARE honest absences (the union found no
+ * defensible canonical-basis value), and the machine-readable declaration is
+ * the [data-absence][data-fy][data-measure][data-absence-reason] contract —
+ * not a dash glyph.
+ */
+const ABSENCE_LABEL: Record<string, string> = {
+  "not-published": "Not in the FY2026 J-books we ingested",
+  "no-rollup": "No single program-level figure; see the line items below",
+  "no-comparison": "No comparison: endpoints unavailable or on different bases",
+};
+
+export function cardLabel(card: SummaryCard): string {
+  if (card.key === "change") return `${TRAJECTORY_FY_LABEL} Change`;
+  const fy = `FY${String(card.fy).slice(-2)}`;
+  const measure =
+    CARD_MEASURE_LABEL[card.measure] ?? card.measure.replace(/-/g, " ");
+  return `${fy} ${measure}`;
 }
 
-export function ProgramFigures({ program }: ProgramFiguresProps) {
-  const {
-    fy2024_actual_millions,
-    fy2024_fact_id,
-    fy2024_xml_path,
-    trajectory,
-    trajectory_fact_ids,
-  } = program;
+/** Set of "fy|measure" keys with a declared reconciliation entry. */
+export function reconKeySet(summary: ProgramSummary | null): Set<string> {
+  return new Set(
+    (summary?.reconciliation ?? []).map((r) => `${r.fy}|${r.measure}`),
+  );
+}
 
-  // FY25 and FY26 totals come from trajectory (USD thousands)
-  const fy25 = trajectory?.fy2025_total ?? null;
-  const fy26 = trajectory?.fy2026_total ?? null;
-  const fy2526Change = trajectory?.fy2526_change ?? null;
-  const fy2526Pct = trajectory?.fy2526_pct_change ?? null;
+function SummaryCardCell({
+  card,
+  reconKeys,
+}: {
+  card: SummaryCard;
+  reconKeys: Set<string>;
+}) {
+  const label = cardLabel(card);
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className="text-xl font-bold">
+        {card.value !== null && card.units ? (
+          <span
+            className={
+              card.key === "change"
+                ? card.value > 0
+                  ? "text-green-700"
+                  : card.value < 0
+                    ? "text-red-700"
+                    : "text-foreground"
+                : undefined
+            }
+          >
+            {card.key === "change" && card.value >= 0 ? "+" : ""}
+            <Cite
+              value={card.value}
+              units={card.units}
+              dataset={card.dataset ?? "fct_decade_series"}
+              factId={card.fid}
+              xmlPath={card.fid ? null : card.xml_path}
+              basis={card.basis ?? undefined}
+              fy={card.fy}
+              measure={card.measure}
+              edition={card.edition}
+              reconciled={reconKeys.has(`${card.fy}|${card.measure}`)}
+            />
+            {card.key === "change" && card.pct != null && (
+              <span
+                className="ml-1 text-sm font-normal text-muted-foreground"
+                aria-hidden="true"
+              >
+                ({card.pct > 0 ? "+" : ""}
+                {card.pct.toFixed(1)}%)
+              </span>
+            )}
+          </span>
+        ) : (
+          <span
+            data-absence=""
+            data-fy={card.fy}
+            data-measure={card.measure}
+            data-absence-reason={card.absence_reason ?? "not-published"}
+            className="block text-xs font-normal leading-4 text-muted-foreground"
+          >
+            {ABSENCE_LABEL[card.absence_reason ?? "not-published"] ??
+              ABSENCE_LABEL["not-published"]}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
-  // FY24 trajectory fallback (rollup tier): only when the derived citation
-  // exists — a figure without its receipt renders as absence, not state C.
-  const fy24Trajectory =
-    trajectory?.fy2024_actuals != null && trajectory_fact_ids?.fy2024_actuals
-      ? {
-          value: trajectory.fy2024_actuals,
-          factId: trajectory_fact_ids.fy2024_actuals,
-        }
-      : null;
+interface ProgramFiguresProps {
+  program: ProgramRow;
+  summary: ProgramSummary;
+}
 
+export function ProgramFigures({ summary }: ProgramFiguresProps) {
+  const reconKeys = reconKeySet(summary);
   return (
     <div className="mb-8">
       <h2
@@ -60,104 +149,15 @@ export function ProgramFigures({ program }: ProgramFiguresProps) {
         Budget Figures
       </h2>
 
-      {/* Key figures grid */}
+      {/* Key figures grid — the union cards, in slot order */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* FY24 Actuals */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">FY24 Actuals</div>
-          <div className="text-xl font-bold">
-            {fy2024_actual_millions !== null ? (
-              <Cite
-                value={fy2024_actual_millions}
-                units="USD millions"
-                dataset="jbook_details"
-                factId={fy2024_fact_id}
-                xmlPath={fy2024_xml_path}
-              />
-            ) : fy24Trajectory ? (
-              <Cite
-                value={fy24Trajectory.value}
-                units="USD thousands"
-                dataset="fct_budget_trajectory"
-                factId={fy24Trajectory.factId}
-              />
-            ) : (
-              <span className="text-muted-foreground text-sm">—</span>
-            )}
-          </div>
-        </div>
-
-        {/* FY25 Total */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">FY25 Total</div>
-          <div className="text-xl font-bold">
-            {fy25 !== null ? (
-              <Cite
-                value={fy25}
-                units="USD thousands"
-                dataset="fct_budget_trajectory"
-                factId={trajectory_fact_ids?.fy2025_total}
-              />
-            ) : (
-              <span className="text-muted-foreground text-sm">—</span>
-            )}
-          </div>
-        </div>
-
-        {/* FY26 Total */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">FY26 Request</div>
-          <div className="text-xl font-bold">
-            {fy26 !== null ? (
-              <Cite
-                value={fy26}
-                units="USD thousands"
-                dataset="fct_budget_trajectory"
-                factId={trajectory_fact_ids?.fy2026_total}
-              />
-            ) : (
-              <span className="text-muted-foreground text-sm">—</span>
-            )}
-          </div>
-        </div>
-
-        {/* FY25→26 Change — label from the shared TRAJECTORY_FY_LABEL constant
-            (single "FY25→26" source; U+2192 arrow, never ASCII "-->") */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">{TRAJECTORY_FY_LABEL} Change</div>
-          <div className="text-xl font-bold">
-            {fy2526Change !== null ? (
-              <span
-                className={
-                  fy2526Change > 0
-                    ? "text-green-700"
-                    : fy2526Change < 0
-                      ? "text-red-700"
-                      : "text-foreground"
-                }
-              >
-                <Cite
-                  value={fy2526Change}
-                  units="USD thousands"
-                  dataset="fct_budget_trajectory"
-                  factId={trajectory_fact_ids?.fy2526_change}
-                />
-                {fy2526Pct !== null && (
-                  <span
-                    className="ml-1 text-sm font-normal text-muted-foreground"
-                    aria-hidden="true"
-                  >
-                    ({fy2526Pct > 0 ? "+" : ""}
-                    {fy2526Pct.toFixed(1)}%)
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-sm">—</span>
-            )}
-          </div>
-        </div>
+        {summary.cards.map((card) => (
+          <SummaryCardCell key={card.key} card={card} reconKeys={reconKeys} />
+        ))}
       </div>
+
+      {/* §P0-1: the declared two-basis reconciliation, both receipts */}
+      <ReconciliationStrip entries={summary.reconciliation} />
 
       {/* FY2026 partial-year scope note — G2 contract
           (data-coverage="fy2026-partial") */}
@@ -168,39 +168,45 @@ export function ProgramFigures({ program }: ProgramFiguresProps) {
 
 /**
  * ProgramTrajectorySection — the year-over-year sparkline card
- * (data-section="trajectory" content; the page wraps it). Renders the
- * PB2026 sparkline when a trajectory row exists, plus the Phase 5E decade
- * series (edition-honest, gaps never interpolated) when the sidecar
- * carries one — both tiers. The page renders the quiet empty-state line
- * only when NEITHER exists.
+ * (data-section="trajectory" content; the page wraps it). The sparkline
+ * renders the SUMMARY CARDS themselves (PM Sprint 1: the trajectory mart's
+ * per-org slices contradicted the union cards on multi-org programs — same
+ * label, different value; drawing the cards makes spark and cards agree BY
+ * CONSTRUCTION), plus the Phase 5E decade series (edition-honest, gaps
+ * never interpolated) when the sidecar carries one.
  */
 export function ProgramTrajectoryCard({
-  program,
+  summary,
   decadeSeries = null,
   bookDiff = null,
 }: ProgramFiguresProps & {
   decadeSeries?: DecadeSeries | null;
   bookDiff?: ProgramBookDiff | null;
 }) {
-  if (!program.trajectory && !decadeSeries) return null;
+  const reconKeys = reconKeySet(summary);
+  const sparkCards = summary.cards.filter(
+    (c) => c.key !== "change" && c.value !== null,
+  );
+  if (sparkCards.length === 0 && !decadeSeries) return null;
   return (
     <div className="mb-8 rounded-lg border border-border bg-card p-4">
       <div className="text-xs text-muted-foreground mb-2">
         Budget Trajectory
       </div>
-      {program.trajectory && (
-        <TrajectorySpark
-          trajectory={program.trajectory}
-          trajectoryFactIds={program.trajectory_fact_ids}
-        />
+      {sparkCards.length > 0 && (
+        <TrajectorySpark cards={summary.cards} reconKeys={reconKeys} />
       )}
       {decadeSeries && (
-        <div className={program.trajectory ? "mt-4 border-t border-border pt-4" : undefined}>
+        <div className={sparkCards.length >= 2 ? "mt-4 border-t border-border pt-4" : undefined}>
           <div className="text-xs text-muted-foreground mb-2">
-            Decade view — each figure cites its own President&apos;s Budget
-            edition
+            Decade view — P-1/R-1 workbook TOA basis (USD thousands); each
+            figure cites its own President&apos;s Budget edition
           </div>
-          <DecadeTrajectory series={decadeSeries} bookDiff={bookDiff} />
+          <DecadeTrajectory
+            series={decadeSeries}
+            bookDiff={bookDiff}
+            reconKeys={reconKeys}
+          />
         </div>
       )}
     </div>

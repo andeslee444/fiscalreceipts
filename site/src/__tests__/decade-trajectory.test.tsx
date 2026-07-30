@@ -24,18 +24,18 @@ import type { DecadeSeries, ProgramBookDiff } from "@/lib/data";
 
 const SERIES: DecadeSeries = {
   actuals: [
-    { fy: 2015, v: 90000, fid: "aa00000000000001", edition: 2017 },
-    { fy: 2016, v: 95000, fid: "aa00000000000002", edition: 2018 },
+    { fy: 2015, v: 90000, fid: "aa00000000000001", edition: 2017, basis: "toa", measure: "actuals" },
+    { fy: 2016, v: 95000, fid: "aa00000000000002", edition: 2018, basis: "toa", measure: "actuals" },
     // FY2017 gap — the PE is not in the PB2019 edition
-    { fy: 2018, v: 99000, fid: "aa00000000000003", edition: 2020 },
-    { fy: 2019, v: 101000, fid: "aa00000000000004", edition: 2021 },
+    { fy: 2018, v: 99000, fid: "aa00000000000003", edition: 2020, basis: "toa", measure: "actuals" },
+    { fy: 2019, v: 101000, fid: "aa00000000000004", edition: 2021, basis: "toa", measure: "actuals" },
     // FY2020–FY2023 gap, FY2024 isolated point
-    { fy: 2024, v: 120000, fid: "aa00000000000005", edition: 2026 },
+    { fy: 2024, v: 120000, fid: "aa00000000000005", edition: 2026, basis: "toa", measure: "actuals" },
   ],
-  enacted: [{ fy: 2025, v: 130000, fid: "aa00000000000006", edition: 2026 }],
+  enacted: [{ fy: 2025, v: 130000, fid: "aa00000000000006", edition: 2026, basis: "toa", measure: "enacted" }],
   request: [
-    { fy: 2019, v: 90000, fid: "aa00000000000007", edition: 2019 },
-    { fy: 2026, v: 140000, fid: "aa00000000000008", edition: 2026 },
+    { fy: 2019, v: 90000, fid: "aa00000000000007", edition: 2019, basis: "toa", measure: "request" },
+    { fy: 2026, v: 140000, fid: "aa00000000000008", edition: 2026, basis: "toa", measure: "request" },
   ],
 };
 
@@ -46,6 +46,9 @@ const BOOK_DIFF: ProgramBookDiff = {
   to_edition: 2021,
   delta: 11000,
   fid: "bd00000000000001",
+  basis: "toa",
+  measure: "change",
+  edition: 2026,
 };
 
 describe("DecadeTrajectory", () => {

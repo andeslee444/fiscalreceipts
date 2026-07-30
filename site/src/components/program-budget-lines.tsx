@@ -10,6 +10,9 @@ import type { ProgramBudgetLine } from "@/lib/data";
 
 interface ProgramBudgetLinesProps {
   budgetLines: ProgramBudgetLine[];
+  /** "fy|measure" keys with a declared reconciliation entry (gate 23 a2):
+   *  program-entity rows on those keys carry data-reconciliation. */
+  reconKeys?: Set<string>;
 }
 
 /** Human-friendly label for amount_type. */
@@ -25,7 +28,7 @@ function humanizeAmountType(amountType: string): string {
   return map[amountType] ?? amountType.replace(/_/g, " ").replace(/\bfy\b/gi, "FY");
 }
 
-export function ProgramBudgetLines({ budgetLines }: ProgramBudgetLinesProps) {
+export function ProgramBudgetLines({ budgetLines, reconKeys }: ProgramBudgetLinesProps) {
   if (budgetLines.length === 0) {
     return null;
   }
@@ -44,6 +47,12 @@ export function ProgramBudgetLines({ budgetLines }: ProgramBudgetLinesProps) {
           (workbook-cited)
         </span>
       </h2>
+      {/* Section-level basis statement (P0-1): one label for every row —
+          per-cell chips are suppressed in dense tables by design. ≥12px. */}
+      <p className="mb-2 text-xs text-muted-foreground">
+        P-1/R-1 workbook Total Obligation Authority basis (USD thousands) ·
+        PB2026.
+      </p>
 
       {exhibits.map((exhibit) => {
         const rows = budgetLines.filter((bl) => bl.exhibit === exhibit);
@@ -91,6 +100,16 @@ export function ProgramBudgetLines({ budgetLines }: ProgramBudgetLinesProps) {
                           units="USD thousands"
                           dataset="budget_lines"
                           factId={bl.fact_id}
+                          basis={bl.basis}
+                          fy={bl.fy ?? "all"}
+                          measure={bl.measure ?? bl.amount_type}
+                          entity={bl.entity}
+                          edition={bl.edition}
+                          reconciled={
+                            !bl.entity.includes("/") &&
+                            reconKeys?.has(`${bl.fy}|${bl.measure}`)
+                          }
+                          chip={false}
                         />
                       </td>
                     </tr>

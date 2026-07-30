@@ -22,6 +22,7 @@ import type {
   JbookPdfCitation,
   ProgramDetails,
   ProgramRow,
+  ProgramSummary,
   WorkbookCitation,
 } from "@/lib/data";
 import {
@@ -57,7 +58,9 @@ import { ProgramDossier } from "@/components/program-dossier";
 import {
   ProgramFigures,
   ProgramTrajectoryCard,
+  reconKeySet,
 } from "@/components/program-figures";
+import { DossierFactChip } from "@/components/dossier-chips";
 import { ProgramBudgetLines } from "@/components/program-budget-lines";
 import {
   ProgramNarratives,
@@ -220,6 +223,20 @@ export default async function ProgramPage({
     }
   }
 
+  // Summary union payload (PM Sprint 1): card fids, both reconciliation
+  // sides, and the named-primes claim fids all open the citation panel.
+  const summary: ProgramSummary = details.summary;
+  for (const card of summary.cards) {
+    if (card.fid) pageFactIds.push(card.fid);
+  }
+  for (const entry of summary.reconciliation) {
+    pageFactIds.push(entry.toa.fid);
+    if (entry.detail.fid) pageFactIds.push(entry.detail.fid);
+  }
+  for (const prime of summary.named_primes) {
+    pageFactIds.push(prime.fact_id);
+  }
+
   // Derived concentration figures (HHI + program dollars)
   if (program.hhi?.hhi_fact_id) pageFactIds.push(program.hhi.hhi_fact_id);
   if (program.hhi?.program_dollars_fact_id) {
@@ -362,19 +379,22 @@ export default async function ProgramPage({
 
       {/* 1 · Answer strip — above-the-fold WHAT/CHANGED/WHO (G6 contract). */}
       <ProgramSection id="answer-strip">
-        <AnswerStrip program={program} />
+        <AnswerStrip program={program} summary={summary} />
       </ProgramSection>
 
-      {/* 2 · Budget figures */}
+      {/* 2 · Budget figures — the summary UNION cards (§P0-2) + the
+          reconciliation strip (§P0-1). */}
       <ProgramSection id="figures">
-        <ProgramFigures program={program} />
+        <ProgramFigures program={program} summary={summary} />
       </ProgramSection>
 
-      {/* 3 · Trajectory — PB2026 sparkline + Phase 5E decade series */}
+      {/* 3 · Trajectory — union-card sparkline + Phase 5E decade series */}
       <ProgramSection id="trajectory">
-        {program.trajectory || decadeSeries ? (
+        {summary.cards.some((c) => c.key !== "change" && c.value !== null) ||
+        decadeSeries ? (
           <ProgramTrajectoryCard
             program={program}
+            summary={summary}
             decadeSeries={decadeSeries}
             bookDiff={bookDiff}
           />
@@ -414,7 +434,11 @@ export default async function ProgramPage({
                 <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Family Funding Line
                 </h3>
-                <FamilyFundingLine family={lineage.family} />
+                <FamilyFundingLine
+                  family={lineage.family}
+                  selfPe={peBli}
+                  reconKeys={reconKeySet(summary)}
+                />
               </div>
             )}
           </div>
@@ -493,8 +517,14 @@ export default async function ProgramPage({
       <ProgramSection id="line-items">
         {details.budget_lines.length > 0 || details.details.length > 0 ? (
           <>
-            <ProgramBudgetLines budgetLines={details.budget_lines} />
-            <ProgramDetailsTable details={details.details} />
+            <ProgramBudgetLines
+              budgetLines={details.budget_lines}
+              reconKeys={reconKeySet(summary)}
+            />
+            <ProgramDetailsTable
+              details={details.details}
+              reconKeys={reconKeySet(summary)}
+            />
           </>
         ) : (
           <SectionEmpty title="Line Items">
@@ -737,11 +767,22 @@ function AnswerItem({
   );
 }
 
-function AnswerStrip({ program }: { program: ProgramRow }) {
-  const change = program.trajectory?.fy2526_change ?? null;
-  const changeFactId = program.trajectory_fact_ids?.fy2526_change ?? null;
-  const pct = program.trajectory?.fy2526_pct_change ?? null;
+function AnswerStrip({
+  program,
+  summary,
+}: {
+  program: ProgramRow;
+  summary: ProgramSummary;
+}) {
+  // WHAT-CHANGED (§P0-2 fix 1): the summary UNION change card — a derived
+  // fact with formula + inputs, so the drawer shows the derivation. Never
+  // the raw trajectory mart (its per-org slice produced the live false
+  // absence this section was flagged for).
+  const changeCard = summary.cards.find((c) => c.key === "change") ?? null;
+  const change = changeCard?.value ?? null;
+  const pct = changeCard?.pct ?? null;
   const hhi = program.hhi;
+  const primes = summary.named_primes;
 
   return (
     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
@@ -759,9 +800,9 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
         {serviceOrgName(program.org)}.
       </AnswerItem>
 
-      {/* WHAT CHANGED — FY25→26 delta with its existing derived citation. */}
+      {/* WHAT CHANGED — the union change card with its derived citation. */}
       <AnswerItem label="What changed" testId="answer-changed">
-        {change !== null && changeFactId ? (
+        {changeCard && change !== null && changeCard.units ? (
           <>
             <span
               className={
@@ -775,12 +816,16 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
               {change >= 0 ? "+" : ""}
               <Cite
                 value={change}
-                units="USD thousands"
-                dataset="fct_budget_trajectory"
-                factId={changeFactId}
+                units={changeCard.units}
+                dataset={changeCard.dataset ?? "fct_budget_trajectory"}
+                factId={changeCard.fid}
+                basis={changeCard.basis ?? undefined}
+                fy={changeCard.fy}
+                measure={changeCard.measure}
+                edition={changeCard.edition}
               />
             </span>
-            {pct !== null && (
+            {pct != null && (
               <span className="text-muted-foreground" aria-hidden="true">
                 {" "}
                 ({pct > 0 ? "+" : ""}
@@ -791,14 +836,17 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
           </>
         ) : (
           <span className="text-muted-foreground">
-            No {TRAJECTORY_FY_LABEL} comparison — trajectory data incomplete
-            for this line.
+            No {TRAJECTORY_FY_LABEL} comparison —{" "}
+            {changeCard?.absence_reason === "no-comparison"
+              ? "endpoints unavailable or on different bases."
+              : "trajectory data incomplete for this line."}
           </span>
         )}
       </AnswerItem>
 
       {/* WHO GETS IT — top recipient family + cited program obligations from
-          the concentration sidecar; honest absence otherwise. */}
+          the concentration sidecar; the J-book named-primes fallback when the
+          crosswalk is empty (§P0-2 fix 3); honest absence otherwise. */}
       <AnswerItem label="Who gets it" testId="answer-who">
         {hhi && hhi.program_dollars_fact_id ? (
           <>
@@ -813,8 +861,26 @@ function AnswerStrip({ program }: { program: ProgramRow }) {
               units="USD"
               dataset="fct_program_concentration"
               factId={hhi.program_dollars_fact_id}
+              basis="usaspending"
+              fy="all-years"
+              measure="obligations"
             />
             <span className="text-muted-foreground"> in matched awards.</span>
+          </>
+        ) : primes.length > 0 ? (
+          <>
+            <span className="text-muted-foreground">Named in the J-book: </span>
+            {primes.map((prime, i) => (
+              <span key={prime.family_key} className="whitespace-nowrap">
+                {i > 0 && <span className="text-muted-foreground">, </span>}
+                <span className="font-medium">{prime.name}</span>
+                <DossierFactChip factId={prime.fact_id} />
+              </span>
+            ))}
+            <span className="text-muted-foreground">
+              {" "}
+              — not yet crosswalked to award data.
+            </span>
           </>
         ) : (
           <span className="text-muted-foreground">

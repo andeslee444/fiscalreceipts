@@ -63,6 +63,10 @@ const POINT_R = 2.5;
 interface DecadeTrajectoryProps {
   series: DecadeSeries | null | undefined;
   bookDiff: ProgramBookDiff | null | undefined;
+  /** "fy|measure" keys with a declared reconciliation entry (gate 23 a2):
+   *  grid cells / asked-vs-spent sides on those keys carry
+   *  data-reconciliation. */
+  reconKeys?: Set<string>;
 }
 
 /** Split points (sorted by fy) into runs of CONSECUTIVE fiscal years. */
@@ -76,7 +80,7 @@ export function contiguousRuns(points: DecadePoint[]): DecadePoint[][] {
   return runs;
 }
 
-export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
+export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajectoryProps) {
   if (!series) return null;
 
   const byKind: Record<Kind, DecadePoint[]> = {
@@ -319,6 +323,12 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
                             units="USD thousands"
                             dataset="budget_lines_decade"
                             factId={p.fid}
+                            basis={p.basis}
+                            fy={p.fy}
+                            measure={p.measure}
+                            edition={p.edition}
+                            reconciled={reconKeys?.has(`${p.fy}|${p.measure}`)}
+                            chip={false}
                           />
                         </td>
                       );
@@ -378,6 +388,14 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
             units="USD thousands"
             dataset="budget_lines_decade"
             factId={diffSides.request.fid}
+            basis={diffSides.request.basis}
+            fy={diffSides.request.fy}
+            measure={diffSides.request.measure}
+            edition={diffSides.request.edition}
+            reconciled={reconKeys?.has(
+              `${diffSides.request.fy}|${diffSides.request.measure}`,
+            )}
+            chip={false}
           />{" "}
           for FY{bookDiff.fy}; the PB{bookDiff.to_edition} book reports{" "}
           <Cite
@@ -385,6 +403,14 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
             units="USD thousands"
             dataset="budget_lines_decade"
             factId={diffSides.actuals.fid}
+            basis={diffSides.actuals.basis}
+            fy={diffSides.actuals.fy}
+            measure={diffSides.actuals.measure}
+            edition={diffSides.actuals.edition}
+            reconciled={reconKeys?.has(
+              `${diffSides.actuals.fy}|${diffSides.actuals.measure}`,
+            )}
+            chip={false}
           />{" "}
           actually spent —{" "}
           <Cite
@@ -392,6 +418,11 @@ export function DecadeTrajectory({ series, bookDiff }: DecadeTrajectoryProps) {
             units="USD thousands"
             dataset="fct_book_diff"
             factId={bookDiff.fid}
+            basis={bookDiff.basis}
+            fy={bookDiff.fy}
+            measure={bookDiff.measure}
+            edition={bookDiff.edition}
+            chip={false}
             // Direction is stated in words; the magnitude renders unsigned
             // (the citation panel carries the signed recorded_value).
             display={formatAmount(Math.abs(bookDiff.delta), "USD thousands")}

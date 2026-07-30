@@ -29,6 +29,11 @@ function row(overrides: Partial<ProgramDetailRow> = {}): ProgramDetailRow {
     scenario: "AllPriorYears",
     units: "USD millions",
     xml_path: "ProgramElement[205]/Project[2]",
+    basis: "jbook-detail",
+    fy: null,
+    measure: "all-prior-years",
+    edition: 2026,
+    entity: "TESTPE/0001",
     ...overrides,
   };
 }

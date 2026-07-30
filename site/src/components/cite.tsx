@@ -72,6 +72,73 @@ export const ReceiptsContext = createContext<ReceiptsContextValue>({
   receiptsOn: false,
 });
 
+// ── Basis vocabulary (PM Sprint 1 — spec §P0-1, gate 23 legs a1/a2) ────────
+//
+// Every figure that has a declared basis carries data-basis / data-fy /
+// data-measure (+ data-entity when component-scoped) and renders a small
+// ALWAYS-VISIBLE basis chip: `P-1 TOA · PB2026` (toa) / `P-40 detail ·
+// PB2026` (jbook-detail). Extended measure tokens (component pots that
+// legitimately differ from a headline value) render their human label inside
+// the chip. Non-budget figures (USAspending-derived award aggregates) carry
+// source-family tokens ('usaspending') and no chip — the two budget bases
+// are the only chip vocabulary.
+//
+// CONTRACT: the chip is a SIBLING of the [data-amount] element, never inside
+// it. Gate 23 parses the [data-amount] element's rendered text as a single
+// currency figure (normalizeAmount) — chip text inside the span would null
+// every parse and silently blind the collision/agreement legs.
+
+const BASIS_LABEL: Record<string, string> = {
+  toa: "P-1 TOA",
+  "jbook-detail": "P-40 detail",
+};
+
+/**
+ * Human labels for the extended measure tokens, mirroring the exporter's
+ * `_amount_type_meta` / `_scenario_meta` slug decisions (export_site.py).
+ * Core tokens (actuals/enacted/request/total/change) are conveyed by the
+ * surrounding label (card title, table header) and stay OUT of the chip.
+ */
+const EXTENDED_MEASURE_LABEL: Record<string, string> = {
+  "disc-request": "discretionary request",
+  "reconciliation-request": "reconciliation request",
+  supplemental: "supplemental",
+  "base-request": "base request",
+  "all-prior-years": "all prior years",
+  // decade-grid kind-qualified tokens (_decade_measure_token): rendered
+  // under one row label, sourced from a diverging column
+  "enacted-request": "enacted (request column)",
+  "enacted-total": "enacted (book total)",
+  "actuals-base-oco": "actuals (base + OCO)",
+  "request-total-base-oco": "request (base + OCO total)",
+};
+
+const CORE_MEASURES = new Set([
+  "actuals",
+  "enacted",
+  "request",
+  "total",
+  "change",
+]);
+
+/** Chip text: basis label, extended-measure label when applicable, edition. */
+export function basisChipText(
+  basis: string,
+  measure?: string,
+  edition?: number,
+): string | null {
+  const basisLabel = BASIS_LABEL[basis];
+  if (!basisLabel) return null; // non-budget bases render no chip
+  const parts = [basisLabel];
+  if (measure && !CORE_MEASURES.has(measure)) {
+    parts.push(
+      EXTENDED_MEASURE_LABEL[measure] ?? measure.replace(/-/g, " "),
+    );
+  }
+  if (edition) parts.push(`PB${edition}`);
+  return parts.join(" · ");
+}
+
 // ── Cite Props ─────────────────────────────────────────────────────────────
 
 export interface CiteProps {
@@ -103,6 +170,39 @@ export interface CiteProps {
   display?: string;
   /** Additional className for the outer span. */
   className?: string;
+  /**
+   * Basis threading (gate 23 leg a1 — 100% coverage on program pages):
+   * 'toa' | 'jbook-detail' for budget figures; source-family tokens (e.g.
+   * 'usaspending') for non-budget figures. Emitted as data-basis.
+   */
+  basis?: string;
+  /** Fiscal year (data-fy). Non-FY aggregates pass an honest token
+   *  ('all-years' for award aggregates, 'all' for cumulative J-book rows). */
+  fy?: number | string | null;
+  /** Measure token (data-measure) — see the exporter's basis vocabulary. */
+  measure?: string | null;
+  /**
+   * Gate-23 grouping scope (data-entity). Omit for program-level figures —
+   * the gate falls back to the page's PE; pass the payload's component
+   * entity ('{pe}/{project}', '{pe}/{org}/{acct}/…') for component rows.
+   */
+  entity?: string | null;
+  /** PB edition year — rendered inside the basis chip ("· PB2026"). */
+  edition?: number | null;
+  /**
+   * True when this figure is a member of a DECLARED (fy, measure)
+   * reconciliation group (the sidecar's reconciliation payload) — emits
+   * data-reconciliation so gate 23 leg a2 sees the collision declared.
+   */
+  reconciled?: boolean;
+  /**
+   * Basis chip visibility. Defaults to true (chip renders whenever the basis
+   * has a chip label). Dense table/grid cells pass false and declare the
+   * basis once at section level instead — REQUIRED for cells gate 23 leg b
+   * reads as FY evidence (decade cells, FY-labeled table columns), where
+   * sibling chip text inside the cell would null the gate's value parse.
+   */
+  chip?: boolean;
 }
 
 /**
@@ -155,6 +255,13 @@ export function Cite({
   xmlPath,
   display,
   className,
+  basis,
+  fy,
+  measure,
+  entity,
+  edition,
+  reconciled,
+  chip = true,
 }: CiteProps) {
   const { openPanel } = useContext(CitationPanelContext);
   const { receiptsOn } = useContext(ReceiptsContext);
@@ -162,14 +269,38 @@ export function Cite({
   const displayText = display ?? formatAmount(value, units);
   const title = display ?? exactTitle(value, units);
 
+  // Basis attrs — shared by all three states (gate 23 leg a1 requires them
+  // on EVERY [data-amount] on program pages, states B/C included).
+  const basisAttrs: Record<string, string> = {};
+  if (basis) basisAttrs["data-basis"] = basis;
+  if (fy != null) basisAttrs["data-fy"] = String(fy);
+  if (measure) basisAttrs["data-measure"] = measure;
+  if (entity) basisAttrs["data-entity"] = entity;
+  if (reconciled) basisAttrs["data-reconciliation"] = "";
+
+  // The always-visible basis chip — SIBLING of [data-amount], see contract
+  // note above. ≥12px (text-xs) per P1-1: 10px provenance chips are banned.
+  const chipText = basis && chip ? basisChipText(basis, measure ?? undefined, edition ?? undefined) : null;
+  const basisChip = chipText ? (
+    <span className="ml-1 inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline">
+      {chipText}
+    </span>
+  ) : null;
+
   // ── State A: cited ───────────────────────────────────────────────────────
   if (factId) {
-    const shortId = factId.slice(-8);
+    // PUBLIC id (P0-4): fid[:8] — the SAME truncation the citation drawer
+    // shows (panel.tsx factId.slice(0, 8)) and the /fact/{id8} permalink
+    // uses. Never re-slice differently: the live chip/drawer id mismatch
+    // (#8b2746cb vs #bb54b165) was two truncations of one id.
+    const publicId = factId.slice(0, 8);
     return (
+      <>
       <span
         data-amount
         data-fact-id={factId}
         data-dataset={dataset}
+        {...basisAttrs}
         title={title}
         className={[
           "cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid",
@@ -198,21 +329,25 @@ export function Cite({
             className="ml-1 inline-block rounded bg-blue-100 px-1 py-0.5 font-mono text-[10px] text-blue-700 align-middle"
             aria-hidden="true"
           >
-            #{shortId}
+            #{publicId}
           </span>
         )}
       </span>
+      {basisChip}
+      </>
     );
   }
 
   // ── State B: xml-path chip ───────────────────────────────────────────────
   if (xmlPath) {
     return (
+      <>
       <span
         data-amount
         data-citation-kind="xml-path"
         data-xml-path={xmlPath}
         data-dataset={dataset}
+        {...basisAttrs}
         title={title}
         className={["text-foreground", className].filter(Boolean).join(" ")}
         aria-label={`${displayText} — cited to budget justification XML (no page highlight)`}
@@ -231,15 +366,19 @@ export function Cite({
           {receiptsOn ? xmlPath : "XML"}
         </span>
       </span>
+      {basisChip}
+      </>
     );
   }
 
   // ── State C: uncited ─────────────────────────────────────────────────────
   return (
+    <>
     <span
       data-amount
       data-uncited="true"
       data-dataset={dataset}
+      {...basisAttrs}
       title={title}
       className={["text-foreground", className].filter(Boolean).join(" ")}
       aria-label={`${displayText} — citation tier pending`}
@@ -263,5 +402,7 @@ export function Cite({
         </span>
       )}
     </span>
+    {basisChip}
+    </>
   );
 }

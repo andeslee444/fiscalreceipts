@@ -27,7 +27,18 @@ import React from "react";
 import { Cite } from "@/components/cite";
 import type { LineageFamily, LineageFundingPoint } from "@/lib/lineage";
 
-export function FamilyFundingLine({ family }: { family: LineageFamily }) {
+export function FamilyFundingLine({
+  family,
+  selfPe,
+  reconKeys,
+}: {
+  family: LineageFamily;
+  /** The page's own PE — self points on a declared (fy, request)
+   *  reconciliation group carry data-reconciliation (gate 23 a2: the
+   *  funding line repeats the page's own decade request figure). */
+  selfPe?: string;
+  reconKeys?: Set<string>;
+}) {
   const points = family.funding_line ?? [];
   const chain = family.chain ?? [];
   const headTitle = family.chain_head_title ?? null;
@@ -86,6 +97,20 @@ export function FamilyFundingLine({ family }: { family: LineageFamily }) {
                 units="USD thousands"
                 dataset="fct_decade_series"
                 factId={entries[0].fid}
+                // Basis threading (gate 23 a1): funding-line points are the
+                // chain members' decade REQUEST grains (toa; a request's
+                // edition IS its fy). entity = the MEMBER PE so another
+                // member's figure never collides with this page's own
+                // (fy, request) group.
+                basis="toa"
+                fy={fy}
+                measure="request"
+                entity={entries[0].pe}
+                edition={fy}
+                reconciled={
+                  entries[0].pe === selfPe && reconKeys?.has(`${fy}|request`)
+                }
+                chip={false}
               />
             ) : (
               <span className="flex flex-col gap-0.5" data-multi-member-fy={fy}>
@@ -99,6 +124,13 @@ export function FamilyFundingLine({ family }: { family: LineageFamily }) {
                       units="USD thousands"
                       dataset="fct_decade_series"
                       factId={p.fid}
+                      basis="toa"
+                      fy={fy}
+                      measure="request"
+                      entity={p.pe}
+                      edition={fy}
+                      reconciled={p.pe === selfPe && reconKeys?.has(`${fy}|request`)}
+                      chip={false}
                     />
                   </span>
                 ))}

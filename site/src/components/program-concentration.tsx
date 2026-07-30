@@ -55,6 +55,12 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 dataset="fct_program_concentration"
                 factId={hhi.hhi_fact_id}
                 display={hhi.hhi.toFixed(0)}
+                // Non-budget figure (gate 23 a1): source-family basis token,
+                // honest multi-year fy token — no basis chip (usaspending is
+                // not a chip-vocabulary basis).
+                basis="usaspending"
+                fy="all-years"
+                measure="hhi"
               />
             </div>
             <div className={`text-xs font-medium ${color}`}>{label}</div>
@@ -95,6 +101,9 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 units="USD"
                 dataset="fct_program_concentration"
                 factId={hhi.program_dollars_fact_id}
+                basis="usaspending"
+                fy="all-years"
+                measure="obligations"
               />
             </div>
           </div>

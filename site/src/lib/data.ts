@@ -69,6 +69,39 @@ export interface SiteMeta {
   skipped_unresolved: number;
   skipped_zero_amount: number;
   uncited_datasets: string[];
+  /**
+   * PM Sprint 1 (§P0-5): the canonical-TOA homepage hero — largest FY2024
+   * actuals on the Total Obligation Authority basis, with its workbook fact
+   * and the corpus scope qualifier. Absent on pre-Sprint-1 exports.
+   */
+  hero?: SiteMetaHero;
+  /** §P0-5 corpus scope qualifier (also on hero + feed sidecars). */
+  scope_qualifier?: string;
+  /**
+   * Trajectory metric → basis attribute map (single payload-level source for
+   * the trajectory pivots' data-basis/fy/measure — never re-derive in TS).
+   */
+  trajectory_measures?: Record<
+    string,
+    { basis: string; edition: number; fy: number; measure: string }
+  >;
+}
+
+export interface SiteMetaHero {
+  basis: string;
+  dataset: string;
+  edition: number;
+  fid: string;
+  fy: number;
+  measure: string;
+  org: string;
+  pe_bli: string;
+  /** fid[:8] — THE public id (drawer footer + /fact/{id8} permalink). */
+  public_id: string;
+  scope_qualifier: string;
+  title: string;
+  units: "USD thousands";
+  value: number;
 }
 
 let _siteMeta: SiteMeta | null = null;
@@ -178,6 +211,19 @@ export interface ProgramDetailRow {
   scenario: string;
   units: string;
   xml_path: string;
+  /** Basis threading (PM Sprint 1): always 'jbook-detail' for detail rows. */
+  basis: string;
+  /** Fiscal year from the edition-relative scenario map; null for AllPriorYears. */
+  fy: number | null;
+  /** Measure token (request / base-request / all-prior-years / …). */
+  measure: string | null;
+  edition: number;
+  /**
+   * Gate-23 grouping scope: the PE itself for a UNIQUE program-root row,
+   * '{pe}/{project}' for project rows, '{pe}/line{n}' for conflicting
+   * multi-root scenarios (per-line labels — see ProgramDetailsTable).
+   */
+  entity: string;
 }
 
 /**
@@ -217,6 +263,13 @@ export interface ProgramBudgetLine {
   source_cells: string;
   source_sheet: string;
   units: "USD thousands";
+  /** Basis threading (PM Sprint 1): always 'toa' for workbook rows. */
+  basis: string;
+  fy: number | null;
+  measure: string | null;
+  edition: number;
+  /** pe when this is the sole row on its (fy, measure); component key otherwise. */
+  entity: string;
 }
 
 export interface ProgramAward {
@@ -247,6 +300,14 @@ export interface DecadePoint {
   v: number;
   fid: string;
   edition: number;
+  /** Basis threading (PM Sprint 1): always 'toa' for decade grains. */
+  basis: string;
+  /**
+   * Kind-qualified measure token (export_site._decade_measure_token): the
+   * series kind when the chosen slug agrees ('actuals'), a compound token
+   * ('enacted-request') when the source column diverges from the row label.
+   */
+  measure: string;
 }
 
 /** Keyed by amount_type_kind; a kind with no grains is simply absent. */
@@ -270,6 +331,74 @@ export interface ProgramBookDiff {
   to_edition: number;
   delta: number;
   fid: string;
+  /** Basis threading (PM Sprint 1): 'toa', measure 'change', PB edition. */
+  basis: string;
+  measure: string;
+  edition: number;
+}
+
+/**
+ * One summary-card payload (PM Sprint 1 §P0-1/§P0-2): union-computed from
+ * workbook (toa) + J-book detail facts, preferring toa. Either a value
+ * (fid/public_id resolve in citations.json; xml_path for fid-less zero
+ * roots — Cite state B) or an honest absence_reason — never a bare null.
+ */
+export interface SummaryCard {
+  key: "fy2024" | "fy2025" | "fy2026" | "change";
+  fy: number;
+  measure: string;
+  basis: string | null;
+  value: number | null;
+  units: "USD thousands" | "USD millions" | null;
+  fid: string | null;
+  /** fid[:8] — THE public id. Render verbatim, never re-slice. */
+  public_id: string | null;
+  dataset: string | null;
+  edition: number;
+  absence_reason: "not-published" | "no-comparison" | "no-rollup" | null;
+  xml_path?: string;
+  pct?: number | null;
+}
+
+/** One reconciliation entry: the two-basis divergence at one (fy, measure). */
+export interface ReconciliationEntry {
+  fy: number;
+  measure: string;
+  toa: {
+    v: number;
+    units: "USD thousands";
+    fid: string;
+    public_id: string;
+    dataset: string;
+  };
+  detail: {
+    v: number;
+    units: "USD millions";
+    fid: string | null;
+    public_id: string | null;
+    dataset: string;
+    scenario: string;
+    /** Present when fid is null (zero/unresolved root — Cite state B). */
+    xml_path?: string;
+    resolution?: string;
+  };
+  delta_thousands: number;
+}
+
+/** WHO-GETS-IT named-primes fallback (§P0-2 fix 3). */
+export interface NamedPrime {
+  name: string;
+  family_key: string;
+  fact_id: string;
+  public_id: string;
+}
+
+export interface ProgramSummary {
+  edition: number;
+  basis_preference: string;
+  cards: SummaryCard[];
+  reconciliation: ReconciliationEntry[];
+  named_primes: NamedPrime[];
 }
 
 export interface ProgramDetails {
@@ -278,6 +407,9 @@ export interface ProgramDetails {
   details: ProgramDetailRow[];
   mentions: ProgramMention[];
   narratives: ProgramNarrative[];
+  /** PM Sprint 1: union summary cards + reconciliation + named primes.
+   *  Present on EVERY sidecar (both tiers). */
+  summary: ProgramSummary;
   /** Phase 5E: cited decade series (absent when the PE has no decade grains). */
   decade_series?: DecadeSeries;
   /** Phase 5E: largest cited request-vs-actuals gap (requires decade_series). */
@@ -874,11 +1006,19 @@ export interface FeedCard {
    */
   title: string | null;
   why_url: string;
+  /** Basis threading (PM Sprint 1): non-null on budget-figure cards
+   *  (yoy_swing / zeroed_fy2026 / request_vs_actuals_gap). */
+  basis: string | null;
+  fy: number | null;
+  measure: string | null;
+  edition: number | null;
 }
 
 export interface FeedSidecar {
   cards: FeedCard[];
   total: number;
+  /** §P0-5 corpus scope qualifier — rendered once per superlative section. */
+  scope_qualifier?: string;
 }
 
 let _feed: FeedSidecar | null = null;

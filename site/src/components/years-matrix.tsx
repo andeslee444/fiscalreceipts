@@ -998,6 +998,12 @@ function ProgramRows({
                       factId={cell.fid}
                       xmlPath={cell.xp}
                       display={fmtMillions(cell.v)}
+                      basis="jbook-detail"
+                      fy={projKey ? PROJECT_COL_META[projKey]?.fy : undefined}
+                      measure={projKey ? PROJECT_COL_META[projKey]?.measure : undefined}
+                      entity={`${program.pe_bli}/${project.project_number}`}
+                      edition={2026}
+                      chip={false}
                     />
                   ) : (
                     "–"
@@ -1010,6 +1016,35 @@ function ProgramRows({
     </>
   );
 }
+
+/**
+ * (fy, measure) for a workbook amount_type column slug — a TS mirror of the
+ * exporter's `_amount_type_meta` decisions (export_site.py) for the PB2026
+ * matrix columns. Component pots keep their own honest tokens so the basis
+ * chip vocabulary and gate grouping stay consistent site-wide.
+ */
+function amountTypeMeta(colKey: string): { fy: number; measure: string } | null {
+  const m = /^fy_(\d{4})_(.+)$/.exec(colKey);
+  if (!m) return null;
+  const fy = Number(m[1]);
+  const rest = m[2];
+  if (rest.includes("actual")) return { fy, measure: "actuals" };
+  if (rest.includes("enact")) return { fy, measure: "enacted" };
+  if (rest === "reconciliation_request")
+    return { fy, measure: "reconciliation-request" };
+  if (rest === "disc_request") return { fy, measure: "disc-request" };
+  if (rest.includes("request")) return { fy, measure: "request" };
+  if (rest.includes("supplemental")) return { fy, measure: "supplemental" };
+  if (rest === "total") return { fy, measure: fy === 2026 ? "request" : "total" };
+  return { fy, measure: rest.replace(/_/g, "-") };
+}
+
+/** (fy, measure) for the project sub-row columns (edition-relative scenarios). */
+const PROJECT_COL_META: Record<string, { fy: number; measure: string }> = {
+  fy2024: { fy: 2024, measure: "actuals" },
+  fy2025: { fy: 2025, measure: "enacted" },
+  fy2026: { fy: 2026, measure: "request" },
+};
 
 /**
  * One program dollar/Δ/%Δ cell. Missing → "–" (plain text, no data-v).
@@ -1066,6 +1101,11 @@ function ProgramCellTd({
           dataset="budget_lines_decade"
           factId={cell.fid}
           display={fmtThousandsAsMillions(cell.v)}
+          basis="toa"
+          fy={decade.fy}
+          measure={decade.kind}
+          edition={decade.edition}
+          chip={false}
         />
       </td>
     );
@@ -1100,6 +1140,11 @@ function ProgramCellTd({
         dataset={isDelta ? "fct_budget_trajectory" : "budget_lines"}
         factId={cell.fid}
         display={isDelta ? fmtDelta(cell.v) : fmtThousandsAsMillions(cell.v)}
+        basis="toa"
+        fy={isDelta ? 2026 : amountTypeMeta(colKey)?.fy}
+        measure={isDelta ? "change" : amountTypeMeta(colKey)?.measure}
+        edition={2026}
+        chip={false}
       />
     </td>
   );

@@ -1,17 +1,21 @@
-import type { ProgramTrajectory, ProgramTrajectoryFactIds } from "@/lib/data";
+import type { SummaryCard } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { formatAmount } from "@/lib/format";
 
 /**
- * TrajectorySpark — inline SVG sparkline from trajectory data.
+ * TrajectorySpark — inline SVG sparkline over the summary-union cards.
  *
  * SERVER COMPONENT (embeds the client <Cite> for the legend values).
- * Skip gracefully when trajectory is null or all values are null.
  *
- * Units: trajectory values are in USD thousands.
- * We render a 3-point sparkline: FY24 actuals → FY25 total → FY26 total.
- * Legend dollar values are wrapped in <Cite> with the derived trajectory
- * fact_ids (dataset fct_budget_trajectory) — Phase 5B-3 flip.
+ * PM Sprint 1 (§P0-1): the spark previously drew fct_budget_trajectory's
+ * primary-org metrics, which on multi-org programs are a per-service SLICE —
+ * the legend said "FY26 $911K" two inches from a card saying "FY26 Request
+ * $3.14M" (a live same-label collision). The spark now draws the SUMMARY
+ * CARDS themselves, so spark and cards agree by construction and every
+ * legend value carries the card's own citation, basis attributes, and chip.
+ *
+ * Cards may sit on either basis (union prefers toa; detail-only slots are
+ * labeled) and either unit — points are scaled in raw dollars.
  */
 
 const SVG_WIDTH = 120;
@@ -24,55 +28,44 @@ const PADDING = 6;
 const LABEL_BAND = 10;
 
 interface TrajectorySparkProps {
-  trajectory: ProgramTrajectory | null;
-  trajectoryFactIds?: ProgramTrajectoryFactIds | null;
+  /** The summary union cards (fy2024/fy2025/fy2026 slots draw; change is skipped). */
+  cards: SummaryCard[];
+  /** "fy|measure" keys with a declared reconciliation entry (gate 23 a2). */
+  reconKeys?: Set<string>;
 }
 
-export function TrajectorySpark({
-  trajectory,
-  trajectoryFactIds,
-}: TrajectorySparkProps) {
-  if (!trajectory) {
+function toDollars(card: SummaryCard): number {
+  return card.units === "USD millions"
+    ? card.value! * 1_000_000
+    : card.value! * 1_000;
+}
+
+export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
+  const slots = cards.filter((c) => c.key !== "change");
+  const defined = slots.filter((c) => c.value !== null && c.units !== null);
+
+  if (defined.length === 0) {
     return (
       <p className="text-xs text-muted-foreground italic">
         No trajectory data available.
       </p>
     );
   }
-
-  // Collect the three data points in order (label, value, derived fact_id)
-  const rawPoints: [string, number | null, string | null][] = [
-    ["FY24", trajectory.fy2024_actuals, trajectoryFactIds?.fy2024_actuals ?? null],
-    ["FY25", trajectory.fy2025_total, trajectoryFactIds?.fy2025_total ?? null],
-    ["FY26", trajectory.fy2026_total, trajectoryFactIds?.fy2026_total ?? null],
-  ];
-
-  const defined = rawPoints.filter(([, v]) => v !== null) as [
-    string,
-    number,
-    string | null,
-  ][];
-
   if (defined.length < 2) {
     return (
       <p className="text-xs text-muted-foreground italic">
-        Insufficient trajectory data for sparkline
-        {defined.length === 1
-          ? ` (only ${defined[0][0]} available)`
-          : ""}.
+        Insufficient trajectory data for sparkline (only FY
+        {String(defined[0].fy).slice(-2)} available).
       </p>
     );
   }
 
-  // Compute min/max for y scaling
-  const values = defined.map(([, v]) => v as number);
+  // Compute min/max for y scaling (raw dollars — units may be mixed)
+  const values = defined.map(toDollars);
   const minV = Math.min(...values);
   const maxV = Math.max(...values);
   const range = maxV - minV;
 
-  // Map data → SVG coordinates
-  // x: evenly spaced among defined points
-  // y: inverted (SVG y=0 is top); chart area sits above the label band
   const innerW = SVG_WIDTH - PADDING * 2;
   const innerH = SVG_HEIGHT - PADDING * 2 - LABEL_BAND;
   const chartBottom = PADDING + innerH;
@@ -86,20 +79,19 @@ export function TrajectorySpark({
     return PADDING + innerH - ((v - minV) / range) * innerH;
   }
 
-  const points = defined.map(([label, v, factId], i) => ({
-    label,
-    v,
-    factId,
+  const points = defined.map((card, i) => ({
+    card,
+    label: `FY${String(card.fy).slice(-2)}`,
+    dollars: toDollars(card),
     x: toX(i),
-    y: toY(v),
+    y: toY(toDollars(card)),
   }));
 
-  // Build polyline points string
   const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
 
   // Determine trend color
-  const firstVal = points[0].v;
-  const lastVal = points[points.length - 1].v;
+  const firstVal = points[0].dollars;
+  const lastVal = points[points.length - 1].dollars;
   const trendColor =
     lastVal > firstVal
       ? "#16a34a" // green-600
@@ -148,14 +140,11 @@ export function TrajectorySpark({
                 from server components to <head>, leaving empty SVG titles in SSG
                 output and causing React hydration error #418. <desc> is unaffected
                 and is the correct SVG element for shape-level descriptions anyway.
-                Format as compact USD ("FY24: $280.5M") — appending the raw-unit
-                parenthetical to the SCALED string ("280.5M (USD thousands)")
-                mixed units and misread as thousands-of-millions (a11y judge nit).
                 The currency gate checks each desc token against the adjacent
                 Cite-wrapped legend: a desc may only echo values that exist in
                 a [data-amount] sibling — it must never introduce its own. */}
             <desc>
-              {p.label}: {formatAmount(p.v, "USD thousands")}
+              {p.label}: {formatAmount(p.card.value!, p.card.units!)}
             </desc>
           </circle>
         ))}
@@ -187,17 +176,24 @@ export function TrajectorySpark({
         })}
       </svg>
 
-      {/* Compact year/value legend — Cite-wrapped (dataset fct_budget_trajectory) */}
+      {/* Compact year/value legend — each value is the CARD's own Cite with
+          its basis attributes + chip (never a re-derived figure) */}
       <dl className="flex gap-3 text-xs text-muted-foreground flex-wrap">
         {points.map((p) => (
           <div key={p.label} className="flex flex-col">
             <dt className="font-medium text-foreground/80">{p.label}</dt>
             <dd>
               <Cite
-                value={p.v}
-                units="USD thousands"
-                dataset="fct_budget_trajectory"
-                factId={p.factId}
+                value={p.card.value!}
+                units={p.card.units!}
+                dataset={p.card.dataset ?? "fct_budget_trajectory"}
+                factId={p.card.fid}
+                xmlPath={p.card.fid ? null : p.card.xml_path}
+                basis={p.card.basis ?? undefined}
+                fy={p.card.fy}
+                measure={p.card.measure}
+                edition={p.card.edition}
+                reconciled={reconKeys?.has(`${p.card.fy}|${p.card.measure}`)}
               />
             </dd>
           </div>

@@ -62,11 +62,16 @@ export default function HomePage() {
   // citation — the panel renders the actual PDF page + highlight (Goal 1).
   const receiptFact = getReceiptMomentFact();
 
+  // §P0-5: the canonical-TOA hero payload + corpus scope qualifier.
+  const hero = meta.hero ?? null;
+  const scopeQualifier = hero?.scope_qualifier ?? meta.scope_qualifier ?? null;
+
   // Citation slice: receipt-moment jbook_pdf fact_id + mover change fact_ids
   // (+ their peer inputs so the derived-card chips are clickable) + agency
   // FY24 derived fact_ids + feed teaser fact_ids.
   const pageFactIds: string[] = [];
   if (receiptFact) pageFactIds.push(receiptFact.fact_id);
+  if (hero) pageFactIds.push(hero.fid);
   for (const p of topMovers) {
     if (p.trajectory_fact_ids?.fy2526_change) {
       pageFactIds.push(p.trajectory_fact_ids.fy2526_change);
@@ -186,13 +191,28 @@ export default function HomePage() {
       <section className="bg-background border-b border-border pb-10 md:pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {receiptFact && (
-            <ReceiptMoment
-              peBli={receiptFact.pe_bli}
-              title={receiptFact.title}
-              org={receiptFact.org}
-              amountMillions={receiptFact.amount_millions}
-              factId={receiptFact.fact_id}
-            />
+            <>
+              <ReceiptMoment
+                peBli={receiptFact.pe_bli}
+                title={receiptFact.title}
+                org={receiptFact.org}
+                amountMillions={receiptFact.amount_millions}
+                factId={receiptFact.fact_id}
+                hero={hero}
+              />
+              {/* §P0-5 scope qualifier — small print under the superlative
+                  (12px per P1-1; outside the card so the G4 fold assert on
+                  [data-testid="receipt-moment"] is unaffected). */}
+              {scopeQualifier && (
+                <p
+                  data-testid="hero-scope-qualifier"
+                  className="mt-1.5 px-1 text-xs leading-5 text-muted-foreground"
+                >
+                  {"Scope: "}
+                  {scopeQualifier}.
+                </p>
+              )}
+            </>
           )}
 
           {/* Persona row — route the three primary jobs, no insider nouns.
@@ -278,6 +298,13 @@ export default function HomePage() {
             Programs with the biggest funding swings between FY2025 and FY2026
             enacted. Dollar deltas carry derived workbook citations — click a
             figure to inspect the formula and inputs.
+            {scopeQualifier && (
+              <span className="block mt-1 text-xs">
+                Scope: ranked across the R&D and procurement program elements
+                in our corpus (excludes personnel, O&M, and appropriations not
+                covered by the R-1/P-1 rollups).
+              </span>
+            )}
           </p>
           <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
             {topMovers.map((p) => {
@@ -316,6 +343,12 @@ export default function HomePage() {
                       units="USD thousands"
                       dataset="fct_budget_trajectory"
                       factId={p.trajectory_fact_ids?.fy2526_change}
+                      basis="toa"
+                      fy={2026}
+                      measure="change"
+                      entity={p.pe_bli}
+                      edition={2026}
+                      chip={false}
                     />
                   </div>
                 </div>
@@ -368,6 +401,12 @@ export default function HomePage() {
                         units="USD millions"
                         dataset="dim_programs"
                         factId={agency.fy2024_fact_id_derived}
+                        basis="jbook-detail"
+                        fy={2024}
+                        measure="actuals"
+                        entity={agency.org}
+                        edition={2026}
+                        chip={false}
                       />{" "}
                       FY24
                     </span>

@@ -301,15 +301,18 @@ describe("Cite three-state contract", () => {
 
   // ── Receipts mode ─────────────────────────────────────────────────────────
   describe("receipts mode", () => {
-    it("State A shows short fact-id chip when receipts ON", () => {
+    it("State A shows the PUBLIC id (fid[:8] — same id the drawer shows) when receipts ON", () => {
+      // P0-4 groundwork: ONE public id per figure. The drawer footer renders
+      // factId.slice(0, 8); the Receipts chip must render the SAME id — the
+      // live #8b2746cb-vs-#bb54b165 mismatch was two truncations of one id.
       const factId = "abc123def456789f";
       const { container } = render(
         <ReceiptsContext.Provider value={{ receiptsOn: true }}>
           <Cite value={100} units="USD millions" dataset="test_dataset" factId={factId} />
         </ReceiptsContext.Provider>,
       );
-      // Short ID = last 8 chars of factId: "456789f" is only 7 chars; last 8 = "f456789f"
-      expect(container.textContent).toContain("#f456789f");
+      expect(container.textContent).toContain("#abc123de");
+      expect(container.textContent).not.toContain("#f456789f");
     });
 
     it("State A does NOT show chip when receipts OFF", () => {
@@ -319,7 +322,7 @@ describe("Cite three-state contract", () => {
           <Cite value={100} units="USD millions" dataset="test_dataset" factId={factId} />
         </ReceiptsContext.Provider>,
       );
-      expect(container.textContent).not.toContain("#f456789f");
+      expect(container.textContent).not.toContain("#abc123de");
     });
 
     it("State C shows a single 'uncited' chip when receipts ON", () => {
@@ -335,6 +338,125 @@ describe("Cite three-state contract", () => {
       expect(chips.length).toBe(1);
       expect(chips[0].textContent).toContain("⁂");
       expect(chips[0].textContent).toContain("uncited");
+    });
+  });
+
+  // ── Basis threading (PM Sprint 1 Task 3, gate 23 legs a1/a2) ──────────────
+  describe("basis attributes + chip", () => {
+    const basisProps = {
+      value: 5565655,
+      units: "USD thousands" as const,
+      dataset: "fct_decade_series",
+      factId: "5b532c52d3ebb4c2",
+      basis: "toa" as const,
+      fy: 2024,
+      measure: "actuals",
+      edition: 2026,
+    };
+
+    it("renders data-basis / data-fy / data-measure on the amount element (leg a1)", () => {
+      const { container } = render(<Cite {...basisProps} entity="ATA000" />);
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-basis", "toa");
+      expect(el).toHaveAttribute("data-fy", "2024");
+      expect(el).toHaveAttribute("data-measure", "actuals");
+      expect(el).toHaveAttribute("data-entity", "ATA000");
+    });
+
+    it("renders the attrs on state B (xml-path) figures too", () => {
+      const { container } = render(
+        <Cite
+          value={0}
+          units="USD millions"
+          dataset="jbook_details"
+          xmlPath="LineItem[9]"
+          basis="jbook-detail"
+          fy={2024}
+          measure="actuals"
+          edition={2026}
+        />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-basis", "jbook-detail");
+      expect(el).toHaveAttribute("data-fy", "2024");
+      expect(el).toHaveAttribute("data-measure", "actuals");
+    });
+
+    it("renders an always-visible basis chip OUTSIDE the data-amount element", () => {
+      // The chip must be a SIBLING: gate 23 parses the [data-amount] element's
+      // text as a currency figure — chip text inside it would null the parse
+      // and silently blind legs a2/b.
+      const { container } = render(<Cite {...basisProps} />);
+      const el = container.querySelector("[data-amount]")!;
+      expect(el.textContent).toBe("$5.57B");
+      expect(container.textContent).toContain("P-1 TOA · PB2026");
+    });
+
+    it("labels jbook-detail basis as P-40 detail", () => {
+      const { container } = render(
+        <Cite
+          value={5247.07}
+          units="USD millions"
+          dataset="jbook_details"
+          factId="bb54b1658b2746cb"
+          basis="jbook-detail"
+          fy={2024}
+          measure="actuals"
+          edition={2026}
+        />,
+      );
+      expect(container.textContent).toContain("P-40 detail · PB2026");
+    });
+
+    it("renders human labels for extended measure tokens", () => {
+      const { container } = render(
+        <Cite {...basisProps} measure="reconciliation-request" />,
+      );
+      expect(container.textContent).toContain(
+        "P-1 TOA · reconciliation request · PB2026",
+      );
+    });
+
+    it("suppresses the chip with chip={false} but keeps the attributes", () => {
+      const { container } = render(<Cite {...basisProps} chip={false} />);
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-basis", "toa");
+      expect(container.textContent).not.toContain("P-1 TOA");
+    });
+
+    it("renders no chip when basis is absent (non-budget figures)", () => {
+      const { container } = render(
+        <Cite
+          value={100}
+          units="USD"
+          dataset="fct_program_concentration"
+          factId="abc123def4567890"
+          basis="usaspending"
+          fy="all-years"
+          measure="obligations"
+        />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-basis", "usaspending");
+      expect(el).toHaveAttribute("data-fy", "all-years");
+      expect(container.textContent).not.toContain("TOA");
+    });
+
+    it("marks declared reconciliation members with data-reconciliation", () => {
+      const { container } = render(<Cite {...basisProps} reconciled />);
+      const el = container.querySelector("[data-amount]");
+      expect(el).toHaveAttribute("data-reconciliation");
+    });
+
+    it("does not emit basis attrs when the props are absent (back-compat)", () => {
+      const { container } = render(
+        <Cite value={100} units="USD" dataset="d" factId="abc123def4567890" />,
+      );
+      const el = container.querySelector("[data-amount]");
+      expect(el).not.toHaveAttribute("data-basis");
+      expect(el).not.toHaveAttribute("data-fy");
+      expect(el).not.toHaveAttribute("data-measure");
+      expect(el).not.toHaveAttribute("data-reconciliation");
     });
   });
 });

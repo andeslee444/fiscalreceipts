@@ -22,7 +22,9 @@ const CHIP_BASE =
 
 export function DossierFactChip({ factId }: { factId: string }) {
   const { openPanel } = useContext(CitationPanelContext);
-  const shortId = factId.slice(-8);
+  // PUBLIC id (P0-4): fid[:8] — the same truncation the drawer footer and
+  // the /fact/{id8} permalink use. ONE id everywhere, never re-sliced.
+  const shortId = factId.slice(0, 8);
   return (
     <button
       type="button"

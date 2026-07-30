@@ -477,6 +477,14 @@ export function FollowTheDollar({ data }: Props) {
                       units="USD"
                       dataset="fct_district_programs"
                       factId={row.factId}
+                      // Non-budget figure (gate 23 a1): USAspending award
+                      // aggregate; entity scoped per district so rows never
+                      // group as one label.
+                      basis="usaspending"
+                      fy="all-years"
+                      measure="obligations"
+                      entity={`${flow.header.pe_bli}/${row.district}`}
+                      chip={false}
                     />
                   ) : (
                     <span className="text-muted-foreground">—</span>

@@ -1546,3 +1546,39 @@ every FY24 detail figure ($644.7M vs $322.3M rows) — the summary layer sums
 duplicated PE rows across editions/exhibits that the detail sections list
 individually. That is the same class as P0-1 (summary computed on a basis no
 detail section displays) and was not in the PM review; the gate found it.
+
+════════════════════════════════════════════════════════════════════════════
+MADE TO PASS (legs a,b) — 2026-07-30, PM-review Sprint 1 Task 3
+════════════════════════════════════════════════════════════════════════════
+
+Full-corpus run (node scripts/gates/basis.mjs against the rebuilt out/,
+1,993 program pages) after the Task 3 change-set — the exporter honesty
+fixes (display dedupe, measure-true entities, kind-qualified decade tokens,
+reconciliation v2, 'no-rollup' absences) plus the site threading (<Cite>
+basis attrs + chips, summary-union cards with honest absence labels,
+reconciliation strip, union-card sparkline, reconciliation markers on every
+declared-group member). Verbatim:
+
+    gate 23 basis: scanning 1993 program pages; leg a1: all 80253 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → FAIL
+      note: scanning 1993 program pages
+      note: leg a1: all 80253 program-page figures carry basis attrs ✓
+      note: leg a2 (attribute path): no unreconciled collisions ✓
+      note: leg a2 (bootstrap): no FY24-actuals collision detected on /program/ATA000/
+      note: leg b1: 7145 numeric summary cards agree with detail figures ✓
+      note: leg b2: 0 absence cards, none contradicted by details ✓
+      note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+      ✗ leg c footnote-formatter: footnote formatter module missing (src/lib/footnote.ts) — P0-3 unified formatter not yet implemented; the goldens in scripts/gates/goldens/footnotes/ are the contract it must reproduce
+
+Legs a1, a2 (attribute path AND the ATA000 bootstrap heuristic), b1 and b2
+all PASS; the gate's only remaining error is leg c's honest pre-failure
+(the Task 4 formatter does not exist yet). The bootstrap block was left in
+place untouched — it now passes because every FY24-actuals figure on
+ATA000 is either value-identical or a marked member of the declared
+reconciliation group.
+
+Proof-of-teeth note: the first post-threading run (before the lineage
+funding-line self-points carried the reconciliation marker) FAILED leg a2
+with 7 collisions (e.g. 0207522F (2026, request): $30.8M toa vs $15.8M
+jbook-detail with the funding-line repeat of the decade figure unmarked) —
+the attribute path catches real unmarked members, it did not pass
+vacuously.

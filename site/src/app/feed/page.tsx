@@ -70,6 +70,15 @@ const EVENT_META: Record<
 };
 
 // Order in which event types are displayed on the page.
+// §P0-5: budget-figure superlative sections carry the corpus scope
+// qualifier ONCE in the section header (not per card). Award-derived
+// sections (concentration, new entrants) rank a different universe.
+const SCOPED_EVENT_TYPES = new Set([
+  "yoy_swing",
+  "zeroed_fy2026",
+  "request_vs_actuals_gap",
+]);
+
 const EVENT_ORDER = [
   "yoy_swing",
   "zeroed_fy2026",
@@ -113,6 +122,19 @@ function FeedCardItem({
   const isConcentration = card.event_type === "concentration_shift";
   const isNewEntrant = card.event_type === "new_entrant";
   const isRvaGap = card.event_type === "request_vs_actuals_gap";
+
+  // Basis threading (PM Sprint 1): budget-figure cards carry
+  // basis/fy/measure/edition from the sidecar; award-derived cards
+  // (basis null) render without attrs or chip.
+  const basisProps = card.basis
+    ? {
+        basis: card.basis,
+        fy: card.fy ?? undefined,
+        measure: card.measure ?? undefined,
+        edition: card.edition ?? undefined,
+        entity: card.pe_bli ?? undefined,
+      }
+    : {};
 
   return (
     <div
@@ -174,6 +196,7 @@ function FeedCardItem({
                 units="USD"
                 dataset="fct_feed_events"
                 factId={card.figure_fact_id}
+                {...basisProps}
                 display={`HHI ${card.figure_value.toFixed(0)}`}
               />
             ) : isNewEntrant || card.figure_units === "dollars" ? (
@@ -182,6 +205,7 @@ function FeedCardItem({
                 units="USD"
                 dataset="fct_feed_events"
                 factId={card.figure_fact_id}
+                {...basisProps}
               />
             ) : isRvaGap ? (
               // Signed gap in USD thousands, cited via the minted book_diff
@@ -191,6 +215,7 @@ function FeedCardItem({
                 units="USD thousands"
                 dataset="fct_book_diff"
                 factId={card.figure_fact_id}
+                {...basisProps}
               />
             ) : card.figure_units === "pct_change" ? (
               <Cite
@@ -199,6 +224,7 @@ function FeedCardItem({
                 dataset="fct_budget_trajectory"
                 factId={card.figure_fact_id}
                 display={`${card.figure_value >= 0 ? "+" : ""}${card.figure_value.toFixed(0)}%`}
+                {...basisProps}
               />
             ) : (
               <Cite
@@ -206,6 +232,7 @@ function FeedCardItem({
                 units="USD thousands"
                 dataset="fct_budget_trajectory"
                 factId={card.figure_fact_id}
+                {...basisProps}
               />
             )}
           </span>
@@ -228,7 +255,7 @@ function FeedCardItem({
 }
 
 export default function FeedPage() {
-  const { cards, total } = getFeed();
+  const { cards, total, scope_qualifier } = getFeed();
   const grouped = groupByEventType(cards);
 
   // family_key → company slug lookup (SSG) from the same top-200 entity
@@ -295,6 +322,13 @@ export default function FeedPage() {
                   >
                     {meta.description}
                   </p>
+                  {SCOPED_EVENT_TYPES.has(etype) && scope_qualifier && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Scope: ranked across the R&D and procurement program
+                      elements in our corpus (excludes personnel, O&M, and
+                      appropriations not covered by the R-1/P-1 rollups).
+                    </p>
+                  )}
                 </div>
                 {/* Card list — staggered once-reveal on scroll (Task 11);
                     the Reveal wrapper divs are the divide-y children. */}
