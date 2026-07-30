@@ -1,0 +1,16 @@
+{
+  "tier": "workbook",
+  "factId": "5b532c52d3ebb4c2",
+  "program": { "name": "F-35", "code": "ATA000" },
+  "fiscalYear": 2024,
+  "rowName": "Total Obligation Authority (P-1)",
+  "value": 5565655,
+  "unit": "USD thousands",
+  "valueText": "$5,565,655 thousand",
+  "publisher": "Office of the Under Secretary of Defense (Comptroller)",
+  "docTitle": "FY2026 Department of Defense Budget: Procurement Programs (P-1)",
+  "locator": { "sheet": "Exhibit P-1", "cells": "O839,O840,O841" },
+  "sha256": "4d965906ad91aa8b7d6d5f891a0717ac25ace6c18f3d50df07ebde611774a9c0",
+  "retrievedAt": "2026-06-10",
+  "permalink": "https://fiscalreceipts.com/fact/5b532c52"
+}

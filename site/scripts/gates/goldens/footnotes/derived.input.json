@@ -1,0 +1,14 @@
+{
+  "tier": "derived",
+  "factId": "cde21cb5a87292ec",
+  "program": { "name": "F-35", "code": "ATA000" },
+  "fiscalYear": 2024,
+  "rowName": "actuals vs. PB2024 request (derived)",
+  "value": 286534,
+  "unit": "USD thousands",
+  "valueText": "$286,534 thousand",
+  "formula": "PB2026 FY2024 actuals - PB2024 FY2024 request (fct_book_diff request_vs_actuals)",
+  "inputFactIds": ["5b532c52d3ebb4c2", "666be82264352b75"],
+  "retrievedAt": "2026-07-29",
+  "permalink": "https://fiscalreceipts.com/fact/cde21cb5"
+}

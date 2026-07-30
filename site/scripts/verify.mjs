@@ -45,6 +45,8 @@ import { runYearsMatrixGate } from "./gates/yearsmatrix.mjs";
 import { runProgramSkeletonGate } from "./gates/program-skeleton.mjs";
 // Phase 5H gates
 import { runFlowdownGate } from "./gates/flowdown.mjs";
+// PM-review Sprint 1 gates
+import { runBasisGate } from "./gates/basis.mjs";
 
 const PORT = 4173;
 
@@ -243,6 +245,15 @@ async function main() {
   const g21 = await runProgramSkeletonGate();
   gateResults.push({ n: 21, name: "program-skeleton", pass: g21.pass });
   printGate(21, "program-skeleton", g21);
+
+  // ── Gate 23: basis (PM-review Sprint 1 — one label, one basis; static) ────
+  // Built FIRST against the P0-1/P0-2/P0-3 defects (evaluator-first): this
+  // gate is EXPECTED RED until Sprint 1 Tasks 2-6 land the basis attributes,
+  // summary/detail unification, and the unified footnote formatter.
+  console.log("\n--- gate 23 basis ---");
+  const g23 = await runBasisGate();
+  gateResults.push({ n: 23, name: "basis", pass: g23.pass });
+  printGate(23, "basis", g23);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

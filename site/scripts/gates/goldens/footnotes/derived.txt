@@ -1,0 +1,1 @@
+Fiscal Receipts, "F-35 (ATA000), FY2024 actuals vs. PB2024 request (derived): $286,534 thousand." Derived: PB2026 FY2024 actuals - PB2024 FY2024 request (fct_book_diff request_vs_actuals); inputs https://fiscalreceipts.com/fact/5b532c52, https://fiscalreceipts.com/fact/666be822. Retrieved 2026-07-29. https://fiscalreceipts.com/fact/cde21cb5

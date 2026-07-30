@@ -1396,3 +1396,153 @@ blockquote was marked data-source-text="lineage-evidence" +
 data-cite-fact-id={evidence.fact_id} — quoted J-book prose anchored to the
 same evidence fact the "cited" chip opens (the a0 contract). The scan's teeth
 fired exactly as designed on new quoted-source dollars.
+
+================================================================================
+PM-review Sprint 1 — basis/summary/footnote gates — 2026-07-30
+================================================================================
+
+Gate 23 "basis" (site/scripts/gates/basis.mjs) — the §Systemic Fix invariant
+from docs/superpowers/specs/2026-07-30-pm-review.md ("one label, one basis"),
+built FIRST and proven FAILING against the exact static artifact currently in
+production (site/out/, untouched — no rebuild). Three legs:
+
+  (a) intra-page one-label-one-basis
+      a1: every [data-amount] on program pages must carry data-basis,
+          data-fy, data-measure (the permanent attribute contract Tasks 2-3
+          implement; cite.tsx emits none of them today).
+      a2: figures grouped by (data-entity || page PE, data-fy, data-measure);
+          >1 distinct rendered value (normalized to dollars; agreement = same
+          3-significant-digit rounding) outside [data-reconciliation] → FAIL.
+          Attribute path is vacuous today (0 attributed figures), so a
+          clearly-marked BOOTSTRAP heuristic runs on /program/ATA000/ only:
+          label context (table row + column header, or the single-figure card
+          ancestor) matching FY24 + "actual" — proving the gate catches P0-1
+          on today's build.
+  (b) summary/detail agreement — summary cards ([data-section="figures"])
+      vs detail figures (everything outside figures/answer-strip, plus
+      machine-labeled [data-decade-cell="{measure}-{year}"] cells and
+      FY-labeled table columns). b1: a numeric card with same-FY detail
+      figures must agree with at least one. b2: an absence card ("—") with
+      published same-FY detail values is a false absence (P0-2); change cards
+      FY{a}→{b} fail when both endpoint years are published.
+  (c) footnote completeness — golden fixtures (REAL facts) written NOW as
+      the Task 4 contract in site/scripts/gates/goldens/footnotes/:
+        pdf.txt      ← fact bb54b1658b2746cb (F-35 FY2024 Net Procurement
+                       (P-1), $5,247.070 million, FY2026 AF Aircraft
+                       Procurement Vol. I p.55, sha 528d1441…)
+        workbook.txt ← fact 5b532c52d3ebb4c2 (F-35 FY2024 Total Obligation
+                       Authority (P-1), $5,565,655 thousand, p1_display.xlsx
+                       sheet Exhibit P-1 cells O839,O840,O841, sha 4d965906…)
+        derived.txt  ← fact cde21cb5a87292ec (F-35 FY2024 actuals vs. PB2024
+                       request, $286,534 thousand, formula + input-fact
+                       permalinks 5b532c52/666be822)
+      Each golden self-validates against the per-tier required-field
+      manifest (program, FY, row name, value WITH unit, document title,
+      locator, sha256 [pdf/workbook], retrieved date, fact permalink;
+      derived: formula + input permalinks). The unified formatter module
+      site/src/lib/footnote.ts does NOT exist → the leg fails honestly.
+      For contrast, the CURRENT pdf-tier output (spec §P0-3, verbatim):
+        F-35: 5,247.070 — FY26 Air Force Aircraft Procurement Vol I.pdf,
+        p.55; sha256:528d1441…; retrieved 2026-07-05;
+        https://fiscalreceipts.com/program/ATA000/
+      — no unit, no fiscal year, no row name, filename instead of document
+      title, page-permalink instead of fact-permalink. The unit test
+      "flags the CURRENT (pre-fix) pdf-tier footnote as incomplete" pins
+      exactly those gaps against the golden parser.
+
+Wire-up: gate 23 registered in site/scripts/verify.mjs (static section,
+after gate 21). Helper unit tests (normalizeAmount, valuesAgree,
+fyTokensFromLabel, validateGoldenFootnote):
+site/scripts/gates/__tests__/basis.test.mjs — 21 tests, all green via
+`npm test` (vitest; full suite 431/431 pass).
+
+*** EXPECTED RED: gate 23 stays FAILING until Sprint 1 Tasks 2-6 land the
+*** basis attributes, the summary/detail query unification, and the unified
+*** footnote formatter. `npm run verify` therefore FAILS overall after this
+*** task — intentionally. NEVER weaken the legs to get to green.
+
+PRE-FAILURE RUN — full corpus (node scripts/gates/basis.mjs, exit 1),
+verbatim:
+
+    gate 23 basis: scanning 1993 program pages; leg a2 (attribute path): VACUOUS — 0 attribute-carrying figures to group (a1 must pass before this path has teeth); leg c: 3 golden fixtures self-validate (field manifest) ✓ → FAIL
+      note: scanning 1993 program pages
+      note: leg a2 (attribute path): VACUOUS — 0 attribute-carrying figures to group (a1 must pass before this path has teeth)
+      note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+      ✗ leg a1 basis-attrs: 76106/76106 [data-amount] figures on program pages missing data-basis/data-fy/data-measure (first 10):
+      ✗   program/000042/index.html: "$793.0K" (fact 973c26b415e7f4ed) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$917.0K" (fact 9a7a0e4bb33799d4) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$793.0K" (fact 78b0453bb190f251) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$917.0K" (fact 9a7a0e4bb33799d4) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$757.0K" (fact edb7b8142a153e28) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$868.0K" (fact f4b61b5f9191a5d8) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$793.0K" (fact 4dc6d6bda019d490) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$868.0K" (fact 48d521ebabc7cedd) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$793.0K" (fact 8cc82390261e7e26) missing data-basis, data-fy, data-measure
+      ✗   program/000042/index.html: "$913.0K" (fact 6c8ca43914747c58) missing data-basis, data-fy, data-measure
+      ✗   ... and 76096 more
+      ✗ leg a2 collision (BOOTSTRAP heuristic on /program/ATA000/):
+      ✗   program/ATA000/index.html [BOOTSTRAP heuristic — P0-1]: "FY24 actuals" resolves to 2 distinct values with no reconciliation: $5.25B (fact bb54b1658b2746cb, label "FY24 Actuals$5.25B") vs $5.57B (fact 5b532c52d3ebb4c2, label "Actuals$4.56B$4.48B$5.57B FY24")
+      ✗ leg b1 summary/detail value agreement: 26 summary card(s) contradict every same-FY detail figure (first 10):
+      ✗   program/0601102A/index.html: summary card "FY24 Actuals" = $644.7M matches NO detail figure (same-FY detail values: $322.3M, $296.7M, $296.7M, $322.3M, $296.7M, $296.7M, $1.04M, $16.1M, $4.40M, $3.78M, $11.5M, $6.50M, $24.8M, $20.6M, $19.1M, $42.9M, $34.4M, $99.2M, $322.3M, $38.0M)
+      ✗   program/0601103A/index.html: summary card "FY24 Actuals" = $145.6M matches NO detail figure (same-FY detail values: $72.8M, $75.7M, $75.7M, $72.8M, $75.7M, $75.7M, $72.8M, $72.8M)
+      ✗   program/0601104A/index.html: summary card "FY24 Actuals" = $235.7M matches NO detail figure (same-FY detail values: $117.9M, $108.9M, $108.9M, $117.9M, $108.9M, $108.9M, $7.34M, $11.9M, $24.5M, $58.1M, $117.9M, $16.0M)
+      ✗   program/0601121A/index.html: summary card "FY24 Actuals" = $10.9M matches NO detail figure (same-FY detail values: $5.46M, $5.46M, $5.46M, $5.46M, $5.46M, $5.46M, $5.46M, $5.46M)
+      ✗   program/0601601A/index.html: summary card "FY24 Actuals" = $20.4M matches NO detail figure (same-FY detail values: $10.2M, $10.7M, $10.7M, $10.2M, $10.7M, $10.7M, $10.2M, $10.2M)
+      ✗   program/0602002A/index.html: summary card "FY24 Actuals" = $1.93M matches NO detail figure (same-FY detail values: $964.0K, $5.61M, $5.61M, $964.0K, $5.61M, $5.61M)
+      ✗   program/0602134A/index.html: summary card "FY24 Actuals" = $12.0M matches NO detail figure (same-FY detail values: $6.01M, $6.24M, $6.24M, $6.01M, $6.24M, $6.24M)
+      ✗   program/0602141A/index.html: summary card "FY24 Actuals" = $290.8M matches NO detail figure (same-FY detail values: $145.4M, $85.6M, $85.6M, $145.4M, $85.6M, $85.6M)
+      ✗   program/0602142A/index.html: summary card "FY24 Actuals" = $76.1M matches NO detail figure (same-FY detail values: $38.1M, $34.6M, $34.6M, $38.1M, $34.6M, $34.6M)
+      ✗   program/0602143A/index.html: summary card "FY24 Actuals" = $418.2M matches NO detail figure (same-FY detail values: $209.1M, $104.5M, $104.5M, $209.1M, $104.5M, $104.5M)
+      ✗   ... and 16 more
+      ✗ leg b2 false-absence: 1497 summary card(s) render "—" while detail sections publish the value (first 10):
+      ✗   program/000042/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $913.0K (decade enacted-2025), $913.0K (decade request-2025), $913.0K (table column "FY25")
+      ✗   program/000042/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $913.0K (decade enacted-2025), $913.0K (decade request-2025), $913.0K (table column "FY25") | FY2026: $917.0K (decade request-2026), $917.0K (table column "FY26"), $917.0K (table column "FY26 Base")
+      ✗   program/000071/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $162.8M (decade enacted-2025), $162.8M (decade request-2025), $162.8M (table column "FY25")
+      ✗   program/000071/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $162.8M (decade enacted-2025), $162.8M (decade request-2025), $162.8M (table column "FY25") | FY2026: $156.8M (decade request-2026), $156.8M (table column "FY26"), $156.8M (table column "FY26 Base")
+      ✗   program/000073/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $20.0M (decade enacted-2025), $20.0M (decade request-2025), $20.0M (table column "FY25")
+      ✗   program/000073/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $20.0M (decade enacted-2025), $20.0M (decade request-2025), $20.0M (table column "FY25") | FY2026: $20.0M (decade request-2026), $20.0M (table column "FY26"), $20.0M (table column "FY26 Base")
+      ✗   program/000074/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $25.9M (decade enacted-2025), $25.9M (decade request-2025), $25.9M (table column "FY25")
+      ✗   program/000074/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $25.9M (decade enacted-2025), $25.9M (decade request-2025), $25.9M (table column "FY25") | FY2026: $26.3M (decade request-2026), $26.3M (table column "FY26"), $26.3M (table column "FY26 Base")
+      ✗   program/000075/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $1.61B (decade enacted-2025), $1.02B (decade request-2025), $1.61B (table column "FY25")
+      ✗   program/000075/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $1.61B (decade enacted-2025), $1.02B (decade request-2025), $1.61B (table column "FY25") | FY2026: $940.2M (decade request-2026), $940.2M (table column "FY26"), $940.2M (table column "FY26 Base")
+      ✗   ... and 1487 more
+      ✗ leg c footnote-formatter: footnote formatter module missing (src/lib/footnote.ts) — P0-3 unified formatter not yet implemented; the goldens in scripts/gates/goldens/footnotes/ are the contract it must reproduce
+
+PRE-FAILURE RUN — scoped to the spec's flagship repro page
+(BASIS_PAGE_FILTER=ATA000 node scripts/gates/basis.mjs, exit 1) — the P0-1
+FY24 collision ($5.25B Net Procurement vs $5.57B TOA) and the P0-2 FY25
+false absence, both caught on today's artifact, verbatim:
+
+    gate 23 basis: scanning 1 program pages; leg a2 (attribute path): VACUOUS — 0 attribute-carrying figures to group (a1 must pass before this path has teeth); leg b1: 2 numeric summary cards agree with detail figures ✓ → FAIL
+      note: scanning 1 program pages
+      note: leg a2 (attribute path): VACUOUS — 0 attribute-carrying figures to group (a1 must pass before this path has teeth)
+      note: leg b1: 2 numeric summary cards agree with detail figures ✓
+      note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+      ✗ leg a1 basis-attrs: 25/25 [data-amount] figures on program pages missing data-basis/data-fy/data-measure (first 10):
+      ✗   program/ATA000/index.html: "$5.25B" (fact bb54b1658b2746cb) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.09B" (fact 45d796820a323362) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$5.57B" (fact 8ed77b882365279a) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.09B" (fact 45d796820a323362) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.56B" (fact 7d1994564d0da6a7) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.48B" (fact 3e412c115fd04e30) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$5.57B" (fact 5b532c52d3ebb4c2) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.48B" (fact 3024ca415b4f8443) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$5.28B" (fact 8a894c3f81dbe097) missing data-basis, data-fy, data-measure
+      ✗   program/ATA000/index.html: "$4.97B" (fact 2503ccee43cd0c8f) missing data-basis, data-fy, data-measure
+      ✗   ... and 15 more
+      ✗ leg a2 collision (BOOTSTRAP heuristic on /program/ATA000/):
+      ✗   program/ATA000/index.html [BOOTSTRAP heuristic — P0-1]: "FY24 actuals" resolves to 2 distinct values with no reconciliation: $5.25B (fact bb54b1658b2746cb, label "FY24 Actuals$5.25B") vs $5.57B (fact 5b532c52d3ebb4c2, label "Actuals$4.56B$4.48B$5.57B FY24")
+      ✗ leg b2 false-absence: 2 summary card(s) render "—" while detail sections publish the value (first 10):
+      ✗   program/ATA000/index.html: summary card "FY25 Total" renders "—" (absence) while the detail sections publish values — FY2025: $4.97B (decade enacted-2025), $4.96B (decade request-2025), $4.97B (table column "FY25")
+      ✗   program/ATA000/index.html: summary card "FY25→26 Change" renders "—" (absence) while the detail sections publish values — FY2025: $4.97B (decade enacted-2025), $4.96B (decade request-2025), $4.97B (table column "FY25") | FY2026: $4.09B (decade request-2026), $4.09B (table column "FY26"), $3.56B (table column "FY26 Base")
+      ✗ leg c footnote-formatter: footnote formatter module missing (src/lib/footnote.ts) — P0-3 unified formatter not yet implemented; the goldens in scripts/gates/goldens/footnotes/ are the contract it must reproduce
+
+(The "exit=0" echoed above is tee's status; the gate process itself exited 1
+— see the full-corpus run.)
+
+Leg b1's 26 catches are a finding in their own right: on pages like
+/program/0601102A/ the "FY24 Actuals" summary card renders almost exactly 2×
+every FY24 detail figure ($644.7M vs $322.3M rows) — the summary layer sums
+duplicated PE rows across editions/exhibits that the detail sections list
+individually. That is the same class as P0-1 (summary computed on a basis no
+detail section displays) and was not in the PM review; the gate found it.
