@@ -261,6 +261,25 @@ def _scenario_meta(scenario: str, edition: int) -> tuple[int | None, str | None]
     }.get(scenario, (None, None))
 
 
+def _decade_measure_token(kind: str, mapped: str | None) -> str:
+    """Gate-23 measure token for a decade-series cell.
+
+    The decade grid renders each point under its KIND row label ("Actuals" /
+    "Enacted" / "Request"), so the machine label must group with that rendered
+    label, not blindly with the chosen slug: PB2018 reports FY2017 through a
+    request-labeled column (annualized CR), and slug-accurate 'request' would
+    group the Enacted-row cell with the Request-row cell — two visually
+    DISTINCT labels sharing one (fy, measure) group is exactly the false
+    collision gate 23 leg a2 flags (99 live pages). When the mapped measure
+    diverges from the kind, the token is kind-qualified ('enacted-request'):
+    both words are true — rendered under Enacted, sourced from a request
+    column — and the token collides with nothing.
+    """
+    if not mapped or mapped == kind:
+        return kind
+    return f"{kind}-{mapped}"
+
+
 # Trajectory metric → (fy, measure) under PB2026 semantics — the single
 # payload-level source for the trajectory block's basis attributes (site_meta
 # 'trajectory_measures'; the spark/card components must never re-derive).
@@ -2195,13 +2214,18 @@ def _build_summary_blocks(
     ed = _SUMMARY_EDITION
 
     # ---- source indexes ----------------------------------------------------
-    # decade: pe → {kind: (value, fid, measure)} for the PB2026 edition
+    # decade: pe → {kind: (value, fid, measure, cell_token)} for the PB2026
+    # edition. cell_token is the kind-qualified gate-23 token the decade GRID
+    # cell renders (recon v2 pairs toa candidates by rendered token).
     decade_slot: dict[str, dict] = {}
     for d_pe, _d_fy, d_edition, d_kind, d_amount, d_fid, d_at in (decade_grains or []):
         if d_edition != ed or d_fid is None or d_amount is None:
             continue
         _, measure = _amount_type_meta(d_at, d_edition)
-        decade_slot.setdefault(d_pe, {})[d_kind] = (d_amount, d_fid, measure or d_kind)
+        decade_slot.setdefault(d_pe, {})[d_kind] = (
+            d_amount, d_fid, measure or d_kind,
+            _decade_measure_token(d_kind, measure),
+        )
 
     # trajectory: pe → primary-org metrics (largest fy2026_total, org asc)
     con = _duckdb.connect(str(duckdb_path), read_only=True)
@@ -2224,19 +2248,36 @@ def _build_summary_blocks(
     # budget_lines: (pe, amount_type) → [(fid, amount)] (titled AND rollup
     # rows both render on the P-1 table; slot fallback 3 requires exactly one)
     bl_by_key: dict[tuple, list] = {}
+    # (pe, fy, measure) → [(fid, amount)] — recon v2's toa-side fallback and
+    # the honest-absence check both need measure-grain row counts.
+    bl_by_measure: dict[tuple, list] = {}
+    bl_fys: dict[str, set] = {}
     for r in bl_rows:
         bl_by_key.setdefault((r[8], r[10]), []).append((r[0], r[11]))
+        b_fy, b_measure = _amount_type_meta(r[10], ed)
+        if b_fy is not None and b_measure is not None:
+            bl_by_measure.setdefault((r[8], b_fy, b_measure), []).append((r[0], r[11]))
+            bl_fys.setdefault(r[8], set()).add(b_fy)
 
-    # detail roots: pe → {scenario: {"v", "fid", "xml_path"}} — deduped by
-    # DISTINCT (amount, xml_path) tuple (the dual-volume rule: identical
-    # tuples under 2+ documents are ONE fact; the first document in sha
-    # order supplies the citing fid). >1 DISTINCT amount → ambiguous → slot
+    # detail roots: pe → {scenario: {"v", "fid", "xml_path", "resolution"}} —
+    # deduped by DISTINCT amount (the dual-volume rule: identical amounts
+    # under 2+ documents/paths are ONE display value; the first document in
+    # sha order supplies the citing fid — Task 3 aligned this key with the
+    # sidecar display dedupe, so a zero recorded twice is a SINGLE honest
+    # zero root, not an ambiguity). >1 DISTINCT amount → ambiguous → slot
     # skipped (never sum project rows onto one member's fact).
     detail_root: dict[str, dict] = {}
     _root_seen: dict[tuple, set] = {}
+    det_fys: dict[str, set] = {}  # pe → fiscal years with ANY detail row
     for (fid, pe_bli, project_number, _pt, scenario, amount_millions,
          _units, xml_path, _org, _ef, fiscal_year, _sha, resolution) in detail_rows:
-        if fiscal_year != ed or project_number is not None:
+        if fiscal_year != ed:
+            continue
+        if amount_millions is not None:
+            d_fy, _d_m = _scenario_meta(scenario, ed)
+            if d_fy is not None:
+                det_fys.setdefault(pe_bli, set()).add(d_fy)
+        if project_number is not None:
             continue
         if scenario not in ("PriorYear", "CurrentYear", "BudgetYearOne"):
             continue
@@ -2244,7 +2285,7 @@ def _build_summary_blocks(
             continue
         tup = (pe_bli, scenario)
         seen = _root_seen.setdefault(tup, set())
-        key = (amount_millions, xml_path)
+        key = amount_millions
         if key in seen:
             continue  # dual-volume duplicate of an already-kept row
         seen.add(key)
@@ -2256,6 +2297,7 @@ def _build_summary_blocks(
             "v": float(amount_millions),
             "fid": fid if resolution in ("unique", "ambiguous_first") else None,
             "xml_path": xml_path,
+            "resolution": resolution,
         }
 
     universe = (
@@ -2290,7 +2332,7 @@ def _build_summary_blocks(
             # 1. decade grain
             grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
             if grain is not None:
-                v, fid, measure = grain
+                v, fid, measure, _token = grain
                 slot_cards[key] = _card(
                     key, default_fy, measure, value=v, units="USD thousands",
                     basis=_BASIS_TOA, fid=fid, dataset="fct_decade_series",
@@ -2338,9 +2380,19 @@ def _build_summary_blocks(
                     dataset="jbook_details",
                 )
                 continue
-            # 5. honest absence
+            # 5. honest absence. 'not-published' means "the FY2026 books we
+            # ingested carry no such row" — a LIE when the page's line-item
+            # tables DO show rows for this fiscal year (ambiguous roots,
+            # project-only rows, multi-pot workbook splits). Those slots say
+            # 'no-rollup': rows exist below, but no single defensible
+            # program-level figure does (Task 3 honesty fix; 10 live slots).
+            rows_below = (
+                default_fy in bl_fys.get(pe, ())
+                or default_fy in det_fys.get(pe, ())
+            )
             slot_cards[key] = _card(
-                key, default_fy, default_measure, absence="not-published"
+                key, default_fy, default_measure,
+                absence="no-rollup" if rows_below else "not-published",
             )
 
         cards.extend(slot_cards[k] for k, _, _ in _SUMMARY_SLOTS)
@@ -2382,35 +2434,69 @@ def _build_summary_blocks(
             cards.append(_card("change", 2026, "change", absence="no-comparison"))
 
         # ---- reconciliation payload (§P0-1) ----
+        # v2 (Task 3): a page's SINGLE detail root that contradicts an
+        # entity-level toa figure gets an entry even when the toa figure is
+        # not the card (single P-1 row on a measure the card doesn't carry)
+        # and even when the root has no citation fact (zero/unresolved XML
+        # rows cite their xml_path — Cite state B; the collision is just as
+        # visible to the reader either way). Never fabricated: the toa side
+        # is always an emitted fact, the detail side always a shipped row.
         reconciliation = []
         for key, _fy, _m in _SUMMARY_SLOTS:
-            card = slot_cards[key]
-            if card["basis"] != _BASIS_TOA or card["value"] is None:
-                continue
             scenario = _SLOT_DETAIL_SCENARIO[key]
             root = detail_root.get(pe, {}).get(scenario)
-            if root is None or root["fid"] is None:
-                continue  # no citable single detail fact — never fabricate a side
+            if root is None:
+                continue  # no root, or ambiguous roots (per-line entities)
             fy, measure = _scenario_meta(scenario, ed)
-            if measure != card["measure"] or fy != card["fy"]:
-                continue  # different pot, not a two-basis restatement
-            toa_dollars = card["value"] * 1_000.0
-            detail_dollars = root["v"] * 1_000_000.0
-            if _display_values_agree(toa_dollars, detail_dollars):
-                continue
-            reconciliation.append({
-                "fy": fy,
-                "measure": measure,
-                "toa": {
+            card = slot_cards[key]
+            toa_side = None
+            if (
+                card["basis"] == _BASIS_TOA and card["value"] is not None
+                and card["measure"] == measure and card["fy"] == fy
+            ):
+                toa_side = {
                     "v": card["value"], "units": "USD thousands",
                     "fid": card["fid"], "public_id": card["public_id"],
                     "dataset": card["dataset"],
-                },
-                "detail": {
-                    "v": root["v"], "units": "USD millions",
-                    "fid": root["fid"], "public_id": root["fid"][:8],
-                    "dataset": "jbook_details", "scenario": scenario,
-                },
+                }
+            else:
+                # decade grid cell rendering exactly (fy, measure)…
+                grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+                if grain is not None and grain[3] == measure:
+                    toa_side = {
+                        "v": grain[0], "units": "USD thousands",
+                        "fid": grain[1], "public_id": grain[1][:8],
+                        "dataset": "fct_decade_series",
+                    }
+                else:
+                    # …or the single program-entity P-1 row on (fy, measure)
+                    m_rows = bl_by_measure.get((pe, fy, measure), [])
+                    if len(m_rows) == 1 and m_rows[0][1] is not None:
+                        toa_side = {
+                            "v": float(m_rows[0][1]), "units": "USD thousands",
+                            "fid": m_rows[0][0], "public_id": m_rows[0][0][:8],
+                            "dataset": "budget_lines",
+                        }
+            if toa_side is None:
+                continue  # no entity-level toa figure at (fy, measure)
+            toa_dollars = toa_side["v"] * 1_000.0
+            detail_dollars = root["v"] * 1_000_000.0
+            if _display_values_agree(toa_dollars, detail_dollars):
+                continue
+            detail_side = {
+                "v": root["v"], "units": "USD millions",
+                "fid": root["fid"],
+                "public_id": root["fid"][:8] if root["fid"] else None,
+                "dataset": "jbook_details", "scenario": scenario,
+            }
+            if root["fid"] is None:
+                detail_side["xml_path"] = root["xml_path"]
+                detail_side["resolution"] = root.get("resolution")
+            reconciliation.append({
+                "fy": fy,
+                "measure": measure,
+                "toa": toa_side,
+                "detail": detail_side,
                 "delta_thousands": round((toa_dollars - detail_dollars) / 1_000.0, 3),
             })
 
@@ -3436,18 +3522,58 @@ def _write_all_sidecars(
     #                    fiscal_year, document_sha256, resolution)
     from collections import Counter, defaultdict
 
+    # Dual-volume display dedupe (Task 3 mini-fix): the 47 dual-volume books
+    # list every row twice — identical (project, scenario, amount) under two
+    # document shas. They are byte-identical DISPLAY rows of one fact; keep
+    # ONE, preferring the citable resolution (unique > ambiguous_first >
+    # unresolved > zero_amount; first-in-sha-order on ties) so the surviving
+    # row is state A whenever either copy was.
+    _RES_RANK = {"unique": 0, "ambiguous_first": 1, "unresolved": 2, "zero_amount": 3}
+    _detail_best: dict[tuple, tuple[int, int]] = {}  # display key → (rank, row idx)
+    for i, row in enumerate(detail_rows):
+        (fid, pe_bli, project_number, _pt, scenario, amount_millions,
+         *_rest, resolution) = row
+        dkey = (pe_bli, project_number, scenario, amount_millions)
+        rank = _RES_RANK.get(resolution, 9)
+        cur = _detail_best.get(dkey)
+        if cur is None or rank < cur[0]:
+            _detail_best[dkey] = (rank, i)
+    _detail_keep = {idx for _rank, idx in _detail_best.values()}
+
+    # Per-(pe, scenario) ROOT-row counts (post-dedupe): a UNIQUE root row IS
+    # the program's (fy, measure) value (entity = pe, groups with the cards);
+    # ≥2 distinct roots for one scenario are conflicting program-level lines —
+    # neither may claim the program entity (gate-23 same-label collision), so
+    # each gets a per-line entity and the table disambiguates the labels.
+    _root_counts: Counter = Counter()
+    for i in _detail_keep:
+        row = detail_rows[i]
+        if row[2] is None:  # project_number
+            _root_counts[(row[1], row[4])] += 1  # (pe_bli, scenario)
+    _root_ordinal: Counter = Counter()
+
     details_by_pe: dict[str, list] = defaultdict(list)
-    for row in detail_rows:
+    for i, row in enumerate(detail_rows):
+        if i not in _detail_keep:
+            continue
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, units, xml_path, org, exhibit_family,
          fiscal_year, document_sha256, resolution) = row
         # Basis threading (PM Sprint 1): every detail figure is a J-book
         # R-2/P-40 row → basis 'jbook-detail'; (fy, measure) from the
         # edition-relative scenario map. `entity` scopes gate-23 grouping:
-        # the PE-root row (project_number null) IS the program's (fy,
+        # a UNIQUE PE-root row (project_number null) IS the program's (fy,
         # measure) value; project rows are components and must never be
-        # grouped against the cards ('{pe}/{project}').
+        # grouped against the cards ('{pe}/{project}'); conflicting multi-
+        # root scenarios get per-line entities ('{pe}/line{n}').
         d_fy, d_measure = _scenario_meta(scenario, 2026)
+        if project_number is not None:
+            entity = f"{pe_bli}/{project_number}"
+        elif _root_counts[(pe_bli, scenario)] == 1:
+            entity = pe_bli
+        else:
+            _root_ordinal[(pe_bli, scenario)] += 1
+            entity = f"{pe_bli}/line{_root_ordinal[(pe_bli, scenario)]}"
         details_by_pe[pe_bli].append({
             "fact_id": fid,
             "project_number": project_number,
@@ -3461,10 +3587,7 @@ def _write_all_sidecars(
             "fy": d_fy,
             "measure": d_measure,
             "edition": 2026,
-            "entity": (
-                pe_bli if project_number is None
-                else f"{pe_bli}/{project_number}"
-            ),
+            "entity": entity,
         })
 
     # Set of fact_ids that have a valid citation row (resolution unique/ambiguous_first)
@@ -3483,9 +3606,14 @@ def _write_all_sidecars(
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
             continue
         _, d_measure = _amount_type_meta(d_at, d_edition)
+        # Task 3: kind-qualified token — the cell renders under its KIND row
+        # label, so a slug whose mapped measure diverges (PB2018's FY2017
+        # request column feeding the Enacted row) must not share a (fy,
+        # measure) group with the Request row (_decade_measure_token doc).
         decade_series_by_pe.setdefault(d_pe, {}).setdefault(d_kind, []).append({
             "fy": d_fy, "v": d_amount, "fid": d_fid, "edition": d_edition,
-            "basis": _BASIS_TOA, "measure": d_measure or d_kind,
+            "basis": _BASIS_TOA,
+            "measure": _decade_measure_token(d_kind, d_measure),
         })
     for _pe, kinds in decade_series_by_pe.items():
         for _kind, entries in kinds.items():
@@ -3532,11 +3660,18 @@ def _write_all_sidecars(
     #                organization, budget_activity, budget_activity_title,
     #                pe_bli, title, amount_type, amount_thousands, units,
     #                document_sha256, source_sheet, source_cells)
-    # Per-(pe, amount_type) row counts: a PE whose slug has exactly ONE row
-    # renders the program-level value (entity = pe, groups with the cards);
-    # multi-account/org splits are components ('{pe}/{org}/{account}' —
-    # legitimately different values must never collide in gate 23).
-    _bl_key_counts: Counter = Counter((r[8], r[10]) for r in bl_rows)
+    # Per-(pe, fy, measure) row counts (Task 3 — was per-(pe, amount_type)):
+    # entity = pe ONLY when a row is the sole workbook row on its rendered
+    # (fy, measure) label. Two slugs can map to one measure (fy_2026_total +
+    # fy_2026_request → 'request' in the service books: different pots, one
+    # label — 104 live collisions), and one slug can span accounts/BAs (318
+    # live) — every such row is a component and must carry its own entity
+    # ('{pe}/{org}/{account}/{ba}/{slug}', indexed when even that repeats).
+    _bl_measure_counts: Counter = Counter()
+    for r in bl_rows:
+        b_fy, b_measure = _amount_type_meta(r[10], 2026)
+        _bl_measure_counts[(r[8], b_fy, b_measure)] += 1
+    _bl_component_seen: Counter = Counter()
 
     bl_by_pe: dict[str, list] = defaultdict(list)
     for row in bl_rows:
@@ -3546,6 +3681,13 @@ def _write_all_sidecars(
          document_sha256, source_sheet, source_cells) = row
         # Basis threading (PM Sprint 1): every workbook row is R-1/P-1 TOA.
         b_fy, b_measure = _amount_type_meta(amount_type, 2026)
+        if _bl_measure_counts[(pe_bli, b_fy, b_measure)] == 1:
+            entity = pe_bli
+        else:
+            entity = f"{pe_bli}/{organization}/{account}/{budget_activity}/{amount_type}"
+            _bl_component_seen[entity] += 1
+            if _bl_component_seen[entity] > 1:
+                entity = f"{entity}#{_bl_component_seen[entity]}"
         bl_by_pe[pe_bli].append({
             "fact_id": fid,
             "exhibit": exhibit,
@@ -3560,10 +3702,7 @@ def _write_all_sidecars(
             "fy": b_fy,
             "measure": b_measure,
             "edition": 2026,
-            "entity": (
-                pe_bli if _bl_key_counts[(pe_bli, amount_type)] == 1
-                else f"{pe_bli}/{organization}/{account}"
-            ),
+            "entity": entity,
         })
 
     # ------------------------------------------------------------------ #

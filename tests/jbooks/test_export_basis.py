@@ -536,3 +536,197 @@ def test_named_primes_absent_without_dossier_names(basis_site):
     """No dossier (sparse PE) → no named_primes key content (honest absence)."""
     side = _sidecar(basis_site["site"], SPARSE_PE)
     assert side["summary"]["named_primes"] == []
+
+
+# ---------------------------------------------------------------------------
+# PM Sprint 1 Task 3 — exporter honesty fixes that gate 23 leg a2 forced:
+# dual-volume display dedupe, per-line entities for ambiguous roots,
+# (fy, measure)-scoped budget-line entities, kind-qualified decade tokens,
+# and reconciliation entries whose detail side is an uncited (xml-path) root.
+# ---------------------------------------------------------------------------
+
+ZERO_PE = "ZRO000"   # toa card + single zero root → recon entry, fid-less side
+AMB_PE = "AMB000"    # two DISTINCT roots per scenario → per-line entities
+POTS_PE = "POT000"   # two slugs mapping to the same (fy, measure) → demoted
+
+
+def _seed_task3_extras(pg_dsn: str, sha: str, tmp_path) -> str:
+    """Second (dual-volume) document duplicating ATA000's rows byte-for-byte,
+    plus the three edge-case PEs. Returns the second document's sha."""
+    vol2 = tmp_path / "vol2.pdf"
+    vol2.write_bytes(FIXTURE_PDF.read_bytes() + b"\n")
+    sha2 = hashlib.sha256(vol2.read_bytes()).hexdigest()
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title,"
+            " source_url, file_path, sha256, downloaded_at, status) values"
+            " (%s,'procurement',2026,'FY26 AF Aircraft Procurement Vol II.pdf',"
+            " 'https://example.mil/af-apf-vol2.pdf',%s,%s, now(),'downloaded')",
+            (ORG, str(vol2), sha2),
+        )
+        doc2 = con.execute(
+            "select id from jbook_documents where sha256=%s", (sha2,)
+        ).fetchone()[0]
+        con.execute(
+            "insert into extraction_runs (document_id, tier, tool_versions)"
+            " values (%s, 1, '{}')",
+            (doc2,),
+        )
+        run2 = con.execute("select max(id) from extraction_runs").fetchone()[0]
+        # Dual-volume rule: identical (project, scenario, amount, xml_path)
+        # rows under a second document — display duplicates of ONE fact.
+        for scenario, amt in DET.items():
+            con.execute(
+                "insert into budget_line_details (extraction_run_id, document_id,"
+                " pe_bli, scenario, amount_millions, xml_path) values"
+                " (%s,%s,%s,%s,%s,'LineItem[1]')",
+                (run2, doc2, PE, scenario, amt),
+            )
+        # ZERO_PE: single zero root (fid-less side of a reconciliation).
+        con.execute(
+            "insert into budget_line_details (extraction_run_id, document_id,"
+            " pe_bli, scenario, amount_millions, xml_path) values"
+            " (%s,%s,%s,'PriorYear','0','LineItem[9]')",
+            (run2, doc2, ZERO_PE),
+        )
+        # AMB_PE: two DISTINCT roots for PriorYear + two for CurrentYear.
+        for scenario, amounts in (
+            ("PriorYear", ("0", "200.000")),
+            ("CurrentYear", ("0", "150.000")),
+        ):
+            for i, amt in enumerate(amounts):
+                con.execute(
+                    "insert into budget_line_details (extraction_run_id,"
+                    " document_id, pe_bli, scenario, amount_millions, xml_path)"
+                    " values (%s,%s,%s,%s,%s,%s)",
+                    (run2, doc2, AMB_PE, scenario, amt, f"LineItem[{20 + i}]"),
+                )
+        # Workbook rows: ZERO_PE + AMB_PE FY24 actuals (toa side / card);
+        # POTS_PE: fy_2026_total AND fy_2026_request — BOTH map to measure
+        # 'request', so neither row may claim the program-level entity.
+        for pe, at, amt in (
+            (ZERO_PE, "fy_2024_actuals", 500000),
+            (AMB_PE, "fy_2024_actuals", 300000),
+            (POTS_PE, "fy_2026_total", 100000),
+            (POTS_PE, "fy_2026_request", 40000),
+        ):
+            con.execute(
+                """
+                insert into budget_lines
+                  (exhibit, fiscal_year, account, account_title, organization,
+                   budget_activity, budget_activity_title, pe_bli, title,
+                   amount_type, amount_thousands, source_document_id,
+                   source_sheet, source_cells)
+                values
+                  ('P-1', 2026, %s, 'Aircraft Procurement, Air Force', %s,
+                   %s, 'Combat Aircraft', %s, %s,
+                   %s, %s, %s, 'Exhibit P-1', ARRAY['O901'])
+                """,
+                (ACCT, ORG, BA, pe, pe, at, amt, doc2),
+            )
+    from govbudget.jbooks.provenance_pages import build_provenance_pages
+
+    build_provenance_pages(pg_dsn)
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        # Force-resolve NONZERO amounts only — zero rows must keep their
+        # honest zero_amount/unresolved resolution (fid-less state B).
+        con.execute(
+            "update provenance_pages set resolution='unique', page_number=1,"
+            " amount_text=amount_millions::text, x0=10, x1=60, top_pt=100,"
+            " bottom_pt=110, page_width=612, page_height=792"
+            " where target_kind='amount' and amount_millions <> 0"
+        )
+    return sha2
+
+
+@pytest.fixture()
+def task3_site(pg_dsn, tmp_path):
+    sha = _seed(pg_dsn)
+    sha2 = _seed_task3_extras(pg_dsn, sha, tmp_path)
+    db = tmp_path / "wh.duckdb"
+    _make_duckdb(db, sha)
+    site = tmp_path / "site"
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="https://cdn.example/pdfs")
+    return {"site": site, "sha": sha, "sha2": sha2}
+
+
+def test_dual_volume_details_deduped(task3_site):
+    """Identical (project, scenario, amount) rows across the two volumes are
+    ONE display row each — and the surviving root rows keep entity == PE."""
+    side = _sidecar(task3_site["site"], PE)
+    tuples = [
+        (d["project_number"], d["scenario"], d["amount_millions"])
+        for d in side["details"]
+    ]
+    assert len(tuples) == len(set(tuples)), f"duplicate display rows: {tuples}"
+    assert len(tuples) == 3  # PriorYear / CurrentYear / BudgetYearOne, once each
+    assert all(d["entity"] == PE for d in side["details"])
+
+
+def test_zero_root_reconciliation_entry(task3_site):
+    """A single fid-less zero root that contradicts the toa card gets a
+    reconciliation entry with an xml_path detail side (never silence)."""
+    side = _sidecar(task3_site["site"], ZERO_PE)
+    cards = _cards_by_key(side["summary"])
+    assert cards["fy2024"]["value"] == pytest.approx(500000.0)
+    assert cards["fy2024"]["basis"] == "toa"
+    recon = {(r["fy"], r["measure"]): r for r in side["summary"]["reconciliation"]}
+    assert (2024, "actuals") in recon
+    r = recon[(2024, "actuals")]
+    assert r["toa"]["v"] == pytest.approx(500000.0)
+    assert r["detail"]["v"] == pytest.approx(0.0)
+    assert r["detail"]["fid"] is None
+    assert r["detail"]["xml_path"] == "LineItem[9]"
+
+
+def test_ambiguous_roots_get_per_line_entities(task3_site):
+    """Two DISTINCT roots for one scenario: neither may claim the program
+    entity (they would mint an unreconcilable same-label collision) — and the
+    unfilled card slot states the honest 'no-rollup' reason, not
+    'not-published' (rows exist below)."""
+    side = _sidecar(task3_site["site"], AMB_PE)
+    prior = [
+        d for d in side["details"]
+        if d["scenario"] == "PriorYear" and d["project_number"] is None
+    ]
+    assert len(prior) == 2
+    entities = {d["entity"] for d in prior}
+    assert AMB_PE not in entities
+    assert len(entities) == 2
+    # fy2025: no toa source, roots ambiguous → honest no-rollup absence
+    cards = _cards_by_key(side["summary"])
+    assert cards["fy2025"]["value"] is None
+    assert cards["fy2025"]["absence_reason"] == "no-rollup"
+    # ambiguous roots never fabricate a reconciliation side
+    assert (2025, "enacted") not in {
+        (r["fy"], r["measure"]) for r in side["summary"]["reconciliation"]
+    }
+
+
+def test_same_measure_bl_rows_demoted(task3_site):
+    """fy_2026_total and fy_2026_request both map to (2026, request): with two
+    rows in the group, NEITHER row may claim entity == PE."""
+    side = _sidecar(task3_site["site"], POTS_PE)
+    rows = side["budget_lines"]
+    assert len(rows) == 2
+    assert all(r["measure"] == "request" and r["fy"] == 2026 for r in rows)
+    entities = {r["entity"] for r in rows}
+    assert POTS_PE not in entities
+    assert len(entities) == 2
+    # the card still resolves from the single fy_2026_total row (slot slug
+    # priority) — program-level value with a workbook fact
+    cards = _cards_by_key(side["summary"])
+    assert cards["fy2026"]["value"] == pytest.approx(100000.0)
+    assert cards["fy2026"]["basis"] == "toa"
+
+
+def test_decade_measure_token_kind_qualified():
+    """Decade cells render under their KIND row label; a chosen slug whose
+    mapped measure diverges from the kind gets a kind-qualified token so two
+    visually-distinct rows never share one (fy, measure) group."""
+    from govbudget.export_site import _decade_measure_token
+
+    assert _decade_measure_token("actuals", "actuals") == "actuals"
+    assert _decade_measure_token("enacted", "request") == "enacted-request"
+    assert _decade_measure_token("request", "total-base-oco") == "request-total-base-oco"
+    assert _decade_measure_token("enacted", None) == "enacted"
