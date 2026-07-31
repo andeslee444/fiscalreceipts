@@ -20,7 +20,7 @@ export function NarrativeSourceChip({ factId }: { factId: string }) {
       type="button"
       data-narrative-chip=""
       data-fact-id={factId}
-      className="ml-1.5 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle whitespace-nowrap cursor-pointer hover:bg-amber-100 transition-colors"
+      className="ml-1.5 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1 py-0.5 font-mono text-xs text-amber-700 align-middle whitespace-nowrap cursor-pointer hover:bg-amber-100 transition-colors"
       title="View this passage in the official J-book (page render with the paragraph highlighted)"
       aria-label="View source citation for this passage"
       onClick={(e) => {

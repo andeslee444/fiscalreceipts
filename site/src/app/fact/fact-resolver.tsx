@@ -242,7 +242,7 @@ function FactCard({
       className="mb-6 rounded-lg border border-border p-5"
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-800">
+        <span className="inline-block rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800">
           {kindLabel}
         </span>
         <span className="font-mono text-xs text-muted-foreground">

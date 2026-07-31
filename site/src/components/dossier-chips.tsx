@@ -18,7 +18,7 @@ import type { SnapshotMeta } from "@/lib/dossier";
 
 const CHIP_BASE =
   "ml-1.5 inline-flex items-center gap-0.5 rounded border px-1 py-0.5 " +
-  "font-mono text-[10px] align-middle whitespace-nowrap";
+  "font-mono text-xs align-middle whitespace-nowrap";
 
 export function DossierFactChip({ factId }: { factId: string }) {
   const { openPanel } = useContext(CitationPanelContext);

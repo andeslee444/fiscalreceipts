@@ -104,7 +104,7 @@ export function UsaspendingCard({ citation }: UsaspendingCardProps) {
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             API endpoint
           </span>
-          <p className="font-mono text-[11px] text-muted-foreground break-all leading-relaxed">
+          <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
             {citation.official_url}
           </p>
         </div>
@@ -116,7 +116,7 @@ export function UsaspendingCard({ citation }: UsaspendingCardProps) {
           <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none">
             Query body (durable artifact)
           </summary>
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-foreground">
+          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
             {pretty}
           </pre>
         </details>

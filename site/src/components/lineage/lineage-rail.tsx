@@ -83,7 +83,7 @@ function EdgePe({
     return (
       <span className="text-muted-foreground">
         <code className="font-mono text-xs">{entry.pe}</code>{" "}
-        <span className="text-[11px] italic">(unresolved)</span>
+        <span className="text-xs italic">(unresolved)</span>
       </span>
     );
   }
@@ -113,7 +113,7 @@ function StatedCiteMarker({ factId }: { factId: string }) {
       type="button"
       data-lineage-cite=""
       data-fact-id={factId}
-      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 font-mono text-[10px] text-muted-foreground align-middle whitespace-nowrap cursor-pointer underline decoration-dotted underline-offset-2 transition-colors hover:decoration-solid hover:border-primary/50 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-card px-1 py-0.5 font-mono text-xs text-muted-foreground align-middle whitespace-nowrap cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 transition-colors hover:decoration-solid hover:decoration-(--cite-decoration-hover) hover:border-primary/50 hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       title="View the source sentence stating this transfer (official J-book page)"
       aria-label="View source citation for this lineage link"
       onClick={(e) => {
@@ -175,7 +175,7 @@ function StatedEdge({
           evidence fact the "cited" chip opens. */}
       {entry.evidence?.sentence ? (
         <details className="mt-1">
-          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
+          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
             show sentence
           </summary>
           <blockquote
@@ -210,7 +210,7 @@ function InferredEdge({
       <span className="text-xs uppercase tracking-wide">
         {relationLabel(entry.relation, direction)} · FY{entry.fy}
         {entry.ba ? ` · BA${entry.ba}` : ""}
-        <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-semibold not-italic">
+        <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-amber-500/20 px-1 py-0.5 text-xs font-semibold not-italic">
           candidate (unverified)
         </span>
       </span>

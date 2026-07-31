@@ -116,7 +116,7 @@ export function FamilyFundingLine({
               <span className="flex flex-col gap-0.5" data-multi-member-fy={fy}>
                 {entries.map((p) => (
                   <span key={p.pe} className="flex items-baseline gap-1">
-                    <code className="font-mono text-[10px] text-muted-foreground">
+                    <code className="font-mono text-xs text-muted-foreground">
                       {p.pe}
                     </code>
                     <Cite

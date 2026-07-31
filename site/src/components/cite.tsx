@@ -30,11 +30,17 @@
  * enforces: state C is only allowed for datasets on site_meta.uncited_datasets,
  * and state A is forbidden for datasets still on that ledger.
  *
- * Receipts mode (ReceiptsContext):
- *   When ON:
- *     State A: shows short fact-id chip inline (last 8 chars of factId)
- *     State B: xml-path chip is always visible anyway (no change)
- *     State C: the ⁂ gains a visible "uncited" text label
+ * Receipts mode (ReceiptsContext) — DEFAULT ON since P1-1 (the site is named
+ * Fiscal Receipts; its receipts are not opt-in). The header toggle is labeled
+ * "Fact IDs" and controls chip VISIBILITY only — citations are always
+ * clickable. When ON:
+ *   State A: shows the public fact-id chip (fid[:8]) as a SIBLING of the
+ *     [data-amount] span — NEVER inside it. The static gates (23, render-*)
+ *     parse the [data-amount] element's text as a single currency figure;
+ *     server-rendered chip text inside the span (default is ON ⇒ chips are
+ *     in the SSG HTML) would null every parse.
+ *   State B: xml-path chip is always visible anyway (no change)
+ *   State C: the ⁂ gains a visible "uncited" text label
  */
 
 import React, { createContext, useContext, useState } from "react";
@@ -78,7 +84,9 @@ interface ReceiptsContextValue {
 }
 
 export const ReceiptsContext = createContext<ReceiptsContextValue>({
-  receiptsOn: false,
+  // Default ON (P1-1): matches ReceiptsProvider's first-visit default so
+  // fragments rendered without a provider agree with the shipped default.
+  receiptsOn: true,
 });
 
 // ── Basis vocabulary (PM Sprint 1 — spec §P0-1, gate 23 legs a1/a2) ────────
@@ -205,11 +213,14 @@ export interface CiteProps {
    */
   reconciled?: boolean;
   /**
-   * Basis chip visibility. Defaults to true (chip renders whenever the basis
-   * has a chip label). Dense table/grid cells pass false and declare the
-   * basis once at section level instead — REQUIRED for cells gate 23 leg b
-   * reads as FY evidence (decade cells, FY-labeled table columns), where
-   * sibling chip text inside the cell would null the gate's value parse.
+   * Chip visibility (basis chip AND fact-id chip). Defaults to true. Dense
+   * table/grid cells pass false and declare provenance once at section level
+   * instead — REQUIRED for cells gate 23 leg b reads as FY evidence (decade
+   * cells, FY-labeled table columns), where sibling chip text inside the
+   * cell would null the gate's value parse. Since P1-1 the fact-id chip
+   * defaults ON site-wide, so chip={false} also keeps dense grids (the
+   * years matrix alone holds ~13k cited cells) from becoming chip walls —
+   * the figure itself stays clickable either way.
    */
   chip?: boolean;
 }
@@ -226,17 +237,17 @@ export function CiteLegend({ className }: { className?: string }) {
     <p
       data-testid="cite-legend"
       className={[
-        "text-[11px] leading-5 text-muted-foreground",
+        "text-xs leading-5 text-muted-foreground",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="underline decoration-dotted underline-offset-2">
+      <span className="underline decoration-dotted decoration-(--cite-decoration) underline-offset-2">
         dotted underline
       </span>
       {" = cited (click for source) · "}
-      <span className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700">
+      <span className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs text-amber-700">
         XML
       </span>
       {" = zero in source XML · "}
@@ -283,7 +294,7 @@ function ReceiptsChip({ publicId }: { publicId: string }) {
       data-receipts-chip
       onClick={handleCopy}
       title={`Copy fact permalink /fact/${publicId}`}
-      className="ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-[10px] text-blue-700 align-middle"
+      className="ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-xs text-blue-700 align-middle"
       aria-hidden="true"
     >
       {copied ? "copied ✓" : `#${publicId}`}
@@ -369,7 +380,12 @@ export function Cite({
         {...basisAttrs}
         title={title}
         className={[
-          "cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid",
+          // P1-1: explicit ≥3:1 decoration tokens (globals.css) — the
+          // affordance carrying the value proposition must survive dim
+          // screens. Hover/focus reads as interactive: solid + darker.
+          "cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2",
+          "hover:decoration-solid hover:decoration-(--cite-decoration-hover)",
+          "focus-visible:decoration-solid focus-visible:decoration-(--cite-decoration-hover)",
           // Shared motion-system hover raise (globals.css .interactive-raise,
           // Phase 5C Task 11) — inline-block so transform applies to the span.
           "interactive-raise",
@@ -390,8 +406,12 @@ export function Cite({
         }}
       >
         {displayText}
-        {receiptsOn && <ReceiptsChip publicId={publicId} />}
       </span>
+      {/* SIBLING of [data-amount] (same contract as the basis chip): the
+          default is ON, so this chip is in the server HTML — inside the span
+          it would poison every gate's normalizeAmount parse. Dense cells
+          (chip={false}) suppress it like the basis chip. */}
+      {receiptsOn && chip && <ReceiptsChip publicId={publicId} />}
       {basisChip}
       </>
     );
@@ -412,17 +432,18 @@ export function Cite({
         aria-label={`${displayText} — cited to budget justification XML (no page highlight)`}
       >
         {displayText}
-        {/* Human label by default — the raw XML anchor reads like an error to
-            visitors. The full path stays in data-xml-path (gate contract) and
-            the tooltip; receipts mode surfaces it inline for power users.
+        {/* Human label ALWAYS — the raw XML anchor reads like an error to
+            visitors, and receipts mode now defaults ON (P1-1), so the label
+            can no longer swap to the raw path in receipts mode. The full
+            path stays in data-xml-path (gate contract) and the tooltip.
             Covers both state-B origins: zero-dollar lines and 'unresolved'
             facts (non-zero, but no PDF bbox found) — neither has a page cite. */}
         <span
-          className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"
+          className="ml-1 inline-block rounded bg-amber-100 px-1 py-0.5 font-mono text-xs text-amber-700 align-middle"
           title={`cited to the budget justification XML at ${xmlPath} — no page highlight`}
           aria-hidden="true"
         >
-          {receiptsOn ? xmlPath : "XML"}
+          XML
         </span>
       </span>
       {basisChip}
@@ -445,7 +466,7 @@ export function Cite({
       {displayText}
       {receiptsOn ? (
         <span
-          className="ml-0.5 inline-flex items-baseline whitespace-nowrap rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-700 align-middle"
+          className="ml-0.5 inline-flex items-baseline whitespace-nowrap rounded bg-amber-100 px-1 py-0.5 font-mono text-xs text-amber-700 align-middle"
           title="citation tier pending — see methodology"
           aria-hidden="true"
         >

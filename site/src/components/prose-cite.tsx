@@ -37,7 +37,7 @@ export function ProseCite({
       tabIndex={0}
       aria-label="View citation for this figure"
       title="This figure in the source text matches a cited fact — click to view the citation"
-      className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid interactive-raise"
+      className="cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 hover:decoration-solid hover:decoration-(--cite-decoration-hover) focus-visible:decoration-solid focus-visible:decoration-(--cite-decoration-hover) interactive-raise"
       onClick={() => openPanel(factId)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

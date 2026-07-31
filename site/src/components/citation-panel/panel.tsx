@@ -413,7 +413,7 @@ function CitationPanelDialog({
               <h2 className="text-sm font-semibold">Citation</h2>
               {citation && (
                 <span
-                  className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${kindBadgeClass(citation)}`}
+                  className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${kindBadgeClass(citation)}`}
                 >
                   {kindLabel(citation)}
                 </span>
@@ -532,7 +532,7 @@ function CitationPanelDialog({
                   (P0-4.3: the id must be addressable everywhere it shows). */}
               {/* Note: muted-foreground/60 fails WCAG AA contrast; use muted-foreground at full opacity */}
               {shortId && (
-                <p className="text-[11px] font-mono text-muted-foreground">
+                <p className="text-xs font-mono text-muted-foreground">
                   <a
                     href={`/fact/${shortId}`}
                     data-testid="panel-fact-permalink"
@@ -684,7 +684,7 @@ function CopyFootnoteButton({
         value={style}
         onChange={(e) => setStyle(e.target.value as FootnoteStyle)}
         aria-label="Footnote style"
-        className="h-5 shrink-0 cursor-pointer rounded border border-border bg-background px-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className="h-5 shrink-0 cursor-pointer rounded border border-border bg-background px-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
         {FOOTNOTE_STYLES.map((s) => (
           <option key={s.value} value={s.value}>

@@ -598,7 +598,12 @@ export async function runClickthroughGate(baseUrl) {
       notes.push("official-source #page=: no program found with this citation type");
     }
 
-    // ── Test 8: Receipts mode ────────────────────────────────────────────────
+    // ── Test 8: Receipts / Fact-IDs mode (DEFAULT ON since P1-1) ─────────────
+    // Contract (spec §P1-1): first visit shows fact-id chips with NO toggle
+    // click; the chip is a SIBLING of [data-amount] (never inside — the
+    // static gates parse the amount element's text as one currency figure);
+    // the "Fact IDs" toggle (accessible name "Show fact IDs") controls chip
+    // visibility only, persisted BOTH ways ('1' on / '0' off) across reloads.
     {
       const page = await context.newPage();
       try {
@@ -608,125 +613,146 @@ export async function runClickthroughGate(baseUrl) {
         if (!testPbl) {
           errors.push("receipts mode: no program page available to test");
         } else {
-          await page.goto(`${baseUrl}/program/${testPbl}/`, {
-            waitUntil: "networkidle",
-            timeout: 30000,
-          });
+          const pageUrl = `${baseUrl}/program/${testPbl}/`;
+          // Fresh first visit: clear any stored preference, then reload.
+          await page.goto(pageUrl, { waitUntil: "networkidle", timeout: 30000 });
+          await page.evaluate(() => localStorage.removeItem("receipts-mode"));
+          await page.reload({ waitUntil: "networkidle" });
+          await page.waitForTimeout(400);
 
-          // Toggle receipts ON
-          const toggle = await page
-            .$('[data-testid="receipts-toggle"]')
-            .catch(() => null);
-          let toggleByLabel = null;
-          try {
-            const loc = page.getByLabel(/receipts/i).first();
-            await loc.waitFor({ timeout: 2000 });
-            toggleByLabel = loc;
-          } catch {
-            // no receipts label found
-          }
-          const receiptsBtn = toggle || toggleByLabel;
+          const SAMPLE_SIZE = 5;
+          const citedEls = await page.$$("[data-amount][data-fact-id]");
+          const uncitedEls = await page.$$("[data-amount][data-uncited]");
 
-          if (!receiptsBtn) {
+          if (citedEls.length === 0) {
             errors.push(
-              `receipts mode (${testPbl}): no receipts toggle found ([data-testid=receipts-toggle] or aria-label=receipts)`
+              `receipts default (${testPbl}): no [data-amount][data-fact-id] elements found — cannot verify State A chips`
             );
           } else {
-            await receiptsBtn.click();
-            await page.waitForTimeout(500);
-
-            // Check visible [data-amount] elements show chips
-            // Receipts mode shows inline citation chips on all [data-amount] elements
-            const amountEls = await page.$$("[data-amount]");
-            if (amountEls.length === 0) {
+            // ── (a) DEFAULT ON: chips visible on first visit, no click ──────
+            const defaultChips = await page.$$("[data-receipts-chip]");
+            if (defaultChips.length === 0) {
               errors.push(
-                `receipts mode (${testPbl}): no [data-amount] elements found`
+                `receipts default (${testPbl}): zero [data-receipts-chip] on a fresh first visit — Fact IDs must default ON (spec §P1-1)`
               );
             } else {
-              // ── Assert chips appear on cited amounts ───────────────────────
-              // State A: [data-amount][data-fact-id] must contain a chip whose text includes '#'
-              const SAMPLE_SIZE = 5;
-
-              const citedEls = await page.$$("[data-amount][data-fact-id]");
-              const uncitedEls = await page.$$("[data-amount][data-uncited]");
-
-              // Sample cited elements (require at least 1, sample up to SAMPLE_SIZE)
-              const citedSample = citedEls.slice(0, SAMPLE_SIZE);
-              if (citedSample.length === 0) {
+              const chipText = (await defaultChips[0].textContent()) || "";
+              if (!chipText.includes("#")) {
                 errors.push(
-                  `receipts mode (${testPbl}): no [data-amount][data-fact-id] elements to sample — cannot verify State A chips`
+                  `receipts default (${testPbl}): chip text "${chipText}" missing '#' public id`
                 );
               } else {
-                let citedChipMisses = 0;
-                for (const el of citedSample) {
-                  // chip is a child span containing '#<shortId>'
-                  const chip = await el.$("span");
-                  let chipText = chip ? await chip.textContent() : null;
-                  // fallback: check element full text contains '#'
-                  if (!chipText) {
-                    chipText = await el.textContent();
-                  }
-                  if (!chipText || !chipText.includes("#")) {
-                    citedChipMisses++;
-                  }
-                }
-                if (citedChipMisses > 0) {
-                  errors.push(
-                    `receipts mode (${testPbl}): ${citedChipMisses}/${citedSample.length} sampled [data-amount][data-fact-id] elements missing '#' chip in receipts mode`
-                  );
-                } else {
-                  notes.push(
-                    `receipts mode (${testPbl}): ${citedSample.length} cited chips show '#' ✓`
-                  );
-                }
-              }
-
-              // Sample uncited elements (sample up to SAMPLE_SIZE).
-              // Since the Phase 5B-3 ledger flips, program-page datasets are
-              // all cited — a page may legitimately have ZERO State C spans.
-              // Only fail when the page-set scan PROMISED uncited elements
-              // (set.receiptsPbl found data-uncited in this page's SSG HTML);
-              // otherwise note State C chips as N/A for this page.
-              const uncitedSample = uncitedEls.slice(0, SAMPLE_SIZE);
-              if (uncitedSample.length === 0 && set.receiptsPbl === testPbl) {
-                errors.push(
-                  `receipts mode (${testPbl}): no [data-amount][data-uncited] elements to sample — cannot verify State C chips`
-                );
-              } else if (uncitedSample.length === 0) {
                 notes.push(
-                  `receipts mode (${testPbl}): no State C spans on this page (all datasets cited — ledger flips) — State C chip check N/A`
+                  `receipts default (${testPbl}): ${defaultChips.length} fact-id chips visible on first visit (no toggle click) ✓`
                 );
-              } else {
-                let uncitedChipMisses = 0;
-                for (const el of uncitedSample) {
-                  const text = await el.textContent();
-                  if (!text || !text.includes("uncited")) {
-                    uncitedChipMisses++;
-                  }
-                }
-                if (uncitedChipMisses > 0) {
-                  errors.push(
-                    `receipts mode (${testPbl}): ${uncitedChipMisses}/${uncitedSample.length} sampled [data-amount][data-uncited] elements missing 'uncited' text in receipts mode`
-                  );
-                } else {
-                  notes.push(
-                    `receipts mode (${testPbl}): ${uncitedSample.length} uncited chips show 'uncited' ✓`
-                  );
-                }
               }
+            }
 
-              // ── Reload-persistence check ───────────────────────────────────
-              await page.reload({ waitUntil: "networkidle" });
-              const localStorageVal = await page.evaluate(
-                () => localStorage.getItem("receipts-mode")
+            // ── (b) Sibling contract: chip NEVER inside [data-amount] ───────
+            const nestedChips = await page.$$("[data-amount] [data-receipts-chip]");
+            if (nestedChips.length > 0) {
+              errors.push(
+                `receipts default (${testPbl}): ${nestedChips.length} [data-receipts-chip] nested INSIDE [data-amount] — chip text poisons the static gates' amount parse (must be a sibling)`
               );
-              if (localStorageVal !== "on" && localStorageVal !== "true" && localStorageVal !== "1") {
+            }
+
+            // ── State C 'uncited' label (default ON) ────────────────────────
+            // Since the Phase 5B-3 ledger flips, program-page datasets are
+            // all cited — a page may legitimately have ZERO State C spans.
+            // Only fail when the page-set scan PROMISED uncited elements.
+            const uncitedSample = uncitedEls.slice(0, SAMPLE_SIZE);
+            if (uncitedSample.length === 0 && set.receiptsPbl === testPbl) {
+              errors.push(
+                `receipts mode (${testPbl}): no [data-amount][data-uncited] elements to sample — cannot verify State C chips`
+              );
+            } else if (uncitedSample.length === 0) {
+              notes.push(
+                `receipts mode (${testPbl}): no State C spans on this page (all datasets cited — ledger flips) — State C chip check N/A`
+              );
+            } else {
+              let uncitedChipMisses = 0;
+              for (const el of uncitedSample) {
+                const text = await el.textContent();
+                if (!text || !text.includes("uncited")) {
+                  uncitedChipMisses++;
+                }
+              }
+              if (uncitedChipMisses > 0) {
                 errors.push(
-                  `receipts mode: localStorage "receipts-mode" not persisted after reload (got "${localStorageVal}")`
+                  `receipts mode (${testPbl}): ${uncitedChipMisses}/${uncitedSample.length} sampled [data-amount][data-uncited] elements missing 'uncited' text with Fact IDs on`
                 );
               } else {
                 notes.push(
-                  `receipts mode (${testPbl}): toggle works + localStorage persists ✓`
+                  `receipts mode (${testPbl}): ${uncitedSample.length} uncited chips show 'uncited' ✓`
+                );
+              }
+            }
+
+            // ── (c) Toggle OFF: relabeled control, persists '0', survives reload ──
+            const toggle = page.locator('[data-testid="receipts-toggle"]').first();
+            if ((await toggle.count()) === 0) {
+              errors.push(
+                "receipts mode: no [data-testid=receipts-toggle] control found"
+              );
+            } else {
+              const accName = await toggle.getAttribute("aria-label");
+              if (accName !== "Show fact IDs") {
+                errors.push(
+                  `receipts toggle: accessible name "${accName}" — expected "Show fact IDs" (spec §P1-1)`
+                );
+              }
+              await toggle.click();
+              await page.waitForTimeout(400);
+              const offChips = await page.$$("[data-receipts-chip]");
+              const storedOff = await page.evaluate(() =>
+                localStorage.getItem("receipts-mode")
+              );
+              if (offChips.length !== 0) {
+                errors.push(
+                  `receipts toggle OFF (${testPbl}): ${offChips.length} chips still visible after toggling off`
+                );
+              }
+              if (storedOff !== "0") {
+                errors.push(
+                  `receipts toggle OFF: localStorage "receipts-mode" is "${storedOff}" — expected "0" (opt-out must persist)`
+                );
+              }
+
+              await page.reload({ waitUntil: "networkidle" });
+              await page.waitForTimeout(600);
+              const offAfterReload = await page.$$("[data-receipts-chip]");
+              if (offAfterReload.length !== 0) {
+                errors.push(
+                  `receipts opt-out (${testPbl}): ${offAfterReload.length} chips visible after reload — stored '0' not honored`
+                );
+              }
+
+              // ── (d) Toggle back ON: persists '1', chips return ────────────
+              await page.locator('[data-testid="receipts-toggle"]').first().click();
+              await page.waitForTimeout(400);
+              const onChips = await page.$$("[data-receipts-chip]");
+              const storedOn = await page.evaluate(() =>
+                localStorage.getItem("receipts-mode")
+              );
+              if (onChips.length === 0) {
+                errors.push(
+                  `receipts toggle ON (${testPbl}): no chips after re-enabling`
+                );
+              }
+              if (storedOn !== "1") {
+                errors.push(
+                  `receipts toggle ON: localStorage "receipts-mode" is "${storedOn}" — expected "1" (opt-in must persist)`
+                );
+              }
+              if (
+                offChips.length === 0 &&
+                storedOff === "0" &&
+                offAfterReload.length === 0 &&
+                onChips.length > 0 &&
+                storedOn === "1"
+              ) {
+                notes.push(
+                  `receipts toggle (${testPbl}): off→'0' persists across reload, on→'1' restores chips ✓`
                 );
               }
             }

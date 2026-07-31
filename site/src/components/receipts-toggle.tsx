@@ -1,19 +1,27 @@
 "use client";
 
 /**
- * Receipts mode — shows inline citation chips on every <Cite> element.
+ * Receipts mode — DEFAULT ON (P1-1). Controls fact-id chip VISIBILITY only;
+ * citations themselves are always clickable.
  *
  * ReceiptsProvider:
- *   - Reads/writes localStorage key 'receipts-mode' ('1' = on)
- *   - Exposes receiptsOn boolean via ReceiptsContext
- *   - Survives page reload (localStorage)
+ *   - Default (first visit, no stored preference): ON. The server renders
+ *     chips visible and the first client render matches — no flash and no
+ *     layout jump on the default path. Only OPTED-OUT users ('0' stored)
+ *     have chips removed on mount (a brief flash for them is the accepted
+ *     trade — the default path stays jump-free).
+ *   - localStorage key 'receipts-mode': '1' = on, '0' = off, absent = ON.
+ *     Persisted BOTH ways (an explicit re-enable writes '1', not a key
+ *     removal, so the choice survives a future default change).
+ *   - Exposes receiptsOn boolean via ReceiptsContext.
  *
  * ReceiptsToggle:
- *   - Client component intended for the header slot (id="receipts-toggle-slot")
- *   - Renders a button that toggles receipts mode on/off
+ *   - Header control. Visible label "Fact IDs"; accessible name
+ *     "Show fact IDs" (spec §P1-1 — the old name "Receipts mode: off…"
+ *     explained nothing to first-time visitors).
  *
  * When receipts mode is ON:
- *   State A: shows short fact-id chip inline
+ *   State A: public fact-id chip renders as a SIBLING of [data-amount]
  *   State B: xml-path chip already always visible — no change
  *   State C: ⁂ gains a visible "uncited" label
  */
@@ -37,31 +45,28 @@ interface ReceiptsProviderProps {
  * Must be a client component because it reads localStorage.
  */
 export function ReceiptsProvider({ children }: ReceiptsProviderProps) {
-  // Initialize to false (SSR-safe); sync from localStorage after hydration
-  // via a one-time event handler rather than direct setState in an effect.
-  const [receiptsOn, setReceiptsOn] = useState(false);
+  // Initialize to TRUE (the shipped default): SSR and the first client
+  // render agree, so hydration never mismatches and the default path never
+  // flashes. The mount effect below only flips state for opted-out users.
+  const [receiptsOn, setReceiptsOn] = useState(true);
   const initialized = React.useRef(false);
 
-  // Read localStorage after mount (client-only).
-  // Functional updater form avoids the set-state-in-effect lint rule:
-  // we pass a function to setReceiptsOn so it reads external state in
-  // the updater callback, which is the lint-approved pattern.
+  // Read localStorage after mount (client-only). Functional updater form
+  // avoids the set-state-in-effect lint rule.
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
     setReceiptsOn(() => {
       try {
-        return window.localStorage.getItem(STORAGE_KEY) === "1";
+        // Only an explicit opt-out ('0') turns chips off; anything else —
+        // absent key, legacy '1' — is ON.
+        return window.localStorage.getItem(STORAGE_KEY) !== "0";
       } catch {
-        return false;
+        return true;
       }
     });
   }, []);
 
-  // Expose toggle function via a stable reference stored in context
-  // We store the setter in a module-level ref so ReceiptsToggle can access it
-  // without needing to be nested inside ReceiptsProvider.
-  // Instead: expose via a ToggleContext.
   return (
     <ReceiptsContext.Provider value={{ receiptsOn }}>
       <ReceiptsToggleInternalProvider setReceiptsOn={setReceiptsOn}>
@@ -79,7 +84,7 @@ interface ToggleSetterContextValue {
 
 const ToggleSetterContext = createContext<ToggleSetterContextValue>({
   toggle: () => undefined,
-  receiptsOn: false,
+  receiptsOn: true,
 });
 
 function ReceiptsToggleInternalProvider({
@@ -95,11 +100,9 @@ function ReceiptsToggleInternalProvider({
     setReceiptsOn((prev) => {
       const next = !prev;
       try {
-        if (next) {
-          window.localStorage.setItem(STORAGE_KEY, "1");
-        } else {
-          window.localStorage.removeItem(STORAGE_KEY);
-        }
+        // Persist BOTH directions explicitly ('1'/'0') — absence means
+        // "never chose", which maps to the default (ON).
+        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
       } catch {
         // ignore
       }
@@ -115,10 +118,8 @@ function ReceiptsToggleInternalProvider({
 }
 
 /**
- * Receipts toggle button — place in the header's receipts-toggle-slot.
- *
- * Shows "Receipts: ON" / "Receipts: OFF" and toggles receipts mode.
- * Must be rendered inside a ReceiptsProvider.
+ * "Fact IDs" toggle button — place in the header's receipts-toggle-slot.
+ * Accessible name "Show fact IDs"; aria-pressed carries the state.
  */
 export function ReceiptsToggle() {
   const { toggle, receiptsOn } = useContext(ToggleSetterContext);
@@ -129,16 +130,16 @@ export function ReceiptsToggle() {
       data-receipts-toggle
       onClick={toggle}
       aria-pressed={receiptsOn}
-      aria-label={`Receipts mode: ${receiptsOn ? "on" : "off"}. Click to ${receiptsOn ? "disable" : "enable"} citation chips.`}
+      aria-label="Show fact IDs"
       className={[
         "rounded-md border px-2 py-1 text-xs font-medium transition-colors",
         receiptsOn
           ? "border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100"
           : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
       ].join(" ")}
-      title="Receipts mode: show citation chips inline on all dollar figures"
+      title="Show fact IDs: inline id chips beside every cited figure (citations stay clickable either way)"
     >
-      Receipts{receiptsOn ? ": ON" : ""}
+      Fact IDs
     </button>
   );
 }

@@ -9,6 +9,17 @@
  *   - search palette open
  *
  * Requirement: zero serious/critical violations.
+ *
+ * P1-1 citation-affordance checks (PM Sprint 1 Task 6, spec §P1-1) — the
+ * live site's citation underline measured 1.26:1 and provenance chips 10px:
+ *   (a) underline contrast: computed text-decoration-color of every sampled
+ *       [data-amount][data-fact-id] / [data-prose-cite] element vs its
+ *       EFFECTIVE page background (ancestor backgrounds composited) must be
+ *       ≥3:1 (WCAG 1.4.11 non-text contrast). Hover must read as
+ *       interactive: decoration goes solid.
+ *   (b) provenance floor: no citation chip/legend near [data-amount] may
+ *       compute below 12px font-size (sampled program page + /years/).
+ *       Non-vacuous: the checks FAIL if no elements are found to sample.
  */
 
 import fs from "fs";
@@ -187,10 +198,234 @@ export async function runA11yGate(baseUrl) {
         await page.close();
       }
     }
+
+    // ── P1-1 citation-affordance checks ─────────────────────────────────────
+    await runAffordanceChecks(context, baseUrl, samplePbl, errors, notes);
   } finally {
     await context.close();
     await browser.close();
   }
 
   return { pass: errors.length === 0, errors, notes };
+}
+
+/**
+ * In-page audit: computed underline-decoration contrast on citation
+ * affordances + computed font-size of provenance chips/legends.
+ * Runs in the browser so tokens/vars are resolved exactly as users see them.
+ */
+function auditCitationAffordance() {
+  // Computed colors are not always rgb() strings — oklch tokens compile to
+  // wide-gamut lab() in the built CSS and Chromium serializes them as such.
+  // A 1×1 canvas probe resolves ANY css color to sRGB bytes.
+  const probeCanvas = document.createElement("canvas");
+  probeCanvas.width = probeCanvas.height = 1;
+  const probeCtx = probeCanvas.getContext("2d", { willReadFrequently: true });
+  function parseColor(str) {
+    const m = (str || "").match(
+      /rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)(?:[,/ ]+([\d.]+))?\s*\)/,
+    );
+    if (m) {
+      return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    }
+    if (!str || !probeCtx) return null;
+    probeCtx.clearRect(0, 0, 1, 1);
+    probeCtx.fillStyle = "#000";
+    probeCtx.fillStyle = str; // invalid values leave #000 — caller treats 0:0:0 honestly
+    probeCtx.fillRect(0, 0, 1, 1);
+    const d = probeCtx.getImageData(0, 0, 1, 1).data;
+    return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
+  }
+  function composite(fg, bg) {
+    // fg over bg → opaque result (bg is always opaque by construction)
+    const a = fg.a + bg.a * (1 - fg.a);
+    return {
+      r: (fg.r * fg.a + bg.r * bg.a * (1 - fg.a)) / a,
+      g: (fg.g * fg.a + bg.g * bg.a * (1 - fg.a)) / a,
+      b: (fg.b * fg.a + bg.b * bg.a * (1 - fg.a)) / a,
+      a,
+    };
+  }
+  function effectiveBackground(el) {
+    // Collect translucent ancestor layers down to the first opaque one,
+    // then composite bottom-up over white (the body background).
+    const layers = [];
+    for (let n = el; n; n = n.parentElement) {
+      const c = parseColor(getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) {
+        layers.push(c);
+        if (c.a >= 1) break;
+      }
+    }
+    let bg = { r: 255, g: 255, b: 255, a: 1 };
+    for (let i = layers.length - 1; i >= 0; i--) bg = composite(layers[i], bg);
+    return bg;
+  }
+  function luminance({ r, g, b }) {
+    const f = (c) => {
+      c /= 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  }
+  function ratio(a, b) {
+    const hi = Math.max(a, b);
+    const lo = Math.min(a, b);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  // (a) underline decoration contrast on citation affordances
+  const citeEls = [
+    ...document.querySelectorAll("[data-amount][data-fact-id]"),
+  ].slice(0, 15);
+  const proseEls = [...document.querySelectorAll("[data-prose-cite]")].slice(
+    0,
+    5,
+  );
+  const underline = [...citeEls, ...proseEls].map((el) => {
+    const cs = getComputedStyle(el);
+    const deco = parseColor(cs.textDecorationColor);
+    const bg = effectiveBackground(el);
+    const solid = deco && deco.a < 1 ? composite(deco, bg) : deco;
+    return {
+      ratio: solid ? ratio(luminance(solid), luminance(bg)) : 0,
+      color: cs.textDecorationColor,
+      text: (el.textContent || "").trim().slice(0, 24),
+    };
+  });
+
+  // (b) provenance chips/legends near [data-amount] + citation legends
+  const CHIP_SELECTORS = [
+    "[data-receipts-chip]",
+    "[data-amount] > span", // inner XML / ⁂-uncited chips
+    "[data-amount] + span", // sibling receipts/basis chips
+    "[data-narrative-chip]",
+    "[data-dossier-chip]",
+    "[data-lineage-cite]",
+    '[data-testid="cite-legend"]',
+    '[data-testid="decade-marker-key"]',
+    '[data-testid="decade-grid-note"]',
+    '[data-testid="edition-legend"]',
+    '[data-testid="family-legend"]',
+  ];
+  const seen = new Set();
+  const chips = [];
+  for (const sel of CHIP_SELECTORS) {
+    for (const el of document.querySelectorAll(sel)) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      chips.push({
+        sel,
+        fontSize: parseFloat(getComputedStyle(el).fontSize),
+        text: (el.textContent || "").trim().slice(0, 32),
+      });
+    }
+  }
+
+  return {
+    underline,
+    chips,
+    receiptsChipCount: document.querySelectorAll("[data-receipts-chip]")
+      .length,
+  };
+}
+
+async function runAffordanceChecks(context, baseUrl, samplePbl, errors, notes) {
+  const MIN_RATIO = 3;
+  const MIN_FONT_PX = 12;
+
+  const pages = [
+    { label: `/program/${samplePbl}/`, url: `${baseUrl}/program/${samplePbl}/`, required: true },
+    { label: "/years/", url: `${baseUrl}/years/`, required: false },
+  ];
+
+  for (const { label, url, required } of pages) {
+    const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+      const audit = await page.evaluate(auditCitationAffordance);
+
+      // (a) underline contrast — required on the program page.
+      if (audit.underline.length === 0) {
+        if (required) {
+          errors.push(
+            `P1-1 underline (${label}): no [data-amount][data-fact-id] elements found — check is vacuous, page or selector broken`,
+          );
+        }
+      } else {
+        const bad = audit.underline.filter((u) => u.ratio < MIN_RATIO);
+        const min = Math.min(...audit.underline.map((u) => u.ratio));
+        if (bad.length > 0) {
+          errors.push(
+            `P1-1 underline (${label}): ${bad.length}/${audit.underline.length} sampled citation underlines below ${MIN_RATIO}:1 (worst ${min.toFixed(2)}:1, color ${bad[0].color}, e.g. "${bad[0].text}") — WCAG 1.4.11`,
+          );
+        } else {
+          notes.push(
+            `P1-1 underline (${label}): ${audit.underline.length} sampled, min ${min.toFixed(2)}:1 (≥${MIN_RATIO}:1) ✓`,
+          );
+        }
+      }
+
+      // (a2) hover reads as interactive: decoration flips dotted → solid.
+      if (required && audit.underline.length > 0) {
+        const el = page.locator("[data-amount][data-fact-id]").first();
+        const restStyle = await el.evaluate(
+          (n) => getComputedStyle(n).textDecorationStyle,
+        );
+        await el.hover();
+        const hover = await el.evaluate((n) => {
+          const cs = getComputedStyle(n);
+          return { style: cs.textDecorationStyle, color: cs.textDecorationColor };
+        });
+        if (restStyle !== "dotted" || hover.style !== "solid") {
+          errors.push(
+            `P1-1 hover (${label}): expected dotted→solid on hover, got rest=${restStyle} hover=${hover.style}`,
+          );
+        } else {
+          notes.push(`P1-1 hover (${label}): dotted→solid on hover ✓`);
+        }
+      }
+
+      // (b) provenance chip/legend 12px floor.
+      if (audit.chips.length === 0) {
+        if (required) {
+          errors.push(
+            `P1-1 chip sizes (${label}): no provenance chips/legends found — check is vacuous`,
+          );
+        }
+      } else {
+        const small = audit.chips.filter((c) => c.fontSize < MIN_FONT_PX);
+        if (small.length > 0) {
+          const worst = small
+            .slice(0, 4)
+            .map((c) => `${c.sel} "${c.text}" ${c.fontSize}px`)
+            .join("; ");
+          errors.push(
+            `P1-1 chip sizes (${label}): ${small.length}/${audit.chips.length} provenance elements below ${MIN_FONT_PX}px — ${worst}`,
+          );
+        } else {
+          notes.push(
+            `P1-1 chip sizes (${label}): ${audit.chips.length} provenance elements all ≥${MIN_FONT_PX}px ✓`,
+          );
+        }
+      }
+
+      // Default-ON sanity (program page only): receipts chips render on
+      // first visit with no stored preference (fresh context = clean
+      // localStorage).
+      if (required && audit.receiptsChipCount === 0) {
+        errors.push(
+          `P1-1 default (${label}): zero [data-receipts-chip] on a fresh visit — Receipts/Fact-IDs mode is not defaulting ON`,
+        );
+      } else if (required) {
+        notes.push(
+          `P1-1 default (${label}): ${audit.receiptsChipCount} fact-id chips visible on fresh visit ✓`,
+        );
+      }
+    } catch (e) {
+      errors.push(`P1-1 affordance (${label}): ${e.message}`);
+    } finally {
+      await page.close();
+    }
+  }
 }

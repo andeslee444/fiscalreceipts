@@ -1673,3 +1673,62 @@ million + doc title + Exhibit P-40 p. 55 + full SHA-256 + permalink; the
 scrolls the figure into the viewport and opens the citation drawer; the
 drawer footer links /fact/bb54b165. The LIVE /fact/bb54b165 rewrite check
 (edge behavior, unreachable locally) is the Task-7 deploy-verify item.
+
+================================================================================
+GATE 6 (a11y) — P1-1 citation-affordance legs (PM Sprint 1 Task 6, spec §P1-1)
+— 2026-07-31
+================================================================================
+
+New legs added to scripts/gates/a11y.mjs (runAffordanceChecks): (a) computed
+text-decoration-color of sampled [data-amount][data-fact-id] /
+[data-prose-cite] elements vs the composited effective page background must
+measure ≥3:1 (WCAG 1.4.11), colors resolved to sRGB via an in-page 1×1
+canvas probe (built CSS emits wide-gamut lab()); hover must flip dotted→
+solid; (b) no provenance chip/legend near [data-amount] below 12px computed
+font-size; (c) fresh-visit default: [data-receipts-chip] count > 0 with no
+stored preference. Non-vacuous: zero sampled elements on the program page is
+itself a FAIL.
+
+PROOF-CAN-FAIL (scratch-revert on the BUILT artifact — the gate measures
+out/, so the built CSS was patched back to the pre-P1-1 state and the FINAL
+gate code run against it): out/_next/static/chunks/2xq1zn9yj7_l7.css had
+--cite-decoration (#2b6dd3 + its lab() twin) replaced with #e5e5e5 (the old
+--border gray the live site's underline computed to) and --text-xs:.75rem
+replaced with .625rem (the old 10px chips). Driver: node .gate6-driver-tmp.mjs
+(runA11yGate against serve-static :4173). Verbatim FAIL output (exit 1):
+
+    ERROR: P1-1 underline (/program/000042/): 15/15 sampled citation underlines below 3:1 (worst 1.26:1, color rgb(229, 229, 229), e.g. "$4.00K") — WCAG 1.4.11
+    ERROR: P1-1 chip sizes (/program/000042/): 12/12 provenance elements below 12px — [data-receipts-chip] "#0d02f667" 10px; [data-receipts-chip] "#4dc6d6bd" 10px; [data-receipts-chip] "#6c8ca439" 10px; [data-receipts-chip] "#616cf05a" 10px
+    ERROR: P1-1 underline (/years/): 15/15 sampled citation underlines below 3:1 (worst 1.23:1, color rgb(229, 229, 229), e.g. "693.4") — WCAG 1.4.11
+    ERROR: P1-1 chip sizes (/years/): 3/3 provenance elements below 12px — [data-testid="cite-legend"] "dotted underline = cited (click " 10px; [data-testid="edition-legend"] "Actuals for FY N come from the P" 10px; [data-testid="family-legend"] "= part of a tracked program fami" 10px
+    gate 6 a11y: FAIL
+
+The 1.26:1 / 1.23:1 worst-cases reproduce the PM review's two measured
+values exactly (§P1-1 table: underline 1.26:1, "source"-chip underline
+1.23:1) — the legs measure the same thing the reviewer measured.
+
+MADE TO PASS: CSS restored byte-identical from backup (cmp clean), rerun:
+
+    note: P1-1 underline (/program/000042/): 15 sampled, min 4.96:1 (≥3:1) ✓
+    note: P1-1 hover (/program/000042/): dotted→solid on hover ✓
+    note: P1-1 chip sizes (/program/000042/): 12 provenance elements all ≥12px ✓
+    note: P1-1 default (/program/000042/): 8 fact-id chips visible on fresh visit ✓
+    note: P1-1 underline (/years/): 15 sampled, min 4.84:1 (≥3:1) ✓
+    note: P1-1 chip sizes (/years/): 3 provenance elements all ≥12px ✓
+    gate 6 a11y: PASS
+
+Tokens shipped (site/src/app/globals.css): --cite-decoration
+oklch(0.55 0.17 259) = #2b6dd3 (4.95:1 vs white --background, 4.54:1 vs
+--muted); --cite-decoration-hover oklch(0.45 0.19 262) = #0e49bc (7.78:1),
+hover/focus-visible also flip decoration dotted→solid. The unit test
+(src/__tests__/citation-affordance.test.ts) recomputes these ratios from
+the oklch values with the WCAG relative-luminance formula, pins hover >
+rest, and pins the OLD --border color at <1.3:1 as a formula tripwire.
+
+Gate 4 (clickthrough) Test 8 was REWRITTEN (not weakened) for the P1-1
+default flip: old test = toggle ON → chips appear → localStorage persists.
+New test = fresh visit shows chips with NO click + chip text '#…' + chip is
+NEVER nested inside [data-amount] (sibling contract, gate-parse purity) +
+accessible name "Show fact IDs" + toggle OFF persists '0' AND survives
+reload + toggle ON persists '1' and restores chips. Strictly stronger on
+every axis the old test covered.

@@ -58,8 +58,11 @@ export function ReceiptsIntro() {
       className="hidden xl:block fixed right-4 top-16 z-30 w-64 rounded-lg border border-border bg-card p-3 shadow-lg"
     >
       <p className="text-xs leading-5 text-muted-foreground">
-        <span className="font-semibold text-foreground">Receipts mode</span>{" "}
-        shows the citation behind every number — try it.
+        <span className="font-semibold text-foreground">
+          Every number has a receipt
+        </span>{" "}
+        — click any dotted figure to see its source. The &ldquo;Fact
+        IDs&rdquo; toggle hides the id chips if you prefer a quieter page.
       </p>
       <button
         onClick={dismiss}

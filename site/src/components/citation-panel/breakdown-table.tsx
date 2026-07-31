@@ -452,7 +452,7 @@ function BreakdownRowTr({
           // covers every distinct PE in budget_lines) — link it (§2a).
           <a
             href={`/program/${encodeURIComponent(row.pe_bli)}/`}
-            className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+            className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
             title={`Open program page for ${row.pe_bli}`}
           >
             {row.pe_bli}
@@ -465,7 +465,7 @@ function BreakdownRowTr({
             before the numerals so it cannot disturb decimal alignment. */}
         {isUncited && (
           <span
-            className="mr-1.5 rounded bg-muted px-1 py-0.5 font-sans text-[10px] font-normal text-muted-foreground align-middle"
+            className="mr-1.5 rounded bg-muted px-1 py-0.5 font-sans text-xs font-normal text-muted-foreground align-middle"
             title="input has no citation row — still counted in the sum"
           >
             uncited

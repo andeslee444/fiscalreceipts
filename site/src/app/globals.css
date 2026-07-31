@@ -110,6 +110,14 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* P1-1 — citation-affordance decoration tokens. The dotted "this number
+     has a receipt" underline was measured at 1.26:1 (border-colored) on the
+     live site; WCAG 1.4.11 requires ≥3:1 for non-text UI. Measured (WCAG
+     relative luminance, pinned in citation-affordance.test.ts):
+       rest  #2b6dd3 → 4.95:1 vs --background, 4.54:1 vs --muted
+       hover #0e49bc → 7.78:1 vs --background (solid + darker = clear lift) */
+  --cite-decoration: oklch(0.55 0.17 259);
+  --cite-decoration-hover: oklch(0.45 0.19 262);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

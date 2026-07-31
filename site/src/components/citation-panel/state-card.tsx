@@ -89,7 +89,7 @@ export function StateCard({ citation }: StateCardProps) {
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {isSoql ? "SoQL query URL" : "Pointer page URL"}
         </span>
-        <p className="font-mono text-[11px] text-muted-foreground break-all leading-relaxed">
+        <p className="font-mono text-xs text-muted-foreground break-all leading-relaxed">
           {citation.official_url}
         </p>
       </div>

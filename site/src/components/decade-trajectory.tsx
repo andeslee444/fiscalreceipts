@@ -266,8 +266,9 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
         </text>
       </svg>
 
-      {/* Marker key — one quiet line */}
-      <p className="text-[10px] leading-4 text-muted-foreground">
+      {/* Marker key — one quiet line (12px floor per P1-1: provenance
+          legends are never sub-12px) */}
+      <p data-testid="decade-marker-key" className="text-xs leading-4 text-muted-foreground">
         &#9679; actuals (line) &nbsp;&middot;&nbsp; &#9675; enacted
         &nbsp;&middot;&nbsp; &#9671; request &mdash; gaps are editions the
         program is absent from, never interpolated.
@@ -369,7 +370,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
           be decodable without the methodology page. */}
       <p
         data-testid="decade-grid-note"
-        className="text-[10px] leading-4 text-muted-foreground"
+        className="text-xs leading-4 text-muted-foreground"
       >
         blank = series not published for this year; – = absent from that
         edition.

@@ -633,7 +633,7 @@ export function YearsMatrix() {
       {decadeKeys.length > 0 && (
         <p
           data-testid="edition-legend"
-          className="text-[11px] leading-5 text-muted-foreground"
+          className="text-xs leading-5 text-muted-foreground"
         >
           Actuals for FY N come from the PB(N+2) book; each column states its
           edition.{" "}
@@ -655,7 +655,7 @@ export function YearsMatrix() {
           badge so the legend doubles as a swatch. ── */}
       <p
         data-testid="family-legend"
-        className="flex items-center gap-1 text-[11px] leading-5 text-muted-foreground"
+        className="flex items-center gap-1 text-xs leading-5 text-muted-foreground"
       >
         <GitBranch className="h-3 w-3 text-primary/70" aria-hidden="true" />
         <span>
