@@ -12,7 +12,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
-import { Cite, CitationPanelContext, ReceiptsContext } from "@/components/cite";
+import {
+  Cite,
+  CiteChips,
+  CitationPanelContext,
+  ReceiptsContext,
+} from "@/components/cite";
 
 describe("Cite three-state contract", () => {
   // ── State A: cited ─────────────────────────────────────────────────────────
@@ -325,10 +330,13 @@ describe("Cite three-state contract", () => {
       expect(container.textContent).not.toContain("#abc123de");
     });
 
-    it("chip click copies the /fact/{fid8} permalink WITHOUT opening the panel (P0-4.3)", async () => {
+    it("chip click copies the CANONICAL /fact/{fid8} permalink WITHOUT opening the panel (P0-4.3, M3)", async () => {
       // Spec §P0-4.3: the fact permalink lives "behind a click on the
       // Receipts-mode chip" — copy-with-toast, least disruptive. The click
       // must stop propagation so the figure's own openPanel does not fire.
+      // Visual-judge M3: the copied permalink pins to the canonical origin
+      // (SITE_URL), never the runtime origin — asserted below against the
+      // jsdom origin, which differs.
       const factId = "abc123def456789f";
       const openPanel = vi.fn();
       const writeText = vi.fn().mockResolvedValue(undefined);
@@ -353,8 +361,10 @@ describe("Cite three-state contract", () => {
       ) as HTMLElement;
       expect(chip).not.toBeNull();
       fireEvent.click(chip);
+      // Canonical origin, independent of the (differing) jsdom origin.
+      expect(window.location.origin).not.toBe("https://fiscalreceipts.com");
       expect(writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/fact/abc123de`,
+        "https://fiscalreceipts.com/fact/abc123de",
       );
       expect(openPanel).not.toHaveBeenCalled();
       // Transient copied feedback appears on the chip.
@@ -513,6 +523,47 @@ describe("Cite three-state contract", () => {
       expect(el).not.toHaveAttribute("data-fy");
       expect(el).not.toHaveAttribute("data-measure");
       expect(el).not.toHaveAttribute("data-reconciliation");
+    });
+  });
+
+  // ── CiteChips — detached wrap-as-a-unit chip pair (visual-judge M8) ───────
+  describe("CiteChips", () => {
+    it("renders the receipts + basis chips as ONE nowrap unit", () => {
+      const { container } = render(
+        <ReceiptsContext.Provider value={{ receiptsOn: true }}>
+          <CiteChips
+            factId="b38a20e96559f8ae"
+            basis="toa"
+            measure="change"
+            edition={2026}
+          />
+        </ReceiptsContext.Provider>,
+      );
+      const unit = container.firstElementChild!;
+      expect(unit.className).toContain("whitespace-nowrap");
+      expect(unit.textContent).toContain("#b38a20e9");
+      expect(unit.textContent).toContain("P-1 TOA · PB2026");
+      // Never a [data-amount] of its own — chips are provenance, not figures.
+      expect(container.querySelector("[data-amount]")).toBeNull();
+    });
+
+    it("drops the receipts chip when receipts mode is OFF (basis chip stays)", () => {
+      const { container } = render(
+        <ReceiptsContext.Provider value={{ receiptsOn: false }}>
+          <CiteChips factId="b38a20e96559f8ae" basis="toa" edition={2026} />
+        </ReceiptsContext.Provider>,
+      );
+      expect(container.textContent).not.toContain("#b38a20e9");
+      expect(container.textContent).toContain("P-1 TOA · PB2026");
+    });
+
+    it("renders nothing when there is neither a factId nor a chip-vocabulary basis", () => {
+      const { container } = render(
+        <ReceiptsContext.Provider value={{ receiptsOn: false }}>
+          <CiteChips factId={null} basis="usaspending" />
+        </ReceiptsContext.Provider>,
+      );
+      expect(container.firstElementChild).toBeNull();
     });
   });
 });

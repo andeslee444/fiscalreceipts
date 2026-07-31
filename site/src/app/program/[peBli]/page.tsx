@@ -34,7 +34,7 @@ import {
 } from "@/lib/program-tier";
 import { findPeLinks } from "@/lib/pe-link";
 import { hasLineage } from "@/lib/lineage";
-import { Cite } from "@/components/cite";
+import { Cite, CiteChips } from "@/components/cite";
 import { LineageRail } from "@/components/lineage/lineage-rail";
 import { FamilyFundingLine } from "@/components/lineage/family-funding-line";
 import { dossierFactIds } from "@/lib/dossier";
@@ -805,39 +805,55 @@ function AnswerStrip({
         {serviceOrgName(program.org)}.
       </AnswerItem>
 
-      {/* WHAT CHANGED — the union change card with its derived citation. */}
+      {/* WHAT CHANGED — the union change card with its derived citation.
+          Visual-judge M8: the value cluster "-$885.8M (-17.8%) FY25→26"
+          stays contiguous (whitespace-nowrap, Cite chips suppressed) and
+          the chips follow AFTER it, wrapping together as one unit
+          (<CiteChips> — same sibling-of-[data-amount] contract). */}
       <AnswerItem label="What changed" testId="answer-changed">
         {changeCard && change !== null && changeCard.units ? (
           <>
-            <span
-              className={
-                change > 0
-                  ? "font-semibold text-emerald-700"
-                  : change < 0
-                    ? "font-semibold text-red-600"
-                    : "font-semibold"
-              }
-            >
-              {change >= 0 ? "+" : ""}
-              <Cite
-                value={change}
-                units={changeCard.units}
-                dataset={changeCard.dataset ?? "fct_budget_trajectory"}
-                factId={changeCard.fid}
-                basis={changeCard.basis ?? undefined}
-                fy={changeCard.fy}
-                measure={changeCard.measure}
-                edition={changeCard.edition}
-              />
-            </span>
-            {pct != null && (
-              <span className="text-muted-foreground" aria-hidden="true">
-                {" "}
-                ({pct > 0 ? "+" : ""}
-                {pct.toFixed(1)}%)
+            <span className="whitespace-nowrap">
+              <span
+                className={
+                  change > 0
+                    ? "font-semibold text-emerald-700"
+                    : change < 0
+                      ? "font-semibold text-red-600"
+                      : "font-semibold"
+                }
+              >
+                {change >= 0 ? "+" : ""}
+                <Cite
+                  value={change}
+                  units={changeCard.units}
+                  dataset={changeCard.dataset ?? "fct_budget_trajectory"}
+                  factId={changeCard.fid}
+                  basis={changeCard.basis ?? undefined}
+                  fy={changeCard.fy}
+                  measure={changeCard.measure}
+                  edition={changeCard.edition}
+                  chip={false}
+                />
               </span>
-            )}
-            <span className="text-muted-foreground"> {TRAJECTORY_FY_LABEL}</span>
+              {pct != null && (
+                <span className="text-muted-foreground" aria-hidden="true">
+                  {" "}
+                  ({pct > 0 ? "+" : ""}
+                  {pct.toFixed(1)}%)
+                </span>
+              )}
+              <span className="text-muted-foreground">
+                {" "}
+                {TRAJECTORY_FY_LABEL}
+              </span>
+            </span>{" "}
+            <CiteChips
+              factId={changeCard.fid}
+              basis={changeCard.basis}
+              measure={changeCard.measure}
+              edition={changeCard.edition}
+            />
           </>
         ) : (
           <span className="text-muted-foreground">

@@ -78,3 +78,171 @@ export function resolveFactMatches(
     .sort()
     .map((factId) => ({ factId, citation: shard[factId] }));
 }
+
+// ── Sidecar figure lookup (visual-judge M2 — semantic labels) ───────────────
+//
+// A cold-loaded /fact/{id} shows only what the citation payload carries
+// ("$5,247.070 million") — no program/FY/measure/basis. When the payload has
+// pe_bli, the page fetches the program sidecar the site already serves
+// (/json-lite/program_details/{pe}.json — the same public path
+// program-awards/program-mentions fetch) and locates the figure whose
+// fid/public_id matches. These helpers are the pure half: defensive JSON
+// traversal, NO fabrication — an id with no sidecar figure resolves null and
+// the page renders the citation payload alone.
+
+/** The declared figure context a sidecar carries for one fact id. */
+export interface SidecarFigureContext {
+  fy: number | string | null;
+  measure: string | null;
+  basis: string | null;
+  edition: number | null;
+  units: string | null;
+  value: number | null;
+}
+
+type Rec = Record<string, unknown>;
+
+function asRec(v: unknown): Rec | null {
+  return v !== null && typeof v === "object" && !Array.isArray(v)
+    ? (v as Rec)
+    : null;
+}
+
+function asArr(v: unknown): unknown[] {
+  return Array.isArray(v) ? v : [];
+}
+
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+/** True when the row's fid/fact_id (or public_id) identifies factId. */
+function idMatches(row: Rec, factId: string): boolean {
+  const fid = str(row.fid) ?? str(row.fact_id);
+  if (fid === factId) return true;
+  const publicId = str(row.public_id);
+  return publicId !== null && publicId === factId.slice(0, 8);
+}
+
+function contextFrom(
+  row: Rec,
+  overrides: Partial<SidecarFigureContext> = {},
+): SidecarFigureContext {
+  return {
+    fy: num(row.fy) ?? str(row.fy),
+    measure: str(row.measure),
+    basis: str(row.basis),
+    edition: num(row.edition),
+    units: str(row.units),
+    value: num(row.value) ?? num(row.v),
+    ...overrides,
+  };
+}
+
+/**
+ * Locate the figure matching factId across the sidecar's figure collections
+ * (summary cards → decade series → workbook budget lines → J-book details →
+ * declared reconciliation members → book diff). Sources that structurally
+ * omit units get the dataset's declared units (the SAME declaration the
+ * rendering components make: decade points and the book diff are USD
+ * thousands, reconciliation members carry their own units). Returns null
+ * when no collection carries the id — the caller renders the citation
+ * payload alone, never a guessed context.
+ */
+export function findSidecarFigure(
+  sidecar: unknown,
+  factId: string,
+): SidecarFigureContext | null {
+  const root = asRec(sidecar);
+  if (!root) return null;
+  const summary = asRec(root.summary);
+  const summaryEdition = summary ? num(summary.edition) : null;
+
+  // 1 · summary.cards — the union cards (fy/measure/basis/units/value/edition)
+  for (const c of asArr(summary?.cards)) {
+    const row = asRec(c);
+    if (row && idMatches(row, factId)) return contextFrom(row);
+  }
+
+  // 2 · decade_series.{actuals,enacted,request} — USD thousands by dataset
+  // contract (fct_decade_series; decade-trajectory.tsx declares the same).
+  const decade = asRec(root.decade_series);
+  for (const kind of ["actuals", "enacted", "request"]) {
+    for (const p of asArr(decade?.[kind])) {
+      const row = asRec(p);
+      if (row && idMatches(row, factId))
+        return contextFrom(row, { units: "USD thousands" });
+    }
+  }
+
+  // 3 · budget_lines — workbook rows (amount_thousands + declared units)
+  for (const b of asArr(root.budget_lines)) {
+    const row = asRec(b);
+    if (row && idMatches(row, factId))
+      return contextFrom(row, { value: num(row.amount_thousands) });
+  }
+
+  // 4 · details — R-2/P-40 J-book rows (amount_millions + declared units)
+  for (const d of asArr(root.details)) {
+    const row = asRec(d);
+    if (row && idMatches(row, factId))
+      return contextFrom(row, { value: num(row.amount_millions) });
+  }
+
+  // 5 · summary.reconciliation — both declared members; entry carries
+  // fy/measure, member carries value/units, basis is the member's side.
+  for (const r of asArr(summary?.reconciliation)) {
+    const entry = asRec(r);
+    if (!entry) continue;
+    for (const [side, basis] of [
+      ["toa", "toa"],
+      ["detail", "jbook-detail"],
+    ] as const) {
+      const member = asRec(entry[side]);
+      if (member && idMatches(member, factId)) {
+        return contextFrom(member, {
+          fy: num(entry.fy) ?? str(entry.fy),
+          measure: str(entry.measure),
+          basis,
+          edition: summaryEdition,
+        });
+      }
+    }
+  }
+
+  // 6 · book_diff — the minted request-vs-actuals delta (USD thousands, the
+  // same declaration decade-trajectory.tsx renders it with).
+  const bookDiff = asRec(root.book_diff);
+  if (bookDiff && idMatches(bookDiff, factId)) {
+    return contextFrom(bookDiff, {
+      units: "USD thousands",
+      value: num(bookDiff.delta),
+    });
+  }
+
+  return null;
+}
+
+/**
+ * Program title for a PE from the search-quick payload ({docs: [...]}) —
+ * the public /json-lite/search_quick.json the search UI already fetches.
+ * Null when absent (the header renders the code alone — no fabrication).
+ */
+export function programTitleFromQuick(
+  quick: unknown,
+  peBli: string,
+): string | null {
+  const root = asRec(quick);
+  for (const d of asArr(root?.docs)) {
+    const row = asRec(d);
+    if (!row) continue;
+    if (str(row.kind) === "program" && str(row.pe_bli) === peBli) {
+      return str(row.title);
+    }
+  }
+  return null;
+}

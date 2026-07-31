@@ -1,13 +1,21 @@
 /**
- * ReconciliationStrip (PM Sprint 1 §P0-1) — the declared two-basis
- * reconciliation under the Budget Figures cards.
+ * ReconciliationStrip (PM Sprint 1 §P0-1; restructured in the visual-judge
+ * fix round, M1) — the declared two-basis reconciliation under the Budget
+ * Figures cards.
  *
  * Gate 23 leg a2 contract: figures sharing (entity, fy, measure) with
  * DIFFERENT values must sit inside a [data-reconciliation] ancestor — the
- * strip is that ancestor for its own two Cites, and it explains the
- * divergence with both receipts (never a fabricated middle term: the
- * advance-procurement bridge row is not parsed, so the strip states the
- * definitional difference as methodology copy — no uncited delta figure).
+ * strip is that ancestor for its own two Cites.
+ *
+ * Visual-judge M1 contract:
+ *   - ONE shared mechanism sentence (never repeated per year) carries the
+ *     canonical-basis statement and the "advance procurement" explanation;
+ *   - each entry renders a COMPACT per-year arithmetic row: both cited
+ *     values as their own <Cite>, the difference as UNLABELED, $-less
+ *     arithmetic (the bridge row is not parsed as a fact — no fabricated
+ *     middle term, no uncited dollar figure);
+ *   - the header claim matches what is shown ("reconciled below" + the
+ *     arithmetic actually below).
  */
 
 import { describe, it, expect } from "vitest";
@@ -92,6 +100,54 @@ describe("ReconciliationStrip", () => {
     expect(det!.textContent).toBe("$5.25B");
   });
 
+  it("renders ONE shared mechanism sentence, not one per entry (M1)", () => {
+    const { container } = render(
+      <ReconciliationStrip entries={[CITED_ENTRY, ZERO_ENTRY]} />,
+    );
+    const text = container.textContent!;
+    const occurrences = text.split("The workbook TOA includes").length - 1;
+    expect(occurrences).toBe(1);
+    // Canonical-basis statement is part of the shared sentence.
+    expect(text).toContain(
+      "P-1/R-1 workbook total obligation authority (TOA) as the headline figure sitewide",
+    );
+  });
+
+  it("header claim matches the content: two official figures, reconciled below", () => {
+    const { container } = render(
+      <ReconciliationStrip entries={[CITED_ENTRY]} />,
+    );
+    const text = container.textContent!;
+    expect(text).toContain("Two official figures, one label");
+    expect(text).toContain("reconciled below");
+    // The old bare "— reconciled" claim (no arithmetic shown) is gone.
+    expect(text).not.toContain("one label — reconciled");
+  });
+
+  it("each entry renders a compact arithmetic row with an UNLABELED, $-less delta", () => {
+    const { container } = render(
+      <ReconciliationStrip entries={[CITED_ENTRY, ZERO_ENTRY]} />,
+    );
+    const rows = container.querySelectorAll(
+      '[data-testid="reconciliation-row"]',
+    );
+    expect(rows.length).toBe(2);
+    const fy24 = rows[0].textContent!;
+    // FY label + measure, both cited values, arithmetic tokens, the delta.
+    expect(fy24).toContain("FY24 Actuals");
+    expect(fy24).toContain("$5.57B");
+    expect(fy24).toContain("$5.25B");
+    expect(fy24).toContain("−");
+    expect(fy24).toContain("= 318.6M");
+    // HONESTY: the delta is not labeled "advance procurement" — the bridge
+    // row is not parsed as a fact; only the shared mechanism sentence
+    // explains the difference.
+    expect(fy24).not.toContain("advance procurement");
+    // HONESTY: the delta renders WITHOUT a currency symbol (it is not a
+    // cited figure) — "318.6M" must not appear as "$318.6M".
+    expect(fy24).not.toContain("$318.6M");
+  });
+
   it("renders a fid-less zero root as a state-B (xml-path) cite", () => {
     const { container } = render(<ReconciliationStrip entries={[ZERO_ENTRY]} />);
     const det = container.querySelector('[data-basis="jbook-detail"]');
@@ -112,12 +168,12 @@ describe("ReconciliationStrip", () => {
     expect(total).toBe(inAmounts);
   });
 
-  it("links the methodology page", () => {
+  it("links the methodology page from the shared sentence", () => {
     const { container } = render(
       <ReconciliationStrip entries={[CITED_ENTRY]} />,
     );
     // next/link normalizes the trailing slash in the jsdom env
-    const link = container.querySelector('a[href^="/methodology"]');
-    expect(link).not.toBeNull();
+    const links = container.querySelectorAll('a[href^="/methodology"]');
+    expect(links.length).toBe(1);
   });
 });

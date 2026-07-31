@@ -198,9 +198,13 @@ export function ProgramTrajectoryCard({
       )}
       {decadeSeries && (
         <div className={sparkCards.length >= 2 ? "mt-4 border-t border-border pt-4" : undefined}>
+          {/* Visual-judge M4: the cells render compact USD ($B/$M) while the
+              workbook records thousands — the caption says both instead of
+              contradicting the formatting. */}
           <div className="text-xs text-muted-foreground mb-2">
-            Decade view — P-1/R-1 workbook TOA basis (USD thousands); each
-            figure cites its own President&apos;s Budget edition
+            Decade view — P-1/R-1 workbook TOA basis, shown compact in $B/$M
+            (the workbook records USD thousands); each figure cites its own
+            President&apos;s Budget edition
           </div>
           <DecadeTrajectory
             series={decadeSeries}

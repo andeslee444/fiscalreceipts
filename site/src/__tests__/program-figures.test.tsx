@@ -15,7 +15,11 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
-import { ProgramFigures, cardLabel } from "@/components/program-figures";
+import {
+  ProgramFigures,
+  ProgramTrajectoryCard,
+  cardLabel,
+} from "@/components/program-figures";
 import type { ProgramRow, ProgramSummary, SummaryCard } from "@/lib/data";
 
 const PROGRAM: ProgramRow = {
@@ -171,5 +175,54 @@ describe("ProgramFigures — summary union cards", () => {
     // the fy25 card is NOT a reconciliation member
     const fy25 = container.querySelector('[data-fact-id="2503ccee43cd0c8f"]');
     expect(fy25).not.toHaveAttribute("data-reconciliation");
+  });
+});
+
+// ── Trajectory spark provenance caption (visual-judge M7) ────────────────────
+//
+// Uniform basis+edition across the series → ONE caption line carries the
+// provenance and the per-figure chips drop (the decade grid's dense-cell
+// idiom). Mixed provenance → per-figure chips remain, no series caption.
+
+describe("ProgramTrajectoryCard — spark provenance caption", () => {
+  it("renders ONE shared caption (not three identical chips) when provenance is uniform", () => {
+    const { container } = render(
+      <ProgramTrajectoryCard program={PROGRAM} summary={SUMMARY} />,
+    );
+    const caption = container.querySelector(
+      '[data-testid="spark-provenance"]',
+    );
+    expect(caption).not.toBeNull();
+    expect(caption!.textContent).toContain("P-1 TOA · PB2026");
+    // The chip text appears exactly ONCE in the whole card — the caption.
+    const occurrences =
+      container.textContent!.split("P-1 TOA · PB2026").length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it("keeps per-figure chips (no series caption) when bases differ within the series", () => {
+    const mixed: ProgramSummary = {
+      ...SUMMARY,
+      cards: [
+        SUMMARY.cards[0],
+        {
+          ...SUMMARY.cards[1],
+          basis: "jbook-detail",
+          units: "USD millions",
+          value: 4489.93,
+          dataset: "jbook_details",
+        },
+        SUMMARY.cards[2],
+        SUMMARY.cards[3],
+      ],
+    };
+    const { container } = render(
+      <ProgramTrajectoryCard program={PROGRAM} summary={mixed} />,
+    );
+    expect(
+      container.querySelector('[data-testid="spark-provenance"]'),
+    ).toBeNull();
+    expect(container.textContent).toContain("P-1 TOA · PB2026");
+    expect(container.textContent).toContain("P-40 detail · PB2026");
   });
 });

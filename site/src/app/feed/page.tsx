@@ -57,8 +57,10 @@ const EVENT_META: Record<
     label: "Largest Request-vs-Actuals Gaps",
     // Claim scoped EXACTLY to request-vs-actuals (Task 6 review advisory):
     // this section says nothing about request-vs-request changes.
+    // "reported as actual total obligation authority", not "actually spent"
+    // (visual-judge M6: TOA ≠ outlays).
     description:
-      "The largest gaps between what a President's Budget asked for a fiscal year and what a later book reported actually spent — the PB(N) request for FY N vs the PB(N+2) book's FY N actuals, ranked by absolute dollar gap across the loaded PB2017–PB2026 editions.",
+      "The largest gaps between what a President's Budget asked for a fiscal year and what a later book reported as actual total obligation authority — the PB(N) request for FY N vs the PB(N+2) book's FY N actuals, ranked by absolute dollar gap across the loaded PB2017–PB2026 editions.",
     anchorId: "feed-request_vs_actuals_gap",
   },
   new_entrant: {

@@ -133,10 +133,12 @@ export async function runReceiptMomentGate({ baseUrl }) {
             .catch(() => false);
 
           if (!panelVisible && clicks < 2) {
-            // Second allowed click: the explicit "See the page it's printed on" button
+            // Second allowed click: the explicit "See the P-40 page it's
+            // printed on" button (copy renamed in the visual-judge M5 fix to
+            // name the CTA's real destination — matcher tightened to match).
             const btn = page
               .locator('[data-testid="receipt-moment"] button', {
-                hasText: /see the page/i,
+                hasText: /see the p-40 page/i,
               })
               .first();
             if ((await btn.count()) > 0) {

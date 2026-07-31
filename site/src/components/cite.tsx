@@ -46,6 +46,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { formatAmount, exactTitle, type AmountUnits } from "@/lib/format";
 import type { FootnoteFigure } from "@/lib/footnote";
+import { SITE_URL } from "@/lib/site";
 
 // ── Citation Panel Context ─────────────────────────────────────────────────
 // The panel provider (citation-panel/panel.tsx) implements the real openPanel.
@@ -104,57 +105,13 @@ export const ReceiptsContext = createContext<ReceiptsContextValue>({
 // it. Gate 23 parses the [data-amount] element's rendered text as a single
 // currency figure (normalizeAmount) — chip text inside the span would null
 // every parse and silently blind the collision/agreement legs.
+//
+// The vocabulary itself lives in lib/basis.ts (pure — server components
+// like TrajectorySpark's shared-provenance caption call it too); re-exported
+// here so existing client imports keep working.
 
-const BASIS_LABEL: Record<string, string> = {
-  toa: "P-1 TOA",
-  "jbook-detail": "P-40 detail",
-};
-
-/**
- * Human labels for the extended measure tokens, mirroring the exporter's
- * `_amount_type_meta` / `_scenario_meta` slug decisions (export_site.py).
- * Core tokens (actuals/enacted/request/total/change) are conveyed by the
- * surrounding label (card title, table header) and stay OUT of the chip.
- */
-const EXTENDED_MEASURE_LABEL: Record<string, string> = {
-  "disc-request": "discretionary request",
-  "reconciliation-request": "reconciliation request",
-  supplemental: "supplemental",
-  "base-request": "base request",
-  "all-prior-years": "all prior years",
-  // decade-grid kind-qualified tokens (_decade_measure_token): rendered
-  // under one row label, sourced from a diverging column
-  "enacted-request": "enacted (request column)",
-  "enacted-total": "enacted (book total)",
-  "actuals-base-oco": "actuals (base + OCO)",
-  "request-total-base-oco": "request (base + OCO total)",
-};
-
-const CORE_MEASURES = new Set([
-  "actuals",
-  "enacted",
-  "request",
-  "total",
-  "change",
-]);
-
-/** Chip text: basis label, extended-measure label when applicable, edition. */
-export function basisChipText(
-  basis: string,
-  measure?: string,
-  edition?: number,
-): string | null {
-  const basisLabel = BASIS_LABEL[basis];
-  if (!basisLabel) return null; // non-budget bases render no chip
-  const parts = [basisLabel];
-  if (measure && !CORE_MEASURES.has(measure)) {
-    parts.push(
-      EXTENDED_MEASURE_LABEL[measure] ?? measure.replace(/-/g, " "),
-    );
-  }
-  if (edition) parts.push(`PB${edition}`);
-  return parts.join(" · ");
-}
+import { basisChipText } from "@/lib/basis";
+export { basisChipText };
 
 // ── Cite Props ─────────────────────────────────────────────────────────────
 
@@ -261,8 +218,11 @@ export function CiteLegend({ className }: { className?: string }) {
  * ReceiptsChip — the inline public-id chip shown in Receipts mode.
  *
  * P0-4.3: the fact permalink lives "behind a click on the Receipts-mode
- * chip" — clicking the chip copies {origin}/fact/{fid8} (copy-with-toast,
- * consistent with the panel's copy buttons) and STOPS PROPAGATION so the
+ * chip" — clicking the chip copies {SITE_URL}/fact/{fid8} (the CANONICAL
+ * origin, never window.location — visual-judge M3: a permalink copied on a
+ * preview/localhost origin must still be the public identifier) with a
+ * copy-with-toast, consistent with the panel's copy buttons, and STOPS
+ * PROPAGATION so the
  * figure's own click-to-open-panel wiring does not fire. The chip stays
  * aria-hidden and non-focusable (no nested-interactive violation inside the
  * role="button" figure span): screen-reader / keyboard users reach the same
@@ -276,7 +236,7 @@ function ReceiptsChip({ publicId }: { publicId: string }) {
     e.preventDefault();
     try {
       navigator.clipboard.writeText(
-        `${window.location.origin}/fact/${publicId}`,
+        `${SITE_URL.replace(/\/$/, "")}/fact/${publicId}`,
       ).then(
         () => {
           setCopied(true);
@@ -298,6 +258,44 @@ function ReceiptsChip({ publicId }: { publicId: string }) {
       aria-hidden="true"
     >
       {copied ? "copied ✓" : `#${publicId}`}
+    </span>
+  );
+}
+
+/**
+ * CiteChips — the receipts-id + basis chip pair as a DETACHED sibling unit
+ * (visual-judge M8: at 390px the inline chips split the answer strip's
+ * "-$885.8M (-17.8%) FY25→26" cluster across lines). Dense value clusters
+ * render their <Cite chip={false}> inside a whitespace-nowrap span and place
+ * this unit AFTER the cluster: the value+pct+FY tokens stay contiguous and
+ * the chips wrap together as one unit. Same contract as the inline chips —
+ * SIBLINGS of [data-amount], never inside it (gate 23 parse rule).
+ */
+export function CiteChips({
+  factId,
+  basis,
+  measure,
+  edition,
+}: {
+  factId?: string | null;
+  basis?: string | null;
+  measure?: string | null;
+  edition?: number | null;
+}) {
+  const { receiptsOn } = useContext(ReceiptsContext);
+  const chipText = basis
+    ? basisChipText(basis, measure ?? undefined, edition ?? undefined)
+    : null;
+  const showReceipts = receiptsOn && Boolean(factId);
+  if (!showReceipts && !chipText) return null;
+  return (
+    <span className="inline-flex items-center whitespace-nowrap">
+      {showReceipts && <ReceiptsChip publicId={factId!.slice(0, 8)} />}
+      {chipText && (
+        <span className="ml-1 inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline">
+          {chipText}
+        </span>
+      )}
     </span>
   );
 }

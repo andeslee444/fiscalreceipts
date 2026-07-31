@@ -398,7 +398,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
             )}
             chip={false}
           />{" "}
-          for FY{bookDiff.fy}; the PB{bookDiff.to_edition} book reports{" "}
+          for FY{bookDiff.fy}; the PB{bookDiff.to_edition} book reported{" "}
           <Cite
             value={diffSides.actuals.v}
             units="USD thousands"
@@ -413,7 +413,9 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
             )}
             chip={false}
           />{" "}
-          actually spent —{" "}
+          {/* Visual-judge M6: TOA ≠ outlays — "actually spent" overclaimed
+              what a budget book's actuals column records. */}
+          as actual total obligation authority —{" "}
           <Cite
             value={bookDiff.delta}
             units="USD thousands"

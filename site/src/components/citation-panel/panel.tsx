@@ -59,6 +59,7 @@ import {
   isJbookNarrative,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
+import { SITE_URL } from "@/lib/site";
 import { FactAnchor } from "@/components/fact-anchor";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
@@ -627,9 +628,12 @@ function CopyFootnoteButton({
     // Receipts" → "{Program}").
     const pageLabel =
       document.title.split(" | ")[0].split(" — ")[0].trim() || null;
+    // Canonical origin, never window.location (visual-judge M3): the copied
+    // permalink is an identifier — on localhost/preview it must still read
+    // https://fiscalreceipts.com/fact/{fid8}.
     const text = formatFootnote(
       footnoteInputFromCitation(citation, factId, {
-        origin: window.location.origin,
+        origin: SITE_URL,
         program,
         figure,
         pageLabel,

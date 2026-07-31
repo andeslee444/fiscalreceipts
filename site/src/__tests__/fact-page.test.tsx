@@ -20,13 +20,23 @@
  *   - NO supersede display: citation payloads carry no superseded flag today
  *     (superseded rows are fenced out of the export entirely) — the page
  *     renders nothing about supersession rather than faking it.
+ *
+ * Visual-judge fix round additions:
+ *   - M2 semantic header: payload pe_bli + a sidecar figure matching the
+ *     fid → `F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026` +
+ *     the drawer's compact-USD equivalence; NO sidecar match → payload-only
+ *     render (no fabrication) — both paths tested.
+ *   - M3 canonical permalink: the rendered permalink is ALWAYS
+ *     https://fiscalreceipts.com/fact/{fid8}, never the (differing) jsdom
+ *     runtime origin.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-import { FactResolver } from "@/app/fact/fact-resolver";
+import { FactResolver, semanticHeaderText } from "@/app/fact/fact-resolver";
+import { findSidecarFigure } from "@/lib/fact-resolver";
 import { __resetCiteShardCache } from "@/lib/cite-shards";
 
 // ── Fixtures (real bb54b165 payload shape from today's corpus) ──────────────
@@ -242,5 +252,205 @@ describe("FactResolver", () => {
     );
     expect(card.querySelector('a[href="/fact/dca4c4d9"]')).not.toBeNull();
     expect(card.querySelector('a[href="/fact/7373db25"]')).not.toBeNull();
+  });
+
+  it("renders the CANONICAL permalink, never the runtime origin (M3)", async () => {
+    setUrl(`/fact/?id=${PDF_FID}`);
+    mockFetchWithShard({ [PDF_FID]: PDF_CITATION });
+    render(<FactResolver />);
+    await waitFor(() =>
+      expect(screen.getByTestId("fact-card")).toBeInTheDocument(),
+    );
+    // The jsdom origin differs from the canonical origin — the permalink
+    // must pin to the canonical one anyway (it is an identifier).
+    expect(window.location.origin).not.toBe("https://fiscalreceipts.com");
+    expect(screen.getByTestId("fact-card").textContent).toContain(
+      "https://fiscalreceipts.com/fact/bb54b165",
+    );
+    expect(screen.getByTestId("fact-card").textContent).not.toContain(
+      window.location.origin,
+    );
+  });
+});
+
+// ── Semantic header (visual-judge M2) ───────────────────────────────────────
+
+/** ATA000 sidecar slice — the real shapes the exporter emits. */
+const ATA_SIDECAR = {
+  summary: {
+    edition: 2026,
+    basis_preference: "toa",
+    cards: [],
+    reconciliation: [
+      {
+        fy: 2024,
+        measure: "actuals",
+        toa: {
+          v: 5565655.0,
+          units: "USD thousands",
+          fid: "5b532c52d3ebb4c2",
+          public_id: "5b532c52",
+          dataset: "fct_decade_series",
+        },
+        detail: {
+          v: 5247.07,
+          units: "USD millions",
+          fid: PDF_FID,
+          public_id: "bb54b165",
+          dataset: "jbook_details",
+          scenario: "PriorYear",
+        },
+        delta_thousands: 318585.0,
+      },
+    ],
+  },
+  decade_series: {
+    actuals: [
+      {
+        basis: "toa",
+        edition: 2026,
+        fid: "5b532c52d3ebb4c2",
+        fy: 2024,
+        measure: "actuals",
+        v: 5565655.0,
+      },
+    ],
+  },
+  details: [
+    {
+      fact_id: PDF_FID,
+      fy: 2024,
+      measure: "actuals",
+      basis: "jbook-detail",
+      edition: 2026,
+      units: "USD millions",
+      amount_millions: 5247.07,
+      scenario: "PriorYear",
+      resolution: "unique",
+      xml_path: "LineItem[5]",
+    },
+  ],
+};
+
+const QUICK = {
+  docs: [
+    {
+      id: "p:ATA000",
+      kind: "program",
+      pe_bli: "ATA000",
+      title: "F-35",
+      org: "F",
+      url: "/program/ATA000/",
+      dollars: 1,
+    },
+  ],
+};
+
+/** Route fetches by URL: shard, sidecar, search-quick, config. */
+function mockFetchRouted(routes: {
+  shard: Record<string, unknown>;
+  sidecar?: unknown;
+  quick?: unknown;
+}) {
+  fetchMock.mockImplementation((url: string) => {
+    if (url === "/config.json") {
+      return Promise.resolve(jsonResponse({ assetBaseUrl: "/assets" }));
+    }
+    if (url.includes("/cite-shards/")) {
+      return Promise.resolve(jsonResponse(routes.shard));
+    }
+    if (url.includes("/json-lite/program_details/")) {
+      return routes.sidecar !== undefined
+        ? Promise.resolve(jsonResponse(routes.sidecar))
+        : Promise.reject(new Error("no sidecar"));
+    }
+    if (url.includes("/json-lite/search_quick.json")) {
+      return routes.quick !== undefined
+        ? Promise.resolve(jsonResponse(routes.quick))
+        : Promise.reject(new Error("no quick"));
+    }
+    return Promise.reject(new Error(`unrouted fetch: ${url}`));
+  });
+}
+
+describe("FactResolver — semantic header (M2)", () => {
+  it("renders program/FY/measure/basis/edition + the equivalence when a sidecar figure matches", async () => {
+    setUrl(`/fact/?id=${PDF_FID}`);
+    mockFetchRouted({
+      shard: { [PDF_FID]: { ...PDF_CITATION, pe_bli: "ATA000" } },
+      sidecar: ATA_SIDECAR,
+      quick: QUICK,
+    });
+    render(<FactResolver />);
+    await waitFor(() =>
+      expect(screen.getByTestId("fact-semantic-header")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("fact-semantic-header").textContent).toBe(
+      "F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026",
+    );
+    // The drawer's compact-USD equivalence line next to the recorded value.
+    expect(screen.getByTestId("fact-card").textContent).toContain(
+      "(= $5.25B)",
+    );
+  });
+
+  it("renders the payload alone when the sidecar carries NO matching figure (no fabrication)", async () => {
+    setUrl(`/fact/?id=${PDF_FID}`);
+    mockFetchRouted({
+      shard: { [PDF_FID]: { ...PDF_CITATION, pe_bli: "ATA000" } },
+      sidecar: { summary: { edition: 2026, cards: [], reconciliation: [] } },
+      quick: QUICK,
+    });
+    render(<FactResolver />);
+    await waitFor(() =>
+      expect(screen.getByTestId("fact-card")).toBeInTheDocument(),
+    );
+    // Let the sidecar fetch settle, then assert the header stayed absent.
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((c) =>
+          String(c[0]).includes("/json-lite/program_details/ATA000.json"),
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByTestId("fact-semantic-header")).toBeNull();
+    // Payload fields still render — degraded to exactly what the payload says.
+    expect(screen.getByTestId("fact-card").textContent).toContain(
+      "$5,247.070 million",
+    );
+  });
+
+  it("falls back to the PE code when search-quick has no title (still no guess)", () => {
+    const fig = findSidecarFigure(ATA_SIDECAR, PDF_FID)!;
+    expect(fig).not.toBeNull();
+    expect(semanticHeaderText(fig, null, "ATA000")).toBe(
+      "ATA000 · FY2024 · Actuals · P-40 detail · PB2026",
+    );
+  });
+
+  it("findSidecarFigure declares dataset units for unit-less collections (decade = USD thousands)", () => {
+    const fig = findSidecarFigure(ATA_SIDECAR, "5b532c52d3ebb4c2")!;
+    expect(fig).not.toBeNull();
+    expect(fig.units).toBe("USD thousands");
+    expect(fig.basis).toBe("toa");
+    expect(fig.fy).toBe(2024);
+    expect(fig.value).toBe(5565655.0);
+  });
+
+  it("findSidecarFigure resolves reconciliation members with the entry's fy/measure", () => {
+    const sidecar = {
+      summary: ATA_SIDECAR.summary,
+    };
+    const fig = findSidecarFigure(sidecar, PDF_FID)!;
+    expect(fig).not.toBeNull();
+    expect(fig.fy).toBe(2024);
+    expect(fig.measure).toBe("actuals");
+    expect(fig.basis).toBe("jbook-detail");
+    expect(fig.units).toBe("USD millions");
+    expect(fig.edition).toBe(2026);
+  });
+
+  it("findSidecarFigure returns null for an id in no collection", () => {
+    expect(findSidecarFigure(ATA_SIDECAR, "ffffffffffffffff")).toBeNull();
   });
 });

@@ -370,8 +370,13 @@ export interface FootnoteFigure {
 
 /** Options for footnoteInputFromCitation. */
 export interface FootnoteBuildOptions {
-  /** Site origin for the fact permalink (e.g. https://fiscalreceipts.com). */
-  origin: string;
+  /**
+   * Site origin for the fact permalink. Callers pass the CANONICAL origin
+   * (lib/site SITE_URL — visual-judge M3: permalinks are identifiers and
+   * must never render the runtime origin); omitted, it defaults to the
+   * canonical fact base this module already pins for input-fact links.
+   */
+  origin?: string;
   program?: FootnoteProgram | null;
   figure?: FootnoteFigure | null;
   /** Fallback head when no program context (trimmed document.title). */
@@ -594,7 +599,8 @@ export function footnoteInputFromCitation(
 ): FootnoteInput {
   const tier = tierFor(citation.kind);
   const figure = opts.figure ?? null;
-  const permalink = `${opts.origin.replace(/\/$/, "")}/fact/${factId.slice(0, 8)}`;
+  const origin = opts.origin ?? CANONICAL_FACT_BASE;
+  const permalink = `${origin.replace(/\/$/, "")}/fact/${factId.slice(0, 8)}`;
   const retrievedAt = citation.retrieved_at
     ? citation.retrieved_at.slice(0, 10)
     : null;

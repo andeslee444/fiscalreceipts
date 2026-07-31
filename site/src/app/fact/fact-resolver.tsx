@@ -19,6 +19,19 @@
  * payload carries pe_bli) an "Appears on" /program/{pe}/#fact-{id} parent
  * link. Fields the payload lacks are omitted, never guessed.
  *
+ * SEMANTIC HEADER (visual-judge M2): when the payload carries pe_bli, the
+ * card ALSO fetches the program sidecar the site already serves
+ * (/json-lite/program_details/{pe}.json) plus search_quick.json (the
+ * program title), locates the figure whose fid/public_id matches, and
+ * renders `F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026` above
+ * the value — plus the drawer's compact-USD equivalence ("(= $5.25B)",
+ * lib/format usdEquivalence). No sidecar figure match → the citation
+ * payload alone renders (no fabrication).
+ *
+ * PERMALINK ORIGIN (visual-judge M3): the rendered/copied permalink pins to
+ * the canonical SITE_URL, never window.location — a permalink is an
+ * identifier, and 127.0.0.1 permalinks were leaking into copied footnotes.
+ *
  * SUPERSEDE DISPLAY (spec §P0-4.5): deliberately ABSENT. Citation payloads
  * carry no superseded flag today — superseded warehouse rows are fenced out
  * of the export entirely (export_site.py `where not … superseded`), so a
@@ -30,20 +43,24 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { CitationPanelProvider } from "@/components/citation-panel";
-import { CitationPanelContext } from "@/components/cite";
+import { CitationPanelContext, basisChipText } from "@/components/cite";
 import { useAssetUrl } from "@/components/asset-config";
 import { fetchCitationShard, shardPrefix } from "@/lib/cite-shards";
 import {
+  findSidecarFigure,
   parseFactPermalinkId,
+  programTitleFromQuick,
   resolveFactMatches,
   type FactMatch,
+  type SidecarFigureContext,
 } from "@/lib/fact-resolver";
 import {
   footnoteInputFromCitation,
   type FootnoteInput,
 } from "@/lib/footnote";
+import { usdEquivalence } from "@/lib/format";
 import type { Citation } from "@/lib/citations";
-import { SITE_NAME } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 // ── Resolution state machine ────────────────────────────────────────────────
 
@@ -211,6 +228,55 @@ const KIND_LABELS: Record<string, string> = {
   jbook_narrative: "J-book Narrative",
 };
 
+/** Human labels for the core measure tokens in the semantic header. */
+const CORE_MEASURE_LABELS: Record<string, string> = {
+  actuals: "Actuals",
+  enacted: "Enacted",
+  request: "Request",
+  total: "Total",
+  change: "Change",
+};
+
+/**
+ * `F-35 (ATA000) · FY2024 · Actuals · P-40 detail · PB2026` — every part
+ * optional (absent context drops, never renders a guess). The basis+edition
+ * segment reuses basisChipText, the SAME vocabulary the site's basis chips
+ * render, so this page can never disagree with a chip about the basis.
+ */
+export function semanticHeaderText(
+  figure: SidecarFigureContext,
+  title: string | null,
+  peBli: string,
+): string {
+  const parts: string[] = [title ? `${title} (${peBli})` : peBli];
+  if (figure.fy != null && /^\d{4}$/.test(String(figure.fy))) {
+    parts.push(`FY${figure.fy}`);
+  }
+  const chip = figure.basis
+    ? basisChipText(
+        figure.basis,
+        figure.measure ?? undefined,
+        figure.edition ?? undefined,
+      )
+    : null;
+  if (figure.measure && CORE_MEASURE_LABELS[figure.measure]) {
+    parts.push(CORE_MEASURE_LABELS[figure.measure]);
+  } else if (figure.measure && !chip) {
+    // Extended tokens render inside the chip when one exists; chip-less
+    // bases (non-budget) still show the humanized token here.
+    parts.push(figure.measure.replace(/-/g, " "));
+  }
+  if (chip) parts.push(chip);
+  else if (figure.edition) parts.push(`PB${figure.edition}`);
+  return parts.join(" · ");
+}
+
+/** The resolved sidecar context for one card: figure + program title. */
+interface SemanticContext {
+  figure: SidecarFigureContext;
+  title: string | null;
+}
+
 function FactCard({
   factId,
   citation,
@@ -223,16 +289,48 @@ function FactCard({
 
   // One derivation for value/title/locator/permalink — the SAME builder the
   // copy-as-footnote path uses (lib/footnote.ts), so this page can never
-  // disagree with the footnote about what the payload says. No figure
-  // context exists here, so fy/row-name are honestly absent.
+  // disagree with the footnote about what the payload says. Canonical
+  // origin (M3): never window.location.
   const input: FootnoteInput = footnoteInputFromCitation(citation, factId, {
-    origin: window.location.origin,
+    origin: SITE_URL,
   });
 
   // Parent link — ONLY when the payload itself carries pe_bli (P0-4 "appears
   // on"). Today's shards do not carry it yet; the exporter now emits it, so
   // the link lights up at the next export without a site change.
   const peBli = (citation as { pe_bli?: string | null }).pe_bli ?? null;
+
+  // Semantic header (M2): sidecar figure + program title, fetched only when
+  // the payload names its parent program. A failed fetch or an id with no
+  // sidecar figure leaves `semantic` null — payload-only render, no guess.
+  const [semantic, setSemantic] = useState<SemanticContext | null>(null);
+  useEffect(() => {
+    if (!peBli) return;
+    let cancelled = false;
+    const getJson = (url: string) =>
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+    Promise.all([
+      getJson(`/json-lite/program_details/${peBli}.json`),
+      getJson("/json-lite/search_quick.json"),
+    ]).then(([sidecar, quick]) => {
+      if (cancelled) return;
+      const figure = findSidecarFigure(sidecar, factId);
+      if (!figure) return;
+      setSemantic({ figure, title: programTitleFromQuick(quick, peBli) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [peBli, factId]);
+
+  // Compact-USD equivalence — the drawer's formatter (usdEquivalence), so
+  // "$5,247.070 million" reconciles with the "$5.25B" shown on cards.
+  const equivalence =
+    semantic && semantic.figure.value != null
+      ? usdEquivalence(semantic.figure.value, semantic.figure.units)
+      : null;
 
   const kindLabel = KIND_LABELS[citation.kind] ?? citation.kind;
 
@@ -250,9 +348,23 @@ function FactCard({
         </span>
       </header>
 
+      {semantic && peBli && (
+        <p
+          data-testid="fact-semantic-header"
+          className="mb-1 text-sm font-medium text-foreground"
+        >
+          {semanticHeaderText(semantic.figure, semantic.title, peBli)}
+        </p>
+      )}
+
       {input.valueText && (
         <p className="mb-3 text-2xl font-semibold tracking-tight">
           {input.valueText}
+          {equivalence && (
+            <span className="ml-1.5 text-base font-normal text-muted-foreground">
+              ({equivalence})
+            </span>
+          )}
         </p>
       )}
 

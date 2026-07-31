@@ -1,5 +1,6 @@
 import type { SummaryCard } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { basisChipText } from "@/lib/basis";
 import { formatAmount } from "@/lib/format";
 
 /**
@@ -16,6 +17,13 @@ import { formatAmount } from "@/lib/format";
  *
  * Cards may sit on either basis (union prefers toa; detail-only slots are
  * labeled) and either unit — points are scaled in raw dollars.
+ *
+ * Provenance caption (visual-judge M7): when every legend value would
+ * render the IDENTICAL basis chip ("P-1 TOA · PB2026" three times inside
+ * one component), the per-figure chips are suppressed (chip={false} — the
+ * decade grid's existing dense-cell idiom) and ONE caption line declares
+ * the shared provenance for the whole series. Per-figure chips remain
+ * whenever bases/editions/extended measures differ within the series.
  */
 
 const SVG_WIDTH = 120;
@@ -89,6 +97,23 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
 
   const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
 
+  // Shared-provenance caption (M7): compare the EXACT chip text each legend
+  // value would render — identical, non-null text across all points means
+  // one caption carries the provenance and the per-figure chips drop.
+  const chipTexts = points.map((p) =>
+    p.card.basis
+      ? basisChipText(
+          p.card.basis,
+          p.card.measure ?? undefined,
+          p.card.edition ?? undefined,
+        )
+      : null,
+  );
+  const sharedChipText =
+    chipTexts[0] != null && chipTexts.every((t) => t === chipTexts[0])
+      ? chipTexts[0]
+      : null;
+
   // Determine trend color
   const firstVal = points[0].dollars;
   const lastVal = points[points.length - 1].dollars;
@@ -100,6 +125,7 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
         : "#6b7280"; // gray-500
 
   return (
+    <div>
     <div className="flex items-center gap-3">
       <svg
         width={SVG_WIDTH}
@@ -194,11 +220,24 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
                 measure={p.card.measure}
                 edition={p.card.edition}
                 reconciled={reconKeys?.has(`${p.card.fy}|${p.card.measure}`)}
+                chip={!sharedChipText}
               />
             </dd>
           </div>
         ))}
       </dl>
+    </div>
+
+      {/* ONE caption for the whole series when provenance is uniform (M7) —
+          12px floor per P1-1, same quiet register as the decade caption. */}
+      {sharedChipText && (
+        <p
+          data-testid="spark-provenance"
+          className="mt-1 text-xs text-muted-foreground"
+        >
+          All series figures: {sharedChipText}
+        </p>
+      )}
     </div>
   );
 }

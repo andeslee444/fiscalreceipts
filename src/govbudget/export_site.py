@@ -5244,8 +5244,8 @@ def _emit_feed_sidecar(
 
     Phase 5E Task 7 — request_vs_actuals_gap events: the top
     {_FEED_RVA_TOP} cited request-vs-actuals book diffs (what a PB(N) book
-    asked for FY N vs what the PB(N+2) book reported actually spent),
-    ranked by |delta|. Each card cites its minted book_diff derived fact
+    asked for FY N vs what the PB(N+2) book reported as actual total
+    obligation authority — TOA, not outlays), ranked by |delta|. Each card cites its minted book_diff derived fact
     (breakdown reachable through the citation panel) and links to the
     program page ONLY when page_pe_blis says the page exists (dead-link
     lesson — 3 top-100 rva PEs have no page).
