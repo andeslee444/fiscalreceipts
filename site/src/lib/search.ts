@@ -12,6 +12,8 @@
 
 import MiniSearch from "minisearch";
 
+import { aliasMatchesForQuery, aliasesForPeBli } from "./aliases";
+
 // "static", "feed", "district" and "alias" are emitted by export_site's
 // search_quick.json; everything that isn't program/company/agency groups
 // under "pages" (see quickSearch below).
@@ -44,6 +46,8 @@ export interface SearchResult {
   /** Highlighted HTML string for the title */
   titleHtml: string;
   score: number;
+  /** Curated "also known as" names (§P1-4 alias table) — chip source. */
+  aka?: string[];
 }
 
 export interface GroupedResults {
@@ -83,16 +87,39 @@ export function kindGroupLabel(kind: string): string {
   return KIND_GROUP_LABELS[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
+// ── Alphanumeric normalization (§P1-4) ───────────────────────────────────────
+// Users type "F35", "B21", "KC46", "F15EX"; titles say "F-35", "B-21 Raider",
+// "KC-46A". Each doc gets a synthetic `title_norm` field with per-word
+// punctuation stripped ("F-35 Modifications" → "f35 modifications") so the
+// collapsed form is an EXACT index token — while the original title field
+// keeps all existing match behavior.
+
+/** Word-level normalization: lowercase, strip non-alphanumerics inside each
+ *  whitespace-separated word. "F-35 C2D2" → "f35 c2d2". */
+export function normalizeAlnumWords(s: string): string {
+  return s
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9]/g, ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
+type IndexedDoc = SearchDoc & { title_norm: string };
+
 // ── Module-level singleton ────────────────────────────────────────────────────
 
-let indexPromise: Promise<MiniSearch<SearchDoc>> | null = null;
+let indexPromise: Promise<MiniSearch<IndexedDoc>> | null = null;
 
 // url → title map over the SAME quick-index docs (Fix H2, 2026-07-28): lets
 // deep-search (pagefind) hits display the page's real title instead of its
 // raw URL path when the URL is a quick-index doc (e.g. /program/<pe>/).
 let urlTitles: Map<string, string> | null = null;
 
-function buildIndex(): Promise<MiniSearch<SearchDoc>> {
+// id → doc map — alias injection (§P1-4) resolves "p:{peBli}" targets here.
+let docsById: Map<string, SearchDoc> | null = null;
+
+function buildIndex(): Promise<MiniSearch<IndexedDoc>> {
   if (indexPromise) return indexPromise;
 
   indexPromise = (async () => {
@@ -100,19 +127,22 @@ function buildIndex(): Promise<MiniSearch<SearchDoc>> {
     if (!res.ok) throw new Error(`Failed to fetch search index: ${res.status}`);
     const data = (await res.json()) as { docs: SearchDoc[] };
 
-    const ms = new MiniSearch<SearchDoc>({
+    const ms = new MiniSearch<IndexedDoc>({
       idField: "id",
-      fields: ["title", "pe_bli", "org"],
-      storeFields: ["title", "url", "kind", "dollars"],
+      fields: ["title", "title_norm", "pe_bli", "org"],
+      storeFields: ["title", "url", "kind", "dollars", "pe_bli"],
       searchOptions: {
         prefix: true,
         fuzzy: 0.2,
-        boost: { title: 2 },
+        boost: { title: 2, title_norm: 2 },
       },
     });
 
-    ms.addAll(data.docs);
+    ms.addAll(
+      data.docs.map((d) => ({ ...d, title_norm: normalizeAlnumWords(d.title) })),
+    );
     urlTitles = new Map(data.docs.map((d) => [d.url, d.title]));
+    docsById = new Map(data.docs.map((d) => [d.id, d]));
     return ms;
   })();
 
@@ -159,10 +189,22 @@ export function warmIndex(): void {
 
 function highlightTerms(text: string, terms: string[]): string {
   if (!terms.length) return escapeHtml(text);
-  // Escape terms for regex safety, then apply to escaped HTML text
-  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // Escape terms for regex safety, then apply to escaped HTML text.
+  // Mixed alphanumeric terms ("f35", "kc46a") additionally tolerate a single
+  // hyphen/en-dash between digit/letter boundaries so "F35" highlights "F-35"
+  // (§P1-4 normalization).
+  const patterns = terms.map((t) => {
+    if (/^[a-z0-9]+$/i.test(t) && /\d/.test(t) && /[a-z]/i.test(t)) {
+      // Split into digit/letter runs ("f35" → ["f","35"]; "kc46a" →
+      // ["kc","46","a"]) and allow one hyphen/en-dash between runs. Runs are
+      // pure alphanumerics — no HTML or regex escaping needed.
+      const runs = t.match(/\d+|[a-z]+/gi) ?? [t];
+      return runs.join("[-–]?");
+    }
+    return escapeHtml(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  });
   return escapeHtml(text).replace(
-    new RegExp(`(${escaped.map((t) => escapeHtml(t)).join("|")})`, "gi"),
+    new RegExp(`(${patterns.join("|")})`, "gi"),
     (m) => `<mark>${m}</mark>`,
   );
 }
@@ -201,7 +243,9 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
   const districtCodeRe = /^[A-Z]{2}-\d{2}$/;
   const isDistrictQuery = districtCodeRe.test(query.trim().toUpperCase());
 
-  const raw = ms.search(query).map((r) => {
+  const applyBoosts = <T extends { score: number } & Record<string, unknown>>(
+    r: T,
+  ): T => {
     const titleLow = (r.title as string).toLowerCase();
     // Exact match boost: agency or company whose title exactly matches the query
     if ((r.kind === "agency" || r.kind === "company") && titleLow === queryNorm) {
@@ -235,7 +279,96 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
       }
     }
     return r;
-  }).sort((a, b) => b.score - a.score);
+  };
+
+  // Two-pass search (§P1-4 — normalize BOTH sides): pass 1 is the query as
+  // typed; pass 2 is the alphanumeric-normalized query ("F-35" → "f35") so a
+  // punctuated query exact-hits the title_norm tokens. Merged by doc id, max
+  // score wins.
+  type RawHit = { score: number; id: string } & Record<string, unknown>;
+  const merged = new Map<string, RawHit>();
+  const addHits = (hits: RawHit[]) => {
+    for (const h of hits) {
+      const prev = merged.get(h.id);
+      if (!prev || h.score > prev.score) merged.set(h.id, h);
+    }
+  };
+  addHits(ms.search(query).map((r) => applyBoosts(r as unknown as RawHit)));
+  const normQuery = normalizeAlnumWords(query);
+  if (normQuery && normQuery !== queryNorm) {
+    addHits(ms.search(normQuery).map((r) => applyBoosts(r as unknown as RawHit)));
+  }
+
+  // Alias injection (§P1-4): a full-query alias match ("Sentinel", "JSF",
+  // "GBSD") surfaces its program in the Programs tier as an exact-name-grade
+  // hit — same band as the best direct program match, so the magnitude
+  // tiebreak below decides order WITHIN that band ("Sentinel" → GBSD EMD
+  // $4.15B above Sentinel Mods $462M) without ever outranking a stronger
+  // direct name match from a different band.
+  const aliasEntries = aliasMatchesForQuery(query);
+  if (aliasEntries.length > 0) {
+    let topProgramScore = 0;
+    for (const h of merged.values()) {
+      if (h.kind === "program" && h.score > topProgramScore) topProgramScore = h.score;
+    }
+    const aliasScore = topProgramScore > 0 ? topProgramScore : 100;
+    for (const entry of aliasEntries) {
+      const id = `p:${entry.peBli}`;
+      const doc = docsById?.get(id);
+      if (!doc) continue; // corpus drift — alias target not in the quick index
+      const prev = merged.get(id);
+      if (prev) {
+        if (prev.score < aliasScore) merged.set(id, { ...prev, score: aliasScore });
+      } else {
+        merged.set(id, {
+          id,
+          kind: doc.kind,
+          title: doc.title,
+          url: doc.url,
+          dollars: doc.dollars,
+          pe_bli: doc.pe_bli,
+          score: aliasScore,
+        });
+      }
+    }
+  }
+
+  const rawAll = [...merged.values()].sort((a, b) => b.score - a.score);
+
+  // Ranking blend (§P1-4): within the Programs tier, name-match relevance
+  // still dominates via score BANDS (a new band starts when the score drops
+  // below 95% of the band leader); FY26 magnitude only breaks near-ties
+  // inside a band. An exact unique name keeps its own higher band, so a
+  // bigger program that merely fuzzy-matches can never swamp it.
+  const programs = rawAll.filter((r) => r.kind === "program");
+  const nonPrograms = rawAll.filter((r) => r.kind !== "program");
+
+  const BAND_RATIO = 0.95;
+  let band = -1;
+  let bandLeader = Infinity;
+  const banded = programs.map((r) => {
+    if (r.score < bandLeader * BAND_RATIO) {
+      band += 1;
+      bandLeader = r.score;
+    }
+    return { r, band };
+  });
+  banded.sort((a, b) => {
+    if (a.band !== b.band) return a.band - b.band;
+    const da = (a.r.dollars as number | null | undefined) ?? -1;
+    const db = (b.r.dollars as number | null | undefined) ?? -1;
+    if (da !== db) return db - da;
+    if (a.r.score !== b.r.score) return b.r.score - a.r.score;
+    return a.r.id < b.r.id ? -1 : 1;
+  });
+  // Rewrite scores strictly decreasing in final program order so downstream
+  // score-sorted views (the palette's flattened list) preserve this ordering.
+  let prevScore = Infinity;
+  const orderedPrograms = banded.map(({ r }) => {
+    const s = Math.min(r.score, prevScore - 1e-6);
+    prevScore = s;
+    return { ...r, score: s };
+  });
 
   // Extract query terms for highlighting
   const terms = query
@@ -243,27 +376,39 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
     .split(/\s+/)
     .filter((t) => t.length >= 2);
 
-  const toResult = (r: (typeof raw)[number]): SearchResult => ({
-    id: r.id as string,
-    kind: (r.kind ?? "page") as SearchDocKind,
-    title: r.title as string,
-    url: r.url as string,
-    dollars: r.dollars as number | null | undefined,
-    titleHtml: highlightTerms(r.title as string, terms),
-    score: r.score,
-  });
+  const toResult = (r: RawHit): SearchResult => {
+    const kind = (r.kind ?? "page") as SearchDocKind;
+    const peBli =
+      (r.pe_bli as string | undefined) ??
+      (typeof r.url === "string"
+        ? /^\/program\/([^/]+)\/$/.exec(r.url as string)?.[1]
+        : undefined);
+    const aka =
+      kind === "program" && peBli ? aliasesForPeBli(peBli) ?? undefined : undefined;
+    return {
+      id: r.id,
+      kind,
+      title: r.title as string,
+      url: r.url as string,
+      dollars: r.dollars as number | null | undefined,
+      titleHtml: highlightTerms(r.title as string, terms),
+      score: r.score,
+      ...(aka ? { aka } : {}),
+    };
+  };
 
   const groups: GroupedResults = { programs: [], companies: [], agencies: [], pages: [] };
 
-  for (const r of raw) {
+  for (const r of orderedPrograms) {
+    if (groups.programs.length < MAX_PER_GROUP) groups.programs.push(toResult(r));
+  }
+  for (const r of nonPrograms) {
     const kind = (r.kind ?? "page") as SearchDocKind;
-    const group = kind === "program"
-      ? groups.programs
-      : kind === "company"
-        ? groups.companies
-        : kind === "agency"
-          ? groups.agencies
-          : groups.pages;
+    const group = kind === "company"
+      ? groups.companies
+      : kind === "agency"
+        ? groups.agencies
+        : groups.pages;
     if (group.length < MAX_PER_GROUP) {
       group.push(toResult(r));
     }

@@ -101,6 +101,9 @@ export default async function CompanyPage({
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">{entity.display_name}</h1>
+        {/* Explicit {" "} separators between the meta spans: without them the
+            rendered text abuts ("…identifiersTotal obligations: $135.4Bmedium…")
+            and Pagefind excerpts concatenate the fragments (§P1-4 snippet bug). */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-3">
           <span>
             <span className="font-medium text-foreground">
@@ -108,7 +111,7 @@ export default async function CompanyPage({
             </span>{" "}
             unique entity identifier
             {entity.uei_count !== 1 ? "s" : ""}
-          </span>
+          </span>{" "}
           <span>
             Total obligations:{" "}
             <Cite
@@ -117,7 +120,7 @@ export default async function CompanyPage({
               dataset="dim_entities"
               factId={entity.total_obligation_fact_id}
             />
-          </span>
+          </span>{" "}
           <span
             className={[
               "inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium",

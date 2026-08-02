@@ -103,13 +103,15 @@ export default async function AgencyPage({
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-3">{org}</h1>
+          {/* Explicit {" "} separators between the meta spans keep Pagefind
+              excerpts from concatenating fragments (§P1-4 snippet bug). */}
           <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
             <span>
               <strong className="text-foreground">
                 {agency.program_count}
               </strong>{" "}
               program{agency.program_count !== 1 ? "s" : ""}
-            </span>
+            </span>{" "}
             <span>
               FY24 total:{" "}
               <Cite
@@ -118,7 +120,7 @@ export default async function AgencyPage({
                 dataset="dim_programs"
                 factId={agency.fy2024_fact_id_derived}
               />
-            </span>
+            </span>{" "}
             {agency.fy2026_total_thousands != null && (
               <span>
                 FY26 total:{" "}

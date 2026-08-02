@@ -148,6 +148,33 @@ cases:
     tier: quick
     note: "Alias: drones → DIU Fielding (congressional add 'AI ISR Drones')"
 
+  # ── P1-4: alphanumeric normalization + ranking blend + program aliases ─────
+  # (PM review Sprint 2 Task 1 — the PM's exact repros)
+  - query: "F35"
+    expect_url_top3: "/program/ATA000/"
+    tier: quick
+    note: "PM repro: 'F35' must find F-35 (ATA000, the procurement flagship) — pre-fix the Programs tier returned RC-135/C-135"
+
+  - query: "B21"
+    expect_url_top3: "/program/B02100/"
+    tier: quick
+    note: "Alphanumeric normalization: 'B21' → B-21 Raider procurement line"
+
+  - query: "Sentinel"
+    expect_url_top3: "/program/0605238F/"
+    tier: quick
+    note: "PM repro: alias + magnitude blend — GBSD EMD ($4.15B FY26, the ICBM program named Sentinel/LGM-35A) ranks above the minor Sentinel Mods line"
+
+  - query: "Sentinel Mods"
+    expect_url_top3: "/program/0125WK5057/"
+    tier: quick
+    note: "Regression: an exact unique program name still beats a bigger program — magnitude only breaks near-ties, never swamps exact name matches"
+
+  - query: "JSF"
+    expect_url_top3: "/program/ATA000/"
+    tier: quick
+    note: "Alias: JSF → F-35 (ATA000); the ATA000 payload names 'Joint Strike Fighter'"
+
   # ── Deep tier (pagefind narrative search) ──────────────────────────────────
   - query: "Perceptually-Enabled Task Guidance augmented reality"
     expect_url_top5: "/program/0601101E/"

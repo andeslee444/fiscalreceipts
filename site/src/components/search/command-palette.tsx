@@ -53,6 +53,8 @@ interface FlatItem {
   labelHtml: string;
   sub?: string;
   kind: string;
+  /** Curated "also known as" names (§P1-4 alias table) — rendered as a chip. */
+  aka?: string[];
 }
 
 // ── Pagefind loader ───────────────────────────────────────────────────────────
@@ -61,7 +63,15 @@ type PagefindMod = {
   debouncedSearch: (
     q: string,
   ) => Promise<{
-    results: { data: () => Promise<{ url: string; excerpt: string }> }[];
+    results: {
+      data: () => Promise<{
+        url: string;
+        excerpt: string;
+        /** Pagefind page metadata — `title` is the page h1 unless overridden
+         *  via data-pagefind-meta (filing pages override it, §P1-4). */
+        meta?: { title?: string };
+      }>;
+    }[];
   } | null>;
 };
 
@@ -118,6 +128,7 @@ function flattenGroups(groups: GroupedResults): FlatItem[] {
     // pluralization emitted "Companys" / "Agencys".
     sub: kindGroupLabel(r.kind),
     kind: r.kind,
+    ...(r.aka ? { aka: r.aka } : {}),
   }));
 }
 
@@ -215,19 +226,24 @@ function useTier2(query: string) {
         );
         // Deep hits arrive titled with their raw URL path (Fix H2) — resolve
         // the display title from the quick-search index already loaded
-        // client-side (it has program titles); fall back to the path only
-        // when the URL is not a quick-index doc.
+        // client-side (it has program titles). For pages OUTSIDE the quick
+        // index (e.g. the 4,258 /filing/ pages) fall back to the Pagefind
+        // page title metadata ("Client — Registrant, YYYY QN" on filings,
+        // §P1-4) before ever showing the raw path.
         const titles = await Promise.all(results.map((r) => titleForUrl(r.url)));
         if (!cancelled) {
           setItems(
-            results.map((r, i) => ({
-              id: `pf-${i}`,
-              url: r.url,
-              label: titles[i] ?? r.url,
-              labelHtml: titles[i] ? escapeHtml(titles[i]) : escapeHtml(r.url),
-              sub: r.excerpt,
-              kind: "page",
-            })),
+            results.map((r, i) => {
+              const label = titles[i] ?? r.meta?.title ?? r.url;
+              return {
+                id: `pf-${i}`,
+                url: r.url,
+                label,
+                labelHtml: escapeHtml(label),
+                sub: r.excerpt,
+                kind: "page",
+              };
+            }),
           );
           setLoading(false);
         }
@@ -406,15 +422,23 @@ export function CommandPalette() {
     if (item.kind !== "agency" && item.kind !== "company") return false;
     const titleLow = item.label.toLowerCase();
     if (titleLow === queryNormPalette) return true;
-    // Near-exact: within 2 chars AND shares a 3-char prefix (handles typos like "darppa")
+    // Near-exact: within 2 chars AND a *strong* head overlap — the shorter of
+    // {query, title} minus up to 2 fuzzy chars must prefix the longer. Kept in
+    // sync with the quickSearch near-exact boost (5G archive fix): the old
+    // 3-char-stub rule promoted "GENERAL ATOMICS" to Best match for the query
+    // "general dynamics". Typo cases ("darppa" → DARPA, "boeng" → BOEING)
+    // still qualify.
     if (
       Math.abs(titleLow.length - queryNormPalette.length) <= 2 &&
       titleLow.length >= 3 &&
-      queryNormPalette.length >= 3 &&
-      (titleLow.startsWith(queryNormPalette.slice(0, 3)) ||
-        queryNormPalette.startsWith(titleLow.slice(0, 3)))
+      queryNormPalette.length >= 3
     ) {
-      return true;
+      const shorter =
+        queryNormPalette.length <= titleLow.length ? queryNormPalette : titleLow;
+      const longer =
+        queryNormPalette.length <= titleLow.length ? titleLow : queryNormPalette;
+      const headLen = Math.max(3, shorter.length - 2);
+      if (longer.startsWith(shorter.slice(0, headLen))) return true;
     }
     return false;
   };
@@ -752,10 +776,20 @@ function ResultRow({
         }}
         className="flex flex-col px-3 py-2 w-full"
       >
-        <span
-          className="font-medium leading-5 truncate"
-          dangerouslySetInnerHTML={{ __html: item.labelHtml }}
-        />
+        <span className="flex items-baseline gap-2 min-w-0">
+          <span
+            className="font-medium leading-5 truncate"
+            dangerouslySetInnerHTML={{ __html: item.labelHtml }}
+          />
+          {item.aka && item.aka.length > 0 && (
+            <span
+              data-testid="search-aka-chip"
+              className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+            >
+              also known as: {item.aka.join(" · ")}
+            </span>
+          )}
+        </span>
         {item.sub && (
           <span
             className={[

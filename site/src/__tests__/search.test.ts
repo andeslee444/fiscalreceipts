@@ -221,6 +221,100 @@ describe("quick search — highlight", () => {
   });
 });
 
+// ── P1-4 (PM review, Sprint 2 Task 1) ────────────────────────────────────────
+// The PM's exact repros become tests: alphanumeric normalization ("F35" must
+// find F-35), magnitude-blended ranking ("Sentinel" ranks GBSD above the minor
+// Sentinel Mods line), alias injection with visible aka chips, and the
+// regression guard (an exact unique name still beats a bigger near-tie).
+
+describe("P1-4 — alphanumeric normalization (PM repro: 'F35' finds F-35)", () => {
+  it("'F35' → F-35 (ATA000) is the FIRST program result", async () => {
+    const groups = await search("F35");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/ATA000/");
+  });
+
+  it("'F35' does not rank RC-135/C-135 above F-35 programs", async () => {
+    const groups = await search("F35");
+    for (const p of groups.programs) {
+      expect(p.title).not.toMatch(/C-135/);
+    }
+  });
+
+  it("'B21' → B-21 Raider (B02100) first in programs", async () => {
+    const groups = await search("B21");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/B02100/");
+  });
+
+  it("'KC46' → KC-46A MDAP (KC046A) in top programs", async () => {
+    const groups = await search("KC46");
+    const urls = groups.programs.map((p) => p.url);
+    expect(urls).toContain("/program/KC046A/");
+  });
+
+  it("'F15EX' → F-15EX (F015EX, the $3.0B line) first in programs", async () => {
+    const groups = await search("F15EX");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/F015EX/");
+  });
+
+  it("hyphenated query 'F-35' still finds the F-35 programs", async () => {
+    const groups = await search("F-35");
+    const urls = groups.programs.map((p) => p.url);
+    expect(urls).toContain("/program/ATA000/");
+  });
+
+  it("'F35' highlights the hyphenated title ('F-35' gets a <mark>)", async () => {
+    const groups = await search("F35");
+    const top = groups.programs[0];
+    expect(top.titleHtml).toContain("<mark>F-35</mark>");
+  });
+});
+
+describe("P1-4 — ranking blend + alias injection (PM repro: 'Sentinel')", () => {
+  it("'Sentinel' ranks Ground Based Strategic Deterrent EMD (0605238F, $4.15B) above Sentinel Mods", async () => {
+    const groups = await search("Sentinel");
+    const urls = groups.programs.map((p) => p.url);
+    const gbsdIdx = urls.indexOf("/program/0605238F/");
+    expect(gbsdIdx).toBe(0);
+    // Sentinel Mods still surfaces (it IS a real name match), just below
+    expect(urls).toContain("/program/0125WK5057/");
+  });
+
+  it("'Sentinel' GBSD result carries visible aka aliases for the chip", async () => {
+    const groups = await search("Sentinel");
+    const gbsd = groups.programs.find((p) => p.url === "/program/0605238F/");
+    expect(gbsd).toBeDefined();
+    expect(gbsd!.aka).toBeDefined();
+    expect(gbsd!.aka).toContain("Sentinel");
+    expect(gbsd!.aka).toContain("GBSD");
+  });
+
+  it("'JSF' → F-35 (ATA000) via alias, with aka chip", async () => {
+    const groups = await search("JSF");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/ATA000/");
+    expect(groups.programs[0].aka).toContain("JSF");
+  });
+
+  it("'GBSD' → 0605238F via alias", async () => {
+    const groups = await search("GBSD");
+    expect(groups.programs.map((p) => p.url)).toContain("/program/0605238F/");
+  });
+
+  it("REGRESSION: exact unique name 'Sentinel Mods' still wins over bigger programs", async () => {
+    const groups = await search("Sentinel Mods");
+    expect(groups.programs.length).toBeGreaterThan(0);
+    expect(groups.programs[0].url).toBe("/program/0125WK5057/");
+  });
+
+  it("REGRESSION: magnitude never swamps an exact pe_bli match", async () => {
+    const groups = await search("0601101E");
+    expect(groups.programs[0].url).toBe("/program/0601101E/");
+  });
+});
+
 describe("quick search — typo tolerance (5 representative cases per plan)", () => {
   it("'darppa' → returns DARPA agency (typo)", async () => {
     const groups = await search("darppa");

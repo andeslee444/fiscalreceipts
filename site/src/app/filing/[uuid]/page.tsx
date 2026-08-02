@@ -7,6 +7,7 @@ import {
   collectCitations,
 } from "@/lib/data";
 import { humanLdaUrl } from "@/lib/citations";
+import { filingDisplayTitle } from "@/lib/filing-title";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -50,7 +51,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const year = f.filing_year ?? "";
   // Bare title for metadata (the layout template appends the site name);
   // og keeps the full suffixed form since templates don't apply to openGraph.
-  const title = `${client} — Lobbying Filing ${year}`;
+  // Shared with the Pagefind title meta (§P1-4): search results and the tab
+  // title both read "Client — Registrant, YYYY QN".
+  const title = filingDisplayTitle(f);
   const ogTitle = `${title} | ${SITE_NAME}`;
   const description = `Senate LDA filing ${f.filing_type ?? ""} ${year} — client ${client}, registrant ${f.registrant_name ?? "unknown"}. Activities, lobbyists, and tracked program mentions.`;
   const human = humanLdaUrl(f.url);
@@ -123,20 +126,33 @@ export default async function FilingPage({ params }: Props) {
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
             Senate LDA lobbying filing
           </p>
-          <h1 className="text-3xl font-bold mb-2">{clientLabel}</h1>
+          {/* data-pagefind-meta title[attr] overrides Pagefind's default
+              h1-derived page title so deep-search results read
+              "Client — Registrant, YYYY QN" (§P1-4) — same string as the
+              page <title> via filingDisplayTitle. */}
+          <h1
+            className="text-3xl font-bold mb-2"
+            data-pagefind-meta="title[data-filing-title]"
+            data-filing-title={filingDisplayTitle(f)}
+          >
+            {clientLabel}
+          </h1>
+          {/* Explicit {" "} separators between the meta spans: without them
+              the rendered text nodes abut ("…LLCYear: 2025") and Pagefind
+              excerpts concatenate the fragments (§P1-4 snippet bug). */}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
             <span>
               Registrant:{" "}
               <span className="text-foreground font-medium">
                 {f.registrant_name ?? "not reported"}
               </span>
-            </span>
+            </span>{" "}
             {f.filing_year && (
               <span>
                 Year:{" "}
                 <span className="text-foreground font-medium">{f.filing_year}</span>
               </span>
-            )}
+            )}{" "}
             {f.filing_period && (
               <span>
                 Period:{" "}
@@ -144,7 +160,7 @@ export default async function FilingPage({ params }: Props) {
                   {prettyPeriod(f.filing_period)}
                 </span>
               </span>
-            )}
+            )}{" "}
             {f.filing_type && (
               <span>
                 Type:{" "}
