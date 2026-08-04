@@ -5,7 +5,11 @@
 
 import { describe, it, expect } from "vitest";
 import type { ProgramRow } from "@/lib/data";
-import { buildProgramsCsv, programHaystack } from "@/components/programs-table";
+import {
+  buildProgramsCsv,
+  filterPrograms,
+  programHaystack,
+} from "@/components/programs-table";
 
 function program(over: Partial<ProgramRow> = {}): ProgramRow {
   return {
@@ -97,5 +101,56 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
   it("exports one line per row plus the header", () => {
     const csv = buildProgramsCsv([program(), program({ pe_bli: "0604256N" })]);
     expect(csv.split("\n")).toHaveLength(3);
+  });
+});
+
+
+describe("filterPrograms — the alias resolver, wired (fix round)", () => {
+  // The contradiction both judges hit: typing "sentinel" into this filter
+  // returned only "Sentinel Mods" (1 of 1,741) while ⌘K, on the same word,
+  // answered "Sentinel = Ground Based Strategic Deterrent". The alias table
+  // was wired into ⌘K only.
+  const GBSD = program({
+    pe_bli: "0605238F",
+    title: "Ground Based Strategic Deterrent EMD",
+    org: "F",
+  });
+  const MODS = program({
+    pe_bli: "SENT01",
+    title: "Sentinel Mods",
+    org: "F",
+  });
+  const F35 = program({ pe_bli: "ATA000", title: "F-35", org: "F" });
+  const ALL = [GBSD, MODS, F35];
+  const HAYSTACKS = new Map(ALL.map((p) => [p.pe_bli, programHaystack(p)]));
+
+  const hits = (q: string) =>
+    filterPrograms(ALL, HAYSTACKS, q).map((p) => p.pe_bli);
+
+  it("surfaces GBSD for 'sentinel'", () => {
+    expect(hits("sentinel")).toContain("0605238F");
+  });
+
+  it("keeps the literal title match too — union, not replacement", () => {
+    expect(hits("sentinel")).toEqual(
+      expect.arrayContaining(["0605238F", "SENT01"]),
+    );
+  });
+
+  it("is case- and punctuation-insensitive like the palette", () => {
+    expect(hits("  SENTINEL ")).toContain("0605238F");
+    expect(hits("LGM-35A")).toContain("0605238F");
+  });
+
+  it("does not widen a query that is not an alias", () => {
+    expect(hits("f-35")).toEqual(["ATA000"]);
+  });
+
+  it("keeps full-query precision — 'sentinel mods' is not the alias", () => {
+    expect(hits("sentinel mods")).toEqual(["SENT01"]);
+  });
+
+  it("returns everything for an empty query", () => {
+    expect(hits("").length).toBe(3);
   });
 });

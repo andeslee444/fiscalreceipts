@@ -27,6 +27,7 @@ import { Download } from "lucide-react";
 import type { ProgramRow } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { serviceOrgName } from "@/lib/program-tier";
+import { aliasHitsForQuery } from "@/lib/aliases";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
 
@@ -40,6 +41,27 @@ export function programHaystack(p: ProgramRow): string {
   return [p.title, p.pe_bli, p.org, serviceOrgName(p.org)]
     .join(" ")
     .toLowerCase();
+}
+
+/**
+ * The rows a query selects: substring over the haystack UNION the curated
+ * alias table (lib/aliases — the same resolver ⌘K uses).
+ *
+ * Exported for tests. The defect it closes: "sentinel" here returned only
+ * "Sentinel Mods" while ⌘K said Sentinel = Ground Based Strategic Deterrent.
+ */
+export function filterPrograms(
+  programs: readonly ProgramRow[],
+  haystacks: Map<string, string>,
+  query: string,
+): ProgramRow[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...programs];
+  const aliasHits = aliasHitsForQuery(query);
+  return programs.filter(
+    (p) =>
+      (haystacks.get(p.pe_bli) ?? "").includes(q) || aliasHits.has(p.pe_bli),
+  );
 }
 
 /** RFC-4180-ish field escaping (mirrors years-matrix csvField). */
@@ -113,15 +135,17 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
     [programs],
   );
 
+  // Which visible rows got here by ALIAS rather than by their own text — the
+  // row says so, otherwise "Ground Based Strategic Deterrent EMD" looks like a
+  // filter bug to someone who typed "sentinel".
+  const aliasHits = useMemo(() => aliasHitsForQuery(query), [query]);
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let rows =
+    const base =
       orgFilter === "all"
         ? programs
         : programs.filter((p) => p.org === orgFilter);
-    if (q) {
-      rows = rows.filter((p) => (haystacks.get(p.pe_bli) ?? "").includes(q));
-    }
+    let rows = filterPrograms(base, haystacks, query);
 
     rows = [...rows].sort((a, b) => {
       if (sortKey === "title") {
@@ -309,6 +333,16 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   >
                     {p.title}
                   </Link>
+                  {aliasHits.has(p.pe_bli) && (
+                    <span
+                      data-testid="programs-alias-hit"
+                      data-alias-matched={aliasHits.get(p.pe_bli)!.matched}
+                      className="ml-2 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground align-middle"
+                    >
+                      matched: {aliasHits.get(p.pe_bli)!.matched} · also known
+                      as {aliasHits.get(p.pe_bli)!.aliases.join(" · ")}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                   {p.fy2024_actual_millions != null ? (

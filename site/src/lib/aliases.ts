@@ -114,3 +114,42 @@ export function aliasMatchesForQuery(query: string): ProgramAliasEntry[] {
 export function aliasesForPeBli(peBli: string): string[] | null {
   return BY_PE.get(peBli)?.aliases ?? null;
 }
+
+// ── Table filters (Sprint 2 visual-judge fix round) ──────────────────────────
+//
+// The contradiction both judges hit: typing "sentinel" into the new /programs/
+// filter returned only "Sentinel Mods" (1 of 1,741) while ⌘K, on the same
+// word, answered "Sentinel = Ground Based Strategic Deterrent". Two search
+// surfaces on the same site disagreeing about what a program is called reads
+// as one of them being broken. It was: this table was wired into ⌘K only.
+//
+// Same resolver, same full-query-equality precision rule — so a row that
+// matches by alias and a hit that matches by alias are the same judgement.
+
+/** One alias-matched row: which program, and WHICH alias did the matching. */
+export interface AliasHit {
+  /** The alias display form the query equalled ("Sentinel"). */
+  matched: string;
+  /** Every display alias for the program — the row's chip text. */
+  aliases: string[];
+}
+
+/**
+ * pe_bli → hit, for rows a text filter should surface even though the query
+ * appears nowhere in their title, PE/BLI or organization.
+ *
+ * Empty map for an empty or non-alias query, so callers can skip the union
+ * entirely on the common path.
+ */
+export function aliasHitsForQuery(query: string): Map<string, AliasHit> {
+  const out = new Map<string, AliasHit>();
+  const key = alnumKey(query);
+  if (!key) return out;
+  for (const entry of aliasMatchesForQuery(query)) {
+    out.set(entry.peBli, {
+      matched: entry.aliases.find((a) => alnumKey(a) === key) ?? query,
+      aliases: entry.aliases,
+    });
+  }
+  return out;
+}

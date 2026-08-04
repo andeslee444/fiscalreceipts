@@ -46,6 +46,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Download, GitBranch } from "lucide-react";
 import { Cite, CiteLegend } from "@/components/cite";
+import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
 // ── Sidecar types (years_matrix.json schema_version 1) ──────────────────────
@@ -207,18 +208,24 @@ export function flattenPrograms(matrix: YearsMatrixData): ProgramEntry[] {
   return out;
 }
 
-/** Case-insensitive substring match on pe_bli / title / org. */
+/**
+ * Case-insensitive substring match on pe_bli / title / org, UNION the curated
+ * program aliases (lib/aliases — the same resolver ⌘K and /programs/ use, so
+ * all three surfaces agree on what a program is called).
+ */
 export function filterEntries(
   entries: ProgramEntry[],
   query: string,
 ): ProgramEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return entries;
+  const aliasHits = aliasHitsForQuery(query);
   return entries.filter(
     (e) =>
       e.program.pe_bli.toLowerCase().includes(q) ||
       e.program.title.toLowerCase().includes(q) ||
-      e.org.toLowerCase().includes(q),
+      e.org.toLowerCase().includes(q) ||
+      aliasHits.has(e.program.pe_bli),
   );
 }
 
