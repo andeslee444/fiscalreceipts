@@ -6257,6 +6257,11 @@ def _emit_gao_overlays_sidecar(
                 f"select area_title, area_url, agency_code,"
                 f" cast(mapped as boolean) as mapped, notes,"
                 f" source_url from read_parquet('{hr_pq}')"
+                # §P1-7: the oversight list rendered in parquet-scan order,
+                # which happened to be the seed CSV's alphabetical order —
+                # true by luck, not declared. Same wording as the rendered
+                # list, so a reader can name the order.
+                f" order by agency_code, area_title"
             ).fetchall():
                 if not mapped or not agency_code:
                     continue
