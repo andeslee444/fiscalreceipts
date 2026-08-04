@@ -2026,3 +2026,19 @@ defect was live.
 
 Note the multi-cell slot resolved to ATA000 / fact 5b532c52d3ebb4c2 — the
 PM's exact repro — and the leg reported all seven §P1-9 items on it.
+
+MADE TO PASS (rebuilt artifact, commit 56e7281):
+  note: workbook drawer 3a: 35940 workbook citations, each with per-cell values summing to its amount ✓
+  note: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): §P1-9 drawer contract checked
+  note: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): §P1-9 drawer contract checked
+  gate 4 clickthrough: PASS      (suite: 24/24 PASS, exit 0)
+
+WHAT SHIPPED alongside: govbudget/workbook_cells.py + json/workbook-cells/
+(22.1 MB, 256 shards — the sidecar route, chosen because inlining the previews
+would have grown the cite-shards 91.0 -> 114.4 MB, +25.7%, and put the same
+rows in every figure-bearing page's embedded citation slice); the rebuilt
+workbook-card.tsx (unit line, document identity, <CellRef>, arithmetic line,
+preview table, degraded note); the footer's copy-hash control (shared
+components/copy-button.tsx, lifted out of the /fact/ page); usdEquivalence's
+"USD thousands" arm; and the .cell-ref CSS whose comment records the SF Mono
+`zero`-feature verification behind the structural fix.
