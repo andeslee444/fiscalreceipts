@@ -158,11 +158,17 @@ export default function DataPage() {
                     <td role="cell" className="block sm:table-cell px-4 py-0 sm:py-2 font-mono text-xs text-foreground sm:whitespace-nowrap">
                       {ds.name}
                     </td>
+                    {/* [data-dataset-rowcount] wraps the NUMERALS ONLY — gate
+                        24 leg b parses its text as an integer against the
+                        shipped parquet, so the mobile "rows" word rides
+                        outside it. */}
                     <td
-                      data-dataset-rowcount
+                      role="cell"
                       className="inline sm:table-cell px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground"
                     >
-                      {ds.row_count.toLocaleString("en-US")}
+                      <span data-dataset-rowcount>
+                        {ds.row_count.toLocaleString("en-US")}
+                      </span>
                       <span className="sm:hidden"> rows</span>
                     </td>
                     <td role="cell" className="inline sm:table-cell pr-4 sm:px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">

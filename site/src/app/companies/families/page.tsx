@@ -100,8 +100,8 @@ export default function CompanyFamiliesPage() {
         >
           <p className="mb-2">
             <strong className="text-foreground">
-              This table is hand-curated and hand-sourced. Every row declares
-              how well its source supports it.
+              This table is hand-curated and hand-sourced. Nothing on it is
+              inferred without saying so, on the row.
             </strong>{" "}
             Federal award data records the recipient name that was on the
             contract, so a company that renames appears under both names —
