@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPrograms, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 import { ProgramsTable } from "@/components/programs-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -58,12 +59,16 @@ export default function ProgramsPage() {
       />
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Program Elements</h1>
+        {/* §P1-5: the table's own scope, stated as a scope — the corpus
+            statement below carries the canonical counts, so this sentence
+            no longer opens with a bare number that reads as "all of them". */}
         <p className="text-muted-foreground">
-          {programs.length} DoD R&D and procurement program elements from
-          FY2026 budget justification books. FY24 figures are J-book–cited;
-          FY26 figures carry derived workbook citations. Underlined figures
-          open their source citation.
+          This table lists the {programs.length} detail-grade program elements
+          from the FY2026 budget justification books. FY24 figures are
+          J-book–cited; FY26 figures carry derived workbook citations.
+          Underlined figures open their source citation.
         </p>
+        <CorpusStatement className="mt-2" />
         {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
         <CoverageNote id="fy2026-partial" className="mt-2" />
       </div>

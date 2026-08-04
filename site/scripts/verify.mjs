@@ -47,6 +47,8 @@ import { runProgramSkeletonGate } from "./gates/program-skeleton.mjs";
 import { runFlowdownGate } from "./gates/flowdown.mjs";
 // PM-review Sprint 1 gates
 import { runBasisGate } from "./gates/basis.mjs";
+// PM-review Sprint 2 gates
+import { runDataTruthGate } from "./gates/datatruth.mjs";
 
 const PORT = 4173;
 
@@ -254,6 +256,15 @@ async function main() {
   const g23 = await runBasisGate();
   gateResults.push({ n: 23, name: "basis", pass: g23.pass });
   printGate(23, "basis", g23);
+
+  // ── Gate 24: datatruth (PM-review Sprint 2 — §P1-5, static) ──────────────
+  // The /data/ page's account of itself: card completeness, rendered
+  // row-count truth against the shipped parquets, Explorer registration,
+  // and one canonical corpus statement across the four pages that state it.
+  console.log("\n--- gate 24 datatruth ---");
+  const g24 = await runDataTruthGate();
+  gateResults.push({ n: 24, name: "datatruth", pass: g24.pass });
+  printGate(24, "datatruth", g24);
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log("\n=== summary ===");

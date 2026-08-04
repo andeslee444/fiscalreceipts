@@ -1,17 +1,60 @@
 import type { Metadata } from "next";
-import { getSiteMeta } from "@/lib/data";
+import { getDatasetManifest, getSiteMeta } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 import { Explorer } from "@/components/explorer";
-import type { DatasetName } from "@/lib/duckdb";
+// Universal module (NOT lib/duckdb, which is "use client" — its runtime
+// exports become client references in a server component).
+import { DATASET_NAMES, type DatasetName } from "@/lib/dataset-names";
+
+// ── Dataset inventory ─────────────────────────────────────────────────────────
+// PM Sprint 2 (§P1-5): row counts and scope sentences come from the build
+// manifest (data/site/json/datasets.json), computed from the emitted parquets.
+// This file authors NO dataset numbers and NO dataset descriptions — the
+// previous hardcoded DATASET_INVENTORY had rotted to 5B-2-era literals
+// (dim_programs "326" against a 1,739-row parquet, jbook_details "4,421"
+// against 21,028) and omitted budget_lines_decade entirely.
+//
+// Evaluated at module scope so a manifest/engine mismatch fails the BUILD,
+// not a page view.
+const DATASET_INVENTORY = getDatasetManifest().datasets;
+
+/**
+ * Registration cross-check: the manifest is the shipped inventory,
+ * lib/dataset-names DATASET_NAMES is the canned-query/type registry (which
+ * lib/duckdb re-exports and registerDatasets defaults to). They must name the same
+ * datasets — a parquet documented in the table but absent from the engine is a
+ * card the user cannot query (budget_lines_decade, Phase 5E → §P1-5), and a
+ * registered name with no parquet is a dead option in the picker.
+ */
+function assertRegistryMatchesManifest(shippedNames: string[]): void {
+  const registered = new Set<string>(DATASET_NAMES);
+  const shipped = new Set(shippedNames);
+  const unregistered = shippedNames.filter((n) => !registered.has(n));
+  const phantom = [...registered].filter((n) => !shipped.has(n));
+  if (unregistered.length > 0 || phantom.length > 0) {
+    throw new Error(
+      "[govbudget/data-page] datasets.json and lib/dataset-names DATASET_NAMES disagree — " +
+        (unregistered.length > 0
+          ? `shipped but unregistered: ${unregistered.join(", ")}. `
+          : "") +
+        (phantom.length > 0
+          ? `registered but not shipped: ${phantom.join(", ")}.`
+          : ""),
+    );
+  }
+}
+
+assertRegistryMatchesManifest(DATASET_INVENTORY.map((d) => d.name));
 
 export const metadata: Metadata = {
   title: "Data Explorer",
   description:
-    "Query all 14 Fiscal Receipts datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.",
+    `Query all ${DATASET_INVENTORY.length} Fiscal Receipts datasets directly in your browser — budget lines, trajectory, lobbying, awards, and more. Powered by DuckDB-WASM; no data leaves your machine.`,
   alternates: { canonical: `${SITE_URL}/data/` },
   openGraph: {
     title: `Data Explorer — ${SITE_NAME}`,
@@ -23,117 +66,12 @@ export const metadata: Metadata = {
   },
 };
 
-// ── Dataset inventory ─────────────────────────────────────────────────────────
-// Row counts are build-time constants derived from the parquet files.
-// These are NOT dollar amounts — no <Cite> needed.
-
-interface DatasetEntry {
-  name: DatasetName;
-  rowCount: number;
-  description: string;
-  isCited: boolean;
+/** Human-readable file size for the inventory table. */
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
 }
-
-const DATASET_INVENTORY: DatasetEntry[] = [
-  {
-    name: "budget_lines",
-    rowCount: 8557,
-    description:
-      "Budget line items from R-1 and P-1 Excel rollups. Workbook-cited.",
-    isCited: true,
-  },
-  {
-    name: "jbook_details",
-    rowCount: 4421,
-    description:
-      "Project-level cost figures from J-book XML (R-2/P-40 exhibits). PDF-cited.",
-    isCited: true,
-  },
-  {
-    name: "fct_budget_trajectory",
-    rowCount: 1982,
-    description:
-      "FY2024–FY2026 budget trajectory per program element — actuals, enacted, proposed.",
-    isCited: false,
-  },
-  {
-    name: "dim_programs",
-    rowCount: 326,
-    description:
-      "326 DoD R&D and procurement program elements with org, exhibit family, and reconciliation status.",
-    isCited: false,
-  },
-  {
-    name: "dim_entities",
-    rowCount: 76727,
-    description:
-      "Contractor entity families normalized across USAspending UEI records.",
-    isCited: false,
-  },
-  {
-    name: "fct_influence",
-    rowCount: 181,
-    description:
-      "LDA lobbying filing totals by contractor family and filing year (income/expense/obligations). Non-additive.",
-    isCited: false,
-  },
-  {
-    name: "fct_program_lobbying",
-    rowCount: 32780,
-    description:
-      "Program-level lobbying mentions — each row links a filing to a matched program element.",
-    isCited: false,
-  },
-  {
-    name: "fct_budget_to_awards",
-    rowCount: 10091,
-    description:
-      "Crosswalk linking budget program elements to USAspending award records by recipient. Each link carries a derived citation (method + confidence).",
-    isCited: true,
-  },
-  {
-    name: "dim_geography",
-    rowCount: 1045,
-    description:
-      "Congressional district-level obligation totals derived from USAspending place-of-performance data (derived-cited).",
-    isCited: true,
-  },
-  {
-    name: "fct_program_concentration",
-    rowCount: 24,
-    description:
-      "HHI market concentration scores for programs with sufficient award data.",
-    isCited: false,
-  },
-  {
-    name: "fct_state_per_capita",
-    rowCount: 6,
-    description:
-      "State-level per-capita defense obligation (pilot: CA + CT).",
-    isCited: false,
-  },
-  {
-    name: "fct_improper_exposure",
-    rowCount: 15,
-    description:
-      "Programs flagged for improper payment exposure from oversight reports.",
-    isCited: false,
-  },
-  {
-    name: "dim_lobbyists",
-    rowCount: 1416,
-    description:
-      "Individual lobbyist records extracted from LDA filings, with disclosing-filing provenance columns (LDA-cited).",
-    isCited: true,
-  },
-  {
-    name: "jbook_narratives",
-    rowCount: 2457,
-    description:
-      "Mission and accomplishment narrative text blocks from J-book exhibits.",
-    isCited: false,
-  },
-];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -163,11 +101,21 @@ export default function DataPage() {
           </a>
           ; parquet files are streamed on demand (HTTP range requests).
         </p>
+        {/* §P1-5: the canonical corpus statement, so a reader who compares
+            dim_programs' row count against "our programs" sees what each
+            number means without leaving the page. */}
+        <CorpusStatement className="mt-3 max-w-2xl" />
       </div>
 
       {/* Dataset inventory table */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Dataset inventory</h2>
+        <p className="mb-3 text-xs text-muted-foreground max-w-3xl">
+          Row counts and sizes are read from the parquet files this build
+          shipped — never authored by hand. Each scope line says what{" "}
+          <em>one row</em> of that dataset is, so a row count can be compared
+          against the right denominator.
+        </p>
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="min-w-full text-sm">
             <thead>
@@ -178,27 +126,37 @@ export default function DataPage() {
                 <th scope="col" className="px-4 py-2 text-right font-semibold text-muted-foreground">
                   Rows
                 </th>
+                <th scope="col" className="px-4 py-2 text-right font-semibold text-muted-foreground">
+                  Size
+                </th>
                 <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
                   Citation
                 </th>
                 <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
-                  Description
+                  Scope — what one row is
                 </th>
               </tr>
             </thead>
             <tbody>
               {DATASET_INVENTORY.map((ds) => {
-                const isCited = !uncitedDatasets.has(ds.name);
+                const isCited = ds.cited && !uncitedDatasets.has(ds.name);
                 return (
                   <tr
                     key={ds.name}
+                    data-dataset-card={ds.name}
                     className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-4 py-2 font-mono text-xs text-foreground whitespace-nowrap">
                       {ds.name}
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
-                      {ds.rowCount.toLocaleString("en-US")}
+                    <td
+                      data-dataset-rowcount
+                      className="px-4 py-2 text-right tabular-nums text-muted-foreground"
+                    >
+                      {ds.row_count.toLocaleString("en-US")}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">
+                      {formatBytes(ds.bytes)}
                     </td>
                     <td className="px-4 py-2 text-xs">
                       {isCited ? (
@@ -212,7 +170,7 @@ export default function DataPage() {
                       )}
                     </td>
                     <td className="px-4 py-2 text-muted-foreground max-w-sm">
-                      {ds.description}
+                      {ds.scope}
                     </td>
                   </tr>
                 );
@@ -238,9 +196,9 @@ export default function DataPage() {
         <AssetConfigProvider>
           <Explorer
             datasets={DATASET_INVENTORY.map((ds) => ({
-              name: ds.name,
-              rowCount: ds.rowCount,
-              description: ds.description,
+              name: ds.name as DatasetName,
+              rowCount: ds.row_count,
+              description: ds.scope,
             }))}
           />
         </AssetConfigProvider>

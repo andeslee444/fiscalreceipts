@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSiteMeta } from "@/lib/data";
+import { getDatasetManifest, getSiteMeta } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
@@ -79,7 +79,12 @@ function buildDatasets(citationCount: number, programCount: number) {
 export default function DownloadsPage() {
   const meta = getSiteMeta();
 
-  const programCount = (meta.datasets ?? {})["dim_programs"] ?? 326;
+  // §P1-5: the dataset manifest is the single source for per-parquet counts.
+  // The old `?? 326` fallback was the same rotted literal that made /data/
+  // claim 326 dim_programs rows against a 1,739-row parquet.
+  const manifest = getDatasetManifest();
+  const programCount =
+    manifest.datasets.find((d) => d.name === "dim_programs")?.row_count ?? 0;
   const datasets = buildDatasets(meta.counts.citations, programCount);
   const datasetsLd = datasets.map((d) =>
     datasetJsonLd({

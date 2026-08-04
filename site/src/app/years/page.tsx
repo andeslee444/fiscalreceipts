@@ -4,6 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 import { YearsMatrix } from "@/components/years-matrix";
 
@@ -60,6 +61,9 @@ export default function YearsPage() {
           {/* Single-edition honesty — G2 contract (data-coverage="years-matrix").
               Collapsible: below sm only the "why one edition? →" link shows. */}
           <CoverageNote id="years-matrix" collapsible className="mb-2" />
+          {/* §P1-5: the grid's rows are the detail-grade tier; the canonical
+              corpus statement is what says so in the same words everywhere. */}
+          <CorpusStatement className="mb-2" />
         </div>
         <YearsMatrix />
       </div>

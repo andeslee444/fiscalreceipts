@@ -94,6 +94,35 @@ LIMIT 50
         },
       ];
 
+    case "budget_lines_decade":
+      return [
+        {
+          // B-21 Raider (0604015F) is one of the RDT&E lines present in all
+          // ten editions — procurement lines are keyed within their own
+          // edition before PB2024, so they show fewer.
+          label: "One program across ten editions",
+          sql: t(`
+SELECT fiscal_year AS pb_edition, amount_type,
+       SUM(amount_thousands) AS total_thousands
+FROM 'budget_lines_decade.parquet'
+WHERE pe_bli = '0604015F'
+GROUP BY pb_edition, amount_type
+ORDER BY pb_edition, amount_type
+          `),
+        },
+        {
+          label: "Rows per President's Budget edition",
+          sql: t(`
+SELECT fiscal_year AS pb_edition,
+       COUNT(*) AS rows,
+       COUNT(DISTINCT pe_bli) AS program_elements
+FROM 'budget_lines_decade.parquet'
+GROUP BY pb_edition
+ORDER BY pb_edition
+          `),
+        },
+      ];
+
     case "fct_influence":
       return [
         {
@@ -327,7 +356,13 @@ export function Explorer({ datasets }: ExplorerProps) {
 
       try {
         const db = await getDuckDB();
-        await registerDatasets(db, assetBase);
+        // Register exactly what this build shipped (the manifest-derived
+        // prop), not a literal list that can drift from data/site/data/.
+        await registerDatasets(
+          db,
+          assetBase,
+          datasets.map((d) => d.name),
+        );
         dbRef.current = db;
         setEngineState("ready");
         return db;

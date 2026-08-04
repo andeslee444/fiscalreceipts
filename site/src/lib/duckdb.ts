@@ -17,6 +17,8 @@
 
 import * as duckdb from "@duckdb/duckdb-wasm";
 
+import { DATASET_NAMES } from "./dataset-names";
+
 // ── Bundle manifests ──────────────────────────────────────────────────────────
 
 const BUNDLES: duckdb.DuckDBBundles = {
@@ -55,27 +57,11 @@ export function getDuckDB(): Promise<duckdb.AsyncDuckDB> {
 // ── Dataset registration ───────────────────────────────────────────────────────
 
 /**
- * All 14 parquet dataset names (no extension).
- * Derived from data/site/data/*.parquet — update if the mart schema changes.
+ * The dataset name registry lives in the UNIVERSAL lib/dataset-names module —
+ * this file is `"use client"`, so its runtime exports become client references
+ * when a server component imports them. Re-exported here for existing callers.
  */
-export const DATASET_NAMES = [
-  "budget_lines",
-  "dim_entities",
-  "dim_geography",
-  "dim_lobbyists",
-  "dim_programs",
-  "fct_budget_to_awards",
-  "fct_budget_trajectory",
-  "fct_improper_exposure",
-  "fct_influence",
-  "fct_program_concentration",
-  "fct_program_lobbying",
-  "fct_state_per_capita",
-  "jbook_details",
-  "jbook_narratives",
-] as const;
-
-export type DatasetName = (typeof DATASET_NAMES)[number];
+export { DATASET_NAMES, type DatasetName } from "./dataset-names";
 
 /**
  * Register all datasets with the given db instance so queries can reference
@@ -84,14 +70,18 @@ export type DatasetName = (typeof DATASET_NAMES)[number];
  * @param db        – the initialised AsyncDuckDB instance
  * @param assetBase – resolved base URL (from useAssetUrl / config.json),
  *                   e.g. "/assets" or "https://r2.example.com"
+ * @param names     – datasets to register; defaults to the full registry.
+ *                   The Explorer passes the shipped-manifest names so the
+ *                   queryable set is the build's set, not a stale literal.
  */
 export async function registerDatasets(
   db: duckdb.AsyncDuckDB,
   assetBase: string,
+  names: readonly string[] = DATASET_NAMES,
 ): Promise<void> {
   const base = assetBase.replace(/\/$/, "");
   await Promise.all(
-    DATASET_NAMES.map((name) =>
+    names.map((name) =>
       db.registerFileURL(
         `${name}.parquet`,
         `${base}/data/${name}.parquet`,

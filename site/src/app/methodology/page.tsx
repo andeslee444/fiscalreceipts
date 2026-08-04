@@ -4,7 +4,8 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
-import { getFlowChartMeta } from "@/lib/data";
+import { getDatasetManifest, getFlowChartMeta } from "@/lib/data";
+import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 
 export const metadata: Metadata = {
@@ -70,6 +71,12 @@ export default function MethodologyPage() {
   const serviceBooks = getCoverage("service-books");
   const flowBridge = getCoverage("flow-bridge");
   const flowMeta = getFlowChartMeta();
+  // §P1-5: dataset row counts on this page come from the shipped-parquet
+  // manifest, never a literal (the LDA paragraph carried "32,780" long after
+  // the mart had grown to 34,538).
+  const programLobbyingRows =
+    getDatasetManifest().datasets.find((d) => d.name === "fct_program_lobbying")
+      ?.row_count ?? 0;
 
   return (
     <>
@@ -197,8 +204,15 @@ export default function MethodologyPage() {
               permanent UUID, registrant, client company, dollar amounts,
               agencies lobbied, and issue text that frequently names specific
               programs. We have linked LDA client names to our
-              company-family database: 32,780 program mentions across 245
-              programs connect filings to budget lines. Lobbying income and
+              company-family database:{" "}
+              {programLobbyingRows.toLocaleString("en-US")} program mentions
+              connect filings to budget lines — one row per filing × matched
+              program element, so a filing appears once for every program its
+              issue text names (see the{" "}
+              <a href="/data/" className="underline hover:text-foreground">
+                dataset inventory
+              </a>
+              ). Lobbying income and
               expenditure by year are shown alongside federal obligations
               received — influence is presented side by side with outcomes,
               never as a causal claim.
@@ -419,13 +433,16 @@ export default function MethodologyPage() {
           link only when we can defend it, and we say so where the data
           renders instead of burying the caveat here. Each block below is the
           destination for one of those inline &ldquo;why &hellip;? &rarr;&rdquo; links.
-          Two program universes appear in these counts: the site carries{" "}
-          {serviceBooks.denominator} browsable program pages, but the flows,
-          dossiers, and years-matrix blocks below count against the{" "}
-          {serviceBooks.numerator} detail-grade programs — those features
-          require full R-2/P-40 J-book data, so the detail-grade universe is
-          their denominator.
+          Two program universes appear in these counts. The flows, dossiers,
+          and years-matrix blocks below count against the detail-grade
+          universe — those features require full R-2/P-40 J-book data, so
+          that is their denominator.
         </p>
+        {/* §P1-5: one canonical corpus statement, identical on /programs/,
+            /years/, /methodology/ and /data/. This block used to restate the
+            counts in its own words, which is how the site ended up stating
+            its own size four different ways. */}
+        <CorpusStatement className="mb-5" />
 
         <div className="space-y-6 text-muted-foreground leading-7">
           <section id="coverage-follow-the-dollar" className="scroll-mt-16">

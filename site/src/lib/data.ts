@@ -45,7 +45,14 @@ export interface SiteMetaCounts {
   agencies: number;
   citations: number;
   companies: number;
+  /** Detail-grade tier — programs.json length (R-2/P-40 J-book data). */
   programs: number;
+  /**
+   * PM Sprint 2 (§P1-5): the FULL browsable universe — every program_details
+   * sidecar (full tier + rollup tier). Absent on pre-Sprint-2 exports; the
+   * corpus module falls back to counting the sidecar directory.
+   */
+  program_pages?: number;
 }
 
 export interface SiteMeta {
@@ -77,6 +84,11 @@ export interface SiteMeta {
   hero?: SiteMetaHero;
   /** §P0-5 corpus scope qualifier (also on hero + feed sidecars). */
   scope_qualifier?: string;
+  /**
+   * §P1-5 bare scope caveat — the tail of scope_qualifier, shared with the
+   * canonical corpus statement so hero and corpus wording cannot drift.
+   */
+  corpus_scope?: string;
   /**
    * Trajectory metric → basis attribute map (single payload-level source for
    * the trajectory pivots' data-basis/fy/measure — never re-derive in TS).
@@ -122,6 +134,56 @@ export function getSiteMeta(): SiteMeta {
   setIngestedServiceOrgs(meta.ingested_service_orgs);
   _siteMeta = meta;
   return _siteMeta;
+}
+
+// ── datasets.json — Explorer dataset manifest (PM Sprint 2, §P1-5) ───────────
+
+export interface DatasetManifestEntry {
+  /** Parquet size on disk, bytes. */
+  bytes: number;
+  /** False only while a dataset ships ahead of its citation rows. */
+  cited: boolean;
+  /** e.g. "dim_programs.parquet" */
+  file: string;
+  /** Table name as registered in DuckDB-WASM. */
+  name: string;
+  /** Real row count of the emitted parquet — computed by the exporter. */
+  row_count: number;
+  /** One sentence describing what ONE row of this dataset IS. */
+  scope: string;
+}
+
+export interface DatasetManifest {
+  built_at: string;
+  datasets: DatasetManifestEntry[];
+  schema_version: number;
+}
+
+let _datasetManifest: DatasetManifest | null = null;
+
+/**
+ * The shipped-parquet inventory. Every number the /data/ page states about a
+ * dataset comes from here — nothing is authored in TSX. Replaces the
+ * DATASET_INVENTORY literals that had rotted to 5B-2-era values (dim_programs
+ * "326" against a 1,739-row parquet) and omitted budget_lines_decade entirely.
+ */
+export function getDatasetManifest(): DatasetManifest {
+  if (_datasetManifest) return _datasetManifest;
+  getSiteMeta();
+  const m = readJson<DatasetManifest>("datasets.json");
+  if (m.schema_version !== 1) {
+    throw new Error(
+      `[govbudget/data] datasets.json has schema_version=${m.schema_version}, expected 1. ` +
+        `Re-run "uv run python -m govbudget export-site" to regenerate sidecars.`,
+    );
+  }
+  if (!Array.isArray(m.datasets) || m.datasets.length === 0) {
+    throw new Error(
+      "[govbudget/data] datasets.json has no datasets — the Explorer inventory would render empty.",
+    );
+  }
+  _datasetManifest = m;
+  return _datasetManifest;
 }
 
 // ── Trajectory fiscal-year label (re-exported for server components) ─────────

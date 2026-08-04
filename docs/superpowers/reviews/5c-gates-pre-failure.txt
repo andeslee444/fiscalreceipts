@@ -1732,3 +1732,134 @@ NEVER nested inside [data-amount] (sibling contract, gate-parse purity) +
 accessible name "Show fact IDs" + toggle OFF persists '0' AND survives
 reload + toggle ON persists '1' and restores chips. Strictly stronger on
 every axis the old test covered.
+
+================================================================================
+GATE 24 (datatruth) — NEW GATE, §P1-5 data-truth pack (PM Sprint 2 Task 2)
+— 2026-08-03
+================================================================================
+
+New gate: site/scripts/gates/datatruth.mjs (+ datatruth-recompute.py, the
+independent DuckDB rowcount helper). Four legs, all measured against the BUILT
+artifact in site/out/:
+
+  (a) card completeness — the set of [data-dataset-card] names on /data/ equals
+      the set of parquets shipped in data/site/data/. Both directions.
+  (b) rendered row-count truth — each card's VISIBLE Rows cell equals the
+      parquet's real row count (recompute via datatruth-recompute.py). The gate
+      reads rendered TEXT, never a data-* attribute carrying the number.
+  (c) Explorer picker truth — #dataset-select options cover exactly the same
+      parquets and their rendered "(N rows)" matches the same recompute.
+  (d) corpus statement — [data-corpus-statement] on /programs/, /years/,
+      /methodology/, /data/; every instance matches the canonical sentence
+      shape, yields the same two numbers, those equal the program_details
+      sidecar count and programs.json length, and the §P0-5 scope tail is
+      present. Cross-page disagreement is its own error.
+
+WHY A BUILT-ARTIFACT GATE AND NOT AN EXPORT-TIME ASSERTION: the defect was
+never an export defect. data/site/data/dim_programs.parquet was 1,739 rows and
+the LIVE R2 copy returned 1,739 — the parquets were fresh and correct. What
+lied was site/src/app/data/page.tsx, which hardcoded rowCount literals frozen
+at 5B-2-era values. No export-time assertion can see rendered HTML, so only a
+gate that reads out/ and compares it against the parquets has teeth here. (An
+export-time assertion WAS added as well, for the complementary failure mode: a
+parquet shipping with no _DATASET_SCOPES entry raises in _build_dataset_manifest
+— that is how budget_lines_decade shipped undocumented from Phase 5E.)
+
+PROOF-CAN-FAIL — run against the PRE-FIX build (site/out/ as built 2026-08-01
+from the hardcoded DATASET_INVENTORY page, before any Task-2 change landed).
+Driver: node scratchpad/g24-driver.mjs (calls runDataTruthGate directly).
+Verbatim output (exit 1):
+
+  note: parquet recompute: 15 Explorer parquets read from data/site/data/ ✓
+  note: leg d: corpus recompute — 1993 program pages, 1741 detail-grade ✓
+  ERROR: leg a (/data/): only 0 [data-dataset-card] rows found — expected ≥10 (the inventory table must expose one row per shipped parquet)
+  ERROR: leg a (/data/): 15 shipped parquet(s) have NO dataset card: budget_lines, budget_lines_decade, dim_entities, dim_geography, dim_lobbyists, dim_programs, fct_budget_to_awards, fct_budget_trajectory, fct_improper_exposure, fct_influence, fct_program_concentration, fct_program_lobbying, fct_state_per_capita, jbook_details, jbook_narratives
+  ERROR: leg c (/data/): 1 shipped parquet(s) are NOT selectable in the Explorer: budget_lines_decade
+  ERROR: leg c (/data/): 8 Explorer option(s) disagree with the shipped parquet — budget_lines: option says 8,557 rows, parquet has 8,549; jbook_details: option says 4,421 rows, parquet has 21,028; fct_budget_trajectory: option says 1,982 rows, parquet has 1,980; dim_programs: option says 326 rows, parquet has 1,739; fct_influence: option says 181 rows, parquet has 193; fct_program_lobbying: option says 32,780 rows, parquet has 34,538; dim_lobbyists: option says 1,416 rows, parquet has 1,456; jbook_narratives: option says 2,457 rows, parquet has 11,308
+  ERROR: leg d (/programs/): no [data-corpus-statement] — the canonical corpus block must render on every page that states corpus size
+  ERROR: leg d (/years/): no [data-corpus-statement] — the canonical corpus block must render on every page that states corpus size
+  ERROR: leg d (/methodology/): no [data-corpus-statement] — the canonical corpus block must render on every page that states corpus size
+  ERROR: leg d (/data/): no [data-corpus-statement] — the canonical corpus block must render on every page that states corpus size
+  gate 24 datatruth: FAIL
+
+The leg-c list reproduces the diagnosis EXACTLY: the same 8 stale counts
+(dim_programs 326→1,739, jbook_details 4,421→21,028, jbook_narratives
+2,457→11,308, fct_program_lobbying 32,780→34,538, fct_influence 181→193,
+dim_lobbyists 1,416→1,456, budget_lines 8,557→8,549, fct_budget_trajectory
+1,982→1,980) plus the entirely-missing budget_lines_decade card AND its
+absence from the queryable set. The 7 datasets that were already correct
+(dim_entities 76,727, dim_geography 1,045, fct_budget_to_awards 10,091,
+fct_improper_exposure 15, fct_program_concentration 24, fct_state_per_capita
+6) do NOT appear — the gate is discriminating, not blanket-red.
+
+Leg b was VACUOUS on the pre-fix page (no [data-dataset-card] rows to read a
+rowcount cell from), so it gets its own recording below, on the FIXED build.
+
+PROOF-CAN-FAIL, leg b + leg a (scratch-revert on the BUILT artifact — the
+FIXED page was patched back to the pre-fix state and the FINAL gate code run
+against it). out/data/index.html: the rendered dim_programs rows cell
+"1,739" replaced with the old literal "326", and the whole
+<tr data-dataset-card="budget_lines_decade">…</tr> row deleted (the pre-fix
+state: shipped parquet, no card). Verbatim FAIL output (exit 1):
+
+  note: parquet recompute: 15 Explorer parquets read from data/site/data/ ✓
+  note: leg c: all 15 Explorer options registered and row-count-true ✓
+  note: leg d: corpus recompute — 1993 program pages, 1741 detail-grade ✓
+  note: leg d: one corpus statement (1993/1741) on all 4 pages ✓
+  ERROR: leg a (/data/): 1 shipped parquet(s) have NO dataset card: budget_lines_decade
+  ERROR: leg b (/data/): 1 dataset card row-count(s) disagree with the shipped parquet — dim_programs: page renders 326, parquet has 1,739
+  gate 24 datatruth: FAIL
+
+PROOF-CAN-FAIL, leg d (corpus consistency — same technique, on
+out/methodology/index.html): the rendered corpus statement's page count
+changed 1,993 → 1,995 on that ONE page, i.e. exactly the §P1-5 defect of the
+site stating its own size more than one way. Verbatim FAIL output (exit 1):
+
+  note: parquet recompute: 15 Explorer parquets read from data/site/data/ ✓
+  note: leg a: /data/ documents all 15 shipped parquets, no phantoms ✓
+  note: leg b: all 15 rendered row counts match the parquets exactly ✓
+  note: leg c: all 15 Explorer options registered and row-count-true ✓
+  note: leg d: corpus recompute — 1993 program pages, 1741 detail-grade ✓
+  ERROR: leg d (/methodology/): corpus statement says 1,995 browsable program pages, sidecars have 1,993
+  ERROR: leg d: corpus size is stated 2 different ways across pages — /programs/ 1993/1741, /years/ 1993/1741, /methodology/ 1995/1741, /data/ 1993/1741
+  gate 24 datatruth: FAIL
+
+Both legs fire on the ONE patched page and stay silent on the three untouched
+ones — the check is discriminating, not blanket-red.
+
+MADE TO PASS: both files restored from backup (cmp clean, byte-identical),
+rerun on the shipped build:
+
+  note: parquet recompute: 15 Explorer parquets read from data/site/data/ ✓
+  note: leg a: /data/ documents all 15 shipped parquets, no phantoms ✓
+  note: leg b: all 15 rendered row counts match the parquets exactly ✓
+  note: leg c: all 15 Explorer options registered and row-count-true ✓
+  note: leg d: corpus recompute — 1993 program pages, 1741 detail-grade ✓
+  note: leg d: one corpus statement (1993/1741) on all 4 pages ✓
+  gate 24 datatruth: PASS
+
+WHAT SHIPPED (Part A): the exporter emits data/site/json/datasets.json — per
+parquet: name, file, row_count (from the written parquet), bytes, cited, and a
+row-grain `scope` sentence from _DATASET_SCOPES in export_site.py, which
+RAISES if a shipped parquet has no entry (tests/test_export_site_datasets_
+manifest.py, 11 tests). site/src/app/data/page.tsx consumes it via
+getDatasetManifest() — zero authored numbers, zero authored descriptions —
+and throws at BUILD time if datasets.json and lib/dataset-names DATASET_NAMES
+disagree. DATASET_NAMES moved out of the "use client" lib/duckdb into the
+universal lib/dataset-names (a server component importing a client module's
+runtime export got a client reference: `new Set(...)` → "function is not
+iterable"); budget_lines_decade added, so it is now queryable with two canned
+queries. registerDatasets() takes the manifest names rather than a literal.
+
+WHAT SHIPPED (Part B): site/src/lib/corpus.ts (getCorpus + corpusStatement,
+9 unit tests) and <CorpusStatement /> on /programs/, /years/, /methodology/,
+/data/. programPages comes from the program_details sidecar listing (the
+artifact itself); site_meta.counts.program_pages is a NEW exporter-emitted
+cross-check that THROWS on disagreement rather than picking a winner; the
+scope tail is site_meta.corpus_scope, the same constant the §P0-5 hero
+qualifier is built from. Divergent statements removed: /methodology/'s
+"the site carries N browsable pages, but … N detail-grade" restatement, and
+its hardcoded "32,780 program mentions across 245 programs" (the mart is
+34,538) which is now read from the dataset manifest. /downloads/'s
+`?? 326` fallback — the same rotted literal — is gone.
+

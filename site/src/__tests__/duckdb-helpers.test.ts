@@ -116,13 +116,18 @@ describe("resultToCsv", () => {
 // ── DATASET_NAMES ─────────────────────────────────────────────────────────────
 
 describe("DATASET_NAMES", () => {
-  it("contains exactly 14 datasets", () => {
-    expect(DATASET_NAMES).toHaveLength(14);
+  it("contains exactly 15 datasets", () => {
+    expect(DATASET_NAMES).toHaveLength(15);
+  });
+
+  it("registers budget_lines_decade — shipped since 5E, unqueryable until §P1-5", () => {
+    expect(DATASET_NAMES).toContain("budget_lines_decade");
   });
 
   it("includes all expected dataset names", () => {
     const expected = [
       "budget_lines",
+      "budget_lines_decade",
       "dim_entities",
       "dim_geography",
       "dim_lobbyists",
