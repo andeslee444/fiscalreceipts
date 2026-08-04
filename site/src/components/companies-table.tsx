@@ -359,6 +359,7 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
             {filtered.map((r) => (
               <tr
                 key={r.key}
+                role="row"
                 className="block sm:table-row hover:bg-muted/40 transition-colors"
                 data-sort-value={String(
                   sortKey === "total_obligation" ? r.totalObligation : r.ueiCount,
@@ -369,7 +370,7 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
                 <td className="hidden sm:table-cell px-4 py-3 text-right text-muted-foreground/60 text-xs tabular-nums align-top">
                   {r.rank}
                 </td>
-                <td className="block sm:table-cell px-4 pt-3 pb-1 sm:py-3">
+                <td role="cell" className="block sm:table-cell px-4 pt-3 pb-1 sm:py-3">
                   {/* The rank rides with the name at mobile — a rank column of
                       its own would eat a third of a 390px viewport. */}
                   <span className="sm:hidden mr-1.5 text-xs tabular-nums text-muted-foreground/60">
@@ -398,7 +399,7 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
                 {/* Mobile: obligations sit UNDER the name at full width with a
                     visible label, so the figure and its chips can never be
                     sliced by the viewport edge. */}
-                <td className="block sm:table-cell px-4 pb-3 pt-0 sm:py-3 text-left sm:text-right tabular-nums align-top">
+                <td role="cell" className="block sm:table-cell px-4 pb-3 pt-0 sm:py-3 text-left sm:text-right tabular-nums align-top">
                   <span className="sm:hidden mr-1.5 text-xs text-muted-foreground">
                     Total obligations:
                   </span>
@@ -413,7 +414,7 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
                   </span>
                 </td>
                 {showConfidence && (
-                  <td className="block sm:table-cell px-4 pb-3 sm:py-3 text-left sm:text-center align-top">
+                  <td role="cell" className="block sm:table-cell px-4 pb-3 sm:py-3 text-left sm:text-center align-top">
                     <span
                       className={[
                         "inline-block rounded px-2 py-0.5 text-xs font-medium",

@@ -152,9 +152,10 @@ export default function DataPage() {
                   <tr
                     key={ds.name}
                     data-dataset-card={ds.name}
+                    role="row"
                     className="block sm:table-row border-b border-border last:border-0 hover:bg-muted/30 transition-colors py-3 sm:py-0"
                   >
-                    <td className="block sm:table-cell px-4 py-0 sm:py-2 font-mono text-xs text-foreground sm:whitespace-nowrap">
+                    <td role="cell" className="block sm:table-cell px-4 py-0 sm:py-2 font-mono text-xs text-foreground sm:whitespace-nowrap">
                       {ds.name}
                     </td>
                     <td
@@ -164,13 +165,13 @@ export default function DataPage() {
                       {ds.row_count.toLocaleString("en-US")}
                       <span className="sm:hidden"> rows</span>
                     </td>
-                    <td className="inline sm:table-cell pr-4 sm:px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                    <td role="cell" className="inline sm:table-cell pr-4 sm:px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                       <span className="sm:hidden" aria-hidden="true">
                         ·{" "}
                       </span>
                       {formatBytes(ds.bytes)}
                     </td>
-                    <td className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs">
+                    <td role="cell" className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs">
                       {isCited ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-medium">
                           cited
@@ -181,7 +182,7 @@ export default function DataPage() {
                         </span>
                       )}
                     </td>
-                    <td className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm">
+                    <td role="cell" className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm">
                       {ds.scope}
                     </td>
                   </tr>

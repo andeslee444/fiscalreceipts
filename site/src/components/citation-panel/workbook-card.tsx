@@ -443,6 +443,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                 data-testid="workbook-preview-row"
                 data-row={r.r}
                 data-cited={r.cited ? "true" : "false"}
+                role="row"
                 className={[
                   // Mobile: a 2×2 grid — address and figure share the top
                   // line, the label spans the second. Source order stays
@@ -455,12 +456,13 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
               >
                 <th
                   scope="row"
+                  role="rowheader"
                   className="col-start-1 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-left font-normal"
                 >
                   <CellRef cell={`${preview.col}${r.r}`} />
                   {r.cited && <span className="sr-only"> (cited)</span>}
                 </th>
-                <td className="col-span-2 row-start-2 sm:table-cell px-0 sm:px-2 sm:py-1.5">
+                <td role="cell" className="col-span-2 row-start-2 sm:table-cell px-0 sm:px-2 sm:py-1.5">
                   {r.code && (
                     <span className="cell-ref mr-1.5 rounded bg-muted px-1 py-0.5 text-[11px]">
                       {r.code}
@@ -476,6 +478,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                   )}
                 </td>
                 <td
+                  role="cell"
                   data-cell-value={r.v == null ? "" : String(r.v)}
                   className={`col-start-2 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
                     r.cited ? "font-semibold text-foreground" : ""
