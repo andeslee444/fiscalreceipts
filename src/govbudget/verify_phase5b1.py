@@ -640,6 +640,53 @@ def _verify_derived(
             except Exception as e:
                 return f"derived sum recompute error: {e}"
 
+        # Rule 4d (PM Sprint 2, §P1-3): curated corporate-family combined
+        # obligations. THE double-count guard: the combined figure /companies/
+        # renders for a merged family must equal the plain sum of its member
+        # entity facts' recorded_values — no more (a member counted twice) and
+        # no less (a member silently dropped from the sum but shown in the row).
+        # Members are disjoint by warehouse construction (entity_xwalk assigns
+        # each recipient_uei one family_key; the exporter re-asserts it), so
+        # the sum is the correct combination and this recompute is exact.
+        elif formula.startswith("sum(entity_family_members") and len(inputs) > 0:
+            if len(inputs) < 2:
+                return (
+                    "entity_family combined fact with fewer than 2 member inputs "
+                    "— nothing was combined"
+                )
+            values = []
+            unresolvable = []
+            for inp_fid in inputs:
+                rv = fid_to_rv.get(inp_fid)
+                if rv is None:
+                    unresolvable.append(inp_fid)
+                    continue
+                try:
+                    values.append(D(rv))
+                except Exception as e:
+                    return f"entity_family member {inp_fid} not numeric: {e}"
+            if unresolvable:
+                return (
+                    f"entity_family member facts unresolvable (no recorded_value): "
+                    f"{unresolvable[:3]}"
+                )
+            if len(set(inputs)) != len(inputs):
+                return (
+                    "entity_family inputs contain a duplicate member fact_id — "
+                    "that member's obligations would be counted twice"
+                )
+            try:
+                expected_sum = sum(values, D(0))
+                actual = D(recorded_value)
+                if abs(actual - expected_sum) > D("0.001"):
+                    return (
+                        f"entity_family combined recompute mismatch: "
+                        f"sum({len(values)} members)={expected_sum} "
+                        f"but recorded_value={recorded_value}"
+                    )
+            except Exception as e:
+                return f"entity_family recompute error: {e}"
+
     # URL inputs or empty inputs: shape check only (no network, no arithmetic)
     # Just confirm recorded_value is a parseable number or non-empty string
     if recorded_value is not None and len(recorded_value.strip()) == 0:

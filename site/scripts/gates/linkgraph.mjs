@@ -42,6 +42,9 @@ const PAGE_TYPES = [
   { key: "programs_index", re: /^\/programs\/$/ },
   { key: "program_detail", re: /^\/program\/[^/]+\/$/ },
   { key: "companies_index", re: /^\/companies\/$/ },
+  // PM Sprint 2 §P1-3 — the curated rename/acquisition table is a publishable
+  // asset; if it ever loses its inbound links it is invisible.
+  { key: "company_families", re: /^\/companies\/families\/$/ },
   { key: "company_detail", re: /^\/company\/[^/]+\/$/ },
   { key: "agency_detail", re: /^\/agency\/[^/]+\/$/ },
   { key: "district_index", re: /^\/district\/$/ },

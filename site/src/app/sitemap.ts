@@ -38,6 +38,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/`, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
     { url: `${base}/programs/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/companies/`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    // §P1-3: the curated rename/acquisition table — a publishable asset in
+    // its own right, not just an appendix to /companies/.
+    { url: `${base}/companies/families/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/data/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/flow/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/downloads/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },

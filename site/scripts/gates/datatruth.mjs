@@ -33,6 +33,12 @@
  *      it. An enumerated contract set (incl. the lobbying table that shipped
  *      2024, 2026, 2025) plus a sweep of ~400 built pages. See leg f's own
  *      block at the bottom of this file.
+ *  (g) curated entity-family merge (§P1-3) — /companies/ split Raytheon
+ *      ($43.7B, #4) from RTX ($24.6B, #6): one company, two rows. This leg
+ *      asserts on the BUILT page that the merge held (no curated family
+ *      appears in two rows) and that every curated event's source_url renders
+ *      as an external reference on /companies/families/. See leg g's own
+ *      block at the bottom of this file.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -435,6 +441,9 @@ export async function runDataTruthGate() {
   // ── leg f: table sort determinism ─────────────────────────────────────────
   runSortLeg(errors, notes);
 
+  // ── leg g: curated entity-family merge (§P1-3) ────────────────────────────
+  runFamilyMergeLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -623,6 +632,282 @@ function runSortLeg(errors, notes) {
   } else if (sweptTables >= 100) {
     notes.push(
       `leg f sweep: ${sweptTables} declared tables across ${sweptPages} pages, all monotonic ✓`,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg g — the curated entity-family merge held (§P1-3)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The defect: `/companies/` listed RAYTHEON COMPANY $43.7B at #4 and RTX CORP
+// $24.6B at #6. One company — Raytheon renamed to RTX in 2023 — split across
+// two rows, understating the combined position by roughly half and misordering
+// the top ten.
+//
+// Two assertions, both on the BUILT artifact, both recomputed from the SEED
+// (data-seeds/entity_family_events.csv) rather than from the payload the page
+// was rendered from — so an exporter that dropped or mangled a curated family
+// cannot satisfy this leg by also mangling its own output:
+//
+//   (1) THE MERGE HELD. Every row of /companies/ declares the registry family
+//       keys it renders in [data-family-keys]. No two rows may carry keys that
+//       the curated seed assigns to the same family; and every seed family with
+//       ≥2 keys present on the page must be on exactly ONE row. This is the
+//       double-count/split check in its rendered form.
+//   (2) EVERY SOURCE IS AN EXTERNAL REFERENCE. Each curated event's source_url
+//       must render on /companies/families/ as an <a href> to that exact URL,
+//       opening off-site. These rows cite documents outside the lake; if one
+//       ever rendered as a warehouse citation chip (or lost its link), the page
+//       would be claiming provenance it does not have.
+//
+// Vacuity guards: the seed must parse, must carry ≥10 events, and must resolve
+// ≥1 multi-member family against the page — a leg that checks nothing passes
+// nothing.
+
+const FAMILY_EVENTS_SEED = path.resolve(
+  repoRoot,
+  "data-seeds",
+  "entity_family_events.csv",
+);
+const MIN_CURATED_EVENTS = 10;
+
+/** Minimal RFC-4180 CSV reader (quoted fields with embedded commas). */
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += c;
+      }
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\n") {
+      row.push(field);
+      field = "";
+      if (row.some((f) => f.trim() !== "")) rows.push(row);
+      row = [];
+    } else if (c !== "\r") {
+      field += c;
+    }
+  }
+  row.push(field);
+  if (row.some((f) => f.trim() !== "")) rows.push(row);
+  const header = rows.shift() ?? [];
+  return rows.map((r) => Object.fromEntries(header.map((h, i) => [h.trim(), r[i] ?? ""])));
+}
+
+/**
+ * Independent recompute of govbudget.entities.normalize_name — the normalizer
+ * that MINTED the warehouse family keys. Deliberately reimplemented here so a
+ * change to the Python side that silently stops matching shows up as a gate
+ * failure rather than as a quietly unmerged table.
+ */
+const LEGAL_SUFFIXES = new Set([
+  "INC", "INCORPORATED", "LLC", "LLP", "LP", "LTD", "LIMITED", "CORP",
+  "CORPORATION", "CO", "COMPANY", "PLC", "GMBH", "SA", "AG", "PTY",
+  "JV", "TRUST", "FOUNDATION", "REALTY",
+]);
+
+function normalizeName(name) {
+  let up = (name || "").toUpperCase();
+  up = up.replace(/(?<=[A-Z])\.(?=[A-Z])/g, "");
+  up = up.replace(/[^A-Z0-9 ]+/g, " ");
+  let tokens = up.split(/\s+/).filter(Boolean);
+  if (tokens[0] === "THE") tokens.shift();
+  let changed = true;
+  while (changed && tokens.length) {
+    changed = false;
+    while (tokens.length && LEGAL_SUFFIXES.has(tokens[tokens.length - 1])) {
+      tokens.pop();
+      changed = true;
+    }
+    while (tokens.length && tokens[tokens.length - 1] === "THE") {
+      tokens.pop();
+      changed = true;
+    }
+    while (tokens.length && tokens[0] === "THE") {
+      tokens.shift();
+      changed = true;
+    }
+  }
+  return tokens.join(" ");
+}
+
+function runFamilyMergeLeg(errors, notes) {
+  if (!fs.existsSync(FAMILY_EVENTS_SEED)) {
+    errors.push(
+      `leg g: curated seed missing at ${FAMILY_EVENTS_SEED} — /companies/ would go ` +
+        `back to splitting renamed companies with nothing to notice it`,
+    );
+    return;
+  }
+  const events = parseCsv(fs.readFileSync(FAMILY_EVENTS_SEED, "utf8"));
+  if (events.length < MIN_CURATED_EVENTS) {
+    errors.push(
+      `leg g: curated seed has ${events.length} events, expected ≥${MIN_CURATED_EVENTS} ` +
+        `(a near-empty table cannot be the publishable asset it is meant to be)`,
+    );
+    return;
+  }
+
+  // seed → family label → the set of normalized endpoint names it claims.
+  const seedFamilies = new Map();
+  for (const ev of events) {
+    const label = (ev.family || "").trim();
+    if (!label) continue;
+    if (!seedFamilies.has(label)) seedFamilies.set(label, new Set());
+    const keys = seedFamilies.get(label);
+    for (const name of [label, ev.from_name, ev.to_name]) {
+      const n = normalizeName(name);
+      if (n) keys.add(n);
+    }
+  }
+
+  // ── (1) the merge held, on the rendered page ─────────────────────────────
+  const companies = readHtml("/companies/");
+  if (!companies) {
+    errors.push("leg g: built /companies/ missing");
+  } else {
+    const rows = companies.querySelectorAll("[data-family-keys]");
+    if (rows.length < 50) {
+      errors.push(
+        `leg g (/companies/): only ${rows.length} rows carry [data-family-keys] — ` +
+          `every row must declare the registry families it renders`,
+      );
+    }
+    // rendered key → the row that rendered it
+    const rowOfKey = new Map();
+    const keysOfRow = [];
+    rows.forEach((tr, i) => {
+      const keys = (tr.getAttribute("data-family-keys") || "")
+        .split("|")
+        .map((k) => k.trim())
+        .filter(Boolean);
+      keysOfRow.push(keys);
+      for (const k of keys) {
+        if (rowOfKey.has(k)) {
+          errors.push(
+            `leg g (/companies/): registry family ${k} is rendered on two rows ` +
+              `(${rowOfKey.get(k)} and ${i}) — its obligations are counted twice`,
+          );
+        }
+        rowOfKey.set(k, i);
+      }
+    });
+
+    let checkedFamilies = 0;
+    for (const [label, keys] of seedFamilies) {
+      const present = [...keys].filter((k) => rowOfKey.has(k));
+      if (present.length < 2) continue; // nothing on this page to merge
+      checkedFamilies++;
+      const rowIds = new Set(present.map((k) => rowOfKey.get(k)));
+      if (rowIds.size !== 1) {
+        errors.push(
+          `leg g (/companies/): curated family "${label}" is SPLIT across ` +
+            `${rowIds.size} rows — ${present
+              .map((k) => `${k}→row ${rowOfKey.get(k)}`)
+              .join(", ")}. One company must be one line (§P1-3).`,
+        );
+      }
+    }
+    if (checkedFamilies === 0) {
+      errors.push(
+        "leg g (/companies/): no curated family has ≥2 members on the page — " +
+          "the merge check is vacuous, which means the merge is not happening",
+      );
+    } else if (errors.every((e) => !e.startsWith("leg g"))) {
+      notes.push(
+        `leg g: ${checkedFamilies} curated families each on exactly one of ` +
+          `${rows.length} /companies/ rows ✓`,
+      );
+    }
+
+    // The Raytheon/RTX repro by name, so this leg names the reported defect.
+    const rtxKeys = ["RAYTHEON", "RTX"].filter((k) => rowOfKey.has(k));
+    if (rtxKeys.length === 2 && rowOfKey.get("RAYTHEON") !== rowOfKey.get("RTX")) {
+      errors.push(
+        "leg g (/companies/): RAYTHEON and RTX are still on separate rows — " +
+          "the reported §P1-3 defect",
+      );
+    }
+  }
+
+  // ── (2) every curated source renders as an external reference ────────────
+  const familiesPage = readHtml("/companies/families/");
+  if (!familiesPage) {
+    errors.push(
+      "leg g: built /companies/families/ missing — the curated table is the " +
+        "publishable asset and must have its own page",
+    );
+    return;
+  }
+  const hrefs = new Set(
+    familiesPage.querySelectorAll("a[href]").map((a) => a.getAttribute("href")),
+  );
+  const missing = [];
+  for (const ev of events) {
+    const url = (ev.source_url || "").trim();
+    if (!url) continue;
+    if (!url.startsWith("https://")) {
+      errors.push(`leg g: curated source is not https — ${url}`);
+      continue;
+    }
+    if (!hrefs.has(url)) missing.push(url);
+  }
+  if (missing.length > 0) {
+    errors.push(
+      `leg g (/companies/families/): ${missing.length} curated event source(s) do ` +
+        `not render as an external reference — ${missing.slice(0, 3).join(", ")}`,
+    );
+  }
+  // …and they must be real off-site links, not internal chips.
+  const externals = familiesPage.querySelectorAll("a[data-external-source]");
+  const badTarget = externals.filter(
+    (a) => a.getAttribute("target") !== "_blank" || !(a.getAttribute("rel") || "").includes("noopener"),
+  );
+  if (badTarget.length > 0) {
+    errors.push(
+      `leg g (/companies/families/): ${badTarget.length} source link(s) are not ` +
+        `off-site links (target=_blank rel=noopener) — these are external ` +
+        `references, not warehouse citations`,
+    );
+  }
+  // The page must SAY so, in its own words.
+  const methodText = (
+    familiesPage.querySelector("[data-method-statement]")?.text ?? ""
+  ).toLowerCase();
+  for (const phrase of [
+    "hand-curated",
+    "external references, not warehouse citations",
+    "nothing on it is",
+  ]) {
+    if (!methodText.includes(phrase)) {
+      errors.push(
+        `leg g (/companies/families/): the method statement does not say ` +
+          `"${phrase}" — the page must state its method plainly (§P1-3)`,
+      );
+    }
+  }
+  if (errors.every((e) => !e.startsWith("leg g"))) {
+    notes.push(
+      `leg g: all ${events.length} curated sources render as external ` +
+        `references on /companies/families/ ✓`,
     );
   }
 }

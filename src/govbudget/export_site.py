@@ -1451,6 +1451,83 @@ def _ingested_service_orgs(pg) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Curated corporate families (PM Sprint 2, §P1-3)
+# ---------------------------------------------------------------------------
+
+def _entity_family_events_csv() -> Path:
+    """Path to the curated seed (resolved lazily so tests can monkeypatch ROOT)."""
+    from govbudget.config import ROOT
+
+    return ROOT / "data-seeds" / "entity_family_events.csv"
+
+
+def _resolved_entity_families(con):
+    """Curated families resolved against this warehouse's dim_entities.
+
+    Loud on every defect the SEED can have: a malformed row, an unknown event
+    kind, or a family_key claimed by two families all raise out of
+    entity_families.
+
+    Two warehouse-shaped absences are tolerated, and both make the curated
+    layer INERT rather than partly-applied:
+
+      * no dim_entities (or an empty one) — there is nothing to merge;
+      * no entity_xwalk — then the no-double-count invariant
+        (_assert_family_uei_disjoint) cannot be checked against the lake, and
+        an unverifiable merge is worse than no merge, so we do not merge.
+
+    Both hold only on fixture-scale warehouses. On the real build both tables
+    exist, so a silent regression here cannot go unnoticed: gate 24 leg (g)
+    asserts on the BUILT /companies/ that the merge actually happened.
+    """
+    from govbudget.entity_families import load_family_events, resolve_families
+
+    try:
+        known = {
+            r[0] for r in con.execute("select family_key from dim_entities").fetchall()
+        }
+        con.execute("select 1 from entity_xwalk limit 1").fetchall()
+    except Exception:
+        return []
+    if not known:
+        return []
+    events = load_family_events(_entity_family_events_csv())
+    return resolve_families(events, known)
+
+
+def _assert_family_uei_disjoint(con, families) -> int:
+    """Re-assert the no-double-count invariant against the lake.
+
+    A merged family's combined obligation is the plain SUM of its members'
+    totals. That is only safe while each recipient_uei belongs to exactly one
+    family_key — the property entity_xwalk is built to have. This checks it for
+    the curated members specifically (a cheap, targeted query) and raises if a
+    UEI ever appears under two merged members, because the sum would then count
+    its obligations twice.
+
+    Returns the number of member keys checked.
+    """
+    member_keys = sorted({k for fam in families for k in fam.member_keys})
+    if not member_keys:
+        return 0
+    placeholders = ",".join("?" for _ in member_keys)
+    dupes = con.execute(
+        "select recipient_uei, count(distinct family_key) as n from entity_xwalk"
+        f" where family_key in ({placeholders})"
+        " group by recipient_uei having n > 1",
+        member_keys,
+    ).fetchall()
+    if dupes:
+        raise ValueError(
+            "entity-family merge would DOUBLE COUNT: "
+            f"{len(dupes)} recipient_uei(s) belong to more than one curated "
+            f"member family (e.g. {dupes[0][0]}) — refusing to sum member "
+            "totals. Fix entity_xwalk or the curated seed."
+        )
+    return len(member_keys)
+
+
+# ---------------------------------------------------------------------------
 # Derived citation tier (Phase 5B-3)
 # ---------------------------------------------------------------------------
 
@@ -1907,10 +1984,16 @@ def _build_derived_citation_rows(
                 built_at,
             ))
 
-        # ---- Entity total obligation (top-200 only) ----
+        # ---- Entity total obligation (top-200 + curated family members) ----
         # surface='entity', key=family_key, metric='total_obligation'
         # formula = 'sum of obligations across N UEIs FY2017-2026'
         # inputs = []  (too many UEIs to enumerate; query is self-describing)
+        #
+        # §P1-3: the curated-family members (entity_families) join the top-200
+        # set here. A merged family's combined figure cites its MEMBERS, so a
+        # member outside the top 200 (L3 Technologies, Engility, Esterline, …)
+        # needs its own entity fact or the combined citation would reference a
+        # fact_id that does not exist.
         try:
             entity_rows = con.execute(
                 "select family_key, total_obligation, uei_count"
@@ -1921,9 +2004,29 @@ def _build_derived_citation_rows(
         except Exception:
             entity_rows = []
 
+        curated_families = _resolved_entity_families(con)
+        _assert_family_uei_disjoint(con, curated_families)
+        curated_member_keys: set[str] = {
+            key for fam in curated_families for key in fam.member_keys
+        }
+        top200_keys = {r[0] for r in entity_rows}
+        extra_keys = sorted(curated_member_keys - top200_keys)
+        if extra_keys:
+            placeholders = ",".join("?" for _ in extra_keys)
+            try:
+                entity_rows = list(entity_rows) + con.execute(
+                    "select family_key, total_obligation, uei_count from dim_entities"
+                    f" where family_key in ({placeholders})",
+                    extra_keys,
+                ).fetchall()
+            except Exception:
+                pass
+
+        entity_totals: dict[str, tuple[float, int]] = {}
         for family_key, total_obl, uei_count in entity_rows:
             if total_obl is None:
                 continue
+            entity_totals[family_key] = (float(total_obl), int(uei_count or 0))
             fid = fact_id_derived("entity", family_key, "total_obligation")
             formula = (
                 f"sum(fct_award_transactions.obligation) across {uei_count or '?'} UEIs"
@@ -1939,6 +2042,45 @@ def _build_derived_citation_rows(
                     "select sum(t.obligation) from fct_award_transactions t"
                     " join entity_xwalk x on t.recipient_uei=x.recipient_uei"
                     f" where x.family_key='{family_key}'"
+                ),
+            ))
+
+        # ---- Curated corporate-family combined obligations (§P1-3) ----
+        # surface='entity_family', key=slug, metric='combined_obligation'
+        # formula starts with 'sum(entity_family_members' so _verify_derived
+        # RECOMPUTES the sum from the member facts' recorded_values — the
+        # double-count guard, enforced in the verifier rather than trusted.
+        # Members are disjoint by warehouse construction (entity_xwalk assigns
+        # each recipient_uei exactly one family_key); _assert_family_uei_disjoint
+        # re-asserts that against the lake before any of this is emitted.
+        for fam in curated_families:
+            members = [k for k in fam.member_keys if k in entity_totals]
+            if len(members) < 2:
+                continue  # nothing to combine — no combined fact to mint
+            members.sort(key=lambda k: entity_totals[k][0], reverse=True)
+            combined = sum(entity_totals[k][0] for k in members)
+            input_fids = [
+                fact_id_derived("entity", k, "total_obligation") for k in members
+            ]
+            rows.append(_null_derived_row(
+                fact_id_derived("entity_family", fam.slug, "combined_obligation"),
+                "derived", "USD",
+                (
+                    f"sum(entity_family_members.total_obligation) across "
+                    f"{len(members)} registry families merged into {fam.label} by "
+                    f"curated rename/acquisition events (data-seeds/"
+                    f"entity_family_events.csv)"
+                ),
+                _json.dumps(input_fids),
+                f"{combined:.3f}",
+                built_at,
+                # Reproduces the recorded value EXACTLY: the combined figure is
+                # the sum of the same dim_entities rows the member facts cite.
+                query_body=(
+                    "select sum(total_obligation) from dim_entities"
+                    " where family_key in ("
+                    + ", ".join(f"'{k}'" for k in members)
+                    + ")"
                 ),
             ))
 
@@ -4558,6 +4700,91 @@ def _write_all_sidecars(
         })
 
     _write_json(json_dir / "entities_top.json", entities_list)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 4b. entity_family_events.json  (curated renames/acquisitions, §P1-3)#
+    # ------------------------------------------------------------------ #
+    # The publishable asset: every curated corporate event with its OFFICIAL
+    # source, plus the family membership those events imply. Sources render as
+    # explicit EXTERNAL references, never as warehouse citations — the payload
+    # keeps them in `source_url` and the site labels them as such.
+    #
+    # `combined_fact_id` is the derived combined-obligation fact minted above
+    # (inputs = the member entity facts; _verify_derived recomputes the sum),
+    # so the merged row's dollar figure is as cited as the rows it replaces.
+
+    entity_by_key = {r[0]: r for r in entity_rows}
+    _fam_families = _resolved_entity_families(con)
+    _assert_family_uei_disjoint(con, _fam_families)
+    _fam_totals = {
+        r[0]: (float(r[1]), int(r[2] or 0), r[3] or "medium", r[4] or r[0])
+        for r in con.execute(
+            "select family_key, total_obligation, uei_count, worst_confidence,"
+            " display_name from dim_entities where total_obligation is not null"
+        ).fetchall()
+    }
+
+    families_payload = []
+    for fam in _fam_families:
+        members = [k for k in fam.member_keys if k in _fam_totals]
+        members.sort(key=lambda k: _fam_totals[k][0], reverse=True)
+        member_payload = []
+        for key in members:
+            total, ueis, worst, display = _fam_totals[key]
+            row = entity_by_key.get(key)
+            slug = key.lower().replace(" ", "-")
+            member_payload.append({
+                "family_key": key,
+                # The registry name USAspending awards were made under — the
+                # thing a reporter will search for. Same source (dim_entities)
+                # for members inside and outside the top-200 export.
+                "display_name": display,
+                "slug": slug,
+                # has_page: only top-200 members have /company/{slug}/ pages.
+                "has_page": row is not None,
+                "total_obligation": total,
+                "total_obligation_fact_id": _entity_total_fid(key, total),
+                "uei_count": ueis,
+                "worst_confidence": worst,
+            })
+        combined = sum(_fam_totals[k][0] for k in members)
+        combined_fid = fact_id_derived(
+            "entity_family", fam.slug, "combined_obligation"
+        )
+        families_payload.append({
+            "label": fam.label,
+            "slug": fam.slug,
+            "members": member_payload,
+            "combined_obligation": combined if len(members) >= 2 else None,
+            "combined_obligation_fact_id": (
+                combined_fid
+                if len(members) >= 2 and combined_fid in _cited_fact_ids
+                else None
+            ),
+            "combined_uei_count": sum(m["uei_count"] for m in member_payload),
+            "events": [
+                {
+                    "from_name": ev.event.from_name,
+                    "to_name": ev.event.to_name,
+                    "event": ev.event.event,
+                    "effective_date": ev.event.effective_date,
+                    "source_url": ev.event.source_url,
+                    "note": ev.event.note,
+                    "from_family_key": ev.from_endpoint.family_key,
+                    "to_family_key": ev.to_endpoint.family_key,
+                }
+                for ev in fam.events
+            ],
+        })
+
+    _write_json(json_dir / "entity_family_events.json", {
+        "schema_version": 1,
+        "method": "hand-curated",
+        "source_kind": "external",
+        "seed": "data-seeds/entity_family_events.csv",
+        "families": families_payload,
+    })
     n_files += 1
 
     # ------------------------------------------------------------------ #

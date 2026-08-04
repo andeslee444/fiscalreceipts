@@ -352,7 +352,40 @@ export default function MethodologyPage() {
               common registered parent name for the subsidiaries.{" "}
               <em>Medium confidence</em> (name inference): slightly different
               legal-name variants normalize to the same string. Both tiers
-              appear on screen; the method is always disclosed.
+              appear on screen; the method is always disclosed. Where the
+              method is uniform across a whole table — as it is on{" "}
+              <Link href="/companies/" className="underline hover:text-foreground">
+                /companies/
+              </Link>
+              , every family of which resolves by name inference — the per-row
+              chip is suppressed and the method is stated once in the header,
+              because a badge that never varies tells the reader nothing.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground mb-1">
+              Renames and acquisitions — hand-curated, not inferred
+            </h3>
+            <p>
+              Name inference cannot know that Raytheon Company and RTX Corp are
+              one company: federal award records carry the recipient name that
+              was on the contract, and a rename produces two names. We close
+              that gap with a small{" "}
+              <Link
+                href="/companies/families/"
+                className="underline hover:text-foreground"
+              >
+                hand-curated table of corporate renames and acquisitions
+              </Link>
+              , each row sourced to an SEC filing or an official company press
+              release. Those sources are <strong>external references, not
+              warehouse citations</strong> — they leave this site and carry no
+              fact ID, because we read them rather than extracted them. The
+              combined figure a merged family renders IS a warehouse citation:
+              a derived fact whose inputs are the member figures it replaced,
+              recomputed by the citation verifier so a merge can never double
+              count. Names that do not resolve to a recipient family are marked
+              unresolved rather than guessed at.
             </p>
           </div>
           <div>

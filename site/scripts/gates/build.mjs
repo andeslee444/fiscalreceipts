@@ -312,16 +312,19 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(8) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(8) = /, /programs/, /companies/, /data/, /flow/, /downloads/, /methodology/, /about/
-    // (/flow/ added in Phase 5H — sitemap.ts static core pages.)
+    // Expected: static(9) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(9) = /, /programs/, /companies/, /companies/families/, /data/,
+    //             /flow/, /downloads/, /methodology/, /about/
+    // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
+    //  §P1-3 — the curated rename/acquisition table.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
+    const STATIC_SITEMAP_PAGES = 9;
     const expectedTotal =
-      8 + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
+      STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
       errors.push(
-        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (8 static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${sitemapProgramCount} programs (${programCount} pages − ${zeroContentCount} zero-content noindex) + ${companyCount} companies + ${agencyCount} agencies)`
+        `sitemap URL count: found ${sitemapCount}, expected ${expectedTotal} (${STATIC_SITEMAP_PAGES} static + 1 feed + ${districtPageCount} district + ${filingPageCount} filing + ${sitemapProgramCount} programs (${programCount} pages − ${zeroContentCount} zero-content noindex) + ${companyCount} companies + ${agencyCount} agencies)`
       );
     } else {
       notes.push(`sitemap: ${sitemapCount} URLs ✓ (${zeroContentCount} zero-content program page(s) excluded)`);

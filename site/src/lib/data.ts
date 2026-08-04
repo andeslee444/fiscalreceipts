@@ -17,6 +17,7 @@ import {
   type DossierFile,
   type SnapshotMeta,
 } from "./dossier";
+import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
 import { setIngestedServiceOrgs } from "./program-tier";
 import type { LineageBlock } from "./lineage";
@@ -633,6 +634,36 @@ export function getEntityTopMap(): Map<string, EntityTop> {
 export function getEntityTopByFamilyKey(): Map<string, EntityTop> {
   const entities = getEntitiesTop();
   return new Map(entities.map((e) => [e.family_key, e]));
+}
+
+// ── entity_family_events.json (curated renames/acquisitions, §P1-3) ─────────
+
+let _familyEvents: FamilyEventsPayload | null | undefined;
+
+/**
+ * The hand-curated corporate rename/acquisition table, or null on an export
+ * that predates it (the /companies/ table then renders the honest unmerged
+ * split rather than failing the build).
+ */
+export function getEntityFamilyEvents(): FamilyEventsPayload | null {
+  if (_familyEvents !== undefined) return _familyEvents;
+  getSiteMeta();
+  const full = join(jsonDir(), "entity_family_events.json");
+  if (!existsSync(full)) {
+    _familyEvents = null;
+    return null;
+  }
+  // No try/catch: a present-but-malformed curated payload must fail the build
+  // loudly — silently degrading would restore the very split it exists to fix.
+  const payload = JSON.parse(readFileSync(full, "utf8")) as FamilyEventsPayload;
+  if (payload.schema_version !== 1) {
+    throw new Error(
+      `[govbudget/data] entity_family_events.json schema_version ` +
+        `${payload.schema_version} != 1`,
+    );
+  }
+  _familyEvents = payload;
+  return payload;
 }
 
 // ── entity_details/{slug}.json ───────────────────────────────────────────────
