@@ -52,9 +52,17 @@ function ConfidenceBadge({ confidence }: { confidence: string }) {
   );
 }
 
+/** Sort rank mirroring the exporter's fct_budget_to_awards ORDER BY (§P1-7). */
+const CONFIDENCE_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
 function AwardRow({ award }: { award: ProgramAward }) {
   return (
-    <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+    <tr
+      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+      data-sort-value={String(
+        CONFIDENCE_RANK[(award.confidence ?? "").toLowerCase()] ?? 3,
+      )}
+    >
       <td className="py-2 pr-3 text-foreground">{award.recipient_name}</td>
       <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">
         {award.award_piid}
@@ -130,8 +138,13 @@ export function ProgramAwards({
         </p>
       )}
 
+      {/* §P1-7 sort contract (gate 24 leg f) — declared order, set upstream. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+        <table
+          className="w-full text-sm border-collapse"
+          data-sort-table="program-awards"
+          data-sort-order="confidence_rank:asc"
+        >
           <thead>
             <tr className="border-b border-border">
               <th scope="col" className="text-left py-2 pr-3 font-medium text-muted-foreground">

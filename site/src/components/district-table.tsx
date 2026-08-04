@@ -164,7 +164,12 @@ export function DistrictTable({ districts }: Props) {
               content width — when that exceeds the viewport (narrow phones)
               the wrapper scrolls horizontally instead of clipping values,
               and the fade below signals the overflow. */}
-          <table className="w-full text-sm">
+          {/* §P1-7 sort contract (gate 24 leg f) — see programs-table.tsx. */}
+          <table
+            className="w-full text-sm"
+            data-sort-table="districts"
+            data-sort-order={`${sortKey}:${sortDir}`}
+          >
             <thead className="bg-muted/50">
               <tr>
                 <SortHeader
@@ -210,6 +215,7 @@ export function DistrictTable({ districts }: Props) {
                 <tr
                   key={d.pop_district}
                   className="hover:bg-muted/40 transition-colors"
+                  data-sort-value={String(d[sortKey])}
                 >
                   {/* No nowrap here: long special labels ("DC (undistricted)")
                       may wrap on narrow phones so the dollar column stays

@@ -95,7 +95,11 @@ function MentionRow({
     : "";
 
   return (
-    <div data-filing-mention className="border-b border-border/50 py-3">
+    <div
+      data-filing-mention
+      data-sort-value={String(mention.filing_year)}
+      className="border-b border-border/50 py-3"
+    >
       <div className="flex flex-wrap items-start gap-2 mb-1">
         {/* Client name */}
         <span className="font-medium text-foreground text-sm">
@@ -229,7 +233,9 @@ export function ProgramMentions({
         {" "}from the Senate LDA disclosure database.
       </p>
 
-      <div>
+      {/* §P1-7 sort contract (gate 24 leg f) — declared order, set upstream
+          in the fct_program_lobbying ORDER BY. */}
+      <div data-sort-table="program-mentions" data-sort-order="filing_year:desc">
         {displayedMentions.map((mention, i) => (
           <MentionRow
             key={`${mention.filing_uuid}-${mention.matched_term}-${i}`}

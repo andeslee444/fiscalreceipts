@@ -174,8 +174,15 @@ export default async function DistrictDetailPage({ params }: Props) {
         </div>
 
         {/* Program table */}
+        {/* §P1-7 sort contract (gate 24 leg f): exporter-declared order —
+            fct_district_programs is queried `order by pop_state, pop_district,
+            total_obligation desc nulls last`. */}
         <div className="rounded-lg border border-border overflow-hidden bg-card">
-          <table className="w-full text-sm">
+          <table
+            className="w-full text-sm"
+            data-sort-table="district-programs"
+            data-sort-order="total_obligation:desc"
+          >
             <thead className="bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
@@ -200,6 +207,7 @@ export default async function DistrictDetailPage({ params }: Props) {
                 <tr
                   key={prog.pe_bli}
                   className="hover:bg-muted/40 transition-colors"
+                  data-sort-value={String(prog.total_obligation ?? -Infinity)}
                 >
                   <td className="px-4 py-3">
                     <Link

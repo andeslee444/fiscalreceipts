@@ -70,6 +70,15 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
     return rows;
   }, [programs, orgFilter, sortKey, sortAsc]);
 
+  /** The comparator's own input for a row, serialized (sort contract above). */
+  function sortValue(p: ProgramsTableProps["programs"][number]): string {
+    if (sortKey === "title") return p.title;
+    if (sortKey === "fy2026_total") {
+      return String(p.trajectory?.fy2026_total ?? -Infinity);
+    }
+    return String(p.fy2024_actual_millions ?? -Infinity);
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortAsc((v) => !v);
@@ -102,9 +111,20 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
         </span>
       </div>
 
-      {/* Table */}
+      {/* Table.
+          §P1-7 sort contract (gate 24 leg f): data-sort-table names the table,
+          data-sort-order declares "<key>:<dir>" for the order the rows are
+          ACTUALLY in right now (it tracks the live sort state, so it stays
+          true after the reader clicks a header), and every row carries the
+          declared key's value in data-sort-value — the comparator's own input,
+          serialized, "-Infinity" sentinel included, so monotonicity is checked
+          against exactly what the sort saw. */}
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+        <table
+          className="w-full text-sm"
+          data-sort-table="programs"
+          data-sort-order={`${sortKey}:${sortAsc ? "asc" : "desc"}`}
+        >
           <thead className="bg-muted/60 text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-24">PE/BLI</th>
@@ -148,7 +168,11 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.map((p) => (
-              <tr key={p.pe_bli} className="hover:bg-muted/40 transition-colors">
+              <tr
+                key={p.pe_bli}
+                className="hover:bg-muted/40 transition-colors"
+                data-sort-value={sortValue(p)}
+              >
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {p.pe_bli}
                 </td>

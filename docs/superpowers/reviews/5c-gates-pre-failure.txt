@@ -1898,3 +1898,66 @@ Restored byte-identical (cmp clean).
 
 MADE TO PASS (untouched build):
   note: leg e: /methodology/ per-build counts match their defining artifacts (4 checked) ✓
+
+
+=== gate 24 "datatruth" leg f — table sort determinism — 2026-08-04 ===
+
+PM-review §P1-7. `/company/lockheed-martin/` rendered its Lobbying Activity
+filing years as 2024, 2026, 2025. Root cause: the exporter's fct_influence
+query had no ORDER BY at all, so the table showed whatever order DuckDB
+returned — 33 of the 66 families with filings were out of order. The audit
+found the same class of defect in five more payloads: program mentions (240 of
+244 lists not newest-first), company mentions, program/company awards, the
+linked-programs chip list, and the /filing/ pages' activity and lobbyist
+lists. Two more (jbook details, jbook narratives) had ordered LEADING keys but
+left ties to the query plan, which silently decided the Budget Details project
+grouping and the {pe}/line{n} gate-23 entity ordinals.
+
+CONTRACT the leg enforces on the BUILT artifact:
+  [data-sort-table="<name>"] [data-sort-order="<key>:asc|desc"]   container
+  [data-sort-value="<v>"]                                          each row
+data-sort-value is the COMPARATOR'S OWN INPUT serialized (including the
+±Infinity sentinels the tables use for missing values), not a rendered cell —
+so what is checked is the order the sort actually produced, and a page cannot
+satisfy the leg by rendering a pretty cell over a wrong row order. Client
+tables emit their LIVE sort state, so the declaration stays true after a
+reader clicks a header.
+
+Two halves, because either alone is toothless:
+  (1) five enumerated (page, table, order, min-rows) contracts that MUST be
+      present with the exact declared order — a table cannot pass by dropping
+      its attribute or quietly flipping to asc, and a table rendering fewer
+      than min-rows fails rather than passing vacuously;
+  (2) a sweep of 386 built pages (200 company + 106 district + 80 program):
+      EVERY [data-sort-table] found must be monotonic, and fewer than 100
+      declared tables across the sweep is itself a failure.
+
+PROOF-CAN-FAIL (scratch-mutation of the BUILT pages, three mutations):
+  (a) reversed the 3 <tr> of Lockheed's lobbying tbody (2026,2025,2024 ->
+      2024,2025,2026 — the PM's exact defect, re-injected)
+  (b) swapped rows 1-2 of /district/CO-05/'s district-programs tbody
+  (c) stripped data-sort-table="programs" from /programs/
+
+  gate pass: false
+  ✗ leg f (/company/lockheed-martin/ lobbying-activity): filing_year:desc is violated at rows 1→2: "2024" then "2025" (rendered 3 rows)
+  ✗ leg f (/programs/): no [data-sort-table="programs"] — every data table must declare its default sort
+  ✗ leg f (/district/CO-05/ district-programs): total_obligation:desc is violated at rows 1→2: "98586699.89" then "846885154.1999999" (rendered 10 rows)
+  ✗ leg f sweep: 2 table(s) render out of their declared order — company/lockheed-martin/index.html [lobbying-activity]: filing_year:desc is violated at rows 1→2: "2024" then "2025" (rendered 3 rows) | district/CO-05/index.html [district-programs]: total_obligation:desc is violated at rows 1→2: "98586699.89" then "846885154.1999999" (rendered 10 rows)
+
+All three files restored from pre-mutation copies; cmp clean on all three.
+
+MADE TO PASS (untouched build):
+  note: leg f: all 5 declared table sorts present and monotonic (incl. lobbying-activity year desc) ✓
+  note: leg f sweep: 262 declared tables across 386 pages, all monotonic ✓
+  gate 24 datatruth: PASS
+
+WHAT SHIPPED alongside: ORDER BY on fct_influence (family, year desc),
+fct_program_lobbying (year desc, client, title, pe, uuid — one total order
+serving the program, company and filing groupings, since filtering a
+totally-ordered list preserves the order), fct_budget_to_awards (confidence
+tier, recipient, pe, piid), dim_programs (pe_bli), the two LDA parquet reads,
+append-only tiebreaks on the jbook details/narratives queries, an explicit
+mention-count sort for the linked-programs chips, and an obligation-desc sort
+for follow-the-dollar's district table (was "order of first appearance in
+flow.awards"). The company page also re-declares the lobbying sort at the
+render site so a future upstream regression cannot pass through silently.

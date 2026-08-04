@@ -105,9 +105,16 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
         </span>
       </div>
 
-      {/* Table */}
+      {/* Table.
+          §P1-7 sort contract (gate 24 leg f) — see programs-table.tsx for the
+          full contract: data-sort-order tracks the LIVE sort state and every
+          row carries the comparator's own input in data-sort-value. */}
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+        <table
+          className="w-full text-sm"
+          data-sort-table="companies"
+          data-sort-order={`${sortKey}:${sortAsc ? "asc" : "desc"}`}
+        >
           <thead className="bg-muted/60 text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-10 text-right">
@@ -143,7 +150,13 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.map((c) => (
-              <tr key={c.slug} className="hover:bg-muted/40 transition-colors">
+              <tr
+                key={c.slug}
+                className="hover:bg-muted/40 transition-colors"
+                data-sort-value={String(
+                  sortKey === "total_obligation" ? c.total_obligation : c.uei_count,
+                )}
+              >
                 <td className="px-4 py-3 text-right text-muted-foreground/60 text-xs tabular-nums">
                   {c.rank}
                 </td>

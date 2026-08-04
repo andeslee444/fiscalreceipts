@@ -47,6 +47,21 @@ export function FilingsTable({ filings }: Props) {
 
   const visible = filtered.slice(0, limit);
 
+  /**
+   * §P1-7 sort contract (gate 24 leg f). The exporter's declared order is a
+   * COMPOSITE — mentions-first, then year desc, then client asc — so the row
+   * key is the composite serialized to sort ASCENDING as a plain string:
+   * "0|7973|boeing" precedes "1|7974|acme". Filtering and the "load more"
+   * limit both preserve it (a filtered prefix of a sorted list is sorted).
+   */
+  function sortValue(f: FilingIndexRow): string {
+    const yr = Number(f.filing_year);
+    const yrKey = Number.isFinite(yr)
+      ? String(9999 - yr).padStart(4, "0")
+      : "9999";
+    return `${f.has_mentions ? 0 : 1}|${yrKey}|${(f.client_name ?? "").toLowerCase()}`;
+  }
+
   return (
     <div>
       {/* Controls */}
@@ -89,7 +104,11 @@ export function FilingsTable({ filings }: Props) {
 
       <div className="rounded-lg border border-border overflow-hidden bg-card">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table
+            className="w-full text-sm"
+            data-sort-table="filings"
+            data-sort-order="mentions_then_year_desc_then_client:asc"
+          >
             <thead className="bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
@@ -114,6 +133,7 @@ export function FilingsTable({ filings }: Props) {
                 <tr
                   key={f.filing_uuid}
                   className="hover:bg-muted/40 transition-colors"
+                  data-sort-value={sortValue(f)}
                 >
                   <td className="px-4 py-3">
                     <Link

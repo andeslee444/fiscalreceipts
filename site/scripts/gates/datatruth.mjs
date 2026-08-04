@@ -25,6 +25,14 @@
  *      program_details sidecar count (browsable pages) and programs.json
  *      length (detail-grade), recomputed here from data/site/json; and the
  *      §P0-5 scope tail is present on each.
+ *  (e) /methodology/ §3's per-build check counts equal the artifacts that
+ *      DEFINE them (dbt manifest, the verify.mjs gate registry, the eval set),
+ *      recomputed here rather than read back from site_meta.
+ *  (f) table sort determinism (§P1-7) — every data table declares its order
+ *      via [data-sort-table]/[data-sort-order] and renders monotonically in
+ *      it. An enumerated contract set (incl. the lobbying table that shipped
+ *      2024, 2026, 2025) plus a sweep of ~400 built pages. See leg f's own
+ *      block at the bottom of this file.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -424,5 +432,197 @@ export async function runDataTruthGate() {
     }
   }
 
+  // ── leg f: table sort determinism ─────────────────────────────────────────
+  runSortLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg f — table sort determinism (§P1-7)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// `/company/lockheed-martin/` rendered its Lobbying Activity years as
+// 2024, 2026, 2025. fct_influence had no ORDER BY, so the table showed
+// whatever order the query returned; 33 of the 66 families with filings were
+// out of order, and the same class of defect ran through mentions, awards,
+// linked-program chips and filing sub-lists. On a site whose entire claim is
+// "check our work", a visibly unsorted table invites doubt about the numbers
+// in it.
+//
+// The contract every data table now ships, and this leg enforces:
+//   [data-sort-table="<name>"] [data-sort-order="<key>:asc|desc"]   container
+//   [data-sort-value="<v>"]                                          each row
+// data-sort-value is the COMPARATOR'S OWN INPUT, serialized — not a rendered
+// cell — so what is checked is the order the sort actually produced.
+//
+// Two halves, because either alone is toothless:
+//   (1) REQUIRED: an enumerated set of (page, table) pairs must be present
+//       with the exact declared order. Deleting an attribute, or quietly
+//       flipping a table to `asc`, fails — it cannot pass by vanishing.
+//   (2) SWEEP: across a large page sample, EVERY [data-sort-table] found must
+//       be monotonic in its declared direction. New tables are covered the
+//       day they ship the contract.
+
+/** (page, table, declared order, min rows) pairs that MUST exist. */
+const SORT_CONTRACTS = [
+  // The reported repro. Lockheed has three filing years — 2026, 2025, 2024.
+  ["/company/lockheed-martin/", "lobbying-activity", "filing_year:desc", 3],
+  ["/companies/", "companies", "total_obligation:desc", 100],
+  ["/programs/", "programs", "fy2026_total:desc", 100],
+  ["/filings/", "filings", "mentions_then_year_desc_then_client:asc", 25],
+  ["/district/CO-05/", "district-programs", "total_obligation:desc", 3],
+];
+
+/** Directories under out/ swept for the monotonicity check, and how many. */
+const SORT_SWEEP = [
+  ["company", 200],
+  ["district", 120],
+  ["program", 80],
+];
+
+/**
+ * Compare two data-sort-value strings the way the page's comparator does:
+ * numerically when BOTH parse as numbers (including the ±Infinity sentinels
+ * the tables emit for missing values), else by localeCompare — which is what
+ * the string-keyed sorts use, evaluated in this same Node/ICU during SSG.
+ */
+function sortCmp(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  const aNum = a.trim() !== "" && !Number.isNaN(an);
+  const bNum = b.trim() !== "" && !Number.isNaN(bn);
+  if (aNum && bNum) return an === bn ? 0 : an < bn ? -1 : 1;
+  return a.localeCompare(b);
+}
+
+/**
+ * Check one container. Returns null when monotonic, else a description of the
+ * FIRST violating adjacent pair (the shape a human can act on).
+ */
+function checkSortedContainer(el) {
+  const order = el.getAttribute("data-sort-order") ?? "";
+  const m = order.match(/^([A-Za-z0-9_]+):(asc|desc)$/);
+  if (!m) {
+    return `declares data-sort-order=${JSON.stringify(order)}, which is not "<key>:asc|desc"`;
+  }
+  const dir = m[2];
+  const rows = el.querySelectorAll("[data-sort-value]");
+  const values = rows.map((r) => r.getAttribute("data-sort-value") ?? "");
+  for (let i = 1; i < values.length; i++) {
+    const cmp = sortCmp(values[i - 1], values[i]);
+    const bad = dir === "desc" ? cmp < 0 : cmp > 0;
+    if (bad) {
+      return (
+        `${order} is violated at rows ${i}→${i + 1}: ` +
+        `${JSON.stringify(values[i - 1])} then ${JSON.stringify(values[i])}` +
+        ` (rendered ${values.length} rows)`
+      );
+    }
+  }
+  return null;
+}
+
+/** Every built index.html under out/<dir>/, capped at `limit`, sorted. */
+function sampleBuiltPages(dir, limit) {
+  const root = path.join(outDir, dir);
+  if (!fs.existsSync(root)) return [];
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join(root, e.name, "index.html"))
+    .filter((p) => fs.existsSync(p))
+    .sort()
+    .slice(0, limit);
+}
+
+function runSortLeg(errors, notes) {
+  // ── (1) the enumerated contracts ────────────────────────────────────────
+  let contractsOk = 0;
+  for (const [url, table, expectOrder, minRows] of SORT_CONTRACTS) {
+    const root = readHtml(url);
+    if (!root) {
+      errors.push(`leg f (${url}): built page missing at ${htmlFor(url)}`);
+      continue;
+    }
+    const el = root.querySelector(`[data-sort-table="${table}"]`);
+    if (!el) {
+      errors.push(
+        `leg f (${url}): no [data-sort-table="${table}"] — every data table must declare its default sort`,
+      );
+      continue;
+    }
+    const declared = el.getAttribute("data-sort-order");
+    if (declared !== expectOrder) {
+      errors.push(
+        `leg f (${url} ${table}): declares data-sort-order=${JSON.stringify(
+          declared,
+        )}, expected ${JSON.stringify(expectOrder)}`,
+      );
+      continue;
+    }
+    const nRows = el.querySelectorAll("[data-sort-value]").length;
+    if (nRows < minRows) {
+      errors.push(
+        `leg f (${url} ${table}): only ${nRows} row(s) carry data-sort-value — expected ≥${minRows} (a table that renders nothing cannot prove it is sorted)`,
+      );
+      continue;
+    }
+    const violation = checkSortedContainer(el);
+    if (violation) {
+      errors.push(`leg f (${url} ${table}): ${violation}`);
+      continue;
+    }
+    contractsOk += 1;
+  }
+  if (contractsOk === SORT_CONTRACTS.length) {
+    notes.push(
+      `leg f: all ${SORT_CONTRACTS.length} declared table sorts present and monotonic (incl. lobbying-activity year desc) ✓`,
+    );
+  }
+
+  // ── (2) the sweep ───────────────────────────────────────────────────────
+  const sweepViolations = [];
+  let sweptPages = 0;
+  let sweptTables = 0;
+  for (const [dir, limit] of SORT_SWEEP) {
+    const pages = sampleBuiltPages(dir, limit);
+    if (pages.length === 0) {
+      errors.push(
+        `leg f sweep: no built pages under out/${dir}/ — the sweep would be vacuous`,
+      );
+      continue;
+    }
+    for (const p of pages) {
+      sweptPages += 1;
+      const root = parse(fs.readFileSync(p, "utf8"));
+      for (const el of root.querySelectorAll("[data-sort-table]")) {
+        // Containers with 0-1 rows are trivially sorted; still counted, so a
+        // build that renders every table empty cannot inflate the tally.
+        sweptTables += 1;
+        const violation = checkSortedContainer(el);
+        if (violation) {
+          sweepViolations.push(
+            `${path.relative(outDir, p)} [${el.getAttribute("data-sort-table")}]: ${violation}`,
+          );
+        }
+      }
+    }
+  }
+  if (sweptTables < 100) {
+    errors.push(
+      `leg f sweep: only ${sweptTables} declared tables found across ${sweptPages} pages — expected ≥100 (non-vacuous check)`,
+    );
+  }
+  if (sweepViolations.length > 0) {
+    errors.push(
+      `leg f sweep: ${sweepViolations.length} table(s) render out of their declared order — ${sweepViolations
+        .slice(0, 5)
+        .join(" | ")}`,
+    );
+  } else if (sweptTables >= 100) {
+    notes.push(
+      `leg f sweep: ${sweptTables} declared tables across ${sweptPages} pages, all monotonic ✓`,
+    );
+  }
 }

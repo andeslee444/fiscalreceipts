@@ -48,6 +48,9 @@ export async function generateMetadata({
   };
 }
 
+/** Sort rank mirroring the exporter's fct_budget_to_awards ORDER BY (§P1-7). */
+const CONFIDENCE_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
 const CONFIDENCE_COLORS: Record<string, string> = {
   high: "bg-emerald-100 text-emerald-800 border-emerald-200",
   medium: "bg-amber-100 text-amber-700 border-amber-200",
@@ -189,8 +192,15 @@ export default async function CompanyPage({
             Amounts are raw USD from LDA filings. Correlation is shown, not
             causation.
           </p>
+          {/* §P1-7 sort contract (gate 24 leg f): this is THE table the PM
+              caught rendering 2024, 2026, 2025. data-sort-order declares the
+              order; every row carries its filing year in data-sort-value. */}
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
+            <table
+              className="w-full text-sm"
+              data-sort-table="lobbying-activity"
+              data-sort-order="filing_year:desc"
+            >
               <thead className="bg-muted/60 text-left">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">
@@ -215,6 +225,7 @@ export default async function CompanyPage({
                   <tr
                     key={`${row.filing_year}-${i}`}
                     className="hover:bg-muted/40 transition-colors"
+                    data-sort-value={String(row.filing_year)}
                   >
                     <td className="px-4 py-3 font-mono text-xs">
                       {String(row.filing_year)}
@@ -310,13 +321,20 @@ export default async function CompanyPage({
           <p className="text-sm text-muted-foreground mb-4">
             Lobbying filings that mention a budget program by name or code.
           </p>
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
+          {/* §P1-7 sort contract (gate 24 leg f) — declared order, set upstream
+              in the fct_program_lobbying ORDER BY. */}
+          <div
+            className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card"
+            data-sort-table="company-mentions"
+            data-sort-order="filing_year:desc"
+          >
             {details.mentions.slice(0, 50).map((m, i) => {
               const humanUrl = humanLdaUrl(m.filing_url);
               return (
                 <div
                   key={`${m.filing_uuid}-${i}`}
                   data-filing-mention
+                  data-sort-value={String(m.filing_year)}
                   className="px-5 py-3"
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -396,7 +414,14 @@ export default async function CompanyPage({
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
+            {/* §P1-7 sort contract: exporter-declared order (confidence tier,
+                then recipient, then PE, then PIID) — see the ORDER BY on
+                fct_budget_to_awards in export_site.py. */}
+            <table
+              className="w-full text-sm"
+              data-sort-table="company-awards"
+              data-sort-order="confidence_rank:asc"
+            >
               <thead className="bg-muted/60 text-left">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">
@@ -415,6 +440,7 @@ export default async function CompanyPage({
                   <tr
                     key={`${award.award_piid}-${i}`}
                     className="hover:bg-muted/40 transition-colors"
+                    data-sort-value={String(CONFIDENCE_RANK[award.confidence ?? ""] ?? 3)}
                   >
                     <td className="px-4 py-3">
                       {award.recipient_name ?? entity.display_name}
