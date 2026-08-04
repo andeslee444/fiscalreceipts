@@ -48,12 +48,19 @@ export const metadata: Metadata = {
   },
 };
 
-/** "SEC filing" / "press release" — what the reader is about to open. */
-function sourceLabel(url: string): string {
+/**
+ * Who published it — paired with the seed's own `source_form` + `source_date`.
+ *
+ * Every link on this page used to read the identical "SEC filing ↗": no form
+ * type, no date, no way to tell an Item 2.01 completion report from a
+ * shareholder-approval release. That mattered — the audit found the Exelis row
+ * cited a release that only said the merger was *expected* to close.
+ */
+function sourcePublisher(url: string): string {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
-    if (host.endsWith("sec.gov")) return "SEC filing";
-    return `${host} press release`;
+    if (host.endsWith("sec.gov")) return "SEC EDGAR";
+    return host;
   } catch {
     return "source";
   }
@@ -62,6 +69,7 @@ function sourceLabel(url: string): string {
 const EVENT_LABEL: Record<string, string> = {
   rename: "Rename",
   acquisition: "Acquisition",
+  merger: "Merger",
 };
 
 export default function CompanyFamiliesPage() {
@@ -92,8 +100,8 @@ export default function CompanyFamiliesPage() {
         >
           <p className="mb-2">
             <strong className="text-foreground">
-              This table is hand-curated and hand-sourced. Nothing on it is
-              inferred.
+              This table is hand-curated and hand-sourced. Every row declares
+              how well its source supports it.
             </strong>{" "}
             Federal award data records the recipient name that was on the
             contract, so a company that renames appears under both names —
@@ -118,7 +126,20 @@ export default function CompanyFamiliesPage() {
             event side marked{" "}
             <span className="italic">no separate registry family</span> means
             the award data has no separate family under that name, usually
-            because it was already resolved under its parent.
+            because it was already resolved under its parent. Because both
+            sides of an event can be unresolved, each row also states{" "}
+            <strong className="text-foreground">which contractor rows it
+            actually merged</strong> — so no event on this page can look
+            consequential without naming its consequence.
+          </p>
+          <p className="mb-2">
+            <strong className="text-foreground">
+              Two rows are marked name-inferred.
+            </strong>{" "}
+            Their source documents the corporate event but does not name that
+            specific award recipient — a separately-registered subsidiary whose
+            membership we read off its name. That inference is ours, so it is
+            labelled on the row rather than left to look sourced.
           </p>
           <p>
             <strong className="text-foreground">Not in scope:</strong> promoting
@@ -138,11 +159,12 @@ export default function CompanyFamiliesPage() {
         <h2 className="mb-3 text-xl font-semibold">
           {events.length} curated {events.length === 1 ? "event" : "events"}
         </h2>
-        <div className="mb-8 overflow-x-auto rounded-lg border border-border">
+        <div className="mb-2 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm" data-family-events-table>
             <caption className="sr-only">
-              Curated corporate renames and acquisitions, newest first. Each row
-              links its official source.
+              Curated corporate renames, acquisitions and mergers, newest first.
+              Each row links its official source and states which contractor
+              rows it merged.
             </caption>
             <thead className="bg-muted/60 text-left">
               <tr>
@@ -158,7 +180,7 @@ export default function CompanyFamiliesPage() {
                 <th scope="col" className="px-4 py-3 font-medium w-28">
                   Event
                 </th>
-                <th scope="col" className="px-4 py-3 font-medium w-36">
+                <th scope="col" className="px-4 py-3 font-medium w-44">
                   Source
                 </th>
               </tr>
@@ -167,8 +189,12 @@ export default function CompanyFamiliesPage() {
               {events.map(({ family, event }, i) => (
                 <tr
                   key={`${family.slug}-${i}`}
+                  // The anchor /companies/ links each former name's event
+                  // label at — one click from name to filing.
+                  id={event.anchor}
                   data-family-event={family.slug}
-                  className="align-top hover:bg-muted/40 transition-colors"
+                  data-changed-families={event.changed_family_keys.join("|")}
+                  className="align-top hover:bg-muted/40 transition-colors target:bg-primary/10 scroll-mt-24"
                 >
                   <td className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground">
                     {event.effective_date}
@@ -195,29 +221,83 @@ export default function CompanyFamiliesPage() {
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {event.note}
                     </span>
+                    {/* What this event DID to /companies/. Without it every RTX
+                        row showed "no separate registry family" on one side and
+                        no event explained the merge it caused. */}
+                    <span className="mt-1.5 block text-xs">
+                      {event.changed_family_keys.length > 0 ? (
+                        <span className="text-foreground">
+                          Merges{" "}
+                          <span className="font-medium">
+                            {event.changed_family_keys.join(", ")}
+                          </span>{" "}
+                          into the {family.label} line.
+                        </span>
+                      ) : event.from_family_key || event.to_family_key ? (
+                        <span className="italic text-muted-foreground">
+                          Names the {family.label} line itself — it folds in no
+                          additional contractor row.
+                        </span>
+                      ) : (
+                        <span className="italic text-muted-foreground">
+                          Neither name has its own row in the award data, so
+                          this event merges nothing.
+                        </span>
+                      )}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {EVENT_LABEL[event.event] ?? event.event}
+                  <td className="px-4 py-3 text-muted-foreground">
+                    <span className="whitespace-nowrap">
+                      {EVENT_LABEL[event.event] ?? event.event}
+                    </span>
+                    {event.evidence === "name-inferred" && (
+                      <span
+                        data-evidence="name-inferred"
+                        title="The source documents the corporate event but does not name this specific award recipient — the link from the recipient name to the filing party is our inference"
+                        className="mt-1 block w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                      >
+                        name-inferred
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    {/* EXTERNAL reference — deliberately not a Cite chip. */}
+                    {/* EXTERNAL reference — deliberately not a Cite chip. It
+                        now names the FORM and its date, because "SEC filing"
+                        alone hid the difference between a completion report
+                        and a shareholder-approval release. */}
                     <a
                       href={event.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       data-external-source={event.source_url}
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      data-source-form={event.source_form}
+                      className="inline-flex items-baseline gap-1 text-primary hover:underline"
                     >
-                      {sourceLabel(event.source_url)}
-                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>
+                        {event.source_form} · {event.source_date}
+                      </span>
+                      <ExternalLink className="h-3 w-3 shrink-0 self-center" aria-hidden="true" />
                       <span className="sr-only">(opens in new tab)</span>
                     </a>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {sourcePublisher(event.source_url)} · opened and checked{" "}
+                      {event.source_verified}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="mb-8 text-xs text-muted-foreground" data-sources-as-of>
+          {payload?.sources_verified_through
+            ? `Every source above was opened and read against its row on or before ${payload.sources_verified_through}. `
+            : ""}
+          Warehouse citations elsewhere on this site carry a retrieval date and
+          a SHA-256 of the document; these external references carry the form,
+          its date and the date we last checked it. That is the whole chain of
+          custody for this tier — we are not hosting copies of these filings.
+        </p>
 
         {/* ── What the merge did to /companies/ ── */}
         <h2 className="mb-3 text-xl font-semibold">

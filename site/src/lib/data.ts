@@ -656,10 +656,15 @@ export function getEntityFamilyEvents(): FamilyEventsPayload | null {
   // No try/catch: a present-but-malformed curated payload must fail the build
   // loudly — silently degrading would restore the very split it exists to fix.
   const payload = JSON.parse(readFileSync(full, "utf8")) as FamilyEventsPayload;
-  if (payload.schema_version !== 1) {
+  // v2 (Sprint 2 visual-judge fix round) adds per-member `arrival`, per-event
+  // `anchor` / `changed_family_keys` / `evidence`, and the source form + dates.
+  // The reader requires all of them, so v1 is no longer accepted: an old
+  // payload would render former names with no event at all, which is the
+  // defect this schema exists to close.
+  if (payload.schema_version !== 2) {
     throw new Error(
       `[govbudget/data] entity_family_events.json schema_version ` +
-        `${payload.schema_version} != 1`,
+        `${payload.schema_version} != 2 — re-run \`govbudget export-site\``,
     );
   }
   _familyEvents = payload;

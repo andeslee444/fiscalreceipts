@@ -31,16 +31,54 @@ import type { EntityTop } from "@/lib/data";
 
 // ── Payload (data/site/json/entity_family_events.json) ──────────────────────
 
+export type FamilyEventKind = "rename" | "acquisition" | "merger";
+
+/** How well the linked source supports THIS row (exporter EVIDENCE_KINDS). */
+export type FamilyEvidence = "sourced" | "name-inferred";
+
 export interface FamilyEventRow {
   from_name: string;
   to_name: string;
-  event: "rename" | "acquisition";
+  event: FamilyEventKind;
   effective_date: string;
+  evidence: FamilyEvidence;
   /** Official press release or SEC filing — an EXTERNAL reference. */
   source_url: string;
+  /** Form label for the link ("8-K Item 2.01", "Press release"). */
+  source_form: string;
+  /** The document's own date. */
+  source_date: string;
+  /** When a curator last opened the source and checked this row. */
+  source_verified: string;
   note: string;
   from_family_key: string | null;
   to_family_key: string | null;
+  /** DOM id of this event's row on /companies/families/. */
+  anchor: string;
+  /** Registry family keys whose membership THIS event explains (may be []). */
+  changed_family_keys: string[];
+}
+
+/**
+ * The event that explains why ONE registry name is in the family (§P1-3 fix
+ * round). Computed by the exporter — see entity_families.member_arrivals.
+ *
+ * The defect it closes: /companies/ hung ONE trailing event label off a
+ * heterogeneous list of former names, so EXELIS INC. (acquired by Harris in
+ * 2015) read "acquired 2019" — the date of the separate Harris/L3 merger —
+ * and ROCKWELL COLLINS, INC. (acquired 2018) read "renamed 2023".
+ */
+export interface MemberArrival {
+  event_index: number;
+  /** /companies/families/#{anchor} — the exact row that documents this. */
+  anchor: string;
+  /** "from": this name is what changed. "to": this is the post-event name. */
+  role: "from" | "to";
+  /** The other side of the event. */
+  counterparty: string;
+  event: FamilyEventKind;
+  effective_date: string;
+  evidence: FamilyEvidence;
 }
 
 export interface FamilyMember {
@@ -53,6 +91,8 @@ export interface FamilyMember {
   total_obligation_fact_id: string | null;
   uei_count: number;
   worst_confidence: string;
+  /** null for the family's surviving name (the acquirer is not "acquired"). */
+  arrival: MemberArrival | null;
 }
 
 export interface CuratedFamily {
@@ -71,6 +111,8 @@ export interface FamilyEventsPayload {
   method: string;
   source_kind: string;
   seed: string;
+  /** Max source_verified across the seed — the table's "as of" stamp. */
+  sources_verified_through: string | null;
   families: CuratedFamily[];
 }
 
@@ -121,7 +163,39 @@ function entityToMember(e: EntityTop): FamilyMember {
     total_obligation_fact_id: e.total_obligation_fact_id,
     uei_count: e.uei_count,
     worst_confidence: e.worst_confidence,
+    arrival: null, // an unmerged registry row arrived by no curated event
   };
+}
+
+// ── Event vocabulary ────────────────────────────────────────────────────────
+
+/**
+ * The past-participle label for an event kind. "merger" exists because calling
+ * the UTC/Raytheon merger of equals an "acquisition" misstates who absorbed
+ * whom, and calling it a "rename" is worse.
+ */
+const EVENT_VERB: Record<FamilyEventKind, string> = {
+  rename: "renamed",
+  acquisition: "acquired",
+  merger: "merged",
+};
+
+/** "acquired 2015" / "renamed 2023" / "merged 2020" — the year is the EVENT's. */
+export function eventLabel(event: FamilyEventKind, effectiveDate: string): string {
+  return `${EVENT_VERB[event] ?? event} ${effectiveDate.slice(0, 4)}`;
+}
+
+/**
+ * The per-former-name annotation. A "from" arrival states what happened to
+ * THAT name; a "to" arrival names the predecessor it replaced, because
+ * "Northrop Grumman Innovation Systems — acquired 2018" alone would leave the
+ * reader wondering which company that was.
+ */
+export function memberEventLabel(arrival: MemberArrival): string {
+  const label = eventLabel(arrival.event, arrival.effective_date);
+  return arrival.role === "to"
+    ? `formerly ${arrival.counterparty}, ${label}`
+    : label;
 }
 
 /**

@@ -32,7 +32,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Cite } from "@/components/cite";
-import type { CompanyRow } from "@/lib/entity-families";
+import {
+  memberEventLabel,
+  type CompanyRow,
+  type FamilyMember,
+} from "@/lib/entity-families";
 
 interface CompaniesTableProps {
   rows: CompanyRow[];
@@ -71,60 +75,121 @@ function SortIcon({
   );
 }
 
-/** "renamed 2023" / "acquired 2018" — the shortest honest event label. */
-function eventLabel(event: string, effectiveDate: string): string {
-  const year = effectiveDate.slice(0, 4);
-  return event === "rename" ? `renamed ${year}` : `acquired ${year}`;
+/** The registry name, linked when it has a page. */
+function MemberName({ m }: { m: FamilyMember }) {
+  return m.has_page ? (
+    <Link
+      href={`/company/${m.slug}/`}
+      className="hover:text-foreground hover:underline"
+    >
+      {m.display_name}
+    </Link>
+  ) : (
+    <span title="Outside the top-200 list — counted in the total, no profile page">
+      {m.display_name}
+    </span>
+  );
 }
 
 /**
- * The registry names folded into a merged row. Members with a company page
- * link to it; members outside the top-200 export are named as plain text —
- * their obligations are in the total, they just have no page to open.
+ * The registry names folded into a merged row — each with ITS OWN event.
+ *
+ * This used to hang ONE trailing label off the whole list, picked as the
+ * family's most recent event. That was factually wrong, twice over: EXELIS
+ * INC. (acquired by Harris in 2015) read "acquired 2019", the date of the
+ * separate Harris/L3 merger, and ROCKWELL COLLINS, INC. — which entered by
+ * ACQUISITION in 2018 — read "renamed 2023". Two events collapsed into one,
+ * and a rename label pinned to acquired companies.
+ *
+ * Now every former name carries the event that explains it (exporter-computed
+ * — lib/entity-families MemberArrival), linked straight at the /families/ row
+ * that documents it with its source. A member with no label is the family's
+ * surviving name: HII acquired Alion, so HII is not "acquired 2021".
  */
 function MergedMembers({ row }: { row: CompanyRow }) {
-  // The MOST RECENT event is the one that explains today's name — the RTX
-  // family's rows also carry a 2018 and a 2020 event, but "renamed 2023" is
-  // what a reader looking at "RTX" needs. Seed order is authoring order, so
-  // pick by date rather than position.
-  const events = row.family?.events ?? [];
-  const latest = events.reduce<(typeof events)[number] | null>(
-    (best, e) =>
-      best === null || e.effective_date > best.effective_date ? e : best,
-    null,
-  );
   return (
-    <span className="mt-0.5 block text-xs text-muted-foreground">
-      {row.members.map((m, i) => (
-        <span key={m.family_key}>
-          {i > 0 && <span aria-hidden="true"> · </span>}
-          {m.has_page ? (
-            <Link
-              href={`/company/${m.slug}/`}
-              className="hover:text-foreground hover:underline"
-            >
-              {m.display_name}
-            </Link>
-          ) : (
-            <span title="Outside the top-200 list — counted in the total, no profile page">
-              {m.display_name}
-            </span>
+    <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+      {row.members.map((m) => (
+        <li key={m.family_key} data-member-key={m.family_key}>
+          <MemberName m={m} />
+          {m.arrival && (
+            <>
+              {" "}
+              <Link
+                href={`/companies/families/#${m.arrival.anchor}`}
+                data-member-event={`${m.arrival.event}:${m.arrival.effective_date}`}
+                className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                title="Open the curated event, and its official source"
+              >
+                {memberEventLabel(m.arrival)}
+              </Link>
+              {m.arrival.evidence === "name-inferred" && (
+                <span
+                  title="The source documents the corporate event but does not name this specific award recipient — the link is our inference from the name"
+                  className="ml-1 rounded bg-muted px-1 py-0.5 text-[10px]"
+                >
+                  name-inferred
+                </span>
+              )}
+            </>
           )}
-        </span>
+        </li>
       ))}
-      {latest && (
-        <>
-          {" — "}
-          <Link
-            href="/companies/families/"
-            className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-            title="Hand-curated corporate rename/acquisition table, with sources"
-          >
-            {eventLabel(latest.event, latest.effective_date)}
-          </Link>
-        </>
-      )}
-    </span>
+    </ul>
+  );
+}
+
+/**
+ * ADD 7 — the addends behind a merged total.
+ *
+ * A merged row's figure is a sum across registry families, shown in the very
+ * sprint that added "HOW THE CELLS COMBINE" arithmetic to the workbook drawer.
+ * A skeptical reader wants the addends at the point of claim, in the same
+ * visual grammar. Each addend is its own <Cite> (never a browser-side sum, and
+ * never a bare "$…" outside [data-amount]); the total is the same cited
+ * derived fact the row headline carries, and lib/entity-families
+ * assertNoDoubleCount has already proved at BUILD time that they agree.
+ */
+function CombinedArithmetic({ row }: { row: CompanyRow }) {
+  return (
+    <details className="mt-1.5 text-xs" data-testid="company-addends">
+      <summary className="cursor-pointer text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground">
+        {`Show the ${row.members.length} figures that add to this total`}
+      </summary>
+      {/* Inline flow (not flex), like the workbook drawer's arithmetic line:
+          the operators are real text nodes, so it reads as one equation to a
+          screen reader, a copy-paste and a gate reading textContent. */}
+      <p
+        data-testid="company-arithmetic"
+        className="mt-1 rounded-md border border-border bg-muted/30 px-2.5 py-2 leading-6"
+      >
+        {row.members.map((m, i) => (
+          <span key={m.family_key}>
+            {i > 0 && <span className="text-muted-foreground">{" + "}</span>}
+            <span className="whitespace-nowrap">
+              <span className="text-muted-foreground">{m.display_name} </span>
+              <Cite
+                value={m.total_obligation}
+                units="USD"
+                dataset="dim_entities"
+                factId={m.total_obligation_fact_id}
+                chip={false}
+              />
+            </span>
+          </span>
+        ))}
+        <span className="text-muted-foreground">{" = "}</span>
+        <span className="font-semibold">
+          <Cite
+            value={row.totalObligation}
+            units="USD"
+            dataset="dim_entities"
+            factId={row.factId}
+            chip={false}
+          />
+        </span>
+      </p>
+    </details>
   );
 }
 
@@ -194,13 +259,60 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
         </span>
       </div>
 
+      {/* Mobile sort controls. The stacked layout below hides <thead>, and the
+          sort affordance lived only in its column headers — so it moves here
+          rather than disappearing on phones. */}
+      <div className="sm:hidden mb-3 flex items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Sort:</span>
+        {(
+          [
+            ["total_obligation", "Obligations"],
+            ["uei_count", "UEIs"],
+          ] as [SortKey, string][]
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => toggleSort(key)}
+            aria-pressed={sortKey === key}
+            className={[
+              "rounded border px-2 py-1 transition-colors",
+              sortKey === key
+                ? "border-border bg-muted text-foreground"
+                : "border-border text-muted-foreground",
+            ].join(" ")}
+          >
+            {label}
+            <SortIcon col={key} sortKey={sortKey} sortAsc={sortAsc} />
+          </button>
+        ))}
+      </div>
+
+      {/* Naming legend — merged lines carry the FAMILY label we authored
+          ("RTX"), unmerged lines carry the recipient name exactly as the award
+          data records it (SCREAMING CAPS). Nothing explained the difference,
+          so it read as inconsistent styling rather than as two kinds of
+          name. */}
+      <p className="mb-2 text-xs text-muted-foreground">
+        Lines that fold several registry names together show the curated family
+        name; every other line shows the recipient name exactly as the award
+        data records it, capitalization included.
+      </p>
+
       {/* Table.
           §P1-7 sort contract (gate 24 leg f) — see programs-table.tsx for the
           full contract: data-sort-order tracks the LIVE sort state and every
           row carries the comparator's own input in data-sort-value.
           §P1-3 contract (gate 24 leg g): every row declares the registry
           family keys it renders in data-family-keys, so the gate can assert
-          that no curated family is split across two rows. */}
+          that no curated family is split across two rows.
+
+          MOBILE (fix round): the Total-obligations column and its fact chip
+          were sliced mid-glyph at the 390px viewport edge — the headline RTX
+          consolidation was invisible on a phone. Below `sm` the row stacks
+          (name + former names, then obligations and UEIs beneath) instead of
+          scrolling horizontally. ONE DOM, so every sort/merge contract above
+          still reads exactly the same nodes. */}
       <div className="overflow-x-auto rounded-lg border border-border">
         <table
           className="w-full text-sm"
@@ -208,7 +320,7 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
           data-sort-order={`${sortKey}:${sortAsc ? "asc" : "desc"}`}
           data-merged-families={mergedCount}
         >
-          <thead className="bg-muted/60 text-left">
+          <thead className="hidden sm:table-header-group bg-muted/60 text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-10 text-right">
                 #
@@ -247,23 +359,29 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
             {filtered.map((r) => (
               <tr
                 key={r.key}
-                className="hover:bg-muted/40 transition-colors"
+                className="block sm:table-row hover:bg-muted/40 transition-colors"
                 data-sort-value={String(
                   sortKey === "total_obligation" ? r.totalObligation : r.ueiCount,
                 )}
                 data-family-keys={r.members.map((m) => m.family_key).join("|")}
                 {...(r.merged ? { "data-merged-family": r.key } : {})}
               >
-                <td className="px-4 py-3 text-right text-muted-foreground/60 text-xs tabular-nums align-top">
+                <td className="hidden sm:table-cell px-4 py-3 text-right text-muted-foreground/60 text-xs tabular-nums align-top">
                   {r.rank}
                 </td>
-                <td className="px-4 py-3">
+                <td className="block sm:table-cell px-4 pt-3 pb-1 sm:py-3">
+                  {/* The rank rides with the name at mobile — a rank column of
+                      its own would eat a third of a 390px viewport. */}
+                  <span className="sm:hidden mr-1.5 text-xs tabular-nums text-muted-foreground/60">
+                    {r.rank}
+                  </span>
                   {r.merged ? (
                     <>
                       <span className="font-medium text-foreground">
                         {r.displayName}
                       </span>
                       <MergedMembers row={r} />
+                      <CombinedArithmetic row={r} />
                     </>
                   ) : (
                     <Link
@@ -274,19 +392,28 @@ export function CompaniesTable({ rows, showConfidence }: CompaniesTableProps) {
                     </Link>
                   )}
                 </td>
-                <td className="px-4 py-3 text-center text-muted-foreground tabular-nums align-top">
+                <td className="hidden sm:table-cell px-4 py-3 text-center text-muted-foreground tabular-nums align-top">
                   {r.ueiCount}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums align-top">
+                {/* Mobile: obligations sit UNDER the name at full width with a
+                    visible label, so the figure and its chips can never be
+                    sliced by the viewport edge. */}
+                <td className="block sm:table-cell px-4 pb-3 pt-0 sm:py-3 text-left sm:text-right tabular-nums align-top">
+                  <span className="sm:hidden mr-1.5 text-xs text-muted-foreground">
+                    Total obligations:
+                  </span>
                   <Cite
                     value={r.totalObligation}
                     units="USD"
                     dataset="dim_entities"
                     factId={r.factId}
                   />
+                  <span className="sm:hidden ml-2 text-xs text-muted-foreground tabular-nums">
+                    {r.ueiCount} UEI{r.ueiCount === 1 ? "" : "s"}
+                  </span>
                 </td>
                 {showConfidence && (
-                  <td className="px-4 py-3 text-center align-top">
+                  <td className="block sm:table-cell px-4 pb-3 sm:py-3 text-left sm:text-center align-top">
                     <span
                       className={[
                         "inline-block rounded px-2 py-0.5 text-xs font-medium",

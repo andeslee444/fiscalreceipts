@@ -12,6 +12,8 @@ import {
   assertNoDoubleCount,
   companyRowFactIds,
   confidenceIsUniform,
+  eventLabel,
+  memberEventLabel,
   mergeCompanies,
   worstConfidence,
   type CuratedFamily,
@@ -51,6 +53,7 @@ function member(
     total_obligation_fact_id: `fid-${family_key.toLowerCase()}`,
     uei_count: 10,
     worst_confidence: "medium",
+    arrival: null,
     ...opts,
   };
 }
@@ -75,10 +78,11 @@ function family(
 
 function payloadOf(...families: CuratedFamily[]): FamilyEventsPayload {
   return {
-    schema_version: 1,
+    schema_version: 2,
     method: "hand-curated",
     source_kind: "external",
     seed: "data-seeds/entity_family_events.csv",
+    sources_verified_through: "2026-08-04",
     families,
   };
 }
@@ -281,10 +285,16 @@ describe("allEvents", () => {
     to_name: "X",
     event: "rename",
     effective_date: date,
+    evidence: "sourced",
     source_url: "https://sec.gov/x",
+    source_form: "8-K",
+    source_date: date,
+    source_verified: "2026-08-04",
     note: "n",
     from_family_key: null,
     to_family_key: null,
+    anchor: `event-x-${date}`,
+    changed_family_keys: [],
   });
 
   it("orders newest first", () => {
@@ -307,5 +317,55 @@ describe("allEvents", () => {
       }),
     );
     expect(allEvents(p)).toHaveLength(1);
+  });
+});
+
+
+describe("per-former-name event labels (fix round)", () => {
+  // /companies/ hung ONE trailing label off a heterogeneous member list, so
+  // EXELIS INC. — acquired by Harris in 2015 — read "acquired 2019", the date
+  // of the separate Harris/L3 merger, and ROCKWELL COLLINS, INC. (acquired
+  // 2018) read "renamed 2023". The label now comes from the member's OWN
+  // exporter-computed arrival.
+
+  it("uses the event's own year, never the family's latest", () => {
+    expect(eventLabel("acquisition", "2015-05-29")).toBe("acquired 2015");
+    expect(eventLabel("rename", "2023-07-17")).toBe("renamed 2023");
+  });
+
+  it("says merged for a merger — not acquired, not renamed", () => {
+    // Calling the UTC/Raytheon merger of equals an acquisition misstates who
+    // absorbed whom; calling it a rename is worse.
+    expect(eventLabel("merger", "2020-04-03")).toBe("merged 2020");
+  });
+
+  it("labels a 'from' arrival with what happened to that name", () => {
+    expect(
+      memberEventLabel({
+        event_index: 2,
+        anchor: "event-l3harris-technologies-2",
+        role: "from",
+        counterparty: "Harris Corporation",
+        event: "acquisition",
+        effective_date: "2015-05-29",
+        evidence: "sourced",
+      }),
+    ).toBe("acquired 2015");
+  });
+
+  it("names the predecessor for a 'to' arrival", () => {
+    // "Northrop Grumman Innovation Systems — acquired 2018" alone would leave
+    // the reader wondering which company that was.
+    expect(
+      memberEventLabel({
+        event_index: 0,
+        anchor: "event-northrop-grumman-0",
+        role: "to",
+        counterparty: "Orbital ATK, Inc.",
+        event: "acquisition",
+        effective_date: "2018-06-06",
+        evidence: "sourced",
+      }),
+    ).toBe("formerly Orbital ATK, Inc., acquired 2018");
   });
 });
