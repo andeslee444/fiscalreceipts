@@ -4710,6 +4710,19 @@ def _write_all_sidecars(
     n_files += _emit_cite_shards(json_dir=json_dir, citations_dict=citations_dict)
 
     # ------------------------------------------------------------------ #
+    # 7c. workbook-cells/{fact_id[:2]}.json (Sprint 2 §P1-9)              #
+    # ------------------------------------------------------------------ #
+    # The workbook drawer's cell preview: the cited cells + 2 rows of
+    # context, read from the sha-named workbook copies written in step 3.
+    # A SIDECAR, not a citation field — folding ~24 MB of preview rows into
+    # citations_dict would inflate every embedded per-page slice (i.e. the
+    # static HTML of every figure-bearing page) and the cite-shards by ~25%
+    # to serve a table only opened drawers ever render.
+    n_files += _emit_workbook_cells(
+        json_dir=json_dir, out_dir=out_dir, citations_dict=citations_dict
+    )
+
+    # ------------------------------------------------------------------ #
     # 8. search_quick.json                                               #
     # ------------------------------------------------------------------ #
 
@@ -6727,6 +6740,44 @@ def _emit_cite_shards(*, json_dir: Path, citations_dict: dict) -> int:
     for prefix in sorted(shards):
         _write_json(shard_dir / f"{prefix}.json", shards[prefix])
     return len(shards)
+
+
+def _emit_workbook_cells(*, json_dir: Path, out_dir: Path, citations_dict: dict) -> int:
+    """Emit json/workbook-cells/{fact_id[:2]}.json — drawer cell previews.
+
+    PM-review Sprint 2 §P1-9. One payload per workbook citation: the cited
+    cells with their OWN values, ±2 rows of workbook context, and the cited
+    column's header — read out of the sha-named .xlsx copies in out_dir.
+    govbudget.workbook_cells raises if any preview would disagree with its
+    citation (sum mismatch, missing sheet, out-of-range cell), so a shipped
+    preview always adds up to the figure the drawer shows above it.
+
+    A workbook FILE that was never exported is reported, not raised on — the
+    missing document is verify_phase5b1's failure to name, and the previewless
+    citation is gate 4 leg 3a's. See workbook_cells.__doc__.
+
+    Returns the number of shard files written (≤256).
+    """
+    from govbudget.workbook_cells import (
+        build_workbook_previews,
+        shard_workbook_previews,
+    )
+
+    missing: set[str] = set()
+    previews = build_workbook_previews(
+        workbook_dir=out_dir / "workbooks",
+        citations=citations_dict,
+        missing_workbooks=missing,
+    )
+    if missing:
+        n_wb = sum(1 for c in citations_dict.values() if c.get("kind") == "workbook")
+        print(
+            f"workbook-cells: {len(previews)}/{n_wb} workbook citations previewed;"
+            f" {len(missing)} source workbook(s) absent from the export"
+            f" ({', '.join(sorted(missing)[:3])}…) — those citations ship"
+            " previewless (verify-phase5b1 + gate 4 leg 3a own that failure)"
+        )
+    return shard_workbook_previews(previews, json_dir / "workbook-cells")
 
 
 # Formula prefix marking the agency FY2024 sum — its inputs are workbook
