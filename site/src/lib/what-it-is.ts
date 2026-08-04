@@ -62,10 +62,16 @@ export function answerFamilyPlain(family: string): string {
  * entirely inside a 390×844 viewport with the breadcrumbs, the (often
  * two-line) program title and the badge row above it — gate 16 measures
  * exactly that. One claim is always taken; the second joins it only if the
- * pair stays within budget. Measured, not guessed: at 390px the card is
- * ~45 characters per 19px line, so 300 chars ≈ 7 lines ≈ 133px.
+ * pair stays within budget.
+ *
+ * MEASURED, not guessed. At 390×844 the strip's bottom edge sat at 361px on
+ * /program/ATA000/ with one claim — 350px of headroom. At ~45 characters per
+ * 19px line, 420 characters is ~10 lines ≈ 190px, which clears the fold with
+ * room for a two-line title above. Across the 50 dossiers the longest single
+ * first claim is 405 characters (also inside the budget) and 20 of the 50
+ * first-pairs fit, including the F-35 pair the PM quoted.
  */
-export const DOSSIER_CARD_CHAR_BUDGET = 300;
+export const DOSSIER_CARD_CHAR_BUDGET = 420;
 
 /** Maximum claims hoisted, however short they are (spec: "first one or two"). */
 export const DOSSIER_CARD_MAX_CLAIMS = 2;

@@ -70,9 +70,15 @@ describe("hoistDossierClaims", () => {
   });
 
   it("stops before the budget rather than overflowing the fold", () => {
-    const first = claim("a".repeat(200));
-    const second = claim("b".repeat(200));
+    const first = claim("a".repeat(300));
+    const second = claim("b".repeat(300));
     expect(hoistDossierClaims([first, second])).toHaveLength(1);
+  });
+
+  it("keeps the budget inside the measured 390x844 headroom", () => {
+    // 350px of headroom below the strip at 390 wide, ~19px per ~45-char line.
+    const lines = Math.ceil(DOSSIER_CARD_CHAR_BUDGET / 45);
+    expect(lines * 19).toBeLessThan(350);
   });
 
   it("returns nothing when the dossier section is empty", () => {
@@ -129,6 +135,13 @@ describe("whatItIsCard — dossier tier (the PM's repro)", () => {
         /^[0-9a-f]{16}$/,
       );
     }
+  });
+
+  it("hoists BOTH F-35 sentences — the pair fits the card", () => {
+    const card = whatItIsCard(input);
+    if (card.source !== "dossier") throw new Error("unreachable");
+    expect(card.claims).toHaveLength(2);
+    expect(card.claims[1].text).toBe(F35_CLAIM_2);
   });
 
   it("keeps the F-35 pair inside the above-the-fold budget", () => {

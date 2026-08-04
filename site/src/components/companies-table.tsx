@@ -83,8 +83,16 @@ function eventLabel(event: string, effectiveDate: string): string {
  * their obligations are in the total, they just have no page to open.
  */
 function MergedMembers({ row }: { row: CompanyRow }) {
+  // The MOST RECENT event is the one that explains today's name — the RTX
+  // family's rows also carry a 2018 and a 2020 event, but "renamed 2023" is
+  // what a reader looking at "RTX" needs. Seed order is authoring order, so
+  // pick by date rather than position.
   const events = row.family?.events ?? [];
-  const latest = events.length > 0 ? events[0] : null;
+  const latest = events.reduce<(typeof events)[number] | null>(
+    (best, e) =>
+      best === null || e.effective_date > best.effective_date ? e : best,
+    null,
+  );
   return (
     <span className="mt-0.5 block text-xs text-muted-foreground">
       {row.members.map((m, i) => (

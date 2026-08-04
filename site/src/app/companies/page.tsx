@@ -56,8 +56,17 @@ export default function CompaniesPage() {
 
   // §P1-3: the chip conveys nothing when every row reads the same. Computed
   // over ALL rows so the column cannot flicker as the reader filters.
+  //
+  // NOTE on the spec's premise: §P1-3 reported "all 200 rows read medium".
+  // Against this build that is FALSE — the live split is 133 high / 67 medium
+  // (a family is as good as its worst member, so a merged family can drop to
+  // medium). The chip therefore still varies and still earns its column; the
+  // suppression below is the rule, not a foregone conclusion. What WAS true is
+  // that the visible top of the list is nearly all medium, which is why the
+  // counts are now stated in the header either way.
   const showConfidence = !confidenceIsUniform(rows);
   const uniformConfidence = rows[0]?.worstConfidence ?? "medium";
+  const highCount = rows.filter((r) => r.worstConfidence === "high").length;
   const mergedCount = rows.filter((r) => r.merged).length;
   const foldedRows = companies.length - rows.length;
 
@@ -100,20 +109,33 @@ export default function CompaniesPage() {
             figure whose inputs are the rows it replaced — click it to see them.
           </p>
         )}
-        <p className="text-sm text-muted-foreground">
+        {/* §P1-3: the confidence method, stated ONCE in the header — where a
+            per-row badge could only repeat it. The chip column survives only
+            while the value actually varies. */}
+        <p className="text-sm text-muted-foreground" data-confidence-method>
           Obligation totals carry derived USAspending citations — click a
-          figure to inspect the derivation.{" "}
-          {/* §P1-3: the confidence method, stated ONCE, because the per-row
-              chip was uniform on all 200 rows and so said nothing. */}
-          {!showConfidence && (
-            <span data-confidence-method>
+          figure to inspect the derivation. Confidence reflects the
+          entity-resolution method: <strong>high</strong> = a registered common
+          parent for the subsidiaries; <strong>medium</strong> = name
+          inference. A merged family is only as good as its worst member.{" "}
+          {showConfidence ? (
+            <>
+              {highCount} of these {rows.length} families resolve at high
+              confidence and {rows.length - highCount} by name inference — the
+              biggest names on this list are mostly the latter, and promoting
+              them would need a SAM.gov entity extract this build does not
+              have.
+            </>
+          ) : (
+            <>
               Every family on this list resolves at{" "}
-              <strong>{uniformConfidence}</strong> confidence
+              <strong>{uniformConfidence}</strong> confidence, so the per-row
+              chip is suppressed: a badge that never varies tells you nothing.
               {uniformConfidence === "medium"
-                ? " (name inference) — the value does not vary across this table, so the per-row chip is suppressed. The SAM.gov registered-parent tier that would promote the largest families to high confidence needs a SAM extract this build does not have."
-                : " — the value does not vary across this table, so the per-row chip is suppressed."}{" "}
-            </span>
-          )}
+                ? " Promoting the largest families to high confidence would need a SAM.gov entity extract this build does not have."
+                : ""}
+            </>
+          )}{" "}
           See{" "}
           <Link href="/methodology/" className="underline hover:text-foreground">
             methodology §4
