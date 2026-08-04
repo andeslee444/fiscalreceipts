@@ -14,12 +14,24 @@ external references, and the site says so plainly. Nothing here is inferred.
 
 Contract:
   * Source of truth: ``data-seeds/entity_family_events.csv`` with columns
-    ``family, from_name, to_name, event, effective_date, source_url, note``.
+    ``family, from_name, to_name, event, effective_date, evidence, source_url,
+    source_form, source_date, source_verified, note``.
   * Endpoints resolve to warehouse ``family_key`` values through the SAME
     normalizer that MINTED those keys (``govbudget.entities.normalize_name``)
     and only on EXACT normalized equality — no fuzzy matching, ever. An
     endpoint that does not resolve is recorded as unresolved and rendered as
     such; it is never guessed at.
+
+    CURATOR HAZARD, learned the hard way in the 2026-08-04 source audit: exact
+    normalized equality can still be a FALSE positive, because the normalizer
+    strips corporate suffixes. "United Technologies Corporation" normalizes to
+    ``UNITED TECHNOLOGIES``, which is a real warehouse family — an unrelated
+    USD 1.5M "UNITED TECHNOLOGIES, LLC", not the aerospace parent. Writing
+    that endpoint would have merged a stranger into RTX. When an endpoint is a
+    corporate parent whose award-data family is NOT the same legal entity,
+    write the name the SOURCE uses for the business ("Collins Aerospace
+    Systems (United Technologies Corporation)") and check the resulting key
+    against ``dim_entities.family_key`` before committing.
   * A ``family_key`` may belong to AT MOST ONE curated family. Two families
     claiming the same key is the double-count hazard in its seed form, so it
     is a load-time error, not a runtime surprise.
@@ -43,18 +55,34 @@ from pathlib import Path
 
 from govbudget.entities import normalize_name
 
-# The seed's exact column set (locked in the Sprint 2 plan).
+# The seed's exact column set (locked in the Sprint 2 plan; widened by the
+# Sprint 2 visual-judge fix round with the chain-of-custody + evidence fields).
 REQUIRED_COLUMNS = (
     "family",
     "from_name",
     "to_name",
     "event",
     "effective_date",
+    "evidence",
     "source_url",
+    "source_form",
+    "source_date",
+    "source_verified",
     "note",
 )
 
-EVENT_KINDS = ("rename", "acquisition")
+# "merger" was added in the fix round: calling the UTC/Raytheon merger of
+# equals — or the HPE-ES/CSC spin-merge that CREATED DXC — an "acquisition"
+# misstates who absorbed whom, and calling it a "rename" is worse. The kind a
+# row carries is the kind ITS OWN SOURCE uses.
+EVENT_KINDS = ("rename", "acquisition", "merger")
+
+#: How well the SOURCE supports this exact row.
+#:   sourced       — the linked document states this event for THESE names.
+#:   name-inferred — the document states the corporate event, but not for this
+#:                   specific award-data recipient; the link from the recipient
+#:                   name to the filing party is OURS. Rendered as such.
+EVIDENCE_KINDS = ("sourced", "name-inferred")
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SLUG_STRIP = re.compile(r"[^a-z0-9]+")
@@ -78,7 +106,15 @@ class FamilyEvent:
     to_name: str
     event: str
     effective_date: str
+    #: EVIDENCE_KINDS — how well the source supports THIS row.
+    evidence: str
     source_url: str
+    #: Human form label for the link ("8-K Item 2.01", "Press release").
+    source_form: str
+    #: The document's own date (SEC filing date / press-release date).
+    source_date: str
+    #: The date a curator last opened the source and checked this row.
+    source_verified: str
     note: str
 
 
@@ -109,17 +145,37 @@ def load_family_events(csv_path: Path) -> list[FamilyEvent]:
                 raise FamilyEventsError(
                     f"{csv_path.name}:{i}: event {event!r} not in {EVENT_KINDS}"
                 )
-            effective_date = need("effective_date")
-            if not _ISO_DATE.match(effective_date):
+            evidence = need("evidence")
+            if evidence not in EVIDENCE_KINDS:
                 raise FamilyEventsError(
-                    f"{csv_path.name}:{i}: effective_date {effective_date!r} is not YYYY-MM-DD"
+                    f"{csv_path.name}:{i}: evidence {evidence!r} not in "
+                    f"{EVIDENCE_KINDS} — a row must declare whether its source "
+                    f"names these exact parties or whether we inferred the link"
                 )
-            try:
-                date.fromisoformat(effective_date)
-            except ValueError as exc:
+
+            def need_date(col: str) -> str:
+                value = need(col)
+                if not _ISO_DATE.match(value):
+                    raise FamilyEventsError(
+                        f"{csv_path.name}:{i}: {col} {value!r} is not YYYY-MM-DD"
+                    )
+                try:
+                    date.fromisoformat(value)
+                except ValueError as exc:
+                    raise FamilyEventsError(
+                        f"{csv_path.name}:{i}: {col} {value!r}: {exc}"
+                    ) from exc
+                return value
+
+            effective_date = need_date("effective_date")
+            source_date = need_date("source_date")
+            source_verified = need_date("source_verified")
+            if source_verified < source_date:
                 raise FamilyEventsError(
-                    f"{csv_path.name}:{i}: effective_date {effective_date!r}: {exc}"
-                ) from exc
+                    f"{csv_path.name}:{i}: source_verified {source_verified!r} "
+                    f"precedes source_date {source_date!r} — a row cannot have "
+                    f"been checked before its source existed"
+                )
             source_url = need("source_url")
             if not source_url.startswith("https://"):
                 raise FamilyEventsError(
@@ -140,7 +196,11 @@ def load_family_events(csv_path: Path) -> list[FamilyEvent]:
                     to_name=to_name,
                     event=event,
                     effective_date=effective_date,
+                    evidence=evidence,
                     source_url=source_url,
+                    source_form=need("source_form"),
+                    source_date=source_date,
+                    source_verified=source_verified,
                     note=need("note"),
                 )
             )
@@ -240,3 +300,101 @@ def resolve_families(
     # family merges nothing. Its EVENTS still ship (the table is the asset) —
     # the caller keeps the full event list separately.
     return [by_label[label] for label in order]
+
+
+# ── Per-member arrival: WHICH event explains THIS registry name ──────────────
+#
+# The defect this closes (Sprint 2 visual-judge round, both judges): /companies/
+# hung ONE trailing event label off a heterogeneous list of former names. The
+# RTX line read "RAYTHEON COMPANY · RTX CORP · ROCKWELL COLLINS … — renamed
+# 2023", and the L3Harris line labelled EXELIS INC. "acquired 2019". Exelis was
+# acquired by Harris in **2015**; 2019 is the separate Harris/L3 merger. Two
+# events, four years apart, collapsed into one wrong date — and a rename label
+# pinned to companies that arrived by acquisition.
+#
+# The fix is in the MODEL, not the CSS: every former name carries its own
+# event. This function computes that binding once, on the Python side, where
+# `normalize_name` (which decides who the family's anchor is) already lives.
+
+
+@dataclass(frozen=True)
+class MemberArrival:
+    """The single event that explains why a registry family is in this family."""
+
+    #: Index of the event in ``ResolvedFamily.events`` — the /families/ anchor.
+    event_index: int
+    #: "from" — this name is what changed. "to" — this name is the post-event
+    #: name of a predecessor the award data does not register separately.
+    role: str
+    #: The other side of the event, for a "formerly …" reading.
+    counterparty: str
+
+
+def member_arrivals(family: ResolvedFamily) -> dict[str, MemberArrival]:
+    """Map each member ``family_key`` to the event that explains its membership.
+
+    Three cases, in priority order:
+
+    1. The member is an event's ``from`` endpoint — that event is what happened
+       TO this name ("Exelis Inc., acquired 2015"). Always wins: it is the most
+       specific true statement about the name the reader is looking at.
+    2. The member is an event's ``to`` endpoint AND is not the family's own
+       anchor — the member is the post-event name of a predecessor the award
+       data does not register separately ("Northrop Grumman Innovation Systems,
+       formerly Orbital ATK, acquired 2018").
+    3. Otherwise — no arrival. This is the family's surviving name (Huntington
+       Ingalls, SAIC, TransDigm are the *acquirers* in their rows; labelling
+       them "acquired" would invert the transaction) or an anchor the seed
+       pulled in by label.
+
+    Deterministic under multiple candidates: earliest ``effective_date`` wins,
+    then seed order.
+    """
+    anchor = normalize_name(family.label)
+    from_hits: dict[str, list[tuple[str, int]]] = {}
+    to_hits: dict[str, list[tuple[str, int]]] = {}
+    for i, rev in enumerate(family.events):
+        if rev.from_endpoint.family_key:
+            from_hits.setdefault(rev.from_endpoint.family_key, []).append(
+                (rev.event.effective_date, i)
+            )
+        if rev.to_endpoint.family_key:
+            to_hits.setdefault(rev.to_endpoint.family_key, []).append(
+                (rev.event.effective_date, i)
+            )
+
+    out: dict[str, MemberArrival] = {}
+    for key in family.member_keys:
+        if key in from_hits:
+            _, idx = min(from_hits[key])
+            out[key] = MemberArrival(
+                event_index=idx,
+                role="from",
+                counterparty=family.events[idx].event.to_name,
+            )
+        elif key in to_hits and key != anchor:
+            _, idx = min(to_hits[key])
+            out[key] = MemberArrival(
+                event_index=idx,
+                role="to",
+                counterparty=family.events[idx].event.from_name,
+            )
+    return out
+
+
+def event_changed_keys(family: ResolvedFamily) -> list[list[str]]:
+    """Per event (seed order): the member keys whose membership IT explains.
+
+    The other half of the judges' finding: on /families/ every visible RTX
+    event showed "no separate registry family" on one side, so *none of the
+    events explained the merge it caused*. An event with an empty list here
+    genuinely moved no registry row (Sikorsky), and the page now says so in
+    those words instead of leaving the reader to infer it from two dashes.
+    """
+    arrivals = member_arrivals(family)
+    out: list[list[str]] = [[] for _ in family.events]
+    for key, arrival in arrivals.items():
+        out[arrival.event_index].append(key)
+    for keys in out:
+        keys.sort()
+    return out

@@ -1454,6 +1454,15 @@ def _ingested_service_orgs(pg) -> list[str]:
 # Curated corporate families (PM Sprint 2, §P1-3)
 # ---------------------------------------------------------------------------
 
+def _family_event_anchor(family_slug: str, event_index: int) -> str:
+    """DOM id of one /companies/families/ event row.
+
+    /companies/ links each former name's event label straight at the row that
+    documents it, so "acquired 2015" is one click from the filing that says so.
+    """
+    return f"event-{family_slug}-{event_index}"
+
+
 def _entity_family_events_csv() -> Path:
     """Path to the curated seed (resolved lazily so tests can monkeypatch ROOT)."""
     from govbudget.config import ROOT
@@ -4725,15 +4734,23 @@ def _write_all_sidecars(
         ).fetchall()
     }
 
+    from govbudget.entity_families import event_changed_keys, member_arrivals
+
     families_payload = []
     for fam in _fam_families:
         members = [k for k in fam.member_keys if k in _fam_totals]
         members.sort(key=lambda k: _fam_totals[k][0], reverse=True)
+        # Per-member event binding (§P1-3 fix round): every former name carries
+        # ITS OWN event, so /companies/ can never again hang one trailing label
+        # off a heterogeneous list (Exelis read "acquired 2019"; it was 2015).
+        _arrivals = member_arrivals(fam)
+        _changed = event_changed_keys(fam)
         member_payload = []
         for key in members:
             total, ueis, worst, display = _fam_totals[key]
             row = entity_by_key.get(key)
             slug = key.lower().replace(" ", "-")
+            arrival = _arrivals.get(key)
             member_payload.append({
                 "family_key": key,
                 # The registry name USAspending awards were made under — the
@@ -4747,6 +4764,20 @@ def _write_all_sidecars(
                 "total_obligation_fact_id": _entity_total_fid(key, total),
                 "uei_count": ueis,
                 "worst_confidence": worst,
+                # null for the family's surviving name / anchor — see
+                # entity_families.member_arrivals for why the acquirer side
+                # deliberately carries no "acquired" label.
+                "arrival": None if arrival is None else {
+                    "event_index": arrival.event_index,
+                    "anchor": _family_event_anchor(fam.slug, arrival.event_index),
+                    "role": arrival.role,
+                    "counterparty": arrival.counterparty,
+                    "event": fam.events[arrival.event_index].event.event,
+                    "effective_date": (
+                        fam.events[arrival.event_index].event.effective_date
+                    ),
+                    "evidence": fam.events[arrival.event_index].event.evidence,
+                },
             })
         combined = sum(_fam_totals[k][0] for k in members)
         combined_fid = fact_id_derived(
@@ -4769,20 +4800,38 @@ def _write_all_sidecars(
                     "to_name": ev.event.to_name,
                     "event": ev.event.event,
                     "effective_date": ev.event.effective_date,
+                    "evidence": ev.event.evidence,
                     "source_url": ev.event.source_url,
+                    "source_form": ev.event.source_form,
+                    "source_date": ev.event.source_date,
+                    "source_verified": ev.event.source_verified,
                     "note": ev.event.note,
                     "from_family_key": ev.from_endpoint.family_key,
                     "to_family_key": ev.to_endpoint.family_key,
+                    "anchor": _family_event_anchor(fam.slug, i),
+                    # The registry rows THIS event actually moved. Empty means
+                    # the event changed no row on /companies/ — the page says
+                    # so rather than leaving the reader to infer it.
+                    "changed_family_keys": [
+                        k for k in _changed[i] if k in _fam_totals
+                    ],
                 }
-                for ev in fam.events
+                for i, ev in enumerate(fam.events)
             ],
         })
 
     _write_json(json_dir / "entity_family_events.json", {
-        "schema_version": 1,
+        "schema_version": 2,
         "method": "hand-curated",
         "source_kind": "external",
         "seed": "data-seeds/entity_family_events.csv",
+        # Max source_verified across the seed — the table's "as of" stamp. The
+        # hand-curated tier carried no chain-of-custody date while every
+        # warehouse citation carries a retrieval date and a SHA-256.
+        "sources_verified_through": max(
+            (ev.event.source_verified for fam in _fam_families for ev in fam.events),
+            default=None,
+        ),
         "families": families_payload,
     })
     n_files += 1
