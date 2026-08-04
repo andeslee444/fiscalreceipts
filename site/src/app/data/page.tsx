@@ -116,9 +116,17 @@ export default function DataPage() {
           <em>one row</em> of that dataset is, so a row count can be compared
           against the right denominator.
         </p>
+        {/* MOBILE (fix round, BLOCKER): at 390px the Citation and "Scope —
+            what one row is" columns sat entirely off-canvas, yet the
+            off-screen scope prose still drove row height — 250–400px rows that
+            were ~85% empty, hiding the most credibility-bearing content on the
+            page. Below `sm` each dataset becomes a card: name, rows, size and
+            citation on one line, scope beneath. One DOM: the same <table>
+            restyled, so data-dataset-card / data-dataset-rowcount hooks and
+            the header semantics are untouched. */}
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="min-w-full text-sm">
-            <thead>
+            <thead className="hidden sm:table-header-group">
               <tr className="border-b border-border bg-muted/50">
                 <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
                   Dataset
@@ -144,21 +152,25 @@ export default function DataPage() {
                   <tr
                     key={ds.name}
                     data-dataset-card={ds.name}
-                    className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                    className="block sm:table-row border-b border-border last:border-0 hover:bg-muted/30 transition-colors py-3 sm:py-0"
                   >
-                    <td className="px-4 py-2 font-mono text-xs text-foreground whitespace-nowrap">
+                    <td className="block sm:table-cell px-4 py-0 sm:py-2 font-mono text-xs text-foreground sm:whitespace-nowrap">
                       {ds.name}
                     </td>
                     <td
                       data-dataset-rowcount
-                      className="px-4 py-2 text-right tabular-nums text-muted-foreground"
+                      className="inline sm:table-cell px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground"
                     >
                       {ds.row_count.toLocaleString("en-US")}
+                      <span className="sm:hidden"> rows</span>
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground whitespace-nowrap">
+                    <td className="inline sm:table-cell pr-4 sm:px-4 py-0 sm:py-2 text-left sm:text-right tabular-nums text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                      <span className="sm:hidden" aria-hidden="true">
+                        ·{" "}
+                      </span>
                       {formatBytes(ds.bytes)}
                     </td>
-                    <td className="px-4 py-2 text-xs">
+                    <td className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs">
                       {isCited ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-medium">
                           cited
@@ -169,7 +181,7 @@ export default function DataPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground max-w-sm">
+                    <td className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm">
                       {ds.scope}
                     </td>
                   </tr>

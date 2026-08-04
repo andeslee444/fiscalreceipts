@@ -698,8 +698,10 @@ export function CommandPalette() {
           )}
         </ul>
 
-        {/* Footer hint */}
-        <div className="border-t border-border px-4 py-2 flex items-center gap-4 text-xs text-muted-foreground">
+        {/* Footer hint — desktop only. ↑↓ / ⏎ / ⌘K name keys a touch device
+            does not have, and the strip cost a row of a 390px viewport to say
+            nothing the reader could act on. */}
+        <div className="hidden sm:flex border-t border-border px-4 py-2 items-center gap-4 text-xs text-muted-foreground">
           <span>
             <kbd className="font-mono">↑↓</kbd> navigate
           </span>
@@ -776,7 +778,11 @@ function ResultRow({
         }}
         className="flex flex-col px-3 py-2 w-full"
       >
-        <span className="flex items-baseline gap-2 min-w-0">
+        {/* The alias chip WRAPS below the title under `sm`. Inline it took
+            ~60% of a 390px row and truncated the #1 result to "Ground Bas…" —
+            the program name is what the reader is scanning for, so it gets
+            the full width and the chip takes its own line. */}
+        <span className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2 min-w-0">
           <span
             className="font-medium leading-5 truncate"
             dangerouslySetInnerHTML={{ __html: item.labelHtml }}
@@ -784,7 +790,7 @@ function ResultRow({
           {item.aka && item.aka.length > 0 && (
             <span
               data-testid="search-aka-chip"
-              className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+              className="mt-0.5 w-fit shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground sm:mt-0"
             >
               also known as: {item.aka.join(" · ")}
             </span>
