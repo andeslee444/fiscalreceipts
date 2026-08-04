@@ -618,6 +618,21 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     partial-transfer chain truncation so the funding line is always explainable;
     and `_load_lineage_for_export`'s `fiscal_year or 0` coercion should skip/log an
     unparseable fy rather than emit a fy:0 edge (both unreachable in Phase 1).
+30. **Program-level GAO ingestion (from PM Sprint 2 §P1-10).** The Oversight
+    section on a program page currently shows only the DEPARTMENT-level GAO
+    designation (`DOD — 5 high-risk areas`), now correctly labelled
+    "Department-level designation (not specific to this program)" and visually
+    de-emphasized so it cannot be mistaken for a program finding. What is
+    missing is the program-specific tier: GAO issues real program-level work
+    (the annual Weapon Systems Annual Assessment GAO-25-107569 and its
+    predecessors; program-specific reports and recommendations), and on the
+    F-35 in particular the absence is conspicuous. Phase: ingest GAO reports
+    keyed to weapon programs, crosswalk report→pe_bli (title/PE match, gated
+    like every other crosswalk on a precision check), render program-specific
+    findings ABOVE the department note with the emphasis the department note
+    gave up, and cite each to its report page. Until that lands, the honest
+    statement on the page is exactly what it now says: no program-specific GAO
+    finding for this line is in the ingested data.
 
 
 ## Remaining launch items

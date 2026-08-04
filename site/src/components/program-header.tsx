@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import type { HeroCategory, ProgramRow } from "@/lib/data";
 import { CategoryHero } from "@/components/hero";
+import { serviceOrgName } from "@/lib/program-tier";
 
 /**
  * ProgramHeader — title, org link, exhibit_family badge, fully_reconciled badge, pe_bli mono.
@@ -75,16 +76,23 @@ export function ProgramHeader({
       </h1>
 
       <div className="relative flex flex-wrap items-center gap-2 text-sm">
-        {/* Org link — only when the agency page exists (see doc comment) */}
+        {/* Org link — only when the agency page exists (see doc comment).
+            §P1-E badge sweep: the LABEL is the human service name ("Air
+            Force"), never the raw workbook token ("F"); the href keeps the raw
+            code because that is the agency page's identity. Agency acronyms
+            (OSD, DARPA, MDA, …) pass through serviceOrgName unchanged. */}
         {orgHasPage ? (
           <Link
             href={`/agency/${encodeURIComponent(org)}/`}
             className="text-primary hover:underline font-medium"
+            title={`Organization code ${org}`}
           >
-            {org}
+            {serviceOrgName(org)}
           </Link>
         ) : (
-          <span className="font-medium text-foreground">{org}</span>
+          <span className="font-medium text-foreground" title={`Organization code ${org}`}>
+            {serviceOrgName(org)}
+          </span>
         )}
 
         <span className="text-muted-foreground/50" aria-hidden="true">

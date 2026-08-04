@@ -3,18 +3,79 @@
 /**
  * Client-side filterable + sortable programs table.
  * Receives the full programs array from the server component.
+ *
+ * §P1-11 (PM Sprint 2): this 1,741-row index offered only an agency dropdown,
+ * while /years/ has a text filter and /companies/ has a name filter. It now
+ * ships the same three affordances its siblings do, reusing their patterns
+ * rather than inventing new ones:
+ *
+ *   - a TEXT FILTER over program title, PE/BLI and organization (the /years/
+ *     `filterEntries` contract, same placeholder wording, same data-testid
+ *     naming so the same gate style applies);
+ *   - SORT ON ORG (the column was there and was not sortable);
+ *   - CSV EXPORT of the current view (the /years/ blob pattern).
+ *
+ * The org column renders the HUMAN service name ("Air Force"), not the raw
+ * workbook token ("F") — §P1-E badge sweep. The filter matches BOTH, so
+ * typing "F", "Air Force" or "air" all work, and the CSV keeps the raw code
+ * (it is the join key downstream consumers need) alongside the display name.
  */
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Download } from "lucide-react";
 import type { ProgramRow } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { serviceOrgName } from "@/lib/program-tier";
 
-type SortKey = "fy2026_total" | "fy2024_actual" | "title";
+type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
 
 interface ProgramsTableProps {
   programs: ProgramRow[];
   orgs: string[];
+}
+
+/** Case-insensitive substring match over title, PE/BLI, raw org and org name. */
+export function programHaystack(p: ProgramRow): string {
+  return [p.title, p.pe_bli, p.org, serviceOrgName(p.org)]
+    .join(" ")
+    .toLowerCase();
+}
+
+/** RFC-4180-ish field escaping (mirrors years-matrix csvField). */
+function csvField(s: string): string {
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * CSV of the current view. Dollar columns keep the units the table declares —
+ * FY24 actuals in USD millions (the J-book grain), FY26 totals in USD
+ * thousands (the workbook grain) — and say so in the header, rather than
+ * silently converting one into the other. Missing values are empty, never 0.
+ */
+export function buildProgramsCsv(rows: readonly ProgramRow[]): string {
+  const header = [
+    "pe_bli",
+    "org",
+    "org_name",
+    "title",
+    "fy2024_actual_usd_millions",
+    "fy2026_total_usd_thousands",
+  ];
+  const lines = [header.join(",")];
+  for (const p of rows) {
+    lines.push(
+      [
+        csvField(p.pe_bli),
+        csvField(p.org),
+        csvField(serviceOrgName(p.org)),
+        csvField(p.title),
+        p.fy2024_actual_millions != null ? String(p.fy2024_actual_millions) : "",
+        p.trajectory?.fy2026_total != null ? String(p.trajectory.fy2026_total) : "",
+      ].join(","),
+    );
+  }
+  return lines.join("\n");
 }
 
 function SortIcon({
@@ -42,18 +103,37 @@ function SortIcon({
 
 export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
   const [orgFilter, setOrgFilter] = useState<string>("all");
+  const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("fy2026_total");
   const [sortAsc, setSortAsc] = useState(false);
 
+  // Precomputed haystacks — 1,741 rows re-filtered on every keystroke.
+  const haystacks = useMemo(
+    () => new Map(programs.map((p) => [p.pe_bli, programHaystack(p)])),
+    [programs],
+  );
+
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     let rows =
       orgFilter === "all"
         ? programs
         : programs.filter((p) => p.org === orgFilter);
+    if (q) {
+      rows = rows.filter((p) => (haystacks.get(p.pe_bli) ?? "").includes(q));
+    }
 
     rows = [...rows].sort((a, b) => {
       if (sortKey === "title") {
         const cmp = a.title.localeCompare(b.title);
+        return sortAsc ? cmp : -cmp;
+      }
+      if (sortKey === "org") {
+        // Sort by the name the reader SEES, with PE/BLI as a stable tiebreak
+        // so the whole order is deterministic inside an organization.
+        const cmp =
+          serviceOrgName(a.org).localeCompare(serviceOrgName(b.org)) ||
+          a.pe_bli.localeCompare(b.pe_bli);
         return sortAsc ? cmp : -cmp;
       }
       if (sortKey === "fy2026_total") {
@@ -68,11 +148,12 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
     });
 
     return rows;
-  }, [programs, orgFilter, sortKey, sortAsc]);
+  }, [programs, haystacks, orgFilter, query, sortKey, sortAsc]);
 
   /** The comparator's own input for a row, serialized (sort contract above). */
   function sortValue(p: ProgramsTableProps["programs"][number]): string {
     if (sortKey === "title") return p.title;
+    if (sortKey === "org") return `${serviceOrgName(p.org)}|${p.pe_bli}`;
     if (sortKey === "fy2026_total") {
       return String(p.trajectory?.fy2026_total ?? -Infinity);
     }
@@ -84,14 +165,34 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
       setSortAsc((v) => !v);
     } else {
       setSortKey(key);
-      setSortAsc(false);
+      // Text columns read best A→Z; money columns read best largest-first.
+      setSortAsc(key === "title" || key === "org");
     }
+  }
+
+  function exportCsv() {
+    const blob = new Blob([buildProgramsCsv(filtered)], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "programs.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
     <div>
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-4 items-center">
+      {/* Filters — text filter + agency dropdown + CSV, matching /years/. */}
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
+        <input
+          type="search"
+          data-testid="programs-filter"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filter by program, PE/BLI, or organization…"
+          aria-label="Filter programs by name, PE/BLI, or organization"
+          className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Agency:</span>
           <select
@@ -101,14 +202,27 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           >
             <option value="all">All agencies</option>
             {orgs.map((org) => (
-              <option key={org} value={org}>{org}</option>
+              <option key={org} value={org}>
+                {serviceOrgName(org)}
+              </option>
             ))}
           </select>
         </label>
-        <span className="text-sm text-muted-foreground ml-auto">
-          {filtered.length.toLocaleString("en-US")} program
-          {filtered.length !== 1 ? "s" : ""}
+        <span className="text-sm tabular-nums text-muted-foreground">
+          {filtered.length.toLocaleString("en-US")} of{" "}
+          {programs.length.toLocaleString("en-US")} program
+          {programs.length !== 1 ? "s" : ""}
         </span>
+        <button
+          type="button"
+          data-testid="programs-csv"
+          onClick={exportCsv}
+          aria-label="Download the current view as CSV"
+          className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden="true" />
+          CSV
+        </button>
       </div>
 
       {/* Table.
@@ -128,7 +242,14 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           <thead className="bg-muted/60 text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-24">PE/BLI</th>
-              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-16">Org</th>
+              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-28">
+                <button
+                  onClick={() => toggleSort("org")}
+                  className="flex items-center hover:text-foreground transition-colors"
+                >
+                  Org <SortIcon col="org" sortKey={sortKey} sortAsc={sortAsc} />
+                </button>
+              </th>
               <th scope="col" className="px-4 py-3 font-medium">
                 <button
                   onClick={() => toggleSort("title")}
@@ -176,8 +297,9 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {p.pe_bli}
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  {p.org}
+                {/* §P1-E: the human service name, not the raw workbook token. */}
+                <td className="px-4 py-3 text-xs text-muted-foreground" title={p.org}>
+                  {serviceOrgName(p.org)}
                 </td>
                 <td className="px-4 py-3">
                   <Link
@@ -215,6 +337,13 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-4 text-muted-foreground">
+                  No programs match the filter.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -222,7 +351,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
       <p className="text-xs text-muted-foreground mt-2">
         FY26 figures carry derived workbook citations (click to inspect the
         formula and inputs). FY24 actuals cited to J-book PDF where available
-        (underlined). See{" "}
+        (underlined). CSV exports the current view, with FY24 in USD millions
+        and FY26 in USD thousands as labeled. See{" "}
         <Link href="/methodology/" className="underline hover:text-foreground">
           methodology
         </Link>

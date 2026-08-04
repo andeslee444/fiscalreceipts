@@ -17,6 +17,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { ReceiptMoment } from "@/components/receipt-moment";
 import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
+import { serviceOrgName } from "@/lib/program-tier";
 
 export const metadata: Metadata = {
   title: {
@@ -327,8 +328,10 @@ export default function HomePage() {
                     <span className="text-sm font-medium group-hover:underline truncate">
                       {p.title}
                     </span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {p.org}
+                    {/* §P1-E badge sweep: the human service name, never the
+                        raw workbook token ("F"). */}
+                    <span className="ml-2 text-xs text-muted-foreground" title={`Organization code ${p.org}`}>
+                      {serviceOrgName(p.org)}
                     </span>
                   </Link>
                   <div
@@ -384,11 +387,14 @@ export default function HomePage() {
                   key={agency.org}
                   className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
                 >
+                  {/* §P1-E badge sweep: label humanized, href keeps the
+                      raw org code (the agency page's identity). */}
                   <Link
                     href={`/agency/${agency.org}/`}
-                    className="font-mono font-bold text-sm text-primary group-hover:underline"
+                    className="font-bold text-sm text-primary group-hover:underline"
+                    title={`Organization code ${agency.org}`}
                   >
-                    {agency.org}
+                    {serviceOrgName(agency.org)}
                   </Link>
                   <span className="text-xs text-muted-foreground mt-1">
                     {agency.program_count} program
