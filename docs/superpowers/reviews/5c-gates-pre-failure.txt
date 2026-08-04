@@ -1961,3 +1961,68 @@ mention-count sort for the linked-programs chips, and an obligation-desc sort
 for follow-the-dollar's district table (was "order of first appearance in
 flow.awards"). The company page also re-declares the lobbying sort at the
 render site so a future upstream regression cannot pass through silently.
+
+
+================================================================================
+gate 4 clickthrough — TEST 3 REBUILT: workbook drawer contract (§P1-9)
+PM-review Sprint 2 Task 4 — recorded 2026-08-04
+================================================================================
+
+WHAT WAS WRONG. `/program/ATA000/` -> click $5.57B in the P-1 table opened a
+workbook drawer that: headlined "$5.57B  USD thousands" (a compact figure
+wearing the unit of a number that appeared nowhere on screen — the recorded
+5,565,655 existed only inside the copied footnote); listed `O839 O840 O841`
+with no values and nothing saying they were summed; rendered cell refs in a
+font where the reader misread the column letter O as a zero; named no document
+or edition; linked "Official source" twice, ~250px apart; truncated the SHA-256
+to `4d965906…` with no way to get the rest; and offered *Download workbook
+(.xlsx)* as the only way to actually see the cell.
+
+The OLD test 3 asserted "sheet and cells appear somewhere in the card" — true
+of every one of those drawers. It could not have caught any of it.
+
+THE REBUILT LEG, in three parts:
+  3a PAYLOAD SWEEP (static, every fact): each of the 35,940 workbook citations
+     must have a row in json/workbook-cells/{fact_id[:2]}.json whose cited
+     cells carry their OWN numeric values, sum to the citation's
+     amount_thousands (±0.0005), name a sheet and a column, and include at
+     least one surrounding row. A drawer can only show a cell the payload
+     carries, so this is where the contract binds for all 35,940 facts rather
+     than the two a browser opens.
+  3b/3c LIVE DRAWER, single-cell and multi-cell (the multi-cell slot prefers
+     /program/ATA000/ — the spec's own repro — and falls back to discovery):
+     recorded numerals + recorded unit + compact equivalence on one line;
+     a document-identity block; every cell ref rendered as a [data-cell]
+     element whose column letter is its own child and whose title spells out
+     "column O, row 839"; a preview table whose data-cited rows are exactly
+     the citation's cells, whose cited [data-cell-value]s sum to the amount,
+     and which shows surrounding rows; an arithmetic line iff the fact sums
+     >1 cell, containing every ref and resolving to the total; EXACTLY ONE
+     link to official_url in the whole panel; and a copy control for the hash.
+
+PROOF-CAN-FAIL — the leg run against the UNMODIFIED pre-fix build (site/out/
+as of commit e4d6136, before any Task 4 code): no scratch mutation needed, the
+defect was live.
+
+  PASS: false
+  NOTE: clickthrough set: unique=000042, ambiguous=000071, workbook=000042, workbookMulti=ATA000, ldaLinked=0201ARMOWT, ldaDangling=null, zeroAmt=00098A, officialSrc=000042, receipts=null
+
+  ERROR: workbook drawer (§P1-9): no cell-preview sidecar at /Users/andeslee/Documents/Cursor-Projects/GovBudget/data/site/json/workbook-cells — the drawer cannot show a cell it was never given
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): amount line "" does not show the recorded value 793
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): drawer names no source document
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): cell ref O973 is not rendered as a cell-ref element
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): no cell preview rendered
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): official source link appears 2× (expected exactly 1)
+  ERROR: workbook drawer (single-cell, 000042, fact 4dc6d6bda019d490): hash is truncated with no copy control
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): amount line "" does not show the recorded value 5,565,655
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): drawer names no source document
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): cell ref O839 is not rendered as a cell-ref element
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): cell ref O840 is not rendered as a cell-ref element
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): cell ref O841 is not rendered as a cell-ref element
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): no cell preview rendered
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): 3 cells summed with no arithmetic shown
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): official source link appears 2× (expected exactly 1)
+  ERROR: workbook drawer (multi-cell, ATA000, fact 5b532c52d3ebb4c2): hash is truncated with no copy control
+
+Note the multi-cell slot resolved to ATA000 / fact 5b532c52d3ebb4c2 — the
+PM's exact repro — and the leg reported all seven §P1-9 items on it.

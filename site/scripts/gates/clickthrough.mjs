@@ -5,7 +5,14 @@
  * Tests:
  * 1. Unique jbook cite: click → panel opens → canvas rendered non-blank → highlight geometry within 3px
  * 2. Ambiguous_first: amber badge text present
- * 3. Workbook card: sheet+cells+amount present in card
+ * 3. Workbook drawer contract (§P1-9, PM-review Sprint 2): (a) a static sweep
+ *    of json/workbook-cells/ — EVERY workbook citation has a cell preview
+ *    whose cited cells carry their own values and sum to the citation's
+ *    amount, with context rows; (b/c) the live single-cell and multi-cell
+ *    drawers — recorded value + unit + compact equivalence, document identity,
+ *    cell refs that cannot be misread as zeros, the preview table with the
+ *    cited rows marked and summing, the arithmetic line iff >1 cell, exactly
+ *    ONE official-source link, and a copy control for the full SHA-256.
  * 4. LDA mention with entity link: href contains uuid (human URL)
  * 5. LDA dangling: plain text, no link
  * 6. Zero-amount xml-path chip: data-citation-kind=xml-path present, no panel on click
@@ -28,6 +35,37 @@ function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
 }
 
+/** The §P1-9 repro page. Preferred (not required) for the multi-cell drawer. */
+const PM_REPRO_PBL = "ATA000";
+
+/** True when this program has a workbook budget_line citing >1 cell. */
+function workbookMultiCandidate(peBli, programDetailsDir, citations) {
+  const p = path.join(programDetailsDir, `${peBli}.json`);
+  if (!fs.existsSync(p)) return false;
+  let det;
+  try {
+    det = readJson(p);
+  } catch {
+    return false;
+  }
+  return (det.budget_lines || []).some(
+    (bl) =>
+      bl.fact_id &&
+      citations[bl.fact_id]?.kind === "workbook" &&
+      (citations[bl.fact_id]?.cells ?? "").includes(",")
+  );
+}
+
+/**
+ * Exact mirror of fmtCell() in components/citation-panel/workbook-card.tsx:
+ * grouped numerals, up to 3 decimals, TRUE minus sign (U+2212) for negatives.
+ * Change one, change both.
+ */
+function fmtCell(v) {
+  const s = Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 3 });
+  return v < 0 ? `−${s}` : s;
+}
+
 function computeClickthroughSet() {
   const citations = readJson(path.join(jsonDir, "citations.json"));
   const entities = readJson(path.join(jsonDir, "entities_top.json"));
@@ -43,6 +81,11 @@ function computeClickthroughSet() {
   let uniquePbl = null;
   let ambiguousPbl = null;
   let workbookPbl = null;
+  // §P1-9: a program whose workbook citation sums MORE THAN ONE cell — the
+  // arithmetic case the PM hit on /program/ATA000/ ($5.57B = O839 + O840 +
+  // O841). ~1.6% of workbook citations are multi-cell, so it must be sought
+  // deliberately or the single-cell case would stand in for both.
+  let workbookMultiPbl = null;
   let ldaLinkedPbl = null;
   let ldaDanglingPbl = null;
   let zeroAmountPbl = null;
@@ -58,6 +101,7 @@ function computeClickthroughSet() {
       uniquePbl &&
       ambiguousPbl &&
       workbookPbl &&
+      workbookMultiPbl &&
       ldaLinkedPbl &&
       ldaDanglingPbl &&
       zeroAmountPbl &&
@@ -116,6 +160,19 @@ function computeClickthroughSet() {
       )
     ) {
       workbookPbl = p.pe_bli;
+    }
+
+    // workbook citation summing >1 cell (§P1-9 arithmetic case)
+    if (
+      !workbookMultiPbl &&
+      budgetLines.some(
+        (bl) =>
+          bl.fact_id &&
+          citations[bl.fact_id]?.kind === "workbook" &&
+          (citations[bl.fact_id]?.cells ?? "").includes(",")
+      )
+    ) {
+      workbookMultiPbl = p.pe_bli;
     }
 
     // lda_filing mention with linked entity
@@ -178,10 +235,17 @@ function computeClickthroughSet() {
     }
   }
 
+  // The spec's own repro page wins the multi-cell slot when it still
+  // qualifies, so the gate exercises the exact drawer the PM reported.
+  if (workbookMultiCandidate(PM_REPRO_PBL, programDetailsDir, citations)) {
+    workbookMultiPbl = PM_REPRO_PBL;
+  }
+
   return {
     uniquePbl,
     ambiguousPbl,
     workbookPbl,
+    workbookMultiPbl,
     ldaLinkedPbl,
     ldaDanglingPbl,
     zeroAmountPbl,
@@ -199,7 +263,7 @@ export async function runClickthroughGate(baseUrl) {
 
   const set = computeClickthroughSet();
   notes.push(
-    `clickthrough set: unique=${set.uniquePbl}, ambiguous=${set.ambiguousPbl}, workbook=${set.workbookPbl}, ldaLinked=${set.ldaLinkedPbl}, ldaDangling=${set.ldaDanglingPbl}, zeroAmt=${set.zeroAmountPbl}, officialSrc=${set.officialSourcePbl}, receipts=${set.receiptsPbl}`
+    `clickthrough set: unique=${set.uniquePbl}, ambiguous=${set.ambiguousPbl}, workbook=${set.workbookPbl}, workbookMulti=${set.workbookMultiPbl}, ldaLinked=${set.ldaLinkedPbl}, ldaDangling=${set.ldaDanglingPbl}, zeroAmt=${set.zeroAmountPbl}, officialSrc=${set.officialSourcePbl}, receipts=${set.receiptsPbl}`
   );
 
   const browser = await chromium.launch({ headless: true });
@@ -355,74 +419,297 @@ export async function runClickthroughGate(baseUrl) {
       errors.push("ambiguous cite: no program with ambiguous_first resolution found");
     }
 
-    // ── Test 3: Workbook card — sheet+cells+amount ─────────────────────────
-    if (set.workbookPbl) {
-      const page = await context.newPage();
-      try {
-        await page.goto(`${baseUrl}/program/${set.workbookPbl}/`, {
-          waitUntil: "networkidle",
-          timeout: 30000,
-        });
-
-        const programDetails = readJson(
-          path.join(jsonDir, "program_details", `${set.workbookPbl}.json`)
+    // ── Test 3: Workbook drawer contract (§P1-9) ───────────────────────────
+    //
+    // Was: "sheet+cells present in the card". That passed while the drawer
+    // headlined "$5.57B  USD thousands" (a compact figure labelled with the
+    // unit of a number it was not), showed three cell refs with no values and
+    // no arithmetic, named no document, duplicated the source link, truncated
+    // the hash with no way to get the rest, and offered a 4 MB .xlsx download
+    // as the only way to see the cell. Now:
+    //
+    //   3a PAYLOAD SWEEP (static, all 35,940 facts): every workbook citation
+    //      has a cell-preview row in json/workbook-cells/{fid[:2]}.json; every
+    //      cited cell in it carries its OWN numeric value; those values sum to
+    //      the citation's amount_thousands; the preview carries context rows
+    //      and the cited column's header. A drawer can only show the cell if
+    //      the payload has it, so this is where the contract has teeth for
+    //      every fact rather than the two the browser opens.
+    //   3b/3c LIVE DRAWER, single-cell and multi-cell (the PM's own repro
+    //      page when it still qualifies): the rendered contract — recorded
+    //      value + unit + equivalence, document identity, unambiguous cell
+    //      refs, the preview table with the cited rows marked and summing to
+    //      the amount, the arithmetic line for multi-cell facts, exactly ONE
+    //      official-source link, and a copy control for the full hash.
+    {
+      // ---- 3a: payload sweep ------------------------------------------------
+      const cellsDir = path.join(jsonDir, "workbook-cells");
+      if (!fs.existsSync(cellsDir)) {
+        errors.push(
+          `workbook drawer (§P1-9): no cell-preview sidecar at ${cellsDir} —` +
+            " the drawer cannot show a cell it was never given"
         );
-        const workbookLine = programDetails.budget_lines.find(
-          (bl) =>
-            bl.fact_id &&
-            set.citations[bl.fact_id]?.kind === "workbook" &&
-            set.citations[bl.fact_id]?.cells
+      } else {
+        const previews = {};
+        for (const f of fs.readdirSync(cellsDir)) {
+          if (!f.endsWith(".json")) continue;
+          Object.assign(previews, readJson(path.join(cellsDir, f)));
+        }
+        const wbFacts = Object.entries(set.citations).filter(
+          ([, c]) => c.kind === "workbook"
         );
-        const factId = workbookLine?.fact_id;
-
-        if (factId) {
-          const el = await page.$(`[data-fact-id="${factId}"]`);
-          if (el) {
-            await el.click();
-            const panel = await page
-              .waitForSelector('[data-testid="citation-panel"]', {
-                timeout: 10000,
-              })
-              .catch(() => null);
-
-            if (!panel) {
-              errors.push(
-                `workbook cite (${set.workbookPbl}): panel did not open`
-              );
-            } else {
-              const cit = set.citations[factId];
-              // Check for sheet, cells, amount in card
-              const panelText = await panel.textContent();
-              const hasSheet =
-                cit.sheet && panelText.includes(cit.sheet);
-              const hasCells = cit.cells && panelText.includes(cit.cells);
-              if (!hasSheet || !hasCells) {
-                errors.push(
-                  `workbook cite (${set.workbookPbl}): sheet="${cit.sheet}" (hasSheet=${hasSheet}) AND cells="${cit.cells}" (hasCells=${hasCells}) BOTH required in panel`
-                );
-              } else {
-                notes.push(
-                  `workbook cite (${set.workbookPbl}): sheet+cells present ✓`
-                );
-              }
-            }
-          } else {
-            errors.push(
-              `workbook cite (${set.workbookPbl}): element [data-fact-id="${factId}"] not found`
-            );
+        const missing = [];
+        const bad = [];
+        for (const [fid, cit] of wbFacts) {
+          const pv = previews[fid];
+          if (!pv) {
+            missing.push(fid);
+            continue;
           }
-        } else {
+          const refs = String(cit.cells || "")
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+          const cited = (pv.rows || []).filter((r) => r.cited);
+          if (cited.length !== refs.length) {
+            bad.push(`${fid}: ${cited.length} cited rows vs ${refs.length} cells`);
+            continue;
+          }
+          if (cited.some((r) => typeof r.v !== "number")) {
+            bad.push(`${fid}: a cited cell has no value of its own`);
+            continue;
+          }
+          const sum = cited.reduce((a, r) => a + r.v, 0);
+          if (Math.abs(sum - cit.amount_thousands) > 0.0005) {
+            bad.push(
+              `${fid}: cited cells sum to ${sum}, citation says ${cit.amount_thousands}`
+            );
+            continue;
+          }
+          if (pv.rows.length <= cited.length) {
+            bad.push(`${fid}: no surrounding rows — the cell has no context`);
+            continue;
+          }
+          if (!pv.col || !pv.sheet) {
+            bad.push(`${fid}: preview names no column/sheet`);
+          }
+        }
+        if (missing.length > 0) {
           errors.push(
-            `workbook cite (${set.workbookPbl}): no workbook budget_line found`
+            `workbook drawer 3a (§P1-9): ${missing.length}/${wbFacts.length}` +
+              ` workbook citations have NO cell preview: ${missing.slice(0, 5).join(", ")}`
           );
         }
-      } catch (e) {
-        errors.push(`workbook cite (${set.workbookPbl}): ${e.message}`);
-      } finally {
-        await page.close();
+        if (bad.length > 0) {
+          errors.push(
+            `workbook drawer 3a (§P1-9): ${bad.length} preview(s) disagree with` +
+              ` their citation: ${bad.slice(0, 5).join(" | ")}`
+          );
+        }
+        if (missing.length === 0 && bad.length === 0) {
+          notes.push(
+            `workbook drawer 3a: ${wbFacts.length} workbook citations, each with` +
+              " per-cell values summing to its amount ✓"
+          );
+        }
       }
-    } else {
-      errors.push("workbook cite: no program with workbook citation found");
+
+      // ---- 3b/3c: the rendered drawer ---------------------------------------
+      const targets = [
+        { label: "single-cell", pbl: set.workbookPbl, multi: false },
+        { label: "multi-cell", pbl: set.workbookMultiPbl, multi: true },
+      ];
+
+      for (const target of targets) {
+        if (!target.pbl) {
+          errors.push(
+            `workbook drawer (${target.label}): no program found with such a citation`
+          );
+          continue;
+        }
+        const page = await context.newPage();
+        try {
+          await page.goto(`${baseUrl}/program/${target.pbl}/`, {
+            waitUntil: "networkidle",
+            timeout: 30000,
+          });
+
+          const programDetails = readJson(
+            path.join(jsonDir, "program_details", `${target.pbl}.json`)
+          );
+          const line = programDetails.budget_lines.find((bl) => {
+            const c = bl.fact_id ? set.citations[bl.fact_id] : null;
+            if (!c || c.kind !== "workbook" || !c.cells) return false;
+            return target.multi ? c.cells.includes(",") : true;
+          });
+          const factId = line?.fact_id;
+          if (!factId) {
+            errors.push(
+              `workbook drawer (${target.label}, ${target.pbl}): no matching budget_line`
+            );
+            continue;
+          }
+          const cit = set.citations[factId];
+          const refs = cit.cells
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+
+          const el = await page.$(`[data-fact-id="${factId}"]`);
+          if (!el) {
+            errors.push(
+              `workbook drawer (${target.label}, ${target.pbl}): element [data-fact-id="${factId}"] not found`
+            );
+            continue;
+          }
+          await el.click();
+          const panel = await page
+            .waitForSelector('[data-testid="citation-panel"]', { timeout: 10000 })
+            .catch(() => null);
+          if (!panel) {
+            errors.push(
+              `workbook drawer (${target.label}, ${target.pbl}): panel did not open`
+            );
+            continue;
+          }
+          // The preview is fetched on open — wait for it rather than racing it.
+          const preview = await page
+            .waitForSelector('[data-testid="workbook-preview"]', { timeout: 10000 })
+            .catch(() => null);
+
+          const where = `workbook drawer (${target.label}, ${target.pbl}, fact ${factId})`;
+
+          // (1) amount: recorded numerals + recorded unit, never the compact
+          //     figure wearing the raw figure's unit label.
+          const amountText = (
+            (await panel.$eval('[data-testid="workbook-amount"]', (n) => n.textContent)
+              .catch(() => null)) ?? ""
+          )
+            .replace(/\s+/g, " ")
+            .trim();
+          const rawNumerals = fmtCell(cit.amount_thousands);
+          if (!amountText.includes(rawNumerals)) {
+            errors.push(
+              `${where}: amount line "${amountText}" does not show the recorded value ${rawNumerals}`
+            );
+          } else if (cit.units && !amountText.includes(cit.units)) {
+            errors.push(`${where}: amount line "${amountText}" omits the unit ${cit.units}`);
+          } else if (
+            Math.abs(cit.amount_thousands) >= 1000 &&
+            !/\(=\s*-?\$/.test(amountText)
+          ) {
+            errors.push(
+              `${where}: amount line "${amountText}" has no compact-dollar equivalence`
+            );
+          }
+
+          // (7) document identity
+          const docText = await panel
+            .$eval('[data-testid="workbook-document"]', (n) => n.textContent)
+            .catch(() => null);
+          if (!docText || docText.trim().length === 0) {
+            errors.push(`${where}: drawer names no source document`);
+          }
+
+          // (4) cell refs: present, one element per ref, column letter split out
+          for (const ref of refs) {
+            const refEl = await panel.$(`[data-testid="cell-ref"][data-cell="${ref}"]`);
+            if (!refEl) {
+              errors.push(`${where}: cell ref ${ref} is not rendered as a cell-ref element`);
+              continue;
+            }
+            const title = (await refEl.getAttribute("title")) ?? "";
+            const col = ref.match(/^[A-Z]+/)?.[0] ?? "";
+            const row = ref.replace(/^[A-Z]+/, "");
+            if (!title.includes(`column ${col}`) || !title.includes(`row ${row}`)) {
+              errors.push(
+                `${where}: cell ref ${ref} does not spell out its column/row (title="${title}")`
+              );
+            }
+            if (!(await refEl.$("[data-cell-col]"))) {
+              errors.push(`${where}: cell ref ${ref} does not separate its column letter`);
+            }
+          }
+
+          // (2) preview table: cited rows == the citation's cells, each with a
+          //     value, summing to the amount, plus at least one context row.
+          if (!preview) {
+            errors.push(`${where}: no cell preview rendered`);
+          } else {
+            const rows = await preview.$$eval(
+              '[data-testid="workbook-preview-row"]',
+              (nodes) =>
+                nodes.map((n) => ({
+                  row: n.getAttribute("data-row"),
+                  cited: n.getAttribute("data-cited") === "true",
+                  v: n.querySelector("[data-cell-value]")?.getAttribute("data-cell-value") ?? "",
+                }))
+            );
+            const citedRows = rows.filter((r) => r.cited);
+            const expectRows = refs.map((r) => r.replace(/^[A-Z]+/, ""));
+            if (citedRows.map((r) => r.row).join(",") !== expectRows.join(",")) {
+              errors.push(
+                `${where}: preview marks rows [${citedRows.map((r) => r.row)}], cells say [${expectRows}]`
+              );
+            }
+            if (rows.length <= citedRows.length) {
+              errors.push(`${where}: preview shows no surrounding rows`);
+            }
+            const sum = citedRows.reduce((a, r) => a + Number(r.v), 0);
+            if (citedRows.some((r) => r.v === "") || Math.abs(sum - cit.amount_thousands) > 0.0005) {
+              errors.push(
+                `${where}: preview's cited values sum to ${sum}, citation says ${cit.amount_thousands}`
+              );
+            }
+          }
+
+          // (3) arithmetic — required iff the fact sums >1 cell
+          const arith = await panel
+            .$eval('[data-testid="workbook-arithmetic"]', (n) =>
+              (n.textContent ?? "").replace(/\s+/g, " ").trim()
+            )
+            .catch(() => null);
+          if (refs.length > 1) {
+            if (!arith) {
+              errors.push(`${where}: ${refs.length} cells summed with no arithmetic shown`);
+            } else {
+              for (const ref of refs) {
+                if (!arith.includes(ref)) {
+                  errors.push(`${where}: arithmetic "${arith}" omits cell ${ref}`);
+                }
+              }
+              if (!arith.includes(`= ${rawNumerals}`)) {
+                errors.push(`${where}: arithmetic "${arith}" does not resolve to ${rawNumerals}`);
+              }
+            }
+          } else if (arith) {
+            errors.push(`${where}: single-cell fact renders an arithmetic line ("${arith}")`);
+          }
+
+          // (5) exactly one official-source link
+          const officialCount = await panel.$$eval(
+            "a[href]",
+            (nodes, url) => nodes.filter((a) => a.getAttribute("href") === url).length,
+            cit.official_url
+          );
+          if (officialCount !== 1) {
+            errors.push(
+              `${where}: official source link appears ${officialCount}× (expected exactly 1)`
+            );
+          }
+
+          // (6) copy control for the full hash
+          if (!(await panel.$('[data-testid="copy-hash"]'))) {
+            errors.push(`${where}: hash is truncated with no copy control`);
+          }
+
+          notes.push(`${where}: §P1-9 drawer contract checked`);
+        } catch (e) {
+          errors.push(`workbook drawer (${target.label}, ${target.pbl}): ${e.message}`);
+        } finally {
+          await page.close();
+        }
+      }
     }
 
     // ── Test 4: LDA mention with entity link (href contains uuid) ───────────
