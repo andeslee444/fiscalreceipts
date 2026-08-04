@@ -15,6 +15,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
+import { FyRange } from "@/components/fy-range";
 import { humanLdaUrl } from "@/lib/citations";
 
 export const dynamicParams = false;
@@ -64,8 +65,19 @@ export default async function CompanyPage({
 
   const details = getEntityDetails(slug);
 
+  // §P1-7 (the reported defect): Lockheed's Lobbying Activity rendered
+  // 2024, 2026, 2025 — fct_influence had no ORDER BY, and 33 of the 66
+  // families with filings came out unsorted. The exporter now emits the rows
+  // year-descending; this sort DECLARES that contract at the render site so
+  // the page cannot silently inherit a future upstream regression. One row
+  // per (family, filing_year), so year is a total order — there is no quarter
+  // grain at this rollup (per-filing quarters live on the /filing/ pages).
+  const influence = [...details.influence].sort(
+    (a, b) => Number(b.filing_year) - Number(a.filing_year),
+  );
+
   // Resolve family_obligations_usd from influence rows (non-additive — show once)
-  const firstInfluenceRow = details.influence[0];
+  const firstInfluenceRow = influence[0];
   const familyObligationsUsd = firstInfluenceRow?.family_obligations_usd;
   const familyObligationsFactId =
     firstInfluenceRow?.family_obligations_fact_id ?? null;
@@ -80,7 +92,7 @@ export default async function CompanyPage({
     pageFactIds.push(entity.total_obligation_fact_id);
   }
   if (familyObligationsFactId) pageFactIds.push(familyObligationsFactId);
-  for (const row of details.influence) {
+  for (const row of influence) {
     for (const fid of [row.income_fact_id, row.expense_fact_id, row.total_fact_id]) {
       if (fid) pageFactIds.push(fid);
     }
@@ -119,7 +131,9 @@ export default async function CompanyPage({
               units="USD"
               dataset="dim_entities"
               factId={entity.total_obligation_fact_id}
-            />
+            />{" "}
+            {/* §P1-6: a multi-year total with no period reads as annual. */}
+            <FyRange className="text-xs" />
           </span>{" "}
           <span
             className={[
@@ -153,17 +167,21 @@ export default async function CompanyPage({
               dataset="fct_influence"
               factId={familyObligationsFactId}
             />
+            {/* §P1-6: "across the full USAspending dataset" was the third of
+                three inconsistent ways the site stated this period, and the
+                only unfalsifiable one. It is the derived range, same as
+                everywhere else. */}
             <span className="ml-2 text-xs text-amber-700">
               — constant across all filing years listed below and non-additive
-              (do not sum across rows; this figure represents total family
-              obligations across the full USAspending dataset).
+              (do not sum across rows; this figure is total family obligations
+              over <FyRange />, the full USAspending award corpus).
             </span>
           </div>
         )}
       </div>
 
       {/* ── Lobbying influence table ─────────────────────────────────────── */}
-      {details.influence.length > 0 && (
+      {influence.length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-1">Lobbying Activity</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -193,7 +211,7 @@ export default async function CompanyPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {details.influence.map((row, i) => (
+                {influence.map((row, i) => (
                   <tr
                     key={`${row.filing_year}-${i}`}
                     className="hover:bg-muted/40 transition-colors"

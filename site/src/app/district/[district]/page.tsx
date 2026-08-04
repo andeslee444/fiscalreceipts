@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
+import { FyRange } from "@/components/fy-range";
 
 // No fallback pages beyond what generateStaticParams returns (SSG export).
 export const dynamicParams = false;
@@ -71,6 +72,19 @@ export default async function DistrictDetailPage({ params }: Props) {
     ? displayLabel
     : `District ${district}${stateLabel}`;
 
+  // §P1-6 (CO-05): "linkable obligations" and "cited (USAspending)" are two
+  // genuinely different measures — everything the crosswalk links, versus the
+  // subset whose citation row actually resolves — but in the current corpus
+  // EVERY linked row carries a resolving citation, so both cards rendered the
+  // same $1.14B under two labels and read as a duplication bug.
+  //
+  // The honest resolution is not to delete a measure: it is to show one card
+  // while they coincide and say so, and to split back into two the moment they
+  // diverge (a crosswalk row whose citation does not resolve). Deciding this
+  // per district from the data means neither state can be a lie.
+  const citedEqualsLinkable =
+    detail.total_cited_dollars === detail.total_linkable_dollars;
+
   return (
     <CitationPanelProvider citations={citationsSlice}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -133,22 +147,29 @@ export default async function DistrictDetailPage({ params }: Props) {
                 />
               </p>
               <p className="text-muted-foreground text-xs mt-1">
-                linkable obligations
+                linkable obligations <FyRange separator="· " />
               </p>
+              {citedEqualsLinkable && (
+                <p className="text-muted-foreground text-xs mt-1">
+                  every linked dollar carries a USAspending citation
+                </p>
+              )}
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums">
-                <Cite
-                  value={detail.total_cited_dollars}
-                  units="USD"
-                  dataset="fct_district_programs"
-                  factId={detail.total_cited_fact_id}
-                />
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                cited (USAspending)
-              </p>
-            </div>
+            {!citedEqualsLinkable && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-2xl font-bold tabular-nums">
+                  <Cite
+                    value={detail.total_cited_dollars}
+                    units="USD"
+                    dataset="fct_district_programs"
+                    factId={detail.total_cited_fact_id}
+                  />
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  of which cited (USAspending) <FyRange separator="· " />
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

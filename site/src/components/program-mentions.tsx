@@ -13,6 +13,14 @@
  *     data-filing-mention contract on each row wrapper)
  *   - client_name links to /company/{slug}/ ONLY when family_key is in linkableKeys set
  *   - else plain text
+ *
+ * DECLARED DEFAULT SORT (§P1-7): filing year DESC, then client, then program
+ * title / pe_bli, then filing uuid — set in the exporter's
+ * fct_program_lobbying query, NOT re-sorted here (same reason as
+ * ProgramAwards: only the first 25 rows exist until the reader expands, so a
+ * client sort would order a prefix of a differently-ordered whole). 240 of
+ * 244 of these lists were previously in incidental order, which also meant an
+ * arbitrary 25 mentions were the ones that shipped in the static HTML.
  */
 
 import { useMemo, useState } from "react";

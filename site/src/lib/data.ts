@@ -55,7 +55,25 @@ export interface SiteMetaCounts {
   program_pages?: number;
 }
 
+/**
+ * PM Sprint 2 (§P1-6): the DERIVED period every USAspending aggregate covers,
+ * computed at export from fct_award_transactions. Absent on pre-Sprint-2
+ * exports (and on degenerate exports with no awards mart) — surfaces render no
+ * range at all rather than a guessed one.
+ */
+export interface SiteMetaAwardFyRange {
+  fy_min: number;
+  fy_max: number;
+  /** Canonical wording, e.g. "FY2017–FY2026" (en dash). */
+  label: string;
+  /** Newest ingested action_date (ISO), or null when unknown. */
+  latest_action_date: string | null;
+  /** True when fy_max's latest action predates its September 30 close. */
+  max_partial: boolean;
+}
+
 export interface SiteMeta {
+  award_fy_range?: SiteMetaAwardFyRange | null;
   built_at: string;
   counts: SiteMetaCounts;
   /**

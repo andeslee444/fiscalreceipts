@@ -50,26 +50,30 @@ function extractChunks(html) {
 
 /**
  * Compact-format a raw USD value exactly as formatAmountNoCurrency does in
- * site/src/lib/format.ts. Used to verify SVG flow labels.
- * Returns the formatted string without the leading '$'.
+ * site/src/lib/format.ts (rungs T/B/M/K + rounding promotion — §P1-6). Used to
+ * verify SVG flow labels. Returns the formatted string without the leading '$'.
  */
+const COMPACT_RUNGS = [
+  { limit: 1_000_000_000_000, suffix: "T" },
+  { limit: 1_000_000_000, suffix: "B" },
+  { limit: 1_000_000, suffix: "M" },
+  { limit: 1_000, suffix: "K" },
+];
+
 function formatAmountNoCurrency(rawUsd) {
   const abs = Math.abs(rawUsd);
   const sign = rawUsd < 0 ? "-" : "";
-  if (abs >= 1_000_000_000) {
-    const v = abs / 1_000_000_000;
+  for (let i = 0; i < COMPACT_RUNGS.length; i++) {
+    const { limit, suffix } = COMPACT_RUNGS[i];
+    if (abs < limit) continue;
+    const v = abs / limit;
     const dec = v < 10 ? 2 : 1;
-    return `${sign}${v.toFixed(dec)}B`;
-  }
-  if (abs >= 1_000_000) {
-    const v = abs / 1_000_000;
-    const dec = v < 10 ? 2 : 1;
-    return `${sign}${v.toFixed(dec)}M`;
-  }
-  if (abs >= 1_000) {
-    const v = abs / 1_000;
-    const dec = v < 10 ? 2 : 1;
-    return `${sign}${v.toFixed(dec)}K`;
+    if (i > 0 && Number(v.toFixed(dec)) >= 1000) {
+      const up = COMPACT_RUNGS[i - 1];
+      const uv = abs / up.limit;
+      return `${sign}${uv.toFixed(uv < 10 ? 2 : 1)}${up.suffix}`;
+    }
+    return `${sign}${v.toFixed(dec)}${suffix}`;
   }
   return `${sign}${Math.round(abs).toLocaleString("en-US")}`;
 }

@@ -6,6 +6,13 @@
  * SSG renders first 25 rows. Client expand button fetches the full
  * /json-lite/program_details/{pe_bli}.json and renders the remainder.
  * json-lite is same-origin under /json-lite/ — plain fetch, no useAssetUrl.
+ *
+ * DECLARED DEFAULT SORT (§P1-7): confidence tier (high → medium → low), then
+ * recipient name, then PIID — set in the exporter's fct_budget_to_awards
+ * query, NOT re-sorted here. Re-sorting would be wrong: the component only
+ * holds the first 25 rows until the reader expands, so a client sort would
+ * order a 25-row prefix of a differently-ordered whole. The payload order IS
+ * the sort, which is why the exporter carries it and gate 24 leg f checks it.
  */
 
 import { useState } from "react";

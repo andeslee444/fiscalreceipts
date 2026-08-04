@@ -92,6 +92,56 @@ describe("formatAmount", () => {
     // Real value from 0601101E budget_lines
     expect(formatAmount(280494, "USD thousands")).toBe("$280.5M");
   });
+
+  // ── Trillions (§P1-6) ─────────────────────────────────────────────────────
+  // The ladder used to stop at B, so the /district/ geography grand total
+  // ($3,657,411,328,834.89) rendered "$3657.4B" — a figure no reader parses.
+  describe("trillions", () => {
+    it("PM repro: the dim_geography grand total → $3.66T", () => {
+      expect(formatAmount(3_657_411_328_834.89, "USD")).toBe("$3.66T");
+    });
+
+    it("just below the boundary stays in B", () => {
+      expect(formatAmount(999_900_000_000, "USD")).toBe("$999.9B");
+    });
+
+    it("exactly $1T rolls over", () => {
+      expect(formatAmount(1_000_000_000_000, "USD")).toBe("$1.00T");
+    });
+
+    it("one dollar below $1T promotes rather than printing $1000.0B", () => {
+      expect(formatAmount(999_999_999_999, "USD")).toBe("$1.00T");
+    });
+
+    it("$1.5T → $1.50T (<10 → 2 decimals)", () => {
+      expect(formatAmount(1_500_000_000_000, "USD")).toBe("$1.50T");
+    });
+
+    it("≥$10T → 1 decimal", () => {
+      expect(formatAmount(12_345_000_000_000, "USD")).toBe("$12.3T");
+    });
+
+    it("negative trillions keep the sign", () => {
+      expect(formatAmount(-3_657_411_328_834.89, "USD")).toBe("-$3.66T");
+    });
+
+    it("units still drive scale — 3,657,411,328 USD thousands is also $3.66T", () => {
+      expect(formatAmount(3_657_411_328.83489, "USD thousands")).toBe("$3.66T");
+      expect(formatAmount(3_657_411.32883489, "USD millions")).toBe("$3.66T");
+    });
+
+    it("zero is unaffected by the new rung", () => {
+      expect(formatAmount(0, "USD")).toBe("$0");
+    });
+
+    it("no output ever carries a mantissa ≥ 1000 below the top rung", () => {
+      // Rounding must not manufacture "$1000.0B" out of a value that rounds
+      // up across a rung boundary — it promotes instead.
+      expect(formatAmount(999_999_999_999.99, "USD")).toBe("$1.00T");
+      expect(formatAmount(999_999_999.999, "USD")).toBe("$1.00B");
+      expect(formatAmount(999_999.9999, "USD")).toBe("$1.00M");
+    });
+  });
 });
 
 describe("exactTitle", () => {
@@ -132,9 +182,14 @@ describe("formatAmountNoCurrency", () => {
   });
 
   it("never contains a dollar sign", () => {
-    for (const v of [1, 999, 12_345, 9_999_999, 123_456_789_000]) {
+    for (const v of [1, 999, 12_345, 9_999_999, 123_456_789_000, 3.66e12]) {
       expect(formatAmountNoCurrency(v, "USD")).not.toContain("$");
     }
+  });
+
+  it("rolls over to T like the currency ladder (§P1-6)", () => {
+    expect(formatAmountNoCurrency(3_657_411_328_834.89, "USD")).toBe("3.66T");
+    expect(formatAmountNoCurrency(-1_500_000_000_000, "USD")).toBe("-1.50T");
   });
 });
 
@@ -161,6 +216,10 @@ describe("usdEquivalence", () => {
 
   it("negative ≥$1B magnitude keeps the sign", () => {
     expect(usdEquivalence(-1500, "USD millions")).toBe("= -$1.50B");
+  });
+
+  it("trillion-scale millions get the T equivalence (§P1-6)", () => {
+    expect(usdEquivalence(3_657_411.32883489, "USD millions")).toBe("= $3.66T");
   });
 });
 

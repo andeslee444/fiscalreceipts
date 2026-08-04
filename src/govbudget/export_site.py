@@ -194,6 +194,70 @@ _SCOPE_QUALIFIER_TEMPLATE = (
 )
 
 
+def award_fy_range_label(fy_min: int, fy_max: int) -> str:
+    """ONE wording for the period a USAspending aggregate covers (§P1-6).
+
+    The site used to state this three different ways — /companies/ said
+    "FY2017–FY2025" (a year short of the data), a company page said "across the
+    full USAspending dataset", and /district/ said nothing at all, so a $3.66T
+    aggregate sat in a card with no period and read as an annual figure.
+
+    Mirrored verbatim by awardFyRangeLabel() in site/src/lib/fy-range.ts —
+    change both or neither. En dash, not a hyphen (site typographic
+    convention, and the gate matches on it).
+    """
+    fy_min = int(fy_min)
+    fy_max = int(fy_max)
+    if fy_min > fy_max:
+        raise ValueError(
+            f"award FY range is inverted: FY{fy_min} > FY{fy_max}"
+        )
+    if fy_min == fy_max:
+        return f"FY{fy_min}"
+    return f"FY{fy_min}–FY{fy_max}"
+
+
+def _build_award_fy_range(con) -> dict | None:
+    """Derive the USAspending award corpus period from the data itself.
+
+    Every aggregate the site renders over USAspending obligations —
+    dim_geography, dim_entities, fct_district_programs, fct_influence's
+    family_obligations_usd — rolls up fct_award_transactions, so its
+    fiscal_year extent IS the period those aggregates cover. Nothing about
+    the range is authored.
+
+    `max_partial` is likewise derived: a fiscal year whose latest ingested
+    action_date falls before its September 30 close is in progress, not
+    complete. Returns None when the awards mart is unavailable (degenerate
+    exports) — the site then renders no range rather than a guessed one.
+    """
+    try:
+        row = con.execute(
+            "select min(fiscal_year), max(fiscal_year), max(action_date)"
+            " from fct_award_transactions"
+        ).fetchone()
+    except Exception:
+        return None
+    if not row or row[0] is None or row[1] is None:
+        return None
+
+    fy_min, fy_max, latest_action = int(row[0]), int(row[1]), row[2]
+    max_partial = False
+    latest_iso = None
+    if latest_action is not None:
+        latest_iso = str(latest_action)[:10]
+        # FY N runs Oct 1 (N-1) .. Sep 30 (N).
+        max_partial = latest_iso < f"{fy_max}-09-30"
+
+    return {
+        "fy_min": fy_min,
+        "fy_max": fy_max,
+        "label": award_fy_range_label(fy_min, fy_max),
+        "latest_action_date": latest_iso,
+        "max_partial": max_partial,
+    }
+
+
 def _build_checks_block() -> dict:
     """Derive /methodology/ §3's "per-build automated checks" numbers.
 
@@ -702,7 +766,15 @@ def export_site(
                 and p.amount_millions = d.amount_millions
             where not d.superseded and j.sha256 is not null
               and j.fiscal_year = 2026
-            order by j.sha256, d.pe_bli, d.scenario
+            -- §P1-7: the trailing keys are an APPEND-ONLY tiebreak. The
+            -- leading three were already the order, but several projects
+            -- share one (sha256, pe_bli, scenario), so their relative order —
+            -- which decides the Budget Details table's project grouping AND
+            -- the {pe}/line{n} entity ordinals — was left to the query plan.
+            -- nulls first puts the PE-root row above its projects.
+            order by j.sha256, d.pe_bli, d.scenario,
+                     d.project_number nulls first, d.amount_millions,
+                     d.xml_path
             """
         ).fetchall()
 
@@ -749,7 +821,12 @@ def export_site(
             join jbook_documents j on j.id = n.document_id
             where not n.superseded and j.sha256 is not null
               and j.fiscal_year = 2026
-            order by j.sha256, n.pe_bli
+            -- §P1-7: append-only tiebreak. A PE has many narrative sections
+            -- and only (sha256, pe_bli) was ordered, so the section sequence
+            -- on a program page came from the query plan. xml_path is the
+            -- J-book document locator and is unique per section.
+            order by j.sha256, n.pe_bli,
+                     n.project_number nulls first, n.kind, n.xml_path
             """
         ).fetchall()
 
@@ -3924,9 +4001,13 @@ def _write_all_sidecars(
     # ------------------------------------------------------------------ #
 
     # dim_programs
+    # §P1-7: programs.json is the base order for /programs/ (whose client table
+    # re-sorts by FY26 total, but with a STABLE sort — so this decides ties)
+    # and for the agency pages' program lists. pe_bli is the row's identity.
     prog_rows = con.execute(
         "select pe_bli, org, exhibit_family, title, project_count,"
         " fy2024_actual_millions, fully_reconciled from dim_programs"
+        " order by pe_bli"
     ).fetchall()
 
     # Trajectory-only feed programs (backlog #17): feed events reference
@@ -3965,10 +4046,20 @@ def _write_all_sidecars(
         }
 
     # fct_program_lobbying — narratives / mentions
+    # §P1-7: ONE total order serving three groupings, because filtering a
+    # totally-ordered list preserves the order. Grouped by pe_bli it is the
+    # program page's mention list (newest filings first, then client); grouped
+    # by family_key it is the company page's; grouped by filing_uuid it is the
+    # /filing/ page's (all rows there share a year and client, so the effective
+    # order is program title). Every one of them was previously incidental —
+    # 240 of 244 program mention lists were not newest-first, and the SSG cap
+    # of 25 rows meant the arbitrary order also decided WHICH mentions shipped.
     lob_rows = con.execute(
         "select filing_uuid, pe_bli, program_title, matched_term,"
         " description_snippet, filing_url, client_name, family_key, filing_year"
         " from fct_program_lobbying"
+        " order by filing_year desc, client_name, program_title, pe_bli,"
+        "          filing_uuid"
     ).fetchall()
     mentions_by_pe: dict[str, list] = defaultdict(list)
     for r in lob_rows:
@@ -3987,9 +4078,18 @@ def _write_all_sidecars(
         })
 
     # fct_budget_to_awards
+    # §P1-7: strongest links first, then alphabetical — one total order that
+    # reads correctly grouped by pe_bli (the program page's Awards table) and
+    # grouped by recipient_name (the company page's Budget-Linked Awards).
+    # Confidence leads because both tables render a Confidence column and only
+    # the first 25 rows are server-rendered: an arbitrary order was deciding
+    # which links a reader saw without expanding.
     awards_rows = con.execute(
         "select pe_bli, award_piid, recipient_name, confidence"
         " from fct_budget_to_awards"
+        " order by case confidence when 'high' then 0 when 'medium' then 1"
+        "               when 'low' then 2 else 3 end,"
+        "          recipient_name, pe_bli, award_piid"
     ).fetchall()
     awards_by_pe: dict[str, list] = defaultdict(list)
     for r in awards_rows:
@@ -4056,10 +4156,18 @@ def _write_all_sidecars(
     top200_family_keys: set[str] = {r[0] for r in entity_rows}
 
     # fct_influence keyed by family_key
+    # §P1-7 (the reported defect): this query had NO order by, so the company
+    # page's Lobbying Activity table rendered whatever order DuckDB happened to
+    # return — Lockheed read 2024, 2026, 2025, and 33 of the 66 families with
+    # filings were out of order. filing_year is a VARCHAR of 4-digit years, so
+    # a descending string sort IS a descending year sort. One row per
+    # (family, year), so year is a total order within a family; there is no
+    # quarter grain at this rollup (per-filing quarters live on /filing/).
     influence_rows = con.execute(
         "select family_key, filing_year, filings_count, lobbying_income_usd,"
         " lobbying_expense_usd, lobbying_total_usd, family_obligations_usd"
         " from fct_influence"
+        " order by family_key, filing_year desc"
     ).fetchall()
     # dim_entities total per family_key — used to attach the entity derived
     # fact_id to influence rows' family_obligations_usd ONLY when the values
@@ -4469,14 +4577,21 @@ def _write_all_sidecars(
         # mentions from fct_program_lobbying by family_key
         ent_mentions = mentions_by_fk.get(family_key, [])
 
-        # linked_programs: distinct pe_bli from mentions that are in dim_programs
-        linked: list[dict] = []
-        seen_pe: set[str] = set()
-        for m in ent_mentions:
-            p = m["pe_bli"]
-            if p in prog_titles and p not in seen_pe:
-                linked.append({"pe_bli": p, "title": prog_titles[p]})
-                seen_pe.add(p)
+        # linked_programs: distinct pe_bli from mentions that are in dim_programs.
+        # §P1-7: the chip list is sliced to 20 on the page, so its order decides
+        # which programs a reader sees. Most-mentioned first (the strongest
+        # link this family has to a program), then title, then pe_bli — never
+        # "whichever mention the query happened to return first".
+        mention_counts: Counter = Counter(
+            m["pe_bli"] for m in ent_mentions if m["pe_bli"] in prog_titles
+        )
+        linked: list[dict] = [
+            {"pe_bli": p, "title": prog_titles[p]}
+            for p, _n in sorted(
+                mention_counts.items(),
+                key=lambda kv: (-kv[1], prog_titles[kv[0]] or "", kv[0]),
+            )
+        ]
 
         obj = {
             "awards": entity_awards,
@@ -4804,6 +4919,10 @@ def _write_all_sidecars(
             }
 
     site_meta = {
+        # PM Sprint 2 (§P1-6): the DERIVED period every USAspending aggregate
+        # covers. One range, computed from fct_award_transactions, replacing
+        # three inconsistent authored statements (see award_fy_range_label).
+        "award_fy_range": _build_award_fy_range(con),
         "built_at": manifest.get("built_at"),
         "counts": meta_counts,
         # PM Sprint 2 (§P1-5, same defect class as the dataset row counts): the
@@ -5683,10 +5802,16 @@ def _emit_feed_sidecar(
 
 
 def _fmt_thousands(v) -> str:
-    """Quick compact formatter for thousands-USD (feed headline text only)."""
+    """Quick compact formatter for thousands-USD (feed headline text only).
+
+    Mirror of site/src/lib/format.ts's ladder — rungs run through T (§P1-6).
+    Decimals here are always 1 (feed headlines are prose, not table figures).
+    """
     if v is None:
         return "N/A"
     raw = float(v) * 1000
+    if abs(raw) >= 1_000_000_000_000:
+        return f"${raw / 1_000_000_000_000:.1f}T"
     if abs(raw) >= 1_000_000_000:
         return f"${raw / 1_000_000_000:.1f}B"
     if abs(raw) >= 1_000_000:
@@ -5697,10 +5822,16 @@ def _fmt_thousands(v) -> str:
 
 
 def _fmt_dollars(v) -> str:
-    """Quick compact formatter for raw USD (feed headline text only)."""
+    """Quick compact formatter for raw USD (feed headline text only).
+
+    Same ladder as _fmt_thousands; no K rung (feed dollar figures are awards,
+    never sub-$1M in practice) — see §P1-6.
+    """
     if v is None:
         return "N/A"
     raw = float(v)
+    if abs(raw) >= 1_000_000_000_000:
+        return f"${raw / 1_000_000_000_000:.1f}T"
     if abs(raw) >= 1_000_000_000:
         return f"${raw / 1_000_000_000:.1f}B"
     if abs(raw) >= 1_000_000:
@@ -5922,9 +6053,13 @@ def _emit_filing_sidecars(
     activities_by_uuid: dict[str, list] = {}
     if act_pq is not None:
         try:
+            # §P1-7: the /filing/ page renders these in payload order — sort
+            # them here so the issue list is alphabetical by code rather than
+            # whatever order the LDA parquet happens to hold.
             for fu, issue_code, issue_display, description in _duckdb.sql(
                 f"select filing_uuid, issue_code, issue_display, description"
                 f" from read_parquet('{act_pq}')"
+                f" order by filing_uuid, issue_code, issue_display, description"
             ).fetchall():
                 if not fu:
                     continue
@@ -5936,7 +6071,9 @@ def _emit_filing_sidecars(
         except Exception:
             pass
 
-    # Lobbyists per filing_uuid (exact-duplicate rows collapsed, order kept)
+    # Lobbyists per filing_uuid (exact-duplicate rows collapsed).
+    # §P1-7: name-ordered rather than parquet order — 180 of 221 sampled
+    # filings listed their lobbyists in no order a reader could name.
     lobbyists_by_uuid: dict[str, list] = {}
     if lob_pq is not None:
         try:
@@ -5944,6 +6081,7 @@ def _emit_filing_sidecars(
             for fu, name, covered_position in _duckdb.sql(
                 f"select filing_uuid, name, covered_position"
                 f" from read_parquet('{lob_pq}')"
+                f" order by filing_uuid, name, covered_position"
             ).fetchall():
                 if not fu or not name:
                     continue

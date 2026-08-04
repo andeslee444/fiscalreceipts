@@ -25,42 +25,51 @@ function toRawUsd(value: number, units: AmountUnits): number {
 }
 
 /**
+ * Compact-display rungs, largest first. THE ladder — every other compact
+ * formatter in the repo is an explicit mirror of this one:
+ *   site/scripts/gates/animation.mjs   (gate 12 verifies SVG flow labels)
+ *   site/scripts/generate-og.mjs       (OG card text)
+ *   src/govbudget/flow_chart.py        (label-width estimator)
+ *   src/govbudget/export_site.py       (feed headline text)
+ * Change one, change all five.
+ */
+const COMPACT_RUNGS = [
+  { limit: 1_000_000_000_000, suffix: "T" },
+  { limit: 1_000_000_000, suffix: "B" },
+  { limit: 1_000_000, suffix: "M" },
+  { limit: 1_000, suffix: "K" },
+] as const;
+
+/**
  * Format a raw USD value into compact display string.
- * Rules:
- *   ≥ 100B   → X.XB  (1 decimal)
- *   ≥ 10B    → XX.XB (1 decimal)
- *   ≥ 1B     → X.XXB (2 decimals if <10, i.e. 2 dec when lead digit < 10)
- *   ≥ 100M   → $XXXM (1 decimal)
- *   ≥ 10M    → $XX.XM (1 decimal)
- *   ≥ 1M     → $X.XM (1 decimal, 2 when < 10)
- *   ≥ 100K   → $XXXK (1 decimal)
- *   ≥ 10K    → $XX.XK (1 decimal)
- *   ≥ 1K     → $X.XK (1 decimal, 2 when < 10)
- *   < 1K     → $X (integer)
  *
- * Plan spec: "one decimal except <10 two decimals"
- *   - <10B → 2 dec; ≥10B → 1 dec
- *   - <10M → 2 dec; ≥10M → 1 dec
- *   - <10K → 2 dec; ≥10K → 1 dec
+ * Rungs: T / B / M / K, then integer dollars below $1K.
+ * Decimals, per plan spec ("one decimal except <10 two decimals"):
+ *   - mantissa <10 → 2 decimals ($3.66T, $5.00B, $1.23M)
+ *   - mantissa ≥10 → 1 decimal  ($12.3T, $135.4B, $280.5M)
+ *
+ * §P1-6: the ladder used to stop at B, so the /district/ geography grand total
+ * rendered "$3657.4B". It now runs through T, and a mantissa that ROUNDS up to
+ * 1000 promotes to the next rung rather than printing "$1000.0B" — so no
+ * output below the top rung can ever carry a four-digit mantissa.
+ * (At the top rung there is nowhere to promote to; $1,000T+ would print as
+ * "$1000.0T". The federal budget is three orders of magnitude away.)
  */
 function compactFormat(rawUsd: number): string {
   const abs = Math.abs(rawUsd);
   const sign = rawUsd < 0 ? "-" : "";
 
-  if (abs >= 1_000_000_000) {
-    const v = abs / 1_000_000_000;
+  for (let i = 0; i < COMPACT_RUNGS.length; i++) {
+    const { limit, suffix } = COMPACT_RUNGS[i];
+    if (abs < limit) continue;
+    const v = abs / limit;
     const dec = v < 10 ? 2 : 1;
-    return `${sign}$${v.toFixed(dec)}B`;
-  }
-  if (abs >= 1_000_000) {
-    const v = abs / 1_000_000;
-    const dec = v < 10 ? 2 : 1;
-    return `${sign}$${v.toFixed(dec)}M`;
-  }
-  if (abs >= 1_000) {
-    const v = abs / 1_000;
-    const dec = v < 10 ? 2 : 1;
-    return `${sign}$${v.toFixed(dec)}K`;
+    if (i > 0 && Number(v.toFixed(dec)) >= 1000) {
+      const up = COMPACT_RUNGS[i - 1];
+      const uv = abs / up.limit;
+      return `${sign}$${uv.toFixed(uv < 10 ? 2 : 1)}${up.suffix}`;
+    }
+    return `${sign}$${v.toFixed(dec)}${suffix}`;
   }
   // Sub-thousand: integer dollars
   return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
@@ -71,10 +80,10 @@ function compactFormat(rawUsd: number): string {
  * Units determine scale; magnitude never determines scale.
  *
  * Examples:
- *   formatAmount(1234567, 'USD thousands') → "$1.23T" (1234567 * 1000 = $1.234B)
- *   Wait — 1234567 thousands = $1,234,567,000 = $1.23B
- *   formatAmount(280494, 'USD thousands') → "$280.5M"  (280494 * 1000 = $280,494,000)
- *   formatAmount(0.994, 'USD millions') → "$994.0K"  (0.994 * 1e6 = $994,000)
+ *   formatAmount(1234567, 'USD thousands')   → "$1.23B"  (1,234,567 × 1e3 = $1,234,567,000)
+ *   formatAmount(280494, 'USD thousands')    → "$280.5M" (280,494 × 1e3 = $280,494,000)
+ *   formatAmount(0.994, 'USD millions')      → "$994.0K" (0.994 × 1e6 = $994,000)
+ *   formatAmount(3657411328834.89, 'USD')    → "$3.66T"  (the dim_geography grand total)
  */
 export function formatAmount(value: number, units: AmountUnits): string {
   const rawUsd = toRawUsd(value, units);
@@ -94,6 +103,7 @@ export function formatAmount(value: number, units: AmountUnits): string {
  *   formatAmountNoCurrency(619_000_000, 'USD')        → "619.0M"
  *   formatAmountNoCurrency(335_700, 'USD thousands')  → "335.7M"
  *   formatAmountNoCurrency(1_234_567_890, 'USD')      → "1.23B"
+ *   formatAmountNoCurrency(3_657_411_328_834, 'USD')  → "3.66T"
  */
 export function formatAmountNoCurrency(
   value: number,

@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getEntitiesTop, collectCitationsWithInputs } from "@/lib/data";
+import { getAwardFyRange } from "@/lib/fy-range";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CompaniesTable } from "@/components/companies-table";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { FyRange } from "@/components/fy-range";
+
+// §P1-6: the description used to say "FY2017 onward" while the body said
+// "FY2017–FY2025" and the data ran through FY2026. Derived, so it cannot rot.
+const _fyRange = getAwardFyRange();
+const _fyRangeText = _fyRange ? `, ${_fyRange.label}` : "";
 
 export const metadata: Metadata = {
   title: "Top Contractors",
-  description:
-    "Top 200 defense contractor families by total federal obligations — USAspending-derived, FY2017 onward.",
+  description: `Top 200 defense contractor families by total federal obligations — USAspending-derived${_fyRangeText}.`,
   alternates: { canonical: `${SITE_URL}/companies/` },
   openGraph: {
     title: `Top Contractors — ${SITE_NAME}`,
@@ -38,10 +44,14 @@ export default function CompaniesPage() {
       />
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Top Defense Contractors</h1>
+        {/* §P1-6: "FY2017–FY2025" was authored here and was a year short of
+            the data. The range is now derived from fct_award_transactions and
+            worded identically on every surface that states it. */}
         <p className="text-muted-foreground mb-2">
           Top {companies.length} contractor families by total federal
-          obligations — derived from USAspending.gov award data, FY2017–FY2025.
-          Figures are in raw USD.
+          obligations — derived from USAspending.gov award data,{" "}
+          <FyRange />. Figures are in raw USD and aggregate the whole period,
+          not a single year.
         </p>
         <p className="text-sm text-muted-foreground">
           Obligation totals carry derived USAspending citations — click a

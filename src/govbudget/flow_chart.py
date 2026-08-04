@@ -169,12 +169,17 @@ def _fmt_amount_no_currency(value: float, units: str) -> str:
 
     Used ONLY to size labels — the client still formats its own strings.
     (A ±1-in-last-digit rounding divergence moves a width estimate by well
-    under one character and cannot create an overlap the estimator misses.)
+    under one character and cannot create an overlap the estimator misses.
+    Same argument covers the client's rounding-promotion rule, §P1-6, which
+    is not mirrored here: it changes a mantissa's digit count by at most one.)
     """
     raw = value * (1000.0 if units == "USD thousands"
                    else 1_000_000.0 if units == "USD millions" else 1.0)
     a = abs(raw)
-    if a >= 1e9:
+    if a >= 1e12:
+        v = a / 1e12
+        s = f"{v:.{2 if v < 10 else 1}f}T"
+    elif a >= 1e9:
         v = a / 1e9
         s = f"{v:.{2 if v < 10 else 1}f}B"
     elif a >= 1e6:

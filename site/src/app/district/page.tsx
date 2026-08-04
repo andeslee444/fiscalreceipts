@@ -3,11 +3,13 @@ import Link from "next/link";
 import { getDistrictIndex, collectCitations, getFlowsCount, getProgramsCount } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
+import { formatAmountNoCurrency } from "@/lib/format";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
 import { DistrictTable } from "@/components/district-table";
+import { FyRange } from "@/components/fy-range";
 
 const _flowsCount = getFlowsCount();
 const _programsCount = getProgramsCount();
@@ -89,11 +91,16 @@ export default function DistrictIndexPage() {
               </p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
+              {/* §P1-6: was a hand-rolled `(total / 1e9).toFixed(1)}B` that
+                  bypassed the shared ladder entirely. Uses the no-currency
+                  formatter because the '$' would put a bare figure outside a
+                  [data-amount] span, which the render-static currency gate
+                  flags — the units are in the label below. */}
               <p className="text-2xl font-bold tabular-nums">
-                {(totalLinkable / 1e9).toFixed(1)}B
+                {formatAmountNoCurrency(totalLinkable, "USD")}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
-                linkable dollars (USD)
+                linkable dollars (USD) <FyRange separator="· " />
               </p>
             </div>
             {index.geo_grand_total !== null && (
@@ -106,8 +113,13 @@ export default function DistrictIndexPage() {
                     factId={index.geo_grand_total_fact_id}
                   />
                 </p>
+                {/* §P1-6: this is $3.66T — a DECADE of award obligations. It
+                    rendered "$3657.4B" with no period beside an "8.0B" card,
+                    which reads as one year's spending. Both now carry the
+                    derived range. */}
                 <p className="text-muted-foreground text-xs mt-1">
-                  all-district obligations (geography total)
+                  all-district obligations (geography total){" "}
+                  <FyRange separator="· " />
                 </p>
               </div>
             )}

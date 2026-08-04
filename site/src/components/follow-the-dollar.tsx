@@ -82,6 +82,18 @@ export function getFlowData(peBli: string): FlowData | null {
     return { awardCount, district, factId, familyNames, totalObligation };
   });
 
+  // §P1-7: this table used to render in "order each district first appears in
+  // flow.awards" — deterministic given a fixed sidecar, but not an order a
+  // reader can name. Biggest obligations first (the same default the
+  // /district/ index table uses), district code breaking ties and carrying
+  // rows whose obligation is unknown to the end.
+  districtRows.sort((a, b) => {
+    const av = a.totalObligation ?? -Infinity;
+    const bv = b.totalObligation ?? -Infinity;
+    if (av !== bv) return bv - av;
+    return a.district.localeCompare(b.district);
+  });
+
   return { districtRows, flow };
 }
 

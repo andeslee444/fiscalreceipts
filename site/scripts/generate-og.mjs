@@ -73,12 +73,19 @@ function sanitize(raw) {
   return String(raw).replace(/[^A-Za-z0-9._-]/g, "_");
 }
 
-/** Compact USD format (mirrors lib/format.ts rules closely enough for cards). */
+/**
+ * Compact USD format (mirrors lib/format.ts rules closely enough for cards).
+ * The T rung is the §P1-6 fix — mirrors of the ladder must all reach T.
+ * Known, deliberate divergence from lib/format.ts: the M rung here is always
+ * 1 decimal and sub-thousand values carry no grouping separators; card text is
+ * approximate by design and no gate compares it to page text.
+ */
 function fmtUsd(rawUsd) {
   if (rawUsd === null || rawUsd === undefined || Number.isNaN(rawUsd)) return null;
   const abs = Math.abs(rawUsd);
   const sign = rawUsd < 0 ? "-" : "";
   const f = (v, d) => v.toFixed(d).replace(/\.0+$/, (m) => (d > 0 ? m : ""));
+  if (abs >= 1e12) return `${sign}$${f(abs / 1e12, abs / 1e12 < 10 ? 2 : 1)}T`;
   if (abs >= 1e9) return `${sign}$${f(abs / 1e9, abs / 1e9 < 10 ? 2 : 1)}B`;
   if (abs >= 1e6) return `${sign}$${f(abs / 1e6, abs / 1e6 < 10 ? 1 : 1)}M`;
   if (abs >= 1e3) return `${sign}$${f(abs / 1e3, 1)}K`;
