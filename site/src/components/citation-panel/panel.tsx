@@ -61,6 +61,7 @@ import {
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
 import { FactAnchor } from "@/components/fact-anchor";
+import { CopyButton } from "@/components/copy-button";
 import { resolveCitationFromShards } from "@/lib/cite-shards";
 import {
   AssetConfigProvider,
@@ -494,23 +495,40 @@ function CitationPanelDialog({
                 </p>
               )}
 
-              {/* sha256 8-char prefix in mono */}
+              {/* sha256 8-char prefix in mono + a copy control for the rest.
+                  §P1-9.6: the drawer truncated the hash with no way to get
+                  the remaining 56 chars — the exact thing a reader verifying
+                  the document needs. Same control the /fact/ page uses
+                  (components/copy-button.tsx). The prefix carries .cell-ref
+                  so its zeros are slashed wherever the font can do it. */}
               {citation.sha256 && (
                 <p className="text-xs text-muted-foreground">
                   SHA-256:{" "}
-                  <span className="font-mono">
+                  <span
+                    data-testid="panel-sha-prefix"
+                    className="cell-ref font-mono"
+                    title={citation.sha256}
+                  >
                     {citation.sha256.slice(0, 8)}…
-                  </span>
+                  </span>{" "}
+                  <CopyButton
+                    text={citation.sha256}
+                    label="Copy full SHA-256"
+                    testId="copy-hash"
+                  />
                 </p>
               )}
 
-              {/* Official source link + copy-as-footnote (Phase 5C Task 9) */}
+              {/* Official source link + copy-as-footnote (Phase 5C Task 9).
+                  §P1-9.5: THE single official-source link in the drawer —
+                  cards must not render a second copy of it. */}
               <div className="flex items-center gap-4">
                 {citation.official_url && (
                   <a
                     href={citation.official_url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    data-testid="official-source"
                     className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -565,7 +583,8 @@ function CitationBody({
     return <PdfView citation={citation} />;
   }
   if (isWorkbook(citation)) {
-    return <WorkbookCard citation={citation} />;
+    // factId keys the §P1-9 cell-preview sidecar (lib/workbook-cells.ts).
+    return <WorkbookCard citation={citation} factId={factId} />;
   }
   if (isLdaFiling(citation)) {
     return <LdaCard citation={citation} />;

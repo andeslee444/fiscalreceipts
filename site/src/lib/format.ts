@@ -117,18 +117,25 @@ export function formatAmountNoCurrency(
  *
  * The panel keeps the RECORDED value primary (honesty: what the source says),
  * but "3,080.000 USD millions" is hard to reconcile with the "$3.08B" shown
- * on the surface card. When units are "USD millions" and the value is ≥ 1,000
- * (i.e. ≥ $1B), return the compact equivalence — e.g. "= $3.08B" — for the
- * caller to render as a muted parenthetical. Null otherwise (no clutter for
- * values already legible in millions).
+ * on the surface card. Return the compact equivalence — e.g. "= $3.08B" — for
+ * the caller to render as a muted parenthetical, or null when the recorded
+ * numerals are already legible on their own.
+ *
+ * Thresholds are one order of magnitude of mental arithmetic in each unit:
+ *   "USD millions"  → ≥ 1,000      (≥ $1B; "500.000 millions" needs no help)
+ *   "USD thousands" → ≥ 1,000      (≥ $1M; §P1-9 — the workbook tier records
+ *                                   raw thousands like 5,565,655, whose scale
+ *                                   nobody reads at a glance. "847" does not
+ *                                   need "= $847.0K".)
+ * Any other unit string → null (never infer scale from magnitude).
  */
 export function usdEquivalence(
   value: number,
   units: string | null,
 ): string | null {
-  if (units !== "USD millions") return null;
+  if (units !== "USD millions" && units !== "USD thousands") return null;
   if (!Number.isFinite(value) || Math.abs(value) < 1_000) return null;
-  return `= ${formatAmount(value, "USD millions")}`;
+  return `= ${formatAmount(value, units)}`;
 }
 
 /**

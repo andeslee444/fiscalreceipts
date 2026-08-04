@@ -203,9 +203,20 @@ describe("usdEquivalence", () => {
     expect(usdEquivalence(280.494, "USD millions")).toBeNull();
   });
 
-  it("non-millions units → null (scoped to the unit-mismatch case)", () => {
+  it("USD thousands ≥ 1000 → compact equivalence (§P1-9)", () => {
+    // PM repro: the workbook drawer headline read "$5.57B  USD thousands".
+    // The recorded numerals stay primary; this is the reconciling aside.
+    expect(usdEquivalence(5_565_655, "USD thousands")).toBe("= $5.57B");
+    expect(usdEquivalence(3_080_000, "USD thousands")).toBe("= $3.08B");
+    expect(usdEquivalence(280_494, "USD thousands")).toBe("= $280.5M");
+  });
+
+  it("USD thousands < 1000 → null (already legible)", () => {
+    expect(usdEquivalence(847, "USD thousands")).toBeNull();
+  });
+
+  it("other units → null (never infer scale from magnitude)", () => {
     expect(usdEquivalence(3_080_000_000, "USD")).toBeNull();
-    expect(usdEquivalence(3_080_000, "USD thousands")).toBeNull();
     expect(usdEquivalence(9716, "hhi")).toBeNull();
     expect(usdEquivalence(1234, null)).toBeNull();
   });

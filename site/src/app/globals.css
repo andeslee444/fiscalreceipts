@@ -227,6 +227,37 @@ span.interactive-raise:hover {
   }
 }
 
+/* ── Machine identifiers: cell refs, PE/BLI codes, hashes ─────────────────
+   PM-review Sprint 2 §P1-9.4: the PM read the workbook drawer's `O839` as
+   `0839` — at 12px a capital O and a zero are the same picture.
+
+   The spec proposed a slashed-zero font feature. VERIFIED against the site's
+   actual mono stack (--font-mono: SFMono-Regular, JetBrains Mono, Cascadia
+   Code, monospace — a system stack; no webfont is loaded, so what a reader
+   gets depends on their OS):
+     - SF Mono (/System/Library/Fonts/SFNSMono.ttf — every macOS reader)
+       exposes NO `zero` GSUB feature at all (its features are ccmp, locl,
+       smcp, c2sc, ss03, ss04), so `font-feature-settings: "zero"` is a no-op
+       there. Its DEFAULT zero glyph is already slashed (3 contours: bowl,
+       counter, and a 4-point diagonal); ss03 swaps in the UNSLASHED zero, so
+       reaching for a stylistic set here would make things worse.
+     - JetBrains Mono / Cascadia Code / Consolas do carry `zero`.
+   So: request the feature (free win where it exists, harmless where it does
+   not) via the high-level property, never ss03 — but do NOT rely on it. A
+   slashed zero only helps by contrast, and the ambiguous glyph here is the
+   LETTER O. The load-bearing fix is structural, in the markup:
+   <CellRef> puts the column letters in their own .cell-ref-col element and
+   spells the ref out in title/aria ("column O, row 839"), and the preview
+   table heads its value column with that same letter. */
+.cell-ref {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+.cell-ref-col {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 /* Scroll-triggered once-reveal (components/reveal.tsx). The .reveal class is
    applied only after hydration for below-viewport elements — SSR/no-JS
    renders content visible. Compositor-only: opacity + transform. */

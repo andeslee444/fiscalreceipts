@@ -161,6 +161,16 @@ console.log(
   `✓  cite-shards/ (${fs.readdirSync(shardsSrc).length} files) → public/json/`
 );
 
+// ── 5b2. Copy workbook cell previews (Sprint 2 §P1-9 — drawer cell table) ────
+// workbook-cells/{fact_id[:2]}.json — the cited cells + context rows for every
+// workbook citation, read out of the .xlsx at export time. Same-origin like
+// the citation shards; fetched only when a workbook drawer opens.
+const workbookCellsSrc = path.join(jsonDir, "workbook-cells");
+copyDir(workbookCellsSrc, path.join(jsonDestDir, "workbook-cells"));
+console.log(
+  `✓  workbook-cells/ (${fs.readdirSync(workbookCellsSrc).length} files) → public/json/`
+);
+
 // ── 5c. Copy derived breakdowns (Phase 5D §3b — "show your work" tables) ─────
 const breakdownsSrc = path.join(jsonDir, "breakdowns");
 copyDir(breakdownsSrc, path.join(jsonDestDir, "breakdowns"));

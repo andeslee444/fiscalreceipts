@@ -41,7 +41,8 @@
  */
 
 import React, { useContext, useEffect, useState } from "react";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { CopyButton } from "@/components/copy-button";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CitationPanelContext, basisChipText } from "@/components/cite";
 import { useAssetUrl } from "@/components/asset-config";
@@ -494,36 +495,3 @@ function Row({
   );
 }
 
-// ── CopyButton — small clipboard affordance (matches the panel's pattern) ───
-
-function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard unavailable — leave the text selectable instead.
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      aria-label={label}
-      className="inline-flex translate-y-[1px] items-center text-muted-foreground transition-colors hover:text-foreground"
-    >
-      {copied ? (
-        <Check className="h-3 w-3 text-green-600" aria-hidden="true" />
-      ) : (
-        <Copy className="h-3 w-3" aria-hidden="true" />
-      )}
-      <span aria-live="polite" className="sr-only">
-        {copied ? "Copied" : ""}
-      </span>
-    </button>
-  );
-}

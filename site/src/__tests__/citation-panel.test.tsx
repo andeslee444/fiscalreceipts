@@ -340,17 +340,27 @@ describe("CitationPanelProvider — kind dispatch", () => {
     expect(container.textContent).toContain("R21");
   });
 
-  it("workbook card: renders official source link", async () => {
+  it("workbook card: does NOT render its own official-source link (§P1-9.5)", async () => {
+    // The card used to duplicate the panel footer's link — same URL, ~250px
+    // apart. The footer keeps the single copy; see workbook-card.test.tsx for
+    // the drawer-level "exactly one" assertion.
     const { WorkbookCard } = await import(
       "@/components/citation-panel/workbook-card"
     );
 
     const { container } = render(<WorkbookCard citation={WORKBOOK_CITATION} />);
-    const links = container.querySelectorAll("a[href]");
-    const officialLink = Array.from(links).find((a) =>
-      (a as HTMLAnchorElement).href.includes("workbook.xlsx"),
+    const officialLinks = Array.from(container.querySelectorAll("a[href]")).filter(
+      (a) => a.getAttribute("href") === WORKBOOK_CITATION.official_url,
     );
-    expect(officialLink).toBeTruthy();
+    expect(officialLinks).toHaveLength(0);
+    // the .xlsx download stays
+    expect(
+      Array.from(container.querySelectorAll("a[href]")).some((a) =>
+        (a.getAttribute("href") ?? "").includes(
+          `${WORKBOOK_CITATION.sha256}.xlsx`,
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("lda card: renders human-readable LDA link", async () => {
