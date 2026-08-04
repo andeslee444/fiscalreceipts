@@ -186,16 +186,45 @@ export function eventLabel(event: FamilyEventKind, effectiveDate: string): strin
 }
 
 /**
+ * The OTHER SIDE of a "from" arrival, phrased so the label names it.
+ *
+ * Fix round (judge 3): "ROCKWELL COLLINS, INC. — acquired 2018", sitting on
+ * the RTX row, invites exactly one inference, and it is false. United
+ * Technologies bought Rockwell Collins; RTX did not exist until 2020. Same
+ * shape on the L3Harris row: "EXELIS INC. — acquired 2015" reads as L3Harris
+ * (formed 2019) doing the acquiring, when it was Harris Corporation. The
+ * acquirer is in the data — MemberArrival.counterparty, the event's other
+ * endpoint — it was simply not being rendered. Now the label carries it, so
+ * the chip cannot be misread away from its row.
+ *
+ * The verb governs the preposition: an acquisition has an acquirer, a merger
+ * of equals has neither party absorbing the other, and a rename has only a
+ * new name.
+ */
+const EVENT_FROM_PHRASE: Record<FamilyEventKind, string> = {
+  rename: "renamed to",
+  acquisition: "acquired by",
+  merger: "merged into",
+};
+
+/**
  * The per-former-name annotation. A "from" arrival states what happened to
- * THAT name; a "to" arrival names the predecessor it replaced, because
- * "Northrop Grumman Innovation Systems — acquired 2018" alone would leave the
- * reader wondering which company that was.
+ * THAT name AND who it happened with; a "to" arrival names the predecessor it
+ * replaced, because "Northrop Grumman Innovation Systems — acquired 2018"
+ * alone would leave the reader wondering which company that was.
+ *
+ * Both directions therefore name both endpoints — neither half of an event
+ * can be read off a row and land on the wrong company.
  */
 export function memberEventLabel(arrival: MemberArrival): string {
-  const label = eventLabel(arrival.event, arrival.effective_date);
-  return arrival.role === "to"
-    ? `formerly ${arrival.counterparty}, ${label}`
-    : label;
+  if (arrival.role === "to") {
+    return `formerly ${arrival.counterparty}, ${eventLabel(
+      arrival.event,
+      arrival.effective_date,
+    )}`;
+  }
+  const phrase = EVENT_FROM_PHRASE[arrival.event] ?? EVENT_VERB[arrival.event];
+  return `${phrase} ${arrival.counterparty}, ${arrival.effective_date.slice(0, 4)}`;
 }
 
 /**

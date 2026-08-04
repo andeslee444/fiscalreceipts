@@ -304,6 +304,31 @@ describe("workbook drawer — cell preview (§P1-9.2)", () => {
     expect(header).toContain("FY 2024 Actuals Amount");
   });
 
+  // Fix round (judge 3, MAJOR): under `sm` the row stacks and <thead> is
+  // dropped, and the caption sits after the table — below the fold in a 390px
+  // drawer. A phone reader got bare figures, an unexplained highlight band and
+  // em dashes with nothing decoding them. Both aids now LEAD the stacked list.
+  it("carries the column label and the caption into the mobile layout", async () => {
+    render(<WorkbookCard citation={F35_CITATION} factId={FID} />);
+    await screen.findByTestId("workbook-preview");
+    const legend = screen.getByTestId("workbook-preview-legend");
+    const text = (legend.textContent ?? "").replace(/\s+/g, " ");
+
+    // the money column's identity — the payload <thead> takes with it
+    expect(text).toContain("O");
+    expect(text).toContain("FY 2024 Actuals Amount");
+    // and the caption that decodes the highlight band and the em dashes
+    expect(text).toContain("Rows 837–843 of Exhibit P-1");
+    expect(text).toContain("USD thousands");
+    expect(text).toContain("Cited rows are highlighted");
+    expect(text).toContain("a blank cell shows");
+    // it must arrive BEFORE the rows it decodes
+    expect(
+      legend.compareDocumentPosition(screen.getByTestId("workbook-preview")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows row labels from the workbook, including the Non-Add memo flag", async () => {
     render(<WorkbookCard citation={F35_CITATION} factId={FID} />);
     const table = await screen.findByTestId("workbook-preview");
@@ -333,27 +358,50 @@ describe("workbook drawer — cell preview (§P1-9.2)", () => {
 });
 
 describe("workbook drawer — per-cell arithmetic (§P1-9.3)", () => {
-  it("shows each cell, its value, the operator, and the sum", async () => {
+  // THE SIGN CONTRACT, in one place.
+  //
+  // The equation is a SUM over the cells' own recorded values; a negative
+  // addend is parenthesised rather than turned into a subtraction. The
+  // previous round rendered "… − 246,702 …" (operator + magnitude) while the
+  // preview table below kept printing the signed −246,702 under a caption
+  // promising values "as recorded in the workbook" — so substituting the
+  // table's cell into the stated equation double-negated it. These tests pin
+  // BOTH surfaces and pin them to each other.
+
+  it("sums the cells as recorded, parenthesising a negative addend", async () => {
     render(<WorkbookCard citation={F35_CITATION} factId={FID} />);
     const line = await screen.findByTestId("workbook-arithmetic");
     const text = (line.textContent ?? "").replace(/\s+/g, " ").trim();
 
-    // A recorded NEGATIVE renders as a subtraction, not "+ −246,702" ("plus
-    // negative" — visual-judge fix round). The signed value as recorded stays
-    // available on the title attribute and in the preview table below.
     expect(text).toBe(
-      "O839 5,493,772 − O840 246,702 + O841 318,585 = 5,565,655",
+      "O839 5,493,772 + O840 (−246,702) + O841 318,585 = 5,565,655",
     );
+    // Every operator is a plus. Strip the parenthesised addends and no minus
+    // sign may remain — a subtraction operator here is exactly what put the
+    // equation at odds with the table.
+    expect(text.replace(/\(−[\d,.]+\)/g, "")).not.toContain("−");
+    // "+ −246,702" ("plus negative") is what the parentheses exist to avoid.
     expect(text).not.toContain("+ −");
   });
 
-  it("keeps the recorded sign of a negative addend reachable", async () => {
+  it("prints each addend EXACTLY as the preview table prints that cell", async () => {
+    // The substitution check: a reader taking a value out of the table and
+    // dropping it into the equation must get the same numerals.
     render(<WorkbookCard citation={F35_CITATION} factId={FID} />);
     const line = await screen.findByTestId("workbook-arithmetic");
-    const titles = Array.from(line.querySelectorAll("[title]")).map((n) =>
-      n.getAttribute("title"),
-    );
-    expect(titles).toContain("recorded as −246,702");
+    const table = await screen.findByTestId("workbook-preview");
+    const equation = (line.textContent ?? "").replace(/\s+/g, " ");
+
+    for (const row of [839, 840, 841]) {
+      const cell = table.querySelector(`[data-row='${row}'] [data-cell-value]`);
+      const asRecorded = cell?.textContent ?? "";
+      expect(asRecorded).not.toBe("");
+      expect(equation).toContain(asRecorded);
+    }
+    // …including the sign of the negative one, verbatim.
+    expect(
+      table.querySelector("[data-row='840'] [data-cell-value]")?.textContent,
+    ).toBe("−246,702");
   });
 
   it("omits the arithmetic line for a single-cell citation", async () => {

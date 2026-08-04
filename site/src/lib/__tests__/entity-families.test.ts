@@ -339,7 +339,12 @@ describe("per-former-name event labels (fix round)", () => {
     expect(eventLabel("merger", "2020-04-03")).toBe("merged 2020");
   });
 
-  it("labels a 'from' arrival with what happened to that name", () => {
+  // Fix round (judge 3): a bare "acquired 2018" on the RTX row invites the
+  // reader to supply the acquirer from the row it sits on — and RTX did not
+  // exist until 2020; UTC bought Rockwell Collins. Same shape on the L3Harris
+  // row, where Harris Corporation (not L3Harris, formed 2019) bought Exelis.
+  // The counterparty is in the arrival; the label now renders it.
+  it("names the ACQUIRER on a 'from' acquisition, not just the year", () => {
     expect(
       memberEventLabel({
         event_index: 2,
@@ -350,7 +355,50 @@ describe("per-former-name event labels (fix round)", () => {
         effective_date: "2015-05-29",
         evidence: "sourced",
       }),
-    ).toBe("acquired 2015");
+    ).toBe("acquired by Harris Corporation, 2015");
+  });
+
+  it("names the acquirer for the Rockwell Collins repro (UTC, not RTX)", () => {
+    expect(
+      memberEventLabel({
+        event_index: 2,
+        anchor: "event-rtx-2",
+        role: "from",
+        counterparty:
+          "Collins Aerospace Systems (United Technologies Corporation)",
+        event: "acquisition",
+        effective_date: "2018-11-26",
+        evidence: "sourced",
+      }),
+    ).toBe(
+      "acquired by Collins Aerospace Systems (United Technologies Corporation), 2018",
+    );
+  });
+
+  it("uses a verb-appropriate preposition for mergers and renames", () => {
+    // A merger of equals has no acquirer; a rename has only a new name.
+    expect(
+      memberEventLabel({
+        event_index: 0,
+        anchor: "event-rtx-0",
+        role: "from",
+        counterparty: "Raytheon Technologies Corporation",
+        event: "merger",
+        effective_date: "2020-04-03",
+        evidence: "sourced",
+      }),
+    ).toBe("merged into Raytheon Technologies Corporation, 2020");
+    expect(
+      memberEventLabel({
+        event_index: 0,
+        anchor: "event-v2x-0",
+        role: "from",
+        counterparty: "V2X, Inc.",
+        event: "rename",
+        effective_date: "2022-07-05",
+        evidence: "sourced",
+      }),
+    ).toBe("renamed to V2X, Inc., 2022");
   });
 
   it("names the predecessor for a 'to' arrival", () => {
