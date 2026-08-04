@@ -8,8 +8,15 @@ import "server-only";
  * helpers). Numbers are interpolated at build time — never hardcoded in JSX.
  *
  * Used by <CoverageNote id> and by the G2 gate (coverage.mjs).
+ *
+ * Fix round: counts are grouped through lib/format formatCount ("1,741", not
+ * "1741") — the same notation /programs/, /district/ and the corpus statement
+ * use. coverage.mjs mirrors the grouping in its expected patterns; it still
+ * recomputes every number from the sidecars and still requires an exact
+ * string match, so the gate is unchanged in strength.
  */
 
+import { formatCount } from "@/lib/format";
 import {
   getFlowsCount,
   getProgramsCount,
@@ -61,12 +68,12 @@ export interface Coverage {
 export function getCoverage(id: CoverageId): Coverage {
   switch (id) {
     case "follow-the-dollar": {
-      const num = getFlowsCount();
-      const den = getProgramsCount();
+      const num = formatCount(getFlowsCount());
+      const den = formatCount(getProgramsCount());
       return {
         id,
-        numerator: num,
-        denominator: den,
+        numerator: getFlowsCount(),
+        denominator: getProgramsCount(),
         note: `Follow-the-dollar covers ${num} of ${den} programs — only high-confidence budget→award links are shown.`,
         emptyNote: `No follow-the-dollar view — this program's awards haven't been crosswalked at high confidence (flows cover ${num} of ${den} programs).`,
         anchor: "/methodology/#coverage-follow-the-dollar",
@@ -74,12 +81,12 @@ export function getCoverage(id: CoverageId): Coverage {
       };
     }
     case "dossiers": {
-      const num = getDossierCount();
-      const den = getProgramsCount();
+      const num = formatCount(getDossierCount());
+      const den = formatCount(getProgramsCount());
       return {
         id,
-        numerator: num,
-        denominator: den,
+        numerator: getDossierCount(),
+        denominator: getProgramsCount(),
         note: `Research dossiers exist for ${num} of ${den} programs — the ${num} largest fully J-book-detailed programs by FY2026 request.`,
         emptyNote: `No research dossier for this program — dossiers cover ${num} of ${den} programs, the largest fully J-book-detailed lines by FY2026 requested dollars.`,
         anchor: "/methodology/#coverage-dossiers",
@@ -93,7 +100,7 @@ export function getCoverage(id: CoverageId): Coverage {
         id,
         numerator: num,
         denominator: den,
-        note: `Award linkage is shown for ${num} of ${den} profiled companies — only high-confidence USASpending matches are included.`,
+        note: `Award linkage is shown for ${formatCount(num)} of ${formatCount(den)} profiled companies — only high-confidence USASpending matches are included.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-company-awards",
         linkText: "why partial award coverage? →",
@@ -106,7 +113,7 @@ export function getCoverage(id: CoverageId): Coverage {
         id,
         numerator: num,
         denominator: den,
-        note: `${num} of 435 congressional districts have high-confidence linked defense dollars.`,
+        note: `${formatCount(num)} of ${formatCount(den)} congressional districts have high-confidence linked defense dollars.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-districts",
         linkText: "why not all districts? →",
@@ -146,7 +153,7 @@ export function getCoverage(id: CoverageId): Coverage {
         // second sentence is the G2 gate's interpolated-number contract.
         note:
           `Columns are edition-honest: actuals for FY N come from the PB(N+2) President's Budget book, and every column states its edition — ten editions (PB2017–PB2026) are loaded. ` +
-          `The matrix covers the ${num} programs with detail-grade data; all ${den} program pages are browsable.`,
+          `The matrix covers the ${formatCount(num)} programs with detail-grade data; all ${formatCount(den)} program pages are browsable.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-editions",
         linkText: "why these editions? →",
@@ -159,7 +166,7 @@ export function getCoverage(id: CoverageId): Coverage {
         id,
         numerator: num,
         denominator: den,
-        note: `Detailed J-book justification is ingested for ${num} of ${den} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in; the small remainder carries cited R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines).`,
+        note: `Detailed J-book justification is ingested for ${formatCount(num)} of ${formatCount(den)} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in; the small remainder carries cited R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines).`,
         emptyNote: null,
         anchor: "/methodology/#coverage-service-books",
         linkText: "why summary figures only? →",
@@ -176,7 +183,7 @@ export function getCoverage(id: CoverageId): Coverage {
         numerator: b.crosswalkedPeCount,
         denominator: b.universePeCount,
         note:
-          `Budget→contractor links are drawn for ${b.crosswalkedPeCount} of ${b.universePeCount} crosswalked PEs — ` +
+          `Budget→contractor links are drawn for ${formatCount(b.crosswalkedPeCount)} of ${formatCount(b.universePeCount)} crosswalked PEs — ` +
           `${b.pctNotCrosswalked}% of the FY2026 request is not yet crosswalked: an honest gap, not an absence of contractors.`,
         emptyNote: null,
         // Anchor id is "coverage-flowdown" (the section covers the whole

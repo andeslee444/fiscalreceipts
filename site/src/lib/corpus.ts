@@ -25,6 +25,7 @@ import "server-only";
  */
 
 import { getPrograms, getProgramPagesCount, getSiteMeta } from "./data";
+import { formatCount } from "./format";
 
 export interface Corpus {
   /** Programs with detail-grade R-2/P-40 J-book data (programs.json). */
@@ -43,9 +44,9 @@ export function corpusStatement(
   detailPages: number,
   scope: string,
 ): string {
-  const n = (v: number) => v.toLocaleString("en-US");
   return (
-    `${n(programPages)} browsable program pages; ${n(detailPages)} of them ` +
+    `${formatCount(programPages)} browsable program pages; ` +
+    `${formatCount(detailPages)} of them ` +
     `carry detail-grade R-2/P-40 J-book data — ${scope}.`
   );
 }

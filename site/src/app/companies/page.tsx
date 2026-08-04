@@ -143,7 +143,27 @@ export default function CompaniesPage() {
           .
         </p>
       </div>
-      <CompaniesTable rows={rows} showConfidence={showConfidence} />
+      {/* The money column's period + universe, restated in frame with the
+          figures (fix round, judge 2). Same derived range token as the intro
+          — <FyRange /> everywhere, never an authored year. */}
+      <CompaniesTable
+        rows={rows}
+        showConfidence={showConfidence}
+        columnScope={
+          <>
+            Every figure in the obligations column is USAspending award
+            obligations in raw USD, summed across the whole period{" "}
+            <FyRange separator="— " /> — not a single year, and not budget
+            authority: award obligations and the budget figures elsewhere on
+            this site are different universes.
+          </>
+        }
+        columnScopeShort={
+          <>
+            USAspending awards <FyRange separator="· " />
+          </>
+        }
+      />
     </div>
     </CitationPanelProvider>
   );

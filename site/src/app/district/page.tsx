@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getDistrictIndex, collectCitations, getFlowsCount, getProgramsCount } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
-import { formatAmountNoCurrency } from "@/lib/format";
+import { exactTitle, formatAmountNoCurrency, formatCount } from "@/lib/format";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
@@ -11,8 +11,12 @@ import { CoverageNote } from "@/components/coverage-note";
 import { DistrictTable } from "@/components/district-table";
 import { FyRange } from "@/components/fy-range";
 
-const _flowsCount = getFlowsCount();
-const _programsCount = getProgramsCount();
+// Grouped through the shared count formatter — "17 of 1,741", never
+// "17 of 1741" (fix round: the page mixed both notations against the
+// "1,993"/"1,741" the corpus statement uses elsewhere).
+const _flowsCount = formatCount(getFlowsCount());
+const _programsCount = formatCount(getProgramsCount());
+const _unlinkedCount = formatCount(getProgramsCount() - getFlowsCount());
 
 export const metadata: Metadata = {
   title: "Congressional Districts",
@@ -77,7 +81,7 @@ export default function DistrictIndexPage() {
               (visual-judge nit: text felt cramped at 390px). */}
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-4">
             <strong>Coverage note:</strong> District data reflects only{" "}
-            high-confidence award crosswalk links. {_programsCount - _flowsCount} of {_programsCount} programs have no
+            high-confidence award crosswalk links. {_unlinkedCount} of {_programsCount} programs have no
             district-level linkage yet — crosswalk extension is on the
             roadmap.
           </div>
@@ -103,7 +107,15 @@ export default function DistrictIndexPage() {
                   formatter is still the right one — a bare '$…' outside a
                   [data-amount] span is what the render-static currency gate
                   flags — so the currency sits in the label, spelled out, next
-                  to the number rather than only under it. */}
+                  to the number rather than only under it.
+
+                  FIX ROUND: the neighbouring card then read "$3.66T" while
+                  this one read "USD 8.01B", so two figures meant to be
+                  compared carried two currency notations. Both cards now use
+                  the SAME one — the spelled-out "USD" at text-lg followed by
+                  the compact magnitude — and the only visible difference left
+                  between them is the cited card's underline and its chip,
+                  which is a real difference (see the reconciliation line). */}
               <p className="text-2xl font-bold tabular-nums">
                 <span className="text-lg align-baseline">USD </span>
                 {formatAmountNoCurrency(totalLinkable, "USD")}
@@ -116,11 +128,20 @@ export default function DistrictIndexPage() {
             {index.geo_grand_total !== null && (
               <div className="rounded-lg border border-border bg-card p-4">
                 <p className="text-2xl font-bold tabular-nums">
+                  {/* Same notation as the middle card (see its note): "USD"
+                      outside the [data-amount] span at the same size, the
+                      magnitude inside it. `display` re-notates the SAME value
+                      — never a different one — so `title` is passed
+                      explicitly to keep the exact-dollars hover text that
+                      formatAmount's default would have produced. */}
+                  <span className="text-lg align-baseline">USD </span>
                   <Cite
                     value={index.geo_grand_total}
                     units="USD"
                     dataset={index.geo_grand_total_dataset}
                     factId={index.geo_grand_total_fact_id}
+                    display={formatAmountNoCurrency(index.geo_grand_total, "USD")}
+                    title={exactTitle(index.geo_grand_total, "USD")}
                   />
                 </p>
                 {/* §P1-6: this is $3.66T — a DECADE of award obligations. It

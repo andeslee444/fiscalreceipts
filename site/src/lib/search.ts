@@ -12,7 +12,11 @@
 
 import MiniSearch from "minisearch";
 
-import { aliasMatchesForQuery, aliasesForPeBli } from "./aliases";
+import {
+  aliasHitsForQuery,
+  aliasMatchesForQuery,
+  aliasesForPeBli,
+} from "./aliases";
 
 // "static", "feed", "district" and "alias" are emitted by export_site's
 // search_quick.json; everything that isn't program/company/agency groups
@@ -48,6 +52,13 @@ export interface SearchResult {
   score: number;
   /** Curated "also known as" names (§P1-4 alias table) — chip source. */
   aka?: string[];
+  /**
+   * The alias the QUERY equalled, when it did ("Sentinel"). Present so ⌘K and
+   * the /programs/ filter render the identical chip string through
+   * lib/aliases aliasChipText — the two used to word the same fact
+   * differently, and the table's version named the matched alias twice.
+   */
+  akaMatched?: string;
 }
 
 export interface GroupedResults {
@@ -385,6 +396,10 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
         : undefined);
     const aka =
       kind === "program" && peBli ? aliasesForPeBli(peBli) ?? undefined : undefined;
+    // Which alias did the matching — the same full-query-equality judgement
+    // the /programs/ filter makes (aliasHitsForQuery), so both chips agree.
+    const akaMatched =
+      aka && peBli ? aliasHitsForQuery(query).get(peBli)?.matched : undefined;
     return {
       id: r.id,
       kind,
@@ -394,6 +409,7 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
       titleHtml: highlightTerms(r.title as string, terms),
       score: r.score,
       ...(aka ? { aka } : {}),
+      ...(akaMatched ? { akaMatched } : {}),
     };
   };
 

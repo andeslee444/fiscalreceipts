@@ -142,6 +142,16 @@ export interface CiteProps {
    * citation panel instead).
    */
   display?: string;
+  /**
+   * Explicit hover/screen-reader text, overriding both defaults.
+   *
+   * Needed when `display` RE-NOTATES the same monetary value rather than
+   * replacing it with a non-currency one — /district/ renders "USD 3.66T"
+   * instead of "$3.66T" so the cited card and its uncited neighbour share one
+   * currency notation, and the exact-dollars title must survive that. Pass
+   * exactTitle(value, units) in that case; leave unset otherwise.
+   */
+  title?: string;
   /** Additional className for the outer span. */
   className?: string;
   /**
@@ -317,6 +327,7 @@ export function Cite({
   factId,
   xmlPath,
   display,
+  title: titleOverride,
   className,
   basis,
   fy,
@@ -330,7 +341,7 @@ export function Cite({
   const { receiptsOn } = useContext(ReceiptsContext);
 
   const displayText = display ?? formatAmount(value, units);
-  const title = display ?? exactTitle(value, units);
+  const title = titleOverride ?? display ?? exactTitle(value, units);
 
   // Basis attrs — shared by all three states (gate 23 leg a1 requires them
   // on EVERY [data-amount] on program pages, states B/C included).

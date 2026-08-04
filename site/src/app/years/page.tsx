@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPrograms, TRAJECTORY_FY_LABEL } from "@/lib/data";
+import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -18,7 +19,9 @@ import { YearsMatrix } from "@/components/years-matrix";
  * (~20k potential fact_ids would dwarf the embedded-slice budget).
  */
 
-const _programCount = getPrograms().length;
+// Grouped ("1,741") through the shared count formatter — the same
+// notation the corpus statement and /programs/ use.
+const _programCount = formatCount(getPrograms().length);
 
 export const metadata: Metadata = {
   title: "Years — budget over time",

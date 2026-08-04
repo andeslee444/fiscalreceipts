@@ -10,6 +10,7 @@ import {
   filterPrograms,
   programHaystack,
 } from "@/components/programs-table";
+import { aliasChipText } from "@/lib/aliases";
 
 function program(over: Partial<ProgramRow> = {}): ProgramRow {
   return {
@@ -152,5 +153,42 @@ describe("filterPrograms — the alias resolver, wired (fix round)", () => {
 
   it("returns everything for an empty query", () => {
     expect(hits("").length).toBe(3);
+  });
+});
+
+describe("aliasChipText — ONE wording for ⌘K and the /programs/ filter", () => {
+  // The chip read "matched: Sentinel · also known as Sentinel · GBSD ·
+  // LGM-35A" — the matched alias named twice — while ⌘K said "also known as:
+  // Sentinel · GBSD · LGM-35A" for the same program. Both surfaces now render
+  // this function's output verbatim.
+  const SENTINEL = ["Sentinel", "GBSD", "LGM-35A"];
+
+  it("names the matched alias once, then the OTHER names", () => {
+    expect(aliasChipText("Sentinel", SENTINEL)).toBe(
+      "matched alias: Sentinel — also known as GBSD · LGM-35A",
+    );
+  });
+
+  it("never repeats the matched alias in the also-known-as list", () => {
+    const chip = aliasChipText("Sentinel", SENTINEL);
+    expect(chip.match(/Sentinel/g)).toHaveLength(1);
+  });
+
+  it("matches on the normalized key, not the display form", () => {
+    expect(aliasChipText("lgm35a", SENTINEL)).toBe(
+      "matched alias: lgm35a — also known as Sentinel · GBSD",
+    );
+  });
+
+  it("drops the trailing clause when the match is the only alias", () => {
+    expect(aliasChipText("Golden Dome", ["Golden Dome"])).toBe(
+      "matched alias: Golden Dome",
+    );
+  });
+
+  it("falls back to the plain alias list when nothing matched", () => {
+    expect(aliasChipText(undefined, SENTINEL)).toBe(
+      "also known as: Sentinel · GBSD · LGM-35A",
+    );
   });
 });

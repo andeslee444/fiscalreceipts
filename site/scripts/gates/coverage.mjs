@@ -55,6 +55,19 @@ function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
 }
 
+/**
+ * Grouped count — MIRRORS formatCount() in src/lib/format.ts.
+ *
+ * The manifest interpolates grouped counts ("1,741", never "1741") so the
+ * coverage notes read in the same notation as the corpus statement and the
+ * /programs/ and /district/ prose. The gate still recomputes every number
+ * from the sidecars and still demands an exact substring match — only the
+ * notation of the expected string moved. Change one, change both.
+ */
+function fmtCount(n) {
+  return Number(n).toLocaleString("en-US");
+}
+
 function htmlFor(url) {
   return path.join(outDir, ...url.split("/").filter(Boolean), "index.html");
 }
@@ -181,7 +194,7 @@ export async function runCoverageGate() {
       checkNumbers: () => {
         const n = counts.flows;
         const d = counts.programs;
-        return { n, d, pattern: `${n} of ${d}` };
+        return { n, d, pattern: `${fmtCount(n)} of ${fmtCount(d)}` };
       },
     },
     {
@@ -192,7 +205,7 @@ export async function runCoverageGate() {
       checkNumbers: () => {
         const n = counts.dossiers;
         const d = counts.programs;
-        return { n, d, pattern: `${n} of ${d}` };
+        return { n, d, pattern: `${fmtCount(n)} of ${fmtCount(d)}` };
       },
     },
     {
@@ -207,7 +220,7 @@ export async function runCoverageGate() {
         const d = fs.existsSync(entityDetailsDir)
           ? fs.readdirSync(entityDetailsDir).filter((f) => f.endsWith(".json")).length
           : 0;
-        return { n, d, pattern: `${n} of ${d}` };
+        return { n, d, pattern: `${fmtCount(n)} of ${fmtCount(d)}` };
       },
     },
     {
@@ -218,7 +231,7 @@ export async function runCoverageGate() {
       checkNumbers: () => {
         const n = counts.districts;
         const d = 435;
-        return { n, d, pattern: `${n} of ${d}` };
+        return { n, d, pattern: `${fmtCount(n)} of ${fmtCount(d)}` };
       },
     },
     {
@@ -248,7 +261,7 @@ export async function runCoverageGate() {
         return {
           n,
           d,
-          pattern: `The matrix covers the ${n} programs with detail-grade data; all ${d} program pages are browsable.`,
+          pattern: `The matrix covers the ${fmtCount(n)} programs with detail-grade data; all ${fmtCount(d)} program pages are browsable.`,
         };
       },
     },
@@ -289,7 +302,7 @@ export async function runCoverageGate() {
         return {
           n,
           d,
-          pattern: `${n} of ${d} crosswalked PEs — ${pct}% of the FY2026 request is not yet crosswalked`,
+          pattern: `${fmtCount(n)} of ${fmtCount(d)} crosswalked PEs — ${pct}% of the FY2026 request is not yet crosswalked`,
         };
       },
     },

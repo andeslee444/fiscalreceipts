@@ -43,6 +43,7 @@ import {
   escapeHtml,
 } from "@/lib/search";
 import type { GroupedResults, RecentItem, SearchResult } from "@/lib/search";
+import { aliasChipText } from "@/lib/aliases";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,9 @@ interface FlatItem {
   kind: string;
   /** Curated "also known as" names (§P1-4 alias table) — rendered as a chip. */
   aka?: string[];
+  /** The alias the query equalled, when it did — see lib/aliases
+   *  aliasChipText: ⌘K and the /programs/ filter render ONE string. */
+  akaMatched?: string;
 }
 
 // ── Pagefind loader ───────────────────────────────────────────────────────────
@@ -129,6 +133,7 @@ function flattenGroups(groups: GroupedResults): FlatItem[] {
     sub: kindGroupLabel(r.kind),
     kind: r.kind,
     ...(r.aka ? { aka: r.aka } : {}),
+    ...(r.akaMatched ? { akaMatched: r.akaMatched } : {}),
   }));
 }
 
@@ -792,7 +797,7 @@ function ResultRow({
               data-testid="search-aka-chip"
               className="mt-0.5 w-fit shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground sm:mt-0"
             >
-              also known as: {item.aka.join(" · ")}
+              {aliasChipText(item.akaMatched, item.aka)}
             </span>
           )}
         </span>

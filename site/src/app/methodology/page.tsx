@@ -5,6 +5,7 @@ import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
 import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
+import { formatCount } from "@/lib/format";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 
@@ -623,9 +624,9 @@ export default function MethodologyPage() {
               the grid never derives a parent total from its children.
             </p>
             <p className="mt-2">
-              The grid&apos;s rows are the {serviceBooks.numerator} programs
+              The grid&apos;s rows are the {formatCount(serviceBooks.numerator ?? 0)} programs
               with detail-grade (R-2/P-40) data; the full site carries{" "}
-              {serviceBooks.denominator} browsable program pages — see the
+              {formatCount(serviceBooks.denominator ?? 0)} browsable program pages — see the
               service J-books block below for what separates the two tiers.
             </p>
           </section>
@@ -670,14 +671,14 @@ export default function MethodologyPage() {
 
           <section id="coverage-service-books" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              Service J-books — {serviceBooks.numerator} of{" "}
-              {serviceBooks.denominator} program pages with full detail
+              Service J-books — {formatCount(serviceBooks.numerator ?? 0)} of{" "}
+              {formatCount(serviceBooks.denominator ?? 0)} program pages with full detail
             </h3>
             <p>
               Every distinct program element in the budget workbooks has a
-              page — {serviceBooks.denominator} in total. Full J-book detail
+              page — {formatCount(serviceBooks.denominator ?? 0)} in total. Full J-book detail
               (mission prose, project tables, accomplishments) is ingested
-              for {serviceBooks.numerator} of them, whose justification books
+              for {formatCount(serviceBooks.numerator ?? 0)} of them, whose justification books
               come from the sources already in the pipeline. As of Phase 5G
               the FY2026 justification books for all three military
               departments are ingested: the Navy&apos;s RDT&amp;E and

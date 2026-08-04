@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPrograms, collectCitations } from "@/lib/data";
+import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
@@ -10,7 +11,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 // Data-driven page count (programs.json length) — never a hardcoded literal.
 // Evaluated at build time (SSG); includes the trajectory-only feed programs
 // added by backlog #17.
-const PROGRAM_COUNT = getPrograms().length;
+const PROGRAM_COUNT = formatCount(getPrograms().length);
 const PROGRAMS_DESCRIPTION = `Browse all ${PROGRAM_COUNT} DoD R&D and procurement program elements with FY2024 actuals and FY2026 budget figures.`;
 
 export const metadata: Metadata = {
@@ -63,7 +64,9 @@ export default function ProgramsPage() {
             statement below carries the canonical counts, so this sentence
             no longer opens with a bare number that reads as "all of them". */}
         <p className="text-muted-foreground">
-          This table lists the {programs.length} detail-grade program elements
+          {/* Grouped ("1,741") — same notation as the corpus statement
+              directly below it, which used to disagree with this sentence. */}
+          This table lists the {formatCount(programs.length)} detail-grade program elements
           from the FY2026 budget justification books. FY24 figures are
           J-book–cited; FY26 figures carry derived workbook citations.
           Underlined figures open their source citation.

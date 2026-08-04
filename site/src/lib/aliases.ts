@@ -115,6 +115,31 @@ export function aliasesForPeBli(peBli: string): string[] | null {
   return BY_PE.get(peBli)?.aliases ?? null;
 }
 
+/**
+ * THE alias chip string — one wording for ⌘K and the /programs/ filter.
+ *
+ * Fix round (2 judges): the two surfaces disagreed about how to say the same
+ * thing, and the table's version said it twice —
+ *   ⌘K:         "also known as: Sentinel · GBSD · LGM-35A"
+ *   /programs/: "matched: Sentinel · also known as Sentinel · GBSD · LGM-35A"
+ * The matched alias is now named ONCE, as the match, and the remaining names
+ * follow it; when nothing matched (⌘K's plain program hits) the chip is the
+ * bare alias list. Both callers render exactly what this returns.
+ */
+export function aliasChipText(
+  matched: string | null | undefined,
+  aliases: readonly string[],
+): string {
+  if (matched) {
+    const key = alnumKey(matched);
+    const others = aliases.filter((a) => alnumKey(a) !== key);
+    return others.length > 0
+      ? `matched alias: ${matched} — also known as ${others.join(" · ")}`
+      : `matched alias: ${matched}`;
+  }
+  return `also known as: ${aliases.join(" · ")}`;
+}
+
 // ── Table filters (Sprint 2 visual-judge fix round) ──────────────────────────
 //
 // The contradiction both judges hit: typing "sentinel" into the new /programs/

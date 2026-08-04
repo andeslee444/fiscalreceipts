@@ -27,7 +27,8 @@ import { Download } from "lucide-react";
 import type { ProgramRow } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { serviceOrgName } from "@/lib/program-tier";
-import { aliasHitsForQuery } from "@/lib/aliases";
+import { aliasChipText, aliasHitsForQuery } from "@/lib/aliases";
+import { formatCount } from "@/lib/format";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
 
@@ -233,8 +234,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           </select>
         </label>
         <span className="text-sm tabular-nums text-muted-foreground">
-          {filtered.length.toLocaleString("en-US")} of{" "}
-          {programs.length.toLocaleString("en-US")} program
+          {formatCount(filtered.length)} of{" "}
+          {formatCount(programs.length)} program
           {programs.length !== 1 ? "s" : ""}
         </span>
         <button
@@ -339,8 +340,10 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                       data-alias-matched={aliasHits.get(p.pe_bli)!.matched}
                       className="ml-2 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground align-middle"
                     >
-                      matched: {aliasHits.get(p.pe_bli)!.matched} · also known
-                      as {aliasHits.get(p.pe_bli)!.aliases.join(" · ")}
+                      {aliasChipText(
+                        aliasHits.get(p.pe_bli)!.matched,
+                        aliasHits.get(p.pe_bli)!.aliases,
+                      )}
                     </span>
                   )}
                 </td>
