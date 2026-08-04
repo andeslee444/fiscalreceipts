@@ -37,7 +37,8 @@ import { hasLineage } from "@/lib/lineage";
 import { Cite, CiteChips } from "@/components/cite";
 import { LineageRail } from "@/components/lineage/lineage-rail";
 import { FamilyFundingLine } from "@/components/lineage/family-funding-line";
-import { dossierFactIds } from "@/lib/dossier";
+import { dossierFactIds, isFactCitation } from "@/lib/dossier";
+import { whatItIsCard, type WhatItIsCard } from "@/lib/what-it-is";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { programOgImages } from "@/lib/og";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -60,7 +61,7 @@ import {
   ProgramTrajectoryCard,
   reconKeySet,
 } from "@/components/program-figures";
-import { DossierFactChip } from "@/components/dossier-chips";
+import { DossierFactChip, DossierUrlChip } from "@/components/dossier-chips";
 import { ProgramBudgetLines } from "@/components/program-budget-lines";
 import {
   ProgramNarratives,
@@ -137,9 +138,11 @@ export async function generateMetadata({
     const tail = isIngestedServiceOrg(details.service_org ?? "")
       ? "No R-2/P-40 J-book narrative for this line."
       : "Detailed service J-book not yet ingested.";
-    description = `${program.org} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. ${tail}`;
+    description = `${serviceOrgName(program.org)} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. ${tail}`;
   } else {
-    description = `${program.org} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
+    // §P1-E badge sweep: humanized org in the meta description too — the
+    // search-result snippet was reading "F — ATA000 — FY2026 budget…".
+    description = `${serviceOrgName(program.org)} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
   }
 
   const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
@@ -333,6 +336,28 @@ export default async function ProgramPage({
   // empty-state wording in the justification section (5G archive round).
   const serviceIngested = isIngestedServiceOrg(details.service_org ?? "");
 
+  // ── WHAT IT IS card (§P1-2) ───────────────────────────────────────────────
+  // projectCount is the page's OWN project grain (the R-2/P-40 rows the
+  // details table renders), not dim_programs.project_count — the card must
+  // describe what this page actually shows.
+  const projectCount = new Set(
+    details.details
+      .map((d) => d.project_number)
+      .filter((n): n is string => Boolean(n)),
+  ).size;
+  const whatItIs = whatItIsCard({
+    tier,
+    peBli,
+    title: program.title,
+    org: tier === "rollup" ? (details.service_org ?? "") : program.org,
+    exhibitFamily: program.exhibit_family,
+    budgetLines: details.budget_lines,
+    projectCount,
+    dossier,
+    serviceOrg: details.service_org ?? "",
+    serviceIngested,
+  });
+
   return (
     <CitationPanelProvider
       citations={citationsSlice}
@@ -384,7 +409,7 @@ export default async function ProgramPage({
 
       {/* 1 · Answer strip — above-the-fold WHAT/CHANGED/WHO (G6 contract). */}
       <ProgramSection id="answer-strip">
-        <AnswerStrip program={program} summary={summary} />
+        <AnswerStrip program={program} summary={summary} whatItIs={whatItIs} />
       </ProgramSection>
 
       {/* 2 · Budget figures — the summary UNION cards (§P0-2) + the
@@ -588,24 +613,54 @@ export default async function ProgramPage({
         )}
       </ProgramSection>
 
-      {/* 10 · Oversight — GAO overlay chip when the program's agency has
-          high-risk areas / improper-payment exposure. */}
+      {/* 10 · Oversight — GAO overlay when the program's DEPARTMENT has
+          high-risk areas / improper-payment exposure.
+          §P1-10: this is a department-level designation, and it used to render
+          on a program page as "⚠ GAO oversight: DOD – 5 high-risk areas" with
+          no qualifier — reading as a program-specific finding. On the F-35
+          that is doubly unfortunate, since real program-level GAO work exists
+          and this is not it. It now says what it is, is de-emphasized to a
+          quiet note rather than an amber alert (amber is reserved for
+          program-specific findings, which we do not yet ingest — ROADMAP
+          backlog #30), and keeps its link. */}
       <ProgramSection id="oversight">
         {gao ? (
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-2 text-foreground">
               Oversight
             </h2>
-            <Link
-              href={`/agency/${program.org}/#oversight`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
-              title={`GAO oversight context for ${gao.agencyCode} — high-risk areas and improper-payment exposure`}
+            <div
+              data-gao-scope="department"
+              className="rounded-lg border border-border bg-muted/40 px-3 py-2.5"
             >
-              <span aria-hidden="true">⚠</span>
-              GAO oversight: {gao.agencyCode}
-              {gao.overlay.high_risk_areas.length > 0 &&
-                ` — ${gao.overlay.high_risk_areas.length} high-risk area${gao.overlay.high_risk_areas.length !== 1 ? "s" : ""}`}
-            </Link>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Department-level designation (not specific to this program)
+              </p>
+              <p className="mt-1 text-sm text-foreground">
+                GAO lists{" "}
+                {gao.overlay.high_risk_areas.length > 0 ? (
+                  <>
+                    {gao.overlay.high_risk_areas.length} high-risk area
+                    {gao.overlay.high_risk_areas.length !== 1 ? "s" : ""} for{" "}
+                  </>
+                ) : (
+                  "oversight exposure for "
+                )}
+                {gao.agencyCode} as a whole. That designation covers the
+                department, not{" "}
+                <span data-program-name>{program.title}</span> — no
+                program-specific GAO finding for this line is in the ingested
+                data.{" "}
+                <Link
+                  href={`/agency/${program.org}/#oversight`}
+                  className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                  title={`GAO oversight context for ${gao.agencyCode} — high-risk areas and improper-payment exposure`}
+                >
+                  See the {gao.agencyCode} oversight record
+                </Link>
+                .
+              </p>
+            </div>
           </div>
         ) : (
           <SectionEmpty title="Oversight">
@@ -734,25 +789,6 @@ function PrimarySources({ citationsSlice }: { citationsSlice: CitationsMap }) {
 //    and the data-testid still renders — the G6 gate asserts presence of all
 //    three [data-testid^="answer-"] elements inside the initial viewport.
 
-/** Plain-language label for exhibit_family values (answer-strip copy). */
-function answerFamilyPlain(family: string): string {
-  switch (family.toLowerCase()) {
-    case "rdte":
-      return "research & development";
-    case "procurement":
-      return "procurement";
-    case "om":
-    case "o&m":
-      return "operations & maintenance";
-    case "milpers":
-      return "military personnel";
-    case "budget":
-      return "budget"; // rollup tier with no classifiable workbook lines
-    default:
-      return family.toUpperCase();
-  }
-}
-
 function AnswerItem({
   label,
   testId,
@@ -772,12 +808,79 @@ function AnswerItem({
   );
 }
 
+/**
+ * WHAT IT IS (§P1-2) — the card's three honest sources, decided in
+ * lib/what-it-is.ts and rendered here.
+ *
+ *  - dossier: the dossier's own first sentence(s), VERBATIM, each with its
+ *    own citation chip — the same clickable receipt the dossier section
+ *    carries 3,000px below. `data-source-text` + the claim's citation anchor
+ *    are the render-static a0 contract for quoted source prose.
+ *  - fields: a deterministic J-book/workbook sentence; the account clause
+ *    carries the fact id of the workbook row it was read from.
+ *  - rollup: the template shape PLUS the tier's honest tail.
+ *
+ * data-what-source declares the tier so gate 21 leg (f) can assert a dossier
+ * program's card is dossier-sourced — the template stub cannot come back
+ * unnoticed.
+ */
+function WhatItIsBody({ card }: { card: WhatItIsCard }) {
+  if (card.source === "dossier") {
+    return (
+      <>
+        {card.claims.map((claim, i) => (
+          <span
+            key={i}
+            data-what-claim
+            // Dossier prose may quote dollar figures from its cited source —
+            // the claim's own citation is the required anchor (same contract
+            // as the dossier section's <li>).
+            data-source-text="dossier-claim"
+            {...(isFactCitation(claim.citation)
+              ? { "data-cite-fact-id": claim.citation.fact_id }
+              : { "data-cite-url": claim.citation.url })}
+          >
+            {i > 0 && " "}
+            {claim.text}
+            {isFactCitation(claim.citation) ? (
+              <DossierFactChip factId={claim.citation.fact_id} />
+            ) : (
+              <DossierUrlChip url={claim.citation.url} meta={null} />
+            )}
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  if (card.source === "rollup") {
+    return (
+      <>
+        <span data-program-name>{card.text}</span>{" "}
+        <span className="text-muted-foreground">{card.tail}</span>
+      </>
+    );
+  }
+
+  // fields — the account clause is checkable via the workbook row's chip.
+  return (
+    <>
+      {/* Official titles may contain dollar strings ("ORDNANCE ITEMS <$5M") —
+          currency-scan exemption, same as the old template card. */}
+      <span data-program-name>{card.text}</span>
+      {card.accountFactId && <DossierFactChip factId={card.accountFactId} />}
+    </>
+  );
+}
+
 function AnswerStrip({
   program,
   summary,
+  whatItIs,
 }: {
   program: ProgramRow;
   summary: ProgramSummary;
+  whatItIs: WhatItIsCard;
 }) {
   // WHAT-CHANGED (§P0-2 fix 1): the summary UNION change card — a derived
   // fact with formula + inputs, so the drawer shows the derivation. Never
@@ -791,18 +894,13 @@ function AnswerStrip({
 
   return (
     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
-      {/* WHAT IT IS — title + org + exhibit family in plain language.
-          data-program-name: official titles may contain dollar strings
-          (e.g. "ORDNANCE ITEMS <$5M") — currency-scan exemption.
-          serviceOrgName humanizes the raw org code in prose ("run by Army",
-          not "run by A."); agency acronyms (OSD, DARPA, …) pass through
-          unchanged — the same mapping the rollup tier already uses. */}
+      {/* WHAT IT IS (§P1-2) — dossier prose when the page has a dossier,
+          otherwise a field-generated J-book sentence; rollup pages keep their
+          honest tail. See WhatItIsBody / lib/what-it-is.ts. */}
       <AnswerItem label="What it is" testId="answer-what">
-        <span data-program-name>{program.title}</span>
-        {" — a "}
-        {answerFamilyPlain(program.exhibit_family)}
-        {" program run by "}
-        {serviceOrgName(program.org)}.
+        <span data-what-source={whatItIs.source}>
+          <WhatItIsBody card={whatItIs} />
+        </span>
       </AnswerItem>
 
       {/* WHAT CHANGED — the union change card with its derived citation.
