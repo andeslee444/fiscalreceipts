@@ -230,6 +230,7 @@ const llmsTxt = [
   `${siteUrl}/`,
   `${siteUrl}/programs/`,
   `${siteUrl}/companies/`,
+  `${siteUrl}/companies/families/`,
   `${siteUrl}/data/`,
   `${siteUrl}/methodology/`,
   `${siteUrl}/downloads/`,

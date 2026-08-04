@@ -2042,3 +2042,142 @@ preview table, degraded note); the footer's copy-hash control (shared
 components/copy-button.tsx, lifted out of the /fact/ page); usdEquivalence's
 "USD thousands" arm; and the .cell-ref CSS whose comment records the SF Mono
 `zero`-feature verification behind the structural fix.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PM-REVIEW SPRINT 2 — TASK 5 (cards + entities): two new gate legs
+═══════════════════════════════════════════════════════════════════════════════
+
+Suite stays at 24 gates. Both legs were built to the reported defect and then
+proven to fail on the BUILT artifact by scratch-reverting the fix in out/ and
+restoring cmp-clean afterwards.
+
+Build under test: commit 257e275 (out/.build-meta.json git_head
+257e2752e2e9dc0cd1af933702fafbcb1f061056).
+
+
+───────────────────────────────────────────────────────────────────────────────
+GATE 21 program-skeleton — leg (f): the WHAT-IT-IS card speaks from a real
+source (spec §P1-2)
+───────────────────────────────────────────────────────────────────────────────
+
+THE DEFECT: /program/ATA000/ — the largest program in the corpus — opened with
+"F-35 – a procurement program run by Air Force." while a genuinely good,
+fact-cited sentence sat ~3,000px below in its dossier.
+
+WHAT THE LEG CHECKS, on out/, for EVERY one of the 50 dossier programs:
+  1. [data-testid="answer-what"] declares data-what-source="dossier";
+  2. its rendered text CONTAINS the dossier's own first what_it_is claim
+     verbatim — read from data/site/json/dossiers/{pe}.json, not from the page,
+     so a paraphrase (a new uncited claim) fails;
+  3. every hoisted sentence carries a citation anchor whose fact_id RESOLVES in
+     the page's own embedded citation slice (a chip that would dead-end at
+     runtime fails here);
+  4. the text never matches the template-stub shape.
+Plus spot-checks on 6 sampled field-sourced and 6 sampled rollup cards, incl.
+that a rollup card keeps its "Summary figures only" tail.
+
+PROOF-CAN-FAIL, run A — scratch-revert out/program/ATA000/index.html to the
+template stub with an honest data-what-source="fields":
+
+  reverted /Users/andeslee/…/site/out/program/ATA000/index.html to the §P1-2 template stub (1406 chars replaced)
+    PASS: false
+    NOTE: leg f: 49/50 dossier cards hoist their own cited prose ✓
+    NOTE: leg f: sampled 6 field-sourced + 6 rollup cards ✓
+    ERROR: program-skeleton(f): /program/ATA000/ WHAT-IT-IS is data-what-source="fields" — a program with a gated dossier must hoist it (§P1-2)
+
+PROOF-CAN-FAIL, run B — the harder case: the stub is rendered while the page
+still CLAIMS to be dossier-sourced (a regression that lies about its tier):
+
+  reverted to the stub while still CLAIMING data-what-source=dossier
+    PASS: false
+    NOTE: leg f: 50/50 dossier cards hoist their own cited prose ✓
+    NOTE: leg f: sampled 6 field-sourced + 6 rollup cards ✓
+    ERROR: program-skeleton(f): /program/ATA000/ WHAT-IT-IS does not contain the dossier's first sentence verbatim — wanted "F-35 (budget line ATA000) is a U.S. Air Force procurement line funded …", got "What it isF-35 — a procurement program run by Air Force.…"
+    ERROR: program-skeleton(f): /program/ATA000/ WHAT-IT-IS claims to be dossier-sourced but renders no [data-what-claim] element
+    ERROR: program-skeleton(f): /program/ATA000/ WHAT-IT-IS rendered the template stub again: "What it isF-35 — a procurement program run by Air Force.…"
+
+RESTORED + RE-RUN:
+  restored /Users/andeslee/…/site/out/program/ATA000/index.html
+  cmp: IDENTICAL (restored clean)
+  after restore — PASS: true
+    NOTE: leg f: 50/50 dossier cards hoist their own cited prose ✓
+    NOTE: leg f: sampled 6 field-sourced + 6 rollup cards ✓
+
+
+───────────────────────────────────────────────────────────────────────────────
+GATE 24 datatruth — leg (g): the curated entity-family merge held (spec §P1-3)
+───────────────────────────────────────────────────────────────────────────────
+
+THE DEFECT: /companies/ listed RAYTHEON COMPANY $43.7B at #4 and RTX CORP
+$24.6B at #6. One company, renamed in 2023.
+
+WHAT THE LEG CHECKS, on out/, recomputed from the SEED
+(data-seeds/entity_family_events.csv) rather than from the payload the page was
+rendered from — so an exporter that mangled a curated family cannot satisfy the
+leg by also mangling its own output:
+  1. no registry family_key appears on two /companies/ rows; every seed family
+     with ≥2 keys present is on exactly ONE row; RAYTHEON and RTX specifically
+     share a row (the reported defect, named);
+  2. every curated event's source_url renders on /companies/families/ as an
+     off-site <a href> (target=_blank rel=noopener) carrying that exact URL,
+     and the page's method statement says "hand-curated", "external
+     references, not warehouse citations" and "nothing on it is [inferred]".
+  Vacuity guards: the seed must parse, carry ≥10 events, and resolve ≥1
+  multi-member family against the page.
+
+PROOF-CAN-FAIL — two independent scratch-reverts on the built artifact:
+(A) split the merged RTX row back into two rows on /companies/;
+(B) drop one curated event's source link on /companies/families/:
+
+  split the merged row: 'RAYTHEON|RTX|ROCKWELL COLLINS AUSTRALIA|ROCKWELL COLLINS' -> RAYTHEON + RTX on two rows
+  dropped the external reference for https://news.lockheedmartin.com/2015-11-06-Lockheed-Martin-Completes-Acquisition-of-Sikorsky-Aircraft
+    PASS: false
+    ERROR: leg g (/companies/): curated family "RTX" is SPLIT across 2 rows — RTX→row 3, RAYTHEON→row 2. One company must be one line (§P1-3).
+    ERROR: leg g (/companies/): RAYTHEON and RTX are still on separate rows — the reported §P1-3 defect
+    ERROR: leg g (/companies/families/): 1 curated event source(s) do not render as an external reference — https://news.lockheedmartin.com/2015-11-06-Lockheed-Martin-Completes-Acquisition-of-Sikorsky-Aircraft
+
+RESTORED + RE-RUN:
+  restored both pages
+  cmp: BOTH IDENTICAL (restored clean)
+  after restore — PASS: true
+    NOTE: leg g: 9 curated families each on exactly one of 195 /companies/ rows ✓
+    NOTE: leg g: all 17 curated sources render as external references on /companies/families/ ✓
+
+
+───────────────────────────────────────────────────────────────────────────────
+DOUBLE-COUNT GUARD — three independent layers (§P1-3)
+───────────────────────────────────────────────────────────────────────────────
+
+The merge sums member obligations, so "no double count" had to be enforced,
+not assumed. Three places, none of which trusts the others:
+
+1. EXPORT-TIME, against the lake. _assert_family_uei_disjoint recomputes, for
+   the curated members specifically, whether any recipient_uei belongs to more
+   than one member family_key — and raises if so. Live result:
+
+     RTX family (RAYTHEON, RTX, ROCKWELL COLLINS, ROCKWELL COLLINS AUSTRALIA)
+       UEIs in >1 curated member family : 0
+       sum of dim_entities member totals: 68,933,879,149.31999
+       members' uei_count sum            : 197
+
+2. CITATION VERIFIER. The combined figure is a derived fact whose formula
+   starts "sum(entity_family_members…" and whose inputs are the member entity
+   facts. verify_phase5b1 rule 4d recomputes the sum and rejects a dropped
+   member, a duplicated member, a single-member "combination", or an
+   unresolvable one. All 9 combined facts recompute exactly:
+
+     OK 0e6eca3f3ec26134 4 members 68933879149.320 = 68933879149.320  (RTX)
+     OK 0f8d5cd2bb8ac2db 3 members 18478606150.310 = 18478606150.310  (L3Harris)
+     OK 7aa3d56d993c2dd7 2 members 38000392428.340 = 38000392428.340  (Northrop)
+     OK 3cb71325f5e79684 2 members 22382013840.890 = 22382013840.890  (HII)
+     OK 987da9b304437f48 3 members  7159167915.830 =  7159167915.830  (V2X)
+     OK d03761f5f0e5ae84 2 members  1095402422.690 =  1095402422.690  (Teledyne)
+     OK 4f94e9adad3caa3f 2 members  7445056092.260 =  7445056092.260  (SAIC)
+     OK 0bb7ded4133174cd 2 members   901567125.080 =   901567125.080  (TransDigm)
+     OK f22ddec6fc47b5cf 2 members   519224173.040 =   519224173.040  (DXC)
+
+3. BUILD-TIME, on the rendered rows. /companies/ calls assertNoDoubleCount and
+   THROWS (build failure) if any registry family appears in two rows, if any
+   input company vanished, or if a merged row's members do not sum to its cited
+   combined figure. Gate 24 leg (g) then re-checks (1) on the built HTML.
