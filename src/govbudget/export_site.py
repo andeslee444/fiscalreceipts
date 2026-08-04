@@ -179,10 +179,18 @@ _BASIS_DETAIL = "jbook-detail"
 # P0-5 corpus scope qualifier — hero / OG / feed superlatives must carry it.
 # n_lines is the programs.json corpus count (dynamic, never a hardcoded
 # literal that rots when the corpus grows).
+#
+# PM Sprint 2 (§P1-5): the tail is its own constant and ships in site_meta as
+# `corpus_scope`, so the canonical corpus statement on /programs/, /years/,
+# /methodology/ and /data/ words the scope caveat with the SAME string the
+# hero superlative carries — one wording, one source.
+_CORPUS_SCOPE_TAIL = (
+    "excludes personnel, O&M, and appropriations not covered by the"
+    " R-1/P-1 rollups"
+)
 _SCOPE_QUALIFIER_TEMPLATE = (
     "largest single R&D or procurement program element in our corpus"
-    " ({n_lines} lines; excludes personnel, O&M, and appropriations not"
-    " covered by the R-1/P-1 rollups)"
+    " ({n_lines} lines; " + _CORPUS_SCOPE_TAIL + ")"
 )
 
 
@@ -361,6 +369,145 @@ _CITED_DATASETS = {
     "fct_district_programs",
     "lda_filings",
 }
+
+
+# ---------------------------------------------------------------------------
+# Explorer dataset manifest (PM Sprint 2, §P1-5)
+# ---------------------------------------------------------------------------
+#
+# One accurate sentence per shipped parquet describing its ROW GRAIN — what
+# one row IS. The /data/ page renders these verbatim; nothing about a dataset
+# (count, size, scope) is authored in TSX any more.
+#
+# Ordering is the page's presentation order (Python dicts preserve insertion
+# order), most-load-bearing first.
+#
+# HARD CONTRACT: every parquet written to out_dir/data/ must have an entry
+# here. _build_dataset_manifest raises if one does not — a new mart cannot
+# ship undocumented, which is exactly how budget_lines_decade went 5E→Sprint-2
+# with no card on the page that exists to let people check our work.
+_DATASET_SCOPES: dict[str, str] = {
+    "budget_lines": (
+        "One row per (program element × amount type) figure in the FY2026"
+        " President's Budget R-1/P-1 workbooks, carrying the source sheet and"
+        " cell address it was read from. Fenced to the PB2026 edition."
+    ),
+    "budget_lines_decade": (
+        "The decade sibling of budget_lines: one row per (President's Budget"
+        " edition × program element × amount type) figure across all ten"
+        " editions PB2017–PB2026, each cited to its own edition's workbook"
+        " cell. Editions are parallel publications, never reconciled."
+    ),
+    "jbook_details": (
+        "One row per (program element × project × budget scenario) cost figure"
+        " extracted from J-book R-2/P-40 XML, with its XML element path and"
+        " source-PDF SHA-256."
+    ),
+    "jbook_narratives": (
+        "One row per J-book narrative text block — mission, description,"
+        " justification, or accomplishment/planned-program — with its XML"
+        " element path and source-PDF SHA-256."
+    ),
+    "fct_budget_trajectory": (
+        "One row per (program element × organization) with FY2024 actuals,"
+        " FY2025 total, FY2026 total and the FY25→FY26 delta pivoted side by"
+        " side."
+    ),
+    "dim_programs": (
+        "One row per program element that has full R-2/P-40 J-book detail —"
+        " the detail-grade tier, NOT the full page universe (see the corpus"
+        " statement above) — with org, exhibit family, project count and"
+        " reconciliation status."
+    ),
+    "dim_entities": (
+        "One row per contractor entity family, name-normalized across"
+        " USAspending/SAM.gov UEI registrations, with its UEI count, total DoD"
+        " obligation and worst match-confidence tier."
+    ),
+    "fct_influence": (
+        "One row per (contractor family × filing year) of Senate LDA lobbying"
+        " totals, alongside that family's DoD obligations. Income and expense"
+        " are alternative disclosures — non-additive, never summed."
+    ),
+    "fct_program_lobbying": (
+        "One row per (LDA filing × matched program element) mention — a filing"
+        " appears once for every program its issue text names, so rows count"
+        " mentions, not filings."
+    ),
+    "fct_budget_to_awards": (
+        "One row per (program element × USAspending award) crosswalk link,"
+        " each carrying its match method and confidence tier. A link is an"
+        " inference, not a reported fact."
+    ),
+    "dim_geography": (
+        "One row per (state × congressional district) place of performance,"
+        " with transaction count and total obligation aggregated from the"
+        " award crosswalk."
+    ),
+    "fct_program_concentration": (
+        "One row per program element with enough matched award dollars to"
+        " compute an HHI market-concentration score."
+    ),
+    "fct_state_per_capita": (
+        "One row per (jurisdiction × comparable spending category × fiscal"
+        " year) in the CA/CT state-checkbook pilot, with population and"
+        " per-capita amount."
+    ),
+    "fct_improper_exposure": (
+        "One row per federal agency reporting improper payments, with the"
+        " derived dollar exposure and weighted error rate from"
+        " paymentaccuracy.gov."
+    ),
+    "dim_lobbyists": (
+        "One row per individual lobbyist named in Senate LDA filings, with"
+        " covered-position and revolving-door flags and the UUID/URL of the"
+        " filing that disclosed them."
+    ),
+}
+
+
+def _build_dataset_manifest(
+    data_dir, *, row_counts: dict[str, int], uncited: list[str], built_at: str
+) -> dict:
+    """The Explorer dataset manifest — one entry per shipped parquet.
+
+    row_counts must be the manifest's `datasets` dict (already recomputed from
+    the written parquets), so the manifest and the page can never disagree with
+    the file by construction.
+
+    Raises ValueError if a shipped parquet has no _DATASET_SCOPES entry.
+    """
+    shipped = sorted(p.stem for p in Path(data_dir).glob("*.parquet"))
+    undocumented = [n for n in shipped if n not in _DATASET_SCOPES]
+    if undocumented:
+        raise ValueError(
+            "export-site: shipped parquet(s) with no _DATASET_SCOPES entry: "
+            + ", ".join(undocumented)
+            + " — add an accurate row-grain sentence in export_site.py"
+            " (the /data/ page renders it; it must not ship undocumented)"
+        )
+    uncited_set = set(uncited)
+    entries = []
+    # Presentation order = _DATASET_SCOPES order, restricted to what shipped.
+    for name in _DATASET_SCOPES:
+        if name not in shipped:
+            continue
+        pq = Path(data_dir) / f"{name}.parquet"
+        entries.append(
+            {
+                "bytes": pq.stat().st_size,
+                "cited": name not in uncited_set,
+                "file": pq.name,
+                "name": name,
+                "row_count": int(row_counts.get(name, 0)),
+                "scope": _DATASET_SCOPES[name],
+            }
+        )
+    return {
+        "built_at": built_at,
+        "datasets": entries,
+        "schema_version": 1,
+    }
 
 
 def _stage_parquet_path(duckdb_path, stage: str, filename: str):
@@ -4541,6 +4688,12 @@ def _write_all_sidecars(
         "citations": len(citation_rows),
         "companies": len(entity_rows),
         "programs": len(programs_list),
+        # PM Sprint 2 (§P1-5): the OTHER corpus number. `programs` is the
+        # detail-grade tier (programs.json); `program_pages` is the full
+        # browsable universe — every program_details sidecar written above
+        # (full tier + rollup tier). The canonical corpus statement states
+        # both; the datatruth gate recomputes both from the sidecar dir.
+        "program_pages": len(all_pe_blis | set(rollup_pes)),
     }
 
     # ---- Canonical-TOA hero (PM Sprint 1, §P0-5) -------------------------
@@ -4593,6 +4746,10 @@ def _write_all_sidecars(
         # must never re-derive it).
         "hero": hero,
         "scope_qualifier": _corpus_qualifier,
+        # PM Sprint 2 (§P1-5): the bare scope caveat, shared with the hero
+        # qualifier above. The canonical corpus statement appends it verbatim
+        # so the two surfaces cannot drift apart in wording.
+        "corpus_scope": _CORPUS_SCOPE_TAIL,
         "trajectory_measures": {
             metric: {**meta, "basis": _BASIS_TOA, "edition": 2026}
             for metric, meta in _TRAJECTORY_METRIC_META.items()
@@ -4617,6 +4774,24 @@ def _write_all_sidecars(
     }
 
     _write_json(json_dir / "site_meta.json", site_meta)
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # 9b. datasets.json  (Explorer dataset manifest — PM Sprint 2 §P1-5) #
+    # ------------------------------------------------------------------ #
+    # Row counts, byte sizes and row-grain scope sentences for every shipped
+    # parquet. Replaces the hardcoded DATASET_INVENTORY literals that had
+    # rotted to 5B-2-era values on /data/ (dim_programs said 326 while the
+    # parquet held 1,739). Raises if a shipped parquet is undocumented.
+    _write_json(
+        json_dir / "datasets.json",
+        _build_dataset_manifest(
+            out_dir / "data",
+            row_counts=manifest.get("datasets", {}),
+            uncited=manifest.get("uncited_datasets", []),
+            built_at=manifest.get("built_at"),
+        ),
+    )
     n_files += 1
 
     # ------------------------------------------------------------------ #
