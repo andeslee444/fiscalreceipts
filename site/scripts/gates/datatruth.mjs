@@ -332,5 +332,97 @@ export async function runDataTruthGate() {
     );
   }
 
+  // ── leg e: /methodology/ per-build check counts ───────────────────────────
+  // §P1-5, same defect class as the dataset row counts: §3 used to author
+  // "197 automated test functions across 42 test modules ... 21 dbt
+  // data-model assertions ... 45 question-answer pairs ... ≥41 correct".
+  // Every literal had rotted. Each number is now derived at export; this leg
+  // recomputes it INDEPENDENTLY from the artifact that defines it (never from
+  // site_meta — that is the thing under test) and compares against the
+  // rendered text.
+  const methodRoot = readHtml("/methodology/");
+  if (!methodRoot) {
+    errors.push("leg e: built /methodology/ missing");
+  } else {
+    const el = methodRoot.querySelector("[data-build-checks]");
+    if (!el) {
+      errors.push(
+        "leg e (/methodology/): no [data-build-checks] — §3's per-build check counts must render from build-derived values",
+      );
+    } else {
+      const text = norm(el.text);
+
+      // Independent recomputes from the defining artifacts.
+      const expected = {};
+      const dbtManifest = path.join(repoRoot, "dbt", "target", "manifest.json");
+      if (fs.existsSync(dbtManifest)) {
+        const nodes = JSON.parse(fs.readFileSync(dbtManifest, "utf8")).nodes ?? {};
+        expected.dbt = Object.values(nodes).filter(
+          (n) => n.resource_type === "test",
+        ).length;
+      }
+      const verifyMjs = path.join(__dirname, "..", "verify.mjs");
+      if (fs.existsSync(verifyMjs)) {
+        expected.gates = (
+          fs.readFileSync(verifyMjs, "utf8").match(/gateResults\.push\(\{\s*n:\s*\d+/g) ?? []
+        ).length;
+      }
+      const evalYaml = path.join(repoRoot, "evals", "phase5_questions.yaml");
+      if (fs.existsSync(evalYaml)) {
+        expected.evalQs = (
+          fs.readFileSync(evalYaml, "utf8").match(/^- id:/gm) ?? []
+        ).length;
+      }
+      const vp5 = path.join(repoRoot, "src", "govbudget", "verify_phase5.py");
+      if (fs.existsSync(vp5)) {
+        const m = fs.readFileSync(vp5, "utf8").match(/^ACCURACY_THRESHOLD\s*=\s*(\d+)/m);
+        if (m) expected.evalThreshold = Number(m[1]);
+      }
+
+      const checks = [
+        [expected.dbt, /([\d,]+)\s+dbt data-model assertions/, "dbt assertions"],
+        [expected.gates, /([\d,]+)\s+site verification gates/, "site verification gates"],
+        [expected.evalQs, /([\d,]+)\s+question-answer pairs/, "eval questions"],
+        [expected.evalThreshold, /at least\s+([\d,]+)\s+correct answers/, "eval threshold"],
+      ];
+      let checked = 0;
+      for (const [want, re, label] of checks) {
+        if (want === undefined) continue;
+        const m = text.match(re);
+        if (!m) {
+          errors.push(
+            `leg e (/methodology/): §3 states no ${label} — expected ${want} from the defining artifact`,
+          );
+          continue;
+        }
+        const got = Number(m[1].replace(/,/g, ""));
+        checked += 1;
+        if (got !== want) {
+          errors.push(
+            `leg e (/methodology/): §3 says ${got.toLocaleString("en-US")} ${label}, the defining artifact has ${want.toLocaleString("en-US")}`,
+          );
+        }
+      }
+      if (checked === 0) {
+        errors.push(
+          "leg e: no per-build count could be recomputed (vacuous) — the defining artifacts were all unreadable",
+        );
+      }
+      // The literals this leg exists to prevent must never come back.
+      for (const rotted of ["197 automated test", "42 test modules", "45 question-answer"]) {
+        if (norm(methodRoot.text).includes(rotted)) {
+          errors.push(
+            `leg e (/methodology/): the rotted literal "${rotted}" is rendered again — per-build counts must be build-derived`,
+          );
+        }
+      }
+      if (errors.every((e) => !e.startsWith("leg e"))) {
+        notes.push(
+          `leg e: /methodology/ per-build counts match their defining artifacts (${checked} checked) ✓`,
+        );
+      }
+    }
+  }
+
   return { pass: errors.length === 0, errors, notes };
 }

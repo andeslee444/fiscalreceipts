@@ -4,7 +4,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
-import { getDatasetManifest, getFlowChartMeta } from "@/lib/data";
+import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 
@@ -37,7 +37,7 @@ const FAQ_ITEMS = [
   {
     question: "How do you verify the data?",
     answer:
-      "Every J-book figure clears two arithmetic checks: project-level amounts must sum to the program-element total, and that total must match the R-1 or P-1 Excel rollup. Failures go to a human review queue, not the site. Each build also runs 197 automated test functions plus phase-level verification gates.",
+      "Every J-book figure clears two arithmetic checks: project-level amounts must sum to the program-element total, and that total must match the R-1 or P-1 Excel rollup. Failures go to a human review queue, not the site. Each build also runs a Python test suite, a browser test suite, dbt data-model assertions, and the site verification gates — all required green before shipping.",
   },
   {
     question: "How confident should I be in the figures?",
@@ -77,6 +77,12 @@ export default function MethodologyPage() {
   const programLobbyingRows =
     getDatasetManifest().datasets.find((d) => d.name === "fct_program_lobbying")
       ?.row_count ?? 0;
+  // §P1-5: §3's per-build check counts are derived at export from the
+  // artifacts that define them (dbt's compiled manifest, the verify.mjs gate
+  // registry, the eval set + the gate's own threshold constant). Counts the
+  // exporter cannot derive honestly — the pytest/vitest totals — are stated
+  // qualitatively instead of as literals that rot.
+  const buildChecks = getSiteMeta().build_checks ?? {};
 
   return (
     <>
@@ -294,12 +300,19 @@ export default function MethodologyPage() {
             <h3 className="font-semibold text-foreground mb-1">
               Per-build automated checks
             </h3>
-            <p>
-              197 automated test functions across 42 test modules, plus
-              phase-level verification gates, plus 21 dbt data-model assertions
-              run on every build. The analyst-agent evaluation set (45
-              question-answer pairs) requires ≥41 correct answers and 100%
-              citation resolution before shipping.
+            <p data-build-checks>
+              A Python test suite and a browser test suite both run green
+              before any build ships, alongside{" "}
+              <strong>{buildChecks.npm_gates ?? "—"} site verification gates</strong>{" "}
+              and{" "}
+              <strong>
+                {buildChecks.dbt_assertions ?? "—"} dbt data-model assertions
+              </strong>
+              . The analyst-agent evaluation set (
+              <strong>{buildChecks.eval_questions ?? "—"} question-answer pairs</strong>
+              ) requires at least{" "}
+              <strong>{buildChecks.eval_threshold ?? "—"} correct answers</strong>{" "}
+              and 100% citation resolution before shipping.
             </p>
           </div>
         </div>

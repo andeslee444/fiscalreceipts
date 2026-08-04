@@ -1863,3 +1863,38 @@ its hardcoded "32,780 program mentions across 245 programs" (the mart is
 34,538) which is now read from the dataset manifest. /downloads/'s
 `?? 326` fallback — the same rotted literal — is gone.
 
+
+=== gate 24 "datatruth" leg e — /methodology/ per-build check counts — 2026-08-04 ===
+
+PM-review §P1-5 defect class, second instance. /methodology/ §3 authored four
+literals that had all rotted:
+  "197 automated test functions across 42 test modules, plus phase-level
+   verification gates, plus 21 dbt data-model assertions run on every build.
+   The analyst-agent evaluation set (45 question-answer pairs) requires >=41
+   correct answers and 100% citation resolution before shipping."
+Reality at fix time: 87 dbt test nodes, 24 npm gates, 48 eval questions,
+threshold 44. A second copy of the "197 automated test functions" claim also
+sat in the page's FAQ_ITEMS (JSON-LD) — the excerpt in the bug report missed it.
+
+Fix: exporter derives the numbers from the artifacts that DEFINE them
+(dbt/target/manifest.json test nodes; the gateResults.push registry in
+site/scripts/verify.mjs; evals/phase5_questions.yaml; ACCURACY_THRESHOLD
+imported from verify_phase5) into site_meta.build_checks; /methodology/ renders
+them via getSiteMeta(). pytest/vitest totals are NOT derivable honestly at
+export time (running a suite during an export would be wrong), so the page
+states those qualitatively rather than shipping a literal that rots again.
+
+leg e recomputes each number INDEPENDENTLY from the defining artifact (never
+from site_meta — that is the thing under test), compares against the rendered
+text of [data-build-checks], and separately fails if any of the specific rotted
+literals reappears.
+
+PROOF-CAN-FAIL (scratch-rot of the BUILT artifact: 87 -> 21, 48 -> 45):
+  gate pass: false
+  ✗ leg e (/methodology/): §3 says 21 dbt assertions, the defining artifact has 87
+  ✗ leg e (/methodology/): §3 says 45 eval questions, the defining artifact has 48
+  ✗ leg e (/methodology/): the rotted literal "45 question-answer" is rendered again — per-build counts must be build-derived
+Restored byte-identical (cmp clean).
+
+MADE TO PASS (untouched build):
+  note: leg e: /methodology/ per-build counts match their defining artifacts (4 checked) ✓

@@ -90,6 +90,20 @@ export interface SiteMeta {
    */
   corpus_scope?: string;
   /**
+   * §P1-5 per-build check counts, DERIVED at export from the artifacts that
+   * define them (dbt's compiled manifest, the verify.mjs gate registry, the
+   * eval set + the threshold constant the gate enforces). /methodology/ §3
+   * renders these instead of authored literals. Fields the exporter cannot
+   * derive honestly (pytest/vitest totals) are absent by design — the page
+   * states those qualitatively rather than shipping a number that rots.
+   */
+  build_checks?: {
+    dbt_assertions?: number;
+    npm_gates?: number;
+    eval_questions?: number;
+    eval_threshold?: number;
+  };
+  /**
    * Trajectory metric → basis attribute map (single payload-level source for
    * the trajectory pivots' data-basis/fy/measure — never re-derive in TS).
    */

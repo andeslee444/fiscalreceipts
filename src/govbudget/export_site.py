@@ -194,6 +194,73 @@ _SCOPE_QUALIFIER_TEMPLATE = (
 )
 
 
+def _build_checks_block() -> dict:
+    """Derive /methodology/ §3's "per-build automated checks" numbers.
+
+    PM Sprint 2 (§P1-5, same defect class as the dataset row counts): the page
+    used to author these literals ("197 automated test functions across 42 test
+    modules ... 21 dbt data-model assertions ... 45 question-answer pairs ...
+    ≥41 correct"). Every one had rotted. Each field below is read from the
+    artifact that DEFINES it, so the claim cannot drift from the thing it
+    describes:
+
+    * ``dbt_assertions`` — test nodes in dbt's own compiled manifest.
+    * ``npm_gates``      — the gate registry in site/scripts/verify.mjs.
+    * ``eval_questions`` / ``eval_threshold`` — the eval set and the threshold
+      constant the gate actually enforces (imported, never re-typed).
+
+    Deliberately ABSENT: pytest/vitest totals. Running either suite during an
+    export would be wrong, and a literal would rot exactly like the ones this
+    replaces — so /methodology/ states those qualitatively instead. A field
+    that cannot be derived honestly is omitted, never guessed.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    checks: dict[str, int] = {}
+
+    # dbt assertions: resource_type == "test" nodes in the compiled manifest
+    # (generic schema.yml tests expanded + singular tests in dbt/tests/).
+    dbt_manifest = repo_root / "dbt" / "target" / "manifest.json"
+    if dbt_manifest.exists():
+        try:
+            nodes = json.loads(dbt_manifest.read_text()).get("nodes", {})
+            checks["dbt_assertions"] = sum(
+                1 for n in nodes.values() if n.get("resource_type") == "test"
+            )
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # npm gates: one gateResults.push({ n: N, ... }) per registered gate.
+    verify_mjs = repo_root / "site" / "scripts" / "verify.mjs"
+    if verify_mjs.exists():
+        n_gates = len(
+            re.findall(r"gateResults\.push\(\{\s*n:\s*\d+", verify_mjs.read_text())
+        )
+        if n_gates:
+            checks["npm_gates"] = n_gates
+
+    # Analyst eval: question count from the set, threshold from the gate.
+    eval_yaml = repo_root / "evals" / "phase5_questions.yaml"
+    if eval_yaml.exists():
+        try:
+            import yaml
+
+            entries = yaml.safe_load(eval_yaml.read_text())
+            if isinstance(entries, dict):
+                entries = entries.get("questions", [])
+            if isinstance(entries, list) and entries:
+                checks["eval_questions"] = len(entries)
+        except Exception:
+            pass
+    try:
+        from govbudget.verify_phase5 import ACCURACY_THRESHOLD
+
+        checks["eval_threshold"] = int(ACCURACY_THRESHOLD)
+    except Exception:
+        pass
+
+    return checks
+
+
 def scope_qualifier(n_lines: int) -> str:
     """The P0-5 scope-qualifier string with a live corpus count."""
     return _SCOPE_QUALIFIER_TEMPLATE.format(n_lines=f"{n_lines:,}")
@@ -4739,6 +4806,13 @@ def _write_all_sidecars(
     site_meta = {
         "built_at": manifest.get("built_at"),
         "counts": meta_counts,
+        # PM Sprint 2 (§P1-5, same defect class as the dataset row counts): the
+        # /methodology/ "per-build automated checks" numbers are DERIVED here,
+        # never authored in the page. Counts that cannot be derived honestly at
+        # export time (pytest/vitest totals — running the suites during an
+        # export would be wrong) are deliberately absent: the page states those
+        # qualitatively rather than shipping a literal that rots.
+        "build_checks": _build_checks_block(),
         # PM Sprint 1 (P0-5): the canonical-toa hero figure + the corpus
         # scope qualifier every hero/OG/feed superlative must carry, and the
         # static trajectory-metric → (fy, measure) map (single payload-level
