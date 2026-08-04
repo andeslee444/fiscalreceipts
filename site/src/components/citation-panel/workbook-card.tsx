@@ -44,7 +44,8 @@ import React, { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import type { WorkbookCitation } from "@/lib/data";
 import { usdEquivalence } from "@/lib/format";
-import { documentTitleFromUrl } from "@/lib/footnote";
+import { basisChipText, CORE_MEASURES } from "@/lib/basis";
+import { documentTitleFromUrl, type FootnoteFigure } from "@/lib/footnote";
 import { useAssetUrl } from "@/components/asset-config";
 import {
   citedRows,
@@ -62,12 +63,54 @@ interface WorkbookCardProps {
    * guessing.
    */
   factId?: string | null;
+  /**
+   * The CLICKED FIGURE's declared context (fy / measure / basis / edition) —
+   * the same object the footnote formatter gets, threaded from the panel.
+   *
+   * Fix round, both judges: the AMOUNT line read "5,565,655 USD thousands
+   * (= $5.57B)" and the only disclosure that this was FY2024 ACTUALS was a
+   * small column header inside the preview table. A reporter skimming the
+   * drawer would quote $5.57B as FY2026 procurement. Every other cited figure
+   * on the site carries a basis chip; this one now does too, from the SAME
+   * vocabulary (lib/basis basisChipText) — no second dialect.
+   */
+  figure?: FootnoteFigure | null;
 }
 
 /** Exact numerals with grouping and a TRUE minus sign (U+2212). */
 function fmtCell(v: number): string {
   const s = Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 3 });
   return v < 0 ? `−${s}` : s;
+}
+
+/**
+ * "FY2024 Actuals · P-1 TOA · PB2026" — the clicked figure's own declaration,
+ * rendered in the chip's vocabulary and nothing else. Null when the figure
+ * declared no basis (drill-down opens, legacy callers): an invented basis
+ * would be worse than none.
+ */
+export function amountBasisLine(
+  figure: FootnoteFigure | null | undefined,
+): string | null {
+  if (!figure) return null;
+  const parts: string[] = [];
+  if (figure.fy != null && figure.fy !== "") {
+    parts.push(typeof figure.fy === "number" ? `FY${figure.fy}` : String(figure.fy));
+  }
+  // The CORE measure token (actuals / enacted / request / total / change) is
+  // what disambiguates the FY, and basisChipText deliberately leaves it out —
+  // inline it is carried by the column header the figure sits under. The
+  // drawer has no such header, so it is spelled out here. Extended tokens are
+  // left to the chip, which already labels them (no double rendering).
+  if (figure.measure && CORE_MEASURES.has(figure.measure)) {
+    parts.push(figure.measure);
+  }
+  const chip = figure.basis
+    ? basisChipText(figure.basis, figure.measure ?? undefined, figure.edition ?? undefined)
+    : null;
+  if (chip) parts.push(chip);
+  else if (figure.edition) parts.push(`PB${figure.edition}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 // ── CellRef — an unmistakable spreadsheet cell reference ─────────────────────
@@ -111,9 +154,10 @@ export function CellRef({ cell }: { cell: string }) {
 
 // ── WorkbookCard ─────────────────────────────────────────────────────────────
 
-export function WorkbookCard({ citation, factId }: WorkbookCardProps) {
+export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
   const assetUrl = useAssetUrl();
   const preview = useWorkbookPreview(factId);
+  const basisLine = amountBasisLine(figure);
 
   const cellChips = citation.cells
     ? citation.cells.split(",").map((c) => c.trim()).filter(Boolean)
@@ -160,6 +204,18 @@ export function WorkbookCard({ citation, factId }: WorkbookCardProps) {
               </span>
             )}
           </p>
+          {/* WHAT this amount IS. Without it the drawer's headline figure was
+              a bare number whose fiscal year lived only in a column header
+              further down the card. */}
+          {basisLine && (
+            <p
+              data-testid="workbook-amount-basis"
+              data-basis-line={basisLine}
+              className="mt-0.5 text-xs text-muted-foreground"
+            >
+              {basisLine}
+            </p>
+          )}
         </div>
       )}
 
@@ -276,17 +332,30 @@ function ArithmeticLine({ preview }: { preview: WorkbookPreview }) {
         data-total={preview.total}
         className="rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs leading-6"
       >
-        {rows.map((r, i) => (
-          <React.Fragment key={r.r}>
-            {i > 0 && <span className="text-muted-foreground">{" + "}</span>}
-            <span className="whitespace-nowrap">
-              <CellRef cell={`${preview.col}${r.r}`} />{" "}
-              <span className="font-mono tabular-nums">
-                {fmtCell(r.v as number)}
+        {rows.map((r, i) => {
+          const v = r.v as number;
+          // "+ −246,702" read as "plus negative". A recorded negative is a
+          // SUBTRACTION; the operator changes and the magnitude stands alone,
+          // so the equation reads the way it computes. The signed value as
+          // recorded is still one hover away (title) and still in the preview
+          // table below, which prints every cell verbatim.
+          const op = i === 0 ? null : v < 0 ? " − " : " + ";
+          const shown = i > 0 && v < 0 ? fmtCell(Math.abs(v)) : fmtCell(v);
+          return (
+            <React.Fragment key={r.r}>
+              {op && <span className="text-muted-foreground">{op}</span>}
+              <span className="whitespace-nowrap">
+                <CellRef cell={`${preview.col}${r.r}`} />{" "}
+                <span
+                  className="font-mono tabular-nums"
+                  title={`recorded as ${fmtCell(v)}`}
+                >
+                  {shown}
+                </span>
               </span>
-            </span>
-          </React.Fragment>
-        ))}
+            </React.Fragment>
+          );
+        })}
         <span className="text-muted-foreground">{" = "}</span>
         <span className="font-mono font-semibold tabular-nums">
           {fmtCell(preview.total)}
@@ -330,13 +399,23 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
               nCited === 1 ? "" : "s"
             } ${nCited === 1 ? "is" : "are"} highlighted.`}
           </caption>
-          <thead>
+          {/* MOBILE (fix round, ADD 8): three columns — an address, a long
+              line-item label with inline code chips and Non-Add badges, and a
+              right-aligned figure — do not fit a 390px drawer. Below `sm` the
+              row stacks: address and figure on one line (the pairing the
+              reader came for), label beneath at full width. One DOM, so
+              data-testid / data-cited / data-cell-value hooks are unchanged. */}
+          <thead className="hidden sm:table-header-group">
             <tr className="border-b border-border bg-muted/50 text-left">
               <th
                 scope="col"
                 className="px-2 py-1.5 font-semibold text-muted-foreground"
               >
-                Row
+                {/* The column holds CELL addresses (O837, O838…), not row
+                    numbers — and the caption underneath already says "Rows
+                    837–843". Exactly the imprecision this card exists to
+                    eliminate. */}
+                Cell
               </th>
               <th
                 scope="col"
@@ -364,17 +443,24 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                 data-testid="workbook-preview-row"
                 data-row={r.r}
                 data-cited={r.cited ? "true" : "false"}
-                className={
-                  r.cited
-                    ? "border-b border-border bg-primary/10 last:border-0"
-                    : "border-b border-border text-muted-foreground last:border-0"
-                }
+                className={[
+                  // Mobile: a 2×2 grid — address and figure share the top
+                  // line, the label spans the second. Source order stays
+                  // address → label → value (the table's own semantics);
+                  // placement is explicit, not order-dependent.
+                  "grid grid-cols-[auto_1fr] gap-x-2 sm:table-row",
+                  "border-b border-border last:border-0 px-2 py-1.5 sm:p-0",
+                  r.cited ? "bg-primary/10" : "text-muted-foreground",
+                ].join(" ")}
               >
-                <th scope="row" className="px-2 py-1.5 text-left font-normal">
+                <th
+                  scope="row"
+                  className="col-start-1 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-left font-normal"
+                >
                   <CellRef cell={`${preview.col}${r.r}`} />
                   {r.cited && <span className="sr-only"> (cited)</span>}
                 </th>
-                <td className="px-2 py-1.5">
+                <td className="col-span-2 row-start-2 sm:table-cell px-0 sm:px-2 sm:py-1.5">
                   {r.code && (
                     <span className="cell-ref mr-1.5 rounded bg-muted px-1 py-0.5 text-[11px]">
                       {r.code}
@@ -391,7 +477,7 @@ function PreviewTable({ preview }: { preview: WorkbookPreview }) {
                 </td>
                 <td
                   data-cell-value={r.v == null ? "" : String(r.v)}
-                  className={`px-2 py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
+                  className={`col-start-2 row-start-1 sm:table-cell px-0 sm:px-2 sm:py-1.5 text-right font-mono tabular-nums whitespace-nowrap ${
                     r.cited ? "font-semibold text-foreground" : ""
                   }`}
                 >

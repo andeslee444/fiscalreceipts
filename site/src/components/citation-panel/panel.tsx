@@ -474,7 +474,7 @@ function CitationPanelDialog({
                 )}
               </div>
             ) : citation ? (
-              <CitationBody citation={citation} factId={factId} />
+              <CitationBody citation={citation} factId={factId} figure={figure} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 No citation loaded.
@@ -575,16 +575,20 @@ function CitationPanelDialog({
 function CitationBody({
   citation,
   factId,
+  figure,
 }: {
   citation: Citation;
   factId: string | null;
+  /** The clicked figure's declared context — the workbook tier renders its
+   *  fy/measure/basis on the AMOUNT line (fix round). */
+  figure: FootnoteFigure | null;
 }) {
   if (isJbookPdf(citation)) {
     return <PdfView citation={citation} />;
   }
   if (isWorkbook(citation)) {
     // factId keys the §P1-9 cell-preview sidecar (lib/workbook-cells.ts).
-    return <WorkbookCard citation={citation} factId={factId} />;
+    return <WorkbookCard citation={citation} factId={factId} figure={figure} />;
   }
   if (isLdaFiling(citation)) {
     return <LdaCard citation={citation} />;
@@ -752,7 +756,10 @@ function CopyFootnoteButton({
           // never reaches the SSG HTML, but the marking is the honest one.
           data-source-text="footnote-preview"
           data-cite-fact-id={factId}
-          className="w-full rounded border border-border bg-muted/50 px-2 py-1.5 font-mono text-xs leading-5 break-words text-muted-foreground"
+          // whitespace-pre-wrap: BibTeX and JSON are newline-structured, and
+          // the default `white-space: normal` collapsed them into one run-on
+          // line — a preview that did not look like what the button copies.
+          className="w-full rounded border border-border bg-muted/50 px-2 py-1.5 font-mono text-xs leading-5 whitespace-pre-wrap break-words text-muted-foreground"
         >
           {footnoteText}
         </p>
