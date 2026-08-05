@@ -853,12 +853,63 @@ function RiverSvg({
         );
       })}
 
-      {/* Nodes */}
+      {/* NODE FILL LAYER — painted before EVERY label (§P2-3).
+          SVG has no z-index: whatever is emitted later covers what came
+          before, so with one group per node a downstream column's rect
+          painted over an upstream label and ate 2–4 characters of it. That
+          is what the review saw as "Shipbuilding and Conversio…avy 47.4B"
+          and "Fleet ballistic missile ships 1?.?B" — 17 of the budget
+          river's 29 labels were clipped this way, and the exporter's
+          label-vs-label collision model (F3) could not see it because the
+          obstacle was never another label. Fills first, labels second:
+          no rect can cover any label, by construction.
+          Visual only — interaction, focus and the labels themselves stay
+          on the [data-flow-node] groups below. */}
+      <g aria-hidden="true" style={{ pointerEvents: "none" }}>
+        {nodes.map((n) => {
+          const h = Math.max(n.y1 - n.y0, 0);
+          const gap = n.id.endsWith(":not-crosswalked");
+          return (
+            <g key={`fill-${n.id}`} data-node-fill={n.id}>
+              <rect
+                className="flow-node-rect"
+                x={n.x0}
+                y={n.y0}
+                width={n.x1 - n.x0}
+                height={h}
+                fill={nodeFill(n, variant)}
+              />
+              {gap && h > 0 && (
+                <rect
+                  x={n.x0}
+                  y={n.y0}
+                  width={n.x1 - n.x0}
+                  height={h}
+                  fill={`url(#${idPrefix}-gap-dots)`}
+                />
+              )}
+              {/* Leader line: exporter-placed, for gutter labels displaced
+                  off their node's center (thin destination bands). */}
+              {n.ldr && (
+                <line
+                  x1={n.ldr[0]}
+                  y1={n.ldr[1]}
+                  x2={n.ldr[2]}
+                  y2={n.ldr[3]}
+                  stroke="var(--flow-leader)"
+                  strokeWidth={0.75}
+                />
+              )}
+            </g>
+          );
+        })}
+      </g>
+
+      {/* Nodes — interaction, accessible name, and the inline label */}
       {nodes.map((n) => {
         const isOther = Boolean(n.other);
         const levelLabel = levelLabels[n.level] ?? n.level;
         const h = Math.max(n.y1 - n.y0, 0);
-        const gap = n.id.endsWith(":not-crosswalked");
         const marker = isOther
           ? { "data-flow-other": "" }
           : { "data-flow-node": "" };
@@ -895,37 +946,17 @@ function RiverSvg({
               height={Math.max(h, 2) + 6}
               fill="transparent"
             />
+            {/* Hover/focus veil. The fill itself now lives in the layer
+                above, so the affordance is a translucent wash over the
+                block rather than an opacity dip on a rect this group no
+                longer owns. */}
             <rect
-              className="flow-node-rect"
+              className="flow-node-veil"
               x={n.x0}
               y={n.y0}
               width={n.x1 - n.x0}
               height={h}
-              fill={nodeFill(n, variant)}
             />
-            {gap && h > 0 && (
-              <rect
-                x={n.x0}
-                y={n.y0}
-                width={n.x1 - n.x0}
-                height={h}
-                fill={`url(#${idPrefix}-gap-dots)`}
-                aria-hidden="true"
-              />
-            )}
-            {/* Leader line: exporter-placed, for gutter labels displaced
-                off their node's center (thin destination bands). */}
-            {n.ldr && (
-              <line
-                x1={n.ldr[0]}
-                y1={n.ldr[1]}
-                x2={n.ldr[2]}
-                y2={n.ldr[3]}
-                stroke="var(--flow-leader)"
-                strokeWidth={0.75}
-                aria-hidden="true"
-              />
-            )}
             {/* Inline label: geometry precomputed by the exporter (F3 —
                 zero-collision contract; absent lbl = tooltip-only node).
                 paint-order:stroke draws a light halo behind the numerals so

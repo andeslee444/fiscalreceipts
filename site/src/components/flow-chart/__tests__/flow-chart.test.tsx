@@ -285,16 +285,26 @@ describe("FlowChart", () => {
   it("draws exporter-placed leader lines for displaced gutter labels", async () => {
     renderChart();
     await waitForChart();
-    const cw = document.querySelector('[data-node-id="b:bridge:crosswalked"]')!;
+    // §P2-3: node fills, gap dots and leader lines moved into a single
+    // aria-hidden PAINT layer emitted before every label, so no rect can
+    // cover a neighbouring node's label. The leader is decorative and lives
+    // there; the label, the accessible name and the interaction stay on the
+    // [data-flow-node] group.
+    const cw = document.querySelector('[data-node-fill="b:bridge:crosswalked"]')!;
     const leader = cw.querySelector("line")!;
     expect(leader).not.toBeNull();
     expect(leader.getAttribute("stroke")).toBe("var(--flow-leader)");
-    expect(leader.getAttribute("aria-hidden")).toBe("true");
+    expect(leader.closest("[aria-hidden='true']")).not.toBeNull();
     expect(leader.getAttribute("x1")).toBe("781");
     expect(leader.getAttribute("y2")).toBe("22");
     // undisplaced gutter label → no leader
-    const ny = document.querySelector('[data-node-id="b:bridge:not-crosswalked"]')!;
+    const ny = document.querySelector('[data-node-fill="b:bridge:not-crosswalked"]')!;
     expect(ny.querySelector("line")).toBeNull();
+    // …and the fill layer never duplicates the node contract the gates read.
+    expect(cw.getAttribute("data-flow-node")).toBeNull();
+    expect(
+      document.querySelectorAll('[data-node-id="b:bridge:crosswalked"]').length,
+    ).toBe(1);
   });
 
   it("keeps the offers note static and adjacent to the competition legend", async () => {

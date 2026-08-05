@@ -85,6 +85,7 @@
   --flow-node-budget: oklch(0.4 0.02 260);
   --flow-node-spend: oklch(0.32 0 0);
   --flow-node-other: oklch(0.6 0.01 260);
+  --flow-node-veil: oklch(1 0 0 / 0.28);
   --flow-band-budget: oklch(0.62 0.03 260);
   --flow-band-gap: oklch(0.85 0.005 260);
   --flow-bridge-ok: oklch(0.45 0.09 165);
@@ -442,12 +443,17 @@ span.interactive-raise:hover {
   outline: 2px solid var(--ring);
   outline-offset: 1px;
 }
-.flow-node .flow-node-rect {
-  transition: opacity var(--motion-fast) var(--ease-standard);
+/* §P2-3: the node FILL is painted in an earlier layer (so no rect can cover
+   a neighbouring label), so the hover/focus affordance is a translucent wash
+   drawn by the interactive group over its own block instead of an opacity dip
+   on a rect that group no longer owns. Same read, same token duration. */
+.flow-node .flow-node-veil {
+  fill: transparent;
+  transition: fill var(--motion-fast) var(--ease-standard);
 }
-.flow-node:hover .flow-node-rect,
-.flow-node:focus-visible .flow-node-rect {
-  opacity: 0.8;
+.flow-node:hover .flow-node-veil,
+.flow-node:focus-visible .flow-node-veil {
+  fill: var(--flow-node-veil);
 }
 .flow-band {
   opacity: 0.55;

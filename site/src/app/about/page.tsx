@@ -44,14 +44,20 @@ export default function AboutPage() {
           Correlation is not causation
         </h2>
         <p className="text-sm leading-7">
-          {SITE_NAME} shows lobbying expenditure and federal contract
+          {/* Explicit {" "}: an adjacent {expr} + text chunk loses its joining
+              space in the static export (the /years/ intro carries the same
+              note) — this rendered "Fiscal Receiptsshows". */}
+          {SITE_NAME}{" "}
+          shows lobbying expenditure and federal contract
           obligations side by side for the same company family, and identifies
           which budget programs a company&apos;s lobbyists mentioned in their
           filings. This is presented for transparency and research purposes.
         </p>
         <p className="text-sm leading-7 mt-3">
-          <strong className="text-foreground">We do not assert that lobbying
-          caused any particular award.</strong> The relationship between lobbying activity and
+          <strong className="text-foreground">
+            We do not assert that lobbying caused any particular award.
+          </strong>{" "}
+          The relationship between lobbying activity and
           federal contracts involves many confounding factors, including
           competitive procurement rules, technical requirements, past
           performance, and market structure. Our data quantifies the lobbying
