@@ -635,17 +635,29 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     statement on the page is exactly what it now says: no program-specific GAO
     finding for this line is in the ingested data.
 
-31. **No gate exercises a mobile viewport (from PM Sprint 2 judging — the structural
-    lesson of the round).** Three mobile blockers — `/companies/` rendering its money
-    column off-screen, `/data/` pushing its scope prose off-canvas behind 250–400px
-    near-empty rows, and `/families/` hiding the Source column that is the page's
-    entire credibility claim — walked past a 24-gate suite untouched and were caught
-    only by human-style visual judging, because every gate that drives a browser does
-    so at desktop width. A 390px leg (assert `scrollWidth === clientWidth` on the
-    page body for a sample of built pages, plus "the primary value column is within
-    the viewport" for the tables that carry money) would have failed all three at
-    build time. Cheap, and it closes the one class of defect this suite is currently
-    blind to by construction.
+31. ✅ **DONE 2026-08-04 (PM Sprint 3 Task 1) — a gate now exercises a mobile
+    viewport.** The defect class: three mobile blockers — `/companies/` rendering its
+    money column off-screen, `/data/` pushing its scope prose off-canvas behind
+    250–400px near-empty rows, and `/families/` hiding the Source column that is the
+    page's entire credibility claim — walked past a 24-gate suite untouched and were
+    caught only by human-style visual judging, because every gate that drives a
+    browser did so at desktop width. **Gate 3 (render-live) gained a 390×844 leg**
+    (`site/scripts/gates/mobile.mjs`; standalone runner `run-mobile-leg.mjs`; sample
+    pinned by 9 vitest cases) rather than a 25th gate — gate 3 already owns "does
+    every page class render in a real browser" and its harness, so this is the same
+    question at a second width. Two assertions: (m1) no page-level horizontal
+    overflow over a 13-page sample covering every page class carrying a table or a
+    wide chart, and (m2) the primary value element's box fully inside the viewport on
+    the five value-bearing pages, identified by `data-*` hooks and never by text.
+    (m2) is the load-bearing one: all three blockers sat inside an `overflow-x-auto`
+    wrapper, so the container scrolled and (m1) alone passes on two of the three.
+    Proof-can-fail reverts the three real Sprint-2 treatments in a scratch copy of
+    the built stylesheet — all three reproduce, `/families/` at exactly the recorded
+    +98px. **The first run against the live build found a fourth, shipping instance:
+    `/district/`'s Linkable-dollars column sat 38px off the right edge at 390** (the
+    Sprint 1 fact-id chip re-widened it past the Sprint 2 State-column fix); fixed by
+    hiding the Programs column below `sm` with the count moved under the district
+    code. Evidence: `docs/superpowers/reviews/5c-gates-pre-failure.txt`.
 
 ## Remaining launch items
 

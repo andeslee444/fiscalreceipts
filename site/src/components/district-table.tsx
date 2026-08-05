@@ -68,9 +68,12 @@ export function DistrictTable({ districts }: Props) {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [stateFilter, setStateFilter] = useState<string>("");
 
-  // Horizontal-scroll affordance: the table has a min-width wider than a
-  // 390px viewport, so it scrolls inside the wrapper below. Show a right-edge
-  // fade while more columns remain off-screen to the right.
+  // Horizontal-scroll affordance: between `sm` and the widest layouts the
+  // table's min-content width can exceed its wrapper, so it scrolls inside
+  // the wrapper below. Show a right-edge fade while more columns remain
+  // off-screen to the right. Measured, so it disappears at 390px, where the
+  // table is now two columns and nothing is off-screen (see the Programs
+  // header).
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -191,13 +194,28 @@ export function DistrictTable({ districts }: Props) {
                   onSort={handleSort}
                   className="px-3 sm:px-4 hidden sm:table-cell"
                 />
+                {/* Programs column hides below sm, for the same reason State
+                    does — and for a defect the State fix did not go far
+                    enough to close. Gate 3's mobile leg (backlog #31)
+                    measured the money column at 390px: District 142px +
+                    Programs 106px + Linkable $ 164px = 411px of min-content
+                    inside a 356px wrapper, so "$1.14B" sat 38px past the
+                    right edge and the reader had to scroll the table
+                    sideways to see the number the page is about. Sprint 2
+                    hid State believing that fixed it; Sprint 1 had already
+                    turned Receipts ON by default, and the fact-id chip
+                    re-widened the money column past the fold.
+
+                    The count is not dropped — it rides under the district
+                    code at mobile (see the district cell), so nothing leaves
+                    the page, only the column. */}
                 <SortHeader
                   label="Programs"
                   colKey="program_count"
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  className="px-3 sm:px-4 text-right"
+                  className="px-3 sm:px-4 text-right hidden sm:table-cell"
                 />
                 <SortHeader
                   label="Linkable dollars"
@@ -234,14 +252,26 @@ export function DistrictTable({ districts }: Props) {
                           label; the URL keeps the raw pop_district code. */}
                       {districtDisplayLabel(d.pop_district)}
                     </Link>
+                    {/* The program count, kept on screen at mobile where its
+                        own column is hidden. */}
+                    <span className="sm:hidden mt-0.5 block font-sans text-xs text-muted-foreground tabular-nums">
+                      {d.program_count} program{d.program_count === 1 ? "" : "s"}
+                    </span>
                   </td>
                   <td className="px-3 sm:px-4 py-3 text-muted-foreground hidden sm:table-cell">
                     {d.pop_state}
                   </td>
-                  <td className="px-3 sm:px-4 py-3 text-right tabular-nums">
+                  <td className="px-3 sm:px-4 py-3 text-right tabular-nums hidden sm:table-cell">
                     {d.program_count}
                   </td>
-                  <td className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap">
+                  {/* data-primary-value marks THE money column for gate 3's
+                      mobile leg (backlog #31): the leg measures this cell's box
+                      at 390px and fails if it leaves the viewport — which is
+                      what hiding the State column below `sm` is protecting. */}
+                  <td
+                    data-primary-value="linkable-dollars"
+                    className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap"
+                  >
                     {d.total_linkable_dollars > 0 ? (
                       // Derived 'district' aggregate citation — the sum of the
                       // district's per-program USAspending-cited obligations.

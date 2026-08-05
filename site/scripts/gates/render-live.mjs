@@ -8,12 +8,20 @@
  *
  * Per page: zero console errors; JSON-LD parses; title+description non-empty.
  * On /data/: click first canned query → await [data-testid=query-results] rows >0.
+ *
+ * MOBILE-VIEWPORT LEG (PM Sprint 3 Task 1 / backlog #31) — see gates/mobile.mjs.
+ * This gate already owns the question "does every page class actually render in
+ * a real browser", and it already owns the server + chromium harness, so the
+ * 390×844 pass is a second width of the same question rather than a 25th gate.
+ * Its errors are this gate's errors: gate 3 goes red when the money leaves the
+ * phone screen.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
+import { runMobileLeg } from "./mobile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -248,6 +256,16 @@ export async function runRenderLiveGate(baseUrl) {
     }
   } finally {
     await context.close();
+  }
+
+  // ── Mobile-viewport leg (390×844), reusing this gate's browser ───────────
+  try {
+    const mobile = await runMobileLeg({ baseUrl, browser });
+    errors.push(...mobile.errors);
+    notes.push(...mobile.notes);
+  } catch (e) {
+    errors.push(`mobile leg: crashed: ${e.message}`);
+  } finally {
     await browser.close();
   }
 

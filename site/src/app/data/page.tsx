@@ -177,7 +177,14 @@ export default function DataPage() {
                       </span>
                       {formatBytes(ds.bytes)}
                     </td>
-                    <td role="cell" className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs">
+                    {/* data-primary-value marks the two columns that were
+                        entirely off-canvas at 390px before the card treatment
+                        (backlog #31) — gate 3's mobile leg measures both. */}
+                    <td
+                      role="cell"
+                      data-primary-value="citation"
+                      className="inline sm:table-cell px-4 py-0 sm:py-2 text-xs"
+                    >
                       {isCited ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-medium">
                           cited
@@ -188,7 +195,11 @@ export default function DataPage() {
                         </span>
                       )}
                     </td>
-                    <td role="cell" className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm">
+                    <td
+                      role="cell"
+                      data-primary-value="scope"
+                      className="block sm:table-cell px-4 pt-1 sm:py-2 text-muted-foreground sm:max-w-sm"
+                    >
                       {ds.scope}
                     </td>
                   </tr>

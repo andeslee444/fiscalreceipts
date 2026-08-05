@@ -2181,3 +2181,142 @@ not assumed. Three places, none of which trusts the others:
    THROWS (build failure) if any registry family appears in two rows, if any
    input company vanished, or if a merged row's members do not sum to its cited
    combined figure. Gate 24 leg (g) then re-checks (1) on the built HTML.
+
+
+───────────────────────────────────────────────────────────────────────────────
+GATE 3 render-live — MOBILE-VIEWPORT LEG @ 390×844 (PM Sprint 3 Task 1,
+ROADMAP backlog #31)                                          recorded 2026-08-04
+───────────────────────────────────────────────────────────────────────────────
+
+THE DEFECT CLASS: every gate that drove a browser did so at desktop width, so
+the suite was blind to mobile layout by construction. Sprint 2 shipped three
+mobile blockers that walked past all 24 gates and were caught only by human
+visual judging:
+  1. /companies/ rendered its Total-obligations column — the money, the whole
+     point of the page — entirely off the right edge at 390px;
+  2. /data/ pushed its Citation and "Scope — what one row is" columns
+     off-canvas behind 250–400px rows that were ~85% empty;
+  3. /companies/families/ hid the Source column (98px of overflow), which is
+     that page's entire credibility claim.
+
+WHERE IT LIVES: gate 3 (render-live) gains a second width, not a 25th gate.
+Gate 3 already owns the question "does every page class actually render in a
+real browser" and already owns the server + chromium harness; the mobile pass
+is the same question at 390. Its errors are gate 3's errors. Suite stays at 24.
+Code: site/scripts/gates/mobile.mjs; standalone runner
+site/scripts/run-mobile-leg.mjs; sample pinned by
+site/scripts/gates/__tests__/mobile.test.mjs (9 vitest cases).
+
+WHAT THE LEG CHECKS, at 390×844 in headless chromium (plain `viewport`, the
+same convention as the sibling 390px legs in answerfold / receiptmoment /
+yearsmatrix — measured: overlay scrollbars, clientWidth is a full 390 on every
+sampled page, so (m1) needs no scrollbar allowance):
+
+  (m1) NO PAGE-LEVEL HORIZONTAL OVERFLOW —
+       document.documentElement.scrollWidth <= clientWidth (+1px rounding),
+       over a 13-page sample covering every page class that carries a table or
+       a wide chart:
+         /  /programs/  /companies/  /companies/families/  /data/  /years/
+         /district/  /flow/  /feed/  /program/{pe}/  /company/{slug}/
+         /methodology/  /filing/{uuid}/
+       The three instance pages are resolved deterministically from the
+       shipped sidecars (heaviest program 0606301D8Z; top company by
+       obligations; lowest-sorting filing_uuid that has mentions).
+       On failure the leg names the widest offending element that is NOT
+       inside a scrollable ancestor, with its right edge and its text.
+
+  (m2) THE MONEY IS ON SCREEN — for the five value-bearing pages, the primary
+       value element's box lies fully inside the viewport
+       (-1 <= rect.left, rect.right <= innerWidth + 1):
+         /companies/          td[data-primary-value="total-obligations"] [data-amount]
+                              (first per row, 195 rows)
+         /companies/families/ [data-external-source]            (17 links)
+         /data/               [data-dataset-rowcount],
+                              td[data-primary-value="citation"],
+                              td[data-primary-value="scope"]    (45 cells)
+         /district/           td[data-primary-value="linkable-dollars"]
+                              (the CELL, not the figure: 5 of 106 districts
+                              have no crosswalked dollars and render "—")
+         /years/              tr[data-program-row] first td[data-col]
+                              (300, the measurement cap)
+
+       (m1) ALONE WOULD NOT HAVE CAUGHT ANY OF THE THREE SPRINT-2 BLOCKERS.
+       All three tables sit inside an `overflow-x-auto` wrapper: the container
+       scrolled, the page did not, and the money sat off-screen behind it. The
+       run below shows this directly — /companies/ and /data/ fail (m2) with
+       (m1) clean; only /families/, whose <a> escaped its wrapper, trips both.
+
+  Vacuity guards: every value-bearing page must resolve >= min value elements
+  (50/10/30/50/50) and, where the sample is row-scoped, >= minRows rows; with
+  `first`, a row carrying no value element is itself an error. A page whose
+  table silently stops rendering FAILS instead of passing on an empty set.
+  The two client islands are waited on before measuring — /years/ for
+  tr[data-program-row] (a 27KB shell that hydrates from years_matrix.json) and
+  /flow/ for [data-testid="flow-chart"] — so neither is measured empty.
+
+FIRST RUN AGAINST THE LIVE BUILD FOUND A FOURTH, UNFIXED INSTANCE OF THE CLASS
+— /district/, shipping right now:
+
+  ✗ mobile /district/ (districts): 106/106 Linkable-dollars cell(s) are outside
+    the 390px viewport — row 0: "$1.14B#355bbcef" left=264 right=428 >
+    viewport 390 | row 1: "$1.05B#f5365541" left=264 right=428 > viewport 390
+    | row 2: "$613.3M#960585a3" left=264 right=428 > viewport 390
+
+  Measured at 390: District 142px + Programs 106px + Linkable $ 164px = 411px
+  of min-content inside a 356px wrapper. Sprint 2 hid the State column
+  believing that put the money in frame; Sprint 1 had already turned Receipts
+  ON by default, and the fact-id chip re-widened the money column 38px past
+  the right edge. FIXED (not waived): the Programs column also hides below
+  `sm`, and the count rides under the district code as "N programs", so
+  nothing leaves the page — only the column.
+
+PROOF-CAN-FAIL — the genuine historical defect, not a synthetic one. Sprint
+2's three real mobile card treatments were reverted in a scratch copy of the
+BUILT artifact's stylesheet (out/_next/static/chunks/1zk1wvuugnltg.css),
+reconstructing the source exactly as it read before 0e686e5 (/companies/),
+a8675f6 (/data/) and 2e9ad25 (/companies/families/): <thead> visible, tr/td
+back to table display, the mobile-only inline labels gone, the
+`hidden sm:table-cell` rank/UEI columns back, /data/'s scope column back to
+its unbounded pre-card width. CSS-only on purpose — these are hydrated React
+islands, so editing the built HTML would be undone at hydration; React never
+touches stylesheets.
+
+  applied scratch revert (+1303 bytes) to 1zk1wvuugnltg.css
+  PASS: false
+  NOTES:
+    mobile leg @ 390x844: 13 pages — / /programs/ /companies/ /companies/families/ /data/ /years/ /district/ /flow/ /feed/ /program/0606301D8Z/ /company/lockheed-martin/ /methodology/ /filing/00409eb7-2227-4c8f-b77f-1289ef623877/
+    mobile /years/: 300 first fiscal-year amount cell(s) fully on screen ✓
+    mobile /district/: 106 Linkable-dollars cell(s) fully on screen ✓
+    mobile leg: 12/13 pages free of page-level horizontal overflow; 663 value element(s) measured across 5 value-bearing page(s)
+  ERRORS:
+    ✗ mobile /companies/ (companies index): 195/195 Total-obligations figure(s) are outside the 390px viewport — row 0: "$135.4B" left=379 right=432 > viewport 390 | row 1: "$75.9B" left=387 right=432 > viewport 390 | row 2: "$68.9B" left=387 right=432 > viewport 390
+    ✗ mobile /companies/families/ (entity families): page scrolls horizontally at 390px — documentElement.scrollWidth 488 > clientWidth 390 (+98px)
+    ✗ mobile /companies/families/ (entity families): 17/17 Source (external reference) link(s) are outside the 390px viewport — row 0: "8-K Item 5.03 · 2023-07-17(opens in new " left=488 right=633 > viewport 390 | row 1: "8-K Exhibit 99.1 · 2022-07-05(opens in n" left=488 right=633 > viewport 390 | row 2: "8-K Exhibit 99.1 · 2022-07-05(opens in n" left=488 right=633 > viewport 390
+    ✗ mobile /data/ (data inventory + explorer): 30/45 dataset row-count / citation / scope cell(s) are outside the 390px viewport — row 1: "cited" left=358 right=441 > viewport 390 | row 2: "One row per (program element × amount ty" left=441 right=641 > viewport 390 | row 4: "cited" left=358 right=441 > viewport 390
+
+  All three reported blockers reproduce, each on the page that reported it —
+  and /companies/families/ reproduces at exactly the +98px of page overflow
+  the backlog entry recorded.
+
+RESTORED + RE-RUN:
+
+  restored 1zk1wvuugnltg.css from pristine backup
+  cmp: IDENTICAL (restored clean)
+  PASS: true
+  NOTES:
+    mobile leg @ 390x844: 13 pages — / /programs/ /companies/ /companies/families/ /data/ /years/ /district/ /flow/ /feed/ /program/0606301D8Z/ /company/lockheed-martin/ /methodology/ /filing/00409eb7-2227-4c8f-b77f-1289ef623877/
+    mobile /companies/: 195 Total-obligations figure(s) fully on screen ✓
+    mobile /companies/families/: 17 Source (external reference) link(s) fully on screen ✓
+    mobile /data/: 45 dataset row-count / citation / scope cell(s) fully on screen ✓
+    mobile /years/: 300 first fiscal-year amount cell(s) fully on screen ✓
+    mobile /district/: 106 Linkable-dollars cell(s) fully on screen ✓
+    mobile leg: 13/13 pages free of page-level horizontal overflow; 663 value element(s) measured across 5 value-bearing page(s)
+
+VACUITY PROOF (recorded from the TDD red, before the data-primary-value hooks
+existed): with the hooks absent the leg refuses to pass on an empty set —
+
+  ✗ mobile /companies/: only 0 Total-obligations figure(s) matched "td[data-primary-value="total-obligations"] [data-amount]" (need >= 50) — the sample is vacuous
+  ✗ mobile /companies/: 195 row(s) carry no Total-obligations figure ("td[data-primary-value="total-obligations"] [data-amount]") — every row must state its value
+  ✗ mobile /data/: only 15 dataset row-count / citation / scope cell(s) matched "[data-dataset-rowcount], [data-primary-value='scope'], [data-primary-value='citation']" (need >= 30) — the sample is vacuous
+  ✗ mobile /district/: only 0 Linkable-dollars figure(s) matched "td[data-primary-value="linkable-dollars"] [data-amount]" (need >= 50) — the sample is vacuous
+  ✗ mobile /district/: 106 row(s) carry no Linkable-dollars figure ("td[data-primary-value="linkable-dollars"] [data-amount]") — every row must state its value

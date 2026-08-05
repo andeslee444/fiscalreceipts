@@ -445,8 +445,17 @@ export function CompaniesTable({
                 </td>
                 {/* Mobile: obligations sit UNDER the name at full width with a
                     visible label, so the figure and its chips can never be
-                    sliced by the viewport edge. */}
-                <td role="cell" className="block sm:table-cell px-4 pb-3 pt-0 sm:py-3 text-left sm:text-right tabular-nums align-top">
+                    sliced by the viewport edge.
+
+                    data-primary-value marks THE money column for gate 3's
+                    mobile leg (backlog #31): the leg measures the [data-amount]
+                    inside this cell and fails if its box leaves the 390px
+                    viewport — the exact defect this stacking fixed. */}
+                <td
+                  role="cell"
+                  data-primary-value="total-obligations"
+                  className="block sm:table-cell px-4 pb-3 pt-0 sm:py-3 text-left sm:text-right tabular-nums align-top"
+                >
                   <span className="sm:hidden mr-1.5 text-xs text-muted-foreground">
                     Total obligations:
                   </span>
