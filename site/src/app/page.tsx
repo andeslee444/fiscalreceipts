@@ -297,8 +297,11 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-2">Largest {TRAJECTORY_FY_LABEL} changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 and FY2026
-            enacted. Dollar deltas carry derived workbook citations — click a
-            figure to inspect the formula and inputs.
+            enacted, ranked by the size of the change in dollars with
+            increases and decreases ranked together — when the list is all
+            increases, that is the result, not a filter. Dollar deltas carry
+            derived workbook citations — click a figure to inspect the formula
+            and inputs.
             {scopeQualifier && (
               <span className="block mt-1 text-xs">
                 Scope: ranked across the R&D and procurement program elements

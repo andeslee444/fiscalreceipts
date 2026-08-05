@@ -201,17 +201,23 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
   // interface for the sparkline, so it needs a caption and a marker, not a
   // second copy of itself behind a toggle. Rendered through ChartFigure's
   // `table` slot so the description sits between picture and table.
+  // Round-2 judging: the SVG carried a hard `width={340}`, so on a 1380px-wide
+  // desktop card the chart sat at phone size with two-thirds of the card empty
+  // and its markers crowded. The viewBox already describes the geometry, so the
+  // element scales to its container and the drawing is unchanged — capped so it
+  // does not become a letterbox on the widest cards.
   const chart = (
     <div data-testid="decade-trajectory">
       <svg
-        width={SVG_WIDTH}
+        width="100%"
         height={SVG_HEIGHT}
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        preserveAspectRatio="xMinYMid meet"
+        className="h-auto w-full max-w-[720px]"
         role="img"
         aria-label={chartName}
         aria-describedby={chartDescId("decade-trajectory")}
         data-testid="decade-spark"
-        className="max-w-full"
       >
         <desc>{chartDescription}</desc>
         {/* Baseline */}

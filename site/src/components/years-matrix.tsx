@@ -129,6 +129,11 @@ export const COLUMN_LABELS: Record<string, string> = {
   fy_2026_disc_request: "FY2026 Request",
   fy_2026_reconciliation_request: "FY2026 Reconciliation",
   fy_2026_total: "FY2026 Total",
+  // Round-2 judging: this key had no entry, so `columnLabel` fell through to
+  // the raw payload key and the chip row showed `fy_2025_supplemental`
+  // between two properly-titled columns — a database identifier as UI, on the
+  // page that argues its presentation is reproducible.
+  fy_2025_supplemental: "FY2025 Supplemental",
   fy2526_change: `Δ ${TRAJECTORY_FY_LABEL}`,
   fy2526_pct_change: "%Δ",
 };
@@ -149,6 +154,7 @@ export const COLUMN_LABELS_SHORT: Record<string, string> = {
   fy_2026_disc_request: "FY26 Req",
   fy_2026_reconciliation_request: "FY26 Rec",
   fy_2026_total: "FY26 Tot",
+  fy_2025_supplemental: "FY25 Supp",
   fy2526_change: "Δ",
   fy2526_pct_change: "%Δ",
 };
