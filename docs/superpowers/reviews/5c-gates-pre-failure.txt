@@ -3166,3 +3166,62 @@ that single hunk and nothing else.)
 
 SUITE COUNT UNCHANGED — six new legs across gates 2, 11, 20 and 24.
 Still 24 gates.
+
+================================================================================
+PM SPRINT 3 — TASK 5b (2026-08-05): GATE 23 LEG (d), ENTITY TOTALS
+================================================================================
+NO DEFECT WAS INJECTED FOR THIS LEG. It was built against the SHIPPING data and
+failed on it — the live P0 the task exists to fix. Recorded at HEAD a63a88d,
+before `govbudget entity-graph` was re-run.
+
+THE DEFECT (live on fiscalreceipts.com at the time of this record):
+data/parquet/entities/entity_xwalk.parquet was written 2026-06-10 20:19. The
+FY2020-FY2026 contract partitions were ingested from 21:00 that night through
+07:50 the next morning. The crosswalk was never rebuilt, so its total_obligation
+column summed FY2017-FY2019 while /companies/ and all 200 /company/{slug}/ pages
+labelled the figure FY2017-FY2026. Lockheed Martin published $135.36B against a
+true $502.12B. The number contradicted nothing on its own page — only the period
+it claimed — which is why 24 green gates and a 48/48 eval never saw it.
+
+--------------------------------------------------------------------------------
+PASS: false   (node scripts/gates/basis.mjs, HEAD a63a88d, pre-rebuild data)
+--------------------------------------------------------------------------------
+  ✗ leg d1: 215 of 228 entity total_obligation fact(s) do not reproduce — the published query_body disagrees with the published recorded_value (first 10):
+  ✗   002347acf4ad30c0 IAP GLOBAL SERVICES: page says $1,166,991,098, its own query returns $2,313,081,592
+  ✗   0129b8755690c1f7 SLSCO: page says $1,443,141,675, its own query returns $2,166,771,263
+  ✗   025533f910760b19 MASSACHUSETTS INSTITUTE OF TECHNOLOGY: page says $3,182,093,679, its own query returns $11,840,176,253
+  ✗   02e21c6cc17aaea2 ENGILITY: page says $324,517, its own query returns $9,972,228
+  ✗   044492ae300094a1 PHILLIPS 66: page says $824,595,714, its own query returns $3,756,919,514
+  ✗   05c05a47eb8f59af DELL TECHNOLOGIES: page says $645,926,959, its own query returns $10,130,270,132
+  ✗   0a0081a693e21ef2 MOTOR OIL HELLAS CORINTH REFINERIES: page says $645,035,088, its own query returns $3,079,670,781
+  ✗   0aab4d658b5658c5 GEORGIA TECH RESEARCH: page says $1,199,795,090, its own query returns $5,193,991,892
+  ✗   0d0805c1f5f5f8c9 BATTELLE MEMORIAL INSTITUTE: page says $829,811,050, its own query returns $2,770,105,447
+  ✗   0e26afcc979cc5f4 ERAPSCO: page says $578,579,447, its own query returns $1,796,493,784
+  ✗   ... and 205 more
+  ✗ leg d2: the entity crosswalk's total_obligation column matches NO leading fiscal-year window in the declared range FY2017–FY2026 — closest is FY2017–FY2019 (off by 1.15%). The crosswalk totals $1,064,257,357,877; the lake over FY2017–FY2026 totals $3,651,716,714,177. Every /company/ page labels these figures FY2017–FY2026.
+  ✗ leg d3: data/parquet/entities/entity_xwalk.parquet was written 2026-06-11T00:19:44.361Z but data/parquet/assistance/fy=2026/part_000.parquet — a partition it reads — was written 2026-06-11T11:50:18.255Z. A derived artifact older than its inputs is stale by construction; rebuild it.
+
+WHY THREE SUB-LEGS AND NOT ONE. d1 alone is not enough, and that is the whole
+lesson of this defect. A stale derived artifact does not contradict itself; it
+contradicts its LABEL. d2 is the assertion that would have caught it on a build
+where d1 happened to pass: recompute the leading fiscal-year window over which
+the crosswalk's own total column reproduces the lake, and require that window to
+END at the fy_max the pages declare. d3 is the cheap version — a derived parquet
+older than a partition it reads — which would have caught this on day one.
+
+WHAT d1 CAUGHT THAT IT WAS NOT AIMED AT. After the rebuild, d1 still failed:
+394 of 1,667 /feed/ new-entrant citations. Their query_body omitted the
+`obligation > 0` predicate that fct_feed_events' own fam_year CTE carries, so
+each published a query returning a different number than the figure beside it.
+Pre-rebuild this surface had ZERO rows (a "new entrant" needs a first award year
+>= 2024, and the stale crosswalk could not see one), so the defect was invisible
+rather than absent. Recorded here because it is the same class as the headline
+bug — a receipt that does not reproduce its figure — and because it is the
+argument for checking every fact rather than a sample:
+
+  ✗ leg d1: 394 of 1877 entity_xwalk-derived fact(s) do not reproduce — the published query_body disagrees with the published recorded_value (entity 0/210, feed 394/1667; first 10):
+  ✗   [feed] 00c1a75fbd7358fa CSH SSFM: page says $3,992,823, its own query returns $3,991,823
+  ✗   [feed] 01050bdc4a80bd02 BLACK VEATCH JACOBS: page says $88,196,138, its own query returns $83,207,541
+  ✗   [feed] 011037b3e32527df HAYAT BROWN: page says $1,782,154, its own query returns $1,254,209
+  ✗   [feed] 01a58c04b9e2d913 SUNTIFF: page says $5,688,527, its own query returns $4,688,527
+  ✗   [feed] 027b577d2aef5274 EVERSTONE INDUSTRIES: page says $1,525,397, its own query returns $1,320,452

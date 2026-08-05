@@ -3,14 +3,14 @@
     loaded data?
   answer_sql: |
     select display_name from dim_entities order by total_obligation desc nulls last limit 1
-  expected_answer: LOCKHEED MARTIN CORPORATION
+  expected_answer: LOCKHEED MARTIN CORP
   expected_citation_kind: warehouse
-  notes: entity graph, total across all FY2017-2023
+  notes: entity graph, total across all FY2017-2026
 - id: q002
   question: How many distinct entity family groups are tracked in the warehouse?
   answer_sql: |
     select count(*) from dim_entities
-  expected_answer: '76727'
+  expected_answer: '114806'
   expected_citation_kind: warehouse
   notes: dim_entities row count
 - id: q003
@@ -19,17 +19,20 @@
   answer_sql: |
     select round(total_obligation / 1e9, 2)
     from dim_entities
-    where display_name = 'LOCKHEED MARTIN CORPORATION'
-  expected_answer: '135.36'
+    where family_key = 'LOCKHEED MARTIN'
+  expected_answer: '502.12'
   tolerance: 0.01
   expected_citation_kind: warehouse
-  notes: ~$135B across 126 UEIs, FY2017-2023
+  notes: keyed on family_key, not display_name — display_name is the dominant registry
+    spelling of the family's largest UEI and legitimately moves ('LOCKHEED MARTIN
+    CORPORATION' → 'LOCKHEED MARTIN CORP' at the Task 5b rebuild), which silently
+    emptied this query rather than changing its answer
 - id: q004
   question: How many individual UEIs (recipient identifiers) are rolled up under the
     Lockheed Martin family?
   answer_sql: |
-    select uei_count from dim_entities where display_name = 'LOCKHEED MARTIN CORPORATION'
-  expected_answer: '126'
+    select uei_count from dim_entities where family_key = 'LOCKHEED MARTIN'
+  expected_answer: '136'
   expected_citation_kind: warehouse
   notes: entity_xwalk family consolidation
 - id: q005
@@ -39,7 +42,7 @@
     select display_name from dim_entities order by total_obligation desc nulls last limit 1 offset 1
   expected_answer: THE BOEING COMPANY
   expected_citation_kind: warehouse
-  notes: Boeing ~$76B
+  notes: Boeing ~$213B (FY2017-FY2026)
 - id: q006
   question: Sikorsky Aircraft Corporation is included in which entity family in the
     warehouse? Answer with the single family display_name exactly as stored.
@@ -49,14 +52,14 @@
     join entity_xwalk x on x.family_key = e.family_key
     where x.recipient_name = 'SIKORSKY AIRCRAFT CORPORATION'
     limit 1
-  expected_answer: LOCKHEED MARTIN CORPORATION
+  expected_answer: LOCKHEED MARTIN CORP
   expected_citation_kind: warehouse
   notes: crosswalk maps Sikorsky → Lockheed via parent_name
 - id: q007
   question: What confidence level does the warehouse assign to the Lockheed Martin
     family's entity grouping?
   answer_sql: |
-    select worst_confidence from dim_entities where display_name = 'LOCKHEED MARTIN CORPORATION'
+    select worst_confidence from dim_entities where family_key = 'LOCKHEED MARTIN'
   expected_answer: medium
   expected_citation_kind: warehouse
   notes: worst_confidence reflects lowest-confidence UEI in the family
@@ -73,9 +76,9 @@
   expected_answer: '280.494'
   tolerance: 0.001
   expected_citation_kind: pdf_page
-  notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse.
-    Re-baselined to fct_decade_series 2026-07-03 (recompute verified 280.494)
-    — the decade mart is the canonical surface for fy+kind lookups.
+  notes: R-1 FY2026 book, DARPA PE 0601101E; answer in thousands in warehouse. Re-baselined
+    to fct_decade_series 2026-07-03 (recompute verified 280.494) — the decade mart
+    is the canonical surface for fy+kind lookups.
 - id: q009
   question: What is the FY2025 enacted amount for DARPA's Defense Research Sciences
     program (PE 0601101E), in millions, to three decimal places?
@@ -233,10 +236,11 @@
     select round(hhi, 1), family_count
     from fct_agency_concentration
     where awarding_sub_agency_name = 'Missile Defense Agency'
-  expected_answer: 2068, 3336
+  expected_answer: 2118.5, 3319
   tolerance: 0.1
   expected_citation_kind: warehouse
-  notes: MDA moderately concentrated, $51.8B total
+  notes: MDA moderately concentrated; HHI and family_count both move with the
+    entity crosswalk, which the Task 5b rebuild corrected
 - id: q023
   question: Which program element in the program concentration mart has the highest
     HHI, and who is the top family?

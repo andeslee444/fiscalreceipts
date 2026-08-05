@@ -1318,6 +1318,21 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     boeing = json.loads(boeing_path.read_text())
     assert boeing["awards"] == [], f"expected empty awards for Boeing, got: {boeing['awards']}"
 
+    # ── The directory is a FUNCTION of the current entity set, not a pile ──
+    # A sidecar from an earlier export whose family has since left the top 200
+    # is not merely untidy: it ships, and it inflates every denominator counted
+    # from this directory (gate 14 recomputes "N of M profiled companies" here).
+    # The Task 5b crosswalk rebuild reordered the top 200 and left 71 such
+    # orphans, which is how this was found.
+    orphan = detail_dir / "family-that-left-the-top-200.json"
+    orphan.write_text('{"awards": []}')
+    export_site(pg_dsn, db, out_dir=site, pdf_base_url="/pdfs")
+    assert not orphan.exists(), (
+        "a re-export left a stale entity_details sidecar behind — the directory "
+        "must equal the current entity set, or counts derived from it drift"
+    )
+    assert (detail_dir / "lockheed.json").exists(), "re-export dropped a live sidecar"
+
 
 def test_agencies_json_schema(pg_dsn, tmp_path):
     """agencies.json has org, program_count, fy2024_total_millions, fy2026_total_thousands."""

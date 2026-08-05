@@ -64,6 +64,22 @@
  *   type-stripping (erasable TS only: no enums/namespaces, no "@/…" path
  *   aliases, type-only or relative imports).
  *
+ * LEG (d) — entity totals reproduce, and mean the period they name
+ *   (PM Sprint 3 Task 5b; recompute helper entitytotals-recompute.py):
+ *   d1 every entity total_obligation citation's published query_body, run
+ *      verbatim against the warehouse, must return its published
+ *      recorded_value.
+ *   d2 the leading fiscal-year window over which the crosswalk's own
+ *      total_obligation column reproduces the award lake must END at the
+ *      declared fy_max. The shipped defect satisfied no reproduction check
+ *      of the first kind and would have satisfied a naive one: the figures
+ *      were internally consistent with a crosswalk built before the
+ *      FY2020-FY2026 partitions existed, and wrong only about the period
+ *      they claimed. Labels are checked against data, not against copy.
+ *   d3 entity_xwalk.parquet must be newer than every award partition it
+ *      reads — the cheap check that would have caught it on day one.
+ *   See runEntityTotalsLeg's own block at the bottom.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote.
@@ -71,11 +87,13 @@
 
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 import { fileURLToPath, pathToFileURL } from "url";
 import { parse } from "node-html-parser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
+const repoRoot = path.resolve(siteRoot, "..");
 const outDir = path.resolve(siteRoot, "out");
 const goldensDir = path.resolve(__dirname, "goldens", "footnotes");
 const footnoteModulePath = path.resolve(siteRoot, "src", "lib", "footnote.ts");
@@ -660,7 +678,194 @@ export async function runBasisGate() {
     }
   }
 
+  // ── Leg (d) — entity totals: reproduce, and mean the period they name ──────
+  runEntityTotalsLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (d) — ENTITY TOTALS (PM Sprint 3, Task 5b)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The headline figure on /companies/ and all 200 /company/{slug}/ pages.  Two
+// checks, because the shipped defect passed the first kind of scrutiny and
+// failed the second:
+//
+//   d1 REPRODUCTION — every entity total_obligation citation publishes a
+//      query_body next to its recorded_value.  Run it.  They must agree.
+//      This is the site's core contract; for these 228 facts it was false.
+//
+//   d2 DECLARED-WINDOW TRUTH — the lesson, and the half worth having.  The
+//      crosswalk behind those totals was built before the FY2020-FY2026
+//      partitions were ingested, so it summed FY2017-FY2019 and was perfectly
+//      self-consistent while every page labelled it "FY2017–FY2026".  A stale
+//      derived artifact does not contradict itself; it contradicts its label.
+//      So: find the leading FY window over which the crosswalk's own total
+//      column reproduces the lake, and require it to END at the declared
+//      fy_max.  Any earlier end means the pages name a period the numbers do
+//      not cover.
+//
+//   d3 FRESHNESS — the cheap version of d2 that would have caught this on day
+//      one: a derived parquet older than a partition it reads is stale by
+//      construction.  Advisory in the sense that d2 is the real proof, but it
+//      fails the gate too, because there is no benign reason for it.
+function runEntityTotalsLeg(errors, notes) {
+  const script = path.join(__dirname, "entitytotals-recompute.py");
+  if (!fs.existsSync(script)) {
+    errors.push(`leg d: recompute helper missing at ${script}`);
+    return;
+  }
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    errors.push(
+      `leg d: entitytotals-recompute.py failed (status ${res.status}): ` +
+        `${(res.stderr || res.error?.message || "").slice(0, 400)}`,
+    );
+    return;
+  }
+  let truth;
+  try {
+    truth = JSON.parse(res.stdout);
+  } catch (e) {
+    errors.push(`leg d: recompute produced non-JSON output (${e.message})`);
+    return;
+  }
+  if (truth.__error__) {
+    errors.push(`leg d: recompute could not run — ${truth.__error__}`);
+    return;
+  }
+
+  const { fy_min: fyMin, fy_max: fyMax, label } = truth.declared;
+  const usd = (n) =>
+    n === null || n === undefined ? "null" : `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+  // d0 — the projection the statements ran against must be the warehouse
+  for (const [table, f] of Object.entries(truth.projection_fidelity || {})) {
+    if (f.projected_rows !== f.warehouse_rows) {
+      errors.push(
+        `leg d0: the ${table} projection the query bodies ran against has ` +
+          `${f.projected_rows} rows but the warehouse table has ${f.warehouse_rows} — ` +
+          `the recompute is not reading the published data`,
+      );
+    }
+    // RELATIVE tolerance, not absolute. The projection is sorted (that is what
+    // makes ~1,900 verbatim statements finish in seconds instead of minutes),
+    // and summing 40M doubles in a different order lands 9.5 cents away from
+    // the same sum in the original order — float addition is not associative.
+    // 1e-9 relative is ~$3,900 on this corpus: far below any real divergence
+    // (a single dropped partition is billions) and far above the ~2.5e-14
+    // reordering noise.
+    if (
+      f.warehouse_sum !== undefined &&
+      Math.abs(f.projected_sum - f.warehouse_sum) >
+        Math.abs(f.warehouse_sum) * 1e-9
+    ) {
+      errors.push(
+        `leg d0: the ${table} projection totals ${usd(f.projected_sum)} but the ` +
+          `warehouse table totals ${usd(f.warehouse_sum)} (difference ` +
+          `${usd(f.projected_sum - f.warehouse_sum)})`,
+      );
+    }
+  }
+
+  // d1 — reproduction, reported per surface (both publish a "sum over
+  // entity_xwalk" claim; a failure in either is a figure contradicting its
+  // own receipt)
+  const failures = truth.reproduce_failures || [];
+  const bySurface = truth.n_by_surface || {};
+  if (!truth.n_facts) {
+    errors.push(
+      "leg d1: no entity_xwalk-derived citations found — the entity tier must " +
+        "not silently vanish from the citation set",
+    );
+  } else if (failures.length > 0) {
+    const counted = failures.reduce(
+      (a, f) => ((a[f.surface] = (a[f.surface] || 0) + 1), a),
+      {},
+    );
+    errors.push(
+      `leg d1: ${failures.length} of ${truth.n_facts} entity_xwalk-derived fact(s) ` +
+        `do not reproduce — the published query_body disagrees with the published ` +
+        `recorded_value (` +
+        Object.entries(counted)
+          .map(([s, n]) => `${s} ${n}/${bySurface[s] ?? "?"}`)
+          .join(", ") +
+        `; first ${Math.min(MAX_LISTED, failures.length)}):`,
+    );
+    for (const f of failures.slice(0, MAX_LISTED)) {
+      errors.push(
+        `  [${f.surface}] ${f.fact_id} ${f.family_key ?? "?"}: page says ` +
+          `${usd(f.recorded_value)}, its own query returns ` +
+          `${f.error ? `ERROR ${f.error}` : usd(f.query_value)}`,
+      );
+    }
+    if (failures.length > MAX_LISTED) {
+      errors.push(`  ... and ${failures.length - MAX_LISTED} more`);
+    }
+  } else {
+    notes.push(
+      `leg d1: all ${truth.n_facts} entity_xwalk-derived facts reproduce from their ` +
+        `own query_body (entity ${bySurface.entity ?? 0}, feed ${bySurface.feed ?? 0}) ✓`,
+    );
+  }
+
+  // d2 — declared-window truth
+  const end = truth.xwalk_window_end;
+  if (end === null || end === undefined) {
+    const near = truth.closest_window_end;
+    errors.push(
+      `leg d2: the entity crosswalk's total_obligation column matches NO leading ` +
+        `fiscal-year window in the declared range ${label} — closest is ` +
+        `FY${fyMin}–FY${near} (off by ` +
+        `${(100 * (truth.closest_window_rel_error ?? 0)).toFixed(2)}%). ` +
+        `The crosswalk totals ${usd(truth.xwalk_total)}; the lake over ${label} ` +
+        `totals ${usd(truth.window_fit?.[String(fyMax)])}. Every /company/ page ` +
+        `labels these figures ${label}.`,
+    );
+  } else if (end !== fyMax) {
+    errors.push(
+      `leg d2: the entity crosswalk covers FY${fyMin}–FY${end}, but every ` +
+        `/company/ page labels its total ${label}. The figures are internally ` +
+        `consistent and wrong about their period: crosswalk ${usd(truth.xwalk_total)} ` +
+        `vs ${usd(truth.window_fit?.[String(fyMax)])} over the declared window ` +
+        `(${(truth.window_fit?.[String(fyMax)] / truth.xwalk_total).toFixed(2)}×). ` +
+        `Rebuild the crosswalk (govbudget entity-graph) — do not relabel the page.`,
+    );
+  } else {
+    notes.push(
+      `leg d2: the crosswalk's own totals reproduce the lake over exactly ` +
+        `FY${fyMin}–FY${end}, the window the pages label (${label}) ✓`,
+    );
+  }
+  if (truth.lake_fy_max !== undefined && truth.lake_fy_max !== fyMax) {
+    errors.push(
+      `leg d2: the lake carries awards through FY${truth.lake_fy_max} but ` +
+        `site_meta declares ${label} — the label is derived, so a disagreement ` +
+        `means the export and the lake have drifted`,
+    );
+  }
+
+  // d3 — freshness
+  const fresh = truth.freshness || {};
+  const newest = fresh.newest_input || {};
+  if (fresh.xwalk_mtime && newest.mtime && fresh.xwalk_mtime < newest.mtime) {
+    const iso = (t) => new Date(t * 1000).toISOString();
+    errors.push(
+      `leg d3: data/parquet/entities/entity_xwalk.parquet was written ` +
+        `${iso(fresh.xwalk_mtime)} but ${newest.path} — a partition it reads — ` +
+        `was written ${iso(newest.mtime)}. A derived artifact older than its ` +
+        `inputs is stale by construction; rebuild it.`,
+    );
+  } else if (fresh.xwalk_mtime) {
+    notes.push(
+      `leg d3: entity_xwalk.parquet is newer than every award partition it reads ✓`,
+    );
+  }
 }
 
 // ── Direct run: node scripts/gates/basis.mjs ─────────────────────────────────

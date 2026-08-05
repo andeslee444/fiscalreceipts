@@ -872,8 +872,15 @@ def cmd_verify_phase1(args) -> None:
 def cmd_entity_graph(args) -> None:
     from govbudget.entity_graph import build_entity_xwalk
 
+    # Both award families — fct_award_transactions is stg_contracts UNION
+    # stg_assistance, and every entity citation's query_body sums over it.  A
+    # contracts-only crosswalk made dim_entities.total_obligation impossible to
+    # reproduce from the query the page publishes next to it (Task 5b).
     out = build_entity_xwalk(
-        award_glob=str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+        award_glob=[
+            str(config.PARQUET_DIR / "contracts" / "*" / "*.parquet"),
+            str(config.PARQUET_DIR / "assistance" / "*" / "*.parquet"),
+        ],
         out_path=config.PARQUET_DIR / "entities" / "entity_xwalk.parquet",
     )
     print(f"entity-graph: wrote {out}")

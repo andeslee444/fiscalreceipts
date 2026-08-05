@@ -2215,18 +2215,24 @@ def _build_derived_citation_rows(
                 continue
             fid_ne = fact_id_derived("feed", f"new_entrant|{ne_family}", "total_obligation")
             first_fy_str = str(int(ne_first_fy)) if ne_first_fy is not None else "?"
+            # The `obligation > 0` predicate is NOT decoration: fct_feed_events'
+            # fam_year CTE carries it, so headline_value counts only positive
+            # actions.  Omitting it here published a query that returned a
+            # different number than the figure beside it for every family with
+            # a deobligation — 394 of 1,667 once the crosswalk was rebuilt and
+            # this surface actually populated (Task 5b).
             rows.append(_null_derived_row(
                 fid_ne, "derived", "USD",
                 f"sum(fct_award_transactions.obligation) across family UEIs"
-                f" via entity_xwalk (new entrant: first award FY{first_fy_str},"
-                f" $1M floor)",
+                f" via entity_xwalk, positive obligations only"
+                f" (new entrant: first award FY{first_fy_str}, $1M floor)",
                 "[]",
                 f"{ne_total:.3f}",
                 built_at,
                 query_body=(
                     "select sum(t.obligation) from fct_award_transactions t"
                     " join entity_xwalk x on t.recipient_uei=x.recipient_uei"
-                    f" where x.family_key='{ne_family}'"
+                    f" where t.obligation > 0 and x.family_key='{ne_family}'"
                 ),
             ))
 
@@ -4842,6 +4848,7 @@ def _write_all_sidecars(
 
     ent_dir = json_dir / "entity_details"
     ent_dir.mkdir(exist_ok=True)
+    written_entity_slugs: set[str] = set()
 
     for r in entity_rows:
         family_key, display_name, uei_count, total_obligation, worst_confidence = r
@@ -4876,7 +4883,19 @@ def _write_all_sidecars(
             "mentions": ent_mentions,
         }
         _write_json(ent_dir / f"{slug}.json", obj)
+        written_entity_slugs.add(slug)
         n_files += 1
+
+    # This directory is a FUNCTION of the current entity set, not an accumulator.
+    # A sidecar for a family that has since fallen out of the published set still
+    # ships and still gets counted: gate 14 recomputes "N of M profiled companies"
+    # by counting these files, and the Task 5b crosswalk rebuild reordered the top
+    # 200 and stranded 71 of them, pushing that denominator from 200 to 271.
+    # Same defect class as the bug that occasioned it — a derived artifact that is
+    # not a pure function of its inputs.
+    for stale in sorted(ent_dir.glob("*.json")):
+        if stale.stem not in written_entity_slugs:
+            stale.unlink()
 
     # ------------------------------------------------------------------ #
     # 6. agencies.json                                                   #

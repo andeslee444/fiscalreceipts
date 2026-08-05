@@ -690,6 +690,56 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     edge extraction is Phase-2 lineage work; the "does not appear in FY2026" page note
     is small and independently shippable.
 
+33. ✅ **DONE 2026-08-05 (PM Sprint 3 Task 5b) — a derived parquet older than its
+    inputs understated the headline figure on 201 pages by 73%.**
+    `data/parquet/entities/entity_xwalk.parquet` was built 2026-06-10 20:19; the
+    FY2020–FY2026 contract partitions landed between 21:00 that night and 07:50 the
+    next morning. Nobody rebuilt it. Every `/company/{slug}/` and `/companies/` row
+    therefore published a `total_obligation` **labelled FY2017–FY2026 that summed only
+    FY2017–FY2019** — Lockheed Martin $135.36B against a true $502.12B. The figure was
+    never internally inconsistent; it was consistent with a stale input and wrong about
+    the period it named, which is why 24 green gates and a 48/48 eval walked past it.
+    **The rebuild alone would have been worse than the bug.** `build_entity_xwalk`
+    aggregated `recipient_parent_uei` and `recipient_parent_name` with INDEPENDENT
+    `max()`, so over a decade — where a recipient's registered parent legitimately
+    changes — it took the uei from one transaction and the name from another and emitted
+    **6,342 parent pairs that occur on no transaction anywhere**: $210B of Lockheed
+    Martin into a family named `SIKORSKY SUPPORT SERVICES`, $88B of Electric Boat into
+    one named `WICO`. Both defects are latent in a narrow window and only fire on a wide
+    one. The parent is now chosen as a WHOLE PAIR by the obligation dollars behind it,
+    under a total order (dollars, count, strings) so the build is reproducible. The
+    crosswalk also now spans **contracts ∪ assistance** — the same union
+    `fct_award_transactions` is, and the union every minted entity `query_body` sums —
+    so `dim_entities.total_obligation` is reproducible from the query printed beside it
+    (coverage 94.2% → 100.0%; 87,579 → 129,375 UEIs). **Gate 23 gained leg (d)**
+    (`entitytotals-recompute.py`): d1 runs all 1,877 published `query_body` statements
+    verbatim and requires each to return its own `recorded_value`; d2 finds the leading
+    FY window over which the crosswalk reproduces the lake and requires it to END at the
+    declared `fy_max` — the half that catches a figure wrong only about its period; d3
+    fails when the parquet is older than a partition it reads. All three reproduce the
+    shipped defect. d1 then caught a **second, independent** defect it was not aimed at:
+    the `/feed/` new-entrant citations omitted the `obligation > 0` predicate their own
+    mart carries, so 394 of 1,667 published queries returned a different number than the
+    figure beside them — invisible until the rebuild populated that surface. Ranking
+    moved as it should: RTX #6→#4, Raytheon #4→#10 (its UEIs resolve to RTX), Pfizer and
+    Centene new to the top 200 on FY2020–21 awards the stale window could not see.
+    Evidence: `docs/superpowers/reviews/5c-gates-pre-failure.txt`.
+
+34. **Eval q022's instruction contradicts its own ground truth (found by PM Sprint 3
+    Task 5b; NOT fixed there, deliberately).** q022 asks for the MDA HHI and vendor-family
+    count and instructs: *"Report both values as integers, exactly as the SQL returns them
+    (e.g. 2068, not 2068.0)."* That wording was written when `round(hhi, 1)` happened to
+    return the integral 2068. The Task 5b crosswalk rebuild moved MDA's HHI to **2118.5**,
+    so the instruction now tells the analyst to truncate a genuinely fractional value: it
+    answered `2118, 3319` against an expected `2118.5, 3319` and was scored wrong. This
+    is the only miss in the 47/48 run — the gate passes on it — and it is an eval-wording
+    defect, not an analyst failure. It was left alone in Task 5b on purpose: rewording an
+    eval question inside the same change that moves the data the question measures is the
+    pattern that makes an eval untrustworthy, even when the motive is innocent. Fix
+    separately: the intent is "do not add or drop decimal places", so say that rather than
+    "as integers", keep the `e.g. 2068, not 2068.0` example, and re-run the live eval to
+    record the corrected score.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history

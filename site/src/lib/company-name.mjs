@@ -98,6 +98,13 @@ const LEGAL_FORMS = new Map(
     SAS: "SAS",
     FZCO: "FZCO",
     AKTIENGESELLSCHAFT: "Aktiengesellschaft",
+    // Entered the corpus with the FY2017-FY2026 crosswalk rebuild (Task 5b).
+    AS: "AS", // Norwegian aksjeselskap — "Kongsberg Defence & Aerospace AS"
+    JV: "JV", // joint venture — "Dragados/Hawaiian Dredging/Orion JV"
+    // Registered without the space. Cased, NOT respaced — inserting the space
+    // would split one registry token into two and lose the token-count
+    // invariant that keeps a display name a faithful rendering of what was filed.
+    "CO.,LTD.": "Co.,Ltd.",
   }),
 );
 
@@ -171,6 +178,30 @@ const CASED = new Map(
     DELL: "Dell",
     MOOG: "Moog",
     PAR: "Par",
+    // ── Entered the top-200 with the FY2017-FY2026 crosswalk rebuild ────────
+    // (Task 5b: FY2020-FY2026 recipients were invisible while the crosswalk
+    // was stale at FY2017-FY2019.)  Initialisms are recorded as the REGISTRY
+    // records them — keeping a token in caps asserts less than title-casing
+    // it, so an initialism we cannot independently expand stays as filed.
+    CAE: "CAE",
+    DLT: "DLT",
+    DMS: "DMS",
+    ECC: "ECC",
+    HIG: "HIG",
+    HP: "HP",
+    KPMG: "KPMG",
+    RAM: "RAM", // RAM-System GmbH (Rolling Airframe Missile)
+    TCOM: "TCOM",
+    TSG: "TSG", // "ManTech TSG-2 Joint Venture"
+    WICO: "WICO",
+    WPP: "WPP",
+    // Mixed-case spellings the companies themselves use
+    IHEALTH: "iHealth",
+    SAAB: "Saab",
+    // Short proper nouns
+    ELI: "Eli", // Eli Lilly and Company
+    OLIN: "Olin",
+    ROOT: "Root", // Brown & Root
   }),
 );
 
@@ -201,6 +232,7 @@ const SHORT_WORDS = new Map(
     FUND: "Fund",
     IRON: "Iron",
     LA: "la",
+    LABS: "Labs",
     LE: "le",
     NET: "Net",
     NEXT: "Next",

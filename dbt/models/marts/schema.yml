@@ -1,7 +1,7 @@
 version: 2
 models:
   - name: entity_xwalk
-    description: "Recipient UEI → family_key crosswalk. Unique on recipient_uei — any duplicate would fan-out fct_family_obligations_by_year and double-count award dollars."
+    description: "Recipient UEI → family_key crosswalk, built by govbudget entity-graph over the contracts+assistance lake — the same union fct_award_transactions reads, so dim_entities.total_obligation is reproducible from the query every /company/ page publishes beside it. Unique on recipient_uei — any duplicate would fan-out fct_family_obligations_by_year and double-count award dollars. REBUILD IT WHENEVER A PARTITION LANDS: it is a derived parquet, and a stale one is silently wrong about the period the pages label rather than visibly broken (gate 23 leg d)."
     columns:
       - name: recipient_uei
         description: "SAM.gov Unique Entity Identifier for the recipient. Must be unique — duplicates cause fan-out double-counting in obligation aggregation."
@@ -130,7 +130,7 @@ models:
       - name: total_obligation
         description: "Sum of all transaction obligations for this (district, program) combination. Positive and negative values possible (de-obligations)."
   - name: fct_family_obligations_by_year
-    description: "Total obligations per (family_key, fiscal_year) via entity_xwalk. entity_xwalk is UNIQUE on recipient_uei — no fan-out. Covers 94.2% of total award dollars. Expected ~365,457 rows (per recon §B)."
+    description: "Total obligations per (family_key, fiscal_year) via entity_xwalk. entity_xwalk is UNIQUE on recipient_uei — no fan-out. Covers 100.0% of total award dollars (the crosswalk spans the same contracts+assistance union). Expected ~457,243 rows; was ~365,457 / 94.2% while the crosswalk was stale (Task 5b)."
     columns:
       - name: family_key
         data_tests: [not_null]

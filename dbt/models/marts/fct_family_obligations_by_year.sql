@@ -1,7 +1,10 @@
 -- fct_family_obligations_by_year: total obligations per (family_key, fiscal_year).
--- entity_xwalk is UNIQUE on recipient_uei (87,579 rows) — no fan-out (recon §B).
--- Expected row count: ~365,457 (all (family_key, fiscal_year) combinations with awards).
--- Covers 94.2% of total award dollars (those matched to a family via entity_xwalk).
+-- entity_xwalk is UNIQUE on recipient_uei (129,375 rows) — no fan-out (recon §B).
+-- Expected row count: ~457,243 (all (family_key, fiscal_year) combinations with awards).
+-- Covers 100.0% of total award dollars: the crosswalk is built over the same
+-- contracts+assistance union this model reads, so every recipient_uei resolves.
+-- (Was 87,579 rows / 94.2% while the crosswalk was stale at FY2017-FY2019 and
+-- contracts-only — PM Sprint 3 Task 5b.)
 select
     x.family_key,
     t.fiscal_year,

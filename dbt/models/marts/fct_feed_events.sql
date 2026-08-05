@@ -155,6 +155,16 @@ concentration_shift as (
 -- ── 4. new_entrant ────────────────────────────────────────────────────────────
 -- Weak signal: families whose first award year is >= 2024, with $1M+ total obligations.
 -- headline_value = total_obligation, comparison_value = first_fy.
+--
+-- RANK-CAPPED at the 25 largest (Task 5b). The $1M floor alone yielded ~20 rows
+-- only because the entity crosswalk was stale at FY2017-FY2019 and structurally
+-- could not contain a family whose first award year was >= 2024. With the
+-- crosswalk rebuilt over FY2017-FY2026 the same floor yields 1,667 — 90% of the
+-- whole feed, and a /feed/ page of 9.2 MB against a 1.7 MB ceiling. The floor is
+-- the DEFINITION of the signal and is left alone; the cap is presentation, and
+-- matches how the feed already treats request-vs-actuals gaps (_FEED_RVA_TOP=15
+-- in export_site.py). Ranked by dollars, tie-broken by family_key so the set is
+-- deterministic.
 fam_year as (
     select
         x.family_key,
@@ -177,9 +187,13 @@ new_entrant as (
         first_fy                                 as fiscal_year,
         'dollars'                                as units,
         cast(null as varchar)                    as detail_json
-    from fam_year
-    where first_fy >= 2024
-      and total_obl >= 1000000
+    from (
+        select *, row_number() over (order by total_obl desc, family_key) as rn
+        from fam_year
+        where first_fy >= 2024
+          and total_obl >= 1000000
+    )
+    where rn <= 25
 )
 
 -- ── UNION ALL ─────────────────────────────────────────────────────────────────
