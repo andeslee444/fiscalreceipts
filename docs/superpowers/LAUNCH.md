@@ -261,12 +261,52 @@ Add the same for `preview` and `development` environments as needed.
 ### 7d. Deploy
 
 ```bash
-vercel --prod
+cd site/out && vercel --prod --yes --archive=tgz
 ```
 
-Vercel builds the site in its cloud environment.  The first deploy establishes
-the `*.vercel.app` URL.  Once you have the stable production URL, re-run
-steps 2 and 5 with that URL if it differs from what you used in step 2.
+**Both the directory and the flag are load-bearing.  Do not simplify this to
+`vercel --prod` from `site/`.**
+
+- **Run it from `site/out/`, never `site/`.**  Vercel does *not* build this site
+  in the cloud — it serves the prebuilt static export.  Deploying from `site/`
+  makes Vercel run `npm run build`, whose `prebuild` step
+  (`prepare-assets.mjs`) reads `data/site/json/site_meta.json` — a path outside
+  `site/` that is never uploaded.  It fails with:
+  `❌  FATAL: data/site/json/site_meta.json not found.`
+  A correct deploy logs `Extracted <N> deployment files` where N equals
+  `find site/out -type f | wc -l`, then `Build Completed in /vercel/output`
+  in ~30s with no `npm install`.
+- **`--archive=tgz` is required.**  The default per-file upload sends a JSON
+  manifest of every file; at ~89.5 k files that exceeds Vercel's request limit
+  and fails with `Request body too large. Limit: 10mb` *before* anything
+  uploads.  `--archive=tgz` sends one tarball and has no such limit.  This
+  became necessary on **2026-08-05**: the identical 89,494-file deploy
+  succeeded 15 h earlier on the manifest path, so the limit tightened
+  server-side rather than the site outgrowing it.  Retrying, upgrading the CLI
+  (54.12.2 → 58.5.1 was tried), or adding `.vercelignore` do **not** help.
+- `site/out/` has no `.vercel/` link (it is wiped by each build), so pass the
+  IDs by env var:
+
+```bash
+cd site/out
+VERCEL_PROJECT_ID=prj_oen0seknELM3lK6UcZPS5252D7QD \
+VERCEL_ORG_ID=team_b94lNMYEXzNevW7VmSNvdeYZ \
+  vercel --prod --yes --archive=tgz
+```
+
+Do **not** try to shrink `site/out/` by excluding `json/`, `json-lite/`,
+`duckdb/`, or `og/` — despite their size these are served from Vercel, not R2
+(no R2 host appears in the built chunks).  R2 serves only `pdfs/`, `data/`,
+`workbooks/`, and `citations/`, none of which are in `site/out/`.
+
+Post-deploy smoke test (the `/fact/` rewrite comes from `site/out/vercel.json`,
+so it silently dies if the wrong directory is deployed):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://fiscalreceipts.com/fact/3134a6e0
+curl -s -o /dev/null -w "%{http_code}\n" https://fiscalreceipts.com/json/years_matrix.json
+curl -s -o /dev/null -w "%{http_code}\n" https://assets.fiscalreceipts.com/citations/citations.parquet
+```
 
 ---
 
