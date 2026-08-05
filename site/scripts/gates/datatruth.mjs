@@ -39,6 +39,14 @@
  *      appears in two rows) and that every curated event's source_url renders
  *      as an external reference on /companies/families/. See leg g's own
  *      block at the bottom of this file.
+ *  (h) feed claim-vs-data consistency (Sprint 3 Task 1b) — /feed/ published 87
+ *      cards reading "<program> zeroed out in FY2026 (had $0 in FY25)" when the
+ *      program had $293.1M in FY2025 and the corpus held no FY2026 figure for it
+ *      at all. Legs a-g and gate 23 all verify that a DISPLAYED NUMBER matches
+ *      its CITED FACT — which is exactly why this shipped: the citation was
+ *      valid and the number really was 0, and the lie lived in the SENTENCE
+ *      WRAPPED AROUND it. This leg reads feed prose as CLAIMS and checks them
+ *      against budget_lines.parquet. See leg h's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -1098,12 +1106,20 @@ function runFeedClaimLeg(errors, notes) {
         );
         continue;
       }
+      // Prefer fy2026_total — the single canonical TOA figure. fy2026_any is
+      // a SUM across fy_2026_* amount types (disc request + reconciliation +
+      // total) and so double-counts; it is sound for "is this zero?" (a sum of
+      // zeros is zero, any non-zero makes it non-zero) but must not be quoted
+      // as if it were one figure.
       const observed = fy26.present ? fy26.value : fy26any.value;
       if (observed !== 0) {
+        const shown = fy26.present
+          ? `${fmtThousands(observed)} of FY2026 money`
+          : `FY2026 money for it (no fy_2026_total row, but its fy_2026_* ` +
+            `rows are not all zero)`;
         errors.push(
           `leg h1 (/feed/ ${entity}): claims the program was zeroed in FY${fy}, ` +
-            `but the corpus holds ${fmtThousands(observed)} of FY2026 money ` +
-            `for it: ${JSON.stringify(headline)}`,
+            `but the corpus holds ${shown}: ${JSON.stringify(headline)}`,
         );
         continue;
       }

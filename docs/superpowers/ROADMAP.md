@@ -659,6 +659,37 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     hiding the Programs column below `sm` with the count moved under the district
     code. Evidence: `docs/superpowers/reviews/5c-gates-pre-failure.txt`.
 
+32. **Program-element lineage across a taxonomy renumber (from PM Sprint 3 Task 1b).**
+    Task 1b withdrew 87 false "zeroed out in FY2026" feed cards, but the investigation
+    surfaced a real and unmodelled phenomenon underneath them: **PB2026 renumbered
+    program elements at scale, and the corpus has no way to say so.** Counting PEs in
+    the PB2026 edition that carry FY2024/FY2025 money but no FY2026 figure ("retired")
+    against PEs that carry FY2026 money and nothing earlier ("new"): Army 115 retired /
+    33 new, Air Force 77/36, Navy 69/14, OSD 18/9, **DARPA 14/8**. DARPA is the clean
+    case because it is small enough to read end to end: PB2026 retired *Defense Research
+    Sciences*, *Tactical Technology*, *Sensor Technology*, *Electronics Technology* and
+    10 more thematic lines, and introduced *Emerging Opportunities*, *Access and
+    Awareness*, *Warfighting Performance*, *Effects*, *DARPA Advanced Technology
+    Development* and 3 others — while DARPA's FY2026 total **rose to $4.92B from
+    $4.15B**. Only 2 of 16 PEs carried through unchanged. **This is NOT an ingestion
+    gap** — verified against the primary source, `data/raw_docs/fy2026/dod/r1_display.xlsx`
+    shows the FY2026 cells for the retired lines are genuinely BLANK and the new lines
+    genuinely have no FY2024/FY2025 history; the parser is reading the workbook
+    correctly (an earlier "DARPA coverage artifact / parser problem" hypothesis was
+    investigated and refuted). The gap is in the MODEL, not the data: nothing links a
+    retired PE to its successors, so a reader who followed *Defense Research Sciences*
+    for a decade hits a page that simply stops at FY2025 with no forward pointer, and
+    any YoY analysis keyed on pe_bli silently drops ~$7B of continuing work. This is
+    the natural next edge type for the 5I lineage layer (backlog #29): a
+    `pe_remap` / `restructured_into` edge, evidence-tiered like the existing Stated and
+    Inferred classes — Stated where a PB2026 R-2 narrative names the predecessor PE,
+    Inferred where budget-activity + account + money conservation make a mapping likely.
+    Until it exists, program pages for retired PEs should at minimum say "this program
+    element does not appear in the FY2026 request" rather than ending silently — the
+    honest version of the claim the withdrawn cards were trying to make. Sizing: the
+    edge extraction is Phase-2 lineage work; the "does not appear in FY2026" page note
+    is small and independently shippable.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history

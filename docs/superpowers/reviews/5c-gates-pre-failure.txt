@@ -2415,3 +2415,20 @@ THE FIX.
 
 MADE TO PASS (verbatim, fresh export + rebuild at the fix commit):
 
+  leg h errors: 0
+  leg h: 218 feed cards checked as CLAIMS against budget_lines.parquet — 0
+    termination claim(s) (each requiring a literal FY2026 zero, 0 with a money
+    clause), 99 yoy_swing direction+magnitude re-derived ✓
+  leg h verdict: PASS
+
+  site/out/feed/index.html: 0 occurrences of "zeroed out in FY2026"
+  site/out/feed/index.html: 0 occurrences of "had $0 in FY25"
+  json/feed.json: total 218 (yoy_swing 99, concentration_shift 84,
+    new_entrant 20, request_vs_actuals_gap 15, zeroed_fy2026 0)
+
+VACUITY NOTE. h1 legitimately checks zero cards now — an empty event class IS
+the fix, so h1 cannot be required to be non-empty. h2 therefore carries the
+non-vacuity burden and the leg FAILS ITSELF if it re-derives no yoy_swing
+claim ("the leg is vacuous and would not catch a regression"). The 99 re-derived
+swings are what keep leg h awake while zeroed_fy2026 is empty; the moment a
+genuine zeroing appears, h1 re-arms on it automatically.
