@@ -248,6 +248,37 @@ export function sortEntries(
   return indexed.map(({ e }) => e);
 }
 
+/**
+ * The column the grid OPENS sorted on (§P2-2).
+ *
+ * The flagship decade view used to open in payload order — organization, then
+ * PE/BLI ascending — which put the Army's smallest, sparsest procurement lines
+ * at the top: the first screenful was mostly em-dashes, because the columns
+ * that carry a decade of history (FY2015A–FY2021A) are populated for 35–53% of
+ * programs while the recent ones are populated for 85–90%.
+ *
+ * So it opens on the newest column of the default set instead — the FY2026
+ * request on the decade payload, FY2026 total on the pre-decade one —
+ * descending. That is a REAL column sort, not a bespoke ordering: the header
+ * shows its ↓, and the existing three-click cycle (desc → asc → grouped) runs
+ * from it unchanged, so organization grouping stays one click away (and the
+ * controls carry an explicit "Group by organization" button for it).
+ *
+ * Derived from the payload, never hardcoded: the LAST non-delta column of the
+ * default set. Δ/%Δ columns are excluded — a change column is an annotation of
+ * two amounts, not the amount a reader came for.
+ */
+export function defaultSortKey(matrix: YearsMatrixData): string | null {
+  const defaults = matrix.decade_default_columns?.length
+    ? matrix.decade_default_columns
+    : (matrix.default_columns ?? []);
+  const deltas = new Set(matrix.delta_columns ?? []);
+  for (let i = defaults.length - 1; i >= 0; i -= 1) {
+    if (!deltas.has(defaults[i])) return defaults[i];
+  }
+  return null;
+}
+
 /** RFC-4180-ish field escaping. */
 function csvField(s: string): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -378,6 +409,10 @@ export function YearsMatrix() {
   const [filter, setFilter] = useState("");
   // null until the matrix loads (defaults come from the sidecar).
   const [chosenCols, setChosenCols] = useState<string[] | null>(null);
+  // Column picker: a wall of 33 chips must not precede the data at 390px
+  // (§P2-2), so below `sm` it hides behind a one-line disclosure. At `sm` and
+  // up the CSS forces it open regardless of this state.
+  const [colsOpen, setColsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -387,7 +422,11 @@ export function YearsMatrix() {
         return res.json() as Promise<YearsMatrixData>;
       })
       .then((matrix) => {
-        if (!cancelled) setLoad({ s: "ready", matrix });
+        if (cancelled) return;
+        setLoad({ s: "ready", matrix });
+        // §P2-2: open on substance, not on a screenful of em-dashes.
+        const key = defaultSortKey(matrix);
+        if (key) setSort({ key, dir: "desc" });
       })
       .catch(() => {
         if (!cancelled) setLoad({ s: "error" });
@@ -556,6 +595,20 @@ export function YearsMatrix() {
         <span className="text-xs tabular-nums text-muted-foreground">
           {nVisible} of {allEntries.length} programs
         </span>
+        {/* §P2-2: the grid now OPENS on a column sort, so the organization
+            grouping it used to open on needs a control of its own — reaching
+            it by clicking a column header a third time is not discoverable.
+            Shown only while a sort is active (in grouped mode it is a no-op). */}
+        {sort && (
+          <button
+            type="button"
+            data-testid="years-group-by-org"
+            onClick={() => setSort(null)}
+            className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            Group by organization
+          </button>
+        )}
         <button
           type="button"
           data-testid="years-csv"
@@ -568,9 +621,27 @@ export function YearsMatrix() {
         </button>
       </div>
 
-      {/* ── Column picker — decade columns and PB2026 detail grouped ── */}
+      {/* ── Column picker — decade columns and PB2026 detail grouped ──
+          MOBILE (§P2-2): 33 chips is a wall a phone reader scrolls past
+          before reaching a single number, so below `sm` the picker collapses
+          behind this one-line disclosure. `sm:flex` on the picker below wins
+          at ≥640px, where the chips are worth their space. */}
+      <button
+        type="button"
+        data-testid="years-columns-toggle"
+        aria-expanded={colsOpen}
+        aria-controls="years-column-picker"
+        onClick={() => setColsOpen((v) => !v)}
+        className="sm:hidden flex w-full items-center justify-between rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <span>
+          Columns — {visibleCols.length} of {allColumns.length} shown
+        </span>
+        <span aria-hidden="true">{colsOpen ? "▾" : "▸"}</span>
+      </button>
       <div
-        className="flex flex-wrap items-center gap-1.5"
+        id="years-column-picker"
+        className={`${colsOpen ? "flex" : "hidden"} sm:flex flex-wrap items-center gap-1.5`}
         role="group"
         aria-label="Choose visible columns"
       >

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { getPrograms, collectCitations } from "@/lib/data";
+import { getPrograms } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 import { ProgramsTable } from "@/components/programs-table";
+import { toProgramsTableRow } from "@/lib/programs-row";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 // Data-driven page count (programs.json length) — never a hardcoded literal.
@@ -29,31 +30,33 @@ export const metadata: Metadata = {
 export default function ProgramsPage() {
   const programs = getPrograms();
 
-  // Sort default: FY26 total descending (nulls last)
-  const sorted = [...programs].sort((a, b) => {
-    const av = a.trajectory?.fy2026_total ?? -Infinity;
-    const bv = b.trajectory?.fy2026_total ?? -Infinity;
-    return bv - av;
-  });
+  // Sort default: FY26 total descending (nulls last), projected to the eight
+  // fields the table renders (see ProgramsTableRow — §P2-1 page weight).
+  const sorted = [...programs]
+    .sort((a, b) => {
+      const av = a.trajectory?.fy2026_total ?? -Infinity;
+      const bv = b.trajectory?.fy2026_total ?? -Infinity;
+      return bv - av;
+    })
+    .map(toProgramsTableRow);
 
   // Distinct orgs sorted alphabetically
   const orgs = [...new Set(programs.map((p) => p.org))].sort();
 
-  // Citation slice: FY24 jbook fact_ids + FY26 derived trajectory fact_ids.
-  // Inputs are intentionally NOT pulled in here (326 rows × workbook inputs
-  // would bloat the page payload); derived-card input chips render as plain
-  // chips on this page and are clickable on the program detail pages.
-  const pageFactIds: string[] = [];
-  for (const p of programs) {
-    if (p.fy2024_fact_id) pageFactIds.push(p.fy2024_fact_id);
-    if (p.trajectory_fact_ids?.fy2026_total) {
-      pageFactIds.push(p.trajectory_fact_ids.fy2026_total);
-    }
-  }
-  const citationsSlice = collectCitations(pageFactIds);
-
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // §P2-1 page weight: citations resolve LAZILY through cite-shards
+    // (/json/cite-shards/{fact_id[:2]}.json), so the provider mounts with an
+    // EMPTY embedded slice — the same treatment /years/ and /flow/ already
+    // use for the same reason. This page's 3,344 FY24+FY26 fact rows were
+    // 1.75 MB of the 5.87 MB document (30% of it) purely to save one fetch
+    // on the first citation click. Clicking a figure still opens its
+    // citation; the panel just resolves the fact's shard first, and shows
+    // the declared loading/degraded states while it does.
+    //
+    // Derived-card input chips render as plain (non-clickable) chips here,
+    // exactly as they did before: the workbook INPUTS were never in the
+    // embedded slice either, and they stay clickable on program pages.
+    <CitationPanelProvider citations={{}}>
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Programs" }]}

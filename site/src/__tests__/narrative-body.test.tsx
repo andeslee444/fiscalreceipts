@@ -131,9 +131,17 @@ describe("NarrativeBody — PE mention links (§2a)", () => {
     );
     // Link vocabulary (judge N3): PE links NAVIGATE → solid underline;
     // citation spans open the panel in place → dotted underline.
+    //
+    // Sprint 3 §P2-1: the citation span's dotted treatment now comes from the
+    // shared `.cite-figure` rule (globals.css) instead of an inline utility
+    // string — citation-affordance.test.ts asserts that rule is dotted. Here
+    // the contract is that the two affordances stay DISTINCT: the navigation
+    // link is solid-and-not-dotted, the citation span is not the link's class.
     const peLink = screen.getByRole("link");
     expect(peLink.className).toContain("decoration-solid");
     expect(peLink.className).not.toContain("decoration-dotted");
-    expect(screen.getByRole("button").className).toContain("decoration-dotted");
+    const citeSpan = screen.getByRole("button");
+    expect(citeSpan.className).toContain("cite-figure");
+    expect(citeSpan.className).not.toContain("decoration-solid");
   });
 });

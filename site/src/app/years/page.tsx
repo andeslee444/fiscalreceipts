@@ -53,8 +53,12 @@ export default function YearsPage() {
               the whitespace hazard entirely. */}
           {/* text-sm below sm: the intro must not push the grid off the
               390px fold (visual-judge finding). */}
+          {/* §P2-2: the grid opens sorted on the newest request column,
+              largest first — this sentence says so, because it used to
+              promise the organization grouping the grid opened on. Grouping
+              is still one control away ("Group by organization"). */}
           <p className="mb-2 text-sm text-muted-foreground sm:text-base">
-            {`${_programCount} program elements as rows, fiscal-year amount types as columns — grouped by organization, expandable to the J-book's own project grain. Click any figure to open its citation.`}
+            {`${_programCount} program elements as rows, fiscal-year amount types as columns — opening on the newest request, largest first, and expandable to the J-book's own project grain. Sort any column, or group by organization. Click any figure to open its citation.`}
           </p>
           {/* Unit statement — always visible (CapIQ convention: one stated
               unit for the whole grid). */}

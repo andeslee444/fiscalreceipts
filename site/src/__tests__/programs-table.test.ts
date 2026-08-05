@@ -10,9 +10,11 @@ import {
   filterPrograms,
   programHaystack,
 } from "@/components/programs-table";
+import { toProgramsTableRow } from "@/lib/programs-row";
 import { aliasChipText } from "@/lib/aliases";
 
-function program(over: Partial<ProgramRow> = {}): ProgramRow {
+/** A full warehouse row, as getPrograms() hands it to the server page. */
+function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
   return {
     pe_bli: "ATA000",
     title: "F-35",
@@ -31,6 +33,90 @@ function program(over: Partial<ProgramRow> = {}): ProgramRow {
     ...over,
   };
 }
+
+/**
+ * What the client table actually receives — every fixture goes through the
+ * real projection, so the whole suite exercises it.
+ */
+function program(over: Partial<ProgramRow> = {}) {
+  return toProgramsTableRow(fullProgram(over));
+}
+
+describe("toProgramsTableRow — §P2-1: only what the table renders is shipped", () => {
+  // The client component's props are serialized into the RSC flight payload,
+  // so every field here is shipped a second time on top of the rendered HTML.
+  // 1,741 full rows were 975 KB where the rendered eight are 385 KB.
+  const RENDERED_FIELDS = [
+    "pe",
+    "org",
+    "title",
+    "fy24",
+    "fy24Fid",
+    "fy24Xml",
+    "fy26",
+    "fy26Fid",
+  ];
+
+  it("carries exactly the eight rendered fields — no more", () => {
+    expect(Object.keys(program()).sort()).toEqual([...RENDERED_FIELDS].sort());
+  });
+
+  it("drops the payload the table never reads", () => {
+    const row = program({
+      award_count: 42,
+      narrative_count: 9,
+      project_count: 7,
+      exhibit_family: "rdte",
+      hhi: { hhi: 0.5 } as ProgramRow["hhi"],
+    }) as unknown as Record<string, unknown>;
+    for (const dropped of [
+      "award_count",
+      "narrative_count",
+      "project_count",
+      "exhibit_family",
+      "fully_reconciled",
+      "hhi",
+      "trajectory",
+      "trajectory_fact_ids",
+    ]) {
+      expect(row[dropped]).toBeUndefined();
+    }
+  });
+
+  it("flattens ONLY the FY26 total out of the decade trajectory", () => {
+    const row = program({
+      trajectory: {
+        fy2024_actuals: 111,
+        fy2025_total: 222,
+        fy2026_total: 333,
+        fy2526_change: 111,
+        fy2526_pct_change: 50,
+      } as ProgramRow["trajectory"],
+      trajectory_fact_ids: {
+        fy2024_actuals: "b".repeat(16),
+        fy2025_total: "c".repeat(16),
+        fy2026_total: "d".repeat(16),
+        fy2526_change: "e".repeat(16),
+      } as ProgramRow["trajectory_fact_ids"],
+    });
+    expect(row.fy26).toBe(333);
+    expect(row.fy26Fid).toBe("d".repeat(16));
+    expect(JSON.stringify(row)).not.toContain("b".repeat(16));
+  });
+
+  it("keeps both FY24 citation states (fact_id AND xml_path)", () => {
+    const row = program({
+      fy2024_fact_id: null,
+      fy2024_xml_path: "/root/line[3]",
+    });
+    expect(row.fy24Fid).toBeNull();
+    expect(row.fy24Xml).toBe("/root/line[3]");
+  });
+
+  it("nulls a missing FY26 rather than inventing a 0", () => {
+    expect(program({ trajectory: null }).fy26).toBeNull();
+  });
+});
 
 describe("programHaystack — the §P1-11 text filter", () => {
   it("matches the program title", () => {
@@ -123,10 +209,10 @@ describe("filterPrograms — the alias resolver, wired (fix round)", () => {
   });
   const F35 = program({ pe_bli: "ATA000", title: "F-35", org: "F" });
   const ALL = [GBSD, MODS, F35];
-  const HAYSTACKS = new Map(ALL.map((p) => [p.pe_bli, programHaystack(p)]));
+  const HAYSTACKS = new Map(ALL.map((p) => [p.pe, programHaystack(p)]));
 
   const hits = (q: string) =>
-    filterPrograms(ALL, HAYSTACKS, q).map((p) => p.pe_bli);
+    filterPrograms(ALL, HAYSTACKS, q).map((p) => p.pe);
 
   it("surfaces GBSD for 'sentinel'", () => {
     expect(hits("sentinel")).toContain("0605238F");

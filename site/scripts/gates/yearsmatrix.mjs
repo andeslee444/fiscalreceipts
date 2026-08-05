@@ -848,6 +848,19 @@ export async function runYearsMatrixGate({ baseUrl }) {
             });
         }, key);
 
+      const check = (arr, dir) => {
+        const nums = arr.filter((v) => v != null);
+        const firstNullIdx = arr.findIndex((v) => v == null);
+        if (firstNullIdx !== -1 && arr.slice(firstNullIdx).some((v) => v != null)) {
+          return `missing values not last`;
+        }
+        for (let i = 1; i < nums.length; i++) {
+          if (dir === "desc" ? nums[i] > nums[i - 1] + 1e-9 : nums[i] < nums[i - 1] - 1e-9)
+            return `not ${dir} at index ${i}`;
+        }
+        return null;
+      };
+
       // Sort keys come from the DEFAULT visible column set: the decade
       // defaults when the payload carries them (Phase 5E — the 5D keys are
       // no longer visible by default), else the 5D pair. Same check, same
@@ -860,26 +873,65 @@ export async function runYearsMatrixGate({ baseUrl }) {
             matrix.decade_default_columns[0],
           ]
         : ["fy_2026_total", "fy_2024_actuals"];
+
+      // ---- §P2-2: the DEFAULT order, before any click ----
+      // The grid used to open in payload order (org, then PE/BLI ascending),
+      // which put the smallest, sparsest lines first — a first screenful of
+      // em-dashes on the flagship view. It now opens sorted DESC on the
+      // newest non-delta default column, which is exactly sortKeys[0].
+      // Asserted here with ZERO clicks, so a regression to payload order
+      // fails even though every click-driven check below would still pass.
+      {
+        const defaultKey = sortKeys[0];
+        const ariaSort = await page
+          .locator(`th[data-col="${defaultKey}"]`)
+          .first()
+          .getAttribute("aria-sort");
+        if (ariaSort !== "descending") {
+          errors.push(
+            `leg c (§P2-2): /years/ does not OPEN sorted on ${defaultKey} — th[data-col="${defaultKey}"] aria-sort="${ariaSort}", want "descending"`
+          );
+        }
+        const openingVals = await readColumn(defaultKey);
+        const nNums = openingVals.filter((v) => v != null).length;
+        if (nNums < 50) {
+          errors.push(
+            `leg c (§P2-2): only ${nNums} numeric ${defaultKey} cell(s) in the opening view (need ≥50) — the default-order check is vacuous`
+          );
+        }
+        const defErr = check(openingVals, "desc");
+        if (defErr) {
+          errors.push(
+            `leg c (§P2-2): /years/ opening order is not ${defaultKey} descending: ${defErr}`
+          );
+        } else if (nNums >= 50) {
+          notes.push(
+            `leg c: /years/ opens on ${defaultKey} desc over ${nNums} numeric cells ✓ (§P2-2)`
+          );
+        }
+      }
+
       for (const key of sortKeys) {
         const trigger = page.locator(`[data-sort="${key}"]`).first();
         if ((await trigger.count()) === 0) {
           errors.push(`leg c: no sort trigger [data-sort="${key}"]`);
           continue;
         }
+        // Normalize to the unsorted state first: the header cycles
+        // desc → asc → cleared, and since §P2-2 the grid OPENS on sortKeys[0]
+        // already descending. Clicking out of whatever state we are in keeps
+        // the two assertions below testing exactly what they always did (one
+        // click ⇒ desc, a second ⇒ asc) instead of testing an offset cycle.
+        for (let guard = 0; guard < 3; guard += 1) {
+          const state = await page
+            .locator(`th[data-col="${key}"]`)
+            .first()
+            .getAttribute("aria-sort");
+          if (state === "none" || state == null) break;
+          await trigger.click();
+        }
         await trigger.click();
         let vals = await readColumn(key);
-        const check = (arr, dir) => {
-          const nums = arr.filter((v) => v != null);
-          const firstNullIdx = arr.findIndex((v) => v == null);
-          if (firstNullIdx !== -1 && arr.slice(firstNullIdx).some((v) => v != null)) {
-            return `missing values not last`;
-          }
-          for (let i = 1; i < nums.length; i++) {
-            if (dir === "desc" ? nums[i] > nums[i - 1] + 1e-9 : nums[i] < nums[i - 1] - 1e-9)
-              return `not ${dir} at index ${i}`;
-          }
-          return null;
-        };
         let err = check(vals, "desc");
         if (err) errors.push(`leg c: sort ${key} (1st click): ${err}`);
         await trigger.click();

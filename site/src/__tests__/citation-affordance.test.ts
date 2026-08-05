@@ -117,18 +117,37 @@ describe("P1-1 §1 — citation underline decoration contrast ≥3:1 (measured)"
 });
 
 describe("P1-1 §2 — decoration tokens wired into the affordance", () => {
-  it("<Cite> state A uses the tokens + dotted→solid hover lift", () => {
-    const src = read("components/cite.tsx");
-    expect(src).toContain("decoration-(--cite-decoration)");
-    expect(src).toContain("hover:decoration-(--cite-decoration-hover)");
-    expect(src).toContain("hover:decoration-solid");
-    expect(src).toContain("focus-visible:decoration-solid");
+  // Sprint 3 §P2-1 moved the treatment out of the per-figure class string and
+  // into ONE globals.css rule (78,302 copies of a 250-byte string were 19.3 MB
+  // of the shipped HTML). The contract is unchanged and is asserted at its new
+  // home: the `.cite-figure` rule must carry the tokens and the dotted→solid
+  // hover/focus lift, and both figure components must apply it.
+  const citeFigureRule = (() => {
+    const sheet = read("app/globals.css");
+    const i = sheet.indexOf(".cite-figure {");
+    if (i === -1) throw new Error(".cite-figure rule not found in globals.css");
+    return sheet.slice(i, sheet.indexOf("}", i));
+  })();
+
+  it(".cite-figure carries the tokens + dotted→solid hover/focus lift", () => {
+    expect(citeFigureRule).toContain("decoration-dotted");
+    expect(citeFigureRule).toContain("decoration-(--cite-decoration)");
+    expect(citeFigureRule).toContain("hover:decoration-(--cite-decoration-hover)");
+    expect(citeFigureRule).toContain("hover:decoration-solid");
+    expect(citeFigureRule).toContain("focus-visible:decoration-solid");
+    expect(citeFigureRule).toContain(
+      "focus-visible:decoration-(--cite-decoration-hover)",
+    );
   });
 
-  it("<ProseCite> uses the same tokens", () => {
+  it("<Cite> state A applies the affordance rule", () => {
+    const src = read("components/cite.tsx");
+    expect(src).toContain('"cite-figure"');
+  });
+
+  it("<ProseCite> applies the SAME affordance rule", () => {
     const src = read("components/prose-cite.tsx");
-    expect(src).toContain("decoration-(--cite-decoration)");
-    expect(src).toContain("hover:decoration-solid");
+    expect(src).toContain("cite-figure");
   });
 
   it("CiteLegend dotted-underline swatch uses the real decoration token", () => {

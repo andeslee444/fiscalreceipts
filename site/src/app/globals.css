@@ -183,6 +183,63 @@
   transition-timing-function: var(--ease-standard);
 }
 
+/* ── Cite affordance, hoisted (PM Sprint 3 §P2-1) ──────────────────────────
+   The state-A <Cite> / <ProseCite> treatment used to ride as a ~250-byte
+   Tailwind class string on EVERY cited figure. Measured across the static
+   export: 78,302 cited figures × that string = 19.3 MB of the shipped HTML,
+   and 0.6 MB of /programs/ alone — the same bytes, 78,302 times.
+
+   These two rules are @apply of the exact utility lists they replace, so the
+   rendered treatment is identical (the P1-1 contrast contract — dotted
+   --cite-decoration at rest, solid --cite-decoration-hover on hover/focus —
+   is pinned here and asserted by citation-affordance.test.ts).
+
+   NOT hoisted: `text-foreground` on the figure and `interactive-raise` (both
+   already short, and keeping the colour as a utility preserves the cascade
+   for the one caller that passes its own className). */
+.cite-figure {
+  @apply cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 hover:decoration-solid hover:decoration-(--cite-decoration-hover) focus-visible:decoration-solid focus-visible:decoration-(--cite-decoration-hover);
+}
+.cite-id-chip {
+  @apply ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-xs text-blue-700 align-middle;
+}
+
+/* ── /programs/ index rows (PM Sprint 3 §P2-1) ─────────────────────────────
+   The same five cell treatments on all 1,741 rows. As utility strings that
+   was ~440 bytes per row — 0.77 MB of one document — for markup that never
+   varies. Each rule is @apply of the exact utility list it replaces, so the
+   layout is identical; only the rows stop carrying 1,741 copies of it.
+
+   The `sm:` half of each is the mobile stacking (gate 3's mobile leg): below
+   640px the row becomes a block, PE/BLI and Org fold into the title line, and
+   each money figure gets its own full-width labelled line so neither it nor
+   its fact-id chip can be sliced by the 390px viewport edge. */
+.pgm-row {
+  @apply block sm:table-row hover:bg-muted/40 transition-colors;
+}
+.pgm-cell-pe {
+  @apply hidden sm:table-cell px-4 py-3 font-mono text-xs text-muted-foreground align-top;
+}
+.pgm-cell-org {
+  @apply hidden sm:table-cell px-4 py-3 text-xs text-muted-foreground align-top;
+}
+.pgm-cell-title {
+  @apply block sm:table-cell px-4 pt-3 pb-1 sm:py-3;
+}
+.pgm-cell-fy24 {
+  @apply block sm:table-cell px-4 py-0 sm:py-3 text-left sm:text-right tabular-nums text-muted-foreground align-top;
+}
+.pgm-cell-fy26 {
+  @apply block sm:table-cell px-4 pt-0 pb-3 sm:py-3 text-left sm:text-right tabular-nums align-top;
+}
+/* The folded PE/BLI · Org line and the two money labels — mobile only. */
+.pgm-meta {
+  @apply sm:hidden mt-0.5 block font-mono text-xs text-muted-foreground;
+}
+.pgm-label {
+  @apply sm:hidden mr-1.5 text-xs text-muted-foreground;
+}
+
 /* Shared hover treatment for interactive cards and cite chips: a subtle
    compositor-only raise. Inline elements (cite spans) need inline-block for
    transform to apply. */

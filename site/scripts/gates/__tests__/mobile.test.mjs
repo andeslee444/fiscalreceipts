@@ -66,6 +66,10 @@ describe("buildMobileSample", () => {
       "/companies/families/",
       "/data/",
       "/district/",
+      // Added with the §P2-1 restructure: /programs/ was overflow-only while
+      // both its money columns sat off the right edge inside the table's own
+      // scroll container — (m1) passes on exactly that defect.
+      "/programs/",
       "/years/",
     ]);
   });

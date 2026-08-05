@@ -22,10 +22,15 @@
  * - fact-permalink route (PM Sprint 1 Task 5, §P0-4): out/vercel.json exists
  *   AND carries the `/fact/:id` → `/fact/` rewrite AND out/fact/index.html
  *   exists — the deploy can never ship footnote permalinks that 404
+ * - page-weight budget (PM Sprint 3 §P2-1): per-page raw AND gzip ceilings
+ *   over the singleton pages and the heaviest instance of each templated
+ *   class — see PAGE_WEIGHT_BUDGET below for why it is per-page and not a
+ *   total over out/
  */
 
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +49,120 @@ function fileExists(p) {
 
 function dirExists(p) {
   return fs.existsSync(p) && fs.statSync(p).isDirectory();
+}
+
+// ── Page-weight budget (PM-review Sprint 3 §P2-1) ───────────────────────────
+//
+// WHY THIS EXISTS. The PM review found the index pages shipping multi-megabyte
+// documents. Measured at the start of Sprint 3, /programs/ was 5,875,345 bytes
+// (442,874 gzipped) with all 1,741 rows inline — and it had GROWN, because
+// Sprint 2's filter/sort/CSV work added markup nobody weighed. Weight is the
+// kind of regression that arrives one honest feature at a time and is never
+// anybody's bug, so it gets a number and a gate like every other claim here.
+//
+// WHAT IT PINS. A ceiling per PAGE, never a total over out/ — the corpus grows
+// (1,993 program pages today, more with each service book) and a total-bytes
+// budget would fail on growth rather than on weight. The templated classes are
+// covered by their HEAVIEST built instance, so the whole fleet is measured
+// without pretending a fixed instance stays the fattest.
+//
+// Ceilings sit a few percent above what the Sprint 3 build actually achieves
+// (recorded in each entry) — close enough to catch a regression, loose enough
+// that ordinary data movement does not trip it. RAISING one is a deliberate
+// act that has to be justified in the same breath as the change that needs it.
+//
+// gzip is measured with zlib level 9 — the transfer size a reader pays. Raw is
+// the parse/DOM cost, which is what actually hurts a phone, so both are pinned.
+export const PAGE_WEIGHT_BUDGET = [
+  // Singleton pages. `measured` is the Sprint 3 post-fix build.
+  { label: "/programs/", file: "programs/index.html", maxRaw: 2_900_000, maxGzip: 278_000, measured: "2,732,113 / 261,871" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "28,332 / 5,823" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,585,770 / 84,913" },
+  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,242,417 / 78,354" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "658,659 / 63,836" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "244,825 / 27,797" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "209,273 / 24,156" },
+  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "85,650 / 12,122" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 110_000, maxGzip: 30_000, measured: "98,081 / 27,307" },
+  // Templated classes — the heaviest built instance of each.
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,925,805 / 126,967 (/agency/F/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,094,513 / 139,890 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "504,530 / 23,039 (/company/lockheed-martin/)" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "298,182 / 25,125" },
+];
+
+/** raw + gzip(level 9) bytes of one built file. */
+function weigh(absPath) {
+  const buf = fs.readFileSync(absPath);
+  return { raw: buf.length, gzip: zlib.gzipSync(buf, { level: 9 }).length };
+}
+
+/**
+ * Resolve a budget entry to the ONE file it measures: the named file, or the
+ * heaviest index.html in a templated directory (raw size picks the candidate —
+ * cheap over 4,394 filings — and only that one gets gzipped).
+ */
+function resolveBudgetTarget(entry) {
+  if (entry.file) {
+    const p = path.join(outDir, entry.file);
+    return fileExists(p) ? { path: p, rel: entry.file } : null;
+  }
+  const base = path.join(outDir, entry.dir);
+  if (!dirExists(base)) return null;
+  let worst = null;
+  for (const slug of fs.readdirSync(base)) {
+    const p = path.join(base, slug, "index.html");
+    let size;
+    try {
+      const st = fs.statSync(p);
+      if (!st.isFile()) continue;
+      size = st.size;
+    } catch {
+      continue;
+    }
+    if (!worst || size > worst.size) {
+      worst = { size, path: p, rel: path.join(entry.dir, slug, "index.html") };
+    }
+  }
+  return worst;
+}
+
+/** The leg. Returns {errors, notes} so runBuildGate can fold them in. */
+export function checkPageWeight() {
+  const errors = [];
+  const notes = [];
+  const lines = [];
+
+  for (const entry of PAGE_WEIGHT_BUDGET) {
+    const target = resolveBudgetTarget(entry);
+    if (!target) {
+      errors.push(
+        `page weight: ${entry.label} — nothing built to measure (${entry.file ?? `out/${entry.dir}/*/index.html`})`
+      );
+      continue;
+    }
+    const { raw, gzip } = weigh(target.path);
+    if (raw > entry.maxRaw) {
+      errors.push(
+        `page weight: ${entry.label} is ${raw.toLocaleString()} bytes, over its ${entry.maxRaw.toLocaleString()}-byte ceiling (+${(raw - entry.maxRaw).toLocaleString()}) — measured at ${entry.measured} when the ceiling was set [${target.rel}]`
+      );
+    }
+    if (gzip > entry.maxGzip) {
+      errors.push(
+        `page weight: ${entry.label} is ${gzip.toLocaleString()} bytes gzipped, over its ${entry.maxGzip.toLocaleString()}-byte ceiling (+${(gzip - entry.maxGzip).toLocaleString()}) — measured at ${entry.measured} when the ceiling was set [${target.rel}]`
+      );
+    }
+    lines.push(
+      `${entry.label} ${raw.toLocaleString()}/${gzip.toLocaleString()}`
+    );
+  }
+
+  if (errors.length === 0) {
+    notes.push(
+      `page weight: ${PAGE_WEIGHT_BUDGET.length} page budgets within ceiling ✓ (raw/gzip: ${lines.slice(0, 3).join("; ")}; …)`
+    );
+  }
+  return { errors, notes };
 }
 
 export async function runBuildGate() {
@@ -503,6 +622,13 @@ export async function runBuildGate() {
     } else {
       notes.push("stale-literal check: no hardcoded \"44,754\" in downloads page ✓");
     }
+  }
+
+  // ── Page-weight budget (§P2-1) ────────────────────────────────────────────
+  {
+    const w = checkPageWeight();
+    errors.push(...w.errors);
+    notes.push(...w.notes);
   }
 
   return { pass: errors.length === 0, errors, notes };

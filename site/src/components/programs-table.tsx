@@ -24,7 +24,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
-import type { ProgramRow } from "@/lib/data";
+import type { ProgramsTableRow } from "@/lib/programs-row";
 import { Cite } from "@/components/cite";
 import { serviceOrgName } from "@/lib/program-tier";
 import { aliasChipText, aliasHitsForQuery } from "@/lib/aliases";
@@ -32,14 +32,19 @@ import { formatCount } from "@/lib/format";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
 
+/**
+ * §P2-1 page weight: this table receives ProgramsTableRow — the eight fields
+ * it renders — not the whole warehouse row. See lib/programs-row.ts for the
+ * measurement and the reason the projection lives there.
+ */
 interface ProgramsTableProps {
-  programs: ProgramRow[];
+  programs: ProgramsTableRow[];
   orgs: string[];
 }
 
 /** Case-insensitive substring match over title, PE/BLI, raw org and org name. */
-export function programHaystack(p: ProgramRow): string {
-  return [p.title, p.pe_bli, p.org, serviceOrgName(p.org)]
+export function programHaystack(p: ProgramsTableRow): string {
+  return [p.title, p.pe, p.org, serviceOrgName(p.org)]
     .join(" ")
     .toLowerCase();
 }
@@ -52,16 +57,15 @@ export function programHaystack(p: ProgramRow): string {
  * "Sentinel Mods" while ⌘K said Sentinel = Ground Based Strategic Deterrent.
  */
 export function filterPrograms(
-  programs: readonly ProgramRow[],
+  programs: readonly ProgramsTableRow[],
   haystacks: Map<string, string>,
   query: string,
-): ProgramRow[] {
+): ProgramsTableRow[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...programs];
   const aliasHits = aliasHitsForQuery(query);
   return programs.filter(
-    (p) =>
-      (haystacks.get(p.pe_bli) ?? "").includes(q) || aliasHits.has(p.pe_bli),
+    (p) => (haystacks.get(p.pe) ?? "").includes(q) || aliasHits.has(p.pe),
   );
 }
 
@@ -76,7 +80,7 @@ function csvField(s: string): string {
  * thousands (the workbook grain) — and say so in the header, rather than
  * silently converting one into the other. Missing values are empty, never 0.
  */
-export function buildProgramsCsv(rows: readonly ProgramRow[]): string {
+export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
     "pe_bli",
     "org",
@@ -89,12 +93,12 @@ export function buildProgramsCsv(rows: readonly ProgramRow[]): string {
   for (const p of rows) {
     lines.push(
       [
-        csvField(p.pe_bli),
+        csvField(p.pe),
         csvField(p.org),
         csvField(serviceOrgName(p.org)),
         csvField(p.title),
-        p.fy2024_actual_millions != null ? String(p.fy2024_actual_millions) : "",
-        p.trajectory?.fy2026_total != null ? String(p.trajectory.fy2026_total) : "",
+        p.fy24 != null ? String(p.fy24) : "",
+        p.fy26 != null ? String(p.fy26) : "",
       ].join(","),
     );
   }
@@ -132,7 +136,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
 
   // Precomputed haystacks — 1,741 rows re-filtered on every keystroke.
   const haystacks = useMemo(
-    () => new Map(programs.map((p) => [p.pe_bli, programHaystack(p)])),
+    () => new Map(programs.map((p) => [p.pe, programHaystack(p)])),
     [programs],
   );
 
@@ -158,17 +162,17 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
         // so the whole order is deterministic inside an organization.
         const cmp =
           serviceOrgName(a.org).localeCompare(serviceOrgName(b.org)) ||
-          a.pe_bli.localeCompare(b.pe_bli);
+          a.pe.localeCompare(b.pe);
         return sortAsc ? cmp : -cmp;
       }
       if (sortKey === "fy2026_total") {
-        const av = a.trajectory?.fy2026_total ?? -Infinity;
-        const bv = b.trajectory?.fy2026_total ?? -Infinity;
+        const av = a.fy26 ?? -Infinity;
+        const bv = b.fy26 ?? -Infinity;
         return sortAsc ? av - bv : bv - av;
       }
       // fy2024_actual
-      const av = a.fy2024_actual_millions ?? -Infinity;
-      const bv = b.fy2024_actual_millions ?? -Infinity;
+      const av = a.fy24 ?? -Infinity;
+      const bv = b.fy24 ?? -Infinity;
       return sortAsc ? av - bv : bv - av;
     });
 
@@ -176,13 +180,11 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
   }, [programs, haystacks, orgFilter, query, sortKey, sortAsc]);
 
   /** The comparator's own input for a row, serialized (sort contract above). */
-  function sortValue(p: ProgramsTableProps["programs"][number]): string {
+  function sortValue(p: ProgramsTableRow): string {
     if (sortKey === "title") return p.title;
-    if (sortKey === "org") return `${serviceOrgName(p.org)}|${p.pe_bli}`;
-    if (sortKey === "fy2026_total") {
-      return String(p.trajectory?.fy2026_total ?? -Infinity);
-    }
-    return String(p.fy2024_actual_millions ?? -Infinity);
+    if (sortKey === "org") return `${serviceOrgName(p.org)}|${p.pe}`;
+    if (sortKey === "fy2026_total") return String(p.fy26 ?? -Infinity);
+    return String(p.fy24 ?? -Infinity);
   }
 
   function toggleSort(key: SortKey) {
@@ -264,7 +266,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           data-sort-table="programs"
           data-sort-order={`${sortKey}:${sortAsc ? "asc" : "desc"}`}
         >
-          <thead className="bg-muted/60 text-left">
+          <thead className="hidden sm:table-header-group bg-muted/60 text-left">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-24">PE/BLI</th>
               <th scope="col" className="px-4 py-3 font-medium text-muted-foreground w-28">
@@ -315,58 +317,80 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           <tbody className="divide-y divide-border">
             {filtered.map((p) => (
               <tr
-                key={p.pe_bli}
-                className="hover:bg-muted/40 transition-colors"
+                key={p.pe}
+                role="row"
+                className="pgm-row"
                 data-sort-value={sortValue(p)}
               >
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                  {p.pe_bli}
-                </td>
+                <td className="pgm-cell-pe">{p.pe}</td>
                 {/* §P1-E: the human service name, not the raw workbook token. */}
-                <td className="px-4 py-3 text-xs text-muted-foreground" title={p.org}>
+                <td className="pgm-cell-org" title={p.org}>
                   {serviceOrgName(p.org)}
                 </td>
-                <td className="px-4 py-3">
+                <td role="cell" className="pgm-cell-title">
                   <Link
-                    href={`/program/${p.pe_bli}/`}
+                    href={`/program/${p.pe}/`}
                     className="font-medium hover:underline text-foreground"
                     data-program-name
                   >
                     {p.title}
                   </Link>
-                  {aliasHits.has(p.pe_bli) && (
+                  {aliasHits.has(p.pe) && (
                     <span
                       data-testid="programs-alias-hit"
-                      data-alias-matched={aliasHits.get(p.pe_bli)!.matched}
+                      data-alias-matched={aliasHits.get(p.pe)!.matched}
                       className="ml-2 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground align-middle"
                     >
                       {aliasChipText(
-                        aliasHits.get(p.pe_bli)!.matched,
-                        aliasHits.get(p.pe_bli)!.aliases,
+                        aliasHits.get(p.pe)!.matched,
+                        aliasHits.get(p.pe)!.aliases,
                       )}
                     </span>
                   )}
+                  {/* Below sm the PE/BLI and Org columns are folded into this
+                      line rather than dropped — three data columns of their own
+                      would leave the money nothing to sit in at 390px. */}
+                  <span className="pgm-meta">
+                    {p.pe} · {serviceOrgName(p.org)}
+                  </span>
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                  {p.fy2024_actual_millions != null ? (
+                {/* MOBILE (§P2-1 / gate 3 mobile leg): below sm each money
+                    figure sits on its own full-width line under the title with
+                    a visible column label, so neither the figure nor its
+                    fact-id chip can be sliced by the 390px viewport edge —
+                    the same stacking /companies/ uses. ONE DOM, so the §P1-7
+                    sort contract above still reads exactly these nodes. */}
+                <td role="cell" className="pgm-cell-fy24">
+                  <span className="pgm-label">FY24 actual:</span>
+                  {p.fy24 != null ? (
                     <Cite
-                      value={p.fy2024_actual_millions}
+                      value={p.fy24}
                       units="USD millions"
                       dataset="jbook_details"
-                      factId={p.fy2024_fact_id}
-                      xmlPath={p.fy2024_xml_path}
+                      factId={p.fy24Fid}
+                      xmlPath={p.fy24Xml}
                     />
                   ) : (
                     <span className="text-muted-foreground/50">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {p.trajectory?.fy2026_total != null ? (
+                {/* data-primary-value marks THE money column for gate 3's
+                    mobile leg: the leg measures THIS CELL's box (not the
+                    figure inside it — 263 of 1,741 programs have no FY26
+                    request and render an honest "—") and fails if it leaves
+                    the 390px viewport. */}
+                <td
+                  role="cell"
+                  data-primary-value="fy2026-total"
+                  className="pgm-cell-fy26"
+                >
+                  <span className="pgm-label">FY26 total:</span>
+                  {p.fy26 != null ? (
                     <Cite
-                      value={p.trajectory.fy2026_total}
+                      value={p.fy26}
                       units="USD thousands"
                       dataset="fct_budget_trajectory"
-                      factId={p.trajectory_fact_ids?.fy2026_total}
+                      factId={p.fy26Fid}
                     />
                   ) : (
                     <span className="text-muted-foreground/50">—</span>

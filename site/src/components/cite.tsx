@@ -264,7 +264,7 @@ function ReceiptsChip({ publicId }: { publicId: string }) {
       data-receipts-chip
       onClick={handleCopy}
       title={`Copy fact permalink /fact/${publicId}`}
-      className="ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-xs text-blue-700 align-middle"
+      className="cite-id-chip"
       aria-hidden="true"
     >
       {copied ? "copied ✓" : `#${publicId}`}
@@ -389,12 +389,12 @@ export function Cite({
         {...basisAttrs}
         title={title}
         className={[
-          // P1-1: explicit ≥3:1 decoration tokens (globals.css) — the
-          // affordance carrying the value proposition must survive dim
-          // screens. Hover/focus reads as interactive: solid + darker.
-          "cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2",
-          "hover:decoration-solid hover:decoration-(--cite-decoration-hover)",
-          "focus-visible:decoration-solid focus-visible:decoration-(--cite-decoration-hover)",
+          // P1-1: explicit ≥3:1 decoration tokens — the affordance carrying
+          // the value proposition must survive dim screens; hover/focus reads
+          // as interactive (solid + darker). The whole treatment lives in ONE
+          // rule (globals.css .cite-figure) rather than as a 250-byte utility
+          // string repeated on all 78,302 cited figures — §P2-1 page weight.
+          "cite-figure",
           // Shared motion-system hover raise (globals.css .interactive-raise,
           // Phase 5C Task 11) — inline-block so transform applies to the span.
           "interactive-raise",

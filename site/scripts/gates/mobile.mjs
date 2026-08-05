@@ -117,7 +117,28 @@ export function computeMobileInstancePages() {
 export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
   const sample = [
     { path: "/", label: "home" },
-    { path: "/programs/", label: "programs index" },
+    {
+      path: "/programs/",
+      label: "programs index",
+      value: {
+        // Added with the §P2-1 restructure (Sprint 3 Task 3): this page used
+        // to be overflow-only here while its two money columns sat off the
+        // right edge inside the table's own scroll container — the exact
+        // defect (m2) exists to catch. The FY26 request is the column the
+        // page sorts on and the one a reader comes for.
+        //
+        // The CELL, not the figure inside it: 263 of the 1,741 programs have
+        // no FY26 request and render an honest "—", so a [data-amount]
+        // selector would make those rows unmeasurable (same rule as
+        // /district/'s Linkable-dollars column).
+        rowSelector: 'table[data-sort-table="programs"] tbody tr',
+        selector: 'td[data-primary-value="fy2026-total"]',
+        first: true,
+        minRows: 50,
+        min: 50,
+        describe: "FY26-total cell",
+      },
+    },
     {
       path: "/companies/",
       label: "companies index",

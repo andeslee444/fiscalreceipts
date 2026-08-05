@@ -28,6 +28,7 @@ import {
   filterEntries,
   sortEntries,
   buildYearsCsv,
+  defaultSortKey,
   YearsMatrix,
   type YearsMatrixData,
 } from "@/components/years-matrix";
@@ -215,6 +216,25 @@ describe("years-matrix helpers", () => {
     ]);
   });
 
+  it("defaultSortKey: the newest NON-delta column of the default set", () => {
+    // Pre-decade payload: default_columns ends with the two Δ columns, which
+    // are annotations of two amounts — the newest AMOUNT is what opens.
+    expect(defaultSortKey(MATRIX)).toBe("fy_2026_total");
+    // Decade payload: the decade defaults take precedence and end on the
+    // FY2026 request.
+    expect(defaultSortKey(MATRIX_DECADE)).toBe("fy2026r");
+  });
+
+  it("defaultSortKey: null when every default column is a Δ column", () => {
+    expect(
+      defaultSortKey({
+        ...MATRIX,
+        decade_default_columns: [],
+        default_columns: ["fy2526_change", "fy2526_pct_change"],
+      }),
+    ).toBeNull();
+  });
+
   it("buildYearsCsv: pe_bli header, USD-millions values, empty for null", () => {
     const csv = buildYearsCsv(entries, ["fy_2026_total", "fy2526_pct_change"]);
     const lines = csv.trim().split("\n");
@@ -281,14 +301,68 @@ describe("YearsMatrix — render contract", () => {
     expect(legend.textContent?.toLowerCase()).toContain("lineage");
   });
 
-  it("renders program rows with data-pe under collapsible org sections", async () => {
+  it("renders program rows with data-pe", async () => {
     await renderMatrix();
     const rows = document.querySelectorAll("tr[data-program-row]");
     expect(rows).toHaveLength(3);
     expect(rows[0].getAttribute("data-pe")).toBe("0601101E");
-    // Org section headers present in grouped mode
+  });
+
+  // ── §P2-2: the grid opens on substance, not on a screenful of dashes ──
+
+  it("opens sorted DESC on the newest amount column, missing LAST", async () => {
+    await renderMatrix();
+    const pes = [...document.querySelectorAll("tr[data-program-row]")].map(
+      (tr) => tr.getAttribute("data-pe"),
+    );
+    // 300000 · 40000 · missing — not payload order by accident: the MDA row
+    // has no fy_2026_total and sorts last in BOTH directions.
+    expect(pes).toEqual(["0601101E", "0602702E", "0603882C"]);
+    const th = document.querySelector('th[data-col="fy_2026_total"]');
+    expect(th?.getAttribute("aria-sort")).toBe("descending");
+    // Flat: the org section headers are suspended while a sort is active.
+    expect(document.querySelectorAll("tr[data-org-row]")).toHaveLength(0);
+  });
+
+  it("the default sort key is the payload's, not a hardcoded column", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === "/json/years_matrix.json"
+        ? Promise.resolve(jsonResponse(MATRIX_DECADE))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+    await renderMatrix();
+    expect(
+      document.querySelector('th[data-col="fy2026r"]')?.getAttribute("aria-sort"),
+    ).toBe("descending");
+    expect(
+      document.querySelector('th[data-col="fy2015a"]')?.getAttribute("aria-sort"),
+    ).toBe("none");
+  });
+
+  it("'Group by organization' restores the collapsible org sections", async () => {
+    await renderMatrix();
+    fireEvent.click(screen.getByTestId("years-group-by-org"));
+    expect(
+      document.querySelectorAll("tr[data-org-row]").length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("DARPA")).toBeInTheDocument();
     expect(screen.getByText("MDA")).toBeInTheDocument();
+    // The control is a no-op in grouped mode, so it takes itself away.
+    expect(screen.queryByTestId("years-group-by-org")).toBeNull();
+  });
+
+  it("the 33-chip column picker hides behind a disclosure below sm", async () => {
+    await renderMatrix();
+    const toggle = screen.getByTestId("years-columns-toggle");
+    const picker = document.getElementById("years-column-picker")!;
+    // Closed by default: `hidden` below sm, `sm:flex` at ≥640px.
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(picker.className).toContain("hidden");
+    expect(picker.className).toContain("sm:flex");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(picker.className).toContain("flex");
+    expect(picker.className).not.toContain("hidden");
   });
 
   it("numeric cells carry data-col + data-v; cited cells are state-A Cites", async () => {
@@ -357,6 +431,7 @@ describe("YearsMatrix — render contract", () => {
 
   it("collapsing an org section hides its program rows", async () => {
     await renderMatrix();
+    fireEvent.click(screen.getByTestId("years-group-by-org"));
     fireEvent.click(screen.getByRole("button", { name: /collapse darpa/i }));
     const rows = [...document.querySelectorAll("tr[data-program-row]")];
     expect(rows).toHaveLength(1);
@@ -375,26 +450,50 @@ describe("YearsMatrix — render contract", () => {
     expect(document.querySelectorAll("tr[data-program-row]")).toHaveLength(3);
   });
 
-  it("sorting flattens the grouped view: global desc order, missing-last", async () => {
+  it("the sort header still cycles desc → asc → grouped from the default", async () => {
+    await renderMatrix();
+    const pes = () =>
+      [...document.querySelectorAll("tr[data-program-row]")].map((tr) =>
+        tr.getAttribute("data-pe"),
+      );
+    const header = () =>
+      document.querySelector('[data-sort="fy_2026_total"]') as HTMLElement;
+
+    // Opens on desc (§P2-2) — the state the first click used to produce.
+    expect(pes()).toEqual(["0601101E", "0602702E", "0603882C"]);
+    expect(document.querySelectorAll("tr[data-org-row]")).toHaveLength(0);
+
+    // Click 1 → asc, missing still last.
+    fireEvent.click(header());
+    expect(pes()).toEqual(["0602702E", "0601101E", "0603882C"]);
+    expect(
+      document
+        .querySelector('th[data-col="fy_2026_total"]')
+        ?.getAttribute("aria-sort"),
+    ).toBe("ascending");
+
+    // Click 2 → sort cleared, back to the grouped view.
+    fireEvent.click(header());
+    expect(
+      document.querySelectorAll("tr[data-org-row]").length,
+    ).toBeGreaterThan(0);
+
+    // Click 3 → desc again: the three-state cycle is intact.
+    fireEvent.click(header());
+    expect(pes()).toEqual(["0601101E", "0602702E", "0603882C"]);
+    expect(document.querySelectorAll("tr[data-org-row]")).toHaveLength(0);
+  });
+
+  it("sorting a DIFFERENT column re-sorts from the default, missing-last", async () => {
     await renderMatrix();
     fireEvent.click(
-      document.querySelector('[data-sort="fy_2026_total"]') as HTMLElement,
+      document.querySelector('[data-sort="fy_2024_actuals"]') as HTMLElement,
     );
     const pes = [...document.querySelectorAll("tr[data-program-row]")].map(
       (tr) => tr.getAttribute("data-pe"),
     );
-    expect(pes).toEqual(["0601101E", "0602702E", "0603882C"]);
-    // Org section header rows are hidden in sorted (flat) mode
-    expect(document.querySelectorAll("tr[data-org-row]")).toHaveLength(0);
-
-    // Second click → asc, missing still last
-    fireEvent.click(
-      document.querySelector('[data-sort="fy_2026_total"]') as HTMLElement,
-    );
-    const pesAsc = [...document.querySelectorAll("tr[data-program-row]")].map(
-      (tr) => tr.getAttribute("data-pe"),
-    );
-    expect(pesAsc).toEqual(["0602702E", "0601101E", "0603882C"]);
+    // 100000 · 75000 · 50000 — every row has an FY24 actual in the fixture.
+    expect(pes).toEqual(["0601101E", "0603882C", "0602702E"]);
   });
 
   it("CSV export matches the current visible view", async () => {

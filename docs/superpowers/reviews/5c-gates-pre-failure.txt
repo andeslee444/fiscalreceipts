@@ -2649,3 +2649,152 @@ MADE TO PASS (verbatim, unmodified build):
   errors: 0
 
 SUITE COUNT UNCHANGED — leg k extends gate 8. Still 24 gates.
+
+
+================================================================================
+PM-REVIEW SPRINT 3 — TASK 3 (2026-08-05): page weight (§P2-1) + /years/ default
+sort (§P2-2)
+================================================================================
+
+THREE LEGS, THREE PROOFS. One NEW leg (gate 1 page-weight budget) and two
+STRENGTHENED existing legs (gate 3's mobile leg gains a /programs/ value
+assertion; gate 20 leg c gains a §P2-2 default-order assertion). Suite count
+unchanged — 24 gates.
+
+--------------------------------------------------------------------------------
+1. GATE 1 (build) — PAGE-WEIGHT BUDGET  [NEW LEG]
+--------------------------------------------------------------------------------
+
+WHAT IT PINS. A raw AND gzip ceiling per PAGE — the nine singleton pages plus
+the heaviest built instance of each templated class (/agency/, /program/,
+/company/, /filing/). Never a total over out/: the corpus grows with each
+service book, and a total-bytes budget would fail on growth rather than on
+weight. Ceilings sit a few percent above what the Sprint 3 build achieves, and
+each entry records the measurement the ceiling was set from.
+
+WHY. /programs/ was measured at 5,875,345 bytes (435,856 gzipped) at the start
+of this sprint — worse than the 4.8 MB the PM review recorded, because
+Sprint 2's filter/sort/CSV work added markup nobody weighed. Weight is the kind
+of regression that arrives one honest feature at a time and is never anybody's
+bug, so it gets a number and a gate like every other claim on this site.
+
+(Aside, recorded because the spec's premise was wrong: §P2-1 attributes the
+9.1 MB / 22,681-cell document to /years/. /years/ is a 28 KB client island with
+no rows in the initial document; its 2.87 MB payload is a separate JSON fetch
+after hydration. The offender was /programs/.)
+
+PROOF-CAN-FAIL (verbatim) — the PRE-FIX /programs/index.html restored into
+out/, everything else the Sprint 3 build:
+
+=== FAIL RUN (pre-fix /programs/index.html restored into out/) ===
+pass: false
+  ✗ page weight: /programs/ is 5,875,345 bytes, over its 2,900,000-byte ceiling (+2,975,345) — measured at 2,732,113 / 261,871 when the ceiling was set [programs/index.html]
+  ✗ page weight: /programs/ is 435,856 bytes gzipped, over its 278,000-byte ceiling (+157,856) — measured at 2,732,113 / 261,871 when the ceiling was set [programs/index.html]
+
+MADE TO PASS (verbatim, unmodified build; `cmp` confirmed the restored
+artifact is byte-identical to the build output):
+
+=== PASS RUN (Sprint 3 artifact restored) ===
+pass: true
+  page weight: 13 page budgets within ceiling ✓ (raw/gzip: /programs/ 2,732,113/261,871; /years/ 28,332/5,823; /feed/ 1,585,770/84,913; …)
+cmp: artifact identical ✓
+
+--------------------------------------------------------------------------------
+2. GATE 3 (render-live) MOBILE LEG — /programs/ VALUE ASSERTION  [STRENGTHENED]
+--------------------------------------------------------------------------------
+
+WHAT CHANGED. /programs/ was in the mobile sample as an overflow-only entry
+(m1). It now carries an (m2) value assertion on its FY26-total cell — the
+column the page sorts on. The CELL, not the figure inside it: 263 of the 1,741
+programs have no FY26 request and render an honest "—", so a [data-amount]
+selector would make those rows unmeasurable (the same rule /district/ uses).
+
+PROOF-CAN-FAIL (verbatim) — the mobile stacking neutralised in the built CSS
+chunk, i.e. the pre-fix desktop-only table rendered at 390px. Note that (m1)
+still passes 13/13: the table lives inside an `overflow-x-auto` wrapper, so the
+document never overflows — the container scrolls and the money sits off-screen
+behind it. This is exactly the defect class (m2) exists for, and it is invisible
+to an overflow check.
+
+PASS: false
+NOTES:
+  mobile leg @ 390x844: 13 pages — / /programs/ /companies/ /companies/families/ /data/ /years/ /district/ /flow/ /feed/ /program/0606301D8Z/ /company/lockheed-martin/ /methodology/ /filing/00409eb7-2227-4c8f-b77f-1289ef623877/
+  mobile /companies/: 195 Total-obligations figure(s) fully on screen ✓
+  mobile /companies/families/: 17 Source (external reference) link(s) fully on screen ✓
+  mobile /data/: 45 dataset row-count / citation / scope cell(s) fully on screen ✓
+  mobile /years/: 300 first fiscal-year amount cell(s) fully on screen ✓
+  mobile /district/: 106 Linkable-dollars cell(s) fully on screen ✓
+  mobile leg: 13/13 pages free of page-level horizontal overflow; 963 value element(s) measured across 6 value-bearing page(s)
+ERRORS:
+  ✗ mobile /programs/ (programs index): 300/300 FY26-total cell(s) are outside the 390px viewport — row 0: "FY26 total:$7.70B#7d4bd900" left=596 right=705 > viewport 390 | row 1: "FY26 total:$5.55B#ee7c0b52" left=596 right=705 > viewport 390 | row 2: "FY26 total:$4.74B#c87e02d8" left=596 right=705 > viewport 390
+
+MADE TO PASS (verbatim, `cmp`-clean restore of the CSS chunk):
+
+cmp: CSS chunk restored identical ✓
+=== PASS RUN (restored) ===
+PASS: true
+NOTES:
+  mobile leg @ 390x844: 13 pages — / /programs/ /companies/ /companies/families/ /data/ /years/ /district/ /flow/ /feed/ /program/0606301D8Z/ /company/lockheed-martin/ /methodology/ /filing/00409eb7-2227-4c8f-b77f-1289ef623877/
+  mobile /programs/: 300 FY26-total cell(s) fully on screen ✓
+  mobile /companies/: 195 Total-obligations figure(s) fully on screen ✓
+  mobile /companies/families/: 17 Source (external reference) link(s) fully on screen ✓
+  mobile /data/: 45 dataset row-count / citation / scope cell(s) fully on screen ✓
+  mobile /years/: 300 first fiscal-year amount cell(s) fully on screen ✓
+  mobile /district/: 106 Linkable-dollars cell(s) fully on screen ✓
+  mobile leg: 13/13 pages free of page-level horizontal overflow; 963 value element(s) measured across 6 value-bearing page(s)
+
+--------------------------------------------------------------------------------
+3. GATE 20 (yearsmatrix) LEG c — §P2-2 DEFAULT ORDER  [STRENGTHENED]
+--------------------------------------------------------------------------------
+
+WHAT CHANGED. Leg c drove the sort by CLICKING, so it could not see what the
+page opens on. It now asserts the opening order with ZERO clicks — aria-sort
+"descending" on the default column, ≥50 numeric cells (non-vacuity), and the
+descending/missing-last order — before running the click cycle. The click cycle
+itself is unchanged in strength: it first normalises the column to the unsorted
+state (the header cycles desc → asc → cleared, and since §P2-2 the grid OPENS
+descending), then makes exactly the same two assertions it always did.
+
+PROOF-CAN-FAIL (verbatim) — defaultSortKey() patched in the built chunk to
+return null, i.e. the pre-§P2-2 behaviour: /years/ opens in payload order
+(organization, then PE/BLI ascending). Every other leg still passes, which is
+the point — the sort click-cycle, CSV, filter and expand checks were all blind
+to what the page opened on.
+
+PASS: false
+NOTES:
+  ...
+  leg c: sort checks done
+  leg c: expand revealed 1 project rows ✓
+  leg c: CSV matches view (1741 programs) ✓
+  leg c: filter narrows to 1 row(s), CSV matches ✓
+ERRORS:
+  ✗ leg c (§P2-2): /years/ does not OPEN sorted on fy2026r — th[data-col="fy2026r"] aria-sort="none", want "descending"
+  ✗ leg c (§P2-2): /years/ opening order is not fy2026r descending: missing values not last
+
+MADE TO PASS (verbatim, `cmp`-clean restore of the JS chunk):
+
+cmp: years chunk restored identical ✓
+=== PASS RUN (restored) ===
+PASS: true
+NOTES:
+  matrix: 1741 programs / 24 orgs / 3004842 bytes
+  leg a: 47/47 sampled cells recomputed from the lake ✓
+  leg b: 47 sampled citations verified ✓
+  leg f: 36/36 decade cells recomputed from budget_lines_decade.parquet across 12 columns ✓
+  leg g: 36/36 decade cells edition-integrity verified ✓
+  leg d: 36242 matrix fids + full 134913-fid shard union verified ✓
+  leg e: eligible derived facts by class: difference=17449 traj_sum=522 district=116 agency_fy24=23 agency_fy26=17
+  leg e: 15/15 sampled breakdowns verified ✓
+  leg e-UI: honesty-marker legend on /years/ ✓
+  leg g-UI: decade defaults + edition tags + legend ✓
+  leg c: /years/ opens on fy2026r desc over 1478 numeric cells ✓ (§P2-2)
+  leg c: sort checks done
+  leg c: expand revealed 1 project rows ✓
+  leg c: CSV matches view (1741 programs) ✓
+  leg c: filter narrows to 1 row(s), CSV matches ✓
+  leg e: breakdown UI (inline table + sum + CSV) ✓
+  leg e-UI (strengthened): overlay d0a77b62eb97ce7e (519 rows on /agency/F/) — header total + legend + sum row pinned & opaque mid-scroll ✓
+
+SUITE COUNT UNCHANGED — one new leg on gate 1, two strengthened legs on gates
+3 and 20. Still 24 gates.
