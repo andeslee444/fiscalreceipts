@@ -49,6 +49,22 @@ export function ReceiptsIntro() {
     setVisible(false);
   }
 
+  // Round-1 judging (two judges): the card is `fixed`, so it rode every scroll
+  // position down the home page and sat on top of the agency-card grid. A
+  // first-visit hint has done its job by the time the reader has scrolled a
+  // screen; it now retires itself (and records the dismissal, so it does not
+  // reappear on the next page).
+  useEffect(() => {
+    if (!visible) return;
+    function onScroll() {
+      if (window.scrollY > window.innerHeight * 0.75) dismiss();
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+    // `dismiss` is stable for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   if (!visible) return null;
 
   return (

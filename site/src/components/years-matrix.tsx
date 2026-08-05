@@ -43,7 +43,7 @@
  *   [data-testid="years-csv"], [data-sticky-col].
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Download, GitBranch } from "lucide-react";
 import { Cite, CiteLegend } from "@/components/cite";
@@ -464,6 +464,43 @@ export function YearsMatrix() {
     new Set(),
   );
   const [sort, setSort] = useState<SortState | null>(null);
+
+  /**
+   * §P2-2, completed after PM Sprint 3's round-1 visual judging.
+   *
+   * Sorting the ROWS was only half of "open on substance". The COLUMNS still
+   * began at FY2015A, which is populated for 35–53% of programs — so the
+   * newest, biggest programs the new sort promotes to the top (B-21, GBSD,
+   * F-35, Long Range Kill Chains) had nothing to show there. At 390 only two
+   * columns fit and all three judges landed on a screen of em-dashes; at 1440
+   * the column the grid is actually sorted by sat off the right edge, so the
+   * row order had no visible explanation and its ↓ could not be seen.
+   *
+   * The grid now scrolls its own container to the sorted column on load. This
+   * is a viewport change, never a data change: no column is hidden, reordered
+   * or dropped, and scrolling back left reaches FY2015A exactly as before.
+   */
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [scrollToCol, setScrollToCol] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!scrollToCol) return;
+    const box = gridRef.current;
+    if (!box) return;
+    const th = box.querySelector<HTMLElement>(
+      `thead [data-col="${CSS.escape(scrollToCol)}"]`
+    );
+    if (!th) return;
+    // Leave the sticky Program column clear of the target: scroll so the
+    // sorted column's right edge sits at the box's right edge, which puts the
+    // newest columns in frame without ever hiding a cell behind the sticky
+    // one (round-1 judges read the half-occluded cell's ".7"/".9" fragments
+    // as values).
+    const target =
+      th.offsetLeft + th.offsetWidth - box.clientWidth + 8;
+    box.scrollLeft = Math.max(0, target);
+    setScrollToCol(null);
+  }, [scrollToCol, load]);
   const [filter, setFilter] = useState("");
   // null until the matrix loads (defaults come from the sidecar).
   const [chosenCols, setChosenCols] = useState<string[] | null>(null);
@@ -484,7 +521,10 @@ export function YearsMatrix() {
         setLoad({ s: "ready", matrix });
         // §P2-2: open on substance, not on a screenful of em-dashes.
         const key = defaultSortKey(matrix);
-        if (key) setSort({ key, dir: "desc" });
+        if (key) {
+          setSort({ key, dir: "desc" });
+          setScrollToCol(key);
+        }
       })
       .catch(() => {
         if (!cancelled) setLoad({ s: "error" });
@@ -832,7 +872,15 @@ export function YearsMatrix() {
       </CollapsibleBelowSm>
 
       {/* ── The grid ── */}
-      <div className="relative max-h-[75vh] overflow-auto rounded-lg border border-border">
+      {/* max-h fits between the sticky site header and the viewport bottom, so
+          the grid's own sticky column-header row is not sliced in half by the
+          z-40 chrome as the page scrolls (round-1 judges read a half-covered
+          "FY2016A" as "FY2018A" — a wrong-year citation risk on an
+          edition-honest matrix). */}
+      <div
+        ref={gridRef}
+        className="relative max-h-[calc(100vh-8rem)] scroll-mt-20 overflow-auto rounded-lg border border-border"
+      >
         <table
           data-testid="years-matrix"
           // border-separate (NOT collapse): collapsed borders stay in the

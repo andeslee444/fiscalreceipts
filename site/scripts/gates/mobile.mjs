@@ -16,7 +16,14 @@
  * Every gate that drives a browser did so at desktop width, so the suite was
  * blind to this class by construction. This leg closes it.
  *
- * TWO ASSERTIONS, and the second is the one that matters:
+ * THREE ASSERTIONS, and the second and third are the ones that matter.
+ * (m3) was added after PM Sprint 3's round-1 visual judging, which found a
+ * defect BOTH earlier assertions pass: on the home page the mover title was
+ * painted straight over its dollar delta. Nothing overflowed the document
+ * ((m1) ok) and the figure's own box was inside the viewport ((m2) ok) — the
+ * label simply overflowed its flex item and covered it. Two of the five
+ * figures on the site's front page were unreadable, and `/` was not even in
+ * this sample. Both holes are closed below.
  *
  *   (m1) NO PAGE-LEVEL HORIZONTAL OVERFLOW —
  *        document.documentElement.scrollWidth <= clientWidth (+1px rounding)
@@ -31,6 +38,12 @@
  *        live inside an `overflow-x-auto` wrapper, so the page itself never
  *        overflowed — the container scrolled and the money sat off-screen
  *        behind it. A naive overflow check passes on all three defects.
+ *
+ *   (m3) THE LABEL IS NOT PAINTED OVER THE MONEY — where a row declares a
+ *        `[data-mobile-pair-label]` / `[data-mobile-pair-value]` pair, their
+ *        boxes must not intersect. A row that stacks label above value
+ *        satisfies this by construction; a row whose label overflows its flex
+ *        item and prints across the figure does not.
  *
  * NON-VACUITY. Every sampled page must resolve at least `min` value elements
  * (and, where the sample is row-scoped, at least `minRows` rows). A page that
@@ -220,11 +233,78 @@ export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
       },
     },
     {
+      // PM Sprint 3 judging round 1. /flow/ used to be overflow-only here, and
+      // the round-1 judges found why that was not enough: the Sankey is an
+      // 840px SVG inside a 356px scroller, so at 390 the right-hand column is
+      // cut mid-word — and the "View as table" affordance the page tells the
+      // reader to use instead rendered its Kind and Label columns wide enough
+      // to push the AMOUNT column out of the scroller entirely. The stated
+      // fallback for an unreadable chart carried no dollars at all.
+      //
+      // So the amount cells are measured with the disclosures OPEN: that is
+      // the state the page's own copy sends the reader to.
       path: "/flow/",
       label: "flow-down Sankey",
       ready: { selector: '[data-testid="flow-chart"]', timeout: 45000 },
+      openDetails: true,
+      value: {
+        rowSelector: "table[data-chart-table] tbody tr",
+        selector: "td[data-primary-value='chart-amount']",
+        first: true,
+        minRows: 20,
+        min: 20,
+        describe: "chart-table amount cell",
+      },
     },
-    { path: "/feed/", label: "feed" },
+    {
+      // Round-1 judges: every feed card kept its desktop two-column row at
+      // 390, squeezing the headline into ~130px (one or two words per line)
+      // while the figure column sat `shrink-0` beside it. The magnitude pair
+      // is the whole point of the §P1-8 work, so it gets a value assertion.
+      path: "/feed/",
+      label: "feed",
+      value: {
+        rowSelector: "[data-feed-card]",
+        selector: "[data-primary-value='feed-figure']",
+        first: true,
+        minRows: 30,
+        min: 30,
+        describe: "feed headline figure",
+      },
+      pairs: {
+        rowSelector: "[data-feed-card]",
+        labelSelector: "[data-mobile-pair-label]",
+        valueSelector: "[data-mobile-pair-value]",
+        describe: "feed card headline vs figure",
+      },
+    },
+    {
+      // THE GATE'S OWN BLIND SPOT, found by round-1 visual judging: `/` was
+      // never in this sample, and the home page shipped the exact defect
+      // class this leg exists for — the "Largest FY25→26 changes" rows drew
+      // the program title straight over the dollar delta, so two of the five
+      // figures on the site's front page were unreadable at 390.
+      //
+      // (m1) could not see it (nothing overflowed the document) and (m2)
+      // could not see it either (the figure's own box was inside the
+      // viewport — the TITLE was painted across it). Hence (m3) below.
+      path: "/",
+      label: "home",
+      value: {
+        rowSelector: "[data-mover-row]",
+        selector: "[data-primary-value='mover-change']",
+        first: true,
+        minRows: 5,
+        min: 5,
+        describe: "top-mover change figure",
+      },
+      pairs: {
+        rowSelector: "[data-mover-row]",
+        labelSelector: "[data-mobile-pair-label]",
+        valueSelector: "[data-mobile-pair-value]",
+        describe: "mover title vs change figure",
+      },
+    },
     { path: `/program/${programPbl}/`, label: "program page" },
     { path: `/company/${companySlug}/`, label: "company page" },
     { path: "/methodology/", label: "methodology" },
@@ -256,6 +336,10 @@ function measureInPage({ cfg, tolerance, cap }) {
     measured: 0,
     offScreen: [],
     emptyRows: 0,
+    // (m3) label/value collisions — see the `pairs` block below.
+    pairRows: 0,
+    pairsMeasured: 0,
+    collisions: [],
   };
 
   if (out.overflowPx > tolerance) {
@@ -320,6 +404,39 @@ function measureInPage({ cfg, tolerance, cap }) {
     }
   }
 
+  // ── (m3) a label must never be painted across its own value ─────────────
+  //
+  // (m1) and (m2) both pass on text-over-text: the document does not widen
+  // and the value's own box stays inside the viewport — the label simply
+  // overflows its flex item and paints over it. That is what shipped on the
+  // home page. So: when a row declares a label/value pair, their boxes must
+  // not intersect. Rows that stack (label ABOVE value) are fine by
+  // construction, because vertical separation means no intersection.
+  const p = cfg.pairs;
+  if (p) {
+    const rows = Array.from(document.querySelectorAll(p.rowSelector));
+    out.pairRows = rows.length;
+    for (const row of rows.slice(0, cap)) {
+      const label = row.querySelector(p.labelSelector);
+      const value = row.querySelector(p.valueSelector);
+      if (!label || !value) continue;
+      out.pairsMeasured += 1;
+      const a = label.getBoundingClientRect();
+      const b = value.getBoundingClientRect();
+      if (a.width === 0 || b.width === 0) continue;
+      const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      if (overlapX > tolerance && overlapY > tolerance) {
+        out.collisions.push({
+          label: (label.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 44),
+          value: (value.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 24),
+          overlapX: Math.round(overlapX),
+          overlapY: Math.round(overlapY),
+        });
+      }
+    }
+  }
+
   return out;
 }
 
@@ -347,6 +464,8 @@ export async function runMobileLeg({ baseUrl, browser }) {
   let overflowOk = 0;
   let valuePages = 0;
   let valueElements = 0;
+  let pairPages = 0;
+  let pairElements = 0;
 
   try {
     for (const cfg of sample) {
@@ -373,6 +492,15 @@ export async function runMobileLeg({ baseUrl, browser }) {
             continue;
           }
         }
+        // Some affordances are measured in the state the page's own copy
+        // sends the reader to (see /flow/): open every <details> first.
+        if (cfg.openDetails) {
+          await page.evaluate(() => {
+            for (const d of document.querySelectorAll("details")) d.open = true;
+          });
+          await page.waitForTimeout(200);
+        }
+
         // One frame for fonts/layout to settle after hydration.
         await page.waitForTimeout(300);
 
@@ -433,6 +561,39 @@ export async function runMobileLeg({ baseUrl, browser }) {
             );
           }
         }
+
+        // ── (m3) label never painted across its value ────────────────────
+        if (cfg.pairs) {
+          const p = cfg.pairs;
+          pairPages += 1;
+          if ((m.pairRows ?? 0) < (p.minRows ?? 5)) {
+            errors.push(
+              `mobile ${cfg.path}: only ${m.pairRows ?? 0} row(s) matched "${p.rowSelector}" for the ${p.describe} check — the sample is vacuous`
+            );
+          }
+          if (m.pairsMeasured < (p.min ?? 5)) {
+            errors.push(
+              `mobile ${cfg.path}: only ${m.pairsMeasured} ${p.describe} pair(s) resolved both "${p.labelSelector}" and "${p.valueSelector}" (need >= ${p.min ?? 5}) — the sample is vacuous`
+            );
+          }
+          pairElements += m.pairsMeasured;
+          if (m.collisions.length > 0) {
+            const s = m.collisions
+              .slice(0, 3)
+              .map(
+                (c) =>
+                  `"${c.label}" overprints "${c.value}" by ${c.overlapX}x${c.overlapY}px`
+              )
+              .join(" | ");
+            errors.push(
+              `mobile ${cfg.path} (${cfg.label}): ${m.collisions.length}/${m.pairsMeasured} ${p.describe} pair(s) collide — text is painted over the money — ${s}`
+            );
+          } else if (m.pairsMeasured > 0) {
+            notes.push(
+              `mobile ${cfg.path}: ${m.pairsMeasured} ${p.describe} pair(s) with no label/value collision ✓`
+            );
+          }
+        }
       } catch (e) {
         errors.push(`mobile ${cfg.path}: navigation/measure failed: ${e.message}`);
       } finally {
@@ -445,7 +606,7 @@ export async function runMobileLeg({ baseUrl, browser }) {
   }
 
   notes.push(
-    `mobile leg: ${overflowOk}/${sample.length} pages free of page-level horizontal overflow; ${valueElements} value element(s) measured across ${valuePages} value-bearing page(s)`
+    `mobile leg: ${overflowOk}/${sample.length} pages free of page-level horizontal overflow; ${valueElements} value element(s) measured across ${valuePages} value-bearing page(s); ${pairElements} label/value pair(s) checked for collision across ${pairPages} page(s)`
   );
 
   return { pass: errors.length === 0, errors, notes };

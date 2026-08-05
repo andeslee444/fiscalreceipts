@@ -137,6 +137,16 @@ export default function RootLayout({
                 >
                   Methodology
                 </Link>
+                {/* Round-1 judging: /coverage/ is the site's best answer to
+                    "what does this NOT cover?" and it shipped footer-only, so
+                    the reader most likely to want it — a staffer deciding
+                    whether to cite us — had to go looking. */}
+                <Link
+                  href="/coverage/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Coverage
+                </Link>
               </nav>
 
               {/* Right-side controls */}

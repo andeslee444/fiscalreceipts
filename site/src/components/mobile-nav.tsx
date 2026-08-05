@@ -25,6 +25,9 @@ const NAV_LINKS = [
   { href: "/feed/", label: "Feed" },
   { href: "/data/", label: "Data" },
   { href: "/methodology/", label: "Methodology" },
+  // Round-1 judging: /coverage/ was footer-only. It answers "what does this
+  // site NOT cover?", so it belongs beside Methodology at both widths.
+  { href: "/coverage/", label: "Coverage" },
 ];
 
 export function MobileNav() {

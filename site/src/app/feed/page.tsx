@@ -200,12 +200,20 @@ function FeedCardItem({
     : {};
 
   return (
+    // PM Sprint 3 round-1 judging: this row kept its desktop two-column shape
+    // at 390. The figure column is `shrink-0` and carries the percentage, the
+    // fact-id chip, the basis chip and "why flagged?" — roughly 260px of it —
+    // which left the headline about 110px and wrapped it one or two words per
+    // line ("Strategic / Sub & / Weapons / System / Support / increased ...").
+    // Nothing was clipped, so no gate saw it; the page was simply unreadable.
+    //
+    // It stacks below `sm` and keeps the desktop row above it.
     <div
       data-feed-card=""
-      className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-muted/60 transition-colors"
+      className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 hover:bg-muted/60 transition-colors"
       {...(isNewEntrant && !companySlug ? { "data-no-company-page": "" } : {})}
     >
-      <div className="min-w-0 flex-1">
+      <div data-mobile-pair-label="" className="min-w-0 sm:flex-1">
         {/* data-source-text="headline": auto-generated prose from export pipeline —
             dollar strings (e.g. "first award FY2025, $3.1M total") are descriptive
             context, not site-computed cite-able figures.
@@ -254,9 +262,15 @@ function FeedCardItem({
           </p>
         )}
       </div>
-      <div className="shrink-0 text-right">
+      <div
+        data-mobile-pair-value=""
+        className="flex shrink-0 flex-wrap items-baseline gap-x-2 gap-y-1 sm:block sm:text-right"
+      >
         {card.figure_value !== null && (
-          <span className="text-sm font-mono font-semibold">
+          <span
+            data-primary-value="feed-figure"
+            className="text-sm font-mono font-semibold"
+          >
             {isConcentration || card.figure_units === "hhi" ? (
               <Cite
                 value={card.figure_value}
@@ -304,7 +318,7 @@ function FeedCardItem({
             )}
           </span>
         )}
-        <div className="mt-1">
+        <div className="sm:mt-1">
           {/* Slightly larger + higher-contrast than muted-foreground
               (visual-judge nit: "why?" was easy to miss). href keeps the
               /methodology/#feed-{type} anchor the feed gate greps for. */}

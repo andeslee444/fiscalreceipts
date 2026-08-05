@@ -217,7 +217,12 @@ export function CiteLegend({ className }: { className?: string }) {
       <span className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs text-amber-700">
         XML
       </span>
-      {" = zero in source XML · "}
+      {/* Round-1 judging: this read "zero in source XML", but the badge covers
+          BOTH state-B origins — zero-dollar lines AND non-zero figures whose
+          page match could not be resolved. A judge found it beside a non-zero
+          amount and read it as a contradiction. The legend now says what the
+          badge actually means (and what its own tooltip has always said). */}
+      {" = cited to the justification XML, no page highlight · "}
       <span>⁂</span>
       {" = uncited input (still counted)"}
     </p>

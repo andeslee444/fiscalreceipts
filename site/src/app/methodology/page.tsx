@@ -84,7 +84,8 @@ export default function MethodologyPage() {
   // registry, the eval set + the gate's own threshold constant). Counts the
   // exporter cannot derive honestly — the pytest/vitest totals — are stated
   // qualitatively instead of as literals that rot.
-  const buildChecks = getSiteMeta().build_checks ?? {};
+  const siteMeta = getSiteMeta();
+  const buildChecks = siteMeta.build_checks ?? {};
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
 
@@ -106,8 +107,22 @@ export default function MethodologyPage() {
       data-xml-path="site:methodology/prose"
     >
       <h1 className="text-3xl font-bold mb-2">Methodology</h1>
+      {/* Round-1 judging: this read "Last updated: 2026-06-12" — a hand-typed
+          literal that had rotted through two sprints of edits to this very
+          page, on the page that argues nothing here is hand-typed. Sprint 2
+          removed the other rotted literals here rather than re-hardcoding
+          them; same rule applies to a date nothing derives. What IS derivable
+          is the corpus stamp, so that is what it states. */}
       <p className="text-sm text-muted-foreground mb-8">
-        Last updated: 2026-06-12
+        Describes the corpus this build shipped — data as of{" "}
+        <time dateTime={siteMeta.built_at}>
+          {new Date(siteMeta.built_at).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </time>
+        .
       </p>
 
       {/* §1 ─────────────────────────────────────────────────────────── */}

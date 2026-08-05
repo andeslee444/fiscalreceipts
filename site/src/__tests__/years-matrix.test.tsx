@@ -292,7 +292,15 @@ describe("YearsMatrix — render contract", () => {
     await renderMatrix();
     const legend = screen.getByTestId("cite-legend");
     expect(legend.textContent).toContain("cited (click for source)");
-    expect(legend.textContent).toContain("zero in source XML");
+    // Round-1 judging: the legend used to read "zero in source XML", but the
+    // XML badge also marks NON-zero figures whose page match did not resolve,
+    // so a judge found it beside a live amount and read a contradiction. The
+    // legend now states what the badge means, and this asserts it can never
+    // silently narrow back to the zero-only claim.
+    expect(legend.textContent).toContain(
+      "cited to the justification XML, no page highlight",
+    );
+    expect(legend.textContent).not.toContain("zero in source XML");
     expect(legend.textContent).toContain("uncited input (still counted)");
   });
 

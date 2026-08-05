@@ -166,10 +166,22 @@ export default function DistrictIndexPage() {
               <strong className="text-foreground">
                 How these two dollar figures relate:
               </strong>{" "}
-              the right-hand total is all defense award obligations recorded
-              with a congressional district over the period. The middle figure
-              is the small slice of it we can tie back to a specific budget
-              program through the crosswalk — {_flowsCount} of{" "}
+              {/* Round-1 judging: this said "right-hand" and "middle", which
+                  is only true at desktop — below `sm` the three cards restack
+                  2-then-1, putting the grand total bottom-left and the
+                  linkable subtotal top-right. Both pointers were wrong on the
+                  page's most trust-critical paragraph. Named, not placed. */}
+              the{" "}
+              <em className="not-italic font-medium text-foreground">
+                every U.S. district
+              </em>{" "}
+              total is all defense award obligations recorded with a
+              congressional district over the period. The{" "}
+              <em className="not-italic font-medium text-foreground">
+                linkable to a budget program
+              </em>{" "}
+              figure is the small slice of it we can tie back to a specific
+              budget program through the crosswalk — {_flowsCount} of{" "}
               {_programsCount} programs — so it is a subset of the same
               universe, roughly{" "}
               {(
@@ -177,7 +189,8 @@ export default function DistrictIndexPage() {
                 100
               ).toFixed(2)}
               % of it, not a competing measurement of it. The gap is coverage,
-              not disagreement. Only the right-hand figure is fact-backed
+              not disagreement. Only the every-U.S.-district figure is
+              fact-backed
               today: the district count and the linkable subtotal are computed
               over the rows in the table below, each of which carries its own
               citation.

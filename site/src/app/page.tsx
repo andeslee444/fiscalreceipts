@@ -314,29 +314,44 @@ export default function HomePage() {
               // NOTE: the Cite (role=button) must NOT nest inside the Link —
               // axe flags nested-interactive. Title links; figure sits beside it.
               return (
+                // PM Sprint 3 round-1 judging: this row used to be a single
+                // `flex items-center justify-between` line whose Link was a
+                // blockified flex item with `min-w-0` but no `overflow-hidden`
+                // — so at 390 the inline title simply overflowed its box and
+                // printed ON TOP of the dollar delta beside it. Two of the
+                // five figures on the site's front page were unreadable.
+                //
+                // It stacks below `sm` (title above figure, so a collision is
+                // impossible by construction) and keeps the one-line desktop
+                // row above it. `min-w-0` alone was never enough; the Link now
+                // also clips, so a long title truncates instead of escaping.
                 <div
                   key={p.pe_bli}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-muted/60 transition-colors group"
+                  data-mover-row=""
+                  className="flex flex-col items-start gap-1 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 hover:bg-muted/60 transition-colors group"
                 >
                   <Link
                     href={`/program/${p.pe_bli}/`}
-                    className="min-w-0"
+                    data-mobile-pair-label=""
+                    className="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 overflow-hidden"
                   >
-                    <span className="font-mono text-xs text-muted-foreground mr-2">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {p.pe_bli}
                     </span>
-                    <span className="text-sm font-medium group-hover:underline truncate">
+                    <span className="text-sm font-medium group-hover:underline">
                       {p.title}
                     </span>
                     {/* §P1-E badge sweep: the human service name, never the
                         raw workbook token ("F"). */}
-                    <span className="ml-2 text-xs text-muted-foreground" title={`Organization code ${p.org}`}>
+                    <span className="text-xs text-muted-foreground" title={`Organization code ${p.org}`}>
                       {serviceOrgName(p.org)}
                     </span>
                   </Link>
                   <div
+                    data-mobile-pair-value=""
+                    data-primary-value="mover-change"
                     className={[
-                      "shrink-0 ml-4 text-sm font-mono font-semibold",
+                      "shrink-0 text-sm font-mono font-semibold sm:ml-4",
                       isPos ? "text-emerald-700" : "text-red-600",
                     ].join(" ")}
                   >

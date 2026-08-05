@@ -62,6 +62,10 @@ describe("buildMobileSample", () => {
       .map((s) => s.path)
       .sort();
     expect(withValue).toEqual([
+      // Added after round-1 visual judging: `/` was not in this sample at all,
+      // and it shipped the defect class the leg exists for — the mover title
+      // painted over its dollar delta.
+      "/",
       "/companies/",
       "/companies/families/",
       // Added with the coverage map (Task 6): four columns, two of them prose
@@ -69,12 +73,34 @@ describe("buildMobileSample", () => {
       "/coverage/",
       "/data/",
       "/district/",
+      // Both added after round-1 judging. /feed/ kept its desktop two-column
+      // row at 390; /flow/'s "View as table" pushed the AMOUNT column out of
+      // its own scroll box, so the chart's stated fallback carried no dollars.
+      "/feed/",
+      "/flow/",
       // Added with the §P2-1 restructure: /programs/ was overflow-only while
       // both its money columns sat off the right edge inside the table's own
       // scroll container — (m1) passes on exactly that defect.
       "/programs/",
       "/years/",
     ]);
+  });
+
+  it("checks label/value collisions where a row declares the pair", () => {
+    const withPairs = buildMobileSample(instances)
+      .filter((s) => s.pairs)
+      .map((s) => s.path)
+      .sort();
+    // (m3). Both are rows that put a long label beside a figure on one line at
+    // desktop — the shape that overprints at 390.
+    expect(withPairs).toEqual(["/", "/feed/"]);
+    for (const s of buildMobileSample(instances)) {
+      if (!s.pairs) continue;
+      expect(s.pairs.rowSelector, `${s.path} pairs.rowSelector`).toBeTruthy();
+      expect(s.pairs.labelSelector, `${s.path} pairs.labelSelector`).toBeTruthy();
+      expect(s.pairs.valueSelector, `${s.path} pairs.valueSelector`).toBeTruthy();
+      expect(s.pairs.describe, `${s.path} pairs.describe`).toBeTruthy();
+    }
   });
 
   it("gives every value assertion a non-vacuity floor and a selector", () => {
