@@ -2926,3 +2926,46 @@ are the ones behind "View as table", and both open from the keyboard.)
 
 SUITE COUNT UNCHANGED — two strengthened legs on gate 2, two new legs on gate 6.
 Still 24 gates.
+
+--------------------------------------------------------------------------------
+3. GATE 22 (flowdown) LEG f — LABEL vs NODE RECT  [STRENGTHENED]
+--------------------------------------------------------------------------------
+
+WHAT CHANGED. Leg f asserted that no two rendered LABEL boxes overlap, which
+the exporter's F3 model already guarantees. It was blind to the defect the
+review actually reported. SVG has no z-index: paint order is document order,
+so a node rect emitted after a label PAINTS OVER IT. With one group per node,
+every downstream column's rect ate ~22px out of the upstream labels crossing
+it — "Shipbuilding and Conversio…avy 47.4B", "Fleet ballistic missile ships
+1?.?B". Measured on the shipped build: 17 of the budget river's 29 labels
+clipped (spend river: 0). The collision model could not see any of it, because
+the obstacle was never another label.
+
+Leg f now also collects every rect.flow-node-rect with its position in the
+SVG's element sequence, and fails any label a fill rect painted AFTER it
+covers. Rects painted before a label are ignored — the label draws on top of
+those, which is the whole point of the fix. Zero fills found fails the leg
+(the arm cannot vacuously pass).
+
+PROOF-CAN-FAIL (verbatim) — the pre-fix flow-chart.tsx checked out from
+a0079f4 and rebuilt; everything else at HEAD:
+
+PASS: false
+matching errors: 34
+  ✗ leg f: initial render budget FY2026: node "b:c:F"'s fill rect is painted OVER label "b:total" and clips 22.0×16.0px of it — paint the fills before the labels
+  ✗ leg f: initial render budget FY2026: node "b:a:CLASSIFIED|3600F"'s fill rect is painted OVER label "b:c:F" and clips 8.7×16.0px of it — paint the fills before the labels
+  ✗ leg f: initial render budget FY2026: node "b:ba:CLASSIFIED|3080F|04"'s fill rect is painted OVER label "b:a:N|1611N" and clips 22.0×13.3px of it — paint the fills before the labels
+  ✗ leg f: initial render budget FY2026: node "b:ba:N|1611N|02"'s fill rect is painted OVER label "b:a:F|3600F" and clips 22.0×16.0px of it — paint the fills before the labels
+  ✗ leg f: initial render budget FY2026: node "b:ba:F|3600F|05"'s fill rect is painted OVER label "b:a:CLASSIFIED|3080F" and clips 22.0×5.4px of it — paint the fills before the labels
+  ✗ leg f: initial render budget FY2026: node "b:ba:F|3010F|01"'s fill rect is painted OVER label "b:a:N|1319N" and clips 22.0×6.5px of it — paint the fills before the labels
+
+MADE TO PASS (verbatim, `git checkout HEAD` restore of the component):
+
+cmp: flow-chart.tsx restored identical ✓
+=== PASS RUN (restored) ===
+PASS: true
+  • leg f: 60 rendered labels vs 95 node fills at 1440, 0 bbox collisions and 0 clipped labels (initial) ✓
+  • leg f: 60 rendered labels vs 95 node fills, 0 bbox collisions and 0 clipped labels (after FY→2017) ✓
+errors: 0
+
+SUITE COUNT UNCHANGED — leg f strengthened on gate 22. Still 24 gates.

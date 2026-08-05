@@ -53,6 +53,14 @@
  *      — never counted as two); labels are compared within their own river
  *      container only, with a ≤1px bilateral tolerance (halo/antialias
  *      slop, not a masking tolerance).
+ *      LABEL-vs-NODE-RECT (PM Sprint 3 Task 4, §P2-3): label-vs-label was
+ *      only half the picture. SVG has no z-index, so a node rect emitted
+ *      after a label PAINTS OVER IT — which is how the review saw
+ *      "Shipbuilding and Conversio…avy 47.4B": 17 of the budget river's 29
+ *      labels were clipped by a downstream column's rect, and the exporter's
+ *      collision model could not see it because the obstacle was never a
+ *      label. The leg now also asserts that no rendered label box intersects
+ *      any node fill rect BELOW it in paint order. Vacuity fails.
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
  */
@@ -614,18 +622,12 @@ export async function runFlowdownGate({ baseUrl }) {
         // Tooltip-only nodes (no lbl in the payload) contribute nothing.
         const collectLabelRects = () =>
           page.evaluate(() => {
-            const rects = [];
-            const groups = document.querySelectorAll(
-              '[data-testid="flow-chart"] [data-flow-node], [data-testid="flow-chart"] [data-flow-other]'
-            );
-            for (const g of groups) {
-              const text = g.querySelector("text");
-              if (!text) continue;
-              const r = text.getBoundingClientRect();
-              if (r.width === 0 || r.height === 0) continue;
-              const river = g.closest("[data-flow-river]");
-              rects.push({
-                id: g.getAttribute("data-node-id"),
+            const box = (el, id, extra) => {
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) return null;
+              const river = el.closest("[data-flow-river]");
+              return {
+                id,
                 river: river
                   ? `${river.getAttribute("data-flow-river")} FY${river.getAttribute("data-fy")}`
                   : "(no river container)",
@@ -633,9 +635,48 @@ export async function runFlowdownGate({ baseUrl }) {
                 top: r.top,
                 right: r.right,
                 bottom: r.bottom,
-              });
+                ...extra,
+              };
+            };
+            const rects = [];
+            const groups = document.querySelectorAll(
+              '[data-testid="flow-chart"] [data-flow-node], [data-testid="flow-chart"] [data-flow-other]'
+            );
+            // Paint order = document order. A label is only safe from a rect
+            // if that rect is emitted BEFORE it, so each box records its
+            // position in the SVG's own element sequence.
+            const order = new Map();
+            for (const svg of document.querySelectorAll(
+              '[data-testid="flow-chart"] svg'
+            )) {
+              let i = 0;
+              for (const el of svg.querySelectorAll("*")) order.set(el, i++);
             }
-            return rects;
+            for (const g of groups) {
+              const text = g.querySelector("text");
+              if (!text) continue;
+              const b = box(text, g.getAttribute("data-node-id"), {
+                paintIndex: order.get(text) ?? 0,
+              });
+              if (b) rects.push(b);
+            }
+            // Node FILL rects — the obstacles a label may not sit under.
+            const fills = [];
+            for (const el of document.querySelectorAll(
+              '[data-testid="flow-chart"] rect.flow-node-rect'
+            )) {
+              const owner = el.closest("[data-node-fill], [data-node-id]");
+              const b = box(
+                el,
+                owner
+                  ? owner.getAttribute("data-node-fill") ??
+                      owner.getAttribute("data-node-id")
+                  : "(unowned)",
+                { paintIndex: order.get(el) ?? 0 },
+              );
+              if (b) fills.push(b);
+            }
+            return { rects, fills };
           });
         const BBOX_TOL = 1; // px — halo/antialias slop, NOT a masking tolerance
         const labelCollisions = (rects, tag) => {
@@ -659,16 +700,49 @@ export async function runFlowdownGate({ baseUrl }) {
           }
           return found;
         };
+        /**
+         * A label is CLIPPED when a node fill rect painted AFTER it (later in
+         * the SVG's element order) covers part of its box. Rects painted
+         * before are harmless — the label draws on top of them.
+         */
+        const labelClips = (rects, fills, tag) => {
+          const found = [];
+          for (const a of rects) {
+            for (const f of fills) {
+              if (a.river !== f.river) continue;
+              if (a.id === f.id) continue; // a node's own fill
+              if (f.paintIndex < a.paintIndex) continue; // painted under
+              const ow = Math.min(a.right, f.right) - Math.max(a.left, f.left);
+              const oh = Math.min(a.bottom, f.bottom) - Math.max(a.top, f.top);
+              if (ow > BBOX_TOL && oh > BBOX_TOL) {
+                found.push(
+                  `leg f: ${tag} ${a.river}: node "${f.id}"'s fill rect is painted OVER label ` +
+                    `"${a.id}" and clips ${ow.toFixed(1)}×${oh.toFixed(1)}px of it — ` +
+                    `paint the fills before the labels`
+                );
+              }
+            }
+          }
+          return found;
+        };
         {
-          const rects = await collectLabelRects();
+          const { rects, fills } = await collectLabelRects();
           if (rects.length === 0) {
             errors.push("leg f: no rendered flow labels found — leg cannot vacuously pass");
+          } else if (fills.length === 0) {
+            errors.push(
+              "leg f: no rendered node fill rects found — the label-vs-rect check cannot vacuously pass"
+            );
           } else {
-            const found = labelCollisions(rects, "initial render");
+            const found = [
+              ...labelCollisions(rects, "initial render"),
+              ...labelClips(rects, fills, "initial render"),
+            ];
             errors.push(...found);
             if (found.length === 0) {
               notes.push(
-                `leg f: ${rects.length} rendered labels at 1440, 0 bbox collisions (initial) ✓`
+                `leg f: ${rects.length} rendered labels vs ${fills.length} node fills at 1440, ` +
+                  `0 bbox collisions and 0 clipped labels (initial) ✓`
               );
             }
           }
@@ -733,12 +807,16 @@ export async function runFlowdownGate({ baseUrl }) {
             notes.push(`leg e: FY selector switches the spend river (${spend.default_fy}→${targetFy}) ✓`);
             // Leg (f) again on the re-rendered spend river: the FY switch
             // remounts the SVG with a different node/label set.
-            const rects = await collectLabelRects();
-            const found = labelCollisions(rects, `after FY→${targetFy} switch`);
+            const { rects, fills } = await collectLabelRects();
+            const found = [
+              ...labelCollisions(rects, `after FY→${targetFy} switch`),
+              ...labelClips(rects, fills, `after FY→${targetFy} switch`),
+            ];
             errors.push(...found);
             if (found.length === 0) {
               notes.push(
-                `leg f: ${rects.length} rendered labels, 0 bbox collisions (after FY→${targetFy}) ✓`
+                `leg f: ${rects.length} rendered labels vs ${fills.length} node fills, ` +
+                  `0 bbox collisions and 0 clipped labels (after FY→${targetFy}) ✓`
               );
             }
           }
