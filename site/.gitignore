@@ -8,5 +8,9 @@ public/json-lite/
 public/json/
 test-results/
 public/og/
+public/feeds/
+public/rss.xml
+public/feed.xml
+public/atom.xml
 .lighthouseci/
 .vercel

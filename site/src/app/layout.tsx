@@ -8,6 +8,7 @@ import { ReceiptsProvider, ReceiptsToggle } from "@/components/receipts-toggle";
 import { CommandPalette, SearchTriggerButton } from "@/components/search/command-palette";
 import { MobileNav } from "@/components/mobile-nav";
 import { websiteJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { siteFeedLinks } from "@/lib/feeds";
 
 // Read built_at from site_meta.json at build time
 function getBuiltAt(): string {
@@ -44,6 +45,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* §P1-8 feed autodiscovery, site-wide. Rendered as elements (React
+            hoists them into <head>) rather than through metadata.alternates:
+            Next merges metadata field-by-field, so every page that declares
+            its own canonical would REPLACE the layout's alternates and
+            silently drop the subscription link. */}
+        {siteFeedLinks().map((l) => (
+          <link key={l.href} rel={l.rel} type={l.type} href={l.href} title={l.title} />
+        ))}
         {/* Site-wide WebSite + SearchAction JSON-LD */}
         <script
           type="application/ld+json"

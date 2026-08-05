@@ -31,7 +31,12 @@ function toRawUsd(value: number, units: AmountUnits): number {
  *   site/scripts/generate-og.mjs       (OG card text)
  *   src/govbudget/flow_chart.py        (label-width estimator)
  *   src/govbudget/export_site.py       (feed headline text)
- * Change one, change all five.
+ *   site/src/lib/feed-model.mjs        (RSS/Atom item text — plain Node, so
+ *                                       it cannot import this file; a vitest
+ *                                       parity sweep asserts they agree)
+ *   site/scripts/gates/datatruth.mjs   (gate 24 leg i re-formats published
+ *                                       feed values to check the display)
+ * Change one, change all seven.
  */
 const COMPACT_RUNGS = [
   { limit: 1_000_000_000_000, suffix: "T" },

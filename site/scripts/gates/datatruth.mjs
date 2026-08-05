@@ -47,6 +47,12 @@
  *      valid and the number really was 0, and the lie lived in the SENTENCE
  *      WRAPPED AROUND it. This leg reads feed prose as CLAIMS and checks them
  *      against budget_lines.parquet. See leg h's own block at the bottom.
+ *  (i) SYNDICATED feed magnitudes (Sprint 3 Task 2, §P1-8) — the same claims
+ *      leave the site a second way, as RSS/Atom files a subscriber's reader
+ *      keeps and we cannot recall. This leg re-derives every published
+ *      magnitude from the SAME corpus recompute leg h uses (one subprocess,
+ *      one derivation — the page and the feed must not be checked against two
+ *      truths) and against each endpoint's own cited fact. See leg i's block.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -62,6 +68,8 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { createRequire } from "module";
+import { feedGuid, FR_NS } from "../../src/lib/feed-model.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -453,7 +461,12 @@ export async function runDataTruthGate() {
   runFamilyMergeLeg(errors, notes);
 
   // ── leg h: feed claim-vs-data consistency (Sprint 3 Task 1b) ──────────────
-  runFeedClaimLeg(errors, notes);
+  // Returns the corpus recompute so leg i can reuse it: ONE derivation, so
+  // the page's prose and the feed's XML are checked against the same truth.
+  const feedTruth = runFeedClaimLeg(errors, notes);
+
+  // ── leg i: syndicated feed magnitudes (Sprint 3 Task 2, §P1-8) ────────────
+  runFeedFileLeg(errors, notes, feedTruth);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -1026,7 +1039,7 @@ function runFeedClaimLeg(errors, notes) {
     truth = recomputeFeedClaims();
   } catch (e) {
     errors.push(`leg h: corpus recompute failed — ${e.message}`);
-    return;
+    return null;
   }
 
   const feed = readHtml("/feed/");
@@ -1034,7 +1047,7 @@ function runFeedClaimLeg(errors, notes) {
     errors.push(
       `leg h: built /feed/ missing at ${htmlFor("/feed/")} — run npm run build`,
     );
-    return;
+    return truth;
   }
 
   const cardEls = feed.querySelectorAll("[data-feed-card]");
@@ -1044,7 +1057,7 @@ function runFeedClaimLeg(errors, notes) {
         `expected ≥${MIN_FEED_CARDS} (a feed that renders nothing cannot ` +
         `prove its claims are true)`,
     );
-    return;
+    return truth;
   }
 
   let terminationClaims = 0;
@@ -1224,4 +1237,292 @@ function runFeedClaimLeg(errors, notes) {
         `clause), ${swingClaims} yoy_swing direction+magnitude re-derived ✓`,
     );
   }
+
+  // Handed to leg i so the syndicated feed is checked against the SAME
+  // corpus recompute this leg checked the page's prose against.
+  return truth;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg i — syndicated feed magnitudes (PM-review Sprint 3 Task 2, §P1-8)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// §P1-8 had two halves. The first — no subscription at all (/rss.xml 404) —
+// is a build-output problem, checked structurally by gate 8 legs f-j. The
+// second is a TRUTH problem, and it belongs here:
+//
+//   "/feed/ items read 'Minuteman Squadrons increased 79% FY25→26' with +79%
+//    as the only figure. A +79% swing on a $50M line and on a $5B line are
+//    different stories."
+//
+// Cards now carry the dollars, and those dollars go out over RSS/Atom into
+// readers we cannot correct after the fact. So every published magnitude is
+// verified TWICE, against two independent things:
+//
+//   i1 AGAINST ITS OWN CITED FACT — each endpoint's value must equal the
+//      recorded value of the fact its /fact/{id} permalink points at, and the
+//      `display` string must be that same number formatted. A feed that
+//      prints one number and links a receipt for another is the P0-1 defect
+//      with a wider blast radius.
+//   i2 AGAINST THE CORPUS — yoy_swing endpoints are re-derived from
+//      budget_lines.parquet through the SAME recompute leg h uses (passed in,
+//      not re-run: the page's prose and the feed's XML must be checked
+//      against one truth, or they can drift apart while both "pass"). The
+//      recompute reports the (pe_bli, organization) grain the trajectory mart
+//      pivots on, which is the grain the card's pair is stated at.
+//   i3 INTERNAL COHERENCE — delta == to − from, and the pair reproduces the
+//      percentage the item's own title states. That last one is what ties
+//      this leg to leg h: leg h verified that percentage against the parquet,
+//      so a pair that reproduces it cannot be telling a different story.
+//
+// Absolute tolerance is 0.01 USD thousands (= $10) — the values are exact
+// sums of workbook cells, so this is a float-representation allowance, not a
+// rounding budget.
+
+const FEED_VALUE_TOL = 0.01;
+/** The title's percentage is printed with 0 decimals; allow rounding slack. */
+const FEED_PCT_TOL = 1.0;
+const FR_NS_URI = FR_NS;
+
+/** Recorded value of a citation, whichever tier it is. */
+function citationValue(c) {
+  if (!c) return null;
+  if (c.recorded_value !== null && c.recorded_value !== undefined) {
+    return Number(c.recorded_value);
+  }
+  if (c.amount_thousands !== null && c.amount_thousands !== undefined) {
+    return Number(c.amount_thousands);
+  }
+  return null;
+}
+
+/** The compact ladder the feed renders with (mirror of lib/format.ts). */
+function fmtCompact(value, units) {
+  const raw = value * (units === "thousands_usd" ? 1000 : 1);
+  const abs = Math.abs(raw);
+  const sign = raw < 0 ? "-" : "";
+  const rungs = [
+    [1e12, "T"],
+    [1e9, "B"],
+    [1e6, "M"],
+    [1e3, "K"],
+  ];
+  for (let i = 0; i < rungs.length; i++) {
+    const [limit, suffix] = rungs[i];
+    if (abs < limit) continue;
+    const v = abs / limit;
+    const dec = v < 10 ? 2 : 1;
+    if (i > 0 && Number(v.toFixed(dec)) >= 1000) {
+      const [ulimit, usuffix] = rungs[i - 1];
+      const uv = abs / ulimit;
+      return `${sign}$${uv.toFixed(uv < 10 ? 2 : 1)}${usuffix}`;
+    }
+    return `${sign}$${v.toFixed(dec)}${suffix}`;
+  }
+  return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
+}
+
+function runFeedFileLeg(errors, notes, truth) {
+  const rssPath = path.join(outDir, "rss.xml");
+  if (!fs.existsSync(rssPath)) {
+    errors.push(
+      `leg i: ${rssPath} was not emitted — §P1-8's headline defect was that ` +
+        `/rss.xml 404s; run npm run build (prebuild writes the feeds)`,
+    );
+    return;
+  }
+
+  let doc;
+  try {
+    const { JSDOM } = require_jsdom();
+    const dom = new JSDOM(fs.readFileSync(rssPath, "utf8"), {
+      contentType: "application/xml",
+    });
+    doc = dom.window.document;
+  } catch (e) {
+    errors.push(
+      `leg i: out/rss.xml is not well-formed XML — ${e.message} ` +
+        `(every subscriber's reader sees this file, not the page)`,
+    );
+    return;
+  }
+
+  let citations;
+  try {
+    citations = JSON.parse(
+      fs.readFileSync(path.join(jsonDir, "citations.json"), "utf8"),
+    );
+  } catch (e) {
+    errors.push(`leg i: could not read citations.json — ${e.message}`);
+    return;
+  }
+
+  const cards = JSON.parse(
+    fs.readFileSync(path.join(jsonDir, "feed.json"), "utf8"),
+  ).cards;
+  // feedGuid() is the generator's own identity function — imported, not
+  // re-implemented, so this leg cannot bind items to the wrong cards after a
+  // future change to the guid shape.
+  const cardByGuid = new Map(cards.map((c) => [feedGuid(c), c]));
+
+  const items = [...doc.getElementsByTagName("item")];
+  if (items.length < MIN_FEED_CARDS) {
+    errors.push(
+      `leg i: out/rss.xml carries only ${items.length} items (expected ` +
+        `≥${MIN_FEED_CARDS}) — a feed that publishes nothing cannot prove ` +
+        `its magnitudes`,
+    );
+    return;
+  }
+
+  let checkedPoints = 0;
+  let reDerivedSwings = 0;
+  for (const item of items) {
+    const title = item.getElementsByTagName("title")[0]?.textContent ?? "";
+    const guid = item.getElementsByTagName("guid")[0]?.textContent ?? "";
+    const card = cardByGuid.get(guid);
+    const mag = item.getElementsByTagNameNS(FR_NS_URI, "magnitude")[0];
+    if (!mag) continue; // structural absence is gate 8 leg h's error to raise
+    const units = mag.getAttribute("units");
+    const pts = new Map();
+    for (const p of mag.getElementsByTagNameNS(FR_NS_URI, "point")) {
+      pts.set(p.getAttribute("role"), {
+        value: Number(p.getAttribute("value")),
+        display: p.getAttribute("display"),
+        fact: p.getAttribute("fact"),
+        label: p.getAttribute("label"),
+      });
+    }
+
+    // ── i1: each endpoint against its own cited fact ──────────────────────
+    for (const [role, p] of pts) {
+      checkedPoints += 1;
+      const recorded = citationValue(citations[p.fact]);
+      if (recorded === null) {
+        errors.push(
+          `leg i1 (${guid}): the "${role}" endpoint cites ${p.fact}, which ` +
+            `carries no recorded value — the published dollar figure has no receipt`,
+        );
+        continue;
+      }
+      if (Math.abs(recorded - p.value) > FEED_VALUE_TOL) {
+        errors.push(
+          `leg i1 (${guid}): publishes ${p.value} for "${p.label}" but its ` +
+            `cited fact ${p.fact} records ${recorded} — the feed prints one ` +
+            `number and links the receipt for another`,
+        );
+      }
+      const expectedDisplay = fmtCompact(p.value, units);
+      if (p.display !== expectedDisplay) {
+        errors.push(
+          `leg i1 (${guid}): "${p.label}" displays ${JSON.stringify(p.display)} ` +
+            `for value ${p.value} ${units}, which formats to ` +
+            `${JSON.stringify(expectedDisplay)}`,
+        );
+      }
+    }
+
+    // ── i3: internal coherence of a pair ──────────────────────────────────
+    if (mag.getAttribute("kind") === "pair") {
+      const from = pts.get("from");
+      const to = pts.get("to");
+      const delta = pts.get("delta");
+      if (from && to && delta) {
+        if (Math.abs(to.value - from.value - delta.value) > FEED_VALUE_TOL) {
+          errors.push(
+            `leg i3 (${guid}): publishes ${from.value} → ${to.value} with a ` +
+              `stated change of ${delta.value}, but ${to.value} − ${from.value} ` +
+              `= ${to.value - from.value}`,
+          );
+        }
+      }
+      const pctInTitle = title.match(/\(([+−-])\$[^,]*,\s*([+−-])([\d.]+)%\)/);
+      if (from && to && from.value !== 0 && pctInTitle) {
+        const stated =
+          Number(pctInTitle[3]) * (pctInTitle[2] === "+" ? 1 : -1);
+        const derived = (100 * (to.value - from.value)) / from.value;
+        if (Math.abs(stated - derived) > FEED_PCT_TOL) {
+          errors.push(
+            `leg i3 (${guid}): the item states ${stated}% but its own pair ` +
+              `${from.value} → ${to.value} recomputes ${derived.toFixed(1)}% ` +
+              `— the dollars and the percentage tell different stories`,
+          );
+        }
+      }
+    }
+
+    // ── i2: yoy_swing endpoints re-derived from the corpus ────────────────
+    if (card?.event_type === "yoy_swing" && truth) {
+      const pe = card.pe_bli;
+      const corpus = truth[pe];
+      if (!corpus) {
+        errors.push(
+          `leg i2 (${guid}): publishes a FY25→FY26 pair for a PE with no ` +
+            `budget lines in the corpus`,
+        );
+        continue;
+      }
+      // Prefer the (pe_bli, organization) grain — the grain the trajectory
+      // mart pivots on and the card's pair is stated at.
+      const scope =
+        (card.organization && corpus.by_org?.[card.organization]) || corpus;
+      const from = pts.get("from");
+      const to = pts.get("to");
+      const pairs = [
+        ["from", from, scope.fy2025_total, "FY2025"],
+        ["to", to, scope.fy2026_total, "FY2026"],
+      ];
+      let ok = true;
+      for (const [role, p, measured, label] of pairs) {
+        if (!p) continue;
+        if (!measured?.present) {
+          errors.push(
+            `leg i2 (${guid}): publishes a ${label} figure of ${p.value} but ` +
+              `the corpus holds no ${label} row for ${pe}` +
+              `${card.organization ? `/${card.organization}` : ""} — a ` +
+              `published dollar figure with nothing behind it`,
+          );
+          ok = false;
+          continue;
+        }
+        if (Math.abs(measured.value - p.value) > FEED_VALUE_TOL) {
+          errors.push(
+            `leg i2 (${guid}): publishes ${label} ${p.value} for the "${role}" ` +
+              `endpoint, the corpus recomputes ${measured.value} from ` +
+              `budget_lines.parquet`,
+          );
+          ok = false;
+        }
+      }
+      if (ok && from && to) reDerivedSwings += 1;
+    }
+  }
+
+  // Non-vacuity: the yoy_swing re-derivation is the substantive half of this
+  // leg (i1 would still pass if every card carried a self-consistent lie
+  // minted from the same wrong source).
+  if (reDerivedSwings === 0) {
+    errors.push(
+      `leg i: no published yoy_swing pair could be re-derived from ` +
+        `budget_lines.parquet — the leg is vacuous and would not catch a regression`,
+    );
+  }
+
+  if (errors.every((e) => !e.startsWith("leg i"))) {
+    notes.push(
+      `leg i: ${items.length} syndicated items — ${checkedPoints} magnitude ` +
+        `endpoints match their cited facts, ${reDerivedSwings} yoy_swing pairs ` +
+        `re-derived from budget_lines.parquet (leg h's recompute), deltas and ` +
+        `stated percentages internally coherent ✓`,
+    );
+  }
+}
+
+/**
+ * jsdom is a devDependency used here only to PARSE XML with a real parser.
+ * Loaded through createRequire so this ESM gate does not pay for it on the
+ * paths that never reach leg i.
+ */
+function require_jsdom() {
+  return createRequire(import.meta.url)("jsdom");
 }

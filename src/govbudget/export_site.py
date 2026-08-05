@@ -5820,10 +5820,20 @@ def _rva_gap_rows(con, cited_fact_ids: set) -> list[dict]:
     top-N (N ≤ 100) drawn from the CITED set is globally honest.
     request_vs_request diffs are NOT fully minted (dead PEs) and never
     surface here.
+
+    Each row also carries the TWO SIDES the gap is a gap between
+    (§P1-8 magnitudes): from_value = the PB(N) request for FY N,
+    to_value = the PB(N+2) book's FY N actual TOA — with each side's own
+    grain fact id, derived exactly as _build_decade_citation_rows derives it
+    (single-source grains reuse the workbook fact; multi-source grains use
+    the derived decade sum). Sides whose fact does not resolve carry null and
+    the site renders honest state C — a gap of "$1.2B" with no statement of
+    what it is a gap between is the same defect as a percentage with no base.
     """
     try:
         rows = con.execute(
-            "select pe_bli, from_edition, to_edition, from_fy, delta"
+            "select pe_bli, from_edition, to_edition, from_fy, delta,"
+            " from_value, to_value, from_amount_type, to_amount_type"
             " from fct_book_diff"
             " where diff_kind = 'request_vs_actuals'"
             "   and delta is not null and delta <> 0"
@@ -5831,13 +5841,31 @@ def _rva_gap_rows(con, cited_fact_ids: set) -> list[dict]:
         ).fetchall()
     except Exception:
         return []
+    # Grain fact ids for the two sides, keyed (pe_bli, edition, amount_type).
+    # Same rule as the decade citation tier: n_source_rows == 1 reuses the
+    # workbook fact recorded on the series row; otherwise the derived sum.
+    grain_fid: dict[tuple, str] = {}
+    try:
+        for s_pe, s_ed, s_at, s_n, s_fid in con.execute(
+            "select pe_bli, edition_year, amount_type, n_source_rows,"
+            " source_fact_id from fct_decade_series"
+        ).fetchall():
+            grain_fid[(s_pe, int(s_ed), s_at)] = (
+                s_fid if (s_n == 1 and s_fid)
+                else fact_id_derived("decade", f"{s_pe}|{int(s_ed)}", s_at)
+            )
+    except Exception:
+        grain_fid = {}
     out: list[dict] = []
-    for pe_bli, from_ed, to_ed, from_fy, delta in rows:
+    for (pe_bli, from_ed, to_ed, from_fy, delta,
+         from_value, to_value, from_at, to_at) in rows:
         fid = fact_id_derived(
             "book_diff", f"{pe_bli}|{from_ed}|{to_ed}", "request_vs_actuals"
         )
         if fid not in cited_fact_ids:
             continue  # unminted/uncited diffs (out-of-scope PEs) never render
+        from_fid = grain_fid.get((pe_bli, int(from_ed), from_at))
+        to_fid = grain_fid.get((pe_bli, int(to_ed), to_at))
         out.append({
             "pe_bli": pe_bli,
             "from_edition": int(from_ed),
@@ -5845,6 +5873,10 @@ def _rva_gap_rows(con, cited_fact_ids: set) -> list[dict]:
             "fy": int(from_fy),  # rva compares the same FY on both sides
             "delta": float(delta),
             "fid": fid,
+            "from_value": float(from_value) if from_value is not None else None,
+            "to_value": float(to_value) if to_value is not None else None,
+            "from_fid": from_fid if from_fid in cited_fact_ids else None,
+            "to_fid": to_fid if to_fid in cited_fact_ids else None,
         })
     return out
 
@@ -5944,6 +5976,25 @@ def _emit_feed_sidecar(
 
     _WHY_BASE = "/methodology/#feed"
 
+    def _cited(fid: str | None) -> str | None:
+        """A fact id only travels on a card when it actually resolves.
+
+        Everything else degrades to null and the site renders honest state C —
+        never a permalink that 404s in the citation panel.
+        """
+        return fid if (fid and fid in cited_fact_ids) else None
+
+    def _side(label: str, fy, value, fact_id: str | None) -> dict | None:
+        """One endpoint of a magnitude, with its own receipt."""
+        if value is None:
+            return None
+        return {
+            "label": label,
+            "fy": int(fy) if fy is not None else None,
+            "value": float(value),
+            "fact_id": fact_id,
+        }
+
     cards = []
     for (event_type, pe_bli, organization, family_key,
          headline_value, comparison_value, pct_change,
@@ -5955,6 +6006,15 @@ def _emit_feed_sidecar(
         program_title = ""
         if pe_bli:
             program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
+        # magnitude (§P1-8): the DOLLARS the event is about. A percentage
+        # without a base ("increased 79%") is the exact failure this site
+        # exists to correct — 79% of a $50M line and 79% of a $5B line are
+        # different stories. Every card carries one:
+        #   kind='pair'   — two real endpoints (from → to) plus their delta,
+        #                   each side cited independently.
+        #   kind='single' — the event has ONE dollar magnitude (an award
+        #                   total); we say so rather than invent an endpoint.
+        magnitude: dict | None = None
         if event_type == "yoy_swing":
             direction = "increased" if (pct_change or 0) >= 0 else "decreased"
             pct_str = f"{abs(pct_change or 0):.0f}%"
@@ -5963,12 +6023,42 @@ def _emit_feed_sidecar(
             figure_value = pct_change
             figure_units = "pct_change"
             figure_fact_id = None
-            if pe_bli and organization:
+            traj_key = f"{pe_bli}|{organization}" if (pe_bli and organization) else None
+            if traj_key:
                 # Reuse trajectory key pattern: the sidecar key is pe_bli|org
-                traj_key = f"{pe_bli}|{organization}"
                 fid_cand = fact_id_derived("trajectory", traj_key, "fy2526_change")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # The $X → $Y the percentage is a percentage OF. Both endpoints
+            # are the fct_budget_trajectory pivots the mart itself computed
+            # pct_change from (headline_value = fy2026_total,
+            # comparison_value = fy2025_total) — the SAME two figures gate 24
+            # leg h re-derives from budget_lines.parquet, so the pair and the
+            # prose can never tell two different stories. Their derived
+            # citations are already minted per trajectory row.
+            magnitude = {
+                "kind": "pair",
+                "units": "thousands_usd",
+                "from": _side(
+                    "FY2025", 2025, comparison_value,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2025_total") if traj_key else None),
+                ),
+                "to": _side(
+                    "FY2026", 2026, headline_value,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2026_total") if traj_key else None),
+                ),
+                "delta": _side(
+                    "change", 2026,
+                    (headline_value - comparison_value)
+                    if (headline_value is not None and comparison_value is not None)
+                    else None,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2526_change") if traj_key else None),
+                ),
+                "pct_change": float(pct_change) if pct_change is not None else None,
+            }
 
         elif event_type == "zeroed_fy2026":
             # headline_value is the FY25 money; comparison_value is the FY2026
@@ -5980,11 +6070,38 @@ def _emit_feed_sidecar(
             figure_value = headline_value  # last known (FY25)
             figure_units = "thousands_usd"
             figure_fact_id = None
-            if pe_bli and organization:
-                traj_key = f"{pe_bli}|{organization}"
+            traj_key = f"{pe_bli}|{organization}" if (pe_bli and organization) else None
+            if traj_key:
                 fid_cand = fact_id_derived("trajectory", traj_key, "fy2025_total")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # A genuine zeroing IS a pair: real FY25 money → a literal FY26
+            # zero. The class is empty on the live corpus (the mart now
+            # demands positive evidence of a zero), but if one ever appears
+            # its card states both endpoints, not just the survivor.
+            magnitude = {
+                "kind": "pair",
+                "units": "thousands_usd",
+                "from": _side(
+                    "FY2025", 2025, headline_value,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2025_total") if traj_key else None),
+                ),
+                "to": _side(
+                    "FY2026", 2026, comparison_value,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2026_total") if traj_key else None),
+                ),
+                "delta": _side(
+                    "change", 2026,
+                    (comparison_value - headline_value)
+                    if (headline_value is not None and comparison_value is not None)
+                    else None,
+                    _cited(fact_id_derived(
+                        "trajectory", traj_key, "fy2526_change") if traj_key else None),
+                ),
+                "pct_change": None,
+            }
 
         elif event_type == "concentration_shift":
             headline_text = f"{program_title or pe_bli} award concentration HHI={headline_value:.0f} ({fiscal_year})"
@@ -5995,6 +6112,27 @@ def _emit_feed_sidecar(
                 fid_cand = fact_id_derived("feed", f"concentration_shift|{pe_bli}|{fiscal_year}", "hhi")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # An HHI is a shape, not a size — "HHI 3,200" says nothing about
+            # whether $4M or $4B is concentrated. comparison_value is the
+            # matched obligation dollars the index was computed over; that is
+            # this event's one honest magnitude (there is no second endpoint,
+            # so the card says single rather than manufacturing a base).
+            magnitude = {
+                "kind": "single",
+                "units": "dollars",
+                "from": None,
+                "to": _side(
+                    f"FY{int(fiscal_year)} matched obligations"
+                    if fiscal_year is not None else "matched obligations",
+                    fiscal_year, comparison_value,
+                    _cited(fact_id_derived(
+                        "feed", f"concentration_shift|{pe_bli}|{fiscal_year}",
+                        "matched_dollars",
+                    ) if (pe_bli and fiscal_year is not None) else None),
+                ),
+                "delta": None,
+                "pct_change": None,
+            }
 
         elif event_type == "new_entrant":
             fk_display = family_key or "Unknown"
@@ -6010,6 +6148,24 @@ def _emit_feed_sidecar(
                 fid_cand = fact_id_derived("feed", f"new_entrant|{family_key}", "total_obligation")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # One magnitude: cumulative obligations since the first award.
+            # There is no prior-period figure to pair it against — that is
+            # what "new entrant" means — so the card states single.
+            magnitude = {
+                "kind": "single",
+                "units": "dollars",
+                "from": None,
+                "to": _side(
+                    f"total obligations since FY{fy_str}"
+                    if fy_str != "recent" else "total obligations",
+                    None, headline_value,
+                    _cited(fact_id_derived(
+                        "feed", f"new_entrant|{family_key}", "total_obligation",
+                    ) if family_key else None),
+                ),
+                "delta": None,
+                "pct_change": None,
+            }
 
         else:
             headline_text = f"{event_type}: {pe_bli or family_key}"
@@ -6043,6 +6199,8 @@ def _emit_feed_sidecar(
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli else None,
             **figure_basis,
+            # §P1-8 dollar magnitude — see the `magnitude` comment above.
+            "magnitude": magnitude,
             # Resolved program title (null for family_key-based cards and
             # unresolvable pe_blis). The headline already leads with this
             # title — the field exists so the site can key on it without
@@ -6082,6 +6240,26 @@ def _emit_feed_sidecar(
             "fy": g["fy"],
             "measure": "change",
             "edition": g["to_edition"],
+            # §P1-8: the gap is a gap BETWEEN two figures — state both.
+            # "$1.2B above the request" is unreadable without knowing whether
+            # the request was $1.3B or $13B.
+            "magnitude": {
+                "kind": "pair",
+                "units": "thousands_usd",
+                "from": _side(
+                    f"PB{g['from_edition']} FY{g['fy']} request",
+                    g["fy"], g["from_value"], g["from_fid"],
+                ),
+                "to": _side(
+                    f"PB{g['to_edition']} FY{g['fy']} actual TOA",
+                    g["fy"], g["to_value"], g["to_fid"],
+                ),
+                "delta": _side("gap", g["fy"], g["delta"], g["fid"]),
+                "pct_change": (
+                    100.0 * g["delta"] / g["from_value"]
+                    if g.get("from_value") else None
+                ),
+            },
             "title": program_title or None,
             "why_url": f"{_WHY_BASE}-request_vs_actuals_gap",
         })

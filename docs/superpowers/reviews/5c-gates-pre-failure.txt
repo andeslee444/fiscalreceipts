@@ -2432,3 +2432,137 @@ non-vacuity burden and the leg FAILS ITSELF if it re-derives no yoy_swing
 claim ("the leg is vacuous and would not catch a regression"). The 99 re-derived
 swings are what keep leg h awake while zeroed_fy2026 is empty; the moment a
 genuine zeroing appears, h1 re-arms on it automatically.
+
+
+================================================================================
+gate 8 "feed" legs f-j  +  gate 24 "datatruth" leg i — SYNDICATED FEEDS
+PM-review Sprint 3 Task 2 (spec §P1-8) — recorded 2026-08-04
+================================================================================
+
+WHAT WAS MISSING. §P1-8, the highest-ROI item in the review:
+
+    "/feed/ items read 'Minuteman Squadrons increased 79% FY25→26' with +79%
+     as the only figure. A +79% swing on a $50M line and on a $5B line are
+     different stories; percent-only hides which one this is. Show both:
+     $X → $Y (+79%).
+     And a page called Feed has no subscription. /rss.xml → 404,
+     /feed.xml → 404."
+
+Both halves shipped in this task:
+  - Every feed card now carries a `magnitude` payload emitted by
+    export_site.py — kind='pair' (from → to → delta, each with its OWN cited
+    fact id) for yoy_swing / zeroed_fy2026 / request_vs_actuals_gap, and
+    kind='single' (one dollar magnitude) for concentration_shift /
+    new_entrant, which honestly have no second endpoint. 218 cards, 446 cited
+    endpoints, 0 uncited.
+  - 373 real XML files written at prebuild into public/ (copied to out/ by
+    next build): /rss.xml, /feed.xml (alias), /atom.xml, 4 per-event-type
+    feeds, 123 per-program watch feeds, 58 per-company watch feeds — 186
+    feeds × RSS+Atom + the alias.
+
+WHY GATES. A feed is a published claim in an envelope we cannot recall: once
+a subscriber's reader has an item, there is no correcting it. The legs split
+along structure vs truth.
+
+  gate 8 (feed) — STRUCTURE
+    f  every expected file exists and is WELL-FORMED XML, parsed with a real
+       XML parser (jsdom, which throws on malformed input) rather than
+       matched with a regex. Titles in this corpus really do contain `&`,
+       `<` and `—`.
+    g  the whole feed's item count EQUALS the card count, and the
+       per-event-type feeds partition it exactly.
+    h  every item carries a dollar magnitude with ≥1 endpoint, each endpoint
+       citing a fact that resolves; a /fact/{id} receipt permalink whose id
+       resolves; and a parseable pubDate.
+    i  guids are unique within every feed AND reproducible from their card by
+       feedGuid() — i.e. derived from the event's identity, not its position,
+       so a rebuild does not re-notify every subscriber of every item.
+    j  every <link rel="alternate" type="application/…+xml"> on the sampled
+       built pages points at a file that exists.
+
+  gate 24 (datatruth) leg i — TRUTH
+    i1 each published endpoint equals the recorded value of the fact its own
+       permalink points at, and its `display` string is that value formatted.
+    i2 yoy_swing endpoints are re-derived from budget_lines.parquet through
+       the SAME recompute leg h uses — passed in, not re-run, so the page's
+       prose and the feed's XML cannot be checked against two different
+       truths and drift apart while both "pass". (feedclaims-recompute.py
+       gained a `by_org` block so the comparison binds at the
+       (pe_bli, organization) grain fct_budget_trajectory pivots on, which is
+       the grain a card's pair is stated at.)
+    i3 delta == to − from, and the pair reproduces the percentage the item's
+       own title states — the link back to leg h, which already verified that
+       percentage against the parquet.
+
+PROOF-CAN-FAIL (verbatim). Each defect injected into the BUILT artifacts one
+at a time, gate run, artifact restored. Every case is a real failure mode: an
+un-escaped ampersand, a missing file, a dropped item, a magnitude-less item,
+a duplicated guid, autodiscovery pointing at nothing, and a published figure
+edited away from its receipt.
+
+### malformed — leg f — a raw & in a title (the classic un-escaped serializer bug)
+gate verdict: FAIL
+matching errors: 2
+  ✗ feed leg f: /rss.xml is NOT well-formed XML — about:blank:17:308: undefined entity. (titles in this corpus contain &, < and — ; escaping is not optional)
+  ✗ feed leg h: no items were inspected — the leg is vacuous
+
+### missingfile — leg f — a per-program watch feed file goes missing
+gate verdict: FAIL
+matching errors: 2
+  ✗ feed leg f: /feeds/program/0101213F.xml was not emitted — the /feed/ page and its <link rel="alternate"> advertise it (§P1-8 was a 404 on exactly this)
+  ✗ feed leg j: /program/0101213F/ autodiscovers https://fiscalreceipts.com/feeds/program/0101213F.xml, which was not emitted — a feed reader following it gets the §P1-8 404
+
+### dropitem — leg g — one <item> silently dropped from the whole feed
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg g: /rss.xml carries 217 <item> but feed.json holds 218 cards — the feed is silently dropping (or inventing) events
+
+### nomagnitude — leg h — an item published with no dollar magnitude (the §P1-8 defect)
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg h: item "Minuteman Squadrons increased 79% FY25→26 — FY2025 $59.3M → FY2026 $106.0M (+$46" carries no magnitude — "+79%" with no dollars is the §P1-8 defect
+
+### dupguid — leg i — two items sharing one guid
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg i: /rss.xml repeats guid urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026 — a reader would silently drop one of two real events
+
+### deadlink — leg j — autodiscovery pointing at a feed that was not emitted
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg j: /feed/ autodiscovers https://fiscalreceipts.com/feeds/does-not-exist.xml, which was not emitted — a feed reader following it gets the §P1-8 404
+
+### wrongvalue — gate 24 leg i — a published magnitude edited away from its cited fact and the corpus
+gate verdict: FAIL
+matching errors: 5
+  ✗ leg i1 (urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026): publishes 118640 for "FY2025" but its cited fact 17180cc83bbb4706 records 59320 — the feed prints one number and links the receipt for another
+  ✗ leg i1 (urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026): "FY2025" displays "$59.3M" for value 118640 thousands_usd, which formats to "$118.6M"
+  ✗ leg i3 (urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026): publishes 118640 → 106032 with a stated change of 46712, but 106032 − 118640 = -12608
+  ✗ leg i3 (urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026): the item states 79% but its own pair 118640 → 106032 recomputes -10.6% — the dollars and the percentage tell different stories
+  ✗ leg i2 (urn:fiscalreceipts:feed:yoy_swing:0101213F/F:2026:2026): publishes FY2025 118640 for the "from" endpoint, the corpus recomputes 59320 from budget_lines.parquet
+
+A LEG THAT CAUGHT ITS OWN WIRING. Leg i's non-vacuity guard ("no published
+yoy_swing pair could be re-derived … the leg is vacuous") fired on its first
+real run: runFeedClaimLeg had no trailing `return truth`, so leg i received
+undefined and silently skipped every corpus comparison while i1 and i3 still
+passed. The guard is the reason that shipped as a FAIL instead of a green
+gate checking nothing.
+
+MADE TO PASS (verbatim, unmodified build):
+
+  gate 8 feed verdict: PASS
+    • leg f: 373 feed files parsed as XML across 186 feeds (whole + per event type + 123 program + 58 company watch feeds) ✓
+    • leg g: whole feed = 218 items = card count; the 4 event-type feeds partition it exactly ✓
+    • leg h: 218 items each carry a dollar magnitude (446 cited endpoints), a resolving /fact/{id} receipt, and a real pubDate ✓
+    • leg i: 4076 feed ids across 373 files — unique within each feed and every one reproducible from its card ✓
+    • leg j: 38 <link rel="alternate"> feed URLs across 9 sampled pages all resolve to emitted files ✓
+  errors: 0
+
+  gate 24 datatruth verdict: PASS
+    • leg h: 218 feed cards checked as CLAIMS against budget_lines.parquet — 0 termination claim(s) (each requiring a literal FY2026 zero, 0 with a money clause), 99 yoy_swing direction+magnitude re-derived ✓
+    • leg i: 218 syndicated items — 446 magnitude endpoints match their cited facts, 99 yoy_swing pairs re-derived from budget_lines.parquet (leg h's recompute), deltas and stated percentages internally coherent ✓
+  errors: 0
+
+SUITE COUNT UNCHANGED. Both legs extend existing gates (8 "feed" owns the
+feed surface; 24 "datatruth" already owns "does the feed tell the truth" via
+leg h). The suite stays at 24 gates.

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/prepare-assets.mjs && node scripts/generate-og.mjs",
+    "prebuild": "node scripts/prepare-assets.mjs && node scripts/generate-og.mjs && node scripts/generate-feeds.mjs",
     "build": "next build",
     "postbuild": "node scripts/write-build-meta.mjs && pagefind --site out",
     "lint": "eslint",

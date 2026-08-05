@@ -13,22 +13,10 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { Reveal } from "@/components/reveal";
+import { FeedMagnitudeLine } from "@/components/feed-magnitude";
+import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
+import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
 import type { FeedCard } from "@/lib/data";
-
-export const metadata: Metadata = {
-  title: "Anomaly Feed",
-  description:
-    "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
-  alternates: { canonical: `${SITE_URL}/feed/` },
-  openGraph: {
-    title: `Anomaly Feed — ${SITE_NAME}`,
-    description:
-      "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
-    url: `${SITE_URL}/feed/`,
-    siteName: SITE_NAME,
-    images: coreOgImages("feed"),
-  },
-};
 
 // Event type metadata: display name, description, methodology anchor.
 const EVENT_META: Record<
@@ -94,6 +82,72 @@ const EVENT_ORDER = [
   "concentration_shift",
   "new_entrant",
 ];
+
+const EVENT_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(EVENT_META).map(([k, v]) => [k, v.label]),
+);
+
+export const metadata: Metadata = {
+  title: "Anomaly Feed",
+  description:
+    "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
+  alternates: {
+    canonical: `${SITE_URL}/feed/`,
+    // §P1-8: autodiscovery for the whole feed AND for each event type this
+    // page renders a section for — the feeds scripts/generate-feeds.mjs
+    // wrote, resolved through the same membership rules.
+    types: feedPageAlternates(EVENT_LABELS),
+  },
+  openGraph: {
+    title: `Anomaly Feed — ${SITE_NAME}`,
+    description:
+      "Automated signals from the defense budget: year-over-year swings, zeroed programs, award concentration shifts, and new contractors.",
+    url: `${SITE_URL}/feed/`,
+    siteName: SITE_NAME,
+    images: coreOgImages("feed"),
+  },
+};
+
+/**
+ * The subscribe affordance. Small by design — it sits beside a heading, not
+ * as a banner — but present on the whole feed and on every section, because
+ * §P1-8's point is that a reader on this beat wants the section, not the
+ * firehose.
+ */
+function SubscribeLinks({
+  paths,
+  label,
+  className,
+}: {
+  paths: { rss: string; atom: string };
+  label: string;
+  className?: string;
+}) {
+  const urls = feedLinks(paths);
+  return (
+    <span
+      data-feed-subscribe=""
+      className={["text-xs text-muted-foreground", className].filter(Boolean).join(" ")}
+    >
+      Subscribe:{" "}
+      <a
+        href={urls.rss}
+        className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+        title={`${label} — RSS`}
+      >
+        RSS
+      </a>
+      {" · "}
+      <a
+        href={urls.atom}
+        className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+        title={`${label} — Atom`}
+      >
+        Atom
+      </a>
+    </span>
+  );
+}
 
 function groupByEventType(cards: FeedCard[]): Map<string, FeedCard[]> {
   const map = new Map<string, FeedCard[]>();
@@ -165,6 +219,10 @@ function FeedCardItem({
           data-source-text="headline"
           data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? "unknown"}`}
         >{feedDisplayHeadline(card)}</p>
+        {/* §P1-8: the dollars the headline's percentage is a percentage OF.
+            Kept OUTSIDE the [data-source-text] headline — computed figures
+            may not nest inside source text (render-static leg a0). */}
+        <FeedMagnitudeLine card={card} />
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">
@@ -278,10 +336,16 @@ export default function FeedPage() {
   // linking those would 404 in the static export (G1 dead-link contract).
   const programPeBlis = new Set(getProgramPeBlis());
 
-  // Collect all fact_ids on this page
+  // Collect all fact_ids on this page — including every magnitude endpoint,
+  // whose citation must be in the page's slice or the panel opens empty.
   const pageFactIds: string[] = [];
   for (const card of cards) {
     if (card.figure_fact_id) pageFactIds.push(card.figure_fact_id);
+    const m = card.magnitude;
+    if (!m) continue;
+    for (const p of [m.from, m.to, m.delta]) {
+      if (p?.fact_id) pageFactIds.push(p.fact_id);
+    }
   }
   const citationsSlice = collectCitations(pageFactIds);
 
@@ -295,9 +359,20 @@ export default function FeedPage() {
           <h1 className="text-3xl font-bold mb-2">Anomaly Feed</h1>
           <p className="text-muted-foreground">
             {total}{" "}automated signals across{" "}{grouped.size}{" "}event types.
+            Every item states the dollars it is about, not just a percentage.
             Figures carry citations — click an underlined value to inspect the
             source. &ldquo;Why flagged?&rdquo; links explain each signal type and its
             threshold.
+          </p>
+          <p className="mt-2">
+            <SubscribeLinks
+              paths={{ rss: WHOLE_FEED_RSS, atom: WHOLE_FEED_ATOM }}
+              label="Whole anomaly feed"
+            />
+            <span className="ml-2 text-xs text-muted-foreground">
+              Items are dated to the corpus build — the budget books carry no
+              per-event timestamp.
+            </span>
           </p>
         </div>
 
@@ -337,6 +412,12 @@ export default function FeedPage() {
                       appropriations not covered by the R-1/P-1 rollups).
                     </p>
                   )}
+                  <p className="mt-1">
+                    <SubscribeLinks
+                      paths={eventTypeFeedPaths(etype)}
+                      label={meta.label}
+                    />
+                  </p>
                 </div>
                 {/* Card list — staggered once-reveal on scroll (Task 11);
                     the Reveal wrapper divs are the divide-y children. */}

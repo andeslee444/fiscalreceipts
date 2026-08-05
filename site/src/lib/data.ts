@@ -1151,6 +1151,36 @@ export interface FeedCard {
   fy: number | null;
   measure: string | null;
   edition: number | null;
+  /**
+   * §P1-8 — the DOLLARS the event is about, emitted by the exporter for every
+   * card. "increased 79%" is not a story until the reader knows 79% of what:
+   * a 79% swing on a $50M line and on a $5B line are different events.
+   *
+   * kind='pair'   two real endpoints (from → to) plus their delta.
+   * kind='single' one dollar magnitude (an award total) — stated as such
+   *               rather than paired against an invented base.
+   * Each point carries its OWN cited fact id, so the base, the new figure and
+   * the change each open their own receipt.
+   */
+  magnitude: FeedMagnitude | null;
+}
+
+export interface FeedMagnitudePoint {
+  label: string;
+  fy: number | null;
+  value: number;
+  /** Cited derived/workbook fact id — null renders honest state C. */
+  fact_id: string | null;
+}
+
+export interface FeedMagnitude {
+  kind: "pair" | "single";
+  /** Card-side units vocabulary: 'thousands_usd' | 'dollars'. */
+  units: string;
+  from: FeedMagnitudePoint | null;
+  to: FeedMagnitudePoint | null;
+  delta: FeedMagnitudePoint | null;
+  pct_change: number | null;
 }
 
 export interface FeedSidecar {

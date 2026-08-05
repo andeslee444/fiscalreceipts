@@ -41,6 +41,7 @@ import { dossierFactIds, isFactCitation } from "@/lib/dossier";
 import { whatItIsCard, type WhatItIsCard } from "@/lib/what-it-is";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { programOgImages } from "@/lib/og";
+import { programFeedAlternates, programFeedPaths, feedLinks } from "@/lib/feeds";
 import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -152,6 +153,12 @@ export async function generateMetadata({
     description,
     alternates: {
       canonical: canonicalUrl,
+      // §P1-8 watch feed: advertised only when this program actually has
+      // feed events (programFeedAlternates returns null otherwise), so the
+      // page never autodiscovers a file the build did not write.
+      ...(programFeedAlternates(peBli, program.title)
+        ? { types: programFeedAlternates(peBli, program.title)! }
+        : {}),
     },
     // noindex policy (§2a): pages whose only content is zero-valued figure
     // lines are built (linkable) but not indexed — same policy as
@@ -402,6 +409,30 @@ export default async function ProgramPage({
           tier={tier}
         />
       </div>
+
+      {/* §P1-8 watch feed — rendered only when this program has feed events,
+          the same rule the metadata autodiscovery uses. "The site that tells
+          you when a program's budget moves, with the receipt attached." */}
+      {programFeedAlternates(peBli, program.title) && (
+        <p data-feed-subscribe="" className="mt-2 text-xs text-muted-foreground">
+          Watch this program:{" "}
+          <a
+            href={feedLinks(programFeedPaths(peBli)).rss}
+            className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+            title={`${program.title} watch feed — RSS`}
+          >
+            RSS
+          </a>
+          {" \u00b7 "}
+          <a
+            href={feedLinks(programFeedPaths(peBli)).atom}
+            className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+            title={`${program.title} watch feed — Atom`}
+          >
+            Atom
+          </a>
+        </p>
+      )}
 
       {/* ═══ Canonical section skeleton (Phase 5F §2d) — every program page,
           both tiers, renders these thirteen data-section blocks in this order;

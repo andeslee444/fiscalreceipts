@@ -29,10 +29,19 @@ Output (amounts in USD thousands, matching the workbook grain):
     "fy2026_total":   {"present": false, "value": null},
     "fy2026_any":     {"present": false, "value": null},
     "fy2025_total":   {"present": true,  "value": 293145.0},
-    "fy2025_enacted": {"present": true,  "value": 293145.0}
+    "fy2025_enacted": {"present": true,  "value": 293145.0},
+    "by_org": {"DARPA": {"fy2026_total": {...}, ...}}
   },
   ...
 }
+
+`by_org` (added for gate 24 leg i, PM-review Sprint 3 Task 2) reports the SAME
+measures at the (pe_bli, organization) grain that fct_budget_trajectory pivots
+on — which is the grain a yoy_swing feed card's dollar pair is stated at. On
+the current corpus every yoy_swing PE is single-org, so the PE-level and
+per-org figures coincide exactly; emitting both means the check stays exact if
+a program element ever carries money under two organizations, instead of
+comparing a per-org claim against a whole-PE sum.
 """
 
 import json
@@ -86,10 +95,31 @@ def main() -> int:
                 "value": float(v) if v is not None else None,
             }
 
+    # ---- (pe_bli, organization) grain -------------------------------------
+    # The grain fct_budget_trajectory pivots on, and the grain a yoy_swing
+    # card's dollar pair is stated at. Same predicates, one more GROUP BY key.
+    for name, predicate in MEASURES.items():
+        rows = duckdb.sql(
+            f"select pe_bli, organization, sum(amount_thousands) as v"
+            f" from {src}"
+            f" where fiscal_year = {EDITION} and {DETAIL_ONLY} and {predicate}"
+            f"   and pe_bli is not null and organization is not null"
+            f" group by pe_bli, organization"
+        ).fetchall()
+        for pe_bli, org, v in rows:
+            by_org = out.setdefault(pe_bli, {}).setdefault("by_org", {})
+            by_org.setdefault(org, {})[name] = {
+                "present": True,
+                "value": float(v) if v is not None else None,
+            }
+
     # Normalize: every PE carries every measure key, absent ones explicit.
     for pe in out.values():
         for name in MEASURES:
             pe.setdefault(name, {"present": False, "value": None})
+        for org_measures in pe.get("by_org", {}).values():
+            for name in MEASURES:
+                org_measures.setdefault(name, {"present": False, "value": None})
 
     if not out:
         print(json.dumps({"__error__": "recompute produced no rows"}))

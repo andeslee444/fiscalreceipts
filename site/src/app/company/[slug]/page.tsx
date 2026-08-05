@@ -11,6 +11,7 @@ import {
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { companyOgImages } from "@/lib/og";
+import { companyFeedAlternates, companyFeedPaths, feedLinks } from "@/lib/feeds";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -34,10 +35,19 @@ export async function generateMetadata({
   if (!entity) return { title: "Company Not Found" };
 
   const canonical = `${SITE_URL}/company/${slug}/`;
+  // §P1-8 watchlist feed — advertised only when the program elements this
+  // page links to actually have events (null otherwise), so autodiscovery
+  // never points at a file the build did not write.
+  const feedTypes = companyFeedAlternates(
+    slug,
+    entity.display_name,
+    getEntityDetails(slug),
+    entity.family_key,
+  );
   return {
     title: entity.display_name,
     description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
-    alternates: { canonical },
+    alternates: { canonical, ...(feedTypes ? { types: feedTypes } : {}) },
     openGraph: {
       title: `${entity.display_name} — Defense Contracts & Lobbying | ${SITE_NAME}`,
       description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
@@ -116,6 +126,29 @@ export default async function CompanyPage({
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">{entity.display_name}</h1>
+        {/* §P1-8 watchlist feed — budget signals for the program elements
+            THIS PAGE links to. Same membership rule as the autodiscovery
+            link and the generated file. */}
+        {companyFeedAlternates(slug, entity.display_name, details, entity.family_key) && (
+          <p data-feed-subscribe="" className="mb-2 text-xs text-muted-foreground">
+            Watch this company&rsquo;s linked programs:{" "}
+            <a
+              href={feedLinks(companyFeedPaths(slug)).rss}
+              className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+              title={`${entity.display_name} watchlist — RSS`}
+            >
+              RSS
+            </a>
+            {" \u00b7 "}
+            <a
+              href={feedLinks(companyFeedPaths(slug)).atom}
+              className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
+              title={`${entity.display_name} watchlist — Atom`}
+            >
+              Atom
+            </a>
+          </p>
+        )}
         {/* Explicit {" "} separators between the meta spans: without them the
             rendered text abuts ("…identifiersTotal obligations: $135.4Bmedium…")
             and Pagefind excerpts concatenate the fragments (§P1-4 snippet bug). */}
