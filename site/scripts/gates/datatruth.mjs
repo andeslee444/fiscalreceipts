@@ -58,12 +58,14 @@
  *      the site renders. "/years/ … 1741 of 1741 programs" and "/company/…
  *      LDA Filing Mentions (1296)" shipped ungrouped beside a corpus
  *      statement reading "1,741 of them": two notations for one number reads
- *      as two numbers. The leg walks every built page's TEXT NODES (element
- *      by element, so nothing glues across a tag boundary), skips quoted
- *      source text — J-book prose is the source's notation, not ours — and
- *      fails any bare 4+-digit integer sitting next to a count noun or on
- *      either side of "N of M". Fiscal years are excluded by value. See leg
- *      j's own block at the bottom.
+ *      as two numbers. The unit of scanning is the LEAF ELEMENT — an element
+ *      with no element children — because React splits `{n} filings` into
+ *      three text nodes separated by `<!-- -->` comments (a per-text-node
+ *      scan is blind to exactly the shape this leg exists to catch), while a
+ *      whole-subtree scan glues "CO-05" and "10 programs" from sibling cells
+ *      into a fictitious "0510 programs". Quoted source text is skipped —
+ *      J-book prose carries the source's notation, not ours — and fiscal
+ *      years are excluded by value. See leg j's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -499,12 +501,12 @@ const COUNT_NOUNS =
   "awards?|award records?|facts?|datasets?|rows?|records?|signals?|pages?|" +
   "citations?|line items?|event types?|entries|elements?";
 const BARE_BEFORE_NOUN = new RegExp(
-  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+(?:of\s+[\d,]+\s+)?(?:${COUNT_NOUNS})`,
+  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+(?:of\s+[\d,]+\s+)?(?:${COUNT_NOUNS})\b`,
   "gi",
 );
 /** "N of M" in either position — the /years/ filter summary's exact shape. */
 const BARE_IN_OF = new RegExp(
-  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+of\s+|(?:of\s+)(?<![\d,.])(\d{4,})(?![\d,.])`,
+  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+of\s+|(?:\bof\s+)(?<![\d,.])(\d{4,})(?![\d,.])`,
   "gi",
 );
 
@@ -536,11 +538,12 @@ function runCountNotationLeg(errors, notes) {
       el.remove();
     }
     const rel = path.relative(outDir, file);
-    // Per TEXT NODE: "CO-05" + "10 programs" in adjacent spans must not read
-    // as "0510 programs".
-    const walk = (node) => {
-      if (node.nodeType === 3) {
-        const t = node.rawText;
+    // Per LEAF ELEMENT — see the leg's header for why neither a per-text-node
+    // nor a per-subtree scan works.
+    const walk = (el) => {
+      const childEls = el.childNodes.filter((c) => c.nodeType === 1);
+      if (childEls.length === 0) {
+        const t = el.text;
         if (!t || !/\d/.test(t)) return;
         textNodes += 1;
         if (/\d,\d{3}/.test(t)) groupedSeen += 1;
@@ -563,9 +566,9 @@ function runCountNotationLeg(errors, notes) {
             });
           }
         }
-      } else if (node.childNodes) {
-        for (const c of node.childNodes) walk(c);
+        return;
       }
+      for (const c of childEls) walk(c);
     };
     walk(root);
     if (failures.length > 60) break;

@@ -197,7 +197,14 @@ function CombinedArithmetic({ row }: { row: CompanyRow }) {
     toMillions(row.totalObligation, "USD"),
   );
   return (
-    <details className="mt-1.5 text-xs" data-testid="company-addends" open={inline}>
+    <details
+      className="mt-1.5 text-xs"
+      data-testid="company-addends"
+      // The strip is the WHOLE disclosure — the equation and its closing
+      // arithmetic are siblings, so gate 2 leg (dv) must scope to the parent.
+      data-derivation="company-addends"
+      open={inline}
+    >
       <summary className="cursor-pointer text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground">
         {`The ${row.members.length} figures that add to this total`}
       </summary>
@@ -209,7 +216,6 @@ function CombinedArithmetic({ row }: { row: CompanyRow }) {
           nowrap; the name is allowed to wrap ahead of it. */}
       <p
         data-testid="company-arithmetic"
-        data-derivation="company-addends"
         className="mt-1 rounded-md border border-border bg-muted/30 px-2.5 py-2 leading-6 break-words"
       >
         {row.members.map((m, i) => (

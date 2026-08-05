@@ -1089,23 +1089,30 @@ export async function runYearsMatrixGate({ baseUrl }) {
         }
 
         // §P1-5: the filter summary is client-rendered, so gate 24's sweep of
-        // the built HTML cannot see it.
-        const summary = await page
-          .locator('[data-testid="years-filter"]')
-          .locator("xpath=following::span[1]")
-          .textContent()
-          .catch(() => null);
-        const body = (await page.locator("body").textContent()) ?? "";
-        const bare = body.match(/(?<![\d,.])(\d{4,})(?![\d,.])\s+(?:of\s+[\d,]+\s+)?programs\b/);
-        if (bare && !(Number(bare[1]) >= 1900 && Number(bare[1]) <= 2099)) {
+        // the built HTML cannot see it at all.
+        const countEl = page.locator('[data-testid="years-count"]');
+        if ((await countEl.count()) === 0) {
           errors.push(
-            `leg h (§P1-5): /years/ renders the ungrouped count "${bare[0]}" — ` +
-              `write ${Number(bare[1]).toLocaleString("en-US")}`,
+            'leg h (§P1-5): no [data-testid="years-count"] on /years/ — the ' +
+              "count-notation check has nothing to read",
           );
         } else {
-          notes.push(
-            `leg h: /years/ count notation grouped${summary ? ` ("${summary.replace(/\s+/g, " ").trim()}")` : ""} ✓ (§P1-5)`,
-          );
+          const summary = ((await countEl.first().textContent()) ?? "")
+            .replace(/\s+/g, " ")
+            .trim();
+          const bare = summary.match(/(?<![\d,.])(\d{4,})(?![\d,.])/);
+          if (bare) {
+            errors.push(
+              `leg h (§P1-5): /years/ renders the ungrouped count "${summary}" — ` +
+                `write ${Number(bare[1]).toLocaleString("en-US")}, not ${bare[1]}`,
+            );
+          } else if (!/\d/.test(summary)) {
+            errors.push(
+              `leg h (§P1-5): the /years/ count summary carries no number at all ("${summary}")`,
+            );
+          } else {
+            notes.push(`leg h: /years/ count notation grouped ("${summary}") ✓ (§P1-5)`);
+          }
         }
       }
 

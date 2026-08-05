@@ -650,7 +650,10 @@ export function YearsMatrix() {
           aria-label="Filter programs by name, PE/BLI, or organization"
           className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <span
+          data-testid="years-count"
+          className="text-xs tabular-nums text-muted-foreground"
+        >
           {formatCount(nVisible)} of {formatCount(allEntries.length)} programs
         </span>
         {/* §P2-2: the grid now OPENS on a column sort, so the organization
