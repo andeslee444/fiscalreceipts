@@ -5971,8 +5971,13 @@ def _emit_feed_sidecar(
                     figure_fact_id = fid_cand
 
         elif event_type == "zeroed_fy2026":
-            headline_text = f"{program_title or pe_bli} zeroed out in FY2026 (had {_fmt_thousands(comparison_value)} in FY25)"
-            figure_value = comparison_value  # last known (FY25)
+            # headline_value is the FY25 money; comparison_value is the FY2026
+            # zero. This printed comparison_value and so rendered $7.07B of
+            # real FY25 money as "$0" on all 87 shipped cards — destroying the
+            # card's entire point, since the magnitude IS the news
+            # (PM-review Sprint 3 Task 1b, Defect B).
+            headline_text = f"{program_title or pe_bli} zeroed out in FY2026 (had {_fmt_thousands(headline_value)} in FY25)"
+            figure_value = headline_value  # last known (FY25)
             figure_units = "thousands_usd"
             figure_fact_id = None
             if pe_bli and organization:

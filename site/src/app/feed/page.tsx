@@ -43,8 +43,14 @@ const EVENT_META: Record<
   },
   zeroed_fy2026: {
     label: "Zeroed in FY2026",
+    // Sprint 3 Task 1b: this section previously claimed a zeroing whenever a
+    // program was ABSENT from the FY2026 extract — 87 cards, none of them a
+    // real zero. The predicate now demands a literal zero in the workbooks,
+    // which currently matches nothing, so the section renders only when a
+    // genuine termination appears. The description must therefore describe
+    // the evidence bar, not the old absence heuristic.
     description:
-      "Programs that had FY2025 funding but show no FY2026 budget request. These may have been cancelled, merged, or transferred.",
+      "Programs the FY2026 budget workbooks record as literally zero after carrying FY2025 funding. Programs merely absent from the FY2026 columns are excluded — a blank cell usually means the program element was renumbered, not cancelled.",
     anchorId: "feed-zeroed_fy2026",
   },
   concentration_shift: {

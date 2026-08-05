@@ -786,13 +786,53 @@ export default function MethodologyPage() {
           </div>
           <div id="feed-zeroed_fy2026">
             <h3 className="font-semibold text-foreground mb-1">
-              Zeroed in FY2026 (zeroed_fy2026)
+              Zeroed in FY2026 (zeroed_fy2026){" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                — withdrawn, currently empty
+              </span>
             </h3>
             <p>
-              Programs that had a positive FY2025 total but show zero or null
-              in FY2026. The figure shown is the last known FY2025 amount. No
-              FY2025 floor — any positive amount qualifies. Programs may be
-              cancelled, transferred, or restructured into another line item.
+              Programs the budget workbooks record as{" "}
+              <strong>literally zero</strong> in FY2026 after carrying positive
+              FY2025 money. The figure shown is the last known FY2025 amount.
+              No FY2025 floor — any positive amount qualifies.{" "}
+              <strong>
+                This section currently shows nothing, and that is the correct
+                result.
+              </strong>
+            </p>
+            <p className="mt-2">
+              <strong>What we got wrong.</strong> Until August 2026 this
+              section published 87 cards reading &ldquo;
+              <em>&lt;program&gt;</em> zeroed out in FY2026 (had $0 in
+              FY25)&rdquo;. Both halves of that sentence were false. The
+              underlying query treated a program&rsquo;s{" "}
+              <em>absence</em> from our FY2026 extract as a zero, and none of
+              the 87 was a genuine zero. Separately, a formatting bug printed
+              the FY2025 amount as &ldquo;$0&rdquo; on every card, hiding
+              $7.07B of real FY2025 money.
+            </p>
+            <p className="mt-2">
+              <strong>Why absence is not zero.</strong> In DoD&rsquo;s
+              published R-1/P-1 workbooks a blank FY2026 cell and a{" "}
+              <code className="text-xs bg-muted px-1 rounded">0</code> cell mean
+              different things, and both appear in the same file. Our loader
+              preserves that distinction. A blank usually means the line is not
+              carried in the FY2026 columns — most often because the program
+              element was <em>renumbered</em>, not cancelled. DARPA is the
+              clearest case: the FY2026 request retired 14 of its old program
+              elements and introduced 8 new ones, while DARPA&rsquo;s total
+              request <em>rose</em> to $4.92B from $4.15B. Calling{" "}
+              <em>Defense Research Sciences</em> &ldquo;zeroed out&rdquo; described
+              a renumbering as a cancellation.
+            </p>
+            <p className="mt-2">
+              The query now requires positive evidence: the corpus must hold a
+              FY2026 figure for the program and that figure must be zero. On
+              the current corpus nothing meets that bar, so the section is
+              empty rather than populated with inference. A gate
+              (24h) fails the build if any feed card claims a program was
+              zeroed in a year for which we hold no figure, or a non-zero one.
             </p>
           </div>
           <div id="feed-concentration_shift">

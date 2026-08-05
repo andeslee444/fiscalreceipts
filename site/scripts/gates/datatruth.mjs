@@ -444,6 +444,9 @@ export async function runDataTruthGate() {
   // ── leg g: curated entity-family merge (§P1-3) ────────────────────────────
   runFamilyMergeLeg(errors, notes);
 
+  // ── leg h: feed claim-vs-data consistency (Sprint 3 Task 1b) ──────────────
+  runFeedClaimLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -908,6 +911,301 @@ function runFamilyMergeLeg(errors, notes) {
     notes.push(
       `leg g: all ${events.length} curated sources render as external ` +
         `references on /companies/families/ ✓`,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg h — feed claim-vs-data consistency (PM-review Sprint 3 Task 1b)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// /feed/ published 87 cards reading "<program> zeroed out in FY2026 (had $0 in
+// FY25)". Both halves were false. 0601101E "Defense Research Sciences" had
+// $293.1M in FY2025, and the corpus holds no FY2026 figure for it at all —
+// the mart's `coalesce(fy2026_total, 0) = 0` turned absence into a zeroing.
+//
+// WHY every existing gate missed it. Gates 23/24 verify that a DISPLAYED
+// NUMBER matches its CITED FACT. Here the citation was valid and the number
+// really was 0 — the falsehood lived in the SENTENCE WRAPPED AROUND the
+// number. No gate read the prose as a claim. This leg does: it parses what
+// each card ASSERTS and checks that assertion against the corpus.
+//
+// The rule, stated as narrowly as it can honestly be stated:
+//
+//   A card may claim a program was zeroed/ended/eliminated in FY N only when
+//   the corpus holds a figure for that PE in FY N and that figure is zero.
+//   Absence of a figure FAILS. A non-zero figure FAILS.
+//
+// Absence failing is the load-bearing half — it is the exact live defect, and
+// it is why this leg cannot be satisfied by a mart that simply coalesces.
+//
+// Truth comes from budget_lines.parquet via feedclaims-recompute.py: the raw
+// workbook grain, upstream of fct_feed_events (which generated the claims) and
+// of feed.json (which rendered them). The leg reads RENDERED HTML, never the
+// sidecar, so a page cannot pass by shipping correct JSON alongside false prose.
+//
+// h2 additionally re-derives every yoy_swing card's stated direction and
+// percentage from the same parquet. That is what keeps this leg non-vacuous
+// while the zeroed class is empty, and it is a direct guard against the
+// second defect of Sprint 3 Task 1b — the exporter formatting the WRONG
+// variable (comparison_value instead of headline_value), a swap that no test
+// caught because both variables were legitimately present on the row.
+
+/** Claims of termination. Group 1 = the fiscal year asserted. */
+const TERMINATION_RE =
+  /\b(?:zeroed out|zeroed|ended|eliminated|terminated|cancelled|canceled)\b[^.]*?\bFY\s?(\d{4})\b/i;
+
+/** "had $293.1M in FY25" — the money clause on a termination card. */
+const HAD_MONEY_RE = /\bhad\s+(\$[\d.]+[KMBT]?)\s+in\s+FY\s?(\d{2,4})\b/i;
+
+/** "increased 3053%" / "decreased 64%" — yoy_swing's assertion. */
+const SWING_RE = /\b(increased|decreased)\s+([\d.]+)%/i;
+
+/** data-xml-path="site:feed/{event_type}/{pe_bli|family_key}" */
+const XMLPATH_RE = /^site:feed\/([^/]+)\/(.+)$/;
+
+/** A feed with fewer cards than this is a parse failure, not a pass. */
+const MIN_FEED_CARDS = 30;
+
+/** yoy percentages are rendered with 0 decimals; allow rounding slack. */
+const PCT_TOLERANCE = 1.0;
+
+/** Independent corpus recompute (DuckDB over budget_lines.parquet). */
+function recomputeFeedClaims() {
+  const script = path.join(__dirname, "feedclaims-recompute.py");
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 300000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    throw new Error(
+      `feedclaims-recompute.py failed (status ${res.status}): ${
+        (res.stderr || "").slice(-800)
+      }`,
+    );
+  }
+  const parsed = JSON.parse(res.stdout);
+  if (parsed.__error__) throw new Error(parsed.__error__);
+  return parsed;
+}
+
+/** "$293.1M" → 293100 (USD thousands), mirroring export_site._fmt_thousands. */
+function parseCompactThousands(s) {
+  const m = String(s).match(/^\$([\d.]+)([KMBT]?)$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const mult = { "": 1e-3, K: 1, M: 1e3, B: 1e6, T: 1e9 }[m[2]];
+  return n * mult;
+}
+
+/** Render a thousands figure the way the exporter would, for comparison. */
+function fmtThousands(v) {
+  const raw = Number(v) * 1000;
+  const a = Math.abs(raw);
+  if (a >= 1e12) return `$${(raw / 1e12).toFixed(1)}T`;
+  if (a >= 1e9) return `$${(raw / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `$${(raw / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `$${(raw / 1e3).toFixed(1)}K`;
+  return `$${raw.toFixed(0)}`;
+}
+
+function runFeedClaimLeg(errors, notes) {
+  let truth;
+  try {
+    truth = recomputeFeedClaims();
+  } catch (e) {
+    errors.push(`leg h: corpus recompute failed — ${e.message}`);
+    return;
+  }
+
+  const feed = readHtml("/feed/");
+  if (!feed) {
+    errors.push(
+      `leg h: built /feed/ missing at ${htmlFor("/feed/")} — run npm run build`,
+    );
+    return;
+  }
+
+  const cardEls = feed.querySelectorAll("[data-feed-card]");
+  if (cardEls.length < MIN_FEED_CARDS) {
+    errors.push(
+      `leg h (/feed/): only ${cardEls.length} [data-feed-card] elements — ` +
+        `expected ≥${MIN_FEED_CARDS} (a feed that renders nothing cannot ` +
+        `prove its claims are true)`,
+    );
+    return;
+  }
+
+  let terminationClaims = 0;
+  let swingClaims = 0;
+  let moneyClaims = 0;
+
+  for (const el of cardEls) {
+    const headEl = el.querySelector('[data-source-text="headline"]');
+    if (!headEl) {
+      errors.push(
+        `leg h (/feed/): a card renders no [data-source-text="headline"] — ` +
+          `every claim must be readable as prose to be checkable`,
+      );
+      continue;
+    }
+    const headline = norm(headEl.text);
+    const xmlPath = headEl.getAttribute("data-xml-path") ?? "";
+    const pathMatch = xmlPath.match(XMLPATH_RE);
+    if (!pathMatch) {
+      errors.push(
+        `leg h (/feed/): card headline carries unparseable data-xml-path ` +
+          `${JSON.stringify(xmlPath)} — the gate cannot bind the claim to a program`,
+      );
+      continue;
+    }
+    const [, eventType, entity] = pathMatch;
+    const corpus = truth[entity];
+
+    // ── h1: termination claims need positive evidence ────────────────────
+    const term = headline.match(TERMINATION_RE);
+    if (term) {
+      terminationClaims += 1;
+      const fy = term[1];
+      if (fy !== "2026") {
+        errors.push(
+          `leg h1 (/feed/ ${entity}): claims termination in FY${fy}, but the ` +
+            `corpus recompute only covers FY2026 — extend ` +
+            `feedclaims-recompute.py before publishing this claim: ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      if (!corpus) {
+        errors.push(
+          `leg h1 (/feed/ ${entity}): claims "${fy} zeroed" but the corpus ` +
+            `holds NO budget lines for this PE at all — a claim about a ` +
+            `program we have no data for: ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      const fy26 = corpus.fy2026_total ?? { present: false, value: null };
+      const fy26any = corpus.fy2026_any ?? { present: false, value: null };
+      if (!fy26.present && !fy26any.present) {
+        errors.push(
+          `leg h1 (/feed/ ${entity}): claims the program was zeroed in FY${fy}, ` +
+            `but the corpus holds NO FY2026 figure for it — absence of ` +
+            `evidence is not evidence of zero (the source workbook cell is ` +
+            `BLANK, which commonly means a program-element restructuring, ` +
+            `not a termination): ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      const observed = fy26.present ? fy26.value : fy26any.value;
+      if (observed !== 0) {
+        errors.push(
+          `leg h1 (/feed/ ${entity}): claims the program was zeroed in FY${fy}, ` +
+            `but the corpus holds ${fmtThousands(observed)} of FY2026 money ` +
+            `for it: ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      // ── money clause on a termination card ──────────────────────────────
+      const money = headline.match(HAD_MONEY_RE);
+      if (money) {
+        moneyClaims += 1;
+        const stated = parseCompactThousands(money[1]);
+        const yr = money[2].length === 2 ? `20${money[2]}` : money[2];
+        if (yr !== "2025") {
+          errors.push(
+            `leg h1 (/feed/ ${entity}): money clause names FY${yr}, outside ` +
+              `the recompute's FY2025 coverage: ${JSON.stringify(headline)}`,
+          );
+          continue;
+        }
+        const base = corpus.fy2025_total?.present
+          ? corpus.fy2025_total
+          : corpus.fy2025_enacted ?? { present: false, value: null };
+        if (!base.present) {
+          errors.push(
+            `leg h1 (/feed/ ${entity}): states it "had ${money[1]} in FY${money[2]}" ` +
+              `but the corpus holds no FY2025 figure for it: ${JSON.stringify(headline)}`,
+          );
+          continue;
+        }
+        if (stated === null || fmtThousands(base.value) !== money[1]) {
+          errors.push(
+            `leg h1 (/feed/ ${entity}): states it "had ${money[1]} in FY${money[2]}", ` +
+              `the corpus says ${fmtThousands(base.value)} — the sentence is ` +
+              `formatting the wrong variable: ${JSON.stringify(headline)}`,
+          );
+        }
+      }
+      continue;
+    }
+
+    // ── h2: yoy_swing direction + magnitude re-derived from the parquet ───
+    if (eventType === "yoy_swing") {
+      const swing = headline.match(SWING_RE);
+      if (!swing) continue;
+      if (!corpus) {
+        errors.push(
+          `leg h2 (/feed/ ${entity}): yoy_swing card for a PE with no budget ` +
+            `lines in the corpus: ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      const fy26 = corpus.fy2026_total ?? { present: false, value: null };
+      const fy25 = corpus.fy2025_total?.present
+        ? corpus.fy2025_total
+        : corpus.fy2025_enacted ?? { present: false, value: null };
+      if (!fy26.present || !fy25.present || !fy25.value) {
+        errors.push(
+          `leg h2 (/feed/ ${entity}): asserts a FY25→FY26 change but the ` +
+            `corpus is missing one side (FY2025 present=${fy25.present}, ` +
+            `FY2026 present=${fy26.present}) — a change between a number and ` +
+            `a blank is not a change: ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      swingClaims += 1;
+      const pct = (100.0 * (fy26.value - fy25.value)) / fy25.value;
+      const statedDir = swing[1].toLowerCase();
+      const actualDir = pct >= 0 ? "increased" : "decreased";
+      if (statedDir !== actualDir) {
+        errors.push(
+          `leg h2 (/feed/ ${entity}): says "${statedDir}" but the corpus shows ` +
+            `${actualDir} (FY25 ${fmtThousands(fy25.value)} → FY26 ` +
+            `${fmtThousands(fy26.value)}): ${JSON.stringify(headline)}`,
+        );
+        continue;
+      }
+      const statedPct = Number(swing[2]);
+      if (Math.abs(statedPct - Math.abs(pct)) > PCT_TOLERANCE) {
+        errors.push(
+          `leg h2 (/feed/ ${entity}): states ${statedPct}% but the corpus ` +
+            `recomputes ${Math.abs(pct).toFixed(1)}% (FY25 ` +
+            `${fmtThousands(fy25.value)} → FY26 ${fmtThousands(fy26.value)}): ` +
+            `${JSON.stringify(headline)}`,
+        );
+      }
+    }
+  }
+
+  // Non-vacuity: h2 must actually have checked something, or the leg is
+  // asleep. h1 legitimately checks zero cards while the zeroed class is empty
+  // (that IS the fix), so it is not required to be non-empty — h2 carries the
+  // non-vacuity burden.
+  if (swingClaims === 0) {
+    errors.push(
+      `leg h: no yoy_swing claim could be re-derived from the corpus — the ` +
+        `leg is vacuous and would not catch a regression`,
+    );
+  }
+
+  if (errors.every((e) => !e.startsWith("leg h"))) {
+    notes.push(
+      `leg h: ${cardEls.length} feed cards checked as CLAIMS against ` +
+        `budget_lines.parquet — ${terminationClaims} termination claim(s) ` +
+        `(each requiring a literal FY2026 zero, ${moneyClaims} with a money ` +
+        `clause), ${swingClaims} yoy_swing direction+magnitude re-derived ✓`,
     );
   }
 }

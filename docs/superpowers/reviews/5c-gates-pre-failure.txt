@@ -2320,3 +2320,98 @@ existed): with the hooks absent the leg refuses to pass on an empty set —
   ✗ mobile /data/: only 15 dataset row-count / citation / scope cell(s) matched "[data-dataset-rowcount], [data-primary-value='scope'], [data-primary-value='citation']" (need >= 30) — the sample is vacuous
   ✗ mobile /district/: only 0 Linkable-dollars figure(s) matched "td[data-primary-value="linkable-dollars"] [data-amount]" (need >= 50) — the sample is vacuous
   ✗ mobile /district/: 106 row(s) carry no Linkable-dollars figure ("td[data-primary-value="linkable-dollars"] [data-amount]") — every row must state its value
+
+
+================================================================================
+gate 24 "datatruth" leg h — feed claim-vs-data consistency
+PM-review Sprint 3 Task 1b — recorded 2026-08-04
+================================================================================
+
+WHAT WAS WRONG. /feed/ published 87 cards of event_type `zeroed_fy2026` reading
+
+    "Defense Research Sciences zeroed out in FY2026 (had $0 in FY25)"
+
+BOTH halves were false, from two stacked defects.
+
+  Defect A — the mart conflated ABSENT with ZERO. fct_feed_events' `zeroed`
+  CTE filtered `coalesce(fy2026_total, 0) = 0` against fct_budget_trajectory.
+  Measured split of the 87 live rows: 87 NULL, 0 genuinely zero. Not one card
+  described a real zeroing.
+
+  Defect B — the exporter formatted the WRONG variable. The mart correctly set
+  headline_value = fy2025_total and comparison_value = 0; export_site.py
+  printed comparison_value as the FY25 amount, rendering $7.07B of real FY2025
+  money as "$0" across all 87 cards.
+
+GROUND TRUTH (verified against the primary source, not inferred). In DoD's own
+FY2026 display workbooks a BLANK cell and a `0` cell mean different things, and
+both appear in the same file — data/raw_docs/fy2026/dod/:
+
+  r1_display.xlsx  0601101E "Defense Research Sciences"
+      FY 2024 Actuals 280494 | FY 2025 Enacted 293145 | FY 2025 Total 293145
+      FY 2026 Disc Request '' | FY 2026 Total ''            <- BLANK
+  p1_display.xlsx  E00700 "E-7"
+      FY 2025 Total 200000 | FY 2026 Total 0                <- LITERAL 0
+
+rollup_loader.py preserves the distinction (it skips None/'' cells and stores
+literal 0s; the corpus holds 64,719 explicit zero rows, of which exactly 2 are
+fy_2026_total = 0). So absence is a statement about our extract, not about the
+budget. A blank most often means the program element was RENUMBERED: PB2026
+retired 14 DARPA program elements and introduced 8 new ones while DARPA's
+FY2026 request ROSE to $4.92B from $4.15B in FY2025.
+
+WHY EVERY EXISTING GATE MISSED IT. Gates 23/24 verify that a DISPLAYED NUMBER
+matches its CITED FACT. Here the citation was valid and the number really was
+0 — the falsehood lived in the SENTENCE WRAPPED AROUND the number. No gate
+read prose as a claim. Leg h does.
+
+THE LEG. For every built feed card, parse what it ASSERTS and check that
+assertion against budget_lines.parquet (the raw workbook grain, upstream of
+both fct_feed_events and feed.json, so the check is not tautological), via
+feedclaims-recompute.py which reports `present` separately from `value`:
+  h1 a card may claim a program was zeroed/ended/eliminated in FY N only when
+     the corpus HOLDS a figure for that PE in FY N and that figure is zero.
+     ABSENCE FAILS (the load-bearing half). A non-zero figure fails. Any
+     "had $X in FY25" clause must equal the corpus FY2025 figure (Defect B).
+  h2 every yoy_swing card's stated direction and percentage re-derived from
+     the same parquet — this carries the leg's non-vacuity while the zeroed
+     class is empty, and guards the same wrong-variable class of defect.
+
+PROOF-CAN-FAIL — the leg run against the UNMODIFIED pre-fix build (site/out/
+as of commit 03806e6, before any Task 1b change). No scratch mutation needed;
+the defect was live on real bad data. 87 errors, one per false card:
+
+  leg h errors: 87
+  ✗ leg h1 (/feed/ 0203802A): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Other Missile Product Improvement Programs zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0204228N): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Surface Support zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0205412A): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Environmental Quality Technology - Operational System Dev zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0205620N): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Surface ASW Combat System Integration zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0207227F): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Combat Rescue - Pararescue zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0207418F): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "AFSPECWAR - TACP zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0207444F): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Tactical Air Control Party-Mod zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 0207448F): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "C2ISR Tactical Data Link zeroed out in FY2026 (had $0 in FY25)"
+  ... (79 more, one per false card) ...
+  ✗ leg h1 (/feed/ 1105219BB): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "MQ-9 UAV zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 1203176F): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Combat Survivor Evader Locator zeroed out in FY2026 (had $0 in FY25)"
+  ✗ leg h1 (/feed/ 1203873SF): claims the program was zeroed in FY2026, but the corpus holds NO FY2026 figure for it — absence of evidence is not evidence of zero (the source workbook cell is BLANK, which commonly means a program-element restructuring, not a termination): "Ballistic Missile Defense Radars zeroed out in FY2026 (had $0 in FY25)"
+  leg h verdict: FAIL
+
+Note h2 raised ZERO errors in the same run: all 99 yoy_swing cards re-derived
+correctly from the parquet, so the 87 failures are specific to the false
+claims and the leg is not simply noisy.
+
+THE FIX.
+  - dbt/models/marts/fct_feed_events.sql: `zeroed` now requires positive
+    evidence — `fy2026_total is not null and fy2026_total = 0`. On the live
+    corpus this emits ZERO rows, which is the correct result: the only two
+    literal fy_2026_total = 0 rows (E00700, MGBSD0) carry no fy_2025_total, so
+    neither can support a "had $X in FY25" claim. The event class is empty
+    rather than populated by inference. The sibling yoy_swing CTE's
+    unreachable `coalesce(...,0)`s were replaced with explicit NOT NULL
+    filters (a no-op on data — 0 of 99 rows affected — removing the same trap).
+  - src/govbudget/export_site.py: the zeroed template now formats
+    headline_value, not comparison_value.
+  Feed total: 305 -> 218 cards. 87 false claims withdrawn; no card invented.
+
+MADE TO PASS (verbatim, fresh export + rebuild at the fix commit):
+
