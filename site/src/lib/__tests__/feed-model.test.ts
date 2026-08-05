@@ -19,6 +19,9 @@ import {
   publicFactId,
   buildItem,
   buildFeedTargets,
+  linkageBases,
+  linkageText,
+  companyWatchPeBlis,
   renderRss,
   renderAtom,
   eventTypeFeedPaths,
@@ -284,6 +287,10 @@ const targets = () =>
         slug: "acme-sons-robotics",
         displayName: "Acme & Sons Robotics",
         peBlis: new Set(["0101213F"]),
+        awardPeBlis: new Set<string>(),
+        mentionPeBlis: new Set(["0101213F"]),
+        awardLinked: 0,
+        mentionLinked: 1,
         familyKey: "ACME & SONS <ROBOTICS>",
       },
     ],
@@ -347,6 +354,48 @@ describe("buildFeedTargets", () => {
       "yoy_swing",
     ]);
     expect(co.description).toMatch(/not a claim that the company holds/i);
+  });
+
+  it("labels every company-feed item with the linkage that put it there", () => {
+    // A feed item is read DETACHED from its channel — aggregated into a
+    // river, forwarded, quoted alone. The channel says "147 by lobbying
+    // mention, 4 by award crosswalk"; an item carrying only "Basis: toa"
+    // reads as if the company owns the program. Almost every item a reader
+    // sees rests on the weaker basis, so the item states its own.
+    const co = targets().find((t) => t.kind === "company")!;
+    for (const item of co.items) {
+      expect(item.linkage, item.title).toBeTruthy();
+      expect(item.linkage!.bases.length, item.title).toBeGreaterThan(0);
+      expect(item.description).toContain("Linked to Acme &amp; Sons Robotics by:");
+      expect(item.description).toContain(
+        "not a claim that the company holds the program",
+      );
+    }
+  });
+
+  it("states the WEAKER basis by name when that is the only link", () => {
+    const co = targets().find((t) => t.kind === "company")!;
+    const swing = co.items.find(
+      (i: { card: { event_type: string } }) => i.card.event_type === "yoy_swing",
+    )!;
+    expect(swing.linkage!.bases.map((b: { id: string }) => b.id)).toEqual(["mention"]);
+    expect(swing.linkageText).toBe(
+      "Linked to Acme & Sons Robotics by: lobbying-filing mention. " +
+        "A documented connection, not a claim that the company holds the " +
+        "program's budget.",
+    );
+  });
+
+  it("does NOT label items in the whole, event-type or program feeds", () => {
+    // A program element's own feed has no ambiguous linkage to disclose, and
+    // the whole feed makes no company claim at all. Labelling there would be
+    // noise that trains readers to skip the label where it matters.
+    for (const t of targets().filter((x) => x.kind !== "company")) {
+      for (const item of t.items) {
+        expect(item.linkage, `${t.kind} ${item.title}`).toBeNull();
+        expect(item.description).not.toContain("Linked to");
+      }
+    }
   });
 
   it("refuses to build when two events would share a guid", () => {
@@ -420,6 +469,33 @@ describe("renderRss", () => {
       (l) => l.getAttribute("rel") === "self",
     )!;
     expect(self.getAttribute("href")).toBe("https://fiscalreceipts.com/rss.xml");
+  });
+});
+
+describe("renderRss — company watch feed", () => {
+  const co = () => targets().find((t) => t.kind === "company")!;
+
+  it("emits a machine-readable fr:linkage per item", () => {
+    const doc = parseXml(renderRss(co(), SITE));
+    const items = [...doc.querySelectorAll("item")];
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      const linkage = item.getElementsByTagNameNS(FR_NS, "linkage")[0];
+      expect(linkage).toBeTruthy();
+      expect(linkage.getAttribute("entity")).toBe("Acme & Sons Robotics");
+      const bases = [...linkage.getElementsByTagNameNS(FR_NS, "basis")];
+      expect(bases.length).toBeGreaterThan(0);
+      for (const b of bases) {
+        expect(["award", "mention", "family"]).toContain(b.getAttribute("id"));
+        expect(b.getAttribute("label")).toBeTruthy();
+      }
+    }
+  });
+
+  it("survives a company name containing & in the linkage attribute", () => {
+    const xml = renderRss(co(), SITE);
+    expect(xml).toContain('entity="Acme &amp; Sons Robotics"');
+    expect(() => parseXml(xml)).not.toThrow();
   });
 });
 

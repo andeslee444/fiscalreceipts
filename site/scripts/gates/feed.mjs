@@ -34,6 +34,21 @@
  *     type="application/rss+xml|atom+xml"> on the built pages points at a
  *     file that exists. Autodiscovery pointing at a 404 is the §P1-8 defect
  *     restated.
+ * (k) COMPANY-FEED ITEMS STATE THEIR LINKAGE BASIS. A company watch feed
+ *     covers the program elements that company's page links to — 4 by
+ *     high-confidence award crosswalk and 147 by lobbying-filing mention, for
+ *     Lockheed. The CHANNEL states that split, but an item is read detached
+ *     from its channel: aggregated into a reader's river, forwarded, quoted
+ *     alone. "Combating Terrorism Technology Support decreased 59%" under a
+ *     Lockheed feed, with no linkage stated, reads as if Lockheed holds that
+ *     program — and ~97% of the items a subscriber sees rest on the weaker
+ *     basis. So this leg asserts every company-feed item carries an
+ *     fr:linkage block naming the company and ≥1 basis, that each basis is
+ *     one the COMPANY PAGE ACTUALLY ASSERTS for that PE (recomputed from the
+ *     entity_details sidecar the page renders from), and that program feeds
+ *     do NOT carry the block — a program element's own feed has no ambiguous
+ *     linkage, and labelling there would train readers to skip the label
+ *     where it matters.
  */
 
 import fs from "fs";
@@ -46,6 +61,7 @@ import {
   feedGuid,
   buildFeedTargets,
   companyWatchPeBlis,
+  linkageBases,
 } from "../../src/lib/feed-model.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -214,6 +230,9 @@ function expectedTargets() {
   }
   return {
     cards,
+    // Keyed by slug so leg k can re-derive, from the sidecar the company page
+    // renders from, which linkage bases that page actually asserts per PE.
+    companyWatchBySlug: new Map(companyWatch.map((w) => [w.slug, w])),
     targets: buildFeedTargets({
       cards,
       siteUrl: "https://example.invalid", // paths only; the gate never compares hosts here
@@ -229,9 +248,9 @@ function expectedTargets() {
 }
 
 function runSyndicationLegs(errors, notes) {
-  let cards, targets;
+  let cards, targets, companyWatchBySlug;
   try {
-    ({ cards, targets } = expectedTargets());
+    ({ cards, targets, companyWatchBySlug } = expectedTargets());
   } catch (e) {
     errors.push(`feed leg f: could not rebuild the expected feed set — ${e.message}`);
     return;
@@ -500,4 +519,161 @@ function runSyndicationLegs(errors, notes) {
         `${discoveryPages.length} sampled pages all resolve to emitted files ✓`,
     );
   }
+
+  // ── (k) company-feed items state their linkage basis ──────────────────────
+  runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug);
+}
+
+/**
+ * leg k — every company watch-feed item names WHY it is in that feed.
+ *
+ * TRUTH SOURCE. The bases an item may claim are recomputed here from the
+ * entity_details sidecar — the same payload /company/{slug}/ renders its
+ * award rows and linked-program chips from. "A basis the company page
+ * asserts for that PE" is therefore literal, not an approximation: a feed
+ * item cannot claim an award link the page does not show.
+ *
+ * The published label is the artifact under test; the recompute is the
+ * reference. Mislabelling (mention published as award), a missing block, a
+ * wrong company name, or an unknown basis id all fail.
+ */
+function runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug) {
+  const companyTargets = targets.filter((t) => t.kind === "company");
+  if (companyTargets.length === 0) {
+    errors.push(
+      `feed leg k: no company watch feeds exist — the leg is vacuous ` +
+        `(and the watch-feature is gone)`,
+    );
+    return;
+  }
+
+  const VALID_BASIS_IDS = new Set(["award", "mention", "family"]);
+  let itemsChecked = 0;
+  let basesChecked = 0;
+  const mix = { award: 0, mention: 0, family: 0 };
+
+  for (const t of companyTargets) {
+    const doc = docs.get(t.rssPath);
+    if (!doc) continue;
+    const watch = companyWatchBySlug.get(t.key);
+    if (!watch) {
+      errors.push(
+        `feed leg k: ${t.rssPath} exists but ${t.key} has no entity_details ` +
+          `watchlist — the feed asserts a link the company page cannot support`,
+      );
+      continue;
+    }
+    const guidToCard = new Map(cardsByGuidFor(t));
+    for (const item of doc.getElementsByTagName("item")) {
+      itemsChecked += 1;
+      const guid = item.getElementsByTagName("guid")[0]?.textContent ?? "";
+      const title = item.getElementsByTagName("title")[0]?.textContent ?? "";
+      const short = JSON.stringify(title.slice(0, 70));
+
+      const linkage = item.getElementsByTagNameNS(FR_NS, "linkage")[0];
+      if (!linkage) {
+        errors.push(
+          `feed leg k (${t.rssPath}): item ${short} states no linkage basis — ` +
+            `read on its own, under a company's name, it reads as if the ` +
+            `company holds that program`,
+        );
+        continue;
+      }
+      if (linkage.getAttribute("entity") !== watch.displayName) {
+        errors.push(
+          `feed leg k (${t.rssPath}): item ${short} attributes its linkage to ` +
+            `${JSON.stringify(linkage.getAttribute("entity"))}, but this is ` +
+            `${JSON.stringify(watch.displayName)}'s feed`,
+        );
+      }
+      const published = [...linkage.getElementsByTagNameNS(FR_NS, "basis")].map(
+        (b) => b.getAttribute("id"),
+      );
+      if (published.length === 0) {
+        errors.push(
+          `feed leg k (${t.rssPath}): item ${short} carries an EMPTY linkage ` +
+            `block — a disclosure that discloses nothing`,
+        );
+        continue;
+      }
+      const card = guidToCard.get(guid);
+      if (!card) {
+        errors.push(
+          `feed leg k (${t.rssPath}): item ${short} (guid ${guid}) matches no ` +
+            `card — the gate cannot check what the page asserts about it`,
+        );
+        continue;
+      }
+      const asserted = new Set(linkageBases(card, watch).map((b) => b.id));
+      for (const id of published) {
+        basesChecked += 1;
+        if (!VALID_BASIS_IDS.has(id)) {
+          errors.push(
+            `feed leg k (${t.rssPath}): item ${short} publishes an unknown ` +
+              `linkage basis ${JSON.stringify(id)}`,
+          );
+          continue;
+        }
+        if (!asserted.has(id)) {
+          errors.push(
+            `feed leg k (${t.rssPath}): item ${short} claims linkage basis ` +
+              `"${id}", but ${watch.displayName}'s page asserts only ` +
+              `[${[...asserted].join(", ") || "none"}] for ` +
+              `${card.pe_bli ?? card.family_key} — the item overstates the link`,
+          );
+        }
+        if (id in mix) mix[id] += 1;
+      }
+      // Silence is also a failure: a real basis the page asserts must not be
+      // dropped from a published item (an award-linked item that only says
+      // "mention" understates, but one that says nothing about its strongest
+      // link misleads in the other direction).
+      for (const id of asserted) {
+        if (!published.includes(id)) {
+          errors.push(
+            `feed leg k (${t.rssPath}): item ${short} omits linkage basis ` +
+              `"${id}" that ${watch.displayName}'s page asserts for ` +
+              `${card.pe_bli ?? card.family_key}`,
+          );
+        }
+      }
+    }
+  }
+
+  // Program feeds must NOT carry the block — see the leg's docblock.
+  let programItems = 0;
+  for (const t of targets.filter((x) => x.kind === "program")) {
+    const doc = docs.get(t.rssPath);
+    if (!doc) continue;
+    for (const item of doc.getElementsByTagName("item")) {
+      programItems += 1;
+      if (item.getElementsByTagNameNS(FR_NS, "linkage").length > 0) {
+        errors.push(
+          `feed leg k: program feed ${t.rssPath} carries a company linkage ` +
+            `block — a program element's own feed has no company to disclose`,
+        );
+      }
+    }
+  }
+
+  if (itemsChecked === 0 || basesChecked === 0) {
+    errors.push(
+      `feed leg k: ${itemsChecked} items / ${basesChecked} bases inspected — ` +
+        `the leg is vacuous and would not catch a regression`,
+    );
+  } else if (errors.every((e) => !e.startsWith("feed leg k"))) {
+    notes.push(
+      `leg k: ${itemsChecked} company watch-feed items across ` +
+        `${companyTargets.length} companies each state their linkage basis ` +
+        `(${mix.mention} lobbying-filing mention, ${mix.award} award ` +
+        `crosswalk, ${mix.family} names-the-family), every basis one the ` +
+        `company page asserts for that PE; ${programItems} program-feed items ` +
+        `correctly carry none ✓`,
+    );
+  }
+}
+
+/** guid → card for one target's items (the items already carry their card). */
+function cardsByGuidFor(target) {
+  return target.items.map((it) => [it.guid, it.card]);
 }

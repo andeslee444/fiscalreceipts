@@ -2566,3 +2566,86 @@ MADE TO PASS (verbatim, unmodified build):
 SUITE COUNT UNCHANGED. Both legs extend existing gates (8 "feed" owns the
 feed surface; 24 "datatruth" already owns "does the feed tell the truth" via
 leg h). The suite stays at 24 gates.
+
+
+--------------------------------------------------------------------------------
+gate 8 "feed" leg k — COMPANY-FEED ITEMS MUST STATE THEIR LINKAGE BASIS
+(same Sprint 3 Task 2 heading; added on coordinator review, 2026-08-04)
+--------------------------------------------------------------------------------
+
+WHAT THE FIRST CUT GOT WRONG. A company watch feed covers the program
+elements that company's page links to, by two connection types of very
+different strength — for Lockheed, 4 by high-confidence budget-to-award
+crosswalk and 147 by lobbying-filing mention. The CHANNEL description stated
+that split honestly. The ITEM did not: it carried only
+
+    Basis: toa (PB2026), change.
+
+which is the ACCOUNTING basis (what kind of dollar this is), not the LINKAGE
+basis (why this item is in this company's feed).
+
+Why that is not good enough for a feed specifically: a feed item is read
+DETACHED FROM ITS CHANNEL. It is aggregated into a reader's river, forwarded,
+and quoted on its own. A subscriber seeing
+
+    "Combating Terrorism Technology Support decreased 59% FY25→26 —
+     FY2025 $199.1M → FY2026 $81.5M (−$117.6M, −59%)"
+
+under a Lockheed Martin feed had no way to know Lockheed's link to that PE is
+a lobbying filing rather than an award. Measured on the live corpus: of the
+1,295 company watch-feed items, 1,169 rest on the mention basis alone — ~90%
+of what a subscriber actually sees was the weaker basis reading as ownership.
+That is the overclaim this site exists to prevent, hiding in exactly the
+consumption mode feeds are built for.
+
+THE FIX. Every company-feed item now carries its own linkage, both as prose
+in the description and as a structured `fr:` element (the same convention
+fr:magnitude already uses):
+
+    <fr:linkage entity="LOCKHEED MARTIN CORPORATION">
+      <fr:basis id="mention" label="lobbying-filing mention"/>
+    </fr:linkage>
+
+    Linked to LOCKHEED MARTIN CORPORATION by: lobbying-filing mention.
+    A documented connection, not a claim that the company holds the
+    program's budget.
+
+Both bases are listed when both apply. Membership and labelling are now THE
+SAME COMPUTATION (cardMatchesWatch is defined as linkageBases(...).length > 0),
+so an item can never be included with no basis to state. Program watch feeds
+deliberately carry nothing — a program element's own feed has no ambiguous
+linkage, and labelling there would train readers to skip the label where it
+matters.
+
+THE LEG. For every company watch feed: every item carries an fr:linkage
+naming that company and ≥1 basis; every published basis is one the COMPANY
+PAGE ACTUALLY ASSERTS for that PE, recomputed from the entity_details sidecar
+the page renders from (so "asserts" is literal, not an approximation); no
+asserted basis is omitted; and program feeds carry no linkage block. Vacuity
+fails the leg.
+
+PROOF-CAN-FAIL (verbatim):
+
+### nolinkage — leg k — a company-feed item published with no linkage basis (reads as ownership)
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg k (/feeds/company/lockheed-martin.xml): item "Combating Terrorism Technology Support decreased 59% FY25→26 — FY2025 " states no linkage basis — read on its own, under a company's name, it reads as if the company holds that program
+
+### overclaim — leg k — a mention-only item relabelled as an award crosswalk (the overclaim)
+gate verdict: FAIL
+matching errors: 2
+  ✗ feed leg k (/feeds/company/lockheed-martin.xml): item "Combating Terrorism Technology Support decreased 59% FY25→26 — FY2025 " claims linkage basis "award", but LOCKHEED MARTIN CORPORATION's page asserts only [mention] for 0603122D8Z — the item overstates the link
+  ✗ feed leg k (/feeds/company/lockheed-martin.xml): item "Combating Terrorism Technology Support decreased 59% FY25→26 — FY2025 " omits linkage basis "mention" that LOCKHEED MARTIN CORPORATION's page asserts for 0603122D8Z
+
+### leakedlinkage — leg k — a company linkage block leaking into a program feed
+gate verdict: FAIL
+matching errors: 1
+  ✗ feed leg k: program feed /feeds/program/0101213F.xml carries a company linkage block — a program element's own feed has no company to disclose
+
+MADE TO PASS (verbatim, unmodified build):
+
+  gate 8 feed: PASS
+    • leg k: 1295 company watch-feed items across 58 companies each state their linkage basis (1169 lobbying-filing mention, 156 award crosswalk, 0 names-the-family), every basis one the company page asserts for that PE; 198 program-feed items correctly carry none ✓
+  errors: 0
+
+SUITE COUNT UNCHANGED — leg k extends gate 8. Still 24 gates.

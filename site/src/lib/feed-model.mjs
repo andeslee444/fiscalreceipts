@@ -255,19 +255,77 @@ export function hasProgramFeed(peBli, cards, programPages) {
 }
 
 /**
- * One card belongs on a company's watchlist iff it is about a program element
- * that company's page links to, or it names the company family itself.
+ * THE LINKAGE VOCABULARY — why a card is on a company's watchlist.
+ *
+ * These are not equally strong evidence, and the difference is the whole
+ * reason this vocabulary exists. An award link is a contract; a lobbying
+ * mention is a filing that named the program. Lockheed's watchlist is 4
+ * award-linked PEs and 147 mention-linked ones, so ~97% of the items a
+ * subscriber actually sees rest on the weaker basis.
+ *
+ * The channel description states the split, but a FEED ITEM IS READ DETACHED
+ * FROM ITS CHANNEL — aggregated into a river, forwarded, quoted alone. An
+ * item reading "Combating Terrorism Technology Support decreased 59%" under a
+ * Lockheed feed, with no linkage stated, reads as if Lockheed holds that
+ * program. That is precisely the overclaim this site exists to prevent,
+ * hiding in the consumption mode feeds are built for. So every company-feed
+ * item carries its own basis.
+ */
+export const LINKAGE_BASES = {
+  award: {
+    id: "award",
+    label: "high-confidence budget-to-award crosswalk",
+  },
+  mention: {
+    id: "mention",
+    label: "lobbying-filing mention",
+  },
+  family: {
+    id: "family",
+    label: "this signal names the company family directly",
+  },
+};
+
+/**
+ * Why THIS card is on THIS company's watchlist — one entry per basis that
+ * applies, in strength order (award before mention), empty when none does.
+ *
+ * The company page asserts exactly these connections, from the same sidecar
+ * fields; nothing here invents a link.
  *
  * @param {{pe_bli?: string|null, family_key?: string|null}} card
- * @param {{peBlis: Set<string>|string[], familyKey?: string|null}} watch
+ * @param {{awardPeBlis?: Set<string>|string[], mentionPeBlis?: Set<string>|string[],
+ *          familyKey?: string|null}} watch
+ * @returns {{id: string, label: string}[]}
  */
-export function cardMatchesWatch(card, watch) {
-  const peSet = watch.peBlis instanceof Set ? watch.peBlis : new Set(watch.peBlis);
-  if (card.pe_bli && peSet.has(card.pe_bli)) return true;
-  return Boolean(watch.familyKey && card.family_key === watch.familyKey);
+export function linkageBases(card, watch) {
+  const toSet = (v) => (v instanceof Set ? v : new Set(v ?? []));
+  const award = toSet(watch.awardPeBlis);
+  const mention = toSet(watch.mentionPeBlis);
+  const out = [];
+  if (card.pe_bli && award.has(card.pe_bli)) out.push(LINKAGE_BASES.award);
+  if (card.pe_bli && mention.has(card.pe_bli)) out.push(LINKAGE_BASES.mention);
+  if (watch.familyKey && card.family_key === watch.familyKey) {
+    out.push(LINKAGE_BASES.family);
+  }
+  return out;
 }
 
-/** @param {Array<any>} cards @param {{peBlis: Set<string>|string[], familyKey?: string|null}} watch */
+/**
+ * One card belongs on a company's watchlist iff at least one linkage basis
+ * applies. Membership and labelling are THE SAME COMPUTATION, so an item can
+ * never be included with no basis to state — the failure mode the per-item
+ * label exists to prevent.
+ *
+ * @param {{pe_bli?: string|null, family_key?: string|null}} card
+ * @param {{awardPeBlis?: Set<string>|string[], mentionPeBlis?: Set<string>|string[],
+ *          familyKey?: string|null}} watch
+ */
+export function cardMatchesWatch(card, watch) {
+  return linkageBases(card, watch).length > 0;
+}
+
+/** @param {Array<any>} cards @param {any} watch */
 export function hasCompanyFeed(cards, watch) {
   return cards.some((c) => cardMatchesWatch(c, watch));
 }
@@ -277,13 +335,16 @@ export function hasCompanyFeed(cards, watch) {
  * types its /company/{slug}/ page already renders —
  *   • high-confidence budget-to-award crosswalk rows (a contract), and
  *   • lobbying-filing mentions (a filing that named the program).
- * They are counted separately because they are not equally strong evidence,
- * and the feed description states both counts. Neither is a claim that the
- * company holds the program's budget.
+ * The two sets are returned SEPARATELY, not merged into a single membership
+ * set, because every published item must be able to say which of them put it
+ * on the watchlist (see LINKAGE_BASES). `peBlis` is the union, kept only for
+ * the channel-level count.
  *
  * @param {{awards?: Array<{pe_bli?: string|null, confidence?: string}>,
  *          linked_programs?: Array<{pe_bli?: string|null}>}} details
- * @returns {{peBlis: Set<string>, awardLinked: number, mentionLinked: number}}
+ * @returns {{peBlis: Set<string>, awardPeBlis: Set<string>,
+ *            mentionPeBlis: Set<string>, awardLinked: number,
+ *            mentionLinked: number}}
  */
 export function companyWatchPeBlis(details) {
   const award = new Set(
@@ -296,6 +357,8 @@ export function companyWatchPeBlis(details) {
   );
   return {
     peBlis: new Set([...award, ...mention]),
+    awardPeBlis: award,
+    mentionPeBlis: mention,
     awardLinked: award.size,
     mentionLinked: mention.size,
   };
@@ -321,12 +384,40 @@ function itemLink(card, siteUrl, { programPages, companySlugByFamilyKey }) {
 }
 
 /**
+ * The sentence a company-feed item carries about its own linkage.
+ *
+ * Wording is aligned with the company page and the channel description: a
+ * link is a documented connection, never a claim of budget ownership.
+ *
+ * @param {{entity: string, bases: {id: string, label: string}[]}} linkage
+ */
+export function linkageText(linkage) {
+  if (!linkage || linkage.bases.length === 0) return "";
+  const labels = linkage.bases.map((b) => b.label);
+  const joined =
+    labels.length === 1
+      ? labels[0]
+      : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+  return (
+    `Linked to ${linkage.entity} by: ${joined}. ` +
+    `A documented connection, not a claim that the company holds the ` +
+    `program's budget.`
+  );
+}
+
+/**
  * Normalize one card into everything both renderers need.
+ *
+ * `linkage` is passed ONLY for company watch feeds, where an item read on its
+ * own would otherwise imply the company owns the program (see LINKAGE_BASES).
+ * Program watch feeds pass nothing: a program element's own feed has no
+ * ambiguous linkage to disclose.
  *
  * @param {any} card
  * @param {{siteUrl: string, pubDate: string, programPages: Set<string>, companySlugByFamilyKey: Map<string,string>}} ctx
+ * @param {{entity: string, bases: {id: string, label: string}[]}} [linkage]
  */
-export function buildItem(card, ctx) {
+export function buildItem(card, ctx, linkage = null) {
   const base = trimSlash(ctx.siteUrl);
   const mag = card.magnitude ?? null;
   const magText = magnitudeText(mag);
@@ -349,11 +440,16 @@ export function buildItem(card, ctx) {
   const descParts = [`<p>${escapeXml(card.headline)}</p>`];
   if (magText) descParts.push(`<p>${escapeXml(magText)}</p>`);
   if (card.basis) {
+    // The ACCOUNTING basis (what kind of dollar this is). Distinct from the
+    // LINKAGE basis below (why this item is in this company's feed) — the two
+    // answer different questions and the item states both.
     descParts.push(
       `<p>Basis: ${escapeXml(card.basis)}${card.edition ? ` (PB${card.edition})` : ""}` +
         `${card.measure ? `, ${escapeXml(card.measure)}` : ""}.</p>`,
     );
   }
+  const linkText = linkageText(linkage);
+  if (linkText) descParts.push(`<p>${escapeXml(linkText)}</p>`);
   const receiptBits = [];
   if (receiptUrl) {
     receiptBits.push(
@@ -381,6 +477,8 @@ export function buildItem(card, ctx) {
     description: descParts.join(""),
     magnitude: mag,
     magnitudeText: magText,
+    linkage,
+    linkageText: linkText,
     card,
   };
 }
@@ -427,7 +525,12 @@ function eventRank(eventType) {
  *   programPages: Set<string>,
  *   programTitles?: Map<string,string>,
  *   companySlugByFamilyKey: Map<string,string>,
- *   companyWatch?: Array<{slug: string, displayName: string, peBlis: Set<string>|string[], familyKey?: string}>,
+ *   companyWatch?: Array<{slug: string, displayName: string,
+ *                        peBlis: Set<string>|string[],
+ *                        awardPeBlis?: Set<string>|string[],
+ *                        mentionPeBlis?: Set<string>|string[],
+ *                        awardLinked?: number, mentionLinked?: number,
+ *                        familyKey?: string}>,
  * }} input
  */
 export function buildFeedTargets(input) {
@@ -546,8 +649,19 @@ export function buildFeedTargets(input) {
   // program. Neither is a claim that the company holds the program's budget.
   for (const w of companyWatch) {
     const peSet = w.peBlis instanceof Set ? w.peBlis : new Set(w.peBlis);
-    // Same single rule the company page calls to decide whether to advertise.
-    const watchItems = items.filter((it) => cardMatchesWatch(it.card, w));
+    // Items are REBUILT here rather than reused from the shared list: a
+    // company-feed item carries a linkage sentence the same event does NOT
+    // carry in the whole feed or in the program feed, where there is no
+    // company to be mistaken for an owner. `items` order (event rank) is
+    // preserved by filtering it rather than re-walking cards.
+    const watchItems = items
+      .filter((it) => cardMatchesWatch(it.card, w))
+      .map((it) =>
+        buildItem(it.card, ctx, {
+          entity: w.displayName,
+          bases: linkageBases(it.card, w),
+        }),
+      );
     if (watchItems.length === 0) continue;
     const paths = companyFeedPaths(w.slug);
     targets.push({
@@ -577,6 +691,25 @@ export function buildFeedTargets(input) {
 }
 
 // ── Renderers ───────────────────────────────────────────────────────────────
+
+/**
+ * The machine-readable twin of the linkage sentence — same `fr:` convention
+ * as fr:magnitude, so an aggregator or a script can filter on the basis
+ * without parsing prose. Emitted ONLY for company watch feeds.
+ */
+function linkageXml(linkage, indent) {
+  if (!linkage || !linkage.bases || linkage.bases.length === 0) return "";
+  const lines = [
+    `${indent}<fr:linkage entity="${escapeXml(linkage.entity)}">`,
+  ];
+  for (const b of linkage.bases) {
+    lines.push(
+      `${indent}  <fr:basis id="${escapeXml(b.id)}" label="${escapeXml(b.label)}"/>`,
+    );
+  }
+  lines.push(`${indent}</fr:linkage>`);
+  return lines.join("\n") + "\n";
+}
 
 function magnitudeXml(magnitude, siteUrl, indent) {
   if (!magnitude) return "";
@@ -639,6 +772,8 @@ export function renderRss(target, siteUrl) {
     }
     const mx = magnitudeXml(it.magnitude, base, "      ");
     if (mx) out.push(mx.trimEnd());
+    const lx = linkageXml(it.linkage, "      ");
+    if (lx) out.push(lx.trimEnd());
     out.push("    </item>");
   }
   out.push("  </channel>");
@@ -675,6 +810,8 @@ export function renderAtom(target, siteUrl) {
     out.push(`    <content type="html">${escapeXml(it.description)}</content>`);
     const mx = magnitudeXml(it.magnitude, base, "    ");
     if (mx) out.push(mx.trimEnd());
+    const lx = linkageXml(it.linkage, "    ");
+    if (lx) out.push(lx.trimEnd());
     out.push("  </entry>");
   }
   out.push("</feed>");
