@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { FilingIndexRow } from "@/lib/data";
+import { formatCount } from "@/lib/format";
 
 /**
  * FilingsTable — client-side filter/search over the filings index (Task 6a).
@@ -97,7 +98,7 @@ export function FilingsTable({ filings }: Props) {
           ))}
         </select>
         <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length.toLocaleString("en-US")} filing
+          {formatCount(filtered.length)} filing
           {filtered.length !== 1 ? "s" : ""}
         </span>
       </div>

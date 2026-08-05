@@ -57,6 +57,7 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { JSDOM } from "jsdom";
 import {
+import { companyDisplay } from "../../src/lib/company-name.mjs";
   FR_NS,
   feedGuid,
   buildFeedTargets,
@@ -223,7 +224,12 @@ function expectedTargets() {
     if (watch.peBlis.size === 0) continue;
     companyWatch.push({
       slug: e.slug,
-      displayName: e.display_name,
+      // §P2-4: the feed's linkage entity carries the DISPLAY casing, the same
+      // string the company page's <h1> shows. Re-derived here from the
+      // registry name through the shared rule — never read back off the
+      // published XML, so a generator that stopped applying the rule (or
+      // applied a different one) still fails this leg.
+      displayName: companyDisplay(e.display_name),
       familyKey: e.family_key,
       ...watch,
     });

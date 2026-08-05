@@ -25,10 +25,11 @@
  * Every dollar cell renders through the existing <Cite> (state A on its
  * fact_id, state B for zero-amount xml-path project cells); the /years/ page
  * wraps the island in CitationPanelProvider with an EMPTY slice — resolution
- * happens lazily via cite-shards (Task 3). Missing values render "–" as
- * plain text — never 0, never data-amount. %Δ renders as a plain annotation
- * (no data-amount), matching the program-figures precedent for the uncited
- * pct column.
+ * happens lazily via cite-shards (Task 3). Missing values render "—" as
+ * plain text — never 0, never data-amount (§P2-7: a real zero renders "0"
+ * and a value that rounds to zero renders "<0.05"; see fmtDisplayMillions).
+ * %Δ renders as a plain annotation (no data-amount), matching the
+ * program-figures precedent for the uncited pct column.
  *
  * Units: program cells arrive in USD thousands, project cells in USD
  * millions; the grid DISPLAYS everything in USD millions (page-level unit
@@ -49,6 +50,7 @@ import { Cite, CiteLegend } from "@/components/cite";
 import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
 import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
+import { formatCount } from "@/lib/format";
 
 // ── Sidecar types (years_matrix.json schema_version 1) ──────────────────────
 
@@ -183,7 +185,7 @@ function decadeColumnTitle(col: DecadeColumn): string {
  * The three PB2026-edition decade columns map to the SAME project scenarios
  * as their amount-type twins (fy2024a ≡ PB2026 PriorYear, etc.) — other
  * decade columns come from older books whose project grain isn't ingested,
- * so their project cells stay absent ("–"), never borrowed across editions.
+ * so their project cells stay absent ("—"), never borrowed across editions.
  */
 const PROJECT_COL_FOR: Record<string, string> = {
   fy_2024_actuals: "fy2024",
@@ -331,35 +333,90 @@ export function buildYearsCsv(
 
 // ── Display formatting (USD millions, right-aligned mono numerals) ──────────
 
-/** Thousands → millions, one decimal, thousands separators: 223719 → "223.7". */
-function fmtThousandsAsMillions(vThousands: number): string {
-  return (vThousands / 1000).toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+/**
+ * THREE FACTS, THREE GLYPHS (§P2-7).
+ *
+ * The grid used to render "0.0" for a book that recorded a real zero AND for
+ * a book that recorded $12,000 — which is $0.012M, and rounds to 0.0 at the
+ * displayed precision. 1,721 program cells are true zeros and 675 more are
+ * nonzero amounts under $50K; both printed the same three characters, and a
+ * reader had no way to tell "the book funded nothing" from "the book funded
+ * something too small to show". Absence was a third, separate claim already
+ * rendered as a dash.
+ *
+ * So the matrix now distinguishes them, in the glyph and in the DOM:
+ *
+ *   ZERO           `0`         data-cell-state="zero"          the source records 0
+ *   ROUNDED ZERO   `<0.05`     data-cell-state="rounded-zero"  nonzero, under half
+ *                                                              the last displayed digit
+ *   ABSENT         `—`         data-cell-state="absent"        no figure in that book
+ *   VALUE          `223.7`     data-cell-state="value"
+ *
+ * `<0.05` states the BOUND rather than a fake precision: the grid shows one
+ * decimal in USD millions, so anything that rounds to 0.0 is below 0.05M.
+ * Negative small magnitudes keep their sign glyph (`−<0.05`) — the sign is a
+ * separate fact from the magnitude and never gets swallowed by the bound.
+ *
+ * The legend under the grid says all four in the reader's own line of sight;
+ * gate 20 leg h holds the mapping.
+ */
+const ROUNDED_ZERO_MILLIONS = 0.05;
+
+export type CellState = "zero" | "rounded-zero" | "absent" | "value";
+
+/** State of ONE numeric cell, given its value in the display unit. */
+export function cellState(displayValue: number): CellState {
+  if (displayValue === 0) return "zero";
+  if (Math.abs(displayValue) < ROUNDED_ZERO_MILLIONS) return "rounded-zero";
+  return "value";
 }
 
-/** Project values are already millions. */
-function fmtMillions(vMillions: number): string {
+/** `0` / `<0.05` / `−<0.05` / `223.7` for a value already in the display unit. */
+export function fmtDisplayMillions(vMillions: number): string {
+  const state = cellState(vMillions);
+  if (state === "zero") return "0";
+  if (state === "rounded-zero") {
+    return `${vMillions < 0 ? "−" : ""}<${ROUNDED_ZERO_MILLIONS}`;
+  }
   return vMillions.toLocaleString("en-US", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
 }
 
-/** Signed Δ display with explicit glyph: +417.5 / −10.0 (thousands input). */
-function fmtDelta(vThousands: number): string {
-  const m = Math.abs(vThousands) / 1000;
-  const body = m.toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+/** Thousands → millions: 223719 → "223.7", 0 → "0", 12 → "<0.05". */
+function fmtThousandsAsMillions(vThousands: number): string {
+  return fmtDisplayMillions(vThousands / 1000);
+}
+
+/** Project values are already millions. */
+function fmtMillions(vMillions: number): string {
+  return fmtDisplayMillions(vMillions);
+}
+
+/** Signed Δ display with explicit glyph: +417.5 / −10.0 / 0 / +<0.05. */
+export function fmtDelta(vThousands: number): string {
+  const m = vThousands / 1000;
+  const state = cellState(m);
+  if (state === "zero") return "0";
+  const body =
+    state === "rounded-zero"
+      ? `<${ROUNDED_ZERO_MILLIONS}`
+      : Math.abs(m).toLocaleString("en-US", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        });
   return vThousands > 0 ? `+${body}` : vThousands < 0 ? `−${body}` : body;
 }
 
-function fmtPct(v: number): string {
-  const body = `${Math.abs(v).toFixed(1)}%`;
-  return v > 0 ? `+${body}` : v < 0 ? `−${body}` : body;
+/** %Δ carries its own rounding bound: one decimal, so <0.05 percentage points. */
+export function fmtPct(v: number): string {
+  if (v === 0) return "0%";
+  const body =
+    Math.abs(v) < ROUNDED_ZERO_MILLIONS
+      ? `<${ROUNDED_ZERO_MILLIONS}%`
+      : `${Math.abs(v).toFixed(1)}%`;
+  return v > 0 ? `+${body}` : `−${body}`;
 }
 
 function deltaColorClass(v: number): string {
@@ -594,7 +651,7 @@ export function YearsMatrix() {
           className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <span className="text-xs tabular-nums text-muted-foreground">
-          {nVisible} of {allEntries.length} programs
+          {formatCount(nVisible)} of {formatCount(allEntries.length)} programs
         </span>
         {/* §P2-2: the grid now OPENS on a column sort, so the organization
             grouping it used to open on needs a control of its own — reaching
@@ -636,7 +693,8 @@ export function YearsMatrix() {
         className="sm:hidden flex w-full items-center justify-between rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <span>
-          Columns — {visibleCols.length} of {allColumns.length} shown
+          Columns — {formatCount(visibleCols.length)} of{" "}
+          {formatCount(allColumns.length)} shown
         </span>
         <span aria-hidden="true">{colsOpen ? "▾" : "▸"}</span>
       </button>
@@ -751,6 +809,22 @@ export function YearsMatrix() {
           = part of a tracked program family — view its lineage on the program
           page
         </span>
+      </p>
+
+      {/* ── Notation legend (§P2-7) — three different facts used to render as
+          the same "0.0". The decode sits with the grid, not on /methodology/,
+          because this is where the reader meets the glyph. ── */}
+      <p
+        data-testid="cell-state-legend"
+        className="text-xs leading-5 text-muted-foreground"
+      >
+        <span className="font-mono text-foreground">0</span> = the book records
+        zero for this line ·{" "}
+        <span className="font-mono text-foreground">&lt;0.05</span> = a real
+        amount, below $50K, too small to show at one decimal in millions ·{" "}
+        <span className="font-mono text-foreground">—</span> = the book has no
+        figure for this line at all. Three different statements; only the last
+        one is an absence.
       </p>
       </CollapsibleBelowSm>
 
@@ -1078,6 +1152,8 @@ function ProgramRows({
                   key={key}
                   data-col={projKey ?? key}
                   {...(cell ? { "data-v": cell.v } : {})}
+                  data-cell-state={cell ? cellState(cell.v) : "absent"}
+                  title={cell ? undefined : "No figure for this project in this column's source"}
                   className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
                 >
                   {cell ? (
@@ -1096,7 +1172,10 @@ function ProgramRows({
                       chip={false}
                     />
                   ) : (
-                    "–"
+                    <>
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">no figure</span>
+                    </>
                   )}
                 </td>
               );
@@ -1137,16 +1216,21 @@ const PROJECT_COL_META: Record<string, { fy: number; measure: string }> = {
 };
 
 /**
- * One program dollar/Δ/%Δ cell. Missing → "–" (plain text, no data-v).
+ * One program dollar/Δ/%Δ cell. Missing → "—" (plain text, no data-v).
  *
- * "–" at the parent vs amber "0.0 XML" on child project rows is DELIBERATE,
+ * Every cell declares WHICH of the three §P2-7 facts it is carrying, in
+ * `data-cell-state` — zero / rounded-zero / absent / value — so the
+ * distinction lives in the markup and not only in the glyph. Absent cells
+ * also carry an accessible label, because "—" read aloud is not a claim.
+ *
+ * "—" at the parent vs amber "0 XML" on child project rows is DELIBERATE,
  * not a bug (verified against the parquet lake, 2026-07-02): program cells
  * come from budget_lines.parquet (the FY2026 workbook trajectory), and for
  * e.g. 14 of 24 DARPA PEs that workbook simply has NO fy_2026_* rows — the
- * source is silent, so the grid shows absent ("–"). The same PEs' project
+ * source is silent, so the grid shows absent ("—"). The same PEs' project
  * sub-rows come from jbook_details.parquet, where the J-book XML EXPLICITLY
  * records BudgetYearOne amounts of 0.0 (resolution='zero_amount') — a real
- * source statement, rendered as Cite state B ("0.0" + amber XML chip).
+ * source statement, rendered as Cite state B ("0" + amber XML chip).
  * Absent-at-parent and zero-at-child are different claims by different
  * source documents; the grid never derives a parent rollup from children —
  * every figure comes from the exporter sidecar as-is. The CiteLegend above
@@ -1168,10 +1252,16 @@ function ProgramCellTd({
     return (
       <td
         data-col={colKey}
-        {...(decade ? { title: `Not in the PB${decade.edition} edition` } : {})}
+        data-cell-state="absent"
+        title={
+          decade
+            ? `Not in the PB${decade.edition} edition`
+            : "No figure for this program in this column's source"
+        }
         className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums text-muted-foreground"
       >
-        –
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">no figure</span>
       </td>
     );
   }
@@ -1183,6 +1273,7 @@ function ProgramCellTd({
       <td
         data-col={colKey}
         data-v={cell.v}
+        data-cell-state={cellState(cell.v / 1000)}
         className="border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap"
       >
         <Cite
@@ -1208,6 +1299,7 @@ function ProgramCellTd({
       <td
         data-col={colKey}
         data-v={cell.v}
+        data-cell-state={cellState(cell.v)}
         className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${deltaColorClass(cell.v)}`}
       >
         {fmtPct(cell.v)}
@@ -1220,6 +1312,7 @@ function ProgramCellTd({
     <td
       data-col={colKey}
       data-v={cell.v}
+      data-cell-state={cellState(cell.v / 1000)}
       className={`border-b border-border px-2.5 py-1 text-right font-mono tabular-nums whitespace-nowrap ${
         isDelta ? deltaColorClass(cell.v) : ""
       }`}

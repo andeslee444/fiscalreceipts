@@ -17,6 +17,7 @@
 
 import { useState } from "react";
 import type { ProgramAward, ProgramDetails } from "@/lib/data";
+import { formatCount } from "@/lib/format";
 
 const CAP = 25;
 
@@ -124,7 +125,7 @@ export function ProgramAwards({
       {scopeNote && <div className="mb-2">{scopeNote}</div>}
       {hasMore && !expanded && (
         <p className="text-xs text-muted-foreground mb-3">
-          Showing {initialAwards.length} of {totalCount}{" "}award records
+          Showing {formatCount(initialAwards.length)} of {formatCount(totalCount)}{" "}award records
           (R&amp;D performer crosswalk — see{" "}
           <a href="/methodology/" className="underline hover:text-foreground">
             methodology
@@ -134,7 +135,7 @@ export function ProgramAwards({
       )}
       {expanded && (
         <p className="text-xs text-muted-foreground mb-3">
-          Showing all {displayedAwards.length} award records
+          Showing all {formatCount(displayedAwards.length)} award records
         </p>
       )}
 

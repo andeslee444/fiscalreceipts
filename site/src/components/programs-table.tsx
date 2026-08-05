@@ -27,7 +27,7 @@ import { Download } from "lucide-react";
 import type { ProgramsTableRow } from "@/lib/programs-row";
 import { Cite } from "@/components/cite";
 import { serviceOrgName } from "@/lib/program-tier";
-import { aliasChipText, aliasHitsForQuery } from "@/lib/aliases";
+import { aliasChipText, aliasChipParts, aliasHitsForQuery } from "@/lib/aliases";
 import { formatCount } from "@/lib/format";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
@@ -339,12 +339,34 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     <span
                       data-testid="programs-alias-hit"
                       data-alias-matched={aliasHits.get(p.pe)!.matched}
-                      className="ml-2 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground align-middle"
-                    >
-                      {aliasChipText(
+                      title={aliasChipText(
                         aliasHits.get(p.pe)!.matched,
                         aliasHits.get(p.pe)!.aliases,
                       )}
+                      className="ml-2 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground align-middle"
+                    >
+                      {(() => {
+                        // Same marking rule as ⌘K — the token that matched is
+                        // the one word that explains the row.
+                        const parts = aliasChipParts(
+                          aliasHits.get(p.pe)!.matched,
+                          aliasHits.get(p.pe)!.aliases,
+                        );
+                        return (
+                          <>
+                            {parts.lead}
+                            {parts.matched && (
+                              <mark
+                                data-testid="programs-alias-mark"
+                                className="rounded-sm bg-primary/20 px-0.5 font-medium text-foreground"
+                              >
+                                {parts.matched}
+                              </mark>
+                            )}
+                            {parts.tail}
+                          </>
+                        );
+                      })()}
                     </span>
                   )}
                   {/* Below sm the PE/BLI and Org columns are folded into this

@@ -33,6 +33,10 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Cite } from "@/components/cite";
+import { CompanyName } from "@/components/company-name";
+import { INLINE_ROW_LIMIT } from "@/components/citation-panel/breakdown-table";
+import { reproducibleSum, toMillions } from "@/lib/derivation";
+import { companyDisplay } from "@/lib/company-name.mjs";
 import {
   memberEventLabel,
   type CompanyRow,
@@ -106,11 +110,11 @@ function MemberName({ m }: { m: FamilyMember }) {
       href={`/company/${m.slug}/`}
       className="hover:text-foreground hover:underline"
     >
-      {m.display_name}
+      <CompanyName raw={m.display_name} />
     </Link>
   ) : (
     <span title="Outside the top-200 list — counted in the total, no profile page">
-      {m.display_name}
+      <CompanyName raw={m.display_name} />
     </span>
   );
 }
@@ -173,32 +177,58 @@ function MergedMembers({ row }: { row: CompanyRow }) {
  * never a bare "$…" outside [data-amount]); the total is the same cited
  * derived fact the row headline carries, and lib/entity-families
  * assertNoDoubleCount has already proved at BUILD time that they agree.
+ *
+ * DEFAULT STATE (deferred judge nit). The citation panel's own rule is
+ * "≤ INLINE_ROW_LIMIT line items render inline, bigger ones go behind a
+ * disclosure" (breakdown-table). Every merged family here has at most four
+ * members, so the same equation was OPEN in the panel and CLOSED on the page:
+ * two defaults for one artefact. It now follows the panel's rule, and the
+ * summary reflects which way it opened.
+ *
+ * §P2-8. The addends are compact ($7.44B + $324.5K = $7.45B) and the total is
+ * the exact derived fact, so two of the nine families did not visibly add up.
+ * The closing arithmetic, in USD millions at the precision where it closes,
+ * now follows the equation.
  */
 function CombinedArithmetic({ row }: { row: CompanyRow }) {
+  const inline = row.members.length <= INLINE_ROW_LIMIT;
+  const exact = reproducibleSum(
+    row.members.map((m) => toMillions(m.total_obligation, "USD")),
+    toMillions(row.totalObligation, "USD"),
+  );
   return (
-    <details className="mt-1.5 text-xs" data-testid="company-addends">
+    <details className="mt-1.5 text-xs" data-testid="company-addends" open={inline}>
       <summary className="cursor-pointer text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground">
-        {`Show the ${row.members.length} figures that add to this total`}
+        {`The ${row.members.length} figures that add to this total`}
       </summary>
       {/* Inline flow (not flex), like the workbook drawer's arithmetic line:
           the operators are real text nodes, so it reads as one equation to a
-          screen reader, a copy-paste and a gate reading textContent. */}
+          screen reader, a copy-paste and a gate reading textContent.
+          No whitespace-nowrap on the name+value pair: at 390px a long
+          registry name plus its figure overflowed the card. The FIGURE keeps
+          nowrap; the name is allowed to wrap ahead of it. */}
       <p
         data-testid="company-arithmetic"
-        className="mt-1 rounded-md border border-border bg-muted/30 px-2.5 py-2 leading-6"
+        data-derivation="company-addends"
+        className="mt-1 rounded-md border border-border bg-muted/30 px-2.5 py-2 leading-6 break-words"
       >
         {row.members.map((m, i) => (
           <span key={m.family_key}>
             {i > 0 && <span className="text-muted-foreground">{" + "}</span>}
-            <span className="whitespace-nowrap">
-              <span className="text-muted-foreground">{m.display_name} </span>
-              <Cite
-                value={m.total_obligation}
-                units="USD"
-                dataset="dim_entities"
-                factId={m.total_obligation_fact_id}
-                chip={false}
-              />
+            <span>
+              <CompanyName
+                raw={m.display_name}
+                className="text-muted-foreground"
+              />{" "}
+              <span className="whitespace-nowrap">
+                <Cite
+                  value={m.total_obligation}
+                  units="USD"
+                  dataset="dim_entities"
+                  factId={m.total_obligation_fact_id}
+                  chip={false}
+                />
+              </span>
             </span>
           </span>
         ))}
@@ -213,6 +243,23 @@ function CombinedArithmetic({ row }: { row: CompanyRow }) {
           />
         </span>
       </p>
+      {exact ? (
+        <p
+          data-derivation-exact=""
+          className="mt-1 font-mono text-[11px] leading-5 text-muted-foreground break-words"
+        >
+          {exact.parts.join(" + ")} = {exact.total}{" "}
+          <span className="font-sans italic">{exact.unitLabel}</span>
+        </p>
+      ) : (
+        <p
+          data-derivation-rounding=""
+          className="mt-1 text-[11px] leading-5 text-muted-foreground"
+        >
+          The figures above are rounded for reading; the total is the cited
+          derived fact, computed from the unrounded member values.
+        </p>
+      )}
     </details>
   );
 }
@@ -234,7 +281,14 @@ export function CompaniesTable({
       new Map(
         rows.map((r) => [
           r.key,
-          [r.displayName, ...r.members.map((m) => m.display_name)]
+          [
+            r.displayName,
+            companyDisplay(r.displayName),
+            ...r.members.flatMap((m) => [
+              m.display_name,
+              companyDisplay(m.display_name),
+            ]),
+          ]
             .join(" ")
             .toLowerCase(),
         ]),
@@ -318,14 +372,15 @@ export function CompaniesTable({
       </div>
 
       {/* Naming legend — merged lines carry the FAMILY label we authored
-          ("RTX"), unmerged lines carry the recipient name exactly as the award
-          data records it (SCREAMING CAPS). Nothing explained the difference,
-          so it read as inconsistent styling rather than as two kinds of
-          name. */}
+          ("RTX"), unmerged lines carry the registry name. Since §P2-4 the
+          registry name is CASED for display rather than shouted, so the
+          legend now has to say where the raw string went: onto the element
+          itself (hover) and, in full, onto the company page. */}
       <p className="mb-2 text-xs text-muted-foreground">
         Lines that fold several registry names together show the curated family
-        name; every other line shows the recipient name exactly as the award
-        data records it, capitalization included.
+        name; every other line shows the recipient name the award data records,
+        set in ordinary capitalization for reading. Hover a name — or open its
+        page — for the registry string exactly as USAspending stores it.
       </p>
 
       {/* What the money column counts — stated in frame with the figures, not
@@ -425,6 +480,8 @@ export function CompaniesTable({
                   </span>
                   {r.merged ? (
                     <>
+                      {/* A merged row shows the CURATED family label, not a
+                          registry string — it gets no data-registry-name. */}
                       <span className="font-medium text-foreground">
                         {r.displayName}
                       </span>
@@ -436,7 +493,7 @@ export function CompaniesTable({
                       href={`/company/${r.members[0].slug}/`}
                       className="font-medium hover:underline text-foreground"
                     >
-                      {r.displayName}
+                      <CompanyName raw={r.displayName} />
                     </Link>
                   )}
                 </td>

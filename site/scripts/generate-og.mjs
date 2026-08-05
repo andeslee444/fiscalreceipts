@@ -32,6 +32,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
+import { companyDisplay } from "../src/lib/company-name.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteDir = path.resolve(__dirname, "..");
@@ -374,7 +375,7 @@ async function main() {
       `company-${sanitize(e.slug)}`,
       card({
         kind: "Company",
-        title: e.display_name || e.slug,
+        title: companyDisplay(e.display_name || e.slug),
         subtitle: `${e.uei_count} linked UEI${e.uei_count === 1 ? "" : "s"}`,
         figure: fmtUsd(e.total_obligation),
         figureLabel: "federal obligations (FY2017+)",

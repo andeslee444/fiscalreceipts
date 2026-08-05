@@ -13,6 +13,9 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { companyOgImages } from "@/lib/og";
 import { companyFeedAlternates, companyFeedPaths, feedLinks } from "@/lib/feeds";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CompanyName, RegisteredNameNote } from "@/components/company-name";
+import { companyDisplay } from "@/lib/company-name.mjs";
+import { formatCount } from "@/lib/format";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
@@ -36,6 +39,10 @@ export async function generateMetadata({
   if (!entity) return { title: "Company Not Found" };
 
   const canonical = `${SITE_URL}/company/${slug}/`;
+  // §P2-4: titles and descriptions carry the DISPLAY casing; the registry
+  // string stays on the page itself (RegisteredNameNote) where provenance
+  // belongs — a shouted <title> is not provenance, it is just shouting.
+  const name = companyDisplay(entity.display_name);
   // §P1-8 watchlist feed — advertised only when the program elements this
   // page links to actually have events (null otherwise), so autodiscovery
   // never points at a file the build did not write.
@@ -46,12 +53,12 @@ export async function generateMetadata({
     entity.family_key,
   );
   return {
-    title: entity.display_name,
-    description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
+    title: name,
+    description: `${name}: federal defense obligations, lobbying filings, and program connections.`,
     alternates: { canonical, ...(feedTypes ? { types: feedTypes } : {}) },
     openGraph: {
-      title: `${entity.display_name} — Defense Contracts & Lobbying | ${SITE_NAME}`,
-      description: `${entity.display_name}: federal defense obligations, lobbying filings, and program connections.`,
+      title: `${name} — Defense Contracts & Lobbying | ${SITE_NAME}`,
+      description: `${name}: federal defense obligations, lobbying filings, and program connections.`,
       url: canonical,
       siteName: SITE_NAME,
       images: companyOgImages(slug),
@@ -120,13 +127,16 @@ export default async function CompanyPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Companies", href: "/companies/" },
-          { label: entity.display_name },
+          { label: companyDisplay(entity.display_name) },
         ]}
       />
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{entity.display_name}</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          <CompanyName raw={entity.display_name} />
+        </h1>
+        <RegisteredNameNote raw={entity.display_name} />
         {/* §P1-8 watchlist feed — budget signals for the program elements
             THIS PAGE links to. Same membership rule as the autodiscovery
             link and the generated file. */}
@@ -136,7 +146,7 @@ export default async function CompanyPage({
             <a
               href={feedLinks(companyFeedPaths(slug)).rss}
               className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-              title={`${entity.display_name} watchlist — RSS`}
+              title={`${companyDisplay(entity.display_name)} watchlist — RSS`}
             >
               RSS
             </a>
@@ -144,7 +154,7 @@ export default async function CompanyPage({
             <a
               href={feedLinks(companyFeedPaths(slug)).atom}
               className="text-foreground/80 underline decoration-dotted hover:text-foreground hover:decoration-solid"
-              title={`${entity.display_name} watchlist — Atom`}
+              title={`${companyDisplay(entity.display_name)} watchlist — Atom`}
             >
               Atom
             </a>
@@ -355,7 +365,7 @@ export default async function CompanyPage({
       {details.mentions.length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-3">
-            LDA Filing Mentions ({details.mentions.length})
+            LDA Filing Mentions ({formatCount(details.mentions.length)})
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
             Lobbying filings that mention a budget program by name or code.
@@ -419,7 +429,7 @@ export default async function CompanyPage({
             })}
             {details.mentions.length > 50 && (
               <div className="px-5 py-3 text-sm text-muted-foreground bg-muted/40">
-                Showing 50 of {details.mentions.length} mentions.
+                Showing 50 of {formatCount(details.mentions.length)} mentions.
               </div>
             )}
           </div>

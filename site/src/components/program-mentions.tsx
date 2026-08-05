@@ -27,6 +27,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ProgramDetails } from "@/lib/data";
 import { PeText } from "@/components/pe-text";
+import { formatCount } from "@/lib/format";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
 // Note: family_key can be null (dangling entity — 2,781 / 32,780 lobbying rows)
@@ -228,8 +229,8 @@ export function ProgramMentions({
       </h2>
       <p className="text-xs text-muted-foreground mb-3">
         {hasMore && !expanded
-          ? `Showing ${initialMentions.length} of ${totalCount}`
-          : `${displayedMentions.length} mention${displayedMentions.length !== 1 ? "s" : ""}`}
+          ? `Showing ${formatCount(initialMentions.length)} of ${formatCount(totalCount)}`
+          : `${formatCount(displayedMentions.length)} mention${displayedMentions.length !== 1 ? "s" : ""}`}
         {" "}from the Senate LDA disclosure database.
       </p>
 

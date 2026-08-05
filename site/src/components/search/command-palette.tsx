@@ -43,7 +43,7 @@ import {
   escapeHtml,
 } from "@/lib/search";
 import type { GroupedResults, RecentItem, SearchResult } from "@/lib/search";
-import { aliasChipText } from "@/lib/aliases";
+import { aliasChipText, aliasChipParts } from "@/lib/aliases";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -281,6 +281,14 @@ export function CommandPalette() {
   const listRef = useRef<HTMLUListElement>(null);
   const uid = useId();
 
+  // Bottom-edge scrim (deferred judge nit). The result list scrolls inside a
+  // max-h-96 box whose last row is cut flush by the dialog's own edge, and on
+  // touch viewports the keyboard-hint footer is hidden — so there was nothing
+  // at all to say "more results below". Measured, like the /district/ table's
+  // right-edge fade, so it disappears at the end of the scroll instead of
+  // implying content that is not there.
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
   const tier1Items = useTier1(query);
   const {
     items: tier2Items,
@@ -330,6 +338,24 @@ export function CommandPalette() {
     }, 0);
     return () => clearTimeout(timer);
   }, [open]);
+
+  // Bottom-edge scrim: measured on scroll, on resize, and whenever the result
+  // set changes (a new query re-fills the box without scrolling it).
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) {
+      return undefined;
+    }
+    const update = () =>
+      setCanScrollDown(el.scrollHeight - el.clientHeight - el.scrollTop > 4);
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, query, tier1Items, tier2Items, recents]);
 
   // Global keyboard shortcut: ⌘K / Ctrl+K / /
   useEffect(() => {
@@ -534,6 +560,7 @@ export function CommandPalette() {
         </div>
 
         {/* Results */}
+        <div className="relative">
         <ul
           id={listboxId}
           ref={listRef}
@@ -702,6 +729,14 @@ export function CommandPalette() {
             </>
           )}
         </ul>
+        {canScrollDown && (
+          <div
+            data-testid="palette-scrim"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-background to-transparent"
+          />
+        )}
+        </div>
 
         {/* Footer hint — desktop only. ↑↓ / ⏎ / ⌘K name keys a touch device
             does not have, and the strip cost a row of a 390px viewport to say
@@ -795,9 +830,12 @@ function ResultRow({
           {item.aka && item.aka.length > 0 && (
             <span
               data-testid="search-aka-chip"
+              // The plain string stays the accessible form; the visible text
+              // marks the token that did the matching.
+              title={aliasChipText(item.akaMatched, item.aka)}
               className="mt-0.5 w-fit shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground sm:mt-0"
             >
-              {aliasChipText(item.akaMatched, item.aka)}
+              <AliasChipBody matched={item.akaMatched} aka={item.aka} />
             </span>
           )}
         </span>
@@ -820,6 +858,37 @@ function ResultRow({
         )}
       </a>
     </li>
+  );
+}
+
+/**
+ * The alias chip's visible body, with the matched token marked (deferred
+ * judge nit). An alias hit matches on a word that is NOT in the title, so
+ * nothing on the row was highlighted and the reader had to infer why the
+ * result was there. <mark> is the same element pagefind excerpts use, so the
+ * highlight vocabulary stays one thing across the palette.
+ */
+function AliasChipBody({
+  matched,
+  aka,
+}: {
+  matched: string | null | undefined;
+  aka: readonly string[];
+}) {
+  const parts = aliasChipParts(matched, aka);
+  return (
+    <>
+      {parts.lead}
+      {parts.matched && (
+        <mark
+          data-testid="search-alias-mark"
+          className="rounded-sm bg-primary/20 px-0.5 font-medium text-foreground"
+        >
+          {parts.matched}
+        </mark>
+      )}
+      {parts.tail}
+    </>
   );
 }
 

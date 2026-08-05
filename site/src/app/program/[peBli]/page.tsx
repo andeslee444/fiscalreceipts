@@ -33,6 +33,7 @@ import {
   serviceOrgName,
 } from "@/lib/program-tier";
 import { findPeLinks } from "@/lib/pe-link";
+import { formatAmount } from "@/lib/format";
 import { hasLineage } from "@/lib/lineage";
 import { Cite, CiteChips } from "@/components/cite";
 import { LineageRail } from "@/components/lineage/lineage-rail";
@@ -119,32 +120,48 @@ export async function generateMetadata({
   const details = getProgramDetails(peBli);
   const { program, tier } = resolveProgram(peBli, details);
 
-  // Description: first narrative sentence; rollup pages state their tier
-  // honestly; fallback to org + pe_bli.
-  let description: string;
-  const missionNarrative = details.narratives.find((n) => n.kind === "mission");
-  const firstNarrative = missionNarrative ?? details.narratives[0] ?? null;
-  if (firstNarrative?.body) {
-    const firstSentence = firstNarrative.body.split(/\.\s/)[0];
-    description =
-      firstSentence.length > 200
-        ? firstSentence.slice(0, 197) + "…"
-        : firstSentence;
-  } else if (tier === "rollup") {
-    // Honest per-service tail (Phase 5G): the ingested service books (Navy,
-    // Army, Air Force / Space Force) have no matching R-2/P-40 narrative for
-    // this particular line (classified, SBIR, spectrum, or a workbook
-    // remainder). Any non-service org code with no J-book concept still falls
-    // back to the "not yet ingested" tail.
-    const tail = isIngestedServiceOrg(details.service_org ?? "")
-      ? "No R-2/P-40 J-book narrative for this line."
-      : "Detailed service J-book not yet ingested.";
-    description = `${serviceOrgName(program.org)} — ${peBli} — FY2026 budget figures from the R-1/P-1 workbooks, every number cited. ${tail}`;
-  } else {
-    // §P1-E badge sweep: humanized org in the meta description too — the
-    // search-result snippet was reading "F — ATA000 — FY2026 budget…".
-    description = `${serviceOrgName(program.org)} — ${peBli} — FY2026 budget, contracts & lobbying data.`;
+  // ── §P2-5: the description is WRITTEN, and it is on the canonical basis ──
+  //
+  // It used to be a slice of R-2/P-40 justification prose, so every share
+  // card and every search snippet opened mid-thought: "The FY 2026 budget
+  // provides funding for 24 F-35A Aircraft, Engines and associated
+  // Non-Recurring and ancillary…". A description is a promise about the page;
+  // a truncated paragraph from inside the page is not one.
+  //
+  // The figures come from `trajectory` — the P-1/R-1 workbook total
+  // obligation authority the whole site treats as canonical (lib/basis,
+  // BASIS_LABEL.toa), NOT the R-2/P-40 program line that §P0-1 found
+  // disagreeing with it. Same basis as the OG image beside it, same basis as
+  // the headline cards on the page. Units are USD thousands on the
+  // trajectory payload. Nothing here is authored when the corpus is silent:
+  // a missing figure drops its clause rather than inventing one.
+  const fy26Toa = program.trajectory?.fy2026_total ?? null;
+  const fy24Toa = program.trajectory?.fy2024_actuals ?? null;
+  const figureClauses: string[] = [];
+  if (fy26Toa != null) {
+    figureClauses.push(
+      `${formatAmount(fy26Toa, "USD thousands")} requested for FY2026`,
+    );
   }
+  if (fy24Toa != null) {
+    figureClauses.push(
+      `${formatAmount(fy24Toa, "USD thousands")} in FY2024 actuals`,
+    );
+  }
+  const basisTail =
+    figureClauses.length > 0
+      ? `${figureClauses.join(", ")} (P-1/R-1 workbook total obligation authority). `
+      : "";
+  const tierTail =
+    tier === "rollup"
+      ? isIngestedServiceOrg(details.service_org ?? "")
+        ? "Workbook-tier line: no R-2/P-40 J-book narrative for it. "
+        : "Workbook-tier line: the detailed service J-book is not yet ingested. "
+      : "";
+  const description =
+    `${program.title} (${peBli}), ${serviceOrgName(program.org)}. ` +
+    `${basisTail}${tierTail}` +
+    `Every figure links to the document it is printed in.`;
 
   const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
 

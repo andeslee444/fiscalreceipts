@@ -29,6 +29,10 @@ import {
   sortEntries,
   buildYearsCsv,
   defaultSortKey,
+  cellState,
+  fmtDisplayMillions,
+  fmtDelta,
+  fmtPct,
   YearsMatrix,
   type YearsMatrixData,
 } from "@/components/years-matrix";
@@ -376,12 +380,15 @@ describe("YearsMatrix — render contract", () => {
     ).not.toBeNull();
   });
 
-  it('null cells render "–" plain text: no data-amount, no data-v', async () => {
+  it('null cells render "—" as absent: no data-amount, no data-v (§P2-7)', async () => {
     await renderMatrix();
     const cell = document.querySelector(
       'tr[data-program-row][data-pe="0602702E"] td[data-col="fy_2025_total"]',
     ) as HTMLElement;
-    expect(cell.textContent).toBe("–");
+    // The em dash is the glyph; the sr-only twin is what a screen reader gets,
+    // because "—" read aloud is not a claim.
+    expect(cell.textContent).toBe("—no figure");
+    expect(cell.getAttribute("data-cell-state")).toBe("absent");
     expect(cell.hasAttribute("data-v")).toBe(false);
     expect(cell.querySelector("[data-amount]")).toBeNull();
   });
@@ -607,12 +614,13 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     expect(cite!.getAttribute("data-dataset")).toBe("budget_lines_decade");
   });
 
-  it('absent decade cells render "–" with the not-in-edition tooltip', async () => {
+  it('absent decade cells render "—" with the not-in-edition tooltip', async () => {
     await renderMatrix();
     const cell = document.querySelector(
       'tr[data-pe="0602702E"] td[data-col="fy2015a"]',
     ) as HTMLElement;
-    expect(cell.textContent).toBe("–");
+    expect(cell.textContent).toBe("—no figure");
+    expect(cell.getAttribute("data-cell-state")).toBe("absent");
     expect(cell.hasAttribute("data-v")).toBe(false);
     expect(cell.querySelector("[data-amount]")).toBeNull();
     expect(cell.getAttribute("title")).toBe("Not in the PB2017 edition");
@@ -767,5 +775,44 @@ describe("YearsMatrix — family-thread affordance (program-lineage)", () => {
     const csv = buildYearsCsv(entries, ["fy_2026_total"]);
     expect(csv).not.toContain("family_id");
     expect(csv).not.toContain("family");
+  });
+});
+
+describe("§P2-7 — 0 vs <0.05 vs — are three different facts", () => {
+  it("classifies a cell by its value in the DISPLAY unit", () => {
+    expect(cellState(0)).toBe("zero");
+    expect(cellState(0.012)).toBe("rounded-zero");
+    expect(cellState(-0.012)).toBe("rounded-zero");
+    expect(cellState(0.049999)).toBe("rounded-zero");
+    expect(cellState(0.05)).toBe("value");
+    expect(cellState(223.7)).toBe("value");
+  });
+
+  it("renders a true zero as 0 — never 0.0, which reads as a rounded value", () => {
+    expect(fmtDisplayMillions(0)).toBe("0");
+    expect(fmtDisplayMillions(-0)).toBe("0");
+  });
+
+  it("renders a rounded-down nonzero as its BOUND, with its sign", () => {
+    expect(fmtDisplayMillions(0.012)).toBe("<0.05");
+    expect(fmtDisplayMillions(0.049)).toBe("<0.05");
+    expect(fmtDisplayMillions(-0.012)).toBe("−<0.05");
+  });
+
+  it("never collapses a real magnitude into the bound", () => {
+    expect(fmtDisplayMillions(0.05)).toBe("0.1");
+    expect(fmtDisplayMillions(223.719)).toBe("223.7");
+    expect(fmtDisplayMillions(-1200.4)).toBe("-1,200.4");
+  });
+
+  it("applies the same three-way split to Δ and %Δ", () => {
+    expect(fmtDelta(0)).toBe("0");
+    expect(fmtDelta(12)).toBe("+<0.05");
+    expect(fmtDelta(-12)).toBe("−<0.05");
+    expect(fmtDelta(417_500)).toBe("+417.5");
+    expect(fmtPct(0)).toBe("0%");
+    expect(fmtPct(0.02)).toBe("+<0.05%");
+    expect(fmtPct(-0.02)).toBe("−<0.05%");
+    expect(fmtPct(-35.15)).toBe("−35.1%");
   });
 });

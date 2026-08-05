@@ -59,7 +59,7 @@ import {
   footnoteInputFromCitation,
   type FootnoteInput,
 } from "@/lib/footnote";
-import { usdEquivalence } from "@/lib/format";
+import { usdEquivalence, formatCount } from "@/lib/format";
 import type { Citation } from "@/lib/citations";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -174,7 +174,7 @@ export function FactResolver() {
             aria-label="Ambiguous fact id — more than one fact shares this prefix"
             className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
           >
-            {matches.length} facts share the 8-character prefix{" "}
+            {formatCount(matches.length)} facts share the 8-character prefix{" "}
             <span className="font-mono">#{state.id}</span> — all are shown
             below. Use the full 16-character id to disambiguate.
           </p>

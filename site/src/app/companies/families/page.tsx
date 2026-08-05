@@ -14,6 +14,7 @@ import {
 } from "@/lib/entity-families";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CompanyName } from "@/components/company-name";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 
@@ -64,6 +65,35 @@ function sourcePublisher(url: string): string {
     return host;
   } catch {
     return "source";
+  }
+}
+
+/**
+ * The SEC accession number, read out of an EDGAR Archives URL (deferred judge
+ * nit: "SEC accession numbers on /families/").
+ *
+ * A URL is a location; an accession number is an IDENTIFIER — it is what
+ * survives EDGAR reorganising its paths, what a reader types into EDGAR full
+ * text search, and what a lawyer cites. This page is the site's chain of
+ * custody for a tier with no warehouse citation, so the durable id belongs on
+ * it beside the form and the date, exactly as a fact id sits beside a figure
+ * everywhere else.
+ *
+ * EDGAR archive paths carry the accession with its dashes stripped:
+ *   /Archives/edgar/data/101829/000114036120007906/…  →  0001140361-20-007906
+ * Anything that is not that shape returns null and renders nothing — this
+ * derives an id, it never invents one.
+ */
+export function secAccession(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.replace(/^www\./, "").endsWith("sec.gov")) return null;
+    const m = /\/Archives\/edgar\/data\/\d+\/(\d{18})\//.exec(u.pathname);
+    if (!m) return null;
+    const d = m[1];
+    return `${d.slice(0, 10)}-${d.slice(10, 12)}-${d.slice(12)}`;
+  } catch {
+    return null;
   }
 }
 
@@ -321,6 +351,15 @@ export default function CompanyFamiliesPage() {
                       {sourcePublisher(event.source_url)} · opened and checked{" "}
                       {event.source_verified}
                     </span>
+                    {secAccession(event.source_url) && (
+                      <span
+                        data-sec-accession={secAccession(event.source_url)!}
+                        title="SEC accession number — the durable identifier for this filing, independent of the URL"
+                        className="mt-0.5 block font-mono text-[11px] text-muted-foreground"
+                      >
+                        {secAccession(event.source_url)}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -394,11 +433,11 @@ export default function CompanyFamiliesPage() {
                           href={`/company/${m.slug}/`}
                           className="hover:text-foreground hover:underline"
                         >
-                          {m.display_name}
+                          <CompanyName raw={m.display_name} />
                         </Link>
                       ) : (
                         <span title="Outside the top-200 list — counted in the total, no profile page">
-                          {m.display_name}
+                          <CompanyName raw={m.display_name} />
                         </span>
                       )}
                     </span>

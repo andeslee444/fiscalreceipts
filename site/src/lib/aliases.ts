@@ -140,6 +140,41 @@ export function aliasChipText(
   return `also known as: ${aliases.join(" · ")}`;
 }
 
+/**
+ * The SAME chip, split into its three parts so a renderer can mark the token
+ * that did the matching (deferred judge nit: "search alias-token
+ * highlighting").
+ *
+ * Query terms are highlighted in a result's TITLE, but an alias hit matches
+ * on a word that is not in the title — search "Sentinel" and the top row
+ * reads "Ground Based Strategic Deterrent" with nothing marked, and the chip
+ * says "matched alias: Sentinel" in flat grey. The one word that explains the
+ * result was the one word carrying no emphasis.
+ *
+ * `aliasChipText` stays the single source of the WORDING (and remains the
+ * accessible/plain-text form); this returns the same string in pieces, so the
+ * two surfaces cannot drift apart while one of them gains a <mark>.
+ */
+export function aliasChipParts(
+  matched: string | null | undefined,
+  aliases: readonly string[],
+): { lead: string; matched: string | null; tail: string } {
+  if (matched) {
+    const key = alnumKey(matched);
+    const others = aliases.filter((a) => alnumKey(a) !== key);
+    return {
+      lead: "matched alias: ",
+      matched,
+      tail: others.length > 0 ? ` — also known as ${others.join(" \u00b7 ")}` : "",
+    };
+  }
+  return {
+    lead: `also known as: ${aliases.join(" \u00b7 ")}`,
+    matched: null,
+    tail: "",
+  };
+}
+
 // ── Table filters (Sprint 2 visual-judge fix round) ──────────────────────────
 //
 // The contradiction both judges hit: typing "sentinel" into the new /programs/

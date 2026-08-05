@@ -32,6 +32,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import {
+import { companyDisplay } from "../src/lib/company-name.mjs";
   buildFeedTargets,
   companyWatchPeBlis,
   renderRss,
@@ -116,7 +117,9 @@ export function collectFeedInputs() {
     if (watch.peBlis.size === 0) continue;
     companyWatch.push({
       slug: e.slug,
-      displayName: e.display_name,
+      // §P2-4: the feed title is a DISPLAY surface — a subscriber's
+      // reader shows it verbatim, so it gets the same casing as the page.
+      displayName: companyDisplay(e.display_name),
       familyKey: e.family_key,
       ...watch,
     });

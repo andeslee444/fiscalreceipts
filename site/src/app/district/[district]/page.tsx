@@ -64,6 +64,16 @@ export default async function DistrictDetailPage({ params }: Props) {
 
   const stateLabel = detail.pop_state ? ` — ${detail.pop_state}` : "";
 
+  // The organizations actually present below — DERIVED, never authored, so
+  // the coverage note cannot outlive the data it describes (§P1-5).
+  const linkedOrgs = [
+    ...new Set(detail.programs.map((p) => p.organization).filter(Boolean)),
+  ].sort();
+  const orgPhrase =
+    linkedOrgs.length === 1
+      ? `Every program below is a ${linkedOrgs[0]} line`
+      : `The programs below come from ${linkedOrgs.join(", ")}`;
+
   // Special pop_district codes (00 at-large, 90/98/99 undistricted) render a
   // plain-language label instead of the raw code — display only; the URL and
   // sidecar data keep the raw code (e.g. /district/DC-98/).
@@ -120,12 +130,26 @@ export default async function DistrictDetailPage({ params }: Props) {
               district coverage means here, which is a credibility asset. Calm
               register, and after the heading. */}
           <ScopeNote className="mt-3" label="Coverage note">
+            {/* The old wording ("only high-confidence award links from the
+                DARPA crosswalk") was circular: the reader is looking at a
+                page where every program is a DARPA line and is told the
+                reason is "the DARPA crosswalk" — a phrase that presupposes
+                the answer. It now says WHY the crosswalk only resolves for
+                DARPA, which is a methodology limit and not a preference. */}
             <p>
-              District data reflects only high-confidence award links from the
-              DARPA crosswalk. Aggregate totals are derived from USAspending
-              award transaction data — click any figure to see the formula and
-              query behind it. Recipients and transaction counts are from
-              USAspending; no additional verification applied.
+              {orgPhrase}, and that is a limit of the method rather than a
+              fact about this district. Linking a budget line to an award
+              needs the award&rsquo;s account code to identify one program;
+              DARPA&rsquo;s account structure does that, while the services
+              book many programs under one account, so their awards cannot be
+              attributed to a single line without guessing. We do not guess,
+              so those lines are absent here rather than approximate.
+            </p>
+            <p className="mt-2">
+              Aggregate totals are derived from USAspending award transaction
+              data — click any figure for the formula and query behind it.
+              Recipients and transaction counts are USAspending&rsquo;s own;
+              no additional verification applied.
             </p>
           </ScopeNote>
 

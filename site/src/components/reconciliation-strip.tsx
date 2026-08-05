@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Cite } from "@/components/cite";
-import { formatAmountNoCurrency } from "@/lib/format";
+import { formatAmountNoCurrency, type AmountUnits } from "@/lib/format";
+import { reproducibleDifference, toMillions } from "@/lib/derivation";
 import type { ReconciliationEntry } from "@/lib/data";
 
 /**
@@ -52,6 +53,15 @@ function fyLabel(fy: number): string {
   return `FY${String(fy).slice(-2)}`;
 }
 
+/** The closing arithmetic for ONE reconciliation row (§P2-8). */
+function exactFor(e: ReconciliationEntry) {
+  return reproducibleDifference(
+    toMillions(e.toa.v, e.toa.units as AmountUnits),
+    toMillions(e.detail.v, e.detail.units as AmountUnits),
+    toMillions(e.delta_thousands, "USD thousands"),
+  );
+}
+
 export function ReconciliationStrip({
   entries,
 }: {
@@ -62,6 +72,7 @@ export function ReconciliationStrip({
   return (
     <div
       data-reconciliation=""
+      data-derivation="reconciliation"
       data-testid="reconciliation-strip"
       className="mt-3 space-y-2 rounded-md border border-border bg-muted/40 px-3 py-2.5"
     >
@@ -132,10 +143,38 @@ export function ReconciliationStrip({
               >
                 {formatAmountNoCurrency(e.delta_thousands, "USD thousands")}
               </span>
+              {/* §P2-8: the two cited figures are shown compactly ($5.57B,
+                  $5.25B) and their difference is exact, so the row as printed
+                  did not add up — 5.57 − 5.25 is 320M, not 318.6M. The
+                  closing arithmetic follows, at the smallest precision at
+                  which all three agree. */}
+              {exactFor(e) && (
+                <>
+                  {" "}
+                  <span
+                    data-derivation-exact=""
+                    className="whitespace-nowrap font-mono tabular-nums text-muted-foreground/80"
+                  >
+                    ({exactFor(e)!.a} &minus; {exactFor(e)!.b} ={" "}
+                    {exactFor(e)!.delta})
+                  </span>
+                </>
+              )}
             </p>
           );
         })}
       </div>
+
+      {/* One shared unit + rounding statement, so the per-row parentheses can
+          stay short. */}
+      <p
+        data-derivation-rounding=""
+        className="text-xs leading-5 text-muted-foreground"
+      >
+        Figures in the sentence are rounded for reading; the parenthesised
+        arithmetic is the same subtraction in USD millions, at the precision
+        where it closes.
+      </p>
     </div>
   );
 }

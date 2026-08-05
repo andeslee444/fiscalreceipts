@@ -1,6 +1,7 @@
 import { Cite } from "@/components/cite";
 import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { formatAmount } from "@/lib/format";
+import { reproducibleDifference, toMillions } from "@/lib/derivation";
 import type { DecadePoint, DecadeSeries, ProgramBookDiff } from "@/lib/data";
 
 /**
@@ -148,6 +149,18 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
         }
       : null;
   const showDiff = Boolean(diffSides?.request && diffSides?.actuals);
+
+  // §P2-8: the closing arithmetic behind the "asked vs spent" sentence, at
+  // the smallest precision at which the three numbers visibly agree. Values
+  // are USD thousands on the decade series; the strip prints millions.
+  const exact =
+    showDiff && bookDiff
+      ? reproducibleDifference(
+          toMillions(diffSides!.actuals!.v, "USD thousands"),
+          toMillions(diffSides!.request!.v, "USD thousands"),
+          toMillions(bookDiff.delta, "USD thousands"),
+        )
+      : null;
 
   // §P2-3 — name vs description. The description says what the picture shows
   // AND what to take from it; both the trend and the gap count are computed
@@ -421,6 +434,7 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
       {showDiff && bookDiff && diffSides?.request && diffSides?.actuals && (
         <p
           data-testid="asked-vs-spent"
+          data-derivation="asked-vs-spent"
           className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground"
         >
           <span className="font-medium text-foreground">Asked vs spent:</span>{" "}
@@ -472,6 +486,26 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
             display={formatAmount(Math.abs(bookDiff.delta), "USD thousands")}
           />{" "}
           {bookDiff.delta >= 0 ? "above" : "below"} the request.
+          {/* §P2-8: the compact figures above are rounded to three significant
+              digits, so subtracting THEM gives ~$290M, not the $286.5M this
+              strip states. The stated figure is right — it is derived from
+              the unrounded values — but a reader checking the site's
+              arithmetic against the site's own numbers must not be the one
+              who discovers that. So the closing arithmetic is printed, at
+              the smallest precision at which it closes (lib/derivation). */}
+          {exact && (
+            <>
+              {" "}
+              <span
+                data-derivation-exact=""
+                className="whitespace-nowrap font-mono tabular-nums"
+              >
+                {exact.a} &minus; {exact.b} = {exact.delta}
+              </span>{" "}
+              <span className="italic">{exact.unitLabel}</span> — the compact
+              figures above are rounded for reading.
+            </>
+          )}
         </p>
       )}
     </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DistrictIndexRow } from "@/lib/data";
-import { districtDisplayLabel } from "@/lib/format";
+import { districtDisplayLabel, formatCount } from "@/lib/format";
 import { Cite } from "@/components/cite";
 
 type SortKey = "pop_district" | "pop_state" | "program_count" | "total_linkable_dollars";
@@ -157,8 +157,48 @@ export function DistrictTable({ districts }: Props) {
           </button>
         )}
         <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length} district{filtered.length !== 1 ? "s" : ""}
+          {formatCount(filtered.length)} district{filtered.length !== 1 ? "s" : ""}
         </span>
+      </div>
+
+      {/* Mobile sort controls. Below `sm` the State and Programs columns are
+          hidden so the money column stays inside a 390px viewport — but the
+          sort affordance lived ONLY in those column headers, so hiding the
+          columns silently removed the ability to order the table by program
+          count. /companies/ solved the same problem with explicit buttons;
+          this follows it rather than re-widening the table (gate 3's mobile
+          leg measures the money column and would catch that).
+
+          State is deliberately NOT here: the select above already reaches
+          every state, and a sort by a hidden text column is not a thing a
+          reader on a phone is asking for. */}
+      <div className="sm:hidden mb-3 flex items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Sort:</span>
+        {(
+          [
+            ["program_count", "Programs"],
+            ["total_linkable_dollars", "Linkable $"],
+          ] as [SortKey, string][]
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            data-mobile-sort={key}
+            onClick={() => handleSort(key)}
+            aria-pressed={sortKey === key}
+            className={[
+              "rounded border px-2 py-1 transition-colors",
+              sortKey === key
+                ? "border-border bg-muted text-foreground"
+                : "border-border text-muted-foreground",
+            ].join(" ")}
+          >
+            {label}
+            <span className="ml-1" aria-hidden="true">
+              {sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="relative rounded-lg border border-border overflow-hidden bg-card">
