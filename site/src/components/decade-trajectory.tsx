@@ -177,8 +177,18 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
   const gapYears = gridFys.filter(
     (fy) => inWindow("actuals", fy) && !pointAt("actuals", fy),
   ).length;
+  // Round-2 judging: this said "Ten fiscal years" on every program, including
+  // ones whose grid carries five columns (F-35 runs FY22–FY26). The corpus
+  // spans ten editions; an individual program spans however many years it
+  // appears in, and the card must not claim the corpus's reach as its own.
+  // Derived from the grid actually rendered, never authored.
+  const spanYears = gridFys.length;
+  const spanPhrase =
+    spanYears === 1
+      ? `One fiscal year of this program as published`
+      : `${spanYears} fiscal years of this program as published (FY${minFy}–FY${maxFy})`;
   const chartDescription =
-    `Ten fiscal years of this program as published: a line through the actuals ` +
+    `${spanPhrase}: a line through the actuals ` +
     `(filled dots), with the enacted (hollow circles) and request (diamonds) ` +
     `markers each edition reported. Read it for direction, not for precision — ` +
     `this program's actuals line ${actualsTrend}` +

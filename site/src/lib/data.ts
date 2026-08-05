@@ -688,6 +688,12 @@ export interface EntityAwardRow {
   award_piid?: string;
   confidence?: string;
   recipient_name?: string;
+  /**
+   * The budget program element this award is crosswalked to. Present in the
+   * sidecar all along but untyped and unrendered — round-2 judging found the
+   * "Budget-Linked Awards" table naming no budget line at all.
+   */
+  pe_bli?: string;
   [key: string]: unknown;
 }
 

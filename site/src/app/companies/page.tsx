@@ -25,12 +25,12 @@ const _fyRangeText = _fyRange ? `, ${_fyRange.label}` : "";
 
 export const metadata: Metadata = {
   title: "Top Contractors",
-  description: `Top defense contractor families by total federal obligations — USAspending-derived${_fyRangeText}, with renamed and acquired companies merged into one family line.`,
+  description: `Top defense contractor families by total Department of Defense obligations — USAspending-derived${_fyRangeText}, with renamed and acquired companies merged into one family line.`,
   alternates: { canonical: `${SITE_URL}/companies/` },
   openGraph: {
     title: `Top Contractors — ${SITE_NAME}`,
     description:
-      "Top defense contractor families by total federal obligations, with renamed and acquired companies merged.",
+      "Top defense contractor families by total Department of Defense obligations, with renamed and acquired companies merged.",
     url: `${SITE_URL}/companies/`,
     siteName: SITE_NAME,
   },

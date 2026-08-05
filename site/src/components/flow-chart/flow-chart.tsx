@@ -246,6 +246,7 @@ export function FlowChart() {
             <ChartTableDisclosure label="View the budget river as a table">
               <RiverTable
                 nodes={budget.nodes}
+                edges={budget.edges}
                 levelLabels={BUDGET_LEVEL_LABELS}
                 units={budgetUnits}
                 caption={`Budget river as a table: every block in the diagram, grouped by level, with its cited figure. ${budget.label}, USD thousands.`}
@@ -362,6 +363,7 @@ export function FlowChart() {
             <ChartTableDisclosure label="View the spend river as a table">
               <RiverTable
                 nodes={spendRiver.nodes}
+                edges={spendRiver.edges}
                 levelLabels={SPEND_LEVEL_LABELS}
                 units={spendUnits}
                 caption={`Spend river as a table: every block in the diagram, grouped by level, with its cited figure. DoD prime contract obligations for FY${activeFy}, USD.`}
@@ -545,6 +547,7 @@ function ScrollCue() {
 
 function RiverTable({
   nodes,
+  edges,
   levelLabels,
   units,
   caption,
@@ -554,6 +557,7 @@ function RiverTable({
   edition,
 }: {
   nodes: FlowNode[];
+  edges: FlowEdge[];
   levelLabels: Record<string, string>;
   units: AmountUnits;
   caption: string;
@@ -567,6 +571,28 @@ function RiverTable({
   for (const n of nodes) {
     const cur = levelOrder.get(n.level);
     if (cur === undefined || n.x0 < cur) levelOrder.set(n.level, n.x0);
+  }
+  // Round-2 judging: the table listed Level / Block / Amount only, so nodes
+  // that share a label but not a parent read as data errors — "Research,
+  // Development, Test and Evaluation, Air Force" at $36.1B AND $26.2B,
+  // "Classified Programs" four times. In the diagram the ribbon shows which
+  // parent each belongs to; in the table nothing did, and the table is the one
+  // surface where a reader cannot hover to disambiguate.
+  //
+  // The parent is the source of the largest incoming edge — the same reading
+  // the ribbon gives visually.
+  const parentOf = new Map<string, string>();
+  {
+    const best = new Map<number, { v: number; s: number }>();
+    for (const e of edges) {
+      const cur = best.get(e.t);
+      if (!cur || e.v > cur.v) best.set(e.t, { v: e.v, s: e.s });
+    }
+    for (const [t, { s: src }] of best) {
+      const child = nodes[t];
+      const parent = nodes[src];
+      if (child && parent) parentOf.set(child.id, parent.label);
+    }
   }
   const rows = [...nodes].sort((a, b) => {
     const la = levelOrder.get(a.level) ?? 0;
@@ -620,6 +646,14 @@ function RiverTable({
               {n.other ? (
                 <span className="ml-1 text-muted-foreground">
                   ({n.other.count} aggregated entries)
+                </span>
+              ) : null}
+              {parentOf.get(n.id) ? (
+                <span
+                  data-block-parent
+                  className="block font-normal text-muted-foreground"
+                >
+                  from {parentOf.get(n.id)}
                 </span>
               ) : null}
             </th>
