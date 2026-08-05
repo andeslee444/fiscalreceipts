@@ -3225,3 +3225,36 @@ argument for checking every fact rather than a sample:
   ✗   [feed] 011037b3e32527df HAYAT BROWN: page says $1,782,154, its own query returns $1,254,209
   ✗   [feed] 01a58c04b9e2d913 SUNTIFF: page says $5,688,527, its own query returns $4,688,527
   ✗   [feed] 027b577d2aef5274 EVERSTONE INDUSTRIES: page says $1,525,397, its own query returns $1,320,452
+
+--------------------------------------------------------------------------------
+MADE TO PASS (verbatim, clean build at HEAD 8011f571)
+--------------------------------------------------------------------------------
+  • leg d1: all 235 entity_xwalk-derived facts reproduce from their own query_body (entity 210, feed 25) ✓
+  • leg d2: the crosswalk's own totals reproduce the lake over exactly FY2017–FY2026, the window the pages label (FY2017–FY2026) ✓
+  • leg d3: entity_xwalk.parquet is newer than every award partition it reads ✓
+
+The feed count falls 1,667 → 25 because new_entrant is now rank-capped: the
+$1M floor yielded ~20 rows only while a FY2017-FY2019 crosswalk made a
+first-award-year >= 2024 structurally impossible, and the corrected crosswalk
+turned the same floor into 90% of the feed and a 9.2 MB /feed/ against a 1.7 MB
+ceiling. The floor — the signal's definition — is unchanged.
+
+ONE GATE BUG THIS LEG SHIPPED WITH, AND THE FIX. leg d0 (the projection-fidelity
+guard that keeps d1's speed honest) first failed with a message comparing a
+number to itself:
+
+  ✗ leg d0: the fct_award_transactions projection totals $3,875,864,466,718 but the warehouse table totals $3,875,864,466,718
+
+Real, not cosmetic: the projection is sorted so ~1,900 verbatim statements
+finish in 11s instead of 16min, and summing 40M doubles in a different order
+lands 9.5 cents from the same sum in the original order. Float addition is not
+associative. The absolute $0.01 tolerance is now relative (1e-9 ≈ $3,900 here:
+far under any real divergence, far over the 2.5e-14 reordering noise), and the
+message prints the difference so the next such failure reads as one.
+
+FULL SUITE AT THE FINAL HEAD (8011f571)
+  NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build   → exit 0
+  NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify  → exit 0
+  gates 1–24 all PASS; overall: PASS
+
+SUITE COUNT UNCHANGED — one new leg on gate 23. Still 24 gates.
