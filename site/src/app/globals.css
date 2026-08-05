@@ -118,6 +118,14 @@
        hover #0e49bc → 7.78:1 vs --background (solid + darker = clear lift) */
   --cite-decoration: oklch(0.55 0.17 259);
   --cite-decoration-hover: oklch(0.45 0.19 262);
+  /* §P2-6 — the SCOPE register. Honest scope disclosure ("this covers R-1/P-1
+     rollups, not O&M") is a credibility asset and must not wear the amber the
+     site reserves for caution about a specific number. Cool neutral at the
+     citation hue: unmistakably a panel, unmistakably not a warning. Gate 6
+     measures the composited border: warmth (r−b) must stay ≤ 12 here and
+     ≥ 30 on the amber caution register. */
+  --scope-border: oklch(0.9 0.022 259);
+  --scope-bg: oklch(0.975 0.008 259);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

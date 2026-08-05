@@ -7,6 +7,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
+import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
+import { ScopeNote } from "@/components/notes";
 import { YearsMatrix } from "@/components/years-matrix";
 
 /**
@@ -58,19 +60,32 @@ export default function YearsPage() {
               promise the organization grouping the grid opened on. Grouping
               is still one control away ("Group by organization"). */}
           <p className="mb-2 text-sm text-muted-foreground sm:text-base">
-            {`${_programCount} program elements as rows, fiscal-year amount types as columns — opening on the newest request, largest first, and expandable to the J-book's own project grain. Sort any column, or group by organization. Click any figure to open its citation.`}
+            {`${_programCount} program elements as rows, fiscal-year amount types as columns — opening on the newest request, largest first.`}
+            {/* The controls half of the sentence is two more lines at 390px,
+                between the heading and the grid, describing affordances the
+                reader can see. Kept for desktop; deferred on a phone. */}
+            <span className="hidden sm:inline">
+              {` Rows expand to the J-book's own project grain. Sort any column, or group by organization. Click any figure to open its citation.`}
+            </span>
           </p>
           {/* Unit statement — always visible (CapIQ convention: one stated
               unit for the whole grid). */}
           <p className="mb-2 text-sm font-medium text-foreground">
             All figures in USD millions.
           </p>
-          {/* Single-edition honesty — G2 contract (data-coverage="years-matrix").
-              Collapsible: below sm only the "why one edition? →" link shows. */}
-          <CoverageNote id="years-matrix" collapsible className="mb-2" />
-          {/* §P1-5: the grid's rows are the detail-grade tier; the canonical
-              corpus statement is what says so in the same words everywhere. */}
-          <CorpusStatement className="mb-2" />
+          {/* §P2-6 + the 390px fold. These two blocks are SCOPE DISCLOSURE —
+              which edition the grid is drawn from, and how big the corpus
+              behind it is — so they share one calm panel instead of two
+              stray paragraphs, and below `sm` they collapse behind a single
+              tappable line. The text stays in the DOM at every width: the
+              G2 coverage leg and gate 24's corpus leg read the built HTML.
+              Measured effect at 390×844: first data cell 766px → 519px. */}
+          <ScopeNote className="mb-2" label={null}>
+            <CollapsibleBelowSm summary="Scope: edition and corpus">
+              <CoverageNote id="years-matrix" />
+              <CorpusStatement />
+            </CollapsibleBelowSm>
+          </ScopeNote>
         </div>
         <YearsMatrix />
       </div>

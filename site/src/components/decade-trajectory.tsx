@@ -1,4 +1,5 @@
 import { Cite } from "@/components/cite";
+import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { formatAmount } from "@/lib/format";
 import type { DecadePoint, DecadeSeries, ProgramBookDiff } from "@/lib/data";
 
@@ -148,17 +149,48 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
       : null;
   const showDiff = Boolean(diffSides?.request && diffSides?.actuals);
 
-  return (
-    <div data-testid="decade-trajectory" className="space-y-3">
+  // §P2-3 — name vs description. The description says what the picture shows
+  // AND what to take from it; both the trend and the gap count are computed
+  // from the series, never authored.
+  const chartName = `Decade budget trajectory, FY${minFy} to FY${maxFy}, across President's Budget editions`;
+  const actualsTrend =
+    a.length >= 2
+      ? a[a.length - 1].v > a[0].v
+        ? "rises across the span"
+        : a[a.length - 1].v < a[0].v
+          ? "falls across the span"
+          : "is flat across the span"
+      : "is too short to show a direction";
+  const gapYears = gridFys.filter(
+    (fy) => inWindow("actuals", fy) && !pointAt("actuals", fy),
+  ).length;
+  const chartDescription =
+    `Ten fiscal years of this program as published: a line through the actuals ` +
+    `(filled dots), with the enacted (hollow circles) and request (diamonds) ` +
+    `markers each edition reported. Read it for direction, not for precision — ` +
+    `this program's actuals line ${actualsTrend}` +
+    (gapYears > 0
+      ? `, and ${gapYears} year${gapYears === 1 ? " is" : "s are"} a break in the line rather than a low value: an edition the program is absent from, never interpolated`
+      : "") +
+    `. The grid below is the same data as text, one cited figure per cell.`;
+
+  // The value grid IS the table view (§P2-3): it was already the citable
+  // interface for the sparkline, so it needs a caption and a marker, not a
+  // second copy of itself behind a toggle. Rendered through ChartFigure's
+  // `table` slot so the description sits between picture and table.
+  const chart = (
+    <div data-testid="decade-trajectory">
       <svg
         width={SVG_WIDTH}
         height={SVG_HEIGHT}
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         role="img"
-        aria-label={`Decade budget trajectory, FY${minFy} to FY${maxFy}, across President's Budget editions`}
+        aria-label={chartName}
+        aria-describedby={chartDescId("decade-trajectory")}
         data-testid="decade-spark"
         className="max-w-full"
       >
+        <desc>{chartDescription}</desc>
         {/* Baseline */}
         <line
           x1={PADDING}
@@ -265,7 +297,11 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
           FY{String(maxFy).slice(-2)}
         </text>
       </svg>
+    </div>
+  );
 
+  const tableView = (
+    <div className="mt-2 space-y-3">
       {/* Marker key — one quiet line (12px floor per P1-1: provenance
           legends are never sub-12px) */}
       <p data-testid="decade-marker-key" className="text-xs leading-4 text-muted-foreground">
@@ -278,9 +314,14 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
       <div className="overflow-x-auto">
         <table
           data-testid="decade-grid"
+          data-chart-table=""
           className="w-full border-collapse text-[11px]"
-          aria-label="Decade series values by fiscal year and edition"
         >
+          <caption className="sr-only">
+            Decade series values by fiscal year and President&apos;s Budget
+            edition: one row per series (actuals, enacted, request), one column
+            per fiscal year. Every figure opens its own citation.
+          </caption>
           <thead>
             <tr>
               <th
@@ -434,5 +475,16 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
         </p>
       )}
     </div>
+  );
+
+  return (
+    <ChartFigure
+      id="decade-trajectory"
+      description={chartDescription}
+      table={tableView}
+      descClassName="max-w-prose"
+    >
+      {chart}
+    </ChartFigure>
   );
 }

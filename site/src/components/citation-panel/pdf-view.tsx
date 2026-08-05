@@ -397,6 +397,7 @@ export function PdfView({ citation, officialLinkLabel }: PdfViewProps) {
       {isAmbiguous && (
         <div
           data-testid="ambiguous-badge"
+          data-note-kind="caution"
           className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
           role="note"
           aria-label="Ambiguous match: first matching page — see methodology"

@@ -8,6 +8,7 @@ import {
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
 import { Cite } from "@/components/cite";
+import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { CoverageNote } from "@/components/coverage-note";
 
 /**
@@ -179,13 +180,20 @@ export function FollowTheDollar({ data }: Props) {
       ? `${formatAmountNoCurrency(header.fy2026_total, "USD thousands")} FY26`
       : null;
 
+  // §P2-3 — one description, used as the visible figcaption AND the svg's
+  // <desc>. It says what the picture shows and what to take from it (how few
+  // families and districts the awards concentrate in), not just its title.
   const desc =
-    `Flow of dollars for program ${header.pe_bli}` +
+    `The program's money traced left to right: the ${header.org ?? "RDT&E"} ` +
+    `appropriation, program element ${header.pe_bli}` +
     (header.title ? ` (${header.title})` : "") +
-    `: from the ${header.org ?? ""} appropriation to the program element, ` +
-    `then to the top ${awards.length} high-confidence awards, their recipient ` +
-    `families, and congressional districts. Figures inside the diagram are ` +
-    `illustrative transaction sums; the table below carries the cited values.`;
+    `, its ${awards.length} largest high-confidence awards, the ` +
+    `${familySlugs.length} recipient famil${familySlugs.length === 1 ? "y" : "ies"} ` +
+    `behind them, and the ${districts.length} congressional district` +
+    `${districts.length === 1 ? "" : "s"} the work is recorded in. Read it for ` +
+    `concentration — how few families and districts the awards run through. ` +
+    `Amounts inside the diagram are illustrative per-award transaction sums; ` +
+    `the table below carries the cited per-district obligations.`;
 
   return (
     <section className="mt-8 pt-6 border-t border-border" id="follow-the-dollar">
@@ -197,12 +205,14 @@ export function FollowTheDollar({ data }: Props) {
       {/* Scope note — G2 contract (data-coverage="follow-the-dollar") */}
       <CoverageNote id="follow-the-dollar" className="mb-4" />
 
+      <ChartFigure id="follow-the-dollar" description={desc}>
       <div className="flow-anim overflow-x-auto rounded-lg border border-border bg-card p-3">
         <svg
           viewBox={`0 0 ${VIEW_W} ${viewH}`}
           className="min-w-[860px] w-full h-auto"
           role="img"
-          aria-label={`Follow-the-dollar diagram for ${header.pe_bli}`}
+          aria-label={`Follow-the-dollar diagram for program ${header.pe_bli}: appropriation to program element to awards to recipient families to congressional districts`}
+          aria-describedby={chartDescId("follow-the-dollar")}
           data-flow-svg={header.pe_bli}
         >
           <desc>{desc}</desc>
@@ -452,9 +462,16 @@ export function FollowTheDollar({ data }: Props) {
         per-district obligations in the table cite USAspending queries.
       </p>
 
-      {/* Cited per-district table */}
-      <div className="mt-3 rounded-lg border border-border overflow-hidden bg-card">
-        <table className="w-full text-sm">
+      {/* Cited per-district table — THE TABLE VIEW (§P2-3). It was already
+          the diagram's cited pair; it now carries the marker and caption that
+          say so, and scrolls inside its own box at 390px. */}
+      <div className="mt-3 rounded-lg border border-border overflow-x-auto bg-card">
+        <table data-chart-table="" className="w-full text-sm">
+          <caption className="sr-only">
+            The diagram as text: one row per congressional district in the
+            diagram, the recipient families shown there, and that district&apos;s
+            cited program obligations.
+          </caption>
           <thead className="bg-muted/50">
             <tr>
               <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">
@@ -507,6 +524,7 @@ export function FollowTheDollar({ data }: Props) {
           </tbody>
         </table>
       </div>
+      </ChartFigure>
     </section>
   );
 }

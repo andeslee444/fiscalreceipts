@@ -2798,3 +2798,131 @@ NOTES:
 
 SUITE COUNT UNCHANGED — one new leg on gate 1, two strengthened legs on gates
 3 and 20. Still 24 gates.
+
+
+================================================================================
+PM-REVIEW SPRINT 3 — TASK 4 (2026-08-05): chart accessibility (§P2-3) +
+amber-banner language (§P2-6)
+================================================================================
+
+TWO LEGS, BOTH STRENGTHENING EXISTING GATES. No new gate — the svg-desc rule
+already lived inside gate 2 (render-static) and the a11y contract inside gate 6,
+so both grew rather than spawning a thirteenth browser-driving script. Suite
+count unchanged — 24 gates.
+
+--------------------------------------------------------------------------------
+1. GATE 2 (render-static) — (ch) CHART CONTRACT + (nk) NOTE REGISTERS
+   [BOTH STRENGTHEN THE EXISTING svg-desc / STATIC SCAN]
+--------------------------------------------------------------------------------
+
+WHAT CHANGED. The svg <desc> rule policed only what a desc was allowed to SAY
+(every currency token must twin a cited [data-amount] sibling). It never asked
+whether a desc was there at all. It now does, and it asks the same of the rest
+of the chart:
+
+  (ch) every svg[role="img"] outside an [aria-hidden="true"] subtree is a
+       CHART: non-empty accessible name, non-empty <desc>, and it must live
+       inside a [data-chart] figure. Every [data-chart] must carry a
+       [data-chart-desc] of ≥60 chars that is not a restatement of the
+       accessible name, plus a table[data-chart-table] with a non-empty
+       <caption> and ≥1 [data-amount]. Zero charts site-wide FAILS.
+
+  (nk) every [data-note-kind] is scope|caution; every caution carries
+       role="note"; and NO banner — a note, a [data-coverage] block, a
+       role="alert" region, or a raw amber panel matched by class token —
+       may precede the page's <h1>. Both registers must exist site-wide.
+
+The raw-amber-class arm matters: it is what makes the leg fail on the CURRENT
+build, where /district/CO-05/'s coverage banner is a hand-rolled amber div with
+no marker of any kind. A marker-only check would have passed vacuously on the
+exact defect the spec reported.
+
+PROOF-CAN-FAIL (verbatim, unmodified pre-Task-4 build):
+
+PASS: false
+ERRORS:
+  ✗ 3853 chart-contract violation(s) — §P2-3 accessible name + description + table view (first 10):
+  ✗   program/000042/index.html: chart <svg role="img"> ("budget trajectory sparkline") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000042/index.html: chart <svg role="img"> ("decade budget trajectory, fy2022 to fy2026, across") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000071/index.html: chart <svg role="img"> ("budget trajectory sparkline") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000071/index.html: chart <svg role="img"> ("decade budget trajectory, fy2022 to fy2026, across") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000073/index.html: chart <svg role="img"> ("budget trajectory sparkline") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000073/index.html: chart <svg role="img"> ("decade budget trajectory, fy2022 to fy2026, across") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000074/index.html: chart <svg role="img"> ("budget trajectory sparkline") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000074/index.html: chart <svg role="img"> ("decade budget trajectory, fy2022 to fy2026, across") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000075/index.html: chart <svg role="img"> ("budget trajectory sparkline") is not inside a [data-chart] figure — no description, no table view
+  ✗   program/000075/index.html: chart <svg role="img"> ("decade budget trajectory, fy2022 to fy2026, across") is not inside a [data-chart] figure — no description, no table view
+  ✗   ... and 3843 more
+  ✗ 106 note-register / <h1>-order violation(s) — §P2-6 (first 10):
+  ✗   district/AK-00/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/AL-05/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/AZ-01/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/AZ-04/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-11/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-15/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-16/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-24/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-26/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   district/CA-28/index.html: a raw amber panel block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on
+  ✗   ... and 96 more
+
+(The note-register leg's OTHER vacuity arm was exercised first, before the
+raw-amber-class arm was added — the same run reported, verbatim:
+
+  ✗ note-register leg is VACUOUS: 0 scope and 0 caution note(s) site-wide — both registers must exist for the distinction to mean anything.
+
+which is what it will say again if the registers ever stop rendering.)
+
+MADE TO PASS (verbatim, unmodified build after the Task 4 page work):
+
+PASS: true
+NOTES:
+  chart contract: 3853 [data-chart] figure(s) over 3853 non-decorative chart svg(s) — every one named, described, and readable as a cited table ✓
+  note registers: 175 scope + 17 caution note(s), every caution semantically marked, every page's <h1> before its first note ✓
+ERRORS:
+
+--------------------------------------------------------------------------------
+2. GATE 6 (a11y) — (c) CHART TABLE VIEWS + (n) TWO NOTE REGISTERS
+   [NEW LEGS ON THE EXISTING a11y GATE — scripts/gates/charts.mjs]
+--------------------------------------------------------------------------------
+
+WHAT IT PINS, and why static was not enough:
+
+  (c1) the table view is REACHABLE — either already laid out, or behind a
+       <summary> that takes focus and reveals a laid-out table when Enter is
+       pressed on it. A CSS-clipped or ARIA-only "table view" fails.
+  (c2) with EVERY chart table on the page OPEN at 390×844, the document still
+       does not scroll sideways. Gate 3's mobile leg measures with the
+       disclosures closed and is blind to this by construction — a "view as
+       table" toggle that unfolds a 3-column table is exactly the way to
+       reintroduce the horizontal-overflow class that leg exists to catch.
+  (n1) scope and caution are visually distinguishable on the COMPOSITED
+       colours a reader sees (canvas probe, the P1-1 technique): caution
+       border warmth (r−b) ≥ 30, scope ≤ 12, backgrounds ≥ 6 apart. Both
+       registers must be found across the sample or the leg fails.
+
+PROOF-CAN-FAIL (verbatim, unmodified pre-Task-4 build):
+
+PASS: false
+ERRORS:
+  ✗ P2-3 charts (/program/0601101E/): 0 [data-chart] figure(s), expected ≥2 — the leg is vacuous or the charts stopped rendering
+  ✗ P2-3 charts (/flow/): 0 [data-chart] figure(s), expected ≥2 — the leg is vacuous or the charts stopped rendering
+  ✗ P2-6 registers: found 0 scope and 0 caution note(s) across /district/AK-00/, /about/, /program/0601384BP/ — both registers must render for the distinction to exist
+
+MADE TO PASS (verbatim, unmodified build after the Task 4 page work):
+
+PASS: true
+NOTES:
+  P2-3 charts (/program/0601101E/): 3 chart(s) named + described + table-backed — trajectory-spark(3r/3$), decade-trajectory(3r/29$), follow-the-dollar(6r/6$) ✓
+  P2-3 mobile (/program/0601101E/): 0 table(s) opened by keyboard at 390px, 0px page overflow ✓
+  P2-3 charts (/flow/): 2 chart(s) named + described + table-backed — flow-budget-river(55r/55$), flow-spend-river(40r/40$) ✓
+  P2-3 mobile (/flow/): 2 table(s) opened by keyboard at 390px, 0px page overflow ✓
+  P2-6 registers: 2 scope (border warmth ≤ -24) vs 1 caution (≥ 109), backgrounds ≥ 11 apart ✓
+ERRORS:
+
+(The program page's three tables are ALWAYS visible — stronger than a
+disclosure, hence "0 table(s) opened by keyboard" there; the two Sankey tables
+are the ones behind "View as table", and both open from the keyboard.)
+
+SUITE COUNT UNCHANGED — two strengthened legs on gate 2, two new legs on gate 6.
+Still 24 gates.

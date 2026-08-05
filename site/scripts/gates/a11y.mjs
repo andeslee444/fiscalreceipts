@@ -20,6 +20,13 @@
  *   (b) provenance floor: no citation chip/legend near [data-amount] may
  *       compute below 12px font-size (sampled program page + /years/).
  *       Non-vacuous: the checks FAIL if no elements are found to sample.
+ *
+ * PM Sprint 3 Task 4 (spec §P2-3 / §P2-6) — see gates/charts.mjs:
+ *   (c) every [data-chart] figure carries a named, described chart whose data
+ *       is reachable as a real table, openable from the keyboard, and that
+ *       does not push the document sideways at 390px when opened;
+ *   (n) scope-disclosure and caution notes are visually distinguishable on
+ *       the composited colours a reader actually sees.
  */
 
 import fs from "fs";
@@ -27,6 +34,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { runChartLegs } from "./charts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -201,6 +209,9 @@ export async function runA11yGate(baseUrl) {
 
     // ── P1-1 citation-affordance checks ─────────────────────────────────────
     await runAffordanceChecks(context, baseUrl, samplePbl, errors, notes);
+
+    // ── P2-3 chart legs + P2-6 note registers (Sprint 3 Task 4) ─────────────
+    await runChartLegs(context, baseUrl, errors, notes);
   } finally {
     await context.close();
     await browser.close();

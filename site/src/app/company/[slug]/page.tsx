@@ -16,6 +16,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
 import { FyRange } from "@/components/fy-range";
 import { humanLdaUrl } from "@/lib/citations";
 
@@ -193,9 +194,13 @@ export default async function CompanyPage({
 
         {/* Family obligations — non-additive, shown once.
             Rendered only when the figure carries its derived citation
-            (cited-or-absent under the dataset-ledger gate). */}
+            (cited-or-absent under the dataset-ledger gate).
+            §P2-6: a non-additivity statement is scope disclosure — what this
+            one figure covers and how it may not be combined — not a warning
+            about the figure's reliability. Calm register. */}
         {familyObligationsUsd != null && familyObligationsFactId != null && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <ScopeNote className="mt-4 text-sm" label={null}>
+            <p className="text-foreground">
             <span className="font-medium">Family-level obligations:</span>{" "}
             <Cite
               value={familyObligationsUsd}
@@ -207,12 +212,13 @@ export default async function CompanyPage({
                 three inconsistent ways the site stated this period, and the
                 only unfalsifiable one. It is the derived range, same as
                 everywhere else. */}
-            <span className="ml-2 text-xs text-amber-700">
+            <span className="ml-2 text-xs text-muted-foreground">
               — constant across all filing years listed below and non-additive
               (do not sum across rows; this figure is total family obligations
               over <FyRange />, the full USAspending award corpus).
             </span>
-          </div>
+            </p>
+          </ScopeNote>
         )}
       </div>
 

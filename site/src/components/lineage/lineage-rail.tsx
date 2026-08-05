@@ -327,7 +327,17 @@ export function LineageRail({
           inferred-honesty leg scans it); visually collapsed = the opt-in
           affordance. */}
       {inferred.length > 0 && (
-        <details className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+        /* §P2-6: the caution register lives on the panel, not on each <li>
+           (overriding an <li>'s role would break the list semantics). The
+           amber stays here — an inferred edge IS caution about a specific
+           connection. */
+        <div
+          data-note-kind="caution"
+          role="note"
+          aria-label="Candidate lineage connections — inferred and unverified"
+          className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2"
+        >
+        <details>
           <summary className="cursor-pointer text-sm font-medium text-amber-800 dark:text-amber-200">
             Show possible connections ({inferred.length} candidate
             {inferred.length === 1 ? "" : "s"}, unverified)
@@ -348,6 +358,7 @@ export function LineageRail({
             ))}
           </ul>
         </details>
+        </div>
       )}
     </div>
   );

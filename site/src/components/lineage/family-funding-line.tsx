@@ -142,8 +142,13 @@ export function FamilyFundingLine({
 
       {/* Split/branch honesty marker. */}
       {family.has_split && (
+        /* §P2-6 caution register: this is a warning about what the series
+           above does and does not sum, i.e. about a specific number. */
         <p
           data-has-split="true"
+          data-note-kind="caution"
+          role="note"
+          aria-label="Branching family — the funding line covers the 1:1 chain only"
           className="rounded-md border border-dashed border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
         >
           This family branches — the funding line above is shown for the 1:1

@@ -8,6 +8,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
 import { DistrictTable } from "@/components/district-table";
 import { FyRange } from "@/components/fy-range";
 
@@ -77,14 +78,16 @@ export default function DistrictIndexPage() {
           </p>
           {/* Scope note — G2 contract (data-coverage="districts") */}
           <CoverageNote id="districts" className="mb-3" />
-          {/* Coverage disclaimer — roomier padding + line-height at mobile
-              (visual-judge nit: text felt cramped at 390px). */}
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-4">
-            <strong>Coverage note:</strong> District data reflects only{" "}
-            high-confidence award crosswalk links. {_unlinkedCount} of {_programsCount} programs have no
-            district-level linkage yet — crosswalk extension is on the
-            roadmap.
-          </div>
+          {/* §P2-6: scope disclosure, not a warning. Same words, calm
+              register — the amber is reserved for caution about a number. */}
+          <ScopeNote className="mb-4" label="Coverage note">
+            <p>
+              District data reflects only high-confidence award crosswalk
+              links. {_unlinkedCount} of {_programsCount} programs have no
+              district-level linkage yet — crosswalk extension is on the
+              roadmap.
+            </p>
+          </ScopeNote>
           {/* The stat row, reconciled.
               Two figures ~457× apart sat side by side with nothing relating
               them, and "all-district" read as "the 106 districts shown" when

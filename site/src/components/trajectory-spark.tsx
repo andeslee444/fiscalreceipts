@@ -1,5 +1,6 @@
 import type { SummaryCard } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { basisChipText } from "@/lib/basis";
 import { formatAmount } from "@/lib/format";
 
@@ -124,17 +125,36 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
         ? "#dc2626" // red-600
         : "#6b7280"; // gray-500
 
+  // §P2-3: the accessible name NAMES the chart; the description says what it
+  // shows and what to take from it. The takeaway is computed, never authored
+  // — the direction of travel is the one thing a sparkline exists to say.
+  const spanLabel = `${points[0].label} to ${points[points.length - 1].label}`;
+  const chartName = `Budget trajectory sparkline, ${spanLabel}`;
+  const direction =
+    lastVal > firstVal
+      ? "ends higher than it starts"
+      : lastVal < firstVal
+        ? "ends lower than it starts"
+        : "ends level with where it starts";
+  const chartDescription =
+    `The program's ${points.length} summary figures for ${spanLabel}, plotted in ` +
+    `fiscal-year order so the direction of travel is readable at a glance: this ` +
+    `line ${direction}. The points are the summary cards above, not a separate ` +
+    `derivation; the table beside the chart carries each figure with its own citation.`;
+
   return (
-    <div>
+    <ChartFigure id="trajectory-spark" description={chartDescription}>
     <div className="flex items-center gap-3">
       <svg
         width={SVG_WIDTH}
         height={SVG_HEIGHT}
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         role="img"
-        aria-label="Budget trajectory sparkline"
+        aria-label={chartName}
+        aria-describedby={chartDescId("trajectory-spark")}
         className="shrink-0"
       >
+        <desc>{chartDescription}</desc>
         {/* Baseline */}
         <line
           x1={PADDING}
@@ -202,30 +222,63 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
         })}
       </svg>
 
-      {/* Compact year/value legend — each value is the CARD's own Cite with
-          its basis attributes + chip (never a re-derived figure) */}
-      <dl className="flex gap-3 text-xs text-muted-foreground flex-wrap">
-        {points.map((p) => (
-          <div key={p.label} className="flex flex-col">
-            <dt className="font-medium text-foreground/80">{p.label}</dt>
-            <dd>
-              <Cite
-                value={p.card.value!}
-                units={p.card.units!}
-                dataset={p.card.dataset ?? "fct_budget_trajectory"}
-                factId={p.card.fid}
-                xmlPath={p.card.fid ? null : p.card.xml_path}
-                basis={p.card.basis ?? undefined}
-                fy={p.card.fy}
-                measure={p.card.measure}
-                edition={p.card.edition}
-                reconciled={reconKeys?.has(`${p.card.fy}|${p.card.measure}`)}
-                chip={!sharedChipText}
-              />
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {/* THE TABLE VIEW (§P2-3), not a legend: the sparkline's data is
+          already tabular, so it ships as a real table with a caption and
+          row headers instead of a <dl> that only looks like one. Each value
+          is the CARD's own Cite with its basis attributes + chip (never a
+          re-derived figure). Its own scroll container, so a long money
+          string can never widen the document at 390px. */}
+      <div className="min-w-0 overflow-x-auto">
+        <table
+          data-chart-table=""
+          className="text-xs text-muted-foreground"
+        >
+          <caption className="sr-only">
+            Budget trajectory: one row per fiscal year, carrying the summary
+            figure the sparkline plots. Every figure opens its own citation.
+          </caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                className="pr-3 text-left font-medium whitespace-nowrap"
+              >
+                Fiscal year
+              </th>
+              <th scope="col" className="text-left font-medium">
+                Amount
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((p) => (
+              <tr key={p.label}>
+                <th
+                  scope="row"
+                  className="pr-3 text-left font-medium text-foreground/80 whitespace-nowrap"
+                >
+                  {p.label}
+                </th>
+                <td className="text-left whitespace-nowrap">
+                  <Cite
+                    value={p.card.value!}
+                    units={p.card.units!}
+                    dataset={p.card.dataset ?? "fct_budget_trajectory"}
+                    factId={p.card.fid}
+                    xmlPath={p.card.fid ? null : p.card.xml_path}
+                    basis={p.card.basis ?? undefined}
+                    fy={p.card.fy}
+                    measure={p.card.measure}
+                    edition={p.card.edition}
+                    reconciled={reconKeys?.has(`${p.card.fy}|${p.card.measure}`)}
+                    chip={!sharedChipText}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
 
       {/* ONE caption for the whole series when provenance is uniform (M7) —
@@ -238,6 +291,6 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
           All series figures: {sharedChipText}
         </p>
       )}
-    </div>
+    </ChartFigure>
   );
 }

@@ -48,7 +48,12 @@ import React, {
 import Link from "next/link";
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { CitationPanelContext } from "@/components/cite";
+import { Cite, CitationPanelContext } from "@/components/cite";
+import {
+  ChartFigure,
+  ChartTableDisclosure,
+  chartDescId,
+} from "@/components/chart-figure";
 import type { AmountUnits } from "@/lib/format";
 import {
   BUDGET_LEVEL_LABELS,
@@ -198,6 +203,18 @@ export function FlowChart() {
   const spendRiver = spend.by_fy[activeFy];
   const budgetUnits = asUnits(budget.units);
   const spendUnits = asUnits(spend.units);
+  // §P2-3: the exporter suppresses an inline label rather than let two
+  // collide (the F3 zero-collision contract, re-verified per render by gate
+  // 22 leg f). Suppression is fine; SILENT suppression is not — the chart
+  // says how many blocks it could not label and where to read them instead.
+  const unlabelled = (r: { nodes: FlowNode[] }) =>
+    r.nodes.filter((n) => !n.lbl).length;
+  const unlabelledNote = (r: { nodes: FlowNode[] }) => {
+    const n = unlabelled(r);
+    return n === 0
+      ? ""
+      : ` ${n} of the ${r.nodes.length} blocks are too thin to carry a label without colliding with their neighbours, so they carry none — hover or focus any block for its name and value, and the table below lists every one of them.`;
+  };
 
   return (
     <div ref={containerRef} data-testid="flow-chart" className="relative space-y-10">
@@ -213,11 +230,33 @@ export function FlowChart() {
             {budget.label} · USD thousands
           </span>
         </div>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Requested dollars, split down to programs; the last column states
-          how much of the request the contractor crosswalk can bridge. Click
-          any block for its citation.
-        </p>
+        <ChartFigure
+          id="flow-budget-river"
+          description={
+            `Requested dollars for ${budget.label}, split from the whole down ` +
+            `through components, appropriations and budget activities to ` +
+            `programs. Band width is share of the request; the last column ` +
+            `states how much of the request the contractor crosswalk can ` +
+            `bridge and how much it cannot, so the reach of the crosswalk is ` +
+            `read off the chart rather than taken on trust. Click any block ` +
+            `for its citation, or open the table below to read the same ` +
+            `figures as text.` + unlabelledNote(budget)
+          }
+          table={
+            <ChartTableDisclosure label="View the budget river as a table">
+              <RiverTable
+                nodes={budget.nodes}
+                levelLabels={BUDGET_LEVEL_LABELS}
+                units={budgetUnits}
+                caption={`Budget river as a table: every block in the diagram, grouped by level, with its cited figure. ${budget.label}, USD thousands.`}
+                basis="toa"
+                fy={budget.fiscal_year}
+                measure="fy_2026_total"
+                edition={budget.fiscal_year}
+              />
+            </ChartTableDisclosure>
+          }
+        >
         <div className="overflow-x-auto rounded-lg border border-border bg-card p-3">
           <RiverSvg
             idPrefix="flow-budget"
@@ -229,6 +268,7 @@ export function FlowChart() {
             levelLabels={BUDGET_LEVEL_LABELS}
             variant="budget"
             ariaLabel={`Budget river Sankey: ${budget.label}, from the total request through components, appropriations, and budget activities to programs and the contractor bridge. All values in USD thousands.`}
+            descId={chartDescId("flow-budget-river")}
             competedClasses={null}
             offersBuckets={null}
             onNode={(n, levelLabel) =>
@@ -241,6 +281,7 @@ export function FlowChart() {
             hideTip={hideTip}
           />
         </div>
+        </ChartFigure>
         <details className="mt-2 text-sm">
           <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">
             Crosswalked programs ({budget.bridge.crosswalked_pe_count} PEs,{" "}
@@ -303,12 +344,33 @@ export function FlowChart() {
             </select>
           </label>
         </div>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Obligated dollars for the selected year — a different measurement
-          system from the budget river above (obligation years are not budget
-          years). Ribbons are colored by FPDS competition class; hover for the
-          offers-received distribution.
-        </p>
+        <ChartFigure
+          id="flow-spend-river"
+          description={
+            `Prime-contract dollars actually obligated in FY${activeFy}, split ` +
+            `from the department total through awarding sub-agencies and ` +
+            `contracting offices to contractor families. This is a different ` +
+            `measurement system from the budget river above — obligation years ` +
+            `are not budget years, and the two are never added. Ribbon colour ` +
+            `is the FPDS competition class, so how much of the colour is ` +
+            `competed is the reading to take from it; hover for the ` +
+            `offers-received distribution, or open the table below for the ` +
+            `same figures as text.` + unlabelledNote(spendRiver)
+          }
+          table={
+            <ChartTableDisclosure label="View the spend river as a table">
+              <RiverTable
+                nodes={spendRiver.nodes}
+                levelLabels={SPEND_LEVEL_LABELS}
+                units={spendUnits}
+                caption={`Spend river as a table: every block in the diagram, grouped by level, with its cited figure. DoD prime contract obligations for FY${activeFy}, USD.`}
+                basis="usaspending"
+                fy={Number(activeFy)}
+                measure="obligations"
+              />
+            </ChartTableDisclosure>
+          }
+        >
         <CompetitionLegend classes={spend.competed_classes} />
         {/* Offers honesty — STATIC, beside the legend it qualifies (a
             hover-only or footer-only placement is too easy to miss). */}
@@ -332,6 +394,7 @@ export function FlowChart() {
               levelLabels={SPEND_LEVEL_LABELS}
               variant="spend"
               ariaLabel={`Spend river Sankey: DoD prime contract obligations for FY${activeFy}, from the total through awarding sub-agencies and contracting offices to contractor families. All values in USD. Ribbon colors mark FPDS competition classes.`}
+              descId={chartDescId("flow-spend-river")}
               competedClasses={spend.competed_classes}
               offersBuckets={spend.offers_buckets}
               onNode={(n, levelLabel) =>
@@ -345,6 +408,7 @@ export function FlowChart() {
             />
           </div>
         </div>
+        </ChartFigure>
         <p className="mt-2 text-xs text-muted-foreground">
           {spend.source_note}
         </p>
@@ -442,6 +506,112 @@ function CompetitionLegend({ classes }: { classes: string[] }) {
   );
 }
 
+// ── River table view (§P2-3) ─────────────────────────────────────────────────
+
+/**
+ * The Sankey as text. Every block in the diagram, grouped by level in the
+ * diagram's own left-to-right order, with the SAME citation affordance the
+ * rest of the site uses (a state-A <Cite>, clickable straight into the panel).
+ *
+ * This is exposure, not new data: the payload is already a node list, and the
+ * table renders from it — no second copy ships in the document, and /flow/'s
+ * static shell is unchanged in weight.
+ */
+function RiverTable({
+  nodes,
+  levelLabels,
+  units,
+  caption,
+  basis,
+  fy,
+  measure,
+  edition,
+}: {
+  nodes: FlowNode[];
+  levelLabels: Record<string, string>;
+  units: AmountUnits;
+  caption: string;
+  basis: string;
+  fy: number | string;
+  measure: string;
+  edition?: number;
+}) {
+  // Diagram order: levels left to right, then value descending inside a level.
+  const levelOrder = new Map<string, number>();
+  for (const n of nodes) {
+    const cur = levelOrder.get(n.level);
+    if (cur === undefined || n.x0 < cur) levelOrder.set(n.level, n.x0);
+  }
+  const rows = [...nodes].sort((a, b) => {
+    const la = levelOrder.get(a.level) ?? 0;
+    const lb = levelOrder.get(b.level) ?? 0;
+    if (la !== lb) return la - lb;
+    if (a.value !== b.value) return b.value - a.value;
+    return a.id.localeCompare(b.id);
+  });
+  return (
+    <table data-chart-table="" className="w-full min-w-[420px] text-xs">
+      <caption className="sr-only">{caption}</caption>
+      <thead>
+        <tr className="border-b border-border">
+          <th
+            scope="col"
+            className="px-2 py-1.5 text-left font-semibold text-muted-foreground"
+          >
+            Level
+          </th>
+          <th
+            scope="col"
+            className="px-2 py-1.5 text-left font-semibold text-muted-foreground"
+          >
+            Block
+          </th>
+          <th
+            scope="col"
+            className="px-2 py-1.5 text-right font-semibold text-muted-foreground"
+          >
+            Amount
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-border">
+        {rows.map((n) => (
+          <tr key={n.id}>
+            <td className="px-2 py-1 whitespace-nowrap text-muted-foreground">
+              {levelLabels[n.level] ?? n.level}
+            </td>
+            <th
+              scope="row"
+              className="px-2 py-1 text-left font-medium text-foreground"
+            >
+              {n.label}
+              {n.other ? (
+                <span className="ml-1 text-muted-foreground">
+                  ({n.other.count} aggregated entries)
+                </span>
+              ) : null}
+            </th>
+            <td className="px-2 py-1 text-right font-mono tabular-nums whitespace-nowrap">
+              <Cite
+                value={n.value}
+                units={units}
+                dataset="flow_chart"
+                factId={n.fid}
+                basis={basis}
+                fy={fy}
+                measure={measure}
+                edition={edition}
+                entity={n.id}
+                chip={false}
+              />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 // ── River SVG ────────────────────────────────────────────────────────────────
 
 interface RiverSvgProps {
@@ -454,6 +624,8 @@ interface RiverSvgProps {
   levelLabels: Record<string, string>;
   variant: "budget" | "spend";
   ariaLabel: string;
+  /** id of the figure's <figcaption> — the svg's aria-describedby (§P2-3). */
+  descId: string;
   competedClasses: string[] | null;
   offersBuckets: string[] | null;
   onNode: (node: FlowNode, levelLabel: string) => void;
@@ -505,6 +677,7 @@ function RiverSvg({
   levelLabels,
   variant,
   ariaLabel,
+  descId,
   competedClasses,
   offersBuckets,
   onNode,
@@ -564,6 +737,7 @@ function RiverSvg({
       className="h-auto w-full min-w-[840px]"
       role="group"
       aria-label={ariaLabel}
+      aria-describedby={descId}
     >
       <desc>{ariaLabel}</desc>
       <defs>

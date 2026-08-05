@@ -46,6 +46,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Download, GitBranch } from "lucide-react";
 import { Cite, CiteLegend } from "@/components/cite";
+import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
 import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 
@@ -707,7 +708,17 @@ export function YearsMatrix() {
         )}
       </div>
 
-      {/* ── Edition rule — one quiet line (spec §4; details on /methodology/) ── */}
+      {/* ── Reading legends: edition rule, honesty markers, family thread ──
+          MOBILE (§P2-6 / the 390px fold): three stacked decoding lines put
+          144px between the controls and the first number on a phone. They
+          collapse behind one tappable line below `sm` and stay exactly where
+          they were at ≥640px. Never removed — the grid is undecodable
+          without them, and the a11y gate reads their computed sizes. ── */}
+      <CollapsibleBelowSm
+        summary="How to read this grid"
+        testId="years-legend-toggle"
+        bodyClassName="space-y-3"
+      >
       {decadeKeys.length > 0 && (
         <p
           data-testid="edition-legend"
@@ -741,6 +752,7 @@ export function YearsMatrix() {
           page
         </span>
       </p>
+      </CollapsibleBelowSm>
 
       {/* ── The grid ── */}
       <div className="relative max-h-[75vh] overflow-auto rounded-lg border border-border">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
+import { ScopeNote } from "@/components/notes";
 
 export const metadata: Metadata = {
   title: "About",
@@ -35,27 +36,29 @@ export default function AboutPage() {
         </p>
       </section>
 
-      {/* Correlational, not causal */}
-      <section className="mb-10 rounded-lg border border-amber-200 bg-amber-50 p-5">
-        <h2 className="text-lg font-semibold mb-2 text-amber-900">
+      {/* Correlational, not causal — §P2-6: this is the site declaring the
+          limit of its own claims, which is the strongest thing on the page.
+          It read as a warning box; it now reads as a scope statement. */}
+      <ScopeNote className="mb-10" label={null}>
+        <h2 className="text-lg font-semibold mb-2 text-foreground">
           Correlation is not causation
         </h2>
-        <p className="text-amber-800 text-sm leading-7">
+        <p className="text-sm leading-7">
           {SITE_NAME} shows lobbying expenditure and federal contract
           obligations side by side for the same company family, and identifies
           which budget programs a company&apos;s lobbyists mentioned in their
           filings. This is presented for transparency and research purposes.
         </p>
-        <p className="text-amber-800 text-sm leading-7 mt-3">
-          <strong>We do not assert that lobbying caused any particular
-          award.</strong> The relationship between lobbying activity and
+        <p className="text-sm leading-7 mt-3">
+          <strong className="text-foreground">We do not assert that lobbying
+          caused any particular award.</strong> The relationship between lobbying activity and
           federal contracts involves many confounding factors, including
           competitive procurement rules, technical requirements, past
           performance, and market structure. Our data quantifies the lobbying
           activity and the awards; inference about causal relationships
           requires the reader&apos;s own analysis and judgment.
         </p>
-        <p className="text-amber-800 text-sm leading-7 mt-3">
+        <p className="text-sm leading-7 mt-3">
           The budget-to-contract crosswalk is also an inference (not a
           direct database join), tiered by confidence level. See the full{" "}
           <Link href="/methodology/" className="underline font-medium">
@@ -63,7 +66,7 @@ export default function AboutPage() {
           </Link>{" "}
           for all confidence tiers and known limitations.
         </p>
-      </section>
+      </ScopeNote>
 
       {/* Corrections policy */}
       <section className="mb-10">

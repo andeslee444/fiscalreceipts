@@ -61,6 +61,37 @@
  *      vacuous → FAIL. If the sidecars carry inferred rail entries but ZERO
  *      [data-inferred] elements render site-wide, WARN LOUDLY (still pass —
  *      the (inf) leg is per-element and cannot see what never rendered).
+ *
+ * (ch) CHART CONTRACT (PM Sprint 3 §P2-3) — the static half of the svg-desc
+ *      rule, which until now only policed currency tokens INSIDE a <desc>.
+ *      It now also polices whether a <desc> is there at all, and what sits
+ *      beside it:
+ *        - every svg[role="img"] that is not inside an [aria-hidden="true"]
+ *          subtree is a CHART. It must carry a non-empty accessible name
+ *          (aria-label / aria-labelledby) AND a non-empty <desc>, and it
+ *          must live inside a [data-chart] figure;
+ *        - every [data-chart] must carry a [data-chart-desc] of ≥ 60
+ *          characters that is NOT a restatement of the accessible name or of
+ *          the figure's own heading (normalised equality / containment), and
+ *          a table[data-chart-table] with a non-empty <caption> and at least
+ *          one [data-amount] inside it — the chart's numbers reachable as
+ *          text, carrying the same citation affordance as the rest of the
+ *          site.
+ *      Non-vacuity: zero charts site-wide FAILS (the program pages render
+ *      two or three each; a template that stops rendering them must not pass
+ *      as "no violations").
+ *
+ * (nk) NOTE REGISTERS + H1 ORDER (PM Sprint 3 §P2-6). The site used ONE
+ *      amber treatment for honest scope disclosure and for caution about a
+ *      specific number, which trains readers to ignore both:
+ *        - every [data-note-kind] is "scope" or "caution"; every caution note
+ *          carries role="note" so the register is in the semantics, not only
+ *          in the palette (the colour half is asserted live, gate 6);
+ *        - NO [data-note-kind] and no [data-coverage] block may precede the
+ *          page's <h1> in document order — /district/CO-05/ opened with a
+ *          warning before the reader knew what page they were on;
+ *        - a page carrying a note must have an <h1> at all.
+ *      Non-vacuity: ≥1 scope AND ≥1 caution note must render site-wide.
  */
 
 import fs from "fs";
@@ -192,6 +223,27 @@ export async function runRenderStaticGate() {
   // the connection as a candidate / unverified — never asserted as fact.
   const INFERRED_HONESTY_RE = /candidate|unverified/i;
 
+  // ── (ch)/(nk) counters ───────────────────────────────────────────────────
+  let chartCount = 0;
+  let chartSvgCount = 0;
+  const chartFailures = [];
+  let scopeNoteCount = 0;
+  let cautionNoteCount = 0;
+  const noteFailures = [];
+
+  /** Minimum useful length of a chart description, in characters. */
+  const CHART_DESC_MIN = 60;
+  const NOTE_KINDS = new Set(["scope", "caution"]);
+  const norm = (s) => (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+
+  /** Nearest ancestor matching a predicate (node-html-parser has no closest). */
+  function ancestor(el, pred) {
+    for (let n = el.parentNode; n; n = n.parentNode) {
+      if (n.getAttribute && pred(n)) return n;
+    }
+    return null;
+  }
+
   for (const filePath of htmlFiles) {
     const relPath = path.relative(outDir, filePath);
     let html;
@@ -308,6 +360,160 @@ export async function runRenderStaticGate() {
             : `[data-lineage-stated] card renders BARE — no [data-lineage-cite][data-fact-id] marker inside`,
           snippet: (stEl.text ?? "").trim().slice(0, 100),
         });
+      }
+    }
+
+    // ── (ch) Chart contract (§P2-3) ─────────────────────────────────────────
+    // A CHART is an svg[role="img"] that is not decorative. Decorative art
+    // (the category heroes) sits inside an [aria-hidden="true"] wrapper and
+    // is exempt; icons carry aria-hidden on the <svg> itself and never
+    // role="img", so they never enter this scan.
+    for (const svg of root.querySelectorAll('svg[role="img"]')) {
+      if (
+        svg.getAttribute("aria-hidden") === "true" ||
+        ancestor(svg, (n) => n.getAttribute("aria-hidden") === "true")
+      ) {
+        continue;
+      }
+      chartSvgCount++;
+      const name =
+        svg.getAttribute("aria-label") ??
+        (svg.getAttribute("aria-labelledby")
+          ? (root.querySelector(`#${svg.getAttribute("aria-labelledby")}`)?.text ?? "")
+          : "");
+      if (norm(name) === "") {
+        chartFailures.push({
+          file: relPath,
+          issue: `chart <svg role="img"> has no accessible name (aria-label / aria-labelledby)`,
+          attrs: svg.rawAttrs?.slice(0, 160),
+        });
+      }
+      const descEl = svg.querySelector("desc");
+      if (!descEl || norm(descEl.text) === "") {
+        chartFailures.push({
+          file: relPath,
+          issue: `chart <svg role="img"> ("${norm(name).slice(0, 50)}") carries no non-empty <desc>`,
+        });
+      }
+      const fig = ancestor(svg, (n) => n.getAttribute("data-chart") != null);
+      if (!fig) {
+        chartFailures.push({
+          file: relPath,
+          issue: `chart <svg role="img"> ("${norm(name).slice(0, 50)}") is not inside a [data-chart] figure — no description, no table view`,
+        });
+      }
+    }
+
+    for (const fig of root.querySelectorAll("[data-chart]")) {
+      chartCount++;
+      const chartId = fig.getAttribute("data-chart") || "(unnamed)";
+      const svg = fig.querySelector('svg[role="img"]');
+      const name = svg ? (svg.getAttribute("aria-label") ?? "") : "";
+      const descEl = fig.querySelector("[data-chart-desc]");
+      const descText = norm(descEl?.text);
+      if (!descEl || descText === "") {
+        chartFailures.push({
+          file: relPath,
+          issue: `[data-chart="${chartId}"] has no [data-chart-desc] — a chart needs a short description of what it shows and what to take from it`,
+        });
+      } else {
+        if (descText.length < CHART_DESC_MIN) {
+          chartFailures.push({
+            file: relPath,
+            issue: `[data-chart="${chartId}"] description is ${descText.length} chars (<${CHART_DESC_MIN}) — "${descText.slice(0, 60)}"`,
+          });
+        }
+        const nameNorm = norm(name);
+        if (nameNorm !== "" && (descText === nameNorm || descText.startsWith(nameNorm))) {
+          chartFailures.push({
+            file: relPath,
+            issue: `[data-chart="${chartId}"] description restates the accessible name instead of saying what the chart shows — "${descText.slice(0, 70)}"`,
+          });
+        }
+      }
+      const table = fig.querySelector("table[data-chart-table]");
+      if (!table) {
+        chartFailures.push({
+          file: relPath,
+          issue: `[data-chart="${chartId}"] has no table[data-chart-table] — the chart's data is not reachable as text`,
+        });
+        continue;
+      }
+      const caption = table.querySelector("caption");
+      if (!caption || norm(caption.text) === "") {
+        chartFailures.push({
+          file: relPath,
+          issue: `[data-chart="${chartId}"] table view has no non-empty <caption>`,
+        });
+      }
+      if (table.querySelectorAll("[data-amount]").length === 0) {
+        chartFailures.push({
+          file: relPath,
+          issue: `[data-chart="${chartId}"] table view carries no [data-amount] figure — the table view must carry the same citation affordance as the rest of the site`,
+        });
+      }
+    }
+
+    // ── (nk) Note registers + <h1> order (§P2-6) ────────────────────────────
+    for (const noteEl of root.querySelectorAll("[data-note-kind]")) {
+      const kind = noteEl.getAttribute("data-note-kind");
+      if (!NOTE_KINDS.has(kind)) {
+        noteFailures.push({
+          file: relPath,
+          issue: `data-note-kind="${kind}" is not one of scope|caution`,
+        });
+        continue;
+      }
+      if (kind === "scope") scopeNoteCount++;
+      else cautionNoteCount++;
+      if (kind === "caution" && noteEl.getAttribute("role") !== "note") {
+        noteFailures.push({
+          file: relPath,
+          issue: `caution note has no role="note" — the register must be in the semantics, not only the palette`,
+        });
+      }
+    }
+
+    // Document order via the serialized body: the first <h1> must come before
+    // the first note/coverage block. String indices are exactly DOM order in
+    // a serialized document, and cost nothing over 5k files.
+    // A BANNER is anything that reads as a caveat block: our own note and
+    // coverage markers, an alert region, or a raw amber panel (the treatment
+    // §P2-6 is retiring — matched by class token so nobody can reintroduce
+    // one above the heading by hand-rolling the palette).
+    {
+      const bodyAt = html.indexOf("<body");
+      const body = bodyAt >= 0 ? html.slice(bodyAt) : html;
+      const h1At = body.search(/<h1[\s>]/);
+      const BANNER_MARKERS = [
+        ["note", "data-note-kind="],
+        ["coverage", "data-coverage="],
+        ["alert", 'role="alert"'],
+        ["raw amber panel", "bg-amber-"],
+        ["raw amber panel", "border-amber-"],
+      ];
+      let firstBanner = -1;
+      let firstKind = null;
+      for (const [kind, marker] of BANNER_MARKERS) {
+        const at = body.indexOf(marker);
+        if (at < 0) continue;
+        if (firstBanner < 0 || at < firstBanner) {
+          firstBanner = at;
+          firstKind = kind;
+        }
+      }
+      if (firstBanner >= 0) {
+        if (h1At < 0) {
+          noteFailures.push({
+            file: relPath,
+            issue: `page renders a ${firstKind} block but has no <h1> at all`,
+          });
+        } else if (firstBanner < h1At) {
+          noteFailures.push({
+            file: relPath,
+            issue: `a ${firstKind} block precedes the page's <h1> — the page opens with a caveat before the reader knows what page they are on`,
+          });
+        }
       }
     }
 
@@ -609,6 +815,53 @@ export async function runRenderStaticGate() {
     notes.push(
       `stated-lineage cites: ${statedCount} [data-lineage-stated] card(s) ` +
         `(sidecars expect ${sidecarStatedEntries} entries), every one carries its cite marker ✓`
+    );
+  }
+
+  // ── (ch) chart-contract summary ──────────────────────────────────────────
+  if (chartFailures.length > 0) {
+    errors.push(
+      `${chartFailures.length} chart-contract violation(s) — §P2-3 accessible name + description + table view (first 10):`
+    );
+    for (const f of chartFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}${f.attrs ? ` [${f.attrs}]` : ""}`);
+    }
+    if (chartFailures.length > 10) {
+      errors.push(`  ... and ${chartFailures.length - 10} more`);
+    }
+  } else if (chartSvgCount === 0 || chartCount === 0) {
+    errors.push(
+      `chart contract leg is VACUOUS: ${chartSvgCount} non-decorative svg[role="img"] and ` +
+        `${chartCount} [data-chart] figure(s) site-wide — the program pages render two or ` +
+        `three charts each, so zero means the charts (or their markers) stopped rendering.`
+    );
+  } else {
+    notes.push(
+      `chart contract: ${chartCount} [data-chart] figure(s) over ${chartSvgCount} ` +
+        `non-decorative chart svg(s) — every one named, described, and readable as a cited table ✓`
+    );
+  }
+
+  // ── (nk) note-register summary ───────────────────────────────────────────
+  if (noteFailures.length > 0) {
+    errors.push(
+      `${noteFailures.length} note-register / <h1>-order violation(s) — §P2-6 (first 10):`
+    );
+    for (const f of noteFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}`);
+    }
+    if (noteFailures.length > 10) {
+      errors.push(`  ... and ${noteFailures.length - 10} more`);
+    }
+  } else if (scopeNoteCount === 0 || cautionNoteCount === 0) {
+    errors.push(
+      `note-register leg is VACUOUS: ${scopeNoteCount} scope and ${cautionNoteCount} caution ` +
+        `note(s) site-wide — both registers must exist for the distinction to mean anything.`
+    );
+  } else {
+    notes.push(
+      `note registers: ${scopeNoteCount} scope + ${cautionNoteCount} caution note(s), ` +
+        `every caution semantically marked, every page's <h1> before its first note ✓`
     );
   }
 

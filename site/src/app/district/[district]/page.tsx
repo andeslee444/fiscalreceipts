@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
 import { FyRange } from "@/components/fy-range";
 
 // No fallback pages beyond what generateStaticParams returns (SSG export).
@@ -96,17 +97,6 @@ export default async function DistrictDetailPage({ params }: Props) {
           ]}
         />
 
-        {/* Disclaimer banner — roomier padding + line-height at mobile
-            (visual-judge nit: text felt cramped at 390px). */}
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3.5 sm:py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-200 mb-6">
-          <strong>Coverage note:</strong> District data reflects only
-          high-confidence award links from the DARPA crosswalk.
-          Aggregate totals are derived from USAspending award transaction
-          data — click any figure to see the formula and query behind it.
-          Recipients and transaction counts are from USAspending; no
-          additional verification applied.
-        </div>
-
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-1">
             {heading}
@@ -123,6 +113,21 @@ export default async function DistrictDetailPage({ params }: Props) {
           </p>
           {/* Scope note — same coverage contract as the district index */}
           <CoverageNote id="districts" className="mt-1" />
+
+          {/* §P2-6: this was an amber banner ABOVE the <h1> — the page opened
+              with what read as a warning before the reader knew what page they
+              were on. It is not a warning: it is an honest account of what
+              district coverage means here, which is a credibility asset. Calm
+              register, and after the heading. */}
+          <ScopeNote className="mt-3" label="Coverage note">
+            <p>
+              District data reflects only high-confidence award links from the
+              DARPA crosswalk. Aggregate totals are derived from USAspending
+              award transaction data — click any figure to see the formula and
+              query behind it. Recipients and transaction counts are from
+              USAspending; no additional verification applied.
+            </p>
+          </ScopeNote>
 
           {/* Summary stats */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mt-4">
