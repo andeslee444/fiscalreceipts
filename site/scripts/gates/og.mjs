@@ -7,6 +7,21 @@
  *   (c) Agency OG PNGs exist (sample 5)
  *   (d) Each sampled PNG is >= 10KB (non-blank proxy) and has valid PNG header
  *   (e) PNG dimensions encoded in header are 1200x630 (standard OG size)
+ *   (f) DESCRIPTIONS ARE WRITTEN, AND ON THE CANONICAL BASIS (Sprint 3 §P2-5).
+ *       Program og:description used to be a slice of R-2/P-40 justification
+ *       prose, so every share card opened mid-thought. This leg reads the
+ *       BUILT program pages and requires, on a sample:
+ *         - og:description and the meta description are present and identical
+ *           (one description, not two);
+ *         - it opens with the program's own title and PE/BLI, and closes with
+ *           the site's promise — a description is about the page, not an
+ *           excerpt from inside it;
+ *         - every dollar figure in it is re-derived HERE from the trajectory
+ *           payload through the compact ladder and must match exactly, and the
+ *           text must name the P-1/R-1 workbook TOA basis it came from. A
+ *           description that quietly switched to the R-2/P-40 line (the §P0-1
+ *           basis) fails.
+ *       Non-vacuity: the sample must contain ≥5 pages that carry a figure.
  *
  * PNG dimension check: bytes 16-19 = width (big-endian uint32),
  *                      bytes 20-23 = height (big-endian uint32).
@@ -23,10 +38,13 @@ import { createRequire } from "module";
 const _require = createRequire(import.meta.url);
 const { PNG } = _require("pngjs");
 
+import { parse } from "node-html-parser";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
 const ogDir = path.resolve(siteRoot, "public", "og");
 const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
+const outDir = path.resolve(siteRoot, "out");
 
 const EXPECTED_WIDTH = 1200;
 const EXPECTED_HEIGHT = 630;
@@ -238,5 +256,138 @@ export async function runOgGate() {
     notes.push(`core OG PNG validity: ${coreOk}/${existingCore.length} ✓`);
   }
 
+  // ── (f) descriptions are written, and on the canonical basis (§P2-5) ──────
+  runDescriptionLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// leg (f) — og:description
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The compact ladder, mirrored from src/lib/format.ts (see its header). */
+function fmtUsdThousands(vThousands) {
+  const raw = vThousands * 1000;
+  const abs = Math.abs(raw);
+  const sign = raw < 0 ? "-" : "";
+  const rungs = [
+    [1e12, "T"],
+    [1e9, "B"],
+    [1e6, "M"],
+    [1e3, "K"],
+  ];
+  for (let i = 0; i < rungs.length; i += 1) {
+    const [limit, suffix] = rungs[i];
+    if (abs < limit) continue;
+    const v = abs / limit;
+    const dec = v < 10 ? 2 : 1;
+    if (i > 0 && Number(v.toFixed(dec)) >= 1000) {
+      const [upLimit, upSuffix] = rungs[i - 1];
+      const uv = abs / upLimit;
+      return `${sign}$${uv.toFixed(uv < 10 ? 2 : 1)}${upSuffix}`;
+    }
+    return `${sign}$${v.toFixed(dec)}${suffix}`;
+  }
+  return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
+}
+
+const DESC_PROMISE = "Every figure links to the document it is printed in.";
+const DESC_BASIS = "P-1/R-1 workbook total obligation authority";
+const DESC_SAMPLE = 40;
+
+function runDescriptionLeg(errors, notes) {
+  const programsPath = path.join(jsonDir, "programs.json");
+  if (!fs.existsSync(programsPath) || !fs.existsSync(outDir)) {
+    errors.push(
+      `og leg f: cannot run — missing ${!fs.existsSync(outDir) ? "out/" : "programs.json"}`
+    );
+    return;
+  }
+  const programs = JSON.parse(fs.readFileSync(programsPath, "utf8"));
+  // Sample across the corpus rather than the first N: the alphabetical head is
+  // all one service.
+  const stride = Math.max(1, Math.floor(programs.length / DESC_SAMPLE));
+  const sample = programs.filter((_, i) => i % stride === 0).slice(0, DESC_SAMPLE);
+
+  let checked = 0;
+  let withFigures = 0;
+  const failures = [];
+
+  for (const p of sample) {
+    const file = path.join(outDir, "program", p.pe_bli, "index.html");
+    if (!fs.existsSync(file)) continue;
+    const root = parse(fs.readFileSync(file, "utf8"), { comment: false });
+    const meta = root
+      .querySelector('meta[name="description"]')
+      ?.getAttribute("content");
+    const og = root
+      .querySelector('meta[property="og:description"]')
+      ?.getAttribute("content");
+    checked += 1;
+
+    if (!meta || !og) {
+      failures.push(`${p.pe_bli}: missing ${!meta ? "meta" : "og"} description`);
+      continue;
+    }
+    if (meta !== og) {
+      failures.push(`${p.pe_bli}: meta and og descriptions differ`);
+      continue;
+    }
+    if (!meta.startsWith(`${p.title} (${p.pe_bli})`)) {
+      failures.push(
+        `${p.pe_bli}: description does not open with its own title + code — "${meta.slice(0, 70)}…"`
+      );
+      continue;
+    }
+    if (!meta.endsWith(DESC_PROMISE)) {
+      failures.push(
+        `${p.pe_bli}: description does not close with the site promise — "…${meta.slice(-60)}"`
+      );
+      continue;
+    }
+
+    const fy26 = p.trajectory?.fy2026_total ?? null;
+    const fy24 = p.trajectory?.fy2024_actuals ?? null;
+    const expected = [];
+    if (fy26 != null) expected.push(`${fmtUsdThousands(fy26)} requested for FY2026`);
+    if (fy24 != null) expected.push(`${fmtUsdThousands(fy24)} in FY2024 actuals`);
+
+    const printed = meta.match(/\$[\d,.]+[TBMK]?/g) ?? [];
+    if (expected.length === 0) {
+      if (printed.length > 0) {
+        failures.push(
+          `${p.pe_bli}: description states ${printed.join(", ")} but the corpus holds no trajectory figure for it`
+        );
+      }
+      continue;
+    }
+    withFigures += 1;
+    for (const clause of expected) {
+      if (!meta.includes(clause)) {
+        failures.push(
+          `${p.pe_bli}: description is missing (or disagrees with) "${clause}" — "${meta.slice(0, 120)}…"`
+        );
+      }
+    }
+    if (!meta.includes(DESC_BASIS)) {
+      failures.push(
+        `${p.pe_bli}: description states figures without naming the ${DESC_BASIS} basis they came from`
+      );
+    }
+  }
+
+  if (failures.length > 0) {
+    errors.push(`og leg f: ${failures.length} description violation(s) — §P2-5 (first 10):`);
+    for (const f of failures.slice(0, 10)) errors.push(`  ${f}`);
+    if (failures.length > 10) errors.push(`  ... and ${failures.length - 10} more`);
+  } else if (withFigures < 5) {
+    errors.push(
+      `og leg f is VACUOUS: only ${withFigures} of ${checked} sampled program pages carry a figure in their description`
+    );
+  } else {
+    notes.push(
+      `og descriptions: ${checked} program page(s) sampled, ${withFigures} carrying figures — all written, identical meta/og, every dollar re-derived from the workbook TOA trajectory ✓`
+    );
+  }
 }

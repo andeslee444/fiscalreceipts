@@ -92,12 +92,50 @@
  *          warning before the reader knew what page they were on;
  *        - a page carrying a note must have an <h1> at all.
  *      Non-vacuity: ≥1 scope AND ≥1 caution note must render site-wide.
+ *
+ * (tc) COMPANY DISPLAY NAMES + PROVENANCE (PM Sprint 3 §P2-4). Registry
+ *      strings are cased for display, so the gate re-runs the rule and
+ *      compares:
+ *        - every [data-company-name] carries a non-empty data-registry-name;
+ *        - its rendered text equals displayCompanyName(registry).display —
+ *          computed HERE from the registry attribute, so a page that
+ *          hand-cased a name, or a rule that quietly changed, both fail;
+ *        - the raw string is never DISCARDED: on a /company/ page (whose
+ *          subject IS one registry name) the visible [data-registry-note]
+ *          must carry it verbatim whenever the display differs.
+ *      Non-vacuity: zero [data-company-name] elements site-wide FAILS.
+ *
+ * (dv) DERIVATION STRIPS REPRODUCE (§P2-8). "The PB2024 book requested $5.28B
+ *      … $5.57B … — $286.5M above the request" is right and does not add up:
+ *      the inputs are rounded and the result is not, so the reader who checks
+ *      the site's arithmetic against the site's own numbers finds a
+ *      discrepancy. Every [data-derivation] element must therefore contain
+ *      either a [data-derivation-exact] equation or a [data-derivation-
+ *      rounding] statement; and every [data-derivation-exact] equation is
+ *      PARSED and RE-COMPUTED here — `a ± b ± … = c` must hold exactly at the
+ *      precision printed. A strip that does not add up is worse than no
+ *      strip, so an unbalanced equation fails rather than warns.
+ *      Non-vacuity: zero [data-derivation-exact] equations site-wide FAILS.
+ *
+ * (sp) JSX SPACE-EATEN TEXT (§B3 sweep). `{SITE_NAME}` on one line and prose
+ *      on the next renders "Fiscal Receiptsshows": JSX drops a whitespace-only
+ *      text child that contains a newline, so the space the author typed does
+ *      not exist. The defect is invisible in source review AND unfindable in
+ *      the built HTML (the glued words are ordinary letters), so this leg
+ *      reads the SOURCE — scripts/gates/jsx-glue.mjs parses every src/**\/*.tsx
+ *      with the TypeScript compiler, applies React's own JSXText cleaner, and
+ *      reports every expression/text pair the renderer glues where the author
+ *      wrote a line break. Affixes ({n !== 1 ? "s" : ""}), explicit {" "},
+ *      punctuation edges and FY-style prefixes are not glue.
+ *      Non-vacuity: zero .tsx files scanned FAILS.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { displayCompanyName } from "../../src/lib/company-name.mjs";
+import { findGlueSites } from "./jsx-glue.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -119,6 +157,59 @@ const EXPECTED_UNCITED_DATASETS = new Set([]);
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+/**
+ * (dv) Parse and re-compute a printed derivation equation.
+ *
+ * Accepts `a ± b ± … = c` where every operand is a grouped decimal. The
+ * comparison is EXACT at the printed precision: operands are scaled to
+ * integers by the widest decimal count present, so no float slop can hide a
+ * strip that does not add up. Minus signs may be ASCII "-", U+2212 or the
+ * HTML-entity minus the pages render.
+ *
+ * Returns {ok:true} when it closes, {ok:false, why} when it does not, and
+ * {ok:null} when the text is not an equation at all (a caller that marked a
+ * non-equation as exact is caught by the missing-equation branch instead).
+ */
+export function checkEquation(rawText) {
+  const text = (rawText ?? "")
+    .replace(/[\u2212\u2013\u2014]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  const eq = text.split("=");
+  if (eq.length !== 2) return { ok: null };
+  const lhs = eq[0].trim();
+  const rhsMatch = /^-?[\d,]+(?:\.\d+)?/.exec(eq[1].trim());
+  if (!rhsMatch) return { ok: null };
+
+  const terms = [];
+  const termRe = /([+-]?)\s*(-?[\d,]+(?:\.\d+)?)/g;
+  let m;
+  let first = true;
+  while ((m = termRe.exec(lhs))) {
+    const sign = m[1] === "-" ? -1 : 1;
+    if (!first && m[1] === "") return { ok: null }; // two numbers, no operator
+    terms.push({ sign, raw: m[2] });
+    first = false;
+  }
+  if (terms.length < 2) return { ok: null };
+
+  const all = [...terms.map((t) => t.raw), rhsMatch[0]];
+  const decimals = Math.max(
+    ...all.map((r) => (r.split(".")[1] ?? "").length),
+  );
+  const scale = 10 ** decimals;
+  const toInt = (r) => Math.round(Number(r.replace(/,/g, "")) * scale);
+  const sum = terms.reduce((acc, t) => acc + t.sign * toInt(t.raw), 0);
+  const rhs = toInt(rhsMatch[0]);
+  if (sum !== rhs) {
+    return {
+      ok: false,
+      why: `left side sums to ${(sum / scale).toFixed(decimals)}, right side reads ${(rhs / scale).toFixed(decimals)}`,
+    };
+  }
+  return { ok: true };
 }
 
 function* walkHtmlFiles(dir) {
@@ -230,6 +321,13 @@ export async function runRenderStaticGate() {
   let scopeNoteCount = 0;
   let cautionNoteCount = 0;
   const noteFailures = [];
+
+  // ── (tc)/(dv) counters ───────────────────────────────────────────────────
+  let companyNameCount = 0;
+  const companyNameFailures = [];
+  let derivationCount = 0;
+  let derivationExactCount = 0;
+  const derivationFailures = [];
 
   /** Minimum useful length of a chart description, in characters. */
   const CHART_DESC_MIN = 60;
@@ -718,6 +816,66 @@ export async function runRenderStaticGate() {
       }
     }
     walkText(stripped, false);
+
+    // ── (tc) company display names carry their registry string ─────────────
+    for (const el of root.querySelectorAll("[data-company-name]")) {
+      companyNameCount += 1;
+      const registry = el.getAttribute("data-registry-name");
+      if (!registry) {
+        companyNameFailures.push({
+          file: relPath,
+          issue: `[data-company-name] "${el.text.trim().slice(0, 40)}" carries no data-registry-name — the display casing replaced the provenance instead of standing beside it`,
+        });
+        continue;
+      }
+      const want = displayCompanyName(registry).display;
+      const got = el.text.replace(/\s+/g, " ").trim();
+      if (got !== want) {
+        companyNameFailures.push({
+          file: relPath,
+          issue: `renders ${JSON.stringify(got)} for registry ${JSON.stringify(registry)}; the rule says ${JSON.stringify(want)}`,
+        });
+      }
+    }
+    // The /company/ page's subject IS a registry name, so it must show the
+    // raw string visibly rather than only on hover.
+    if (/^company\/[^/]+\/index\.html$/.test(relPath)) {
+      const h1 = root.querySelector("h1 [data-company-name]");
+      if (h1) {
+        const registry = h1.getAttribute("data-registry-name") ?? "";
+        const shown = displayCompanyName(registry).display !== registry;
+        const note = root.querySelector("[data-registry-note]");
+        if (shown && (!note || !note.text.includes(registry))) {
+          companyNameFailures.push({
+            file: relPath,
+            issue: `h1 displays a cased name but no visible [data-registry-note] carries ${JSON.stringify(registry)}`,
+          });
+        }
+      }
+    }
+
+    // ── (dv) derivation strips reproduce ───────────────────────────────────
+    for (const el of root.querySelectorAll("[data-derivation]")) {
+      derivationCount += 1;
+      const hasExact = el.querySelector("[data-derivation-exact]");
+      const hasRounding = el.querySelector("[data-derivation-rounding]");
+      if (!hasExact && !hasRounding) {
+        derivationFailures.push({
+          file: relPath,
+          issue: `[data-derivation="${el.getAttribute("data-derivation")}"] shows a derived figure beside its inputs with neither a [data-derivation-exact] equation nor a [data-derivation-rounding] statement`,
+        });
+      }
+    }
+    for (const el of root.querySelectorAll("[data-derivation-exact]")) {
+      derivationExactCount += 1;
+      const check = checkEquation(el.text);
+      if (check.ok === false) {
+        derivationFailures.push({
+          file: relPath,
+          issue: `equation does not close: ${check.why} — "${el.text.replace(/\s+/g, " ").trim().slice(0, 90)}"`,
+        });
+      }
+    }
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
@@ -879,6 +1037,78 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`title template: no doubled site-name suffixes ✓`);
+  }
+
+  // ── (tc) company display names summary ───────────────────────────────────
+  if (companyNameFailures.length > 0) {
+    errors.push(
+      `${companyNameFailures.length} company-name violation(s) — §P2-4 (first 10):`
+    );
+    for (const f of companyNameFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}`);
+    }
+    if (companyNameFailures.length > 10) {
+      errors.push(`  ... and ${companyNameFailures.length - 10} more`);
+    }
+  } else if (companyNameCount === 0) {
+    errors.push(
+      `company-name leg is VACUOUS: 0 [data-company-name] elements site-wide — ` +
+        `either the display rule stopped rendering or the registry provenance was dropped.`
+    );
+  } else {
+    notes.push(
+      `company names: ${companyNameCount} [data-company-name] element(s), each ` +
+        `matching displayCompanyName() of its own data-registry-name ✓`
+    );
+  }
+
+  // ── (dv) derivation-strip summary ────────────────────────────────────────
+  if (derivationFailures.length > 0) {
+    errors.push(
+      `${derivationFailures.length} derivation-strip violation(s) — §P2-8 (first 10):`
+    );
+    for (const f of derivationFailures.slice(0, 10)) {
+      errors.push(`  ${f.file}: ${f.issue}`);
+    }
+    if (derivationFailures.length > 10) {
+      errors.push(`  ... and ${derivationFailures.length - 10} more`);
+    }
+  } else if (derivationExactCount === 0) {
+    errors.push(
+      `derivation leg is VACUOUS: ${derivationCount} [data-derivation] strip(s) but ` +
+        `0 [data-derivation-exact] equations site-wide — nothing was re-computed.`
+    );
+  } else {
+    notes.push(
+      `derivations: ${derivationCount} strip(s), ${derivationExactCount} printed ` +
+        `equation(s), all closing exactly at their printed precision ✓`
+    );
+  }
+
+  // ── (sp) JSX space-eaten text ────────────────────────────────────────────
+  {
+    const srcDir = path.resolve(siteRoot, "src");
+    const { hits, filesScanned } = findGlueSites(srcDir);
+    if (filesScanned === 0) {
+      errors.push(
+        `jsx-glue leg is VACUOUS: 0 .tsx files scanned under ${srcDir}`
+      );
+    } else if (hits.length > 0) {
+      errors.push(
+        `${hits.length} JSX site(s) where the renderer eats the space the author ` +
+          `wrote — the "Fiscal Receiptsshows" class (first 10):`
+      );
+      for (const h of hits.slice(0, 10)) {
+        errors.push(
+          `  ${h.file}:${h.line}: …${h.left}⟦no space⟧${h.right}… — put the two on one line or add {" "}`
+        );
+      }
+      if (hits.length > 10) errors.push(`  ... and ${hits.length - 10} more`);
+    } else {
+      notes.push(
+        `jsx glue: ${filesScanned} .tsx file(s) scanned, 0 space-eaten expression/text joins ✓`
+      );
+    }
   }
 
   return { pass: errors.length === 0, errors, notes };

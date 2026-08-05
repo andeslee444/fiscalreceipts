@@ -35,6 +35,20 @@
  *      recompute from budget_lines_decade.parquet: workbook cells match
  *      their single lake row; derived decade sums recompute from their
  *      input fids (recorded_value == cell v == Σ inputs, ≤0.001).
+ *  (h) CELL NOTATION + COUNT NOTATION (Sprint 3 Task 5, §P2-7 / §P1-5, live).
+ *      "0.0" used to mean BOTH "the book records zero" and "the book records
+ *      an amount under $50K", while absence was a dash — three different
+ *      facts, two glyphs. This leg re-derives every visible cell's state from
+ *      the PAYLOAD (data-v ÷ 1000 for program cells) and requires the glyph
+ *      to match: `0` for zero, `<0.05` (sign preserved) for a rounded-down
+ *      nonzero, `—` for absent; and requires a visible legend that names all
+ *      three. Non-vacuity: all three states must be PRESENT in the opening
+ *      view — a matrix with no rounded zeros would pass the mapping check
+ *      while proving nothing.
+ *      It also pins the filter summary's count notation, which is rendered
+ *      client-side and so is invisible to gate 24's built-HTML sweep: the
+ *      grid shipped "1741 of 1741 programs" under a corpus statement reading
+ *      "1,741 of them".
  *  (g) edition integrity (Phase 5E, ADDITIVE — spec §2 rule 1): every
  *      sampled decade cell's source rows carry fiscal_year == the column's
  *      STATED edition and the cell's pe_bli; workbook citations' sha256
@@ -995,6 +1009,104 @@ export async function runYearsMatrixGate({ baseUrl }) {
         }
       } catch (e) {
         errors.push(`leg c: CSV export failed: ${e.message}`);
+      }
+
+      // ---- leg h: §P2-7 cell notation + §P1-5 count notation ----
+      {
+        const legend = page.locator('[data-testid="cell-state-legend"]');
+        if ((await legend.count()) === 0) {
+          errors.push(
+            'leg h (§P2-7): no [data-testid="cell-state-legend"] — the three ' +
+              "notations render with nothing to decode them",
+          );
+        } else {
+          const text = ((await legend.first().textContent()) ?? "").replace(/\s+/g, " ");
+          for (const token of ["0", "<0.05", "\u2014"]) {
+            if (!text.includes(token)) {
+              errors.push(
+                `leg h (§P2-7): the notation legend never mentions ${JSON.stringify(token)} — "${text.slice(0, 90)}"`,
+              );
+            }
+          }
+        }
+
+        // Re-derive every visible program cell's state from its own data-v.
+        const cells = await page.$$eval(
+          "tr[data-program-row] td[data-col]",
+          (tds) =>
+            tds.map((td) => ({
+              col: td.getAttribute("data-col"),
+              v: td.hasAttribute("data-v") ? Number(td.getAttribute("data-v")) : null,
+              state: td.getAttribute("data-cell-state"),
+              text: (td.textContent ?? "").replace(/\s+/g, " ").trim(),
+            })),
+        );
+        const seen = { zero: 0, "rounded-zero": 0, absent: 0, value: 0 };
+        const bad = [];
+        for (const c of cells) {
+          const pct = c.col === "fy2526_pct_change";
+          let want;
+          if (c.v === null) want = "absent";
+          else {
+            const display = pct ? c.v : c.v / 1000;
+            want =
+              display === 0 ? "zero" : Math.abs(display) < 0.05 ? "rounded-zero" : "value";
+          }
+          if (c.state !== want) {
+            bad.push(`${c.col} v=${c.v} declares ${c.state}, payload says ${want}`);
+            continue;
+          }
+          seen[want] = (seen[want] ?? 0) + 1;
+          const glyphOk =
+            want === "absent"
+              ? c.text.startsWith("\u2014")
+              : want === "zero"
+                ? /^[+\u2212-]?0%?$/.test(c.text)
+                : want === "rounded-zero"
+                  ? c.text.includes("<0.05")
+                  : !c.text.includes("<0.05");
+          if (!glyphOk) {
+            bad.push(`${c.col} v=${c.v} is ${want} but renders ${JSON.stringify(c.text)}`);
+          }
+        }
+        if (bad.length > 0) {
+          errors.push(
+            `leg h (§P2-7): ${bad.length} cell(s) whose glyph and payload disagree (first 5):`,
+          );
+          for (const b of bad.slice(0, 5)) errors.push(`  ${b}`);
+        } else if (seen.zero === 0 || seen["rounded-zero"] === 0 || seen.absent === 0) {
+          errors.push(
+            `leg h (§P2-7) is VACUOUS: opening view holds ${seen.zero} zero, ` +
+              `${seen["rounded-zero"]} rounded-zero and ${seen.absent} absent cell(s) — ` +
+              `all three must be present for the distinction to be under test`,
+          );
+        } else {
+          notes.push(
+            `leg h: ${cells.length} cell(s) — ${seen.zero} zero, ${seen["rounded-zero"]} ` +
+              `rounded-zero, ${seen.absent} absent, ${seen.value} valued; every glyph ` +
+              `matches its payload, legend decodes all three ✓ (§P2-7)`,
+          );
+        }
+
+        // §P1-5: the filter summary is client-rendered, so gate 24's sweep of
+        // the built HTML cannot see it.
+        const summary = await page
+          .locator('[data-testid="years-filter"]')
+          .locator("xpath=following::span[1]")
+          .textContent()
+          .catch(() => null);
+        const body = (await page.locator("body").textContent()) ?? "";
+        const bare = body.match(/(?<![\d,.])(\d{4,})(?![\d,.])\s+(?:of\s+[\d,]+\s+)?programs\b/);
+        if (bare && !(Number(bare[1]) >= 1900 && Number(bare[1]) <= 2099)) {
+          errors.push(
+            `leg h (§P1-5): /years/ renders the ungrouped count "${bare[0]}" — ` +
+              `write ${Number(bare[1]).toLocaleString("en-US")}`,
+          );
+        } else {
+          notes.push(
+            `leg h: /years/ count notation grouped${summary ? ` ("${summary.replace(/\s+/g, " ").trim()}")` : ""} ✓ (§P1-5)`,
+          );
+        }
       }
 
       // ---- filter narrows + filtered CSV matches ----

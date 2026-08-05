@@ -56,8 +56,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { JSDOM } from "jsdom";
-import {
 import { companyDisplay } from "../../src/lib/company-name.mjs";
+import {
   FR_NS,
   feedGuid,
   buildFeedTargets,

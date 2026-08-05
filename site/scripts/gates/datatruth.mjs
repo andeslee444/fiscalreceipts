@@ -53,6 +53,17 @@
  *      magnitude from the SAME corpus recompute leg h uses (one subprocess,
  *      one derivation — the page and the feed must not be checked against two
  *      truths) and against each endpoint's own cited fact. See leg i's block.
+ *  (j) COUNT NOTATION, SWEPT (Sprint 3 Task 5, §P1-5) — leg d pins the
+ *      corpus statement's two numbers; this sweeps every OTHER cardinality
+ *      the site renders. "/years/ … 1741 of 1741 programs" and "/company/…
+ *      LDA Filing Mentions (1296)" shipped ungrouped beside a corpus
+ *      statement reading "1,741 of them": two notations for one number reads
+ *      as two numbers. The leg walks every built page's TEXT NODES (element
+ *      by element, so nothing glues across a tag boundary), skips quoted
+ *      source text — J-book prose is the source's notation, not ours — and
+ *      fails any bare 4+-digit integer sitting next to a count noun or on
+ *      either side of "N of M". Fiscal years are excluded by value. See leg
+ *      j's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -468,7 +479,120 @@ export async function runDataTruthGate() {
   // ── leg i: syndicated feed magnitudes (Sprint 3 Task 2, §P1-8) ────────────
   runFeedFileLeg(errors, notes, feedTruth);
 
+  // ── leg j: count notation swept site-wide (Sprint 3 Task 5, §P1-5) ────────
+  runCountNotationLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg j — count notation, swept (§P1-5)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Nouns whose preceding integer is a CARDINALITY the site is stating about
+ * itself. Deliberately not "every number": the corpus is full of budget codes
+ * and fiscal years, and a sweep that flags those is a sweep nobody keeps.
+ */
+const COUNT_NOUNS =
+  "programs?|program elements?|companies|districts?|filings?|mentions?|" +
+  "awards?|award records?|facts?|datasets?|rows?|records?|signals?|pages?|" +
+  "citations?|line items?|event types?|entries|elements?";
+const BARE_BEFORE_NOUN = new RegExp(
+  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+(?:of\s+[\d,]+\s+)?(?:${COUNT_NOUNS})`,
+  "gi",
+);
+/** "N of M" in either position — the /years/ filter summary's exact shape. */
+const BARE_IN_OF = new RegExp(
+  String.raw`(?<![\d,.])(\d{4,})(?![\d,.])\s+of\s+|(?:of\s+)(?<![\d,.])(\d{4,})(?![\d,.])`,
+  "gi",
+);
+
+/** A fiscal/calendar year is not a cardinality. */
+function isYear(n) {
+  return n >= 1900 && n <= 2099;
+}
+
+function runCountNotationLeg(errors, notes) {
+  const files = [...walkHtml(outDir)];
+  if (files.length === 0) {
+    errors.push(`leg j: no built HTML under ${outDir} — the sweep is vacuous`);
+    return;
+  }
+  const failures = [];
+  let textNodes = 0;
+  let groupedSeen = 0;
+
+  for (const file of files) {
+    let root;
+    try {
+      root = parse(fs.readFileSync(file, "utf8"), { comment: false });
+    } catch {
+      continue;
+    }
+    for (const el of root.querySelectorAll(
+      "[data-source-text], script, style, noscript, template",
+    )) {
+      el.remove();
+    }
+    const rel = path.relative(outDir, file);
+    // Per TEXT NODE: "CO-05" + "10 programs" in adjacent spans must not read
+    // as "0510 programs".
+    const walk = (node) => {
+      if (node.nodeType === 3) {
+        const t = node.rawText;
+        if (!t || !/\d/.test(t)) return;
+        textNodes += 1;
+        if (/\d,\d{3}/.test(t)) groupedSeen += 1;
+        for (const re of [BARE_BEFORE_NOUN, BARE_IN_OF]) {
+          re.lastIndex = 0;
+          let m;
+          while ((m = re.exec(t))) {
+            const raw = m[1] ?? m[2];
+            if (!raw) continue;
+            const n = Number(raw);
+            if (isYear(n)) continue;
+            failures.push({
+              file: rel,
+              snippet: t
+                .slice(Math.max(0, m.index - 45), m.index + m[0].length + 15)
+                .replace(/\s+/g, " ")
+                .trim(),
+              want: n.toLocaleString("en-US"),
+              got: raw,
+            });
+          }
+        }
+      } else if (node.childNodes) {
+        for (const c of node.childNodes) walk(c);
+      }
+    };
+    walk(root);
+    if (failures.length > 60) break;
+  }
+
+  if (failures.length > 0) {
+    errors.push(
+      `leg j: ${failures.length} ungrouped count(s) rendered — §P1-5 says one ` +
+        `notation for one number (first 10):`,
+    );
+    for (const f of failures.slice(0, 10)) {
+      errors.push(`  ${f.file}: "${f.snippet}" — write ${f.want}, not ${f.got}`);
+    }
+    if (failures.length > 10) {
+      errors.push(`  ... and ${failures.length - 10} more`);
+    }
+  } else if (groupedSeen === 0) {
+    errors.push(
+      `leg j is VACUOUS: ${textNodes} text node(s) carrying digits, but not one ` +
+        `grouped figure anywhere — the sweep would pass an empty site`,
+    );
+  } else {
+    notes.push(
+      `leg j count notation: ${files.length} page(s), ${textNodes} numeric text ` +
+        `node(s), ${groupedSeen} grouped — 0 bare 4+-digit cardinalities ✓`,
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -554,6 +678,15 @@ function checkSortedContainer(el) {
     }
   }
   return null;
+}
+
+/** Every built .html under out/, recursively. */
+function* walkHtml(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkHtml(p);
+    else if (p.endsWith(".html")) yield p;
+  }
 }
 
 /** Every built index.html under out/<dir>/, capped at `limit`, sorted. */
