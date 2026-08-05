@@ -354,7 +354,7 @@ export default function CompanyFamiliesPage() {
                     {secAccession(event.source_url) && (
                       <span
                         data-sec-accession={secAccession(event.source_url)!}
-                        title="SEC accession number — the durable identifier for this filing, independent of the URL"
+                        title="SEC accession number — this filing's durable identifier"
                         className="mt-0.5 block font-mono text-[11px] text-muted-foreground"
                       >
                         {secAccession(event.source_url)}

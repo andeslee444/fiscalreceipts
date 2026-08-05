@@ -10,9 +10,12 @@ import { displayCompanyName } from "@/lib/company-name.mjs";
  * Every rendered company name therefore carries BOTH:
  *   - the display casing (lib/company-name.mjs, which refuses rather than
  *     guesses — see that file for the rule), as the element's text;
- *   - the raw registry string, as `data-registry-name`, ALWAYS — including
- *     when the two are identical, so gate 2 leg (tc) can re-run the rule
- *     against the built HTML and catch a page that hand-rolled a name.
+ *   - the raw registry string, as the VALUE of `data-company-name`, ALWAYS —
+ *     including when the two are identical, so gate 2 leg (tc) can re-run the
+ *     rule against the built HTML and catch a page that hand-rolled a name.
+ *     One attribute rather than a marker plus a payload: at 230 names on
+ *     /companies/, and with the App Router echoing every rendered string into
+ *     the RSC payload, the second attribute was ~9KB of nothing.
  *
  * `title` is set only when the two differ, so hovering a transformed name
  * shows what the award data actually records. Pages that carry a name as
@@ -33,8 +36,7 @@ export function CompanyName({
   return (
     <As
       className={className}
-      data-company-name=""
-      data-registry-name={registry}
+      data-company-name={registry}
       title={display !== registry ? registry : undefined}
     >
       {display}
@@ -57,9 +59,7 @@ export function RegisteredNameNote({ raw }: { raw: string }) {
       className="mb-4 text-xs leading-5 text-muted-foreground"
     >
       Registered name in the award data:{" "}
-      <span className="font-mono text-foreground" data-registry-name={registry}>
-        {registry}
-      </span>
+      <span className="font-mono text-foreground">{registry}</span>
       . Search USAspending for that string — the display name above is this
       site&rsquo;s casing of it, nothing else.
     </p>

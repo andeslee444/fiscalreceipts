@@ -47,7 +47,7 @@
  *
  * `displayCompanyName()` returns BOTH strings plus the refusal flag. Callers
  * render `display` and keep `registry` reachable — visibly on /company/ and
- * /companies/, and as `title` + `data-registry-name` everywhere else.
+ * /companies/, and as `title` + the `data-company-name` value everywhere else.
  *
  * WHY .mjs IN src/lib: three consumers must agree exactly and none can be the
  * other's source — the Next pages, scripts/generate-og.mjs (a prebuild Node

@@ -487,7 +487,7 @@ export function CompaniesTable({
                   {r.merged ? (
                     <>
                       {/* A merged row shows the CURATED family label, not a
-                          registry string — it gets no data-registry-name. */}
+                          registry string — it gets no data-company-name marker. */}
                       <span className="font-medium text-foreground">
                         {r.displayName}
                       </span>

@@ -96,10 +96,11 @@
  * (tc) COMPANY DISPLAY NAMES + PROVENANCE (PM Sprint 3 §P2-4). Registry
  *      strings are cased for display, so the gate re-runs the rule and
  *      compares:
- *        - every [data-company-name] carries a non-empty data-registry-name;
- *        - its rendered text equals displayCompanyName(registry).display —
- *          computed HERE from the registry attribute, so a page that
- *          hand-cased a name, or a rule that quietly changed, both fail;
+ *        - every [data-company-name] carries the raw registry string as its
+ *          own value, non-empty;
+ *        - its rendered text equals displayCompanyName(that value).display —
+ *          computed HERE from the attribute, so a page that hand-cased a
+ *          name, or a rule that quietly changed, both fail;
  *        - the raw string is never DISCARDED: on a /company/ page (whose
  *          subject IS one registry name) the visible [data-registry-note]
  *          must carry it verbatim whenever the display differs.
@@ -820,11 +821,11 @@ export async function runRenderStaticGate() {
     // ── (tc) company display names carry their registry string ─────────────
     for (const el of root.querySelectorAll("[data-company-name]")) {
       companyNameCount += 1;
-      const registry = el.getAttribute("data-registry-name");
+      const registry = el.getAttribute("data-company-name");
       if (!registry) {
         companyNameFailures.push({
           file: relPath,
-          issue: `[data-company-name] "${el.text.trim().slice(0, 40)}" carries no data-registry-name — the display casing replaced the provenance instead of standing beside it`,
+          issue: `[data-company-name] "${el.text.trim().slice(0, 40)}" carries no registry string — the display casing replaced the provenance instead of standing beside it`,
         });
         continue;
       }
@@ -842,7 +843,7 @@ export async function runRenderStaticGate() {
     if (/^company\/[^/]+\/index\.html$/.test(relPath)) {
       const h1 = root.querySelector("h1 [data-company-name]");
       if (h1) {
-        const registry = h1.getAttribute("data-registry-name") ?? "";
+        const registry = h1.getAttribute("data-company-name") ?? "";
         const shown = displayCompanyName(registry).display !== registry;
         const note = root.querySelector("[data-registry-note]");
         if (shown && (!note || !note.text.includes(registry))) {
@@ -1058,7 +1059,7 @@ export async function runRenderStaticGate() {
   } else {
     notes.push(
       `company names: ${companyNameCount} [data-company-name] element(s), each ` +
-        `matching displayCompanyName() of its own data-registry-name ✓`
+        `matching displayCompanyName() of its own registry string ✓`
     );
   }
 
