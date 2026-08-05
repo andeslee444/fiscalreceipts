@@ -61,8 +61,6 @@ export function ReceiptsIntro() {
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-    // `dismiss` is stable for the lifetime of this component.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   if (!visible) return null;
