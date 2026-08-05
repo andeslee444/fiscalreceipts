@@ -2969,3 +2969,200 @@ PASS: true
 errors: 0
 
 SUITE COUNT UNCHANGED — leg f strengthened on gate 22. Still 24 gates.
+
+================================================================================
+PM-REVIEW SPRINT 3 — TASK 5 (display polish §P2-4/5/7/8 + deferred nits)
+2026-08-05.  Six NEW legs on four existing gates. SUITE COUNT UNCHANGED: 24.
+================================================================================
+
+Legs added:
+  gate 2  (tc) company display names carry their registry string
+  gate 2  (dv) derivation strips reproduce
+  gate 2  (sp) JSX space-eaten text (source scan)
+  gate 11 (f)  og:description is written, and on the canonical TOA basis
+  gate 20 (h)  0 / <0.05 / — are three distinct facts; /years/ count notation
+  gate 24 (j)  count notation swept over every built page
+
+METHOD. One scratch build carrying a deliberate defect per leg (the (sp) leg
+needs no build — it reads source). Verbatim FAIL below, then `cp` restore with
+`cmp` proof and the verbatim PASS from the clean build at the final HEAD.
+
+--------------------------------------------------------------------------------
+1. GATE 2 LEG (tc) — COMPANY DISPLAY NAMES + PROVENANCE  [NEW]
+--------------------------------------------------------------------------------
+DEFECT INJECTED: components/company-name.tsx renders {registry} instead of
+{display} — i.e. the pre-§P2-4 behaviour, with the marker attribute intact.
+
+PASS: false
+443 company-name violation(s) — §P2-4 (first 10):
+  companies/families/index.html: renders "RAYTHEON COMPANY" for registry "RAYTHEON COMPANY"; the rule says "Raytheon Company"
+  companies/families/index.html: renders "RTX CORP" for registry "RTX CORP"; the rule says "RTX Corp"
+  companies/families/index.html: renders "ROCKWELL COLLINS AUSTRALIA PTY LIMITED" for registry "ROCKWELL COLLINS AUSTRALIA PTY LIMITED"; the rule says "Rockwell Collins Australia Pty Limited"
+  companies/families/index.html: renders "ROCKWELL COLLINS, INC." for registry "ROCKWELL COLLINS, INC."; the rule says "Rockwell Collins, Inc."
+  companies/families/index.html: renders "L3HARRIS TECHNOLOGIES, INC" for registry "L3HARRIS TECHNOLOGIES, INC"; the rule says "L3Harris Technologies, Inc"
+  companies/families/index.html: renders "L3 TECHNOLOGIES, INC." for registry "L3 TECHNOLOGIES, INC."; the rule says "L3 Technologies, Inc."
+  companies/families/index.html: renders "EXELIS INC." for registry "EXELIS INC."; the rule says "Exelis Inc."
+  companies/families/index.html: renders "NORTHROP GRUMMAN CORPORATION" for registry "NORTHROP GRUMMAN CORPORATION"; the rule says "Northrop Grumman Corporation"
+  companies/families/index.html: renders "NORTHROP GRUMMAN INNOVATION SYSTEMS LLC" for registry "NORTHROP GRUMMAN INNOVATION SYSTEMS LLC"; the rule says "Northrop Grumman Innovation Systems LLC"
+  companies/families/index.html: renders "HUNTINGTON INGALLS INDUSTRIES, INC" for registry "HUNTINGTON INGALLS INDUSTRIES, INC"; the rule says "Huntington Ingalls Industries, Inc"
+  ... and 433 more
+
+NOTE: the gate imports the SAME rule module the page uses, so a change to the
+RULE cannot be caught here (both sides move together) — what this leg catches
+is a PAGE that renders something other than the rule's output, which is the
+defect §P2-4 actually reports. The rule itself is pinned by
+src/lib/__tests__/company-name.test.ts, including a corpus arm asserting all
+208 published registry names classify.
+
+MADE TO PASS (verbatim, clean build at HEAD):
+  • company names: 453 [data-company-name] element(s), each matching displayCompanyName() of its own registry string ✓
+
+--------------------------------------------------------------------------------
+2. GATE 2 LEG (dv) — DERIVATION STRIPS REPRODUCE  [NEW]
+--------------------------------------------------------------------------------
+FOUND A REAL DEFECT BEFORE ANY INJECTION. First honest run against the
+post-fix build, with data-derivation on the /companies/ equation <p> whose
+closing arithmetic is a SIBLING inside the same <details>:
+
+PASS: false
+9 derivation-strip violation(s) — §P2-8 (first 10):
+  companies/index.html: [data-derivation="company-addends"] shows a derived figure beside its inputs with neither a [data-derivation-exact] equation nor a [data-derivation-rounding] statement
+  (× 9, one per merged family)
+
+DEFECT INJECTED for the re-compute arm: lib/derivation.ts `if (sum ===
+roundedTotal)` → `if (true)`, so reproducibleSum returns the FIRST precision
+tried instead of the one that closes.
+
+PASS: false
+349 derivation-strip violation(s) — §P2-8 (first 10):
+  companies/index.html: equation does not close: left side sums to 7445.0, right side reads 7445.1 — "7,444.7 + 0.3 = 7,445.1 USD millions"
+  companies/index.html: equation does not close: left side sums to 901.5, right side reads 901.6 — "899.3 + 2.2 = 901.6 USD millions"
+  program/000074/index.html: equation does not close: left side sums to -9.4, right side reads -9.3 — "18.1 − 27.5 = -9.3"
+  program/000075/index.html: equation does not close: left side sums to -271.9, right side reads -272.0 — "1,206.1 − 1,478.0 = -272.0"
+  program/0050MA0780/index.html: equation does not close: left side sums to -4.6, right side reads -4.7 — "128.1 − 132.7 = -4.7"
+
+(Note the first two: those are SAIC and TransDigm — the two families whose
+compact addends genuinely did not add up before this task. At one decimal
+they still do not; reproducibleSum finds the precision that closes them.)
+
+MADE TO PASS (verbatim, clean build at HEAD):
+  • derivations: 1714 strip(s), 1737 printed equation(s), all closing exactly at their printed precision ✓
+
+--------------------------------------------------------------------------------
+3. GATE 2 LEG (sp) — JSX SPACE-EATEN TEXT  [NEW, source scan — no build]
+--------------------------------------------------------------------------------
+DEFECT INJECTED: the exact /about/ defect the review reported, restored by
+deleting the {" "} Task 4 added:
+
+      -  {SITE_NAME}{" "}
+      +  {SITE_NAME}
+           shows lobbying expenditure and federal contract
+
+PASS: false
+1 JSX site(s) where the renderer eats the space the author wrote — the "Fiscal Receiptsshows" class (first 10):
+  app/about/page.tsx:50: …{SITE_NAME}⟦no space⟧shows lobbying expenditure and federal contract obligations … — put the two on one line or add {" "}
+
+MADE TO PASS (verbatim, clean source at HEAD):
+  • jsx glue: 116 .tsx file(s) scanned, 0 space-eaten expression/text joins ✓
+
+THE SWEEP ITSELF: 116 .tsx files, 22 candidate expression/text joins over the
+whole codebase, of which the structural rules classify 22 as deliberate
+(pluralisation affixes, {" "}, non-word edges, the FY{year} idiom) and 0 as
+defects. /about/'s two instances were fixed in Task 4; no third instance
+exists. The leg is a regression gate, and its proof-can-fail above is the
+reported defect itself, verbatim.
+
+--------------------------------------------------------------------------------
+4. GATE 11 LEG (f) — OG DESCRIPTIONS  [NEW]
+--------------------------------------------------------------------------------
+DEFECT INJECTED: program metadata reverted to the pre-§P2-5 prose slice
+(first sentence of the mission narrative, truncated at 197 chars).
+
+PASS: false
+og leg f: 40 description violation(s) — §P2-5 (first 10):
+  000042: description does not open with its own title + code — "The Air Force Industrial Preparedness program element combines the res…"
+  0200BS9100: description does not open with its own title + code — "Program provides for procurement of spares to support operational read…"
+  0205671F: description does not open with its own title + code — "Program funds Counter Radio-Controlled Improvised Explosive Device Ele…"
+  0207431F: description does not open with its own title + code — "The mission of Combat Air Intelligence Systems (CAIS) is to process, a…"
+  0301113F: description does not open with its own title + code — "Mission Description: Provides funding to the Air Force owned DoD Cyber…"
+  0304260F: description does not open with its own title + code — "This Program Element (PE 34260F) invests authorized and appropriated f…"
+  0305232M: description does not open with its own title + code — "Family of Small Unmanned Aircraft Systems (FoSUAS) (formerly Small Uni…"
+
+MADE TO PASS (verbatim, clean build at HEAD):
+  • og descriptions: 40 program page(s) sampled, 40 carrying figures — all written, identical meta/og, every dollar re-derived from the workbook TOA trajectory ✓
+
+Shipped example (/program/ATA000/, both meta and og:description):
+  "F-35 (ATA000), Air Force. $4.09B requested for FY2026, $5.57B in FY2024
+   actuals (P-1/R-1 workbook total obligation authority). Every figure links
+   to the document it is printed in."
+
+--------------------------------------------------------------------------------
+5. GATE 20 LEG (h) — 0 vs <0.05 vs —, AND /years/ COUNT NOTATION  [NEW]
+--------------------------------------------------------------------------------
+DEFECT INJECTED (two, one per arm of the leg):
+  - years-matrix.tsx cellState() → always "value", and fmtDisplayMillions
+    loses its zero/rounded-zero branches (i.e. the pre-§P2-7 "0.0");
+  - the filter summary reverted to {nVisible} of {allEntries.length}.
+
+PASS: false
+leg h (§P2-7): 865 cell(s) whose glyph and payload disagree (first 5):
+  fy2015a v=0 declares value, payload says zero
+  fy2017a v=0 declares value, payload says zero
+  fy2018a v=0 declares value, payload says zero
+  fy2015a v=0 declares value, payload says zero
+  fy2016a v=0 declares value, payload says zero
+leg h (§P1-5): /years/ renders the ungrouped count "1741 of 1741 programs" — write 1,741, not 1741
+
+MADE TO PASS (verbatim, clean build at HEAD fcb59486):
+  • leg h: 20892 cell(s) — 849 zero, 16 rounded-zero, 7916 absent, 12111 valued; every glyph matches its payload, legend decodes all three ✓ (§P2-7)
+  • leg h: /years/ count notation grouped ("1,741 of 1,741 programs") ✓ (§P1-5)
+
+--------------------------------------------------------------------------------
+6. GATE 24 LEG (j) — COUNT NOTATION, SWEPT  [NEW]
+--------------------------------------------------------------------------------
+THE LEG FAILED TO FAIL FIRST, and that is the point of building it failing.
+With the scratch build rendering "4394 filings", the first implementation
+(per TEXT NODE) reported:
+
+PASS: true
+ • leg j count notation: 6733 page(s), 375625 numeric text node(s), 4129 grouped — 0 bare 4+-digit cardinalities ✓
+
+React splits `{n} filings` into three text nodes separated by <!-- -->
+comments, so a per-text-node scan cannot see the shape the leg exists to
+catch; a per-subtree scan instead glues "CO-05" and "10 programs" from two
+sibling cells into a fictitious "0510 programs". The unit of scanning is now
+the LEAF ELEMENT. The regexes had also been mangled by a stray control
+character where a \b belonged (invisible in review); a sweep of every tracked
+file under site/src and site/scripts confirms no other one carries one.
+
+DEFECT INJECTED (unchanged): filings-table.tsx drops formatCount.
+
+PASS: false
+leg j: 1 ungrouped count(s) rendered — §P1-5 says one notation for one number (first 10):
+  filings/index.html: "4394 filings" — write 4,394, not 4394
+
+MADE TO PASS (verbatim, clean build at HEAD):
+  • leg j count notation: 6733 page(s), 375625 numeric text node(s), 4130 grouped — 0 bare 4+-digit cardinalities ✓
+
+--------------------------------------------------------------------------------
+FULL SUITE AT THE FINAL HEAD (fcb59486)
+--------------------------------------------------------------------------------
+NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build   → exit 0
+  ✓ out/.build-meta.json written (git_head=fcb59486, source_max=2026-08-05T06:54:34.355Z)
+NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify  → exit 0
+  gates 1–24 all PASS; overall: PASS
+
+--------------------------------------------------------------------------------
+RESTORE PROOF
+--------------------------------------------------------------------------------
+cmp: src/components/company-name.tsx restored identical ✓
+cmp: src/lib/derivation.ts restored identical ✓
+cmp: src/components/filings-table.tsx restored identical ✓
+program page restored ✓
+years-matrix restored ✓
+(about/page.tsx and years-matrix.tsx differ from their pre-scratch copies only
+by the intended data-testid="years-count" hook the leg reads; git diff shows
+that single hunk and nothing else.)
+
+SUITE COUNT UNCHANGED — six new legs across gates 2, 11, 20 and 24.
+Still 24 gates.
