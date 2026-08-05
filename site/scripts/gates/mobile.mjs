@@ -22,8 +22,9 @@
  * painted straight over its dollar delta. Nothing overflowed the document
  * ((m1) ok) and the figure's own box was inside the viewport ((m2) ok) — the
  * label simply overflowed its flex item and covered it. Two of the five
- * figures on the site's front page were unreadable, and `/` was not even in
- * this sample. Both holes are closed below.
+ * figures on the site's front page were unreadable. `/` WAS in this sample —
+ * but overflow-only, so the front page's sole assertion was one the defect
+ * could not trip. Both holes are closed below.
  *
  *   (m1) NO PAGE-LEVEL HORIZONTAL OVERFLOW —
  *        document.documentElement.scrollWidth <= clientWidth (+1px rounding)
@@ -129,7 +130,34 @@ export function computeMobileInstancePages() {
  */
 export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
   const sample = [
-    { path: "/", label: "home" },
+    {
+      // THE GATE'S OWN BLIND SPOT, found by round-1 visual judging. `/` was
+      // already in this sample — but overflow-only, so the ONLY thing measured
+      // on the site's front page was `documentElement.scrollWidth`. The home
+      // page then shipped the exact defect class this leg exists for: the
+      // "Largest FY25→26 changes" rows drew the program title straight over
+      // the dollar delta, so two of the five figures on the front door were
+      // unreadable — and nothing overflowed, so (m1) passed on it.
+      //
+      // (m2) would not have caught it either: the figure's own box was inside
+      // the viewport; the TITLE was painted across it. Hence (m3).
+      path: "/",
+      label: "home",
+      value: {
+        rowSelector: "[data-mover-row]",
+        selector: "[data-primary-value='mover-change']",
+        first: true,
+        minRows: 5,
+        min: 5,
+        describe: "top-mover change figure",
+      },
+      pairs: {
+        rowSelector: "[data-mover-row]",
+        labelSelector: "[data-mobile-pair-label]",
+        valueSelector: "[data-mobile-pair-value]",
+        describe: "mover title vs change figure",
+      },
+    },
     {
       path: "/programs/",
       label: "programs index",
@@ -191,11 +219,28 @@ export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
       ready: { selector: "tr[data-program-row]", timeout: 45000 },
       value: {
         rowSelector: "tr[data-program-row]",
-        selector: "td[data-col]",
+        // STRENGTHENED after round-1 judging. This used to be `td[data-col]`
+        // + `first`, i.e. the LEFTMOST column's cell — a proxy for "the money
+        // is on screen" that held only while the grid opened scrolled hard
+        // left. It was passing on the defect all three judges reported: the
+        // leftmost columns are FY2015A/FY2016A, which are empty for exactly
+        // the newest, biggest programs §P2-2's row sort promotes to the top,
+        // so "on screen" was satisfied by a column of em-dashes while the
+        // column the grid is SORTED BY sat off the right edge.
+        //
+        // It now measures the sorted column itself, read from the table's own
+        // `data-sorted-col`. That is strictly stronger: it ties the money in
+        // frame to the money the page says it opens on, and it fails if the
+        // grid ever sorts by a column it does not show.
+        selectorFrom: {
+          on: 'table[data-testid="years-matrix"]',
+          attr: "data-sorted-col",
+          template: 'td[data-col="{}"]',
+        },
         first: true,
         minRows: 50,
         min: 50,
-        describe: "first fiscal-year amount cell",
+        describe: "sorted-column amount cell",
       },
     },
     {
@@ -278,33 +323,6 @@ export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
         describe: "feed card headline vs figure",
       },
     },
-    {
-      // THE GATE'S OWN BLIND SPOT, found by round-1 visual judging: `/` was
-      // never in this sample, and the home page shipped the exact defect
-      // class this leg exists for — the "Largest FY25→26 changes" rows drew
-      // the program title straight over the dollar delta, so two of the five
-      // figures on the site's front page were unreadable at 390.
-      //
-      // (m1) could not see it (nothing overflowed the document) and (m2)
-      // could not see it either (the figure's own box was inside the
-      // viewport — the TITLE was painted across it). Hence (m3) below.
-      path: "/",
-      label: "home",
-      value: {
-        rowSelector: "[data-mover-row]",
-        selector: "[data-primary-value='mover-change']",
-        first: true,
-        minRows: 5,
-        min: 5,
-        describe: "top-mover change figure",
-      },
-      pairs: {
-        rowSelector: "[data-mover-row]",
-        labelSelector: "[data-mobile-pair-label]",
-        valueSelector: "[data-mobile-pair-value]",
-        describe: "mover title vs change figure",
-      },
-    },
     { path: `/program/${programPbl}/`, label: "program page" },
     { path: `/company/${companySlug}/`, label: "company page" },
     { path: "/methodology/", label: "methodology" },
@@ -374,6 +392,18 @@ function measureInPage({ cfg, tolerance, cap }) {
 
   const v = cfg.value;
   if (v) {
+    // A selector the page itself names (see /years/): read the attribute off
+    // the declaring element and substitute it. An absent or empty attribute is
+    // left as an unresolvable selector so the non-vacuity floor FAILS rather
+    // than the assertion silently measuring nothing.
+    if (v.selectorFrom) {
+      const host = document.querySelector(v.selectorFrom.on);
+      const key = host ? host.getAttribute(v.selectorFrom.attr) : null;
+      out.resolvedSelector = key
+        ? v.selectorFrom.template.replace("{}", key)
+        : "__unresolved__";
+      v.selector = out.resolvedSelector;
+    }
     let els = [];
     if (v.rowSelector) {
       const rows = Array.from(document.querySelectorAll(v.rowSelector));
@@ -421,9 +451,40 @@ function measureInPage({ cfg, tolerance, cap }) {
       const value = row.querySelector(p.valueSelector);
       if (!label || !value) continue;
       out.pairsMeasured += 1;
-      const a = label.getBoundingClientRect();
-      const b = value.getBoundingClientRect();
-      if (a.width === 0 || b.width === 0) continue;
+      // THE PAINTED extent, not the element's own border box.
+      //
+      // The first cut of this check measured `label.getBoundingClientRect()`
+      // and passed on the very defect it was written for: the label is a
+      // blockified flex item with `min-w-0`, so its BOX shrinks to almost
+      // nothing while its inline text overflows and paints across the figure.
+      // The box never intersected; the glyphs did. Recorded because a check
+      // that cannot fail on its own motivating case is worse than no check.
+      //
+      // Inline descendants and text line-boxes DO report the painted extent,
+      // so the label's extent is the union of its own rect, its descendants'
+      // rects, and its text rects.
+      const painted = (el) => {
+        let l = Infinity;
+        let r = -Infinity;
+        let t = Infinity;
+        let btm = -Infinity;
+        const add = (x) => {
+          if (x.width === 0 && x.height === 0) return;
+          l = Math.min(l, x.left);
+          r = Math.max(r, x.right);
+          t = Math.min(t, x.top);
+          btm = Math.max(btm, x.bottom);
+        };
+        add(el.getBoundingClientRect());
+        for (const d of el.querySelectorAll("*")) add(d.getBoundingClientRect());
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        for (const x of range.getClientRects()) add(x);
+        return { left: l, right: r, top: t, bottom: btm, width: r - l };
+      };
+      const a = painted(label);
+      const b = painted(value);
+      if (!(a.width > 0) || !(b.width > 0)) continue;
       const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
       const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
       if (overlapX > tolerance && overlapY > tolerance) {
@@ -532,14 +593,15 @@ export async function runMobileLeg({ baseUrl, browser }) {
               `mobile ${cfg.path}: only ${m.rows ?? 0} row(s) matched "${v.rowSelector}" (need >= ${v.minRows}) — the sample is vacuous`
             );
           }
+          const shown = m.resolvedSelector ?? v.selector;
           if (m.measured < v.min) {
             errors.push(
-              `mobile ${cfg.path}: only ${m.measured} ${v.describe}(s) matched "${v.selector}" (need >= ${v.min}) — the sample is vacuous`
+              `mobile ${cfg.path}: only ${m.measured} ${v.describe}(s) matched "${shown}" (need >= ${v.min}) — the sample is vacuous`
             );
           }
           if (v.first && v.rowSelector && m.emptyRows > 0) {
             errors.push(
-              `mobile ${cfg.path}: ${m.emptyRows} row(s) carry no ${v.describe} ("${v.selector}") — every row must state its value`
+              `mobile ${cfg.path}: ${m.emptyRows} row(s) carry no ${v.describe} ("${shown}") — every row must state its value`
             );
           }
           valueElements += m.measured;

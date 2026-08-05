@@ -62,9 +62,10 @@ describe("buildMobileSample", () => {
       .map((s) => s.path)
       .sort();
     expect(withValue).toEqual([
-      // Added after round-1 visual judging: `/` was not in this sample at all,
-      // and it shipped the defect class the leg exists for — the mover title
-      // painted over its dollar delta.
+      // Added after round-1 visual judging. `/` was already IN the sample,
+      // but overflow-only — so the front page's only assertion was one the
+      // shipped defect (mover title painted over its dollar delta) could not
+      // trip. It is value-bearing now.
       "/",
       "/companies/",
       "/companies/families/",
@@ -106,7 +107,13 @@ describe("buildMobileSample", () => {
   it("gives every value assertion a non-vacuity floor and a selector", () => {
     for (const s of buildMobileSample(instances)) {
       if (!s.value) continue;
-      expect(s.value.selector, `${s.path} selector`).toBeTruthy();
+      // A value config resolves its selector either statically or from an
+      // attribute the page declares (`selectorFrom` — see /years/). Exactly
+      // one of the two, so a config can never end up with neither.
+      const hasStatic = Boolean(s.value.selector);
+      const hasDynamic = Boolean(s.value.selectorFrom);
+      expect(hasStatic || hasDynamic, `${s.path} selector`).toBe(true);
+      expect(hasStatic && hasDynamic, `${s.path} selector`).toBe(false);
       expect(s.value.min, `${s.path} min`).toBeGreaterThan(0);
       expect(s.value.describe, `${s.path} describe`).toBeTruthy();
       if (s.value.rowSelector) {
@@ -118,6 +125,27 @@ describe("buildMobileSample", () => {
   it("identifies value elements by data-* hooks, never by text", () => {
     for (const s of buildMobileSample(instances)) {
       if (!s.value) continue;
+      if (s.value.selectorFrom) {
+        // Every part of a page-declared selector must also be a data-* hook:
+        // the element it reads, the attribute it reads, and the template it
+        // substitutes into.
+        expect(s.value.selectorFrom.on, `${s.path} selectorFrom.on`).toMatch(
+          /\[data-/,
+        );
+        expect(
+          s.value.selectorFrom.attr,
+          `${s.path} selectorFrom.attr`,
+        ).toMatch(/^data-/);
+        expect(
+          s.value.selectorFrom.template,
+          `${s.path} selectorFrom.template`,
+        ).toMatch(/\[data-/);
+        expect(
+          s.value.selectorFrom.template,
+          `${s.path} selectorFrom.template`,
+        ).toContain("{}");
+        continue;
+      }
       expect(s.value.selector, `${s.path} selector`).toMatch(/\[data-/);
     }
   });

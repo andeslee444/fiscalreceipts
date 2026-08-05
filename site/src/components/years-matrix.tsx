@@ -883,6 +883,12 @@ export function YearsMatrix() {
       >
         <table
           data-testid="years-matrix"
+          // The column the grid is currently sorted by — and, on load, the one
+          // it scrolls itself to. Gate 3's mobile leg reads this to assert
+          // that the money the page opens on is the money on screen; it used
+          // to pin the leftmost column, which was only a proxy for that and
+          // stopped being one the moment the viewport followed the sort.
+          data-sorted-col={sort?.key ?? ""}
           // border-separate (NOT collapse): collapsed borders stay in the
           // scrolled layer when cells are sticky — see STICKY_*_COL_CLASS.
           className="w-full border-separate border-spacing-0 text-xs"
