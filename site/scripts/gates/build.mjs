@@ -84,6 +84,9 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "209,273 / 24,156" },
   { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "85,650 / 12,122" },
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 110_000, maxGzip: 30_000, measured: "98,081 / 27,307" },
+  // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
+  // as features land, which is exactly the shape §P2-1 wants weighed.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 92_000, maxGzip: 16_500, measured: "85,920 / 15,360" },
   // Templated classes — the heaviest built instance of each.
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,925,805 / 126,967 (/agency/F/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,094,513 / 139,890 (/program/0601102A/)" },
@@ -431,14 +434,15 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(9) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(9) = /, /programs/, /companies/, /companies/families/, /data/,
-    //             /flow/, /downloads/, /methodology/, /about/
+    // Expected: static(10) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(10) = /, /programs/, /companies/, /companies/families/, /data/,
+    //              /flow/, /downloads/, /methodology/, /coverage/, /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
-    //  §P1-3 — the curated rename/acquisition table.)
+    //  §P1-3 — the curated rename/acquisition table; /coverage/ in Sprint 3
+    //  Task 6 — the roadmap page.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 9;
+    const STATIC_SITEMAP_PAGES = 10;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {

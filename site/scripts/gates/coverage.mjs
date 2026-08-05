@@ -19,6 +19,32 @@
  *   dossiers = fs.readdirSync(dossiers).length
  *   districts = JSON.parse(districts/index.json).total_districts
  *   company-awards = entity_details filtered where awards.length > 0
+ *
+ * ── leg cm: THE COVERAGE MAP (PM Sprint 3 Task 6, §Coverage) ────────────────
+ *
+ * /coverage/ publishes what the site covers, what it does not, the specific
+ * blocker per feature and a dated target. Of every page on this site, it is
+ * the one where an authored literal would be self-refuting — a stale coverage
+ * number on the coverage page destroys exactly the credibility the page is
+ * spending. So this leg recomputes EVERY figure the page renders, from the
+ * shipped sidecars and the built feed files, and compares against the rendered
+ * HTML — the same §P1-5 discipline the /data/ row counts get, applied to the
+ * page that claims it.
+ *
+ * It also pins the page's STRUCTURE, because a roadmap without dates is the
+ * defect the review actually reported:
+ *   - every declared row is present, and no row is present that is not
+ *     declared (both directions — a silently dropped feature is a lie of
+ *     omission on a coverage page);
+ *   - every row carries a blocker of real length. "Not done yet" is not a
+ *     blocker, and a 20-character cell is that in disguise;
+ *   - every target is either DATED (names a month and a year) or explicitly
+ *     undated, in which case it must say so in as many words;
+ *   - the crosswalk row is undated AND states the methodology limit —
+ *     account-code coarseness, with DARPA named as the exception. That
+ *     sentence is the page's centrepiece; the gate keeps it from decaying
+ *     into "coming soon".
+ * Vacuity fails: no rows, or a table that recomputes nothing, is a FAIL.
  */
 
 import fs from "fs";
@@ -339,5 +365,353 @@ export async function runCoverageGate() {
     }
   }
 
+  // ── leg cm: the coverage map (Sprint 3 Task 6) ───────────────────────────
+  runCoverageMapLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg cm — /coverage/ (PM Sprint 3 Task 6, §Coverage)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** A dated target names a month and a year. Anything else is a vibe. */
+const DATED_TARGET_RE =
+  /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b/;
+
+/** Shortest sentence that can carry a real blocker. Below this it is "soon". */
+const MIN_BLOCKER_CHARS = 60;
+
+/** Count the RSS files (never the .atom.xml twins) in a built feed directory. */
+function countRssFeeds(dir) {
+  if (!fs.existsSync(dir)) return 0;
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".xml") && !f.endsWith(".atom.xml")).length;
+}
+
+/**
+ * Recompute every figure /coverage/ renders, from the artifacts — never from
+ * lib/coverage-map, which is the thing under test.
+ *
+ * Returns a map id → { n, d, must } where `must` is the list of substrings the
+ * row's coverage cell has to contain. Numbers only: the blocker and target
+ * prose is authored on purpose, and duplicating it here would pin the wording
+ * instead of the truth.
+ */
+function recomputeCoverageMap() {
+  const programs = readJson(path.join(jsonDir, "programs.json")).length;
+
+  const detailsDir = path.join(jsonDir, "program_details");
+  const detailFiles = fs.existsSync(detailsDir)
+    ? fs.readdirSync(detailsDir).filter((f) => f.endsWith(".json"))
+    : [];
+  const pages = detailFiles.length;
+
+  // Programs carrying a non-empty lineage rail — parsed, not grepped.
+  let lineage = 0;
+  for (const f of detailFiles) {
+    let raw;
+    try {
+      raw = fs.readFileSync(path.join(detailsDir, f), "utf8");
+    } catch {
+      continue;
+    }
+    if (!raw.includes('"lineage"')) continue;
+    try {
+      const rail = JSON.parse(raw).lineage?.rail;
+      if (!rail) continue;
+      if ((rail.predecessors?.length ?? 0) + (rail.successors?.length ?? 0) > 0) {
+        lineage++;
+      }
+    } catch {
+      // skip malformed
+    }
+  }
+
+  const dossiersDir = path.join(jsonDir, "dossiers");
+  const dossiers = fs.existsSync(dossiersDir)
+    ? fs.readdirSync(dossiersDir).filter((f) => f.endsWith(".json")).length
+    : 0;
+
+  const flowsDir = path.join(jsonDir, "flows");
+  const flows = fs.existsSync(flowsDir)
+    ? fs.readdirSync(flowsDir).filter((f) => f.endsWith(".json")).length
+    : 0;
+
+  const bridge = readJson(path.join(jsonDir, "flow_chart.json")).budget.bridge;
+  const budgetFy = readJson(path.join(jsonDir, "flow_chart.json")).budget.fiscal_year;
+  const pctNot = (
+    (Number(bridge.not_yet_crosswalked_str) / Number(bridge.budget_total_str)) *
+    100
+  ).toFixed(1);
+
+  const entityDir = path.join(jsonDir, "entity_details");
+  const entityFiles = fs.existsSync(entityDir)
+    ? fs.readdirSync(entityDir).filter((f) => f.endsWith(".json"))
+    : [];
+  let companyAwards = 0;
+  for (const f of entityFiles) {
+    try {
+      const d = readJson(path.join(entityDir, f));
+      if (Array.isArray(d.awards) && d.awards.length > 0) companyAwards++;
+    } catch {
+      // skip malformed
+    }
+  }
+  const companies = readJson(path.join(jsonDir, "entities_top.json")).length;
+
+  const districts = readJson(path.join(jsonDir, "districts", "index.json"))
+    .districts.length;
+
+  const editions = [
+    ...new Set(
+      (readJson(path.join(jsonDir, "years_matrix.json")).decade_columns ?? [])
+        .map((c) => c.edition)
+        .filter((e) => typeof e === "number"),
+    ),
+  ].sort((a, b) => a - b);
+
+  const meta = readJson(path.join(jsonDir, "site_meta.json"));
+  const win = meta.award_fy_range ?? {};
+
+  const feedCards = (readJson(path.join(jsonDir, "feed.json")).cards ?? []).length;
+  const feedsDir = path.join(outDir, "feeds");
+  const eventTypeFeeds = countRssFeeds(feedsDir);
+  const programFeeds = countRssFeeds(path.join(feedsDir, "program"));
+  const companyFeeds = countRssFeeds(path.join(feedsDir, "company"));
+
+  const filings = readJson(path.join(jsonDir, "filings_index.json")).total;
+
+  return {
+    "program-pages": {
+      n: programs,
+      d: pages,
+      must: [`${fmtCount(programs)} of ${fmtCount(pages)}`, fmtCount(pages - programs)],
+    },
+    editions: {
+      n: editions.length,
+      d: null,
+      must: [
+        `${fmtCount(editions.length)} editions`,
+        `PB${editions[0]}–PB${editions[editions.length - 1]}`,
+      ],
+    },
+    dossiers: {
+      n: dossiers,
+      d: programs,
+      must: [`${fmtCount(dossiers)} of ${fmtCount(programs)}`],
+    },
+    lineage: {
+      n: lineage,
+      d: programs,
+      must: [`${fmtCount(lineage)} of ${fmtCount(programs)}`],
+    },
+    flows: {
+      n: flows,
+      d: programs,
+      must: [`${fmtCount(flows)} of ${fmtCount(programs)}`],
+    },
+    bridge: {
+      n: bridge.crosswalked_pe_count,
+      d: bridge.crosswalk_universe_pe_count,
+      must: [
+        `${fmtCount(bridge.crosswalked_pe_count)} of ${fmtCount(bridge.crosswalk_universe_pe_count)}`,
+        `${fmtCount(bridge.high_confidence_pe_count)} at high confidence`,
+        `${pctNot}% of the FY${budgetFy} request`,
+      ],
+    },
+    "company-awards": {
+      n: companyAwards,
+      d: companies,
+      must: [`${fmtCount(companyAwards)} of ${fmtCount(companies)}`],
+    },
+    "awards-window": {
+      n: null,
+      d: null,
+      must: [win.label, win.latest_action_date, `FY${win.fy_max} is a partial year`].filter(
+        Boolean,
+      ),
+    },
+    districts: {
+      n: districts,
+      d: 435,
+      must: [`${fmtCount(districts)} of ${fmtCount(435)}`],
+    },
+    "state-ca": { n: null, d: null, must: ["California", "FY2025"] },
+    feeds: {
+      n: programFeeds + companyFeeds,
+      d: null,
+      must: [
+        `${fmtCount(feedCards)} items`,
+        `${fmtCount(eventTypeFeeds)} event types`,
+        `${fmtCount(programFeeds)} program`,
+        `${fmtCount(companyFeeds)} company watch feeds`,
+      ],
+    },
+    filings: { n: filings, d: null, must: [fmtCount(filings)] },
+  };
+}
+
+function runCoverageMapLeg(errors, notes) {
+  const pagePath = htmlFor("/coverage/");
+  if (!fs.existsSync(pagePath)) {
+    errors.push("leg cm: out/coverage/index.html not found — the coverage page did not build");
+    return;
+  }
+  const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+
+  const table = root.querySelector("table[data-coverage-map]");
+  if (!table) {
+    errors.push("leg cm: /coverage/ renders no [data-coverage-map] table");
+    return;
+  }
+
+  const expected = recomputeCoverageMap();
+  const expectedIds = Object.keys(expected);
+  const rendered = table.querySelectorAll("[data-coverage-row]");
+  const renderedIds = rendered.map((r) => r.getAttribute("data-coverage-row"));
+
+  // Vacuity + both directions of set equality.
+  if (rendered.length === 0) {
+    errors.push("leg cm is VACUOUS: [data-coverage-map] table renders zero rows");
+    return;
+  }
+  for (const id of expectedIds) {
+    if (!renderedIds.includes(id)) {
+      errors.push(`leg cm: /coverage/ is missing the "${id}" row — a dropped feature is a lie of omission on a coverage page`);
+    }
+  }
+  for (const id of renderedIds) {
+    if (!expectedIds.includes(id)) {
+      errors.push(`leg cm: /coverage/ renders row "${id}", which this gate cannot recompute — every row must be derivable`);
+    }
+  }
+
+  let checkedFigures = 0;
+  let datedTargets = 0;
+
+  for (const row of rendered) {
+    const id = row.getAttribute("data-coverage-row");
+    const exp = expected[id];
+    if (!exp) continue;
+
+    // (1) machine-readable ratio attributes
+    const attrN = row.getAttribute("data-covered-n");
+    const attrD = row.getAttribute("data-covered-d");
+    if (exp.n !== null && Number(attrN) !== exp.n) {
+      errors.push(`leg cm[${id}]: data-covered-n is "${attrN}", recomputed ${exp.n}`);
+    }
+    if (exp.d !== null && Number(attrD) !== exp.d) {
+      errors.push(`leg cm[${id}]: data-covered-d is "${attrD}", recomputed ${exp.d}`);
+    }
+
+    // (2) the rendered coverage sentence carries the recomputed figures
+    const coveredEl = row.querySelector('[data-primary-value="covered"]');
+    if (!coveredEl) {
+      errors.push(`leg cm[${id}]: row has no [data-primary-value="covered"] cell`);
+    } else {
+      const text = (coveredEl.text ?? "").replace(/\s+/g, " ");
+      for (const want of exp.must) {
+        if (!text.includes(want)) {
+          errors.push(
+            `leg cm[${id}]: coverage cell does not contain "${want}" (rendered: "${text.slice(0, 160)}")`,
+          );
+        } else {
+          checkedFigures++;
+        }
+      }
+    }
+
+    // (3) a specific blocker
+    const blockerEl = row.querySelector("[data-coverage-blocker]");
+    const blocker = (blockerEl?.text ?? "").replace(/\s+/g, " ").trim();
+    if (blocker.length < MIN_BLOCKER_CHARS) {
+      errors.push(
+        `leg cm[${id}]: blocker is ${blocker.length} chars ("${blocker}") — under ${MIN_BLOCKER_CHARS} it is "not done yet" with extra words`,
+      );
+    }
+
+    // (4) a dated target, or an explicit statement that there is not one
+    const targetEl = row.querySelector("[data-coverage-target]");
+    const target = (targetEl?.text ?? "").replace(/\s+/g, " ").trim();
+    const kind = targetEl?.getAttribute("data-target-kind");
+    if (kind === "dated") {
+      datedTargets++;
+      if (!DATED_TARGET_RE.test(target)) {
+        errors.push(
+          `leg cm[${id}]: target is marked dated but names no month and year ("${target.slice(0, 120)}")`,
+        );
+      }
+    } else if (kind === "none") {
+      if (!/no dated target/i.test(target)) {
+        errors.push(
+          `leg cm[${id}]: target is marked undated but does not say so ("${target.slice(0, 120)}")`,
+        );
+      }
+    } else {
+      errors.push(`leg cm[${id}]: data-target-kind is "${kind}", expected dated|none`);
+    }
+  }
+
+  // (5) the crosswalk row is the page's centrepiece: undated, and stating the
+  //     methodology limit rather than a queue position.
+  const xw = rendered.find((r) => r.getAttribute("data-coverage-row") === "bridge");
+  if (!xw) {
+    errors.push('leg cm: no "bridge" row — the crosswalk gap is the page\'s reason to exist');
+  } else {
+    const blocker = (xw.querySelector("[data-coverage-blocker]")?.text ?? "").replace(/\s+/g, " ");
+    const target = (xw.querySelector("[data-coverage-target]")?.text ?? "").replace(/\s+/g, " ");
+    if (!/account code/i.test(blocker) || !/coarse/i.test(blocker)) {
+      errors.push(
+        "leg cm[bridge]: the blocker must name account-code coarseness as the reason — that sentence is what makes the gap a methodology limit rather than an excuse",
+      );
+    }
+    if (!/DARPA/.test(blocker)) {
+      errors.push(
+        "leg cm[bridge]: the blocker must name DARPA as the structure where account codes DO resolve — the exception is what makes the rule checkable",
+      );
+    }
+    if (xw.querySelector("[data-coverage-target]")?.getAttribute("data-target-kind") !== "none") {
+      errors.push("leg cm[bridge]: the crosswalk gap must not carry a dated target — it is not a backlog item");
+    }
+    if (!/methodolog/i.test(target)) {
+      errors.push('leg cm[bridge]: the crosswalk target must say the limit is methodological');
+    }
+    // The page states the crosswalk figure TWICE — in the row and in the
+    // section below it. Two statements of one number is how §P0-2 happened,
+    // so both are checked against the same recompute.
+    const restated = (root.querySelector("[data-coverage-crosswalk]")?.text ?? "").replace(
+      /\s+/g,
+      " ",
+    );
+    if (!restated) {
+      errors.push("leg cm[bridge]: the crosswalk section restates no figure — [data-coverage-crosswalk] is missing or empty");
+    } else {
+      for (const want of expected.bridge.must) {
+        if (!restated.includes(want)) {
+          errors.push(
+            `leg cm[bridge]: the crosswalk section says "${restated.slice(0, 160)}" — it does not carry "${want}", which the row above does`,
+          );
+        }
+      }
+    }
+  }
+
+  // (6) at least half the rows carry a date — otherwise this is a list of
+  //     excuses, which is the state the review already found the site in.
+  if (datedTargets * 2 < rendered.length) {
+    errors.push(
+      `leg cm: only ${datedTargets} of ${rendered.length} rows carry a dated target — a roadmap where most rows have no date is not a roadmap`,
+    );
+  }
+
+  if (checkedFigures === 0) {
+    errors.push("leg cm is VACUOUS: not one recomputed figure was matched against the page");
+  }
+
+  notes.push(
+    `leg cm coverage map: ${rendered.length} row(s), ${checkedFigures} recomputed figure(s) matched, ` +
+      `${datedTargets} dated target(s) ✓`,
+  );
 }

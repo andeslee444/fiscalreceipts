@@ -64,6 +64,9 @@ describe("buildMobileSample", () => {
     expect(withValue).toEqual([
       "/companies/",
       "/companies/families/",
+      // Added with the coverage map (Task 6): four columns, two of them prose
+      // — the shape that put /data/'s Scope and Citation cells off-canvas.
+      "/coverage/",
       "/data/",
       "/district/",
       // Added with the §P2-1 restructure: /programs/ was overflow-only while

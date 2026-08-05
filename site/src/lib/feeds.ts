@@ -15,6 +15,9 @@ import "server-only";
  * which is what every feed reader's autodiscovery looks for.
  */
 
+import { existsSync, readdirSync } from "fs";
+import { join } from "path";
+
 import { getFeed, getProgramPeBlis } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import {
@@ -134,6 +137,53 @@ export function companyFeedAlternates(
 /** Human-facing URLs for the small "Subscribe" affordance next to a heading. */
 export function feedLinks(paths: { rss: string; atom: string }) {
   return { rss: abs(paths.rss), atom: abs(paths.atom) };
+}
+
+// ── Feed inventory (PM Sprint 3 Task 6, §Coverage) ───────────────────────────
+
+export interface FeedInventory {
+  /** Items in the whole feed — feed.json's card count. */
+  items: number;
+  /** Distinct event types with their own feed. */
+  eventTypes: number;
+  /** Per-program watch feeds written. */
+  programFeeds: number;
+  /** Per-company watch feeds written. */
+  companyFeeds: number;
+}
+
+let _feedInventory: FeedInventory | null = null;
+
+/**
+ * How many feeds this build wrote — COUNTED OFF DISK, from public/feeds/.
+ *
+ * /coverage/ and /methodology/ both state these numbers, and the honest source
+ * for "how many watch feeds exist" is the set of files a reader can actually
+ * subscribe to, not a re-derivation of the membership rules. generate-feeds
+ * runs in `prebuild` and deletes stale files before writing, so by the time a
+ * page renders, public/feeds/ IS the shipped inventory; `next build` copies it
+ * verbatim into out/, which is where the gate recomputes these four numbers.
+ *
+ * Only the RSS file of each pair is counted (every feed also ships .atom.xml),
+ * so the number reads as "feeds" rather than "files".
+ */
+export function getFeedInventory(): FeedInventory {
+  if (_feedInventory) return _feedInventory;
+  const feedsDir = join(process.cwd(), "public", "feeds");
+  const rssIn = (sub: string): number => {
+    const dir = sub ? join(feedsDir, sub) : feedsDir;
+    if (!existsSync(dir)) return 0;
+    return readdirSync(dir).filter(
+      (f) => f.endsWith(".xml") && !f.endsWith(".atom.xml"),
+    ).length;
+  };
+  _feedInventory = {
+    items: getFeed().cards.length,
+    eventTypes: rssIn(""),
+    programFeeds: rssIn("program"),
+    companyFeeds: rssIn("company"),
+  };
+  return _feedInventory;
 }
 
 export { eventTypeFeedPaths, programFeedPaths, companyFeedPaths, WHOLE_FEED_RSS, WHOLE_FEED_ATOM };

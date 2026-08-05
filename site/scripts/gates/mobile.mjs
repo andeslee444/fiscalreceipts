@@ -204,6 +204,22 @@ export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
       },
     },
     {
+      // PM Sprint 3 Task 6 (§Coverage). A four-column table whose two widest
+      // columns are prose — exactly the shape that put /data/'s Scope and
+      // Citation cells off-canvas. The card treatment below `sm` is what keeps
+      // them on screen, and (m2) is what proves it stayed that way.
+      path: "/coverage/",
+      label: "coverage map",
+      value: {
+        rowSelector: "table[data-coverage-map] tbody tr",
+        selector: 'td[data-primary-value="covered"]',
+        first: true,
+        minRows: 10,
+        min: 10,
+        describe: "coverage-today cell",
+      },
+    },
+    {
       path: "/flow/",
       label: "flow-down Sankey",
       ready: { selector: '[data-testid="flow-chart"]', timeout: 45000 },

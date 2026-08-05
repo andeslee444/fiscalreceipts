@@ -187,6 +187,12 @@ export default function RootLayout({
                 <Link href="/methodology/" className="hover:text-foreground transition-colors">
                   Methodology
                 </Link>
+                {/* §Coverage — what the site covers, what it does not, and the
+                    dated target for each. Chrome-level so it is reachable from
+                    every page (gate 13 pins the page type's reachability). */}
+                <Link href="/coverage/" className="hover:text-foreground transition-colors">
+                  Coverage
+                </Link>
                 <Link href="/downloads/" className="hover:text-foreground transition-colors">
                   Downloads
                 </Link>

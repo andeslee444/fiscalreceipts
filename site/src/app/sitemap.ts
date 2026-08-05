@@ -45,6 +45,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/flow/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/downloads/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/methodology/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // §Coverage: what the site covers, the blocker per feature, and a dated
+    // target. Changes with the corpus, so it is crawled on the same cadence.
+    { url: `${base}/coverage/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/about/`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
   ];
 

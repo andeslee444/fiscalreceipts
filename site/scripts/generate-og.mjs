@@ -311,6 +311,13 @@ async function main() {
       subtitle: "Senate LDA filings linked to defense programs",
       figure: null, figureLabel: null, tagline: TAGLINE,
     }],
+    // PM Sprint 3 Task 6 (§Coverage) — the roadmap page.
+    ["coverage", {
+      kind: "Coverage",
+      title: "What we cover, and what we do not",
+      subtitle: "Per-feature coverage, the specific blocker, and a dated target",
+      figure: null, figureLabel: null, tagline: TAGLINE,
+    }],
   ];
   for (const [slug, props] of core) {
     await emit(slug, card(props));

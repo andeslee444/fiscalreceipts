@@ -5,6 +5,7 @@ import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
 import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
+import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
@@ -84,6 +85,8 @@ export default function MethodologyPage() {
   // exporter cannot derive honestly — the pytest/vitest totals — are stated
   // qualitatively instead of as literals that rot.
   const buildChecks = getSiteMeta().build_checks ?? {};
+  // §P1-8 syndication counts — the RSS files this build actually wrote.
+  const feedInventory = getFeedInventory();
 
   return (
     <>
@@ -485,6 +488,16 @@ export default function MethodologyPage() {
           universe — those features require full R-2/P-40 J-book data, so
           that is their denominator.
         </p>
+        <p className="text-muted-foreground leading-7 mb-5">
+          These blocks say what each surface covers and why. For the same
+          coverage laid out in one table — with the specific blocker and a
+          dated target beside each figure, and a plain statement of which gap
+          is a methodology limit rather than a queue — see{" "}
+          <Link href="/coverage/" className="underline hover:text-foreground">
+            Coverage
+          </Link>
+          .
+        </p>
         {/* §P1-5: one canonical corpus statement, identical on /programs/,
             /years/, /methodology/ and /data/. This block used to restate the
             counts in its own words, which is how the site ended up stating
@@ -494,7 +507,7 @@ export default function MethodologyPage() {
         <div className="space-y-6 text-muted-foreground leading-7">
           <section id="coverage-follow-the-dollar" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              Follow the dollar — {ftd.numerator} of {ftd.denominator} programs
+              Follow the dollar — {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs
             </h3>
             <p>
               The follow-the-dollar view draws a budget line&apos;s path to
@@ -503,7 +516,7 @@ export default function MethodologyPage() {
               high-confidence crosswalk tier, where the award&apos;s federal
               account matches the budget line&apos;s appropriation and
               program-title keywords overlap substantially. Today that covers{" "}
-              {ftd.numerator} of {ftd.denominator} programs, concentrated in
+              {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs, concentrated in
               DARPA lines whose account structure makes matching reliable.
               Program pages outside the crosswalk say so in place of the flow
               — absence of a diagram means we could not defend the link, not
@@ -513,14 +526,14 @@ export default function MethodologyPage() {
 
           <section id="coverage-dossiers" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              Research dossiers — {dossiers.numerator} of{" "}
-              {dossiers.denominator} programs
+              Research dossiers — {formatCount(dossiers.numerator ?? 0)} of{" "}
+              {formatCount(dossiers.denominator ?? 0)} programs
             </h3>
             <p>
-              Dossiers exist for {dossiers.numerator} of{" "}
-              {dossiers.denominator} programs, selected by ranking FY2026
+              Dossiers exist for {formatCount(dossiers.numerator ?? 0)} of{" "}
+              {formatCount(dossiers.denominator ?? 0)} programs, selected by ranking FY2026
               requested dollars among programs with full J-book (R-2/P-40)
-              detail — the {dossiers.numerator} largest by money at stake,
+              detail — the {formatCount(dossiers.numerator ?? 0)} largest by money at stake,
               not by editorial judgment. Program pages that exist only
               through budget-trajectory data (no J-book detail book) are
               outside the ranking pool. Every dossier sentence must carry a
@@ -533,15 +546,15 @@ export default function MethodologyPage() {
 
           <section id="coverage-company-awards" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              Company award linkage — {companyAwards.numerator} of{" "}
-              {companyAwards.denominator} profiled companies
+              Company award linkage — {formatCount(companyAwards.numerator ?? 0)} of{" "}
+              {formatCount(companyAwards.denominator ?? 0)} profiled companies
             </h3>
             <p>
-              Company profiles cover the top {companyAwards.denominator}{" "}
+              Company profiles cover the top {formatCount(companyAwards.denominator ?? 0)}{" "}
               contractor families by DoD obligations. Award rows on those
               profiles come from the budget→award crosswalk, which currently
               contains R&amp;D performers rather than primes — so only{" "}
-              {companyAwards.numerator} of {companyAwards.denominator}{" "}
+              {formatCount(companyAwards.numerator ?? 0)} of {formatCount(companyAwards.denominator ?? 0)}{" "}
               profiled companies show linked awards. The remaining profiles
               still carry obligation totals and lobbying activity; a
               family-level awards mart is on the roadmap.
@@ -550,14 +563,14 @@ export default function MethodologyPage() {
 
           <section id="coverage-districts" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
-              District lens — {districts.numerator} of {districts.denominator} districts
+              District lens — {formatCount(districts.numerator ?? 0)} of {formatCount(districts.denominator ?? 0)} districts
             </h3>
             <p>
-              {districts.numerator} of {districts.denominator} congressional districts appear in
+              {formatCount(districts.numerator ?? 0)} of {formatCount(districts.denominator ?? 0)} congressional districts appear in
               the district lens. A district gets a page only when at least one
               high-confidence budget→award link places obligated dollars
               there — a consequence of the crosswalk&apos;s current{" "}
-              {ftd.numerator}-program scope, not evidence that other districts
+              {formatCount(ftd.numerator ?? 0)}-program scope, not evidence that other districts
               receive no defense money. District totals therefore understate
               true defense spending everywhere they appear.
             </p>
@@ -704,7 +717,7 @@ export default function MethodologyPage() {
           <section id="coverage-flowdown" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
               The flowdown chart — two rivers, bridged for{" "}
-              {flowBridge.numerator} of {flowBridge.denominator} crosswalked
+              {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
               PEs
             </h3>
             <p>
@@ -734,7 +747,7 @@ export default function MethodologyPage() {
             <p className="mt-2">
               The bridge between them exists only where the award crosswalk
               (§4) links a program element to contractor families:{" "}
-              {flowBridge.numerator} of {flowBridge.denominator} crosswalked
+              {formatCount(flowBridge.numerator ?? 0)} of {formatCount(flowBridge.denominator ?? 0)} crosswalked
               PEs carry FY{flowMeta.budgetFy} request dollars (
               {flowMeta.bridge.highConfidencePeCount} at high confidence).
               Everything else terminates in an explicit &ldquo;not yet
@@ -769,6 +782,44 @@ export default function MethodologyPage() {
           page surfaces automated signals computed from the defense budget and
           award data. Each signal type has a defined threshold; all figures
           carry citations.
+        </p>
+        {/* Syndication — deferred by name from Sprint 3 Tasks 2, 4 and 5, and
+            landed here. Every figure comes from lib/feeds getFeedInventory(),
+            which counts the RSS files this build wrote; none is authored. */}
+        <p className="text-muted-foreground leading-7 mb-4">
+          <strong className="text-foreground">Subscribing.</strong> The feed is
+          published as files, not just a page: {formatCount(feedInventory.items)}{" "}
+          current items are available at{" "}
+          <a href="/rss.xml" className="underline hover:text-foreground">
+            /rss.xml
+          </a>{" "}
+          (RSS 2.0, with{" "}
+          <a href="/feed.xml" className="underline hover:text-foreground">
+            /feed.xml
+          </a>{" "}
+          as an alias) and{" "}
+          <a href="/atom.xml" className="underline hover:text-foreground">
+            /atom.xml
+          </a>{" "}
+          (Atom 1.0). The {formatCount(feedInventory.eventTypes)} signal types
+          that currently have events each have their own feed as well — a type
+          with no events gets no feed rather than an empty one, which is why the
+          withdrawn <code className="text-xs bg-muted px-1 rounded">zeroed_fy2026</code>{" "}
+          section below has none. There are{" "}
+          {formatCount(feedInventory.programFeeds)} per-program and{" "}
+          {formatCount(feedInventory.companyFeeds)} per-company watch feeds — one
+          for every program or contractor family that actually has events, so no
+          advertised feed is permanently empty. Every item carries the dollar
+          magnitudes the event is about, not only a percentage, plus a{" "}
+          <code className="text-xs bg-muted px-1 rounded">/fact/</code>{" "}
+          permalink to the receipt behind the figure. Feeds are rewritten from
+          scratch on each build and stale ones are deleted, so a program whose
+          events disappear loses its feed rather than continuing to serve last
+          month&apos;s claims. Readers autodiscover them through the{" "}
+          <code className="text-xs bg-muted px-1 rounded">
+            &lt;link rel=&quot;alternate&quot;&gt;
+          </code>{" "}
+          tags on the relevant pages.
         </p>
         <div className="space-y-5 text-muted-foreground leading-7">
           <div id="feed-yoy_swing">

@@ -1725,3 +1725,74 @@ export function getCompaniesWithAwardsCount(): number {
 export function getDistrictsCount(): number {
   return getDistrictIndex().districts.length;
 }
+
+// ── Coverage-map count helpers (PM Sprint 3 Task 6, §Coverage) ────────────────
+//
+// /coverage/ publishes what the site covers and what it does not, and its
+// whole claim is that no number on it was typed by hand. These three answer
+// the questions the 5C helpers above did not — each reads the SAME shipped
+// artifact the corresponding surface renders from, so a page and its coverage
+// row cannot disagree.
+
+let _lineagePrograms: number | null = null;
+
+/**
+ * Programs whose sidecar carries a non-empty lineage rail (a predecessor or
+ * successor edge — stated or inferred).
+ *
+ * Reads all program_details sidecars, but PARSES only the ones whose bytes
+ * contain the key: 1,993 files / 51 MB where 50 carry a rail, so a blind
+ * JSON.parse of the set would cost a second of every build to answer one
+ * number. The substring is a prefilter, never the answer — the count comes
+ * from the parsed rail.
+ */
+export function getLineagePrograms(): number {
+  if (_lineagePrograms !== null) return _lineagePrograms;
+  const dir = join(jsonDir(), "program_details");
+  if (!existsSync(dir)) return (_lineagePrograms = 0);
+  let count = 0;
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    let raw: string;
+    try {
+      raw = readFileSync(join(dir, f), "utf8");
+    } catch {
+      continue;
+    }
+    if (!raw.includes('"lineage"')) continue;
+    try {
+      const rail = (JSON.parse(raw) as { lineage?: LineageBlock | null }).lineage
+        ?.rail;
+      if (!rail) continue;
+      if ((rail.predecessors?.length ?? 0) + (rail.successors?.length ?? 0) > 0) {
+        count++;
+      }
+    } catch {
+      // skip malformed files
+    }
+  }
+  return (_lineagePrograms = count);
+}
+
+let _decadeEditions: number[] | null = null;
+
+/**
+ * The President's-Budget editions the decade matrix actually loaded, ascending
+ * — derived from years_matrix.json's own column stamps, which is what /years/
+ * renders. "Ten editions" is never a literal here; it is this array's length.
+ */
+export function getDecadeEditions(): number[] {
+  if (_decadeEditions) return _decadeEditions;
+  const payload = readJson<{ decade_columns?: { edition?: number }[] }>(
+    "years_matrix.json",
+  );
+  const eds = new Set<number>();
+  for (const c of payload.decade_columns ?? []) {
+    if (typeof c.edition === "number") eds.add(c.edition);
+  }
+  return (_decadeEditions = [...eds].sort((a, b) => a - b));
+}
+
+/** Total lobbying filings in the shipped index. */
+export function getFilingsCount(): number {
+  return getFilingsIndex().total;
+}

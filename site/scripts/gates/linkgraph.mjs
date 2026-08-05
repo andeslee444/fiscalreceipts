@@ -58,6 +58,10 @@ const PAGE_TYPES = [
   { key: "about", re: /^\/about\/$/ },
   // Phase 5H — the experimental flowdown must stay reachable from chrome.
   { key: "flow", re: /^\/flow\/$/ },
+  // PM Sprint 3 Task 6 (§Coverage) — the roadmap page answers "early and
+  // moving, or abandoned at 1%?". A coverage page nobody can find answers it
+  // for nobody, so its reachability is pinned like every other page type.
+  { key: "coverage", re: /^\/coverage\/$/ },
 ];
 
 function normalize(href) {
