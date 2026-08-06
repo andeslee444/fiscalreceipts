@@ -741,7 +741,20 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     "as integers", keep the `e.g. 2068, not 2068.0` example, and re-run the live eval to
     record the corrected score.
 
-35. **The corpus says 1,741 detail-grade programs; the detail table has 1,739
+35. ✅ **FIXED 2026-08-05 (Sprint 3 round 3).** The detail-grade tier is now
+    defined by the J-book DETAIL ROWS: `getDetailGradeCount()` counts the
+    `program_details` sidecars that hold at least one detail row (1,739),
+    cross-checked against `dim_programs.parquet`'s published row count with a
+    THROW on disagreement. The corpus statement, `/coverage/`'s lead row, the
+    years-matrix note and the service-books note all read it. Two sentences
+    were reworded rather than re-numbered because their count was right and
+    their label was wrong (`/programs/` "the 1,741 detail-grade program
+    elements" and `/methodology/` "the grid's rows ARE the N programs with
+    detail-grade data" — the grid renders the whole index). datatruth leg (d)
+    recomputes it the same way and now also fails when the sidecars and the
+    parquet disagree. Original entry:
+
+    **The corpus says 1,741 detail-grade programs; the detail table has 1,739
     (found by PM Sprint 3 round-1 visual judging; NOT fixed there).** `/data/`
     reports `dim_programs` at 1,739 rows while the corpus statement on the same
     page — and the `/coverage/` row, and gates 1, 20 and 21 — say 1,741 carry
@@ -783,6 +796,163 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     answer scored correct but whose SQL was a literal echo (bounded, e.g. 2
     attempts, and record that it was retried), or make the gate report
     best-of-N with the per-attempt detail persisted. Do NOT lower the threshold.
+
+37. **`programs.json`'s trajectory is an org SLICE, not the program, for BLI
+    codes shared across organisations (found by gate 23 leg e, Sprint 3 round
+    3).** `programs.json` holds one row per PE with one `org`, and its
+    `trajectory` object carries that org's share. For 1,738 of 1,741 programs
+    the declared org is the only org, so the slice IS the program and nothing
+    shows. Three BLI codes are shared and there it is a component: BLI 30
+    ("Other Major Equipment") trajectory FY2024 = 408,006, which is the OSD
+    part of a 435,163 program (OSD 408,006 + DMACT 13,012 + DTRA 12,787 +
+    DoDEA 1,358); BLI 20 ("Vehicles") 356 against 2,491; BLI 500 ("Personnel
+    Administration") 105,943 against 110,388. Both FY24 and FY26 were affected,
+    and the FY26 one had been shipping since the column existed. WORKED AROUND
+    on the site: `/programs/` and `/agency/{org}/` now read the program-level
+    decade cells of `years_matrix.json` (same fact ids the program pages cite),
+    so no rendered surface carries the slice. The DATA is still wrong. Fix
+    properly: decide whether a `programs.json` row is a PE or a (PE, org) pair,
+    make the exporter emit that consistently, and add a dbt assertion that a
+    program's trajectory equals the sum of its component rows. Until then any
+    NEW consumer of `programs.json.trajectory` inherits the defect.
+
+38. **`/methodology/` is exempt from two site-wide sweeps because its whole
+    container carries `data-source-text` (found in PM Sprint 3 round-3
+    review).** The page wraps its entire `<div class="container">` in
+    `data-source-text="methodology"`, which is the documented escape hatch for
+    quoted source prose. Both the render-static negative-currency scan and
+    datatruth leg j's grouped-number sweep skip or delete `[data-source-text]`
+    subtrees wholesale, so the one page that argues for the site's rigour is
+    the single page neither sweep can see. There are 29 currency strings on it
+    (`$50M`, `$7.07B`, `$4.92B`, `$186 billion`, …), all of them genuinely
+    threshold descriptions or worked examples — so nothing is currently wrong,
+    which is exactly why it would go unnoticed if something became wrong. Not
+    fixed in round 3: narrowing the marker means wrapping ~8 individual
+    paragraphs, each of which must carry its own citation anchor to satisfy the
+    render-static (a0) constraint, on a 98 KB page — more surface area than the
+    round's remaining budget could re-verify honestly. Fix separately: move
+    `data-source-text` off the container onto the specific elements that quote
+    or state dollar thresholds, give each one an anchor, and confirm both
+    sweeps then report a non-zero scanned count for `/methodology/`.
+
+39. **`Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) is
+    missing the space after its ampersand.** The string is verbatim from the
+    source workbook and propagates to `programs.json`, `search_quick.json`,
+    `feed.json` and `years_matrix.json`. Not fixed in round 3 because both
+    available fixes are disproportionate to one missing space: a display-time
+    rewrite needs a rule that cannot also mangle `RDT&E`, `HM&E`, `S&T`, `D&UP`
+    or `R&D` (and would need its own gate to prove it does not), and a
+    source-time fix needs an alias/override table plus a full `export-site`
+    re-run and eval. Fix separately, source-side, as a titles-override table
+    the exporter applies — with the override list itself published, so a
+    corrected title is visibly a correction rather than a silent edit.
+
+40. **The mobile navigation drawer shipped as a 32px sliver on every page —
+    and no gate could see it (found by round-3 visual judging, FIXED
+    2026-08-05).** The panel is `absolute left-0 top-14 w-full`, written to
+    position against the sticky `<header>`; the span wrapping the trigger in
+    `layout.tsx` carried `relative`, so that 32px span became the containing
+    block and `w-full` resolved to 32px. All nine nav links rendered 24px wide
+    at x=358 in a 390 viewport, clipped to three characters, and opening the
+    menu widened the document 390 → 457px. All three judges found it
+    independently; two called it the single largest defect at 390. Fixed by
+    dropping one word, plus a dismiss-on-click backdrop scrim. The LESSON is
+    the gate gap, not the CSS: gate 3's mobile legs (m1-m3) all measure the
+    page AT REST, so a defect that only exists after a click was structurally
+    invisible to the suite. Leg (m4) now opens the menu and checks it — panel
+    present, ≥5 links, every link inside the viewport and ≥64px wide, no label
+    clipped by its own box, no document widening — with proof-can-fail
+    recorded. Any future affordance that only exists in an interaction state
+    needs its own leg; "the page looks fine on load" is not coverage.
+
+41. **The decade trajectory chart drew a cited figure as visually zero on all
+    1,741 program pages (found by round-3 visual judging, FIXED 2026-08-05).**
+    The chart was min-max autoscaled with no y-axis, so the series MINIMUM
+    landed exactly on the baseline rule. On `/program/ATA000/` that is the
+    FY2026 request: a cited $4.09B drawn as nothing, directly above a table
+    stating $4.09B and 73% of the FY24 actual. On a site whose argument is
+    that its figures are exact, a figure rendered as zero while its own table
+    says otherwise is the cardinal defect. Fixed by padding the plotted domain
+    below the minimum and stating the scale in words beneath the chart (no
+    figures in that sentence — gate 2 requires every rendered dollar amount to
+    sit inside a `<Cite>`, and the extremes are already in the cited grid
+    below). NOT fixed, and worth a separate pass: the x-axis still labels only
+    the first and last fiscal year, at 8px.
+
+## PM-review Sprint 3 — round-3 visual judging
+
+First panel (3 independent opus judges, both widths, ~120 screenshots each):
+**390 → 2 / 2 / 3, median 2. 1440 → 4 / 3 / 4, median 4.** The desktop bar was
+met; the phone bar was not, and all three judges gated the phone score on the
+same defect — the nav drawer above (#40). The five commissioned fixes
+(undated coverage targets, the `/programs/` basis collision, the corpus
+overstatement, `/flow/` parentage, `/company/` precedence) drew no criticism
+from any judge; every 390 finding was a defect the round had not been pointed
+at, which is the panel doing its job.
+
+Second panel (3 fresh independent opus judges, after those fixes):
+**390 → 3 / 4 / 3, median 3. 1440 → 4 / 3 / 3, median 3.** The phone median
+moved 2 → 3; the desktop median moved 4 → 3 against a different panel. **The
+≥4 bar is NOT met at either width.** The nav drawer, the filing truncation and
+the `/companies/` fold were all confirmed fixed — no judge on the second panel
+raised any of them. What the second panel raised instead is largely SYSTEMIC
+rather than defect-shaped: no layout spine (#42), no reading measure, no
+desktop type scale, Fact-ID chips louder than their figures (#43), and the
+budget-river Sankey unencoded beside a fully colour-encoded sibling. Those are
+a design pass, not a fix round, and saying otherwise would be overstating what
+this round can deliver.
+
+Fixed after the SECOND panel: `/company/`'s "Total" column, which summed income
+and expense while `/data/` documents them as "non-additive, never summed" and
+the payload flags every row `nonAdditive` — the site contradicting its own data
+dictionary, and the most serious finding of either panel; three run-together
+words and an outdented bullet list on `/methodology/`; the two tables that
+scrolled sideways at 390 with no cue while `/flow/` and `/years/` had one; the
+translucent nav panel; the program-page hero decoration overflowing a 390
+viewport; and the program `h1`, which was 24px at both widths.
+
+Fixed after the FIRST panel, from the judges' convergent list: the nav drawer and
+its scrim (#40); the exporter's 120-character mid-word snippet cut on
+`/filing/` and the blind ellipsis on program pages (all three judges); the
+`/companies/` phone fold, which put ~24 lines of caveat prose ahead of the
+first company (all three); the `/company/` awards table, the one table on the
+site with no mobile treatment; three home-page feed cards that truncated to
+the same string; a right-edge fade on the `/flow/` Sankeys; and the decade
+chart baseline (#41).
+
+42. **No layout spine: the content column starts at five different left edges
+    (found by round-3 visual judging, panel 2 — NOT fixed).** Measured `h1`
+    left offsets at 1440: 96 (`/flow/`, `/years/`), 160 (`/programs/`,
+    `/companies/`), 224 (nine pages), 288 (`/`, `/filing/`), 352
+    (`/methodology/`) — six distinct `max-w-*` values across nineteen route
+    files, against a header whose wordmark is pinned at 96. All three judges on
+    the second panel named it, two put it first on their "what would move 1440
+    up" list: navigating Programs → Feed → Flow slides the page sideways each
+    time, and on 12 of 14 pages the title does not align with the brand.
+    Deliberately NOT fixed in the fix round, because the obvious change makes
+    a second reported defect worse: the same panel measured explanatory prose
+    at 136-165 characters per line on `/coverage/`, `/companies/families/`,
+    `/program/` and `/`, so widening those containers to align them would
+    push an already-over-long measure further. The two have to be solved
+    together — pick at most two container widths (wide-for-matrix aligned to
+    the header at max-w-7xl, narrow-for-prose) AND cap the reading measure at
+    ~70-75 characters inside the wide one. That is a design pass across every
+    route, not a fix-round edit, and it wants a gate leg that measures rendered
+    characters-per-line so it cannot drift back.
+
+43. **Fact-ID chips are ON by default and outweigh the figures they annotate
+    (found by round-3 visual judging, panel 2 — NOT fixed, needs an owner
+    decision).** All three judges on the second panel reported the same thing:
+    the blue monospace hash is visually louder than the dollar value beside it,
+    it wraps to a second line on wider figures (giving `/programs/` an
+    alternating 63/90px row rhythm), and toggling it off "proves the underlying
+    table design is much better". This is NOT a defect to fix unilaterally: the
+    default was set deliberately in PM Sprint 1 §P1-1 — "the site is named
+    Fiscal Receipts; its receipts are not opt-in" — and flipping it reverses a
+    recorded product decision. Options for the owner: keep ON but make the chip
+    quieter than its figure (smaller, lower contrast, no fill); reveal on
+    hover/focus; or default OFF with the dotted underline carrying the signal.
+    Whichever, the figure should be the loudest thing in its own cell.
 
 ## Remaining launch items
 
