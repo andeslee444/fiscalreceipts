@@ -652,10 +652,14 @@ export default function MethodologyPage() {
               the grid never derives a parent total from its children.
             </p>
             <p className="mt-2">
-              The grid&apos;s rows are the {formatCount(serviceBooks.numerator ?? 0)} programs
-              with detail-grade (R-2/P-40) data; the full site carries{" "}
-              {formatCount(serviceBooks.denominator ?? 0)} browsable program pages — see the
-              service J-books block below for what separates the two tiers.
+              {/* Backlog #35: this said the grid's rows ARE the detail-grade
+                  set. They are not — the grid renders the whole FY2026 budget
+                  index, of which the detail-grade tier is a subset. */}
+              Detail-grade (R-2/P-40) data is ingested for{" "}
+              {formatCount(serviceBooks.numerator ?? 0)} program elements; the full site
+              carries {formatCount(serviceBooks.denominator ?? 0)} browsable program
+              pages — see the service J-books block below for what separates the
+              two tiers.
             </p>
           </section>
 

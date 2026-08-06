@@ -564,6 +564,69 @@ export function getProgramPagesCount(): number {
   return getProgramPeBlis().length;
 }
 
+let _detailGradeCount: number | null = null;
+
+/**
+ * Programs that actually carry R-2/P-40 J-book DETAIL — i.e. whose sidecar
+ * holds at least one detail row. This is the number the corpus statement
+ * means by "detail-grade", and it is NOT programs.json's length.
+ *
+ * Backlog #35. The corpus statement said 1,741 — programs.json's row count —
+ * while /data/ published dim_programs at 1,739 from the parquet the exporter
+ * measured. Both were read from shipped artifacts, so neither was a rotted
+ * literal; they were counting different things. programs.json is the
+ * /programs/ INDEX (every row that table lists), and since backlog #17 it also
+ * carries trajectory-only programs that have no J-book detail at all —
+ * 0603115DHA (Medical Development) and 0708083D (Assembled Chemical Weapons
+ * Alternatives), both with zero detail rows and zero narratives. dim_programs
+ * is built from stg_budget_details, so it holds neither. The parquet was
+ * right; the claim was two generous, on the number /coverage/ leads with.
+ *
+ * Counting the sidecars rather than trusting datasets.json keeps §P1-5 intact
+ * (the figure is derived from the artifact the pages render), and the
+ * published parquet row count is used as a CROSS-CHECK: if the two disagree
+ * the export is inconsistent with itself and this throws rather than picking a
+ * winner — the same discipline getCorpus() applies to program_pages.
+ *
+ * Cost: one pass over the sidecars, prefiltered on the bytes (like
+ * getLineagePrograms) so only files that mention detail rows are parsed.
+ */
+export function getDetailGradeCount(): number {
+  if (_detailGradeCount !== null) return _detailGradeCount;
+  const dir = join(jsonDir(), "program_details");
+  if (!existsSync(dir)) return (_detailGradeCount = 0);
+  let count = 0;
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    let raw: string;
+    try {
+      raw = readFileSync(join(dir, f), "utf8");
+    } catch {
+      continue;
+    }
+    // An empty details array serializes as `"details":[]` — cheap reject.
+    if (!raw.includes('"details"') || raw.includes('"details":[]')) continue;
+    try {
+      const details = (JSON.parse(raw) as { details?: unknown[] }).details;
+      if (Array.isArray(details) && details.length > 0) count++;
+    } catch {
+      // skip malformed files
+    }
+  }
+
+  const declared = getDatasetManifest().datasets.find(
+    (d) => d.name === "dim_programs",
+  )?.row_count;
+  if (declared !== undefined && declared !== count) {
+    throw new Error(
+      `[govbudget/data] dim_programs.parquet declares ${declared} rows but ` +
+        `${count} program_details sidecars carry detail rows. The detail-grade ` +
+        `tier is defined by the J-book detail rows themselves, so these must ` +
+        `agree — re-run "uv run python -m govbudget export-site".`,
+    );
+  }
+  return (_detailGradeCount = count);
+}
+
 // ── PE link index (Phase 5F §2a — universal mention linking) ─────────────────
 
 export interface PeLinkIndex {

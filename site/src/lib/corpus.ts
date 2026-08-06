@@ -14,21 +14,30 @@ import "server-only";
  *   programPages — every program_details sidecar, i.e. every /program/{pe}/
  *                  page that actually gets built. Counted from the directory,
  *                  which is the artifact itself, not a claim about it.
- *   detailPages  — programs.json length: the tier with R-2/P-40 J-book detail.
+ *   detailPages  — sidecars that actually hold R-2/P-40 J-book DETAIL rows.
  *
  * site_meta.counts.program_pages is a CROSS-CHECK, not a second source: if the
  * exporter's count disagrees with the sidecars on disk, that is a real defect
  * and this module throws rather than picking a winner.
  *
+ * BACKLOG #35 (Sprint 3 round 3). detailPages used to be programs.json's
+ * length, 1,741 — while /data/ published dim_programs at 1,739 rows from the
+ * parquet. programs.json is the /programs/ INDEX and since backlog #17 carries
+ * two trajectory-only programs with no J-book detail; dim_programs, built from
+ * the detail rows, holds neither. So the corpus statement overstated the
+ * detail-grade tier by two on the very number /coverage/ leads with. It is now
+ * getDetailGradeCount() — the sidecars that actually carry detail rows, with
+ * the parquet's own row count as the cross-check.
+ *
  * The scope caveat is `site_meta.corpus_scope` — the same string the §P0-5
  * hero superlative carries, so the two cannot drift.
  */
 
-import { getPrograms, getProgramPagesCount, getSiteMeta } from "./data";
+import { getDetailGradeCount, getProgramPagesCount, getSiteMeta } from "./data";
 import { formatCount } from "./format";
 
 export interface Corpus {
-  /** Programs with detail-grade R-2/P-40 J-book data (programs.json). */
+  /** Sidecars carrying R-2/P-40 J-book detail rows (= dim_programs). */
   detailPages: number;
   /** Every browsable /program/{pe}/ page (all tiers). */
   programPages: number;
@@ -54,7 +63,7 @@ export function corpusStatement(
 export function getCorpus(): Corpus {
   const meta = getSiteMeta();
   const programPages = getProgramPagesCount();
-  const detailPages = getPrograms().length;
+  const detailPages = getDetailGradeCount();
 
   const declared = meta.counts.program_pages;
   if (declared !== undefined && declared !== programPages) {

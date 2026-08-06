@@ -296,25 +296,63 @@ export async function runDataTruthGate() {
 
   // ── leg d: one canonical corpus statement ─────────────────────────────────
   // Independent recompute of the two corpus numbers from the data sidecars.
+  //
+  // BACKLOG #35 (Sprint 3 round 3): the detail-grade recompute used to be
+  // programs.json's LENGTH, which is the /programs/ index — and since backlog
+  // #17 that index also carries trajectory-only programs with no J-book detail
+  // at all. So the gate agreed with the page while both overstated the tier by
+  // two against dim_programs.parquet, which /data/ publishes on the same site.
+  // "Detail-grade" is defined by the detail rows, so that is what is counted
+  // now, and the parquet's own published row count is checked against it: two
+  // artifacts, one number, and a FAIL if they diverge.
   let expectedPages = null;
   let expectedDetail = null;
   const pdDir = path.join(jsonDir, "program_details");
   if (fs.existsSync(pdDir)) {
-    expectedPages = fs
-      .readdirSync(pdDir)
-      .filter((f) => f.endsWith(".json")).length;
-  }
-  const programsPath = path.join(jsonDir, "programs.json");
-  if (fs.existsSync(programsPath)) {
-    expectedDetail = JSON.parse(fs.readFileSync(programsPath, "utf8")).length;
+    const files = fs.readdirSync(pdDir).filter((f) => f.endsWith(".json"));
+    expectedPages = files.length;
+    let withDetail = 0;
+    for (const f of files) {
+      let raw;
+      try {
+        raw = fs.readFileSync(path.join(pdDir, f), "utf8");
+      } catch {
+        continue;
+      }
+      if (!raw.includes('"details"') || raw.includes('"details":[]')) continue;
+      try {
+        const d = JSON.parse(raw).details;
+        if (Array.isArray(d) && d.length > 0) withDetail++;
+      } catch {
+        // skip malformed
+      }
+    }
+    expectedDetail = withDetail;
   }
   if (expectedPages === null || expectedDetail === null) {
     errors.push(
-      "leg d: cannot recompute corpus numbers — data/site/json/program_details/ or programs.json missing",
+      "leg d: cannot recompute corpus numbers — data/site/json/program_details/ missing",
     );
   } else {
+    // Cross-check against the parquet inventory /data/ renders. Two shipped
+    // artifacts that both claim to describe the detail-grade tier must agree.
+    const dsPath = path.join(jsonDir, "datasets.json");
+    let declared;
+    if (fs.existsSync(dsPath)) {
+      declared = (JSON.parse(fs.readFileSync(dsPath, "utf8")).datasets ?? []).find(
+        (d) => d.name === "dim_programs",
+      )?.row_count;
+    }
+    if (declared !== undefined && declared !== expectedDetail) {
+      errors.push(
+        `leg d: ${expectedDetail} sidecars carry J-book detail rows but ` +
+          `datasets.json publishes dim_programs at ${declared} rows — /data/ and the ` +
+          `corpus statement would describe the same tier two different ways`,
+      );
+    }
     notes.push(
-      `leg d: corpus recompute — ${expectedPages} program pages, ${expectedDetail} detail-grade ✓`,
+      `leg d: corpus recompute — ${expectedPages} program pages, ${expectedDetail} detail-grade ` +
+        `(dim_programs parquet: ${declared ?? "n/a"}) ✓`,
     );
   }
 

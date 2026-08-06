@@ -4,6 +4,10 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/data", () => ({
   getFlowsCount: () => 17,
   getProgramsCount: () => 420,
+  // Backlog #35: the detail-grade tier is a strict SUBSET of the index, and
+  // the mock keeps them different so a note that reaches for the index while
+  // claiming "detail-grade" fails here.
+  getDetailGradeCount: () => 418,
   getProgramPagesCount: () => 1900,
   getDossierCount: () => 50,
   getCompaniesCount: () => 200,
@@ -52,7 +56,8 @@ describe("coverage manifest", () => {
   it("years-matrix note states matrix scope vs browsable pages with interpolated counts (5F)", () => {
     const c = getCoverage("years-matrix");
     expect(c.note).toContain(
-      "The matrix covers the 420 programs with detail-grade data; all 1,900 program pages are browsable.",
+      "The matrix covers the 420 program elements in the FY2026 budget index, " +
+        "418 of which carry detail-grade R-2/P-40 data; all 1,900 program pages are browsable.",
     );
   });
 
@@ -66,7 +71,7 @@ describe("coverage manifest", () => {
 
   it("service-books note interpolates full-tier vs page-universe counts (5F)", () => {
     const c = getCoverage("service-books");
-    expect(c.note).toContain("420 of 1,900 program pages");
+    expect(c.note).toContain("418 of 1,900 program pages");
     expect(c.anchor).toBe("/methodology/#coverage-service-books");
   });
 

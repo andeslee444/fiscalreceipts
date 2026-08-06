@@ -8,6 +8,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const state = {
+  /**
+   * Backlog #35: the detail tier is the sidecars that hold J-book detail rows
+   * (= dim_programs), not programs.json's length. The mock keeps them
+   * DIFFERENT on purpose — 1,739 vs 1,741, exactly the shipped gap — so a
+   * regression back to the index count fails here rather than on the page.
+   */
+  detailGrade: 1739,
   programs: 1741,
   programPages: 1993,
   meta: {
@@ -19,6 +26,7 @@ const state = {
 
 vi.mock("@/lib/data", () => ({
   getPrograms: () => new Array(state.programs).fill({}),
+  getDetailGradeCount: () => state.detailGrade,
   getProgramPagesCount: () => state.programPages,
   getSiteMeta: () => state.meta,
 }));
@@ -29,6 +37,7 @@ const SCOPE =
   "excludes personnel, O&M, and appropriations not covered by the R-1/P-1 rollups";
 
 function reset() {
+  state.detailGrade = 1739;
   state.programs = 1741;
   state.programPages = 1993;
   state.meta = {
@@ -62,7 +71,7 @@ describe("corpusStatement", () => {
 describe("getCorpus", () => {
   it("derives both numbers from build data, never a literal", () => {
     state.programPages = 2100;
-    state.programs = 1800;
+    state.detailGrade = 1800;
     state.meta = { counts: { program_pages: 2100 }, corpus_scope: SCOPE };
     const c = getCorpus();
     expect(c.programPages).toBe(2100);
@@ -87,7 +96,7 @@ describe("getCorpus", () => {
   });
 
   it("throws when the detail tier is not a subset of the page universe", () => {
-    state.programs = 2000;
+    state.detailGrade = 2000;
     state.meta = { counts: {}, corpus_scope: SCOPE };
     expect(() => getCorpus()).toThrow(/exceeds total program pages/);
   });

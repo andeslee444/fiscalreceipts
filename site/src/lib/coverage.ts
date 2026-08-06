@@ -18,6 +18,7 @@ import "server-only";
 
 import { formatCount } from "@/lib/format";
 import {
+  getDetailGradeCount,
   getFlowsCount,
   getProgramsCount,
   getProgramPagesCount,
@@ -151,16 +152,24 @@ export function getCoverage(id: CoverageId): Coverage {
         // Phase 5E: the 5D "prior-edition backfill is on the roadmap" promise
         // is delivered — ten editions loaded, columns edition-honest. The
         // second sentence is the G2 gate's interpolated-number contract.
+        // Backlog #35: this used to call all `num` rows "detail-grade", which
+        // is two more than actually carry J-book detail — the same
+        // overstatement the corpus statement was making. The matrix's row
+        // count and the detail-grade tier are different quantities, so the
+        // note now states both instead of conflating them.
         note:
           `Columns are edition-honest: actuals for FY N come from the PB(N+2) President's Budget book, and every column states its edition — ten editions (PB2017–PB2026) are loaded. ` +
-          `The matrix covers the ${formatCount(num)} programs with detail-grade data; all ${formatCount(den)} program pages are browsable.`,
+          `The matrix covers the ${formatCount(num)} program elements in the FY2026 budget index, ${formatCount(getDetailGradeCount())} of which carry detail-grade R-2/P-40 data; all ${formatCount(den)} program pages are browsable.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-editions",
         linkText: "why these editions? →",
       };
     }
     case "service-books": {
-      const num = getProgramsCount();
+      // Backlog #35: the tier this note is ABOUT is the detail-grade one, so
+      // it counts the sidecars that carry J-book detail rows — not the
+      // /programs/ index, which also holds trajectory-only lines.
+      const num = getDetailGradeCount();
       const den = getProgramPagesCount();
       return {
         id,

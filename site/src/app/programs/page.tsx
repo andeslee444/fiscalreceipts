@@ -69,10 +69,12 @@ export default function ProgramsPage() {
         <p className="text-muted-foreground">
           {/* Grouped ("1,741") — same notation as the corpus statement
               directly below it, which used to disagree with this sentence. */}
-          This table lists the {formatCount(programs.length)} detail-grade program elements
-          from the FY2026 budget justification books. FY24 figures are
-          J-book–cited; FY26 figures carry derived workbook citations.
-          Underlined figures open their source citation.
+          {/* Backlog #35: this sentence used to call all of these rows
+              "detail-grade", two more than actually carry J-book detail. The
+              table's own scope is the INDEX; the corpus statement below is
+              where the tier split is stated, once, for the whole site. */}
+          This table lists the {formatCount(programs.length)} program elements in the
+          FY2026 budget index. Underlined figures open their source citation.
         </p>
         <CorpusStatement className="mt-2" />
         {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
