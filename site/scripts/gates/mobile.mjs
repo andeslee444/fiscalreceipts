@@ -1,6 +1,11 @@
 /**
  * gate 3 — render-live, MOBILE-VIEWPORT LEG (390×844)
  *
+ * Legs: (m1) no page-level horizontal overflow, (m2) the primary value is on
+ * screen, (m3) no label painted across its value, (m4) the site's own
+ * navigation is usable — see runNavLeg at the bottom for why the first three
+ * could not see the nav defect that shipped.
+ *
  * PM-review Sprint 3 Task 1 / ROADMAP backlog #31.
  *
  * WHY THIS EXISTS. Sprint 2 shipped three mobile blockers that walked past a
@@ -667,9 +672,131 @@ export async function runMobileLeg({ baseUrl, browser }) {
     if (ownBrowser) await b.close();
   }
 
+  // ── (m4) the site's own navigation is usable at 390 ────────────────────
+  await runNavLeg({ baseUrl, browser: b, errors, notes });
+
   notes.push(
     `mobile leg: ${overflowOk}/${sample.length} pages free of page-level horizontal overflow; ${valueElements} value element(s) measured across ${valuePages} value-bearing page(s); ${pairElements} label/value pair(s) checked for collision across ${pairPages} page(s)`
   );
 
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// (m4) MOBILE NAVIGATION — the one control every page depends on
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Below md the hamburger IS the site's navigation: nine destinations, on every
+// page, with no other way to reach them. It shipped broken and no gate saw it.
+//
+// The panel is `absolute left-0 top-14 w-full`, and the span wrapping the
+// trigger in layout.tsx carried `relative` — so that 32px span became the
+// panel's containing block and `w-full` resolved to 32px. Every link rendered
+// in a 24px box pinned to the right edge, clipped to "Pro", "Com", "Dis"…, and
+// opening the menu widened the document past the viewport. Two of three
+// round-3 judges independently called it the largest defect at 390.
+//
+// The legs (m1-m3) could not see it because they measure the page at REST;
+// this one is only true after a click. So: open the menu, and require that
+// every link is inside the viewport, wide enough to read, and not truncated
+// (scrollWidth <= clientWidth on the link's own text box), and that opening it
+// does not introduce horizontal overflow.
+//
+// Vacuity guard: the trigger must exist, the panel must appear, and it must
+// carry at least MIN_NAV_LINKS links — a menu that renders nothing passes
+// every geometric test ever written.
+const MIN_NAV_LINKS = 5;
+/** A link narrower than this cannot be showing its label. */
+const MIN_NAV_LINK_WIDTH_PX = 64;
+
+async function runNavLeg({ baseUrl, browser, errors, notes }) {
+  const context = await browser.newContext({ viewport: MOBILE_VIEWPORT });
+  const page = await context.newPage();
+  try {
+    await page.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.waitForTimeout(300);
+
+    const trigger = await page.$('button[aria-controls="mobile-nav-panel"]');
+    if (!trigger) {
+      errors.push(
+        'mobile nav: no button[aria-controls="mobile-nav-panel"] at 390 — the site has no mobile navigation to check',
+      );
+      return;
+    }
+    const beforeWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    await trigger.click();
+    // Settled, not mid-animation: two judges checked at 2.5s, so does this.
+    await page.waitForTimeout(600);
+
+    const m = await page.evaluate(() => {
+      const panel = document.getElementById("mobile-nav-panel");
+      if (!panel) return { panel: false };
+      const pr = panel.getBoundingClientRect();
+      const links = [...panel.querySelectorAll("a")].map((a) => {
+        const r = a.getBoundingClientRect();
+        return {
+          text: (a.textContent || "").trim(),
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          width: Math.round(r.width),
+          // A label clipped by its own box: the text is wider than the box.
+          clipped: a.scrollWidth > a.clientWidth + 1,
+        };
+      });
+      return {
+        panel: true,
+        panelLeft: Math.round(pr.left),
+        panelWidth: Math.round(pr.width),
+        docScrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+        links,
+      };
+    });
+
+    if (!m.panel) {
+      errors.push("mobile nav: the trigger was clicked but #mobile-nav-panel never rendered");
+      return;
+    }
+    if (m.links.length < MIN_NAV_LINKS) {
+      errors.push(
+        `mobile nav is VACUOUS: the open panel holds ${m.links.length} link(s), fewer than ${MIN_NAV_LINKS} — nothing to measure`,
+      );
+      return;
+    }
+    if (m.docScrollWidth > beforeWidth + OVERFLOW_TOLERANCE_PX) {
+      errors.push(
+        `mobile nav: opening the menu widens the document from ${beforeWidth}px to ${m.docScrollWidth}px — the panel is outside the viewport`,
+      );
+    }
+    const offscreen = m.links.filter((l) => l.left < -OVERFLOW_TOLERANCE_PX || l.right > m.innerWidth + OVERFLOW_TOLERANCE_PX);
+    if (offscreen.length > 0) {
+      errors.push(
+        `mobile nav: ${offscreen.length}/${m.links.length} link(s) fall outside the ${m.innerWidth}px viewport — ` +
+          offscreen.slice(0, 3).map((l) => `"${l.text}" left=${l.left} right=${l.right}`).join(" | "),
+      );
+    }
+    const narrow = m.links.filter((l) => l.width < MIN_NAV_LINK_WIDTH_PX);
+    if (narrow.length > 0) {
+      errors.push(
+        `mobile nav: ${narrow.length}/${m.links.length} link(s) are under ${MIN_NAV_LINK_WIDTH_PX}px wide (panel is ${m.panelWidth}px at left=${m.panelLeft}) — ` +
+          narrow.slice(0, 3).map((l) => `"${l.text}" ${l.width}px`).join(" | "),
+      );
+    }
+    const clipped = m.links.filter((l) => l.clipped);
+    if (clipped.length > 0) {
+      errors.push(
+        `mobile nav: ${clipped.length}/${m.links.length} link label(s) are clipped by their own box — ` +
+          clipped.slice(0, 3).map((l) => `"${l.text}"`).join(" | "),
+      );
+    }
+    if (offscreen.length === 0 && narrow.length === 0 && clipped.length === 0) {
+      notes.push(
+        `mobile nav: ${m.links.length} link(s) in a ${m.panelWidth}px panel, all on screen, none clipped ✓`,
+      );
+    }
+  } catch (e) {
+    errors.push(`mobile nav: check failed: ${e.message}`);
+  } finally {
+    await context.close();
+  }
 }

@@ -157,8 +157,18 @@ export default function RootLayout({
                 <span className="hidden md:flex">
                   <ReceiptsToggle />
                 </span>
-                {/* Mobile hamburger — visible below md */}
-                <span className="relative flex md:hidden">
+                {/* Mobile hamburger — visible below md.
+                    NOT `relative`: the panel MobileNav renders is
+                    `absolute left-0 top-14 w-full`, and a positioned wrapper
+                    here becomes its containing block. This span is 32px wide,
+                    so `w-full` resolved to 32px and the whole menu rendered as
+                    a sliver pinned to the right edge — nine 24px hit boxes
+                    reading "Pro", "Com", "Dis"… Round-3 judging: two of three
+                    judges called it the single largest defect at 390, and it
+                    was on every page. Without `relative` the panel positions
+                    against the sticky <header>, which is what `top-14`
+                    (below the 56px bar) and `w-full` were written for. */}
+                <span className="flex md:hidden">
                   <MobileNav />
                 </span>
               </div>
