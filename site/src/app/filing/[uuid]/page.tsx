@@ -242,6 +242,20 @@ export default async function FilingPage({ params }: Props) {
               {detail.mentions.length}
             </span>
           </h2>
+          {/* Said ONCE for the section rather than per card: a link on every
+              mention cost 3,064 bytes on the heaviest filing page and gate 1
+              caught it. The ellipsis says the quote is clipped; this says
+              where the whole sentence is. */}
+          {hasMentions && detail.mentions.some((m) => m.description_snippet && isTruncatedSnippet(m.description_snippet)) && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Quoted activity text is clipped to a short extract; each
+              filing&rsquo;s full description is under{" "}
+              <a href="#activities" className="underline decoration-dotted hover:text-foreground">
+                Lobbying activities
+              </a>{" "}
+              below.
+            </p>
+          )}
           {hasMentions ? (
             <ul className="space-y-3">
               {detail.mentions.map((m, i) => (
@@ -279,17 +293,6 @@ export default async function FilingPage({ params }: Props) {
                           says so — the complete sentence is in "Lobbying
                           activities" below, on this same page. */}
                       {tidySnippet(m.description_snippet)}
-                      {isTruncatedSnippet(m.description_snippet) && (
-                        <>
-                          {" "}
-                          <a
-                            href="#activities"
-                            className="underline decoration-dotted hover:text-foreground"
-                          >
-                            full text below
-                          </a>
-                        </>
-                      )}
                     </p>
                   )}
                 </li>

@@ -345,18 +345,21 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
         </text>
       </svg>
       {/* The vertical scale, in words. Without it the baseline reads as zero —
-          it is not, and these series never approach zero. Same 12px floor as
-          every other provenance line (P1-1); the figures themselves stay in
-          the table below, which is where they are cited. */}
+          it is not, and these series never approach zero.
+          NO FIGURES HERE, deliberately: gate 2 requires every rendered dollar
+          amount to sit inside a <Cite>, and the extremes this sentence would
+          otherwise name are already in the cited grid directly below. So the
+          caption states the PROPERTY of the scale and lets the table carry the
+          numbers — which is also where they can be clicked. */}
       {range > 0 && (
         <p
           data-testid="decade-spark-scale"
           className="mt-1 text-xs leading-5 text-muted-foreground"
         >
-          Vertical scale spans {formatAmount(minV, "USD thousands")} to{" "}
-          {formatAmount(maxV, "USD thousands")} — it does not start at zero, and
-          the baseline is not zero. Read it for direction; the figures are in
-          the table below.
+          The vertical scale does not start at zero: the baseline sits below
+          this program&rsquo;s smallest year, not at $0, so a low point is not
+          a small one. Read the shape for direction and the grid below for the
+          figures.
         </p>
       )}
     </div>
