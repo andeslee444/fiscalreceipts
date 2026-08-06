@@ -293,7 +293,10 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           its legend living only on /years/, so a reader landing on /programs/
           first met an unexplained warning-coloured chip beside a stated $0.
           Same legend component, same wording, at the point of use. */}
-      <CiteLegend className="mb-2" />
+      {/* Both money columns are cited TOA figures — this table renders no
+          state-B (XML) or state-C (uncited) markers, so the legend does not
+          decode markers that are not on the page. */}
+      <CiteLegend className="mb-2" markers={["cited"]} />
 
       {/* MOBILE: below sm the header row is hidden, so the columns' basis
           declaration would go with it. Stated once here instead of on each of

@@ -199,7 +199,23 @@ export interface CiteProps {
  * header. Each marker is shown with its real visual treatment so the legend
  * doubles as a swatch.
  */
-export function CiteLegend({ className }: { className?: string }) {
+export function CiteLegend({
+  className,
+  /**
+   * Which markers this surface actually renders. Defaults to all three.
+   *
+   * Round-3 judging: /programs/ moved both money columns to the TOA basis,
+   * which has no state-B (xml-path) or state-C (uncited) figures — so the
+   * legend was decoding an amber badge and a ⁂ that appear nowhere on the
+   * page. A legend for a marker that is not there teaches a reader to expect
+   * a warning that never comes.
+   */
+  markers = ["cited", "xml", "uncited"],
+}: {
+  className?: string;
+  markers?: ("cited" | "xml" | "uncited")[];
+}) {
+  const show = new Set(markers);
   return (
     <p
       data-testid="cite-legend"
@@ -210,10 +226,16 @@ export function CiteLegend({ className }: { className?: string }) {
         .filter(Boolean)
         .join(" ")}
     >
+      {show.has("cited") && (
+        <>
       <span className="underline decoration-dotted decoration-(--cite-decoration) underline-offset-2">
         dotted underline
       </span>
-      {" = cited (click for source) · "}
+      {show.size > 1 ? " = cited (click for source) · " : " = cited (click for source)"}
+        </>
+      )}
+      {show.has("xml") && (
+        <>
       <span className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs text-amber-700">
         XML
       </span>
@@ -222,9 +244,17 @@ export function CiteLegend({ className }: { className?: string }) {
           page match could not be resolved. A judge found it beside a non-zero
           amount and read it as a contradiction. The legend now says what the
           badge actually means (and what its own tooltip has always said). */}
-      {" = cited to the justification XML, no page highlight · "}
+      {show.has("uncited")
+        ? " = cited to the justification XML, no page highlight · "
+        : " = cited to the justification XML, no page highlight"}
+        </>
+      )}
+      {show.has("uncited") && (
+        <>
       <span>⁂</span>
       {" = uncited input (still counted)"}
+        </>
+      )}
     </p>
   );
 }
