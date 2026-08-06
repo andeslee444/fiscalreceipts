@@ -56,6 +56,7 @@ import {
 } from "@/components/chart-figure";
 import type { AmountUnits } from "@/lib/format";
 import {
+  blockParentage,
   BUDGET_LEVEL_LABELS,
   COMPETED_CLASS_LABELS,
   SPEND_LEVEL_LABELS,
@@ -572,28 +573,21 @@ function RiverTable({
     const cur = levelOrder.get(n.level);
     if (cur === undefined || n.x0 < cur) levelOrder.set(n.level, n.x0);
   }
-  // Round-2 judging: the table listed Level / Block / Amount only, so nodes
-  // that share a label but not a parent read as data errors — "Research,
-  // Development, Test and Evaluation, Air Force" at $36.1B AND $26.2B,
-  // "Classified Programs" four times. In the diagram the ribbon shows which
-  // parent each belongs to; in the table nothing did, and the table is the one
-  // surface where a reader cannot hover to disambiguate.
+  // Where each block's money came from — see lib/flow blockParentage for why
+  // a multi-source block may NOT be labelled with a single "from X".
   //
-  // The parent is the source of the largest incoming edge — the same reading
-  // the ribbon gives visually.
+  // Round 2 added the parent line (the table listed Level / Block / Amount
+  // only, so blocks sharing a label read as data errors). It named the source
+  // of the largest ribbon, which for an aggregated block prints arithmetic
+  // that cannot close: "Other (56) $100.8B … from Army" sat under
+  // "Component · Army $43.3B". This is the accessibility fallback — the only
+  // reading available to a screen reader or a narrow viewport — so an
+  // impossible sum here is worse than one in the chart.
   const parentOf = new Map<string, string>();
-  {
-    const best = new Map<number, { v: number; s: number }>();
-    for (const e of edges) {
-      const cur = best.get(e.t);
-      if (!cur || e.v > cur.v) best.set(e.t, { v: e.v, s: e.s });
-    }
-    for (const [t, { s: src }] of best) {
-      const child = nodes[t];
-      const parent = nodes[src];
-      if (child && parent) parentOf.set(child.id, parent.label);
-    }
-  }
+  nodes.forEach((n, i) => {
+    const p = blockParentage(nodes, edges, i);
+    if (p) parentOf.set(n.id, p.text);
+  });
   const rows = [...nodes].sort((a, b) => {
     const la = levelOrder.get(a.level) ?? 0;
     const lb = levelOrder.get(b.level) ?? 0;
@@ -653,7 +647,7 @@ function RiverTable({
                   data-block-parent
                   className="block font-normal text-muted-foreground"
                 >
-                  from {parentOf.get(n.id)}
+                  {parentOf.get(n.id)}
                 </span>
               ) : null}
             </th>
