@@ -80,6 +80,24 @@
  *      reads — the cheap check that would have caught it on day one.
  *   See runEntityTotalsLeg's own block at the bottom.
  *
+ * LEG (e) — cross-page one label, one basis (Sprint 3 round 3):
+ *   Legs a/b are INTRA-page and structurally could not see the shipped
+ *   defect: /programs/ rendered F-35 "FY24 actual $5.25B" (P-40 J-book
+ *   detail) while /program/ATA000/ and /years/ rendered $5.57B (P-1 TOA),
+ *   and no single page held both. Leg e reads the DECLARED index surfaces
+ *   (CROSS_PAGE_INDEXES), joins each figure to /program/{entity}/ by
+ *   (entity, fy, measure), and requires the page to publish that label on
+ *   the same basis at the same value.
+ *   e1 the declaration must be complete (basis + fy + measure), in the chip
+ *      vocabulary, and VISIBLE — an attribute a reader cannot see is what
+ *      this leg exists to prevent;
+ *   e2 the value must agree with the program page on that basis, and the
+ *      page must publish that basis for the label at all;
+ *   e3 vacuity: a surface that contributes no figures, or a figure set that
+ *      joins to no program page, FAILS.
+ *   The contract is the property, not a choice of basis: an index may
+ *   publish either basis as long as it says which.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote.
@@ -989,8 +1007,14 @@ function runCrossPageLeg(
   }
 
   // e2 — agreement with the page the row links to
+  // Counts are totals; the arrays hold only what is printed. (The first cut
+  // capped both together, so a full-column regression reported "20" — the cap
+  // — rather than the real number, which is exactly the kind of understated
+  // failure a gate must not produce about itself.)
   const disagreements = [];
   const missingBasis = [];
+  let disagreementCount = 0;
+  let missingBasisCount = 0;
   let joined = 0;
   for (const f of indexFigures) {
     const key = `${f.entity}|${f.fy}|${f.measure}`;
@@ -1001,7 +1025,8 @@ function runCrossPageLeg(
     joined++;
     const sameBasis = onPage.filter((p) => p.basis === f.basis);
     if (sameBasis.length === 0) {
-      if (missingBasis.length < MAX_LISTED * 2) {
+      missingBasisCount++;
+      if (missingBasis.length < MAX_LISTED) {
         missingBasis.push(
           `${f.where}: ${f.entity} FY${f.fy} ${f.measure} = ${f.text} on basis "${f.basis}", ` +
             `but /program/${f.entity}/ publishes that label only on ` +
@@ -1011,7 +1036,8 @@ function runCrossPageLeg(
       continue;
     }
     if (!sameBasis.some((p) => valuesAgree(p.value, f.value))) {
-      if (disagreements.length < MAX_LISTED * 2) {
+      disagreementCount++;
+      if (disagreements.length < MAX_LISTED) {
         disagreements.push(
           `${f.where}: ${f.entity} FY${f.fy} ${f.measure} (basis ${f.basis}) reads ${f.text}, ` +
             `but /program/${f.entity}/ reads ` +
@@ -1021,23 +1047,23 @@ function runCrossPageLeg(
     }
   }
 
-  if (disagreements.length > 0) {
+  if (disagreementCount > 0) {
     errors.push(
-      `leg e2 cross-page collision: ${disagreements.length} index figure(s) contradict the ` +
+      `leg e2 cross-page collision: ${disagreementCount} index figure(s) contradict the ` +
         `program page they link to, under one label and one declared basis (first ${MAX_LISTED}):`,
     );
-    for (const d of disagreements.slice(0, MAX_LISTED)) errors.push(`  ${d}`);
-    if (disagreements.length > MAX_LISTED)
-      errors.push(`  ... and ${disagreements.length - MAX_LISTED} more`);
+    for (const d of disagreements) errors.push(`  ${d}`);
+    if (disagreementCount > disagreements.length)
+      errors.push(`  ... and ${disagreementCount - disagreements.length} more`);
   }
-  if (missingBasis.length > 0) {
+  if (missingBasisCount > 0) {
     errors.push(
-      `leg e2 undeclared basis: ${missingBasis.length} index figure(s) claim a basis their own ` +
+      `leg e2 undeclared basis: ${missingBasisCount} index figure(s) claim a basis their own ` +
         `program page never publishes for that label (first ${MAX_LISTED}):`,
     );
-    for (const m of missingBasis.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
-    if (missingBasis.length > MAX_LISTED)
-      errors.push(`  ... and ${missingBasis.length - MAX_LISTED} more`);
+    for (const m of missingBasis) errors.push(`  ${m}`);
+    if (missingBasisCount > missingBasis.length)
+      errors.push(`  ... and ${missingBasisCount - missingBasis.length} more`);
   }
 
   // e3 — vacuity
@@ -1050,7 +1076,7 @@ function runCrossPageLeg(
       `leg e is VACUOUS: ${indexFigures.length} index figure(s) read, but not one joined to a ` +
         `program page — the (entity, fy, measure) keys do not line up, so nothing is being compared`,
     );
-  } else if (disagreements.length === 0 && missingBasis.length === 0) {
+  } else if (disagreementCount === 0 && missingBasisCount === 0) {
     notes.push(
       `leg e2: ${joined} of ${indexFigures.length} index figures joined to their program page; ` +
         `every one agrees under one label and one basis ✓`,

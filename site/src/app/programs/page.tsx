@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPrograms } from "@/lib/data";
+import { getProgramDecadeCells, getPrograms } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -32,13 +32,14 @@ export default function ProgramsPage() {
 
   // Sort default: FY26 total descending (nulls last), projected to the eight
   // fields the table renders (see ProgramsTableRow — §P2-1 page weight).
+  // Both money columns come from the PROGRAM-LEVEL decade cells — the same
+  // years_matrix.json payload /years/ renders, with the same fact ids the
+  // program pages cite (see getProgramDecadeCells for why not programs.json's
+  // org-sliced trajectory).
+  const cells = getProgramDecadeCells();
   const sorted = [...programs]
-    .sort((a, b) => {
-      const av = a.trajectory?.fy2026_total ?? -Infinity;
-      const bv = b.trajectory?.fy2026_total ?? -Infinity;
-      return bv - av;
-    })
-    .map(toProgramsTableRow);
+    .map((p) => toProgramsTableRow(p, cells.get(p.pe_bli)))
+    .sort((a, b) => (b.fy26 ?? -Infinity) - (a.fy26 ?? -Infinity));
 
   // Distinct orgs sorted alphabetically
   const orgs = [...new Set(programs.map((p) => p.org))].sort();

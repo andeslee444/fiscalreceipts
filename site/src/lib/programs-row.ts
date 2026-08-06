@@ -19,7 +19,7 @@
  * from one.
  */
 
-import type { ProgramRow } from "@/lib/data";
+import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";
 
 export interface ProgramsTableRow {
   /** PE/BLI code — also the row key, the alias key and the link target. */
@@ -27,13 +27,13 @@ export interface ProgramsTableRow {
   /** Raw workbook org token ("F"); the human name is derived for display. */
   org: string;
   title: string;
-  /** FY24 actual, USD thousands — P-1/R-1 TOA, the canonical basis. */
+  /** FY24 actuals, USD thousands — P-1/R-1 TOA, the canonical basis. */
   fy24: number | null;
-  /** FY24 derived-citation fact_id. */
+  /** FY24 citation fact_id — the SAME fact the program page cites. */
   fy24Fid: string | null;
-  /** FY26 total, USD thousands (workbook grain). */
+  /** FY26 request, USD thousands — same basis, same edition. */
   fy26: number | null;
-  /** FY26 derived-citation fact_id. */
+  /** FY26 citation fact_id — the SAME fact the program page cites. */
   fy26Fid: string | null;
 }
 
@@ -50,25 +50,35 @@ export interface ProgramsTableRow {
  * differ materially — Shipboard Tactical Communications by 18x ($28.6M against
  * $528.6M) — and the FY24 sort ranked those 22 by the wrong size.
  *
- * So the column is the canonical TOA figure, from the same trajectory object
- * the FY26 column already used: one basis, one unit, comparable across the row,
- * and identical to what /years/ and the program page publish. The J-book detail
- * figure is not lost — it is on the program page inside the reconciliation
- * strip Sprint 1 built for exactly this pair, one click from every row here.
+ * So both columns are canonical TOA now, read from the PROGRAM-LEVEL decade
+ * cells of years_matrix.json — the same payload /years/ renders, carrying the
+ * same fact ids the program pages cite. One basis, one unit, comparable across
+ * the row, and identical to the two other surfaces that publish it. The J-book
+ * detail figure is not lost — it is on the program page inside the
+ * reconciliation strip Sprint 1 built for exactly this pair, one click from
+ * every row here.
+ *
+ * The decade cells rather than programs.json's `trajectory` because the
+ * trajectory is the row's declared-ORG slice, which for the three BLI codes
+ * shared across organisations is not the program at all — see
+ * getProgramDecadeCells for the three and their numbers.
  *
  * `fy24Xml` is gone with it: an xml_path is a J-book-detail citation state, and
  * a TOA column has no use for one. The 110 programs it served all rendered
  * "$0 [XML]" (a zero-dollar J-book line) where TOA publishes no FY24 row at
  * all; they render the honest absence now, which is what /years/ shows.
  */
-export function toProgramsTableRow(p: ProgramRow): ProgramsTableRow {
+export function toProgramsTableRow(
+  p: ProgramRow,
+  cells: ProgramDecadeCells | undefined,
+): ProgramsTableRow {
   return {
     pe: p.pe_bli,
     org: p.org,
     title: p.title,
-    fy24: p.trajectory?.fy2024_actuals ?? null,
-    fy24Fid: p.trajectory_fact_ids?.fy2024_actuals ?? null,
-    fy26: p.trajectory?.fy2026_total ?? null,
-    fy26Fid: p.trajectory_fact_ids?.fy2026_total ?? null,
+    fy24: cells?.fy24?.v ?? null,
+    fy24Fid: cells?.fy24?.fid ?? null,
+    fy26: cells?.fy26?.v ?? null,
+    fy26Fid: cells?.fy26?.fid ?? null,
   };
 }

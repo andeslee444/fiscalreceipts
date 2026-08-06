@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   getAgencies,
   getAgencyMap,
+  getProgramDecadeCells,
   getPrograms,
   getGaoOverlayForOrg,
   collectCitationsWithInputs,
@@ -56,12 +57,17 @@ export default async function AgencyPage({
   const agency = getAgencyMap().get(org);
   if (!agency) notFound();
 
-  const allPrograms = getPrograms();
-  const agencyPrograms = allPrograms
+  // Program-level decade cells — the same figures /programs/, /years/ and each
+  // program page publish, with the same fact ids (see getProgramDecadeCells).
+  // Not programs.json's trajectory: that is the row's declared-org slice, and
+  // for the three BLI codes shared across organisations it is a component,
+  // which is how this list came to contradict the page each row links to.
+  const decadeCells = getProgramDecadeCells();
+  const agencyPrograms = getPrograms()
     .filter((p) => p.org === org)
     .sort((a, b) => {
-      const av = a.trajectory?.fy2026_total ?? a.fy2024_actual_millions ?? 0;
-      const bv = b.trajectory?.fy2026_total ?? b.fy2024_actual_millions ?? 0;
+      const av = decadeCells.get(a.pe_bli)?.fy26?.v ?? -Infinity;
+      const bv = decadeCells.get(b.pe_bli)?.fy26?.v ?? -Infinity;
       return bv - av;
     });
 
@@ -77,10 +83,10 @@ export default async function AgencyPage({
   if (agency.fy2024_fact_id_derived) pageFactIds.push(agency.fy2024_fact_id_derived);
   if (agency.fy2026_fact_id_derived) pageFactIds.push(agency.fy2026_fact_id_derived);
   for (const p of agencyPrograms) {
-    // The FY24 figure this list renders is the TOA trajectory fact, not the
-    // J-book detail fact it used to render (gate 23 leg e) — so it is the
-    // trajectory fact that has to be in the page's citation slice.
-    const fid = p.trajectory_fact_ids?.fy2024_actuals;
+    // The FY24 figure this list renders is the program-level TOA fact, not the
+    // J-book detail fact it used to render (gate 23 leg e) — so that is the
+    // fact that has to be in the page's citation slice.
+    const fid = decadeCells.get(p.pe_bli)?.fy24?.fid;
     if (fid) pageFactIds.push(fid);
   }
   if (gao?.overlay.improper?.fact_id) {
@@ -272,13 +278,13 @@ export default async function AgencyPage({
                     /programs/, /years/ and each program's own headline, with
                     the basis declared once above the list. */}
                 <div className="shrink-0 text-sm text-right tabular-nums text-muted-foreground">
-                  {p.trajectory?.fy2024_actuals != null ? (
+                  {decadeCells.get(p.pe_bli)?.fy24 != null ? (
                     <>
                       <Cite
-                        value={p.trajectory.fy2024_actuals}
+                        value={decadeCells.get(p.pe_bli)!.fy24!.v}
                         units="USD thousands"
-                        dataset="fct_budget_trajectory"
-                        factId={p.trajectory_fact_ids?.fy2024_actuals}
+                        dataset="fct_decade_series"
+                        factId={decadeCells.get(p.pe_bli)!.fy24!.fid}
                         basis="toa"
                         fy={2024}
                         measure="actuals"

@@ -3364,3 +3364,96 @@ in its comment, which is a deliberate act and reads as one in the diff:
 SUITE COUNT UNCHANGED — one new leg on gate 14, one new page type on gate 13,
 one new sampled page on gate 3's mobile leg, one new ceiling on gate 1.
 Still 24 gates.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+GATE 23 LEG (e) — CROSS-PAGE ONE LABEL, ONE BASIS (PM Sprint 3, round 3)
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT IT PINS. An index surface may publish a figure on any declared basis, but
+it must DECLARE that basis visibly, and the value must be the one the program
+page publishes on that same basis. /programs/ and every /agency/{org}/ are the
+declared surfaces; each figure joins to /program/{entity}/ on
+(entity, fiscal_year, measure).
+
+WHY IT WAS NEEDED. Legs a and b are intra-page and structurally could not see
+the shipped defect: /programs/ rendered F-35 "FY24 actual $5.25B" (the P-40/R-2
+J-book detail figure) while /program/ATA000/ and /years/ rendered $5.57B (the
+canonical P-1 TOA figure). No single page held both, so the ~80k basis
+attributes Sprint 1 threaded proved nothing about it — and the /programs/ money
+columns carried no basis at all, so nothing joined them to anything.
+
+PROOF IT CAN FAIL. The FY24 column was reverted to programs.json's
+fy2024_actual_millions (the J-book detail figure, the state the site shipped in)
+and the site rebuilt. The gate went red on the real corpus:
+
+  ✗ leg e2 cross-page collision: 20 index figure(s) contradict the program page
+    they link to, under one label and one declared basis (first 10):
+  ✗   /programs/ table "programs": ATA000 FY2024 actuals (basis toa) reads
+      $5.25M, but /program/ATA000/ reads [$5.57B, …] under the same label and
+      basis
+  ✗   /programs/ table "programs": B02100 FY2024 actuals (basis toa) reads
+      $1.56M, but /program/B02100/ reads [$2.27B, …] under the same label and
+      basis
+  ✗   /programs/ table "programs": F015EX FY2024 actuals (basis toa) reads
+      $2.51M, but /program/F015EX/ reads [$2.74B, …]
+
+(That run also exposed a reporting bug in the leg itself — the printed count was
+capped at 20 rather than being the true total. A gate that understates its own
+failure is a gate that will one day be believed; counts and printed samples are
+tracked separately now.)
+
+WHAT IT CAUGHT ON ITS FIRST HONEST RUN, unprompted. With the FY24 column moved
+to programs.json's TOA trajectory, leg e2 went red on six figures across three
+BLI codes:
+
+  ✗   /programs/: 30 FY2024 actuals (basis toa) reads $408.0M, but /program/30/
+      reads [$435.2M, …] under the same label and basis
+  ✗   /agency/OSD/: 30 FY2024 actuals (basis toa) reads $408.0M, but
+      /program/30/ reads [$435.2M, …]
+
+BLI 30 ("Other Major Equipment"), 20 ("Vehicles") and 500 ("Personnel
+Administration") are shared across organisations. programs.json holds one row
+per PE with one `org`, and its trajectory is THAT ORG'S SLICE — for BLI 30 the
+OSD slice (408,006) rather than the program (435,163 = OSD 408,006 + DMACT
+13,012 + DTRA 12,787 + DoDEA 1,358). The index was publishing a component as if
+it were the program. The FY26 column had the same defect and had been shipping
+that way since the column existed; it was invisible because the index declared
+measure="total" where the program page's program-level FY26 figure is
+measure="request", so nothing joined.
+
+FIX: both /programs/ money columns, and the /agency/ program list, now read the
+PROGRAM-LEVEL decade cells of years_matrix.json — the same payload /years/
+renders, carrying the same fact ids the program pages cite. All 1,741 rows join.
+
+GREEN STATE: leg e1 — 24 index surfaces declare basis, fy and measure, visibly.
+leg e2 — 4,605 of 4,605 index figures joined to their program page; every one
+agrees under one label and one basis.
+
+═══════════════════════════════════════════════════════════════════════════════
+GATE 14 LEG (cm) — TARGET-DATE POLICY REPLACED, NOT DROPPED (Sprint 3, round 3)
+═══════════════════════════════════════════════════════════════════════════════
+
+Leg (cm) used to require that at least HALF of /coverage/'s rows carry a dated
+target. That rule encoded a design choice the implementing agent made on its
+own: it invented eight target dates and then gated the page into keeping them.
+The site owner reviewed those dates and decided the page ships with the targets
+UNDATED — publishing a schedule the project has not committed to is the same
+class of defect as publishing a figure it cannot recompute.
+
+So the RULE was wrong about what it protected, and it is REPLACED by one that
+keeps teeth on the property that matters:
+
+  - every rendered row must carry a [data-coverage-target] cell;
+  - a target under MIN_TARGET_CHARS (60) FAILS — "TBD" with extra whitespace is
+    not a statement, and neither is a bare "No dated target.";
+  - a target marked dated must still name a month AND a year;
+  - a target marked undated must still say so in as many words;
+  - the crosswalk row must still be undated AND name account-code coarseness
+    with DARPA as the exception.
+
+Dated targets remain legal in the vocabulary. The gate has no opinion on how
+many there are — only that whatever is published is checkable.
+
+SUITE COUNT UNCHANGED — one new leg on gate 23, one rule replaced on gate 14.
+Still 24 gates.

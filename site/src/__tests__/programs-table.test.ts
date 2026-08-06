@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { ProgramRow } from "@/lib/data";
+import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";
 import {
   buildProgramsCsv,
   filterPrograms,
@@ -35,11 +35,27 @@ function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
 }
 
 /**
+ * The PROGRAM-LEVEL decade cells the index actually renders from — the same
+ * years_matrix.json payload /years/ renders (see getProgramDecadeCells).
+ * Defaults to the real ATA000 pair.
+ */
+function decadeCells(over: Partial<ProgramDecadeCells> = {}): ProgramDecadeCells {
+  return {
+    fy24: { v: 5565655, fid: "b".repeat(16) },
+    fy26: { v: 4086744, fid: "d".repeat(16) },
+    ...over,
+  };
+}
+
+/**
  * What the client table actually receives — every fixture goes through the
  * real projection, so the whole suite exercises it.
  */
-function program(over: Partial<ProgramRow> = {}) {
-  return toProgramsTableRow(fullProgram(over));
+function program(
+  over: Partial<ProgramRow> = {},
+  cells: ProgramDecadeCells | undefined = decadeCells(),
+) {
+  return toProgramsTableRow(fullProgram(over), cells);
 }
 
 describe("toProgramsTableRow — §P2-1: only what the table renders is shipped", () => {
@@ -82,29 +98,45 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     }
   });
 
-  it("flattens the FY24 actual AND the FY26 total out of the decade trajectory", () => {
-    const row = program({
-      trajectory: {
-        fy2024_actuals: 111,
-        fy2025_total: 222,
-        fy2026_total: 333,
-        fy2526_change: 111,
-        fy2526_pct_change: 50,
-      } as ProgramRow["trajectory"],
-      trajectory_fact_ids: {
-        fy2024_actuals: "b".repeat(16),
-        fy2025_total: "c".repeat(16),
-        fy2026_total: "d".repeat(16),
-        fy2526_change: "e".repeat(16),
-      } as ProgramRow["trajectory_fact_ids"],
+  it("takes both money columns from the program-level decade cells", () => {
+    const row = program({}, {
+      fy24: { v: 111, fid: "b".repeat(16) },
+      fy26: { v: 333, fid: "d".repeat(16) },
     });
     expect(row.fy24).toBe(111);
     expect(row.fy24Fid).toBe("b".repeat(16));
     expect(row.fy26).toBe(333);
     expect(row.fy26Fid).toBe("d".repeat(16));
-    // FY25 and the change are still dropped — the table renders neither.
-    expect(JSON.stringify(row)).not.toContain("c".repeat(16));
-    expect(JSON.stringify(row)).not.toContain("e".repeat(16));
+  });
+
+  /**
+   * The three BLI codes shared across organisations. programs.json's
+   * trajectory is the row's declared-ORG slice, so the index published a
+   * component as if it were the program: BLI 30 read 408,006 (the OSD slice)
+   * where /program/30/ reads 435,163 (OSD + DMACT + DTRA + DoDEA). Reading the
+   * decade cell — the program-level figure, with the fact id the program page
+   * itself cites — is what makes the join close.
+   */
+  it("prefers the program-level cell over the org-sliced trajectory", () => {
+    const row = program(
+      {
+        pe_bli: "30",
+        org: "OSD",
+        title: "Other Major Equipment",
+        trajectory: {
+          fy2024_actuals: 408006,
+          fy2026_total: 212900,
+        } as ProgramRow["trajectory"],
+        trajectory_fact_ids: {
+          fy2024_actuals: "slice24".padEnd(16, "0"),
+        } as ProgramRow["trajectory_fact_ids"],
+      },
+      { fy24: { v: 435163, fid: "e217cc752ada18b6" }, fy26: { v: 232181, fid: "6a0967669dbe63c4" } },
+    );
+    expect(row.fy24).toBe(435163);
+    expect(row.fy26).toBe(232181);
+    expect(JSON.stringify(row)).not.toContain("408006");
+    expect(JSON.stringify(row)).not.toContain("212900");
   });
 
   /**
@@ -122,21 +154,12 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
    * indexes, both money columns share one basis and one unit, and the FY24
    * sort ranks programs by their canonical size.
    */
-  it("takes FY24 from the canonical TOA trajectory, never the J-book detail figure", () => {
+  it("takes FY24 from the canonical TOA cell, never the J-book detail figure", () => {
     const row = program({
       // The real ATA000 pair: J-book detail 5,247.07 USD millions vs the
       // P-1 TOA 5,565,655 USD thousands.
       fy2024_actual_millions: 5247.07,
       fy2024_fact_id: "a".repeat(16),
-      trajectory: {
-        fy2024_actuals: 5565655,
-        fy2025_total: null,
-        fy2026_total: 4086744,
-      } as ProgramRow["trajectory"],
-      trajectory_fact_ids: {
-        fy2024_actuals: "b".repeat(16),
-        fy2026_total: "d".repeat(16),
-      } as ProgramRow["trajectory_fact_ids"],
     });
     expect(row.fy24).toBe(5565655);
     expect(row.fy24Fid).toBe("b".repeat(16));
@@ -155,19 +178,23 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     // statements under one label. In a TOA column the honest render is the
     // absence; the zero-line statement stays on the program page, in the
     // basis that actually makes it.
-    const row = program({
-      fy2024_actual_millions: 0,
-      fy2024_fact_id: null,
-      fy2024_xml_path: "/root/line[3]",
-      trajectory: { fy2024_actuals: null, fy2026_total: 5 } as ProgramRow["trajectory"],
-    });
+    const row = program(
+      {
+        fy2024_actual_millions: 0,
+        fy2024_fact_id: null,
+        fy2024_xml_path: "/root/line[3]",
+      },
+      { fy24: null, fy26: { v: 5, fid: "d".repeat(16) } },
+    );
     expect(row.fy24).toBeNull();
     expect(row.fy24Fid).toBeNull();
     expect(JSON.stringify(row)).not.toContain("/root/line[3]");
   });
 
   it("nulls a missing FY26 rather than inventing a 0", () => {
-    expect(program({ trajectory: null }).fy26).toBeNull();
+    expect(program({}, { fy24: null, fy26: null }).fy26).toBeNull();
+    // …and a program with no decade row at all still projects cleanly.
+    expect(toProgramsTableRow(fullProgram(), undefined).fy26).toBeNull();
   });
 });
 
@@ -200,29 +227,19 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     // says so — the FY24 column used to export J-book detail in millions
     // beside a TOA column in thousands.
     expect(header).toBe(
-      "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands,fy2026_total_toa_usd_thousands",
+      "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands,fy2026_request_toa_usd_thousands",
     );
   });
 
   it("exports the raw org code AND the human name", () => {
     const csv = buildProgramsCsv([
-      program({
-        trajectory: {
-          fy2024_actuals: 5565655,
-          fy2026_total: null,
-        } as ProgramRow["trajectory"],
-        trajectory_fact_ids: {
-          fy2024_actuals: "b".repeat(16),
-        } as ProgramRow["trajectory_fact_ids"],
-      }),
+      program({}, { fy24: { v: 5565655, fid: "b".repeat(16) }, fy26: null }),
     ]);
     expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5565655,");
   });
 
   it("leaves missing values EMPTY, never 0", () => {
-    const csv = buildProgramsCsv([
-      program({ trajectory: null, trajectory_fact_ids: null }),
-    ]);
+    const csv = buildProgramsCsv([program({}, { fy24: null, fy26: null })]);
     const fields = csv.split("\n")[1].split(",");
     expect(fields[4]).toBe("");
     expect(fields[5]).toBe("");
@@ -240,13 +257,7 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
 
   it("exports the FY26 workbook figure in thousands", () => {
     const csv = buildProgramsCsv([
-      program({
-        trajectory: {
-          fy2024_actuals: null,
-          fy2025_total: null,
-          fy2026_total: 5565655,
-        } as ProgramRow["trajectory"],
-      }),
+      program({}, { fy24: null, fy26: { v: 5565655, fid: "d".repeat(16) } }),
     ]);
     expect(csv.split("\n")[1]).toContain(",5565655");
   });

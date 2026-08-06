@@ -88,7 +88,7 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
     "org_name",
     "title",
     "fy2024_actual_toa_usd_thousands",
-    "fy2026_total_toa_usd_thousands",
+    "fy2026_request_toa_usd_thousands",
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
@@ -295,6 +295,19 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           Same legend component, same wording, at the point of use. */}
       <CiteLegend className="mb-2" />
 
+      {/* MOBILE: below sm the header row is hidden, so the columns' basis
+          declaration would go with it. Stated once here instead of on each of
+          3,482 cells — a per-row repetition of the same eight words is a chip
+          wall AND 190 KB on a page with 168 KB of §P2-1 headroom. */}
+      <p
+        data-basis-declared
+        className="mb-2 text-xs text-muted-foreground sm:hidden"
+      >
+        Both money figures below are{" "}
+        {basisChipText(FIGURE_BASIS, "actuals", FIGURE_EDITION)} — total
+        obligational authority in USD thousands.
+      </p>
+
       <div className="overflow-x-auto rounded-lg border border-border">
         <table
           className="w-full text-sm"
@@ -357,20 +370,20 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 className="px-4 py-3 font-medium text-right"
                 data-basis={FIGURE_BASIS}
                 data-fy="2026"
-                data-measure="total"
+                data-measure="request"
               >
                 <button
                   onClick={() => toggleSort("fy2026_total")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"
                 >
-                  FY26 total{" "}
+                  FY26 request{" "}
                   <SortIcon
                     col="fy2026_total"
                     sortKey={sortKey}
                     sortAsc={sortAsc}
                   />
                 </button>
-                <BasisColumnLabel measure="total" />
+                <BasisColumnLabel measure="request" />
               </th>
             </tr>
           </thead>
@@ -446,19 +459,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     fact-id chip can be sliced by the 390px viewport edge —
                     the same stacking /companies/ uses. ONE DOM, so the §P1-7
                     sort contract above still reads exactly these nodes. */}
-                {/* MOBILE: below sm the header row is hidden, so the column's
-                    basis declaration has to travel with the cell — the label
-                    carries it rather than leaving a phone reader with a
-                    number and no basis. */}
                 <td role="cell" className="pgm-cell-fy24">
-                  <span className="pgm-label">
-                    FY24 actual
-                    <span data-basis-declared>
-                      {" "}
-                      ({basisChipText(FIGURE_BASIS, "actuals", FIGURE_EDITION)})
-                    </span>
-                    :
-                  </span>
+                  <span className="pgm-label">FY24 actual:</span>
                   {p.fy24 != null ? (
                     <Cite
                       value={p.fy24}
@@ -480,14 +482,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   data-primary-value="fy2026-total"
                   className="pgm-cell-fy26"
                 >
-                  <span className="pgm-label">
-                    FY26 total
-                    <span data-basis-declared>
-                      {" "}
-                      ({basisChipText(FIGURE_BASIS, "total", FIGURE_EDITION)})
-                    </span>
-                    :
-                  </span>
+                  <span className="pgm-label">FY26 request:</span>
                   {p.fy26 != null ? (
                     <Cite
                       value={p.fy26}

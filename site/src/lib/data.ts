@@ -1842,6 +1842,88 @@ export function getLineagePrograms(): number {
   return (_lineagePrograms = count);
 }
 
+// ── Program-level decade cells for the /programs/ index ──────────────────────
+
+export interface DecadeCell {
+  /** USD thousands. */
+  v: number;
+  /** fact_id — the SAME fact the program page and /years/ cite. */
+  fid: string;
+}
+
+export interface ProgramDecadeCells {
+  /** FY2024 actuals as the PB2026 book reports them (decade kind "actuals"). */
+  fy24: DecadeCell | null;
+  /** The FY2026 request from the PB2026 book (decade kind "request"). */
+  fy26: DecadeCell | null;
+}
+
+let _programDecadeCells: Map<string, ProgramDecadeCells> | null = null;
+
+/**
+ * The PROGRAM-LEVEL money cells /programs/ renders, read from the same
+ * years_matrix.json payload /years/ renders — so the index and the matrix are
+ * the same figures with the same fact ids, not two derivations that agree by
+ * luck.
+ *
+ * WHY NOT programs.json's `trajectory` (Sprint 3 round 3, gate 23 leg e).
+ * programs.json holds one row per PE with one `org`, and its trajectory is
+ * that org's SLICE. For 1,738 programs the declared org is the only org, so
+ * the slice is the program and nothing shows. Three BLI codes are shared
+ * across organisations, and there the index published a component as if it
+ * were the program:
+ *
+ *   BLI 30  "Other Major Equipment"   index 408,006 (the OSD slice)
+ *                                     program page 435,163 (all four orgs:
+ *                                     OSD 408,006 + DMACT 13,012 +
+ *                                     DTRA 12,787 + DoDEA 1,358)
+ *   BLI 20  "Vehicles"                index    356   page   2,491
+ *   BLI 500 "Personnel Administration" index 105,943 page 110,388
+ *
+ * Both money columns were affected, and the FY26 one had been shipping that
+ * way since the column existed. The decade cells are program-level by
+ * construction, so the join to /program/{pe}/ closes for all 1,741 rows.
+ *
+ * The two column keys are DERIVED from the payload's own decade_columns
+ * (latest edition, kind "actuals" for the actual year and "request" for the
+ * request year) rather than hardcoded, so a new edition moves them.
+ */
+export function getProgramDecadeCells(): Map<string, ProgramDecadeCells> {
+  if (_programDecadeCells) return _programDecadeCells;
+  const payload = readJson<{
+    decade_columns?: { key: string; fy: number; kind: string; edition: number }[];
+    orgs?: { programs?: { pe_bli: string; cells?: Record<string, DecadeCell | null> }[] }[];
+  }>("years_matrix.json");
+
+  const cols = payload.decade_columns ?? [];
+  const latest = (kind: string): string | null => {
+    const of = cols.filter((c) => c.kind === kind);
+    if (of.length === 0) return null;
+    return of.reduce((a, b) => (b.fy > a.fy || (b.fy === a.fy && b.edition > a.edition) ? b : a))
+      .key;
+  };
+  const actualsKey = latest("actuals");
+  const requestKey = latest("request");
+  if (!actualsKey || !requestKey) {
+    throw new Error(
+      `[govbudget/data] years_matrix.json declares no decade column of kind ` +
+        `"actuals" (${actualsKey}) and/or "request" (${requestKey}) — the /programs/ ` +
+        `index sources both money columns from them.`,
+    );
+  }
+
+  const out = new Map<string, ProgramDecadeCells>();
+  for (const org of payload.orgs ?? []) {
+    for (const p of org.programs ?? []) {
+      out.set(p.pe_bli, {
+        fy24: p.cells?.[actualsKey] ?? null,
+        fy26: p.cells?.[requestKey] ?? null,
+      });
+    }
+  }
+  return (_programDecadeCells = out);
+}
+
 let _decadeEditions: number[] | null = null;
 
 /**
