@@ -107,8 +107,26 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
 
   const toX = (fy: number) =>
     PADDING + ((fy - minFy) / Math.max(maxFy - minFy, 1)) * innerW;
+  // The plotted domain is NOT [minV, maxV]. Round-3 judging: with a bare
+  // min-max scale the series MINIMUM lands exactly on the baseline rule, and
+  // on ATA000 that is the FY2026 request — a cited $4.09B drawn as visually
+  // zero, directly above a table stating $4.09B and 73% of the FY24 actual.
+  // On this site of all sites, a figure that reads as nothing while its own
+  // caption says otherwise is the cardinal defect.
+  //
+  // A zero baseline is not the answer either: these series sit in a narrow
+  // band high above zero, so anchoring at 0 would flatten every one of 1,741
+  // charts into a straight line. Instead the domain gets headroom below the
+  // minimum, so the lowest point sits clear of the rule, AND the scale is
+  // STATED — the min/max value labels below mean the chart no longer has to
+  // be read as if the baseline were zero.
+  const domainMin = range === 0 ? minV : minV - range * 0.22;
+  const domainMax = range === 0 ? maxV : maxV + range * 0.06;
+  const domainRange = domainMax - domainMin;
   const toY = (v: number) =>
-    range === 0 ? PADDING + innerH / 2 : PADDING + innerH - ((v - minV) / range) * innerH;
+    domainRange === 0
+      ? PADDING + innerH / 2
+      : PADDING + innerH - ((v - domainMin) / domainRange) * innerH;
 
   // Trend color from the actuals span (existing sparkline idiom).
   const a = byKind.actuals;
@@ -326,6 +344,21 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
           FY{String(maxFy).slice(-2)}
         </text>
       </svg>
+      {/* The vertical scale, in words. Without it the baseline reads as zero —
+          it is not, and these series never approach zero. Same 12px floor as
+          every other provenance line (P1-1); the figures themselves stay in
+          the table below, which is where they are cited. */}
+      {range > 0 && (
+        <p
+          data-testid="decade-spark-scale"
+          className="mt-1 text-xs leading-5 text-muted-foreground"
+        >
+          Vertical scale spans {formatAmount(minV, "USD thousands")} to{" "}
+          {formatAmount(maxV, "USD thousands")} — it does not start at zero, and
+          the baseline is not zero. Read it for direction; the figures are in
+          the table below.
+        </p>
+      )}
     </div>
   );
 

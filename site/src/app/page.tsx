@@ -458,11 +458,17 @@ export default function HomePage() {
               Automated signals: budget swings, cancelled programs, and new
               contractors. Figures cite their source.
             </p>
+            {/* Round-3 judging: `truncate` cut all three headlines at the SAME
+                point at 390, so the three cards read identically and the
+                differentiator — the value and the year — was exactly what was
+                lost. The headline wraps to two lines now (line-clamp keeps the
+                row height bounded), and "view →" drops below it on a phone
+                instead of stealing its width. */}
             <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
               {feedTeaser.map((card, i) => (
                 <div
                   key={`feed-${i}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-muted/60 transition-colors"
+                  className="flex flex-col gap-1 px-5 py-4 hover:bg-muted/60 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
                   <div className="min-w-0 flex-1">
                     {/* data-source-text="headline": auto-generated prose from
@@ -471,7 +477,7 @@ export default function HomePage() {
                         site-computed cite-able figures.
                         data-xml-path satisfies the (a0) gate constraint. */}
                     <p
-                      className="text-sm font-medium truncate"
+                      className="text-sm font-medium line-clamp-2 sm:truncate"
                       data-source-text="headline"
                       data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
                     >
@@ -484,7 +490,7 @@ export default function HomePage() {
                   {card.program_url && (
                     <Link
                       href={card.program_url}
-                      className="shrink-0 ml-4 text-xs text-primary underline decoration-dotted hover:decoration-solid"
+                      className="shrink-0 self-start text-xs text-primary underline decoration-dotted hover:decoration-solid sm:ml-4 sm:self-auto"
                     >
                       view &rarr;
                     </Link>
