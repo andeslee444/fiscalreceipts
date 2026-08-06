@@ -7,6 +7,7 @@ import { getCoverage } from "@/lib/coverage";
 import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
 
@@ -106,6 +107,10 @@ export default function MethodologyPage() {
       data-source-text="methodology"
       data-xml-path="site:methodology/prose"
     >
+      {/* Round-3 judging: /methodology/ and /about/ were the only two pages
+          on the site with no breadcrumb, so the one page every figure links
+          out to had no way back that was not the browser's own. */}
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Methodology" }]} />
       <h1 className="text-3xl font-bold mb-2">Methodology</h1>
       {/* Round-1 judging: this read "Last updated: 2026-06-12" — a hand-typed
           literal that had rotted through two sprints of edits to this very

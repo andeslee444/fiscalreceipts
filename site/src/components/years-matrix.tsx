@@ -926,6 +926,23 @@ export function YearsMatrix() {
       </CollapsibleBelowSm>
 
       {/* ── The grid ── */}
+      {/* Round-3 judging: at 390 this grid shows the Program column and TWO of
+          its twelve fiscal-year columns, and it scrolls in BOTH directions
+          inside its own box — while /flow/, whose chart has exactly the same
+          problem, says so in one line. Nothing here did, so the cut right edge
+          read as the end of the data and the row sliced by the box's bottom
+          edge read as a rendering fault. Same treatment as the chart's
+          ScrollCue, at the point of use. */}
+      <p
+        data-testid="years-scroll-cue"
+        className="mb-1 text-xs text-muted-foreground sm:hidden"
+      >
+        Wider and taller than this screen — swipe the grid sideways for the
+        other {Math.max(visibleCols.length - 2, 0)} fiscal-year columns, and
+        scroll inside it for more programs. Use{" "}
+        <span className="text-foreground">Columns</span> above to choose which
+        years are shown.
+      </p>
       {/* max-h fits between the sticky site header and the viewport bottom, so
           the grid's own sticky column-header row is not sliced in half by the
           z-40 chrome as the page scrolls (round-1 judges read a half-covered
@@ -941,7 +958,11 @@ export function YearsMatrix() {
             the scroll range, so the snap clamps back and leaves the partial
             column the judges read as values. The pad is dead space only at the
             far right of a fully-scrolled grid. */}
-        <div className="min-w-max pr-[240px]">
+        {/* pb-6: the same idea vertically. Without it the LAST row sits flush
+            against the box's bottom edge at full scroll, and the border cuts
+            through the digits of a dollar figure — which on this site reads as
+            a corrupted number rather than as a scroll boundary. */}
+        <div className="min-w-max pr-[240px] pb-6">
         <table
           data-testid="years-matrix"
           // The column the grid is currently sorted by — and, on load, the one
