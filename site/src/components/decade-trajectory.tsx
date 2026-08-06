@@ -356,10 +356,10 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
           data-testid="decade-spark-scale"
           className="mt-1 text-xs leading-5 text-muted-foreground"
         >
-          The vertical scale does not start at zero: the baseline sits below
-          this program&rsquo;s smallest year, not at $0, so a low point is not
-          a small one. Read the shape for direction and the grid below for the
-          figures.
+          The vertical scale does not start at zero: the baseline sits just
+          below this program&rsquo;s smallest year, so a low point on this line
+          is not a small amount. Read the shape for direction and the grid
+          below for the figures.
         </p>
       )}
     </div>
