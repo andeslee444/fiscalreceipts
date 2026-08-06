@@ -892,8 +892,9 @@ at, which is the panel doing its job.
 
 Second panel (3 fresh independent opus judges, after those fixes):
 **390 → 3 / 4 / 3, median 3. 1440 → 4 / 3 / 3, median 3.** The phone median
-moved 2 → 3; the desktop median moved 4 → 3 against a different panel. **The
-≥4 bar is NOT met at either width.** The nav drawer, the filing truncation and
+moved 2 → 3; the desktop median moved 4 → 3 against a different panel. The
+≥4 bar was NOT met at either width by this panel — see the third panel below,
+which was run after the next round of fixes and cleared it. The nav drawer, the filing truncation and
 the `/companies/` fold were all confirmed fixed — no judge on the second panel
 raised any of them. What the second panel raised instead is largely SYSTEMIC
 rather than defect-shaped: no layout spine (#42), no reading measure, no
@@ -901,6 +902,22 @@ desktop type scale, Fact-ID chips louder than their figures (#43), and the
 budget-river Sankey unencoded beside a fully colour-encoded sibling. Those are
 a design pass, not a fix round, and saying otherwise would be overstating what
 this round can deliver.
+
+Third panel (3 fresh independent opus judges, after the second round of
+fixes, run against the final HEAD): **390 → 4 / 4 / 4, median 4. 1440 → 4 / 4 /
+4, median 4. The ≥4 bar is MET at both widths**, unanimously and without a
+split. All three cited the same load-bearing strengths — the citation drawer,
+the reconciliation strips, the edition-stamped `/years/` headers, the
+contractor-bridge honesty — and none raised the nav drawer, the filing
+truncation, the `/methodology/` text defects, the clipped mobile tables or the
+`Total` contradiction, all of which had been fixed by then.
+
+What all three still want, and what stays open (#42, #43, plus the Sankey
+labelling and the caveat-before-content ordering): one content spine and one
+reading measure, the Fact-ID chip made subordinate to the figure it annotates,
+budget-river label collisions resolved, and the explanatory prose demoted below
+the data it qualifies on five index pages. Those are a design pass and an owner
+decision, not fix-round work, and the panel scored 4 with them outstanding.
 
 Fixed after the SECOND panel: `/company/`'s "Total" column, which summed income
 and expense while `/data/` documents them as "non-additive, never summed" and
