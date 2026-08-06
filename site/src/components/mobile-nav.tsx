@@ -109,7 +109,7 @@ export function MobileNav() {
       {open && (
         <div
           id="mobile-nav-panel"
-          className="absolute left-0 top-14 w-full border-b border-border bg-background/98 backdrop-blur z-30 px-4 py-3 flex flex-col gap-3 shadow-md"
+          className="absolute left-0 top-14 w-full border-b border-border bg-background z-30 px-4 py-3 flex flex-col gap-3 shadow-lg"
           aria-label="Mobile navigation"
         >
           <nav data-site-nav className="flex flex-col gap-1" aria-label="Main navigation">

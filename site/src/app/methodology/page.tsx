@@ -445,7 +445,7 @@ export default function MethodologyPage() {
       {/* §5 ─────────────────────────────────────────────────────────── */}
       <section id="5" className="mb-10">
         <h2 className="text-xl font-semibold mb-4">5. Known limitations</h2>
-        <ul className="list-disc list-inside space-y-2 text-muted-foreground leading-7 pl-2">
+        <ul className="list-disc list-outside space-y-2 text-muted-foreground leading-7 pl-5">
           <li>
             <strong>FY attribution is approximate.</strong> Contracts execute
             across multiple fiscal years; our current method assigns links
@@ -553,7 +553,8 @@ export default function MethodologyPage() {
               Dossiers exist for {formatCount(dossiers.numerator ?? 0)} of{" "}
               {formatCount(dossiers.denominator ?? 0)} programs, selected by ranking FY2026
               requested dollars among programs with full J-book (R-2/P-40)
-              detail — the {formatCount(dossiers.numerator ?? 0)} largest by money at stake,
+              detail — the {formatCount(dossiers.numerator ?? 0)}{" "}
+              largest by money at stake,
               not by editorial judgment. Program pages that exist only
               through budget-trajectory data (no J-book detail book) are
               outside the ranking pool. Every dossier sentence must carry a
@@ -586,7 +587,9 @@ export default function MethodologyPage() {
               District lens — {formatCount(districts.numerator ?? 0)} of {formatCount(districts.denominator ?? 0)} districts
             </h3>
             <p>
-              {formatCount(districts.numerator ?? 0)} of {formatCount(districts.denominator ?? 0)} congressional districts appear in
+              {formatCount(districts.numerator ?? 0)} of{" "}
+              {formatCount(districts.denominator ?? 0)}{" "}
+              congressional districts appear in
               the district lens. A district gets a page only when at least one
               high-confidence budget→award link places obligated dollars
               there — a consequence of the crosswalk&apos;s current{" "}
@@ -693,7 +696,8 @@ export default function MethodologyPage() {
             </p>
             <p className="mt-2">
               Two honest gaps remain. First, cross-edition{" "}
-              <em>procurement</em> comparisons stop at the PB2024 boundary:
+              <em>procurement</em>{" "}
+              comparisons stop at the PB2024 boundary:
               PB2017–PB2023 procurement lines are keyed within their own
               edition (the underlying account/line identity is unstable
               across those years), so book diffs for the era editions cover
