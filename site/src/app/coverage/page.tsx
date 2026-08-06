@@ -6,7 +6,7 @@ import { ScopeNote } from "@/components/notes";
 import {
   getCoverageMap,
   CROSSWALK_LIMIT_ID,
-  TARGETS_SET_ON,
+  MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
 import { coreOgImages } from "@/lib/og";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -30,6 +30,13 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
  * MOBILE: the table becomes a stack of cards below `sm` (the /data/ pattern) —
  * one DOM, restyled, so the gate hooks and header semantics are unchanged and
  * nothing scrolls off the right edge at 390px.
+ *
+ * TARGETS ARE UNDATED (Sprint 3 round 3, the site owner's decision). The first
+ * cut published eight dates the project had never committed to. They are gone;
+ * every blocker is kept verbatim, and each row now says there is no dated
+ * target, names the work that is planned, and says the date is pending a
+ * roadmap decision. A site that will not publish a figure it cannot recompute
+ * should not publish a schedule it has not agreed to either.
  */
 
 const _rows = getCoverageMap();
@@ -37,13 +44,13 @@ const _rows = getCoverageMap();
 export const metadata: Metadata = {
   title: "Coverage — what this site does and does not cover",
   description:
-    `Coverage, blockers and dated targets for all ${_rows.length} datasets and features on ${SITE_NAME}. ` +
+    `Coverage and the specific blocker behind it for all ${_rows.length} datasets and features on ${SITE_NAME}. ` +
     "Every figure is recomputed from the shipped data at build time, including the budget→award crosswalk gap.",
   alternates: { canonical: `${SITE_URL}/coverage/` },
   openGraph: {
     title: `Coverage — what this site does and does not cover | ${SITE_NAME}`,
     description:
-      "Per-feature coverage with the specific blocker and a dated target for each — and a plain statement of the one gap that is a methodology limit rather than a backlog item.",
+      "Per-feature coverage with the specific blocker standing in the way of each — and a plain statement of the one gap that is a methodology limit rather than a backlog item.",
     url: `${SITE_URL}/coverage/`,
     siteName: SITE_NAME,
     images: coreOgImages("coverage"),
@@ -54,7 +61,6 @@ export default function CoveragePage() {
   const rows = getCoverageMap();
   const crosswalk = rows.find((r) => r.id === CROSSWALK_LIMIT_ID)!;
   const dated = rows.filter((r) => r.targetKind === "dated").length;
-  const undated = rows.length - dated;
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -63,10 +69,10 @@ export default function CoveragePage() {
       {/* <h1> FIRST — gate 2 (nk) pins that no scope block precedes it. */}
       <h1 className="mb-3 text-3xl font-bold">Coverage</h1>
       <p className="max-w-3xl leading-7 text-muted-foreground">
-        What this site covers, what it does not, and when we expect that to
-        change. Each row gives the coverage this build actually shipped, the
-        specific thing standing in the way, and a target date — or a plain
-        statement of why there is no date.
+        What this site covers, what it does not, and what would have to change
+        for that to move. Each row gives the coverage this build actually
+        shipped, the specific thing standing in the way, and where the work
+        stands — including, in plain words, why no row here carries a date.
       </p>
 
       <ScopeNote className="mt-5" label={null}>
@@ -98,10 +104,11 @@ export default function CoveragePage() {
           Feature by feature
         </h2>
         <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
-          {dated} of the {rows.length} rows carry a dated target; the other{" "}
-          {undated} say why they do not. Targets were set on{" "}
-          <time dateTime={TARGETS_SET_ON}>{TARGETS_SET_ON}</time> and are
-          revised in public — a target that slips is moved here, not deleted.
+          {dated === 0
+            ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
+            : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
+          This map was last reviewed on{" "}
+          <time dateTime={MAP_REVIEWED_ON}>{MAP_REVIEWED_ON}</time>.
         </p>
 
         {/* MOBILE: below `sm` each row becomes a card (the /data/ treatment),

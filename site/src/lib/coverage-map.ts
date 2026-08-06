@@ -28,12 +28,25 @@ import "server-only";
  * BLOCKERS AND TARGETS ARE PROSE, and prose is authored — that is the point of
  * them. What the gate enforces is that they EXIST, that a dated target names a
  * month and a year, and that an undated one says so in as many words.
+ *
+ * TARGET POLICY (Sprint 3 round 3 — the site owner's decision). The first cut
+ * of this page shipped eight dated targets that nobody outside the build had
+ * committed to. The owner reviewed them and decided the page ships with the
+ * targets UNDATED: publishing a date the project has not agreed to is the same
+ * class of defect as publishing a figure it cannot recompute, and this is the
+ * page least able to afford either. So every row now states that there is no
+ * dated target AND names the work that is planned and what would move it —
+ * "undated pending a roadmap decision", never "undated because nobody knows".
+ * The BLOCKERS are untouched: they are the page's value, and none was dropped.
+ * A dated target remains legal in this vocabulary (targetKind "dated"); adding
+ * one back is a deliberate act that has to name a month and a year.
  */
 
 import {
   getCompaniesCount,
   getCompaniesWithAwardsCount,
   getDecadeEditions,
+  getDetailGradeCount,
   getDistrictsCount,
   getDossierCount,
   getFilingsCount,
@@ -95,13 +108,22 @@ export interface CoverageMapRow {
   target: string;
 }
 
-/** The date these targets were set — rendered so a stale roadmap is visible. */
-export const TARGETS_SET_ON = "2026-08-05";
+/**
+ * The date this map was last reviewed — rendered so a stale page is visible.
+ * (Was TARGETS_SET_ON; the targets are undated now, but the review date is
+ * exactly the thing a reader needs to judge whether the map is current.)
+ */
+export const MAP_REVIEWED_ON = "2026-08-05";
 
 export function getCoverageMap(): CoverageMapRow[] {
   const programs = getProgramsCount();
   const pages = getProgramPagesCount();
-  const rollups = pages - programs;
+  // Backlog #35: the detail-grade tier is the sidecars that carry J-book
+  // detail rows (= dim_programs), NOT programs.json's length — the index also
+  // lists trajectory-only lines. This page LEADS with this number, so it is
+  // the worst possible place for the site to be two generous about itself.
+  const detailGrade = getDetailGradeCount();
+  const rollups = pages - detailGrade;
   const editions = getDecadeEditions();
   const bridge = getFlowChartMeta().bridge;
   const budgetFy = getFlowChartMeta().budgetFy;
@@ -113,14 +135,14 @@ export function getCoverageMap(): CoverageMapRow[] {
       id: "program-pages",
       label: "Program pages",
       href: "/programs/",
-      numerator: programs,
+      numerator: detailGrade,
       denominator: pages,
       covered:
-        `${formatCount(programs)} of ${formatCount(pages)} program pages carry ` +
+        `${formatCount(detailGrade)} of ${formatCount(pages)} program pages carry ` +
         `detail-grade J-book justification; the other ${formatCount(rollups)} ` +
         `carry cited R-1/P-1 workbook figures only.`,
       derivation:
-        "programs.json rows over the program_details sidecars this build shipped.",
+        "program_details sidecars holding at least one J-book detail row, over every sidecar this build shipped.",
       blocker:
         `The ${formatCount(rollups)} remaining pages are rollup lines for which ` +
         "the services publish no matching R-2/P-40 justification — classified " +
@@ -153,10 +175,13 @@ export function getCoverageMap(): CoverageMapRow[] {
         "every edition needs its own evidence-keyed volume classification " +
         "before its lines can be trusted next to the modern ones. Two editions " +
         "were nearly published with the wrong volumes before that rule existed.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "PB2015 and PB2016 evaluated by March 2027. An edition ships only once " +
-        "its volumes are evidence-keyed — never on a filename pattern.",
+        "No dated target yet — PB2015 and PB2016 are the next two editions " +
+        "queued, and the date is pending a roadmap decision rather than " +
+        "unknown. An edition ships only once its volumes are evidence-keyed — " +
+        "never on a filename pattern — so the date follows that work, not the " +
+        "other way round.",
     },
     {
       id: "dossiers",
@@ -172,10 +197,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "published — a dossier whose citations do not resolve is dropped, not " +
         "published with a caveat. Throughput is bounded by that budget and " +
         "that gate, not by the availability of source material.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "200 programs by March 2027, taken in order of FY2026 requested dollars " +
-        "so the largest lines are covered first.",
+        "No dated target yet — the next batches are queued and will be taken " +
+        "in order of FY2026 requested dollars, so the largest lines are " +
+        "covered first. How many land by when is pending a roadmap decision; " +
+        "the order is already fixed.",
     },
     {
       id: "lineage",
@@ -195,11 +222,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "0604818A” is usable; “realigned to another program element” " +
         "is not, and most renumberings are written the second way. Candidate " +
         "edges found by maturation patterns are shown dashed and are never cited.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "Narrative extraction across the whole FY2026 set by December 2026. " +
-        "Anything it finds stays in the candidate tier until a quotable " +
-        "sentence names both ends.",
+        "No dated target yet — narrative extraction across the whole FY2026 " +
+        "set is the planned next step and its date is pending a roadmap " +
+        "decision. Whenever it runs, anything it finds stays in the candidate " +
+        "tier until a quotable sentence names both ends.",
     },
     {
       id: "flows",
@@ -287,10 +315,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "a rolling basis and the federal year does not close until 30 " +
         "September. Years before the window's start sit outside the transaction " +
         "archive we ingest.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "Refreshed every ingestion run. The current fiscal year completes after " +
-        "the September 2026 year end, at which point its figures stop moving.",
+        "No dated target, and none would mean anything here: this window is " +
+        "refreshed on every ingestion run rather than on a schedule. The " +
+        "newest fiscal year stops moving once the federal year has closed and " +
+        "USAspending has finished publishing against it.",
     },
     {
       id: "districts",
@@ -306,11 +336,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "recorded against statewide or undistricted codes (00, 90, 98, 99), and " +
         "those cannot be split across a state's seats without inventing a " +
         "distribution nobody could check.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "By December 2026 the statewide residual is published as its own row " +
-        "per state, so the dollars that cannot be districted are visible " +
-        "instead of missing.",
+        "No dated target yet — the planned fix is to publish the statewide " +
+        "residual as its own row per state, so the dollars that cannot be " +
+        "districted are visible instead of missing. The work is scoped; its " +
+        "date is pending a roadmap decision.",
     },
     {
       id: "state-ca",
@@ -326,10 +357,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "so each earlier year needs its own reconciliation against the restated " +
         "totals before it can sit beside a federal figure. Every other state is " +
         "a separate portal with its own schema — there is no shared source.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "California FY2023 and FY2024 by June 2027. No second state is " +
-        "scheduled, and none will be announced before its portal is ingested.",
+        "No dated target yet — California FY2023 and FY2024 are the planned " +
+        "next step, pending a roadmap decision on when the reconciliation " +
+        "work is scheduled. No second state is queued behind them, and none " +
+        "will be announced before its portal is ingested.",
     },
     {
       id: "feeds",
@@ -349,11 +382,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "events; the rest would be permanently empty subscriptions advertised " +
         "as live ones. So feed coverage is event coverage, and a new event type " +
         "cannot ship until its threshold is published and gated.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "Two further event types — protest outcomes and GAO high-risk " +
-        "transitions — by June 2027, each with its threshold published before " +
-        "its first card.",
+        "No dated target yet — two further event types are planned, protest " +
+        "outcomes and GAO high-risk transitions, each with its threshold " +
+        "published before its first card. Which build carries them is pending " +
+        "a roadmap decision.",
     },
     {
       id: "filings",
@@ -369,11 +403,12 @@ export function getCoverageMap(): CoverageMapRow[] {
         "line. A mention is published only where a tracked alias matches; a " +
         "description naming only “the Navy” produces none, which is " +
         "the honest result rather than a miss.",
-      targetKind: "dated",
+      targetKind: "none",
       target:
-        "Alias coverage extended across the whole detail-grade corpus by March " +
-        "2027, with each new alias recorded in the alias table rather than " +
-        "inferred at match time.",
+        "No dated target yet — extending alias coverage across the whole " +
+        "detail-grade corpus is planned, with each new alias recorded in the " +
+        "alias table rather than inferred at match time. The date is pending " +
+        "a roadmap decision; the rule it has to follow is not.",
     },
   ];
 

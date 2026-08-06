@@ -38,13 +38,32 @@
  *     omission on a coverage page);
  *   - every row carries a blocker of real length. "Not done yet" is not a
  *     blocker, and a 20-character cell is that in disguise;
- *   - every target is either DATED (names a month and a year) or explicitly
- *     undated, in which case it must say so in as many words;
+ *   - EVERY row carries a target field of real length, and it is either DATED
+ *     (names a month and a year) or explicitly undated, in which case it must
+ *     say so in as many words. Both forms have to be a statement: below
+ *     MIN_TARGET_CHARS a cell is "TBD" with extra whitespace;
  *   - the crosswalk row is undated AND states the methodology limit —
  *     account-code coarseness, with DARPA named as the exception. That
  *     sentence is the page's centrepiece; the gate keeps it from decaying
  *     into "coming soon".
  * Vacuity fails: no rows, or a table that recomputes nothing, is a FAIL.
+ *
+ * TARGET-DATE POLICY (Sprint 3 round 3 — deliberate rule change, recorded so
+ * it is not mistaken for a gate being softened). This leg used to additionally
+ * require that at least HALF the rows carried a dated target. That rule
+ * encoded a design choice the implementing agent made on its own: it invented
+ * eight dates and then gated the page into keeping them. The site owner
+ * reviewed those dates and decided the page ships with the targets UNDATED,
+ * because publishing a schedule the project has not committed to is the same
+ * class of defect as publishing a figure it cannot recompute — and this is the
+ * page least able to afford either. The half-dated rule was therefore wrong
+ * about what it was protecting, so it is REPLACED (not dropped) by a rule that
+ * protects the property that actually matters: every row must carry a target
+ * field, a dated one must name a month and a year, an undated one must say so
+ * and say enough to be a statement, and the crosswalk row must still name
+ * account-code coarseness and DARPA. Dated targets remain legal in this
+ * vocabulary — the gate has no opinion on how many there are, only that
+ * whatever is published is checkable.
  */
 
 import fs from "fs";
@@ -149,6 +168,35 @@ function programPagesCount() {
   const dir = path.join(jsonDir, "program_details");
   if (!fs.existsSync(dir)) return 0;
   return fs.readdirSync(dir).filter((f) => f.endsWith(".json")).length;
+}
+
+/**
+ * Sidecars that actually carry R-2/P-40 J-book DETAIL rows — the detail-grade
+ * tier (backlog #35). NOT programs.json's length: that is the /programs/
+ * index, which since backlog #17 also lists trajectory-only program elements
+ * with no J-book detail at all. Recomputed from the sidecars so the gate does
+ * not inherit the claim it is checking.
+ */
+function detailGradeCount() {
+  const dir = path.join(jsonDir, "program_details");
+  if (!fs.existsSync(dir)) return 0;
+  let n = 0;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    let raw;
+    try {
+      raw = fs.readFileSync(path.join(dir, f), "utf8");
+    } catch {
+      continue;
+    }
+    if (!raw.includes('"details"') || raw.includes('"details":[]')) continue;
+    try {
+      const d = JSON.parse(raw).details;
+      if (Array.isArray(d) && d.length > 0) n++;
+    } catch {
+      // skip malformed
+    }
+  }
+  return n;
 }
 
 /** First rollup-tier program slug (sidecar with tier:'rollup', sorted) —
@@ -287,7 +335,10 @@ export async function runCoverageGate() {
         return {
           n,
           d,
-          pattern: `The matrix covers the ${fmtCount(n)} programs with detail-grade data; all ${fmtCount(d)} program pages are browsable.`,
+          pattern:
+            `The matrix covers the ${fmtCount(n)} program elements in the FY2026 budget index, ` +
+            `${fmtCount(detailGradeCount())} of which carry detail-grade R-2/P-40 data; ` +
+            `all ${fmtCount(d)} program pages are browsable.`,
         };
       },
     },
@@ -382,6 +433,14 @@ const DATED_TARGET_RE =
 /** Shortest sentence that can carry a real blocker. Below this it is "soon". */
 const MIN_BLOCKER_CHARS = 60;
 
+/**
+ * Shortest sentence that can carry a real target — dated or not. Same floor as
+ * the blocker: "No dated target." on its own tells a reader nothing about
+ * whether the work is planned, which is the whole question an undated target
+ * has to answer.
+ */
+const MIN_TARGET_CHARS = 60;
+
 /** Count the RSS files (never the .atom.xml twins) in a built feed directory. */
 function countRssFeeds(dir) {
   if (!fs.existsSync(dir)) return 0;
@@ -407,6 +466,7 @@ function recomputeCoverageMap() {
     ? fs.readdirSync(detailsDir).filter((f) => f.endsWith(".json"))
     : [];
   const pages = detailFiles.length;
+  const detailGrade = detailGradeCount();
 
   // Programs carrying a non-empty lineage rail — parsed, not grepped.
   let lineage = 0;
@@ -484,10 +544,16 @@ function recomputeCoverageMap() {
   const filings = readJson(path.join(jsonDir, "filings_index.json")).total;
 
   return {
+    // Backlog #35: the detail-grade tier is recomputed from the sidecars that
+    // hold J-book detail rows, NOT from programs.json's length — the index
+    // also lists trajectory-only lines, and this page LEADS with this number.
     "program-pages": {
-      n: programs,
+      n: detailGrade,
       d: pages,
-      must: [`${fmtCount(programs)} of ${fmtCount(pages)}`, fmtCount(pages - programs)],
+      must: [
+        `${fmtCount(detailGrade)} of ${fmtCount(pages)}`,
+        fmtCount(pages - detailGrade),
+      ],
     },
     editions: {
       n: editions.length,
@@ -590,6 +656,7 @@ function runCoverageMapLeg(errors, notes) {
 
   let checkedFigures = 0;
   let datedTargets = 0;
+  let targetsSeen = 0;
 
   for (const row of rendered) {
     const id = row.getAttribute("data-coverage-row");
@@ -632,10 +699,23 @@ function runCoverageMapLeg(errors, notes) {
       );
     }
 
-    // (4) a dated target, or an explicit statement that there is not one
+    // (4) EVERY row carries a target field: dated (names a month and a year)
+    //     or explicitly undated (says so) — and either way, a statement.
     const targetEl = row.querySelector("[data-coverage-target]");
-    const target = (targetEl?.text ?? "").replace(/\s+/g, " ").trim();
-    const kind = targetEl?.getAttribute("data-target-kind");
+    if (!targetEl) {
+      errors.push(
+        `leg cm[${id}]: row has no [data-coverage-target] cell — every row must state where the work stands`,
+      );
+      continue;
+    }
+    targetsSeen++;
+    const target = (targetEl.text ?? "").replace(/\s+/g, " ").trim();
+    const kind = targetEl.getAttribute("data-target-kind");
+    if (target.length < MIN_TARGET_CHARS) {
+      errors.push(
+        `leg cm[${id}]: target is ${target.length} chars ("${target}") — under ${MIN_TARGET_CHARS} it is "TBD" with extra words`,
+      );
+    }
     if (kind === "dated") {
       datedTargets++;
       if (!DATED_TARGET_RE.test(target)) {
@@ -698,11 +778,16 @@ function runCoverageMapLeg(errors, notes) {
     }
   }
 
-  // (6) at least half the rows carry a date — otherwise this is a list of
-  //     excuses, which is the state the review already found the site in.
-  if (datedTargets * 2 < rendered.length) {
+  // (6) EVERY rendered row states where the work stands. See the TARGET-DATE
+  //     POLICY note at the top of this file: the former "at least half the
+  //     rows must carry a date" rule was replaced here, deliberately, because
+  //     it protected an invented schedule rather than a checkable statement.
+  //     What replaced it still has teeth — a row that drops its target cell,
+  //     or fills it with "TBD", or marks itself dated without naming a month
+  //     and a year, all fail above.
+  if (targetsSeen !== rendered.length) {
     errors.push(
-      `leg cm: only ${datedTargets} of ${rendered.length} rows carry a dated target — a roadmap where most rows have no date is not a roadmap`,
+      `leg cm: ${targetsSeen} of ${rendered.length} rows carry a target field — every row on a coverage page must say where the work stands`,
     );
   }
 
@@ -712,6 +797,6 @@ function runCoverageMapLeg(errors, notes) {
 
   notes.push(
     `leg cm coverage map: ${rendered.length} row(s), ${checkedFigures} recomputed figure(s) matched, ` +
-      `${datedTargets} dated target(s) ✓`,
+      `${targetsSeen} target statement(s), of which ${datedTargets} dated ✓`,
   );
 }

@@ -11,6 +11,10 @@ import { describe, it, expect, vi } from "vitest";
 
 const MOCK = {
   programs: 1234,
+  // Backlog #35: the detail-grade tier is NOT the index length. Kept
+  // deliberately different from `programs` so a row that reaches for the
+  // wrong one fails here.
+  detailGrade: 1230,
   programPages: 1500,
   dossiers: 51,
   flows: 19,
@@ -24,6 +28,7 @@ const MOCK = {
 
 vi.mock("@/lib/data", () => ({
   getProgramsCount: () => MOCK.programs,
+  getDetailGradeCount: () => MOCK.detailGrade,
   getProgramPagesCount: () => MOCK.programPages,
   getDossierCount: () => MOCK.dossiers,
   getFlowsCount: () => MOCK.flows,
@@ -84,7 +89,9 @@ describe("coverage map — shape", () => {
       // "the specific blocker" — a blocker like "not done yet" is useless, so
       // the shortest useful sentence is the floor.
       expect(r.blocker.length, r.id).toBeGreaterThan(60);
-      expect(r.target.length, r.id).toBeGreaterThan(20);
+      // A target — dated or not — has to be a statement, not a shrug. Same
+      // floor as the blocker: "TBD" and "No dated target." both fail here.
+      expect(r.target.length, r.id).toBeGreaterThan(60);
       expect(["dated", "none"], r.id).toContain(r.targetKind);
       expect(r.derivation.length, r.id).toBeGreaterThan(10);
       expect(r.href, r.id).toMatch(/^\//);
@@ -102,18 +109,40 @@ describe("coverage map — shape", () => {
     }
   });
 
-  it("at least half the rows carry a dated target — a roadmap, not a list of excuses", () => {
-    const dated = rows.filter((r) => r.targetKind === "dated").length;
-    expect(dated * 2).toBeGreaterThanOrEqual(rows.length);
+  /**
+   * TARGET POLICY (Sprint 3 round-3, the site owner's decision).
+   *
+   * The first cut of this page published eight dated targets that the
+   * implementing agent picked on its own. The owner reviewed them and decided
+   * the site should not publish dates nobody has committed to — so the
+   * targets ship UNDATED, with every blocker kept verbatim.
+   *
+   * What the tests pin is therefore the property, not the count: an undated
+   * target must say it is undated, must still name the work that is planned,
+   * and must never read as abandonment. A dated target remains legal — it
+   * just has to name a month and a year, so a date can only be added
+   * deliberately.
+   */
+  it("an undated target names the planned work and never reads as abandoned", () => {
+    const undated = rows.filter((r) => r.targetKind === "none");
+    expect(undated.length).toBeGreaterThan(0);
+    for (const r of undated) {
+      const t = r.target.toLowerCase();
+      expect(t, r.id).toMatch(/no dated target/);
+      expect(t, r.id).not.toMatch(/\bno plans?\b|not planned|abandoned|shelved/);
+    }
   });
 });
 
 describe("coverage map — every number is read, never authored", () => {
   it("program pages: detail-grade over the browsable universe", () => {
     const r = byId.get("program-pages")!;
-    expect(r.numerator).toBe(MOCK.programs);
+    expect(r.numerator).toBe(MOCK.detailGrade);
     expect(r.denominator).toBe(MOCK.programPages);
-    expect(r.covered).toContain("1,234 of 1,500");
+    expect(r.covered).toContain("1,230 of 1,500");
+    // …and the rollup remainder is measured against the DETAIL tier, so a
+    // regression to the index count would move this by two.
+    expect(r.covered).toContain("270");
   });
 
   it("dossiers, flows and lineage are all over the detail-grade corpus", () => {
