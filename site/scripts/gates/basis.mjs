@@ -101,6 +101,49 @@ const footnoteModulePath = path.resolve(siteRoot, "src", "lib", "footnote.ts");
 const BOOTSTRAP_COLLISION_PAGE = "ATA000";
 const MAX_LISTED = 10;
 
+// ── Leg (e) — cross-page "one label, one basis" ──────────────────────────────
+//
+// Legs a/b are INTRA-page: they cannot see that /programs/ said $5.25B for
+// F-35 FY24 actuals while /program/ATA000/ and /years/ said $5.57B, because
+// no single page held both. That is the shape the reader actually meets — an
+// index and the pages it indexes — and it is how the shipped defect survived
+// Sprint 1's ~80k basis attributes: the /programs/ money columns carried no
+// basis at all, so nothing joined them to anything.
+//
+// The contract this leg enforces is the property, not a particular choice:
+// an index may publish a figure on ANY declared basis, but it must DECLARE
+// that basis, visibly, and the value must be the one the program page
+// publishes on that same basis. Switching a column's basis is legal; showing
+// one label with two values and no explanation is not.
+//
+// Two declaration forms, because the surfaces differ:
+//   TABLE — table[data-basis-table], thead th[data-basis][data-fy]
+//           [data-measure], tbody tr[data-entity]. The basis is a property of
+//           the COLUMN (every cell comes from one field), so it is declared
+//           once instead of on each of 3,482 figures — /programs/ has 168 KB
+//           of headroom under its §P2-1 weight ceiling and per-figure
+//           attributes would eat ~157 KB of it.
+//   FIGURE — a [data-amount] carrying data-basis + data-fy + data-measure +
+//           data-entity itself. Used by /agency/{org}/, which is a list.
+// Either way the page must ALSO carry a [data-basis-declared] element whose
+// text names the basis — a machine-readable attribute a reader cannot see is
+// exactly what this leg exists to prevent.
+const CROSS_PAGE_INDEXES = [
+  { label: "/programs/", file: "programs/index.html" },
+  { label: "/agency/*/", dir: "agency" },
+];
+
+/**
+ * Human basis labels — MIRRORS BASIS_LABEL in src/lib/basis.ts, which is what
+ * <Cite>'s chip and the /programs/ column label both render. Change one,
+ * change both; the leg fails loudly on an unknown basis rather than skipping
+ * it, so a new basis token cannot slip past unlabelled.
+ */
+const BASIS_LABEL = {
+  toa: "P-1 TOA",
+  "jbook-detail": "P-40 detail",
+};
+
 // ── Value normalization ──────────────────────────────────────────────────────
 
 const SUFFIX_MULT = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
@@ -283,6 +326,161 @@ function labelContext(el) {
   return best.text || "";
 }
 
+/**
+ * Every declared cross-page index surface, as { label, htmlPath }.
+ * A `dir` entry expands to every built index.html one level down.
+ */
+function crossPageIndexFiles() {
+  const out = [];
+  for (const entry of CROSS_PAGE_INDEXES) {
+    if (entry.file) {
+      const p = path.join(outDir, entry.file);
+      if (fs.existsSync(p)) out.push({ label: entry.label, htmlPath: p });
+      continue;
+    }
+    const dir = path.join(outDir, entry.dir);
+    if (!fs.existsSync(dir)) continue;
+    for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue;
+      const p = path.join(dir, d.name, "index.html");
+      if (fs.existsSync(p)) {
+        out.push({ label: `/${entry.dir}/${d.name}/`, htmlPath: p });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Read the figures a cross-page index surface DECLARES, in either form.
+ *
+ * Returns { figures, declaredLabels, columnIssues }:
+ *   figures        [{ entity, fy, measure, basis, value, text, where }]
+ *   declaredLabels the set of basis labels the page states VISIBLY, from its
+ *                  [data-basis-declared] elements
+ *   columnIssues   structural problems (a money column with no basis, a
+ *                  declared column whose cells cannot be read)
+ *
+ * Absence cells ("—") are skipped, not flagged: an index that has no figure
+ * for a program is making no claim about it.
+ */
+export function readIndexFigures(root, label) {
+  const figures = [];
+  const columnIssues = [];
+
+  const declaredLabels = new Set();
+  for (const el of root.querySelectorAll("[data-basis-declared]")) {
+    const text = (el.text || "").replace(/\s+/g, " ");
+    for (const [token, human] of Object.entries(BASIS_LABEL)) {
+      if (text.includes(human)) declaredLabels.add(token);
+    }
+  }
+
+  // ── TABLE form ──
+  for (const table of root.querySelectorAll("table[data-basis-table]")) {
+    const name = table.getAttribute("data-basis-table") || "(unnamed)";
+    const headRow = table.querySelector("thead tr");
+    if (!headRow) {
+      columnIssues.push(
+        `${label}: table[data-basis-table="${name}"] has no thead row — a column-scoped basis needs a column to sit on`,
+      );
+      continue;
+    }
+    const ths = elementChildren(headRow).filter((c) =>
+      ["td", "th"].includes((c.tagName || "").toLowerCase()),
+    );
+    const cols = new Map(); // index → {basis, fy, measure}
+    ths.forEach((th, i) => {
+      const basis = th.getAttribute("data-basis");
+      const fy = th.getAttribute("data-fy");
+      const measure = th.getAttribute("data-measure");
+      if (!basis && !fy && !measure) return; // not a declared money column
+      if (!basis || !fy || !measure) {
+        columnIssues.push(
+          `${label}: table "${name}" column "${(th.text || "").trim().slice(0, 24)}" ` +
+            `declares a partial basis (basis=${basis ?? "—"}, fy=${fy ?? "—"}, measure=${measure ?? "—"})`,
+        );
+        return;
+      }
+      if (!BASIS_LABEL[basis]) {
+        columnIssues.push(
+          `${label}: table "${name}" declares unknown basis "${basis}" — add it to BASIS_LABEL in src/lib/basis.ts and here, or the chip renders nothing`,
+        );
+        return;
+      }
+      // The declaration has to be VISIBLE in this column's own header.
+      const headerText = (th.text || "").replace(/\s+/g, " ");
+      if (!headerText.includes(BASIS_LABEL[basis])) {
+        columnIssues.push(
+          `${label}: table "${name}" column "${headerText.slice(0, 40)}" declares basis=${basis} ` +
+            `in an attribute but never says "${BASIS_LABEL[basis]}" where a reader can see it`,
+        );
+      }
+      cols.set(i, { basis, fy, measure });
+    });
+    if (cols.size === 0) {
+      columnIssues.push(
+        `${label}: table[data-basis-table="${name}"] declares no money columns — the marker claims a contract the table does not keep`,
+      );
+      continue;
+    }
+    for (const row of table.querySelectorAll("tbody tr")) {
+      const entity = row.getAttribute("data-entity");
+      if (!entity) continue;
+      const cells = elementChildren(row).filter((c) =>
+        ["td", "th"].includes((c.tagName || "").toLowerCase()),
+      );
+      for (const [i, col] of cols) {
+        const cell = cells[i];
+        if (!cell) continue;
+        const amountEl = cell.querySelector("[data-amount]");
+        if (!amountEl) continue; // absence cell — no claim made
+        const text = (amountEl.text || "").trim();
+        const value = normalizeAmount(text);
+        if (value == null) continue;
+        figures.push({
+          entity,
+          fy: col.fy,
+          measure: col.measure,
+          basis: col.basis,
+          value,
+          text,
+          where: `${label} table "${name}"`,
+        });
+      }
+    }
+  }
+
+  // ── FIGURE form ──
+  for (const el of root.querySelectorAll("[data-amount][data-entity]")) {
+    const basis = el.getAttribute("data-basis");
+    const fy = el.getAttribute("data-fy");
+    const measure = el.getAttribute("data-measure");
+    const entity = el.getAttribute("data-entity");
+    if (!basis || !fy || !measure || !entity) continue;
+    if (!BASIS_LABEL[basis]) continue; // non-budget basis: no chip vocabulary
+    const text = (el.text || "").trim();
+    const value = normalizeAmount(text);
+    if (value == null) continue;
+    if (!declaredLabels.has(basis)) {
+      columnIssues.push(
+        `${label}: figure "${text}" declares basis=${basis} in an attribute but the page never says "${BASIS_LABEL[basis]}" where a reader can see it`,
+      );
+    }
+    figures.push({
+      entity,
+      fy,
+      measure,
+      basis,
+      value,
+      text,
+      where: label,
+    });
+  }
+
+  return { figures, declaredLabels, columnIssues };
+}
+
 function* walkProgramPages() {
   const programDir = path.join(outDir, "program");
   if (!fs.existsSync(programDir)) return;
@@ -327,6 +525,30 @@ export async function runBasisGate() {
   let cardsSeen = 0;
   let absenceCardsSeen = 0;
 
+  // ── Leg (e): read the INDEX surfaces first, so the program-page scan below
+  //    only has to remember the (entity, fy, measure) keys an index asks
+  //    about. 1,993 pages × ~40 figures is not a map worth building blind.
+  const indexFigures = [];
+  const indexIssues = [];
+  const indexSurfaces = crossPageIndexFiles();
+  for (const { label, htmlPath } of indexSurfaces) {
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch (e) {
+      indexIssues.push(`${label}: failed to parse (${e.message})`);
+      continue;
+    }
+    const r = readIndexFigures(root, label);
+    indexFigures.push(...r.figures);
+    indexIssues.push(...r.columnIssues);
+  }
+  const wantedKeys = new Set(
+    indexFigures.map((f) => `${f.entity}|${f.fy}|${f.measure}`),
+  );
+  /** key → [{ value, basis, text }] as the PROGRAM PAGE publishes them. */
+  const pageFigures = new Map();
+
   for (const { pe, htmlPath } of pages) {
     const relPath = path.relative(outDir, htmlPath);
     let root;
@@ -364,6 +586,21 @@ export async function runBasisGate() {
       } else {
         attributed.push({ el, basis, fy, measure });
       }
+    }
+
+    // ── (e) collect the keys the index surfaces asked about ──
+    for (const f of attributed) {
+      const entity = f.el.getAttribute("data-entity") || pe;
+      const key = `${entity}|${f.fy}|${f.measure}`;
+      if (!wantedKeys.has(key)) continue;
+      const v = normalizeAmount((f.el.text || "").trim());
+      if (v == null) continue;
+      if (!pageFigures.has(key)) pageFigures.set(key, []);
+      pageFigures.get(key).push({
+        value: v,
+        basis: f.basis,
+        text: (f.el.text || "").trim(),
+      });
     }
 
     // ── (a2) collision — permanent attribute path ──
@@ -678,10 +915,147 @@ export async function runBasisGate() {
     }
   }
 
+  // ── Leg (e) — cross-page "one label, one basis" ────────────────────────────
+  runCrossPageLeg(
+    { indexSurfaces, indexFigures, indexIssues, pageFigures },
+    errors,
+    notes,
+  );
+
   // ── Leg (d) — entity totals: reproduce, and mean the period they name ──────
   runEntityTotalsLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (e) — CROSS-PAGE ONE-LABEL-ONE-BASIS (Sprint 3 round 3)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect this closes: /programs/ rendered F-35 "FY24 actual
+// $5.25B" (the P-40 J-book detail figure) while /years/ and /program/ATA000/
+// rendered $5.57B (the canonical P-1 TOA figure). Both numbers were real and
+// both were cited. What was missing was any statement of WHICH measurement
+// each column was — Sprint 1 put basis attributes on ~80k figures and this
+// index's two money columns were not among them, so nothing could join the
+// index to the pages it indexes.
+//
+// Three checks, in the order a reader would notice them:
+//
+//   e1 STRUCTURE — a declared surface must actually declare: a money column
+//      needs basis + fy + measure, the basis must be in the chip vocabulary,
+//      and the declaration must appear in text a reader can see, not only in
+//      an attribute. (Half a declaration is worse than none: it looks
+//      checked.)
+//   e2 AGREEMENT — for each (entity, fy, measure) the index publishes, the
+//      program page must publish that label on the SAME basis, at the SAME
+//      value. Two ways to fail: the page states that basis and disagrees
+//      (one label, two values), or the page never states that basis at all
+//      (the index is quoting a measurement its own detail page does not
+//      make).
+//   e3 VACUITY — every declared surface must contribute figures, and the set
+//      must actually join to program pages. A leg that silently matches
+//      nothing is the failure mode that let this ship in the first place.
+//
+// NOTE ON SCOPE: /years/ is not listed. Its grid is fetched and rendered
+// client-side from years_matrix.json, so its static HTML holds no figures for
+// a static gate to read. Gate 24's yearsmatrix leg recomputes that payload
+// against the parquet lake instead, which is the stronger check for it.
+function runCrossPageLeg(
+  { indexSurfaces, indexFigures, indexIssues, pageFigures },
+  errors,
+  notes,
+) {
+  if (indexSurfaces.length === 0) {
+    errors.push(
+      "leg e is VACUOUS: none of the declared cross-page index surfaces was built " +
+        `(${CROSS_PAGE_INDEXES.map((c) => c.label).join(", ")})`,
+    );
+    return;
+  }
+
+  // e1 — structure
+  if (indexIssues.length > 0) {
+    errors.push(
+      `leg e1 index basis declaration: ${indexIssues.length} problem(s) (first ${MAX_LISTED}):`,
+    );
+    for (const i of indexIssues.slice(0, MAX_LISTED)) errors.push(`  ${i}`);
+    if (indexIssues.length > MAX_LISTED)
+      errors.push(`  ... and ${indexIssues.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg e1: ${indexSurfaces.length} index surface(s) declare basis, fy and measure — visibly ✓`,
+    );
+  }
+
+  // e2 — agreement with the page the row links to
+  const disagreements = [];
+  const missingBasis = [];
+  let joined = 0;
+  for (const f of indexFigures) {
+    const key = `${f.entity}|${f.fy}|${f.measure}`;
+    const onPage = pageFigures.get(key);
+    // No program page for this entity, or the page publishes nothing under
+    // this label: not a contradiction, so not this leg's business.
+    if (!onPage || onPage.length === 0) continue;
+    joined++;
+    const sameBasis = onPage.filter((p) => p.basis === f.basis);
+    if (sameBasis.length === 0) {
+      if (missingBasis.length < MAX_LISTED * 2) {
+        missingBasis.push(
+          `${f.where}: ${f.entity} FY${f.fy} ${f.measure} = ${f.text} on basis "${f.basis}", ` +
+            `but /program/${f.entity}/ publishes that label only on ` +
+            `[${[...new Set(onPage.map((p) => p.basis))].join(", ")}]`,
+        );
+      }
+      continue;
+    }
+    if (!sameBasis.some((p) => valuesAgree(p.value, f.value))) {
+      if (disagreements.length < MAX_LISTED * 2) {
+        disagreements.push(
+          `${f.where}: ${f.entity} FY${f.fy} ${f.measure} (basis ${f.basis}) reads ${f.text}, ` +
+            `but /program/${f.entity}/ reads ` +
+            `[${sameBasis.map((p) => p.text).join(", ")}] under the same label and basis`,
+        );
+      }
+    }
+  }
+
+  if (disagreements.length > 0) {
+    errors.push(
+      `leg e2 cross-page collision: ${disagreements.length} index figure(s) contradict the ` +
+        `program page they link to, under one label and one declared basis (first ${MAX_LISTED}):`,
+    );
+    for (const d of disagreements.slice(0, MAX_LISTED)) errors.push(`  ${d}`);
+    if (disagreements.length > MAX_LISTED)
+      errors.push(`  ... and ${disagreements.length - MAX_LISTED} more`);
+  }
+  if (missingBasis.length > 0) {
+    errors.push(
+      `leg e2 undeclared basis: ${missingBasis.length} index figure(s) claim a basis their own ` +
+        `program page never publishes for that label (first ${MAX_LISTED}):`,
+    );
+    for (const m of missingBasis.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (missingBasis.length > MAX_LISTED)
+      errors.push(`  ... and ${missingBasis.length - MAX_LISTED} more`);
+  }
+
+  // e3 — vacuity
+  if (indexFigures.length === 0) {
+    errors.push(
+      "leg e is VACUOUS: the declared index surfaces contributed 0 basis-carrying figures",
+    );
+  } else if (joined === 0) {
+    errors.push(
+      `leg e is VACUOUS: ${indexFigures.length} index figure(s) read, but not one joined to a ` +
+        `program page — the (entity, fy, measure) keys do not line up, so nothing is being compared`,
+    );
+  } else if (disagreements.length === 0 && missingBasis.length === 0) {
+    notes.push(
+      `leg e2: ${joined} of ${indexFigures.length} index figures joined to their program page; ` +
+        `every one agrees under one label and one basis ✓`,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

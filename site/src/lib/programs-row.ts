@@ -27,27 +27,47 @@ export interface ProgramsTableRow {
   /** Raw workbook org token ("F"); the human name is derived for display. */
   org: string;
   title: string;
-  /** FY24 actual, USD millions (J-book grain). */
+  /** FY24 actual, USD thousands — P-1/R-1 TOA, the canonical basis. */
   fy24: number | null;
-  /** FY24 citation fact_id (Cite state A), when the amount resolved. */
+  /** FY24 derived-citation fact_id. */
   fy24Fid: string | null;
-  /** FY24 xml_path (Cite state B) for zero-amount / unresolved facts. */
-  fy24Xml: string | null;
   /** FY26 total, USD thousands (workbook grain). */
   fy26: number | null;
   /** FY26 derived-citation fact_id. */
   fy26Fid: string | null;
 }
 
-/** Project a full ProgramRow down to what the table actually renders. */
+/**
+ * Project a full ProgramRow down to what the table actually renders.
+ *
+ * ONE LABEL, ONE BASIS (Sprint 3 round 3, gate 23 leg e). `fy24` used to be
+ * `fy2024_actual_millions` — the P-40/R-2 J-book DETAIL figure — sitting
+ * beside an FY26 column projected from the P-1 TOA trajectory. Two bases and
+ * two units in two adjacent columns of one row, and no basis stated on either.
+ *
+ * The visible cost: this index disagreed with every page it links to. F-35 read
+ * $5.25B here, $5.57B on /years/ and on /program/ATA000/. 22 of 1,741 rows
+ * differ materially — Shipboard Tactical Communications by 18x ($28.6M against
+ * $528.6M) — and the FY24 sort ranked those 22 by the wrong size.
+ *
+ * So the column is the canonical TOA figure, from the same trajectory object
+ * the FY26 column already used: one basis, one unit, comparable across the row,
+ * and identical to what /years/ and the program page publish. The J-book detail
+ * figure is not lost — it is on the program page inside the reconciliation
+ * strip Sprint 1 built for exactly this pair, one click from every row here.
+ *
+ * `fy24Xml` is gone with it: an xml_path is a J-book-detail citation state, and
+ * a TOA column has no use for one. The 110 programs it served all rendered
+ * "$0 [XML]" (a zero-dollar J-book line) where TOA publishes no FY24 row at
+ * all; they render the honest absence now, which is what /years/ shows.
+ */
 export function toProgramsTableRow(p: ProgramRow): ProgramsTableRow {
   return {
     pe: p.pe_bli,
     org: p.org,
     title: p.title,
-    fy24: p.fy2024_actual_millions,
-    fy24Fid: p.fy2024_fact_id,
-    fy24Xml: p.fy2024_xml_path,
+    fy24: p.trajectory?.fy2024_actuals ?? null,
+    fy24Fid: p.trajectory_fact_ids?.fy2024_actuals ?? null,
     fy26: p.trajectory?.fy2026_total ?? null,
     fy26Fid: p.trajectory_fact_ids?.fy2026_total ?? null,
   };

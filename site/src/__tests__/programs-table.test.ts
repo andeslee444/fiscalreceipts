@@ -52,12 +52,11 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     "title",
     "fy24",
     "fy24Fid",
-    "fy24Xml",
     "fy26",
     "fy26Fid",
   ];
 
-  it("carries exactly the eight rendered fields — no more", () => {
+  it("carries exactly the seven rendered fields — no more", () => {
     expect(Object.keys(program()).sort()).toEqual([...RENDERED_FIELDS].sort());
   });
 
@@ -83,7 +82,7 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     }
   });
 
-  it("flattens ONLY the FY26 total out of the decade trajectory", () => {
+  it("flattens the FY24 actual AND the FY26 total out of the decade trajectory", () => {
     const row = program({
       trajectory: {
         fy2024_actuals: 111,
@@ -99,18 +98,72 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
         fy2526_change: "e".repeat(16),
       } as ProgramRow["trajectory_fact_ids"],
     });
+    expect(row.fy24).toBe(111);
+    expect(row.fy24Fid).toBe("b".repeat(16));
     expect(row.fy26).toBe(333);
     expect(row.fy26Fid).toBe("d".repeat(16));
-    expect(JSON.stringify(row)).not.toContain("b".repeat(16));
+    // FY25 and the change are still dropped — the table renders neither.
+    expect(JSON.stringify(row)).not.toContain("c".repeat(16));
+    expect(JSON.stringify(row)).not.toContain("e".repeat(16));
   });
 
-  it("keeps both FY24 citation states (fact_id AND xml_path)", () => {
+  /**
+   * ONE LABEL, ONE BASIS across pages (Sprint 3 round 3).
+   *
+   * The FY24 column used to project fy2024_actual_millions — the P-40/R-2
+   * J-book DETAIL figure — while the FY26 column beside it projected the P-1
+   * TOA trajectory. So one row carried two bases in two adjacent columns, and
+   * the index disagreed with every page it links to: F-35 read $5.25B here
+   * and $5.57B on /years/ and /program/ATA000/, with nothing on the index
+   * saying why. 22 of 1,741 rows differ materially; Shipboard Tactical
+   * Communications differs by 18x.
+   *
+   * The column is canonical TOA now, so the index agrees with the pages it
+   * indexes, both money columns share one basis and one unit, and the FY24
+   * sort ranks programs by their canonical size.
+   */
+  it("takes FY24 from the canonical TOA trajectory, never the J-book detail figure", () => {
     const row = program({
+      // The real ATA000 pair: J-book detail 5,247.07 USD millions vs the
+      // P-1 TOA 5,565,655 USD thousands.
+      fy2024_actual_millions: 5247.07,
+      fy2024_fact_id: "a".repeat(16),
+      trajectory: {
+        fy2024_actuals: 5565655,
+        fy2025_total: null,
+        fy2026_total: 4086744,
+      } as ProgramRow["trajectory"],
+      trajectory_fact_ids: {
+        fy2024_actuals: "b".repeat(16),
+        fy2026_total: "d".repeat(16),
+      } as ProgramRow["trajectory_fact_ids"],
+    });
+    expect(row.fy24).toBe(5565655);
+    expect(row.fy24Fid).toBe("b".repeat(16));
+    // The J-book figure and its citation do not reach the index at all — it
+    // lives on the program page, inside the reconciliation strip built for
+    // exactly this pair.
+    expect(JSON.stringify(row)).not.toContain("5247.07");
+    expect(JSON.stringify(row)).not.toContain("a".repeat(16));
+  });
+
+  it("renders an absence where TOA has no FY24 row, rather than a J-book zero", () => {
+    // The DARPA Advanced Technology Development case: the J-book XML
+    // explicitly publishes a zero-dollar line (state B, "$0 [XML]") while the
+    // workbook trajectory has no FY24 actuals row at all. The index used to
+    // show "$0 [XML]" where /years/ showed an em-dash — two different
+    // statements under one label. In a TOA column the honest render is the
+    // absence; the zero-line statement stays on the program page, in the
+    // basis that actually makes it.
+    const row = program({
+      fy2024_actual_millions: 0,
       fy2024_fact_id: null,
       fy2024_xml_path: "/root/line[3]",
+      trajectory: { fy2024_actuals: null, fy2026_total: 5 } as ProgramRow["trajectory"],
     });
+    expect(row.fy24).toBeNull();
     expect(row.fy24Fid).toBeNull();
-    expect(row.fy24Xml).toBe("/root/line[3]");
+    expect(JSON.stringify(row)).not.toContain("/root/line[3]");
   });
 
   it("nulls a missing FY26 rather than inventing a 0", () => {
@@ -143,19 +196,32 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
   it("labels each dollar column with its own unit rather than converting", () => {
     const csv = buildProgramsCsv([program()]);
     const [header] = csv.split("\n");
+    // Both money columns are P-1 TOA in USD thousands now, and the header
+    // says so — the FY24 column used to export J-book detail in millions
+    // beside a TOA column in thousands.
     expect(header).toBe(
-      "pe_bli,org,org_name,title,fy2024_actual_usd_millions,fy2026_total_usd_thousands",
+      "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands,fy2026_total_toa_usd_thousands",
     );
   });
 
   it("exports the raw org code AND the human name", () => {
-    const csv = buildProgramsCsv([program()]);
-    expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5247.07,");
+    const csv = buildProgramsCsv([
+      program({
+        trajectory: {
+          fy2024_actuals: 5565655,
+          fy2026_total: null,
+        } as ProgramRow["trajectory"],
+        trajectory_fact_ids: {
+          fy2024_actuals: "b".repeat(16),
+        } as ProgramRow["trajectory_fact_ids"],
+      }),
+    ]);
+    expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5565655,");
   });
 
   it("leaves missing values EMPTY, never 0", () => {
     const csv = buildProgramsCsv([
-      program({ fy2024_actual_millions: null, fy2024_fact_id: null }),
+      program({ trajectory: null, trajectory_fact_ids: null }),
     ]);
     const fields = csv.split("\n")[1].split(",");
     expect(fields[4]).toBe("");

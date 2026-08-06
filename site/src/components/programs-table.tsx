@@ -26,6 +26,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import type { ProgramsTableRow } from "@/lib/programs-row";
 import { Cite, CiteLegend } from "@/components/cite";
+import { basisChipText } from "@/lib/basis";
 import { serviceOrgName } from "@/lib/program-tier";
 import { aliasChipText, aliasChipParts, aliasHitsForQuery } from "@/lib/aliases";
 import { formatCount } from "@/lib/format";
@@ -75,10 +76,10 @@ function csvField(s: string): string {
 }
 
 /**
- * CSV of the current view. Dollar columns keep the units the table declares —
- * FY24 actuals in USD millions (the J-book grain), FY26 totals in USD
- * thousands (the workbook grain) — and say so in the header, rather than
- * silently converting one into the other. Missing values are empty, never 0.
+ * CSV of the current view. Both dollar columns are P-1/R-1 TOA in USD
+ * thousands — the basis the table declares in its headers — and the header
+ * row says so, so an export cannot be read on the wrong basis. Missing values
+ * are empty, never 0.
  */
 export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
@@ -86,8 +87,8 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
     "org",
     "org_name",
     "title",
-    "fy2024_actual_usd_millions",
-    "fy2026_total_usd_thousands",
+    "fy2024_actual_toa_usd_thousands",
+    "fy2026_total_toa_usd_thousands",
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
@@ -103,6 +104,34 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
     );
   }
   return lines.join("\n");
+}
+
+/**
+ * The basis both money columns carry, and the edition they are stated in.
+ * ONE constant, read by the header attributes, the visible column label, the
+ * mobile per-cell label and the footer note — so the machine-readable
+ * declaration and the sentence a reader sees cannot drift apart.
+ */
+const FIGURE_BASIS = "toa";
+const FIGURE_EDITION = 2026;
+
+/**
+ * The column's basis, rendered where a reader looks for it (gate 23 leg e
+ * requires the declaration to be VISIBLE, not only parseable). Same
+ * vocabulary as the per-figure chip on program pages — basisChipText — so the
+ * index and the pages it links to say the same words.
+ */
+function BasisColumnLabel({ measure }: { measure: string }) {
+  const text = basisChipText(FIGURE_BASIS, measure, FIGURE_EDITION);
+  if (!text) return null;
+  return (
+    <span
+      data-basis-declared
+      className="mt-0.5 block text-xs font-normal text-muted-foreground"
+    >
+      {text}
+    </span>
+  );
 }
 
 function SortIcon({
@@ -271,6 +300,17 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           className="w-full text-sm"
           data-sort-table="programs"
           data-sort-order={`${sortKey}:${sortAsc ? "asc" : "desc"}`}
+          // ONE LABEL, ONE BASIS across pages (gate 23 leg e). Both money
+          // columns are P-1/R-1 TOA, PB2026, in USD thousands — the same basis
+          // /years/ and every program page publish. The declaration is on the
+          // COLUMN rather than on each of 3,482 figures: the basis is a
+          // property of the column (uniform by construction — every cell comes
+          // from the same trajectory field), the header is where a reader
+          // looks for it, and repeating three attributes 3,482 times would add
+          // ~157 KB to a page that has 168 KB of headroom under its §P2-1
+          // weight ceiling. Leg e resolves each cell's basis through its
+          // header and checks the value against the program page it links to.
+          data-basis-table="programs"
         >
           <thead className="hidden sm:table-header-group bg-muted/60 text-left">
             <tr>
@@ -292,7 +332,13 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   <SortIcon col="title" sortKey={sortKey} sortAsc={sortAsc} />
                 </button>
               </th>
-              <th scope="col" className="px-4 py-3 font-medium text-right">
+              <th
+                scope="col"
+                className="px-4 py-3 font-medium text-right"
+                data-basis={FIGURE_BASIS}
+                data-fy="2024"
+                data-measure="actuals"
+              >
                 <button
                   onClick={() => toggleSort("fy2024_actual")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"
@@ -304,8 +350,15 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     sortAsc={sortAsc}
                   />
                 </button>
+                <BasisColumnLabel measure="actuals" />
               </th>
-              <th scope="col" className="px-4 py-3 font-medium text-right">
+              <th
+                scope="col"
+                className="px-4 py-3 font-medium text-right"
+                data-basis={FIGURE_BASIS}
+                data-fy="2026"
+                data-measure="total"
+              >
                 <button
                   onClick={() => toggleSort("fy2026_total")}
                   className="flex items-center ml-auto hover:text-foreground transition-colors"
@@ -317,6 +370,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     sortAsc={sortAsc}
                   />
                 </button>
+                <BasisColumnLabel measure="total" />
               </th>
             </tr>
           </thead>
@@ -327,6 +381,10 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 role="row"
                 className="pgm-row"
                 data-sort-value={sortValue(p)}
+                // The row's subject, in gate 23's grouping vocabulary — leg e
+                // joins this to /program/{entity}/ to check that the index and
+                // the page it links to state one value under one label.
+                data-entity={p.pe}
               >
                 <td className="pgm-cell-pe">{p.pe}</td>
                 {/* §P1-E: the human service name, not the raw workbook token. */}
@@ -388,15 +446,25 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                     fact-id chip can be sliced by the 390px viewport edge —
                     the same stacking /companies/ uses. ONE DOM, so the §P1-7
                     sort contract above still reads exactly these nodes. */}
+                {/* MOBILE: below sm the header row is hidden, so the column's
+                    basis declaration has to travel with the cell — the label
+                    carries it rather than leaving a phone reader with a
+                    number and no basis. */}
                 <td role="cell" className="pgm-cell-fy24">
-                  <span className="pgm-label">FY24 actual:</span>
+                  <span className="pgm-label">
+                    FY24 actual
+                    <span data-basis-declared>
+                      {" "}
+                      ({basisChipText(FIGURE_BASIS, "actuals", FIGURE_EDITION)})
+                    </span>
+                    :
+                  </span>
                   {p.fy24 != null ? (
                     <Cite
                       value={p.fy24}
-                      units="USD millions"
-                      dataset="jbook_details"
+                      units="USD thousands"
+                      dataset="fct_budget_trajectory"
                       factId={p.fy24Fid}
-                      xmlPath={p.fy24Xml}
                     />
                   ) : (
                     <span className="text-muted-foreground/50">—</span>
@@ -412,7 +480,14 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                   data-primary-value="fy2026-total"
                   className="pgm-cell-fy26"
                 >
-                  <span className="pgm-label">FY26 total:</span>
+                  <span className="pgm-label">
+                    FY26 total
+                    <span data-basis-declared>
+                      {" "}
+                      ({basisChipText(FIGURE_BASIS, "total", FIGURE_EDITION)})
+                    </span>
+                    :
+                  </span>
                   {p.fy26 != null ? (
                     <Cite
                       value={p.fy26}
@@ -438,10 +513,18 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
-        FY26 figures carry derived workbook citations (click to inspect the
-        formula and inputs). FY24 actuals cited to J-book PDF where available
-        (underlined). CSV exports the current view, with FY24 in USD millions
-        and FY26 in USD thousands as labeled. See{" "}
+        Both money columns are stated on ONE basis — P-1/R-1 total obligational
+        authority as the PB2026 books report it, in USD thousands — so the two
+        can be read across a row and agree with{" "}
+        <Link href="/years/" className="underline hover:text-foreground">
+          the decade matrix
+        </Link>{" "}
+        and with each program&rsquo;s own page. Both carry derived workbook
+        citations; click a figure for the formula and its inputs. The P-40/R-2
+        J-book detail figure for FY24 is a different, narrower measurement of
+        the same year: where the two disagree, the program page shows them side
+        by side with the reconciliation. CSV exports the current view on this
+        same basis. See{" "}
         <Link href="/methodology/" className="underline hover:text-foreground">
           methodology
         </Link>

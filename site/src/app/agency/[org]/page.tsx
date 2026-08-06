@@ -12,6 +12,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { agencyOgImages } from "@/lib/og";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
+import { basisChipText } from "@/lib/basis";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -76,7 +77,11 @@ export default async function AgencyPage({
   if (agency.fy2024_fact_id_derived) pageFactIds.push(agency.fy2024_fact_id_derived);
   if (agency.fy2026_fact_id_derived) pageFactIds.push(agency.fy2026_fact_id_derived);
   for (const p of agencyPrograms) {
-    if (p.fy2024_fact_id) pageFactIds.push(p.fy2024_fact_id);
+    // The FY24 figure this list renders is the TOA trajectory fact, not the
+    // J-book detail fact it used to render (gate 23 leg e) — so it is the
+    // trajectory fact that has to be in the page's citation slice.
+    const fid = p.trajectory_fact_ids?.fy2024_actuals;
+    if (fid) pageFactIds.push(fid);
   }
   if (gao?.overlay.improper?.fact_id) {
     pageFactIds.push(gao.overlay.improper.fact_id);
@@ -225,7 +230,22 @@ export default async function AgencyPage({
 
         {/* Programs list */}
         <section>
-          <h2 className="text-xl font-semibold mb-4">Program Elements</h2>
+          <h2 className="text-xl font-semibold mb-1">Program Elements</h2>
+          {/* The list's basis, declared once (gate 23 leg e): a figure whose
+              basis is stated nowhere is how the same label came to carry two
+              values on two pages. */}
+          <p
+            data-basis-declared
+            className="mb-4 text-xs text-muted-foreground"
+          >
+            FY24 figures are {basisChipText("toa", "actuals", 2026)} — total
+            obligational authority as the PB2026 books report it, in USD
+            thousands, the same basis{" "}
+            <Link href="/programs/" className="underline hover:text-foreground">
+              the program index
+            </Link>{" "}
+            and each program&rsquo;s own page use.
+          </p>
           <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
             {agencyPrograms.map((p) => (
               <div
@@ -244,15 +264,27 @@ export default async function AgencyPage({
                     {p.title}
                   </Link>
                 </div>
+                {/* ONE LABEL, ONE BASIS (Sprint 3 round 3, gate 23 leg e).
+                    This list carried the P-40/R-2 J-book DETAIL figure under a
+                    bare "FY24" label — the same defect /programs/ had, so the
+                    same agency page disagreed with every program page it links
+                    to. It is the canonical P-1/R-1 TOA figure now, matching
+                    /programs/, /years/ and each program's own headline, with
+                    the basis declared once above the list. */}
                 <div className="shrink-0 text-sm text-right tabular-nums text-muted-foreground">
-                  {p.fy2024_actual_millions != null ? (
+                  {p.trajectory?.fy2024_actuals != null ? (
                     <>
                       <Cite
-                        value={p.fy2024_actual_millions}
-                        units="USD millions"
-                        dataset="jbook_details"
-                        factId={p.fy2024_fact_id}
-                        xmlPath={p.fy2024_xml_path}
+                        value={p.trajectory.fy2024_actuals}
+                        units="USD thousands"
+                        dataset="fct_budget_trajectory"
+                        factId={p.trajectory_fact_ids?.fy2024_actuals}
+                        basis="toa"
+                        fy={2024}
+                        measure="actuals"
+                        entity={p.pe_bli}
+                        edition={2026}
+                        chip={false}
                       />
                       <span className="ml-1 text-xs">FY24</span>
                     </>
