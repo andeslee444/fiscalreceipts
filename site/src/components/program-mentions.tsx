@@ -28,6 +28,7 @@ import Link from "next/link";
 import type { ProgramDetails } from "@/lib/data";
 import { PeText } from "@/components/pe-text";
 import { formatCount } from "@/lib/format";
+import { tidySnippet } from "@/lib/snippet";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
 // Note: family_key can be null (dangling entity — 2,781 / 32,780 lobbying rows)
@@ -138,11 +139,14 @@ function MentionRow({
 
       {/* Snippet — PE tokens with pages become internal links (§2a) */}
       <p className="text-sm text-muted-foreground leading-relaxed">
+        {/* The ellipsis used to be appended blind, so a snippet the exporter
+            had already cut mid-word rendered as "…Defe…". tidySnippet cuts
+            back to the last whole word first. */}
         {mention.description_snippet && (
-          <PeText text={mention.description_snippet} peSet={peSet} />
-        )}
-        {mention.description_snippet && !mention.description_snippet.endsWith("…") && (
-          <span aria-hidden="true">…</span>
+          <PeText
+            text={tidySnippet(mention.description_snippet)}
+            peSet={peSet}
+          />
         )}
       </p>
 

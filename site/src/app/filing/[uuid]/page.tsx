@@ -12,6 +12,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
+import { isTruncatedSnippet, tidySnippet } from "@/lib/snippet";
 
 // ── SSG config — 4,258 filing pages, no fallback ──────────────────────────────
 
@@ -272,8 +273,23 @@ export default async function FilingPage({ params }: Props) {
                     )}
                   </div>
                   {m.description_snippet && (
-                    <p className="mt-1 text-sm text-muted-foreground line-clamp-3 overflow-hidden">
-                      {m.description_snippet}
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {/* The exporter caps this at 120 characters, mid-word.
+                          tidySnippet cuts back to the last whole word and
+                          says so — the complete sentence is in "Lobbying
+                          activities" below, on this same page. */}
+                      {tidySnippet(m.description_snippet)}
+                      {isTruncatedSnippet(m.description_snippet) && (
+                        <>
+                          {" "}
+                          <a
+                            href="#activities"
+                            className="underline decoration-dotted hover:text-foreground"
+                          >
+                            full text below
+                          </a>
+                        </>
+                      )}
                     </p>
                   )}
                 </li>
@@ -287,7 +303,7 @@ export default async function FilingPage({ params }: Props) {
         </section>
 
         {/* Lobbying activities */}
-        <section className="mb-8">
+        <section className="mb-8" id="activities">
           <h2 className="text-xl font-semibold mb-3">
             Lobbying activities
             <span className="ml-2 text-sm font-normal text-muted-foreground">
