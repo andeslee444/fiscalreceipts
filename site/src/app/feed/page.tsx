@@ -410,15 +410,14 @@ export default function FeedPage() {
                       ({section_cards.length})
                     </span>
                   </h2>
-                  {/* data-source-text="methodology" — description text contains
-                      threshold dollar amounts ($50M, $5M, $1M) that are
-                      methodology prose, not site-computed figures.
-                      data-xml-path identifies the section anchor. */}
-                  <p
-                    className="text-sm text-muted-foreground mt-1"
-                    data-source-text="methodology"
-                    data-xml-path={`site:feed/section/${etype}`}
-                  >
+                  {/* backlog #38: this carried data-source-text="methodology"
+                      + a sentinel data-xml-path. The description is OUR prose
+                      stating the selection thresholds ($50M, $5M, $1M), quoted
+                      from nothing, so it takes no source-text exemption. The
+                      three thresholds are enumerated in
+                      scripts/gates/prose-allowlist.json, scoped to this page
+                      and /methodology/. */}
+                  <p className="text-sm text-muted-foreground mt-1">
                     {meta.description}
                   </p>
                   {SCOPED_EVENT_TYPES.has(etype) && scope_qualifier && (

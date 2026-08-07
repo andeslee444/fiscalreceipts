@@ -64,8 +64,12 @@
  *      scan is blind to exactly the shape this leg exists to catch), while a
  *      whole-subtree scan glues "CO-05" and "10 programs" from sibling cells
  *      into a fictitious "0510 programs". Quoted source text is skipped —
- *      J-book prose carries the source's notation, not ours — and fiscal
- *      years are excluded by value. See leg j's own block at the bottom.
+ *      J-book prose carries the source's notation, not ours — but ONLY for
+ *      the marker kinds that earn it (source-text-kinds.mjs, backlog #38):
+ *      the attribute's presence used to delete the subtree outright, which is
+ *      how /methodology/ removed its whole page from this sweep. Site-authored
+ *      prose is swept, /methodology/ specifically must contribute numbers, and
+ *      fiscal years are excluded by value. See leg j's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -83,6 +87,7 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { createRequire } from "module";
 import { feedGuid, FR_NS } from "../../src/lib/feed-model.mjs";
+import { exemptFromNotationSweep } from "./source-text-kinds.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -553,6 +558,23 @@ function isYear(n) {
   return n >= 1900 && n <= 2099;
 }
 
+/**
+ * Pages whose numbers this leg MUST actually reach. /methodology/ carried
+ * data-source-text on its whole container, so the sweep deleted the entire
+ * page before scanning it (backlog #38) — and a sweep that silently scans
+ * nothing on the page arguing for the site's rigour is worse than no sweep.
+ * The page is site-authored prose, so its count notation is ours to get right.
+ *
+ * The guard is COVERAGE, not a count: the numeric leaves the sweep reaches,
+ * over the numeric leaves the page renders. A bare ">= 1" would have been
+ * satisfied by the site chrome alone (the header and footer sit outside the
+ * page container and carry one), which is to say it would have passed the
+ * exact defect it exists to catch.
+ */
+const MUST_BE_SWEPT = ["methodology/index.html"];
+/** Share of a MUST_BE_SWEPT page's numeric leaves the sweep has to reach. */
+const MIN_SWEEP_COVERAGE = 0.9;
+
 function runCountNotationLeg(errors, notes) {
   const files = [...walkHtml(outDir)];
   if (files.length === 0) {
@@ -562,6 +584,23 @@ function runCountNotationLeg(errors, notes) {
   const failures = [];
   let textNodes = 0;
   let groupedSeen = 0;
+  /** @type {Map<string, number>} numeric leaf elements reached, per page */
+  const sweptPerFile = new Map();
+  /** @type {Map<string, number>} numeric leaf elements the page RENDERS */
+  const totalPerFile = new Map();
+  const mustBeSwept = new Set(MUST_BE_SWEPT);
+
+  /** Numeric leaf elements under `el` — the sweep's own unit of scanning. */
+  const countNumericLeaves = (el) => {
+    const kids = el.childNodes.filter((c) => c.nodeType === 1);
+    if (kids.length === 0) {
+      const t = el.text;
+      return t && /\d/.test(t) ? 1 : 0;
+    }
+    let n = 0;
+    for (const c of kids) n += countNumericLeaves(c);
+    return n;
+  };
 
   for (const file of files) {
     let root;
@@ -570,10 +609,24 @@ function runCountNotationLeg(errors, notes) {
     } catch {
       continue;
     }
-    for (const el of root.querySelectorAll(
-      "[data-source-text], script, style, noscript, template",
-    )) {
+    for (const el of root.querySelectorAll("script, style, noscript, template")) {
       el.remove();
+    }
+    // Denominator for the coverage guard, taken BEFORE any source-text
+    // subtree is removed, on the pages that must not be able to hide.
+    const relForTotal = path.relative(outDir, file);
+    if (mustBeSwept.has(relForTotal)) {
+      totalPerFile.set(relForTotal, countNumericLeaves(root));
+    }
+    // Quoted source text is skipped — but only the KINDS that earn it. Until
+    // backlog #38 the marker's presence alone deleted the subtree, which is
+    // how /methodology/ (site-authored prose, quoted from nothing) vanished
+    // from this sweep entirely. source-text-kinds.mjs decides, and both this
+    // leg and render-static's currency scan read the same table.
+    for (const el of root.querySelectorAll("[data-source-text]")) {
+      if (exemptFromNotationSweep(el.getAttribute("data-source-text"))) {
+        el.remove();
+      }
     }
     const rel = path.relative(outDir, file);
     // Per LEAF ELEMENT — see the leg's header for why neither a per-text-node
@@ -584,6 +637,7 @@ function runCountNotationLeg(errors, notes) {
         const t = el.text;
         if (!t || !/\d/.test(t)) return;
         textNodes += 1;
+        sweptPerFile.set(rel, (sweptPerFile.get(rel) ?? 0) + 1);
         if (/\d,\d{3}/.test(t)) groupedSeen += 1;
         for (const re of [BARE_BEFORE_NOUN, BARE_IN_OF]) {
           re.lastIndex = 0;
@@ -612,6 +666,21 @@ function runCountNotationLeg(errors, notes) {
     if (failures.length > 60) break;
   }
 
+  // Per-page non-vacuity: a page that re-hides itself behind a wholesale
+  // marker contributes zero numeric leaves and fails here, rather than
+  // passing as "no violations". Only checked when the sweep ran to completion
+  // (the failure cap below can stop it early, and failures fail the leg anyway).
+  const unswept =
+    failures.length === 0
+      ? MUST_BE_SWEPT.map((f) => ({
+          file: f,
+          reached: sweptPerFile.get(f) ?? 0,
+          total: totalPerFile.get(f) ?? 0,
+        })).filter(
+          (s) => s.total === 0 || s.reached / s.total < MIN_SWEEP_COVERAGE,
+        )
+      : [];
+
   if (failures.length > 0) {
     errors.push(
       `leg j: ${failures.length} ungrouped count(s) rendered — §P1-5 says one ` +
@@ -623,6 +692,16 @@ function runCountNotationLeg(errors, notes) {
     if (failures.length > 10) {
       errors.push(`  ... and ${failures.length - 10} more`);
     }
+  } else if (unswept.length > 0) {
+    for (const s of unswept) {
+      errors.push(
+        `leg j reached ${s.reached} of ${s.total} numeric leaf element(s) on ` +
+          `${s.file} — under the ${Math.round(MIN_SWEEP_COVERAGE * 100)}% this ` +
+          `page must be swept at. Its numbers are hiding behind a ` +
+          `[data-source-text] marker again (or the page stopped building). ` +
+          `backlog #38 is the history here.`,
+      );
+    }
   } else if (groupedSeen === 0) {
     errors.push(
       `leg j is VACUOUS: ${textNodes} text node(s) carrying digits, but not one ` +
@@ -631,7 +710,9 @@ function runCountNotationLeg(errors, notes) {
   } else {
     notes.push(
       `leg j count notation: ${files.length} page(s), ${textNodes} numeric text ` +
-        `node(s), ${groupedSeen} grouped — 0 bare 4+-digit cardinalities ✓`,
+        `node(s), ${groupedSeen} grouped — 0 bare 4+-digit cardinalities ` +
+        `(/methodology/ coverage ${sweptPerFile.get(MUST_BE_SWEPT[0]) ?? 0}/` +
+        `${totalPerFile.get(MUST_BE_SWEPT[0]) ?? 0} numeric leaves) ✓`,
     );
   }
 }

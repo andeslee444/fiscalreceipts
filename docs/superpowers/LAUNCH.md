@@ -154,6 +154,10 @@ any files.
 R2_BUCKET=govbudget-assets ./scripts/launch/upload_r2.sh --live
 ```
 
+> On a normal deploy you do **not** run this by hand — `scripts/launch/deploy.sh`
+> runs it as step 1 (see §7d).  Run it standalone only when syncing assets
+> without shipping pages.
+
 Uploads four directories from `data/site/` to R2:
 
 | Local | R2 path | Size |
@@ -260,12 +264,39 @@ Add the same for `preview` and `development` environments as needed.
 
 ### 7d. Deploy
 
+**One command.  Do not run `vercel` by hand.**
+
 ```bash
-cd site/out && vercel --prod --yes --archive=tgz
+# build first — Vercel does NOT build this site
+cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build && cd ..
+
+./scripts/launch/deploy.sh
 ```
 
-**Both the directory and the flag are load-bearing.  Do not simplify this to
-`vercel --prod` from `site/`.**
+`scripts/launch/deploy.sh` **is the source of truth for the deploy sequence**;
+this section explains *why* it does what it does and does not restate the
+commands.  Read the script (or `--help`) for flags.  It runs, in order:
+
+1. **preflight** — `site/out/` present and complete, `vercel.json` present,
+   rclone and the PDF source directory present;
+2. **`upload_r2.sh --live`** — sync `pdfs/ data/ workbooks/ citations/` to R2;
+3. **`vercel --prod --yes --archive=tgz` from `site/out/`**;
+4. **`verify_live_assets.mjs`** — fetches recently-added `jbook_pdf` assets
+   from the CDN and fails the deploy if they are not there.
+
+> **Why steps 2 and 4 exist (ROADMAP backlog #27).**  The R2 sync used to be a
+> separate thing someone had to remember after every ingestion phase.  Nobody
+> remembered, so the new PDF binaries were missing from the CDN and every
+> citation panel on the new pages silently fell back to "open official source".
+> It shipped that way for every post-launch phase until the 2026-07-04 catch,
+> and no gate noticed — no gate *could*, because the property is production CDN
+> state, which does not exist before a deploy.  Binding the sync to the deploy
+> is the fix; step 4 is the alarm.  Assets go up **before** pages, so no live
+> page ever cites a binary that is not there yet (`upload_r2.sh` never deletes,
+> so an early sync is always safe).
+
+**Both the directory and the flag in step 3 are load-bearing.  Do not simplify
+this to `vercel --prod` from `site/`.**
 
 - **Run it from `site/out/`, never `site/`.**  Vercel does *not* build this site
   in the cloud — it serves the prebuilt static export.  Deploying from `site/`
@@ -284,29 +315,38 @@ cd site/out && vercel --prod --yes --archive=tgz
   succeeded 15 h earlier on the manifest path, so the limit tightened
   server-side rather than the site outgrowing it.  Retrying, upgrading the CLI
   (54.12.2 → 58.5.1 was tried), or adding `.vercelignore` do **not** help.
-- `site/out/` has no `.vercel/` link (it is wiped by each build), so pass the
-  IDs by env var:
-
-```bash
-cd site/out
-VERCEL_PROJECT_ID=prj_oen0seknELM3lK6UcZPS5252D7QD \
-VERCEL_ORG_ID=team_b94lNMYEXzNevW7VmSNvdeYZ \
-  vercel --prod --yes --archive=tgz
-```
+- `site/out/` has no `.vercel/` link (it is wiped by each build), so the project
+  and org IDs go in as env vars.  `deploy.sh` carries them as defaults
+  (`VERCEL_PROJECT_ID` / `VERCEL_ORG_ID` override them).
 
 Do **not** try to shrink `site/out/` by excluding `json/`, `json-lite/`,
 `duckdb/`, or `og/` — despite their size these are served from Vercel, not R2
 (no R2 host appears in the built chunks).  R2 serves only `pdfs/`, `data/`,
 `workbooks/`, and `citations/`, none of which are in `site/out/`.
 
-Post-deploy smoke test (the `/fact/` rewrite comes from `site/out/vercel.json`,
-so it silently dies if the wrong directory is deployed):
+**Post-deploy verification is step 4 of `deploy.sh`, not a checklist.**  It runs
+`scripts/launch/verify_live_assets.mjs`, which asserts:
+
+- the N most recently added `jbook_pdf` assets return 200/206 from
+  `assets.fiscalreceipts.com` with a non-zero body starting `%PDF-`;
+- `citations/citations.parquet` is reachable (proves the `data/` + `citations/`
+  syncs landed);
+- `https://fiscalreceipts.com/fact/<id>` resolves — the `/fact/` rewrite comes
+  from `site/out/vercel.json` and silently dies if the wrong directory was
+  deployed.
+
+It exits non-zero on any failure and can be run on its own at any time to audit
+what is live:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://fiscalreceipts.com/fact/3134a6e0
-curl -s -o /dev/null -w "%{http_code}\n" https://fiscalreceipts.com/json/years_matrix.json
-curl -s -o /dev/null -w "%{http_code}\n" https://assets.fiscalreceipts.com/citations/citations.parquet
+node scripts/launch/verify_live_assets.mjs            # newest 5 cited PDFs
+node scripts/launch/verify_live_assets.mjs --count=20
+node scripts/launch/verify_live_assets.mjs --sha=<sha256>   # one specific asset
 ```
+
+It is deliberately **not** a gate in `npm run verify`: that suite is hermetic
+and offline, and CDN state cannot be asserted before the upload that creates
+it.  See the header of `verify_live_assets.mjs` for the full reasoning.
 
 ---
 

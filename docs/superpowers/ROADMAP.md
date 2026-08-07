@@ -581,15 +581,29 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 26. **Dead-PE 0605230F request_vs_request minting** if a feed claim ever
     covers request-vs-request swings (currently scoped to request-vs-actuals
     precisely because those are 100% minted).
-27. **R2 sync belongs in the deploy loop + a live-PDF gate (5G, high value):**
-    the deploy drill (rebuild → Vercel `--prod`) never re-synced
-    `data/site/pdfs → R2`, so PDF citations for every post-launch phase silently
-    degraded in production until the 2026-07-04 catch. Two fixes: (a) fold
-    `scripts/launch/upload_r2.sh --live` into the standard deploy sequence (or a
-    `deploy` make-target that does both); (b) add a gate leg that fetches ONE
-    recently-added jbook_pdf citation's asset from assets.fiscalreceipts.com and
-    asserts 200 + non-zero body — so a missing-from-CDN PDF fails a gate instead
-    of a user. Until then, run upload_r2.sh --live after any ingestion phase.
+27. ✅ **DONE 2026-08-06 — R2 sync folded into the deploy loop + a live-asset
+    check that runs itself.** The deploy drill (rebuild → Vercel `--prod`)
+    never re-synced `data/site/pdfs → R2`, so PDF citations for every
+    post-launch phase silently degraded in production until the 2026-07-04
+    catch. (a) `scripts/launch/deploy.sh` is now the only deploy path and the
+    source of truth for the sequence: preflight (out/ complete, `vercel.json`
+    present, rclone + PDF source present) → `upload_r2.sh --live` →
+    `vercel --prod --yes --archive=tgz` from `site/out/` → live verification.
+    Assets go up BEFORE pages, so no live page ever cites a binary that is not
+    there yet (`upload_r2.sh` never deletes, so an early sync is always safe).
+    LAUNCH.md §7d now points at the script and keeps only the *why* — the two
+    load-bearing constraints (cwd `site/out/`, `--archive=tgz`) and the
+    backlog-#27 history. (b) `scripts/launch/verify_live_assets.mjs` fetches the
+    N most recently added **cited** `jbook_pdf` assets (newest binaries under
+    `data/site/pdfs/` that a `hosted_pdf_url` actually points at — citations.json
+    is ~90 MB so it is streamed, not parsed) and asserts 200/206 + non-zero body
+    + `%PDF-` magic, plus `citations/citations.parquet` and the site's `/fact/`
+    rewrite. **Deliberately NOT a gate in `npm run verify`**: that suite is
+    hermetic and offline by design, and production CDN state cannot be true
+    before the upload that creates it — a pre-deploy gate asserting it would be
+    vacuous at best and green-on-last-deploy's-assets at worst. It is step 4 of
+    `deploy.sh`, exits non-zero, and is runnable standalone to audit what is
+    live. Proof-can-fail recorded (a real 404 for an absent sha).
 28. **Agency PEs with ingested decade detail but no FY2026 page (coverage
     enhancement, NOT a bug — surfaced by the 2026-07-05 audit).** A large set of
     program elements carry FY2017–2025 J-book/workbook detail in the warehouse
@@ -816,24 +830,45 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     program's trajectory equals the sum of its component rows. Until then any
     NEW consumer of `programs.json.trajectory` inherits the defect.
 
-38. **`/methodology/` is exempt from two site-wide sweeps because its whole
-    container carries `data-source-text` (found in PM Sprint 3 round-3
-    review).** The page wraps its entire `<div class="container">` in
-    `data-source-text="methodology"`, which is the documented escape hatch for
-    quoted source prose. Both the render-static negative-currency scan and
-    datatruth leg j's grouped-number sweep skip or delete `[data-source-text]`
-    subtrees wholesale, so the one page that argues for the site's rigour is
-    the single page neither sweep can see. There are 29 currency strings on it
-    (`$50M`, `$7.07B`, `$4.92B`, `$186 billion`, …), all of them genuinely
-    threshold descriptions or worked examples — so nothing is currently wrong,
-    which is exactly why it would go unnoticed if something became wrong. Not
-    fixed in round 3: narrowing the marker means wrapping ~8 individual
-    paragraphs, each of which must carry its own citation anchor to satisfy the
-    render-static (a0) constraint, on a 98 KB page — more surface area than the
-    round's remaining budget could re-verify honestly. Fix separately: move
-    `data-source-text` off the container onto the specific elements that quote
-    or state dollar thresholds, give each one an anchor, and confirm both
-    sweeps then report a non-zero scanned count for `/methodology/`.
+38. ✅ **DONE 2026-08-06 — the escape hatch WAS conflating two exemptions, and
+    the split is the fix.** `/methodology/` wrapped its entire
+    `<div class="container">` in `data-source-text="methodology"`, so the
+    render-static negative-currency scan and datatruth leg j both skipped the
+    single page arguing for the site's rigour. Round 3 declined the obvious fix
+    (wrap ~8 paragraphs, each needing its own citation anchor for the (a0)
+    constraint). **What the gate code actually said:** the marker was doing
+    THREE jobs — (a0) "block-cited, so no per-figure anchor, and no
+    `[data-amount]` may hide inside", (b) "these dollar strings are the
+    *source's*, so do not demand `<Cite>`", and leg j "this *notation* is the
+    source's, not ours". Jobs (b) and leg j are FORMATTING exemptions and are
+    only earned by prose that genuinely comes from somewhere else — measured:
+    dropping the skip wholesale would fail ~3,650 currency tokens under
+    `narrative`/`dossier-claim`/`lineage-evidence` (real J-book prose, correctly
+    exempt) and 226 leg-j hits, all under `narrative`. So a blanket "sweeps stop
+    honouring it" does not hold; the narrower expression is **per-VALUE
+    classification**. `scripts/gates/source-text-kinds.mjs` is now the one table
+    both gates read: `narrative`/`dossier-claim`/`lineage-evidence`/
+    `footnote-preview` earn both formatting exemptions (verbatim source prose);
+    `headline` earns the currency one only (exporter-composed sentence — its
+    *notation* is ours, so leg j sweeps it, 0 new failures); an **unclassified
+    value fails render-static**, so a new marker can no longer buy silence by
+    existing. `methodology` is gone as a kind: the page quoted nothing, and its
+    sentinel `data-xml-path="site:methodology/prose"` was a fake anchor invented
+    to satisfy (a0) — one container edit removed both, no paragraph re-wrapping,
+    and `[data-amount]` is now legal on the page for the first time. Its 9
+    non-figure dollar tokens (thresholds, a tolerance, GAO's $186 B, the
+    $7.07B/$4.92B/$4.15B worked examples) are enumerated with reasons in
+    `prose-allowlist.json`, whose `pages` field — present in the JSON since day
+    one and **ignored by the gate**, matching every pattern site-wide — is now
+    honoured, with dead patterns and stale (matched-nothing) entries failing the
+    gate. That used-entry rule doubles as the render-static non-vacuity proof
+    for `/methodology/`; leg j adds a COVERAGE guard (≥90% of the page's numeric
+    leaves must be reached — a bare "≥1" would have been satisfied by the site
+    chrome alone, i.e. would have passed the very defect it guards). Result:
+    `/methodology/` = 47 numeric leaves swept, 9 currency tokens scanned, no
+    real defect surfaced once visible (round 3 had already fixed by hand the
+    three these sweeps would have caught). Proof-can-fail recorded for all four
+    arms.
 
 39. **`Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) is
     missing the space after its ampersand.** The string is verbatim from the
@@ -970,6 +1005,25 @@ chart baseline (#41).
     quieter than its figure (smaller, lower contrast, no fill); reveal on
     hover/focus; or default OFF with the dotted underline carrying the signal.
     Whichever, the figure should be the loudest thing in its own cell.
+
+44. **Feed headline dollar figures are uncitable (named, not hidden, by the
+    backlog-#38 split).** `data-source-text="headline"` is classified in
+    `scripts/gates/source-text-kinds.mjs` as earning the currency-scan
+    exemption, and the classification's own `why` says this is a KNOWN GAP
+    rather than a provenance claim: the sentence is composed by the export
+    pipeline as one string (`"… first award FY2025, $3.1M total"`), so its ~40
+    dollar tokens on `/feed/` and `/` cannot carry per-token anchors and are
+    the only site-computed currency figures that reach a reader without a
+    citation affordance. Before #38 this was invisible — the marker exempted
+    them silently, alongside genuinely quoted J-book prose, with nothing
+    distinguishing the two. Fix if taken: have the exporter emit headlines as
+    segments (`text` / `{amount, fact_id}`) rather than a flat string, render
+    the amount segments through `<ProseCite>` (which already exists for exactly
+    this and is gate-checked by render-static (a1)), then flip `headline` to
+    `quotedFigures: false` and delete the exemption. The `/feed/` claim-truth
+    legs (datatruth h/i) already re-derive these magnitudes from the corpus, so
+    the numbers are verified — what is missing is the reader's ability to click
+    through to the source.
 
 ## Remaining launch items
 

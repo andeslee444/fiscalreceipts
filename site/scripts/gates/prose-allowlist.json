@@ -1,17 +1,47 @@
 [
   {
-    "pattern": "$0",
-    "pages": ["*"],
-    "reason": "Zero-dollar literal used as a display placeholder for zero_amount facts without a monetary value"
+    "pattern": "$50M",
+    "pages": ["/methodology/", "/feed/"],
+    "reason": "Feed selection THRESHOLD, not a figure: 'programs where FY2025 total is >= $50M'. A parameter of the method, stated on the page that documents the method and echoed in the feed section description."
   },
   {
-    "pattern": "$293.1M",
-    "pages": ["*"],
-    "reason": "Example citation value used in methodology page prose"
+    "pattern": "$5M",
+    "pages": ["/methodology/", "/feed/"],
+    "reason": "HHI supplier-concentration FLOOR in matched obligations — a parameter of the method, same as $50M."
   },
   {
-    "pattern": "currency examples",
+    "pattern": "$1M",
+    "pages": ["/methodology/", "/feed/"],
+    "reason": "New-entrant award THRESHOLD ('first award year ... obligations exceed $1M') — a parameter of the method."
+  },
+  {
+    "pattern": "$0.001M",
     "pages": ["/methodology/"],
-    "reason": "Methodology page may reference currency format examples in explanatory prose"
+    "reason": "Arithmetic TOLERANCE for the two per-figure J-book checks (+/-$0.001M). A tolerance, not a sum."
+  },
+  {
+    "pattern": "$186",
+    "pages": ["/methodology/"],
+    "reason": "'$186 billion in improper payments in FY2025' — an OUTSIDE body's published figure quoted to explain why the corpus exists. Not ours to cite from our own facts."
+  },
+  {
+    "pattern": "$7.07B",
+    "pages": ["/methodology/"],
+    "reason": "Worked example in the write-up of the 87-card zeroed-FY2026 defect: the real FY2025 money those cards hid. Retrospective narrative about a fixed bug, not a live figure the reader checks."
+  },
+  {
+    "pattern": "$4.92B",
+    "pages": ["/methodology/"],
+    "reason": "Worked example in the same write-up — the FY2026 request the cards mislabelled as a zeroing."
+  },
+  {
+    "pattern": "$4.15B",
+    "pages": ["/methodology/"],
+    "reason": "Worked example in the same write-up — the FY2025 figure the request rose from."
+  },
+  {
+    "pattern": "$0",
+    "pages": ["/methodology/"],
+    "reason": "The literal zero inside the quoted feed-card template ('zeroed out in FY2026 (had $0 in FY25)') the write-up is dissecting."
   }
 ]

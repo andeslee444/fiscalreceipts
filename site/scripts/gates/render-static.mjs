@@ -13,7 +13,15 @@
  *       $[\d,]+(\.\d+)?\s*[BMK]?  (comma-grouped dollars)
  *     OUTSIDE [data-amount] subtrees → FAIL (listing page + snippet).
  *     Exceptions: content inside <script>, <style>, JSON-LD <script> tags.
- *     Allowlist (prose-allowlist.json) consulted for known prose mentions.
+ *     [data-source-text] subtrees are skipped ONLY for the marker kinds that
+ *     earn it (source-text-kinds.mjs — backlog #38). The attribute's mere
+ *     presence used to switch this scan off wholesale, so /methodology/ wrapped
+ *     its whole container and became unscannable; the marker now grants the
+ *     CITATION exemption (a0) to everything it marks and the CURRENCY
+ *     exemption only to prose genuinely quoted from a source document.
+ *     Allowlist (prose-allowlist.json) consulted for known prose mentions —
+ *     PAGE-SCOPED via its `pages` field, with dead patterns and stale
+ *     (matched-nothing) entries failing the gate.
  *     svg <desc> (a11y-only text) is NOT exempt wholesale: each currency
  *     token in a <desc> must have an identical normalized twin inside a
  *     [data-amount] element within the same component subtree (the svg's
@@ -137,6 +145,11 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { displayCompanyName } from "../../src/lib/company-name.mjs";
 import { findGlueSites } from "./jsx-glue.mjs";
+import {
+  isKnownSourceTextKind,
+  exemptFromCurrencyScan,
+} from "./source-text-kinds.mjs";
+import { makeProseAllowlist, pagePathFromRelPath } from "./prose-allowlist.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -255,13 +268,18 @@ export async function runRenderStaticGate() {
   }
 
   // ── Load prose allowlist ──────────────────────────────────────────────────
+  // Page-SCOPED since backlog #38: the `pages` field shipped in the JSON from
+  // the start and the gate ignored it, matching every pattern site-wide. It is
+  // honoured now, and the file's own hygiene (dead patterns, stale entries) is
+  // gate-enforced — see prose-allowlist.mjs.
   let allowlist = [];
   try {
     allowlist = readJson(allowlistPath);
   } catch {
     // allowlist is optional
   }
-  const allowedPatterns = allowlist.map((e) => e.pattern);
+  const proseAllowlist = makeProseAllowlist(allowlist);
+  for (const e of proseAllowlist.shapeErrors) errors.push(e);
 
   // ── Collect all HTML files ────────────────────────────────────────────────
   const htmlFiles = [...walkHtmlFiles(outDir)];
@@ -345,6 +363,7 @@ export async function runRenderStaticGate() {
 
   for (const filePath of htmlFiles) {
     const relPath = path.relative(outDir, filePath);
+    const pagePath = pagePathFromRelPath(relPath);
     let html;
     try {
       html = fs.readFileSync(filePath, "utf8");
@@ -381,6 +400,23 @@ export async function runRenderStaticGate() {
     //        figures may not hide inside source text).
     const sourceTextEls = root.querySelectorAll("[data-source-text]");
     for (const stEl of sourceTextEls) {
+      // (a0k) backlog #38 — the marker's VALUE must be classified in
+      // source-text-kinds.mjs, which is where the two FORMATTING exemptions
+      // (currency scan, notation sweep) are granted per kind. An unclassified
+      // value used to buy silence from both sweeps just by existing; now it
+      // buys nothing and fails here, so adding one is a reviewed edit that has
+      // to say whose prose it is.
+      const kind = stEl.getAttribute("data-source-text");
+      if (!isKnownSourceTextKind(kind)) {
+        positiveErrors++;
+        positiveFailures.push({
+          file: relPath,
+          issue:
+            `[data-source-text=${JSON.stringify(kind)}] is not a classified ` +
+            `source-text kind — add it to scripts/gates/source-text-kinds.mjs ` +
+            `with the exemptions it earns and why, or stop marking this prose`,
+        });
+      }
       const anchor =
         stEl.getAttribute("data-xml-path") ||
         stEl.getAttribute("data-cite-fact-id") ||
@@ -755,9 +791,15 @@ export async function runRenderStaticGate() {
     // Walk text nodes and check for currency patterns not inside [data-amount]
     //
     // Skip conditions (in addition to [data-amount]):
-    //   - data-source-text: element contains quoted source text (e.g. J-book
-    //     narrative prose), block-cited at the xml_path level — dollar strings
-    //     are from the source document, not site-computed figures.
+    //   - data-source-text WHOSE KIND EARNS IT (backlog #38): the marker's
+    //     mere presence used to switch this scan off for a whole subtree, so
+    //     /methodology/ — the site's own prose, quoted from nothing — wrapped
+    //     its entire container and went unscanned. Now only the kinds declared
+    //     quotedFigures in source-text-kinds.mjs are skipped: prose whose
+    //     dollar strings really are the source document's and therefore
+    //     CANNOT be <Cite>-wrapped. Site-authored prose is scanned like any
+    //     other page, and its handful of non-figure dollar tokens are
+    //     enumerated per page in prose-allowlist.json.
     //   - data-program-name: element renders a program title label (e.g.
     //     "ORDNANCE ITEMS <$5M") — the dollar string is part of the official
     //     program name, not a site-computed figure.
@@ -772,9 +814,8 @@ export async function runRenderStaticGate() {
           const matches = text.match(CURRENCY_RE);
           if (matches) {
             for (const m of matches) {
-              // Check allowlist
-              const mTrimmed = m.trim();
-              const allowed = allowedPatterns.some((p) => mTrimmed === p.trim());
+              // Check the page-scoped prose allowlist
+              const allowed = proseAllowlist.isAllowed(pagePath, m);
               if (!allowed) {
                 negativeErrors++;
                 const snippet = text.trim().slice(0, 120);
@@ -797,7 +838,9 @@ export async function runRenderStaticGate() {
       const isAmount = node.getAttribute && node.getAttribute("data-amount") != null;
       // Skip subtrees containing quoted source text (narrative prose, program names)
       // or the <head> element (page metadata is not rendered figure text).
-      const isSourceText = node.getAttribute && node.getAttribute("data-source-text") != null;
+      const isSourceText =
+        node.getAttribute &&
+        exemptFromCurrencyScan(node.getAttribute("data-source-text"));
       const isProgramName = node.getAttribute && node.getAttribute("data-program-name") != null;
       const isHead = node.tagName && node.tagName.toLowerCase() === "head";
       // svg <desc> gets the TIGHTENED check (not a wholesale skip): each of
@@ -907,6 +950,20 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`negative scan: no unattributed currency patterns ✓`);
+  }
+
+  // (b2) Stale prose-allowlist entries (backlog #38). An exemption that
+  // matched nothing in the whole build is still switched on, and that is how
+  // an escape hatch grows unnoticed. It is also this leg's NON-VACUITY proof
+  // for /methodology/: the entries scoped only to that page can be used only
+  // if the negative scan actually reaches it.
+  const staleAllowlist = proseAllowlist.unusedErrors();
+  if (staleAllowlist.length > 0) {
+    for (const e of staleAllowlist) errors.push(e);
+  } else {
+    notes.push(
+      `prose allowlist: ${allowlist.length} page-scoped entr(ies), all in use ✓`
+    );
   }
 
   if (ledgerErrors > 0) {

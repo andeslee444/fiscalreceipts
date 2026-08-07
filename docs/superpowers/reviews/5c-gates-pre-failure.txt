@@ -3457,3 +3457,204 @@ many there are — only that whatever is published is checkable.
 
 SUITE COUNT UNCHANGED — one new leg on gate 23, one rule replaced on gate 14.
 Still 24 gates.
+
+═══════════════════════════════════════════════════════════════════════════════
+2026-08-06 — BACKLOG #27 + #38: TWO PLACES THE SUITE STRUCTURALLY COULD NOT SEE
+═══════════════════════════════════════════════════════════════════════════════
+
+Sprint 3 found three P0-class defects that had been live for weeks, and two were
+found by accident rather than by a check.  These two items are the places where
+"by accident" was the only way they COULD have been found.
+
+───────────────────────────────────────────────────────────────────────────────
+#27(b) — LIVE CDN ASSET CHECK (scripts/launch/verify_live_assets.mjs)
+───────────────────────────────────────────────────────────────────────────────
+
+WHY IT IS NOT A GATE.  Gates 1-24 read site/out/ and a local static server.  The
+suite is hermetic on purpose: offline-runnable, deterministic, and never red for
+a reason that is not about the site.  This check asks a remote host a question.
+More decisively, the property is PRODUCTION CDN STATE, which does not exist
+before the upload that creates it — a pre-deploy gate asserting it would be
+vacuous at best and green-on-the-previous-deploy's-assets at worst.  So it is a
+post-deploy step that scripts/launch/deploy.sh runs automatically as step 4 and
+that exits non-zero.  It is not a line in a doc: the only documented deploy path
+executes it.
+
+PROOF IT CAN FAIL — a sha that genuinely is not on the CDN, against the REAL
+asset host:
+
+  $ node scripts/launch/verify_live_assets.mjs \
+      --sha=0000000000000000000000000000000000000000000000000000000000000000 \
+      --skip-site
+
+  ── 1 recently-added jbook_pdf asset(s) [--sha] ──
+    FAIL: PDF 000000000000… — HTTP 404 from https://assets.fiscalreceipts.com/
+      pdfs/000…000.pdf — the binary is not on the CDN. Run
+      scripts/launch/upload_r2.sh --live.
+
+  ── R2 data assets ──
+    PASS: citations/citations.parquet — HTTP 200, 3010788 bytes
+
+  FAIL: 1 of 2 live-asset assertion(s) failed.
+  EXIT: 1
+
+PROOF IT PASSES on the live site as it stands (the newest three CITED jbook_pdf
+binaries, selected by mtime under data/site/pdfs/ and confirmed to be pointed at
+by a hosted_pdf_url in citations.json):
+
+  $ node scripts/launch/verify_live_assets.mjs --count=3
+
+    PASS: PDF f9a429fbde27… — HTTP 206, %PDF- magic, 5334234 bytes total
+    PASS: PDF e5a5bc266a02… — HTTP 206, %PDF- magic, 7466148 bytes total
+    PASS: PDF db242ab71c71… — HTTP 206, %PDF- magic, 5579798 bytes total
+    PASS: citations/citations.parquet — HTTP 200, 3010788 bytes
+    PASS: /fact/3134a6e0 — HTTP 200, 20754 bytes
+    PASS: /json/years_matrix.json — HTTP 200, 3004842 bytes
+
+  All 6 live-asset assertions passed.
+  EXIT: 0
+
+The status assertion is 200/206 AND a non-zero body AND the `%PDF-` magic — a
+CDN that serves an HTML error page under a 200 fails on the third arm.
+
+DEPLOY PREFLIGHT also proved it can fail (site/out/vercel.json temporarily moved
+aside — the /fact/ rewrite lives there and dies silently if the wrong directory
+is deployed):
+
+  $ ./scripts/launch/deploy.sh --dry-run
+  ERROR: site/out/vercel.json missing — the /fact/ rewrite would silently die.
+     Check site/scripts/prepare-assets.mjs and rebuild.
+
+───────────────────────────────────────────────────────────────────────────────
+#38 — /methodology/ WAS INVISIBLE TO BOTH FORMATTING SWEEPS
+───────────────────────────────────────────────────────────────────────────────
+
+WHAT THE GATE CODE ACTUALLY SAID.  `data-source-text` was granting three
+exemptions at once:
+
+  (a0)  render-static  "block-cited, so no per-figure anchor is required — and
+                        no [data-amount] may hide inside"     ← CITATION
+  (b)   render-static  "these dollar strings are the SOURCE's, so do not
+                        demand a <Cite> around them"          ← FORMATTING
+  (j)   datatruth      "this integer NOTATION is the source's, not ours"
+                                                              ← FORMATTING
+
+The two formatting exemptions are earned only by prose that genuinely came from
+somewhere else.  The hypothesis "the sweeps should just stop honouring the
+marker" was MEASURED against the built site before committing to it, and it does
+not hold: dropping the skip wholesale fails ~3,650 currency tokens under
+narrative / dossier-claim / lineage-evidence (verbatim J-book prose, which
+cannot be <Cite>-wrapped — that is what <ProseCite> exists for) and 226 leg-j
+findings, ALL under `narrative`.  Some prose really does print an unformatted
+number and really is not ours to reformat.
+
+So the narrower expression is per-VALUE classification, not per-attribute:
+scripts/gates/source-text-kinds.mjs is one table both gates read, each value
+declaring which of the two formatting exemptions it earns and why.  An
+unclassified value earns neither AND fails render-static, so a new marker can no
+longer buy silence by existing.  `methodology` is gone as a kind — the page
+quotes nothing — along with the sentinel data-xml-path="site:methodology/prose"
+that had been invented purely to satisfy (a0).
+
+PROOF 1 — A PLANTED FORMATTING DEFECT ON /methodology/, OF EXACTLY THE CLASS THE
+TWO SWEEPS EXIST TO CATCH.  One paragraph inserted into out/methodology/
+index.html carrying both: a bare 4-digit cardinality and an unattributed
+currency figure.
+
+  <p id="planted-defect">Planted for the backlog-#38 proof: this build ships
+  1741 programs and a threshold of $999.9M.</p>
+
+FAILS NOW — gate 24 datatruth, leg j:
+
+  gate 24 datatruth PASS? false
+    ✗ leg j: 1 ungrouped count(s) rendered — §P1-5 says one notation for one
+      number (first 10):
+    ✗   methodology/index.html: "for the backlog-#38 proof: this build ships
+        1741 programs and a threshol" — write 1,741, not 1741
+
+FAILS NOW — gate 2 render-static, negative currency scan:
+
+  gate 2 render-static PASS? false
+    ✗ 1 currency patterns found OUTSIDE [data-amount] (first 10):
+    ✗   methodology/index.html: "$999.9M" in "Planted for the backlog-#38
+        proof: this build ships 1741 programs and a threshold of $999.9M."
+
+WOULD HAVE PASSED BEFORE — the SAME planted paragraph, in the SAME file, with
+the container re-wrapped in data-source-text="methodology" exactly as it
+shipped, run through the PRE-FIX rules (leg j's wholesale
+`querySelectorAll("[data-source-text], script, …").remove()` and render-static's
+`getAttribute("data-source-text") != null` skip, with the old site-wide
+allowlist):
+
+  PRE-FIX datatruth leg j over /methodology/: 1 numeric leaf element(s)
+    reached, 0 finding(s)
+  PRE-FIX render-static (b) over /methodology/: 26 text node(s) reached,
+    0 finding(s)
+
+One numeric leaf and 26 text nodes are the site chrome — header, footer, nav.
+The whole page body was deleted before either sweep looked at it.  Both defects
+pass, silently, on the page that argues nothing here is unchecked.
+
+Page restored afterwards; `cmp out/methodology/index.html <backup>` is clean.
+
+PROOF 2 — THE PAGE CANNOT HIDE AGAIN (leg j coverage guard).  Container
+re-wrapped in a KNOWN notation-exempt kind (`narrative`), no other change:
+
+  gate 24 datatruth PASS? false
+    ✗ leg j reached 1 of 47 numeric leaf element(s) on methodology/index.html —
+      under the 90% this page must be swept at. Its numbers are hiding behind a
+      [data-source-text] marker again (or the page stopped building).
+      backlog #38 is the history here.
+
+  (The first version of this guard required ">= 1 numeric leaf reached" and
+  PASSED this exact test — the site chrome supplies one.  A non-vacuity check
+  that passes the defect it guards is worse than none, so the guard is coverage
+  against the page's own total, measured before any source-text removal.)
+
+PROOF 3 — AN UNCLASSIFIED MARKER VALUE EARNS NOTHING AND FAILS.  Container
+re-marked with the old, now-unregistered value:
+
+  gate 2 render-static PASS? false
+    ✗ 1 [data-amount] elements fail Cite-state contract:
+    ✗   methodology/index.html: [data-source-text="methodology"] is not a
+        classified source-text kind — add it to
+        scripts/gates/source-text-kinds.mjs with the exemptions it earns and
+        why, or stop marking this prose
+
+PROOF 4 — THE ALLOWLIST CANNOT ROT.  prose-allowlist.json's `pages` field
+shipped from day one and the gate IGNORED it, matching every pattern site-wide;
+it is honoured now, and the file's own hygiene is gate-enforced.  One stale entry
+(matches nothing) and one dead pattern (a string the currency scanner can never
+produce — the file really did ship a "currency examples" entry for months) both
+planted:
+
+  gate 2 render-static PASS? false
+    ✗ prose-allowlist.json[10]: pattern "currency examples" is not a currency
+      token the scan can ever produce — it exempts nothing and reads like a rule
+    ✗ prose-allowlist.json[9] ($999B on /methodology/) matched nothing in this
+      build — a stale exemption still switched on
+
+  The used-entry rule is also this leg's NON-VACUITY proof for /methodology/:
+  the six entries scoped only to that page can be used only if the negative
+  currency scan actually reaches it.
+
+GREEN STATE (clean build, both files restored cmp-clean):
+
+  gate 2 render-static:
+    prose allowlist: 9 page-scoped entr(ies), all in use ✓
+    negative scan: no unattributed currency patterns ✓
+  gate 24 datatruth:
+    leg j count notation: 6734 page(s), 381878 numeric text node(s), 4144
+    grouped — 0 bare 4+-digit cardinalities (/methodology/ coverage 47/47
+    numeric leaves) ✓
+
+NO REAL DEFECT surfaced on /methodology/ once it became visible — round 3 had
+already found and fixed by hand the three (run-together words, an outdented
+list, `17 of 1741`) that these sweeps would have caught.  The page is now
+scanned like every other page, and `[data-amount]` is legal on it for the first
+time, so a future figure there can be cited rather than exempted.
+
+SUITE COUNT UNCHANGED — one new leg on gate 2 (a0k, unclassified marker kinds),
+allowlist hygiene folded into gate 2's existing negative-scan reporting, one
+coverage guard added to gate 24 leg j.  Still 24 gates.  The live-CDN check is
+NOT a gate, by design (see #27(b) above).

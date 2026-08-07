@@ -96,17 +96,19 @@ export default function MethodologyPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(faqPageJsonLd(FAQ_ITEMS)) }}
       />
-    {/* data-source-text="methodology": this page is pure explanatory prose —
-        all dollar amounts are threshold descriptions or source-document quotes,
-        not site-computed <Cite> figures. The render-static scan skips
-        currency patterns inside any element carrying data-source-text.
-        data-xml-path identifies this as a prose section (no J-book XML node;
-        the sentinel path satisfies the block-level citation constraint). */}
-    <div
-      className="container mx-auto px-4 py-10 max-w-3xl"
-      data-source-text="methodology"
-      data-xml-path="site:methodology/prose"
-    >
+    {/* backlog #38: this container used to carry data-source-text="methodology"
+        plus a SENTINEL data-xml-path ("site:methodology/prose") invented purely
+        to satisfy the (a0) citation-anchor constraint. The marker means "this
+        prose is quoted from a source document", and nothing here is: it is the
+        site's own explanatory writing. The effect was that the one page arguing
+        for the site's rigour became the one page the render-static currency
+        scan and datatruth leg j could not see, and no citation could ever be
+        rendered on it (a0 forbids [data-amount] inside source text).
+        The page is now an ORDINARY page to both sweeps. Its dollar tokens are
+        method parameters, a tolerance, an outside body's published figure and
+        worked examples — enumerated one by one, with reasons, in
+        scripts/gates/prose-allowlist.json. */}
+    <div className="container mx-auto px-4 py-10 max-w-3xl">
       {/* Round-3 judging: /methodology/ and /about/ were the only two pages
           on the site with no breadcrumb, so the one page every figure links
           out to had no way back that was not the browser's own. */}
