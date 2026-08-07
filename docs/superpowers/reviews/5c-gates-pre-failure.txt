@@ -3658,3 +3658,146 @@ SUITE COUNT UNCHANGED — one new leg on gate 2 (a0k, unclassified marker kinds)
 allowlist hygiene folded into gate 2's existing negative-scan reporting, one
 coverage guard added to gate 24 leg j.  Still 24 gates.  The live-CDN check is
 NOT a gate, by design (see #27(b) above).
+
+
+================================================================================
+BACKLOG #37 + #44 — the last two of the safety-net cluster (2026-08-07)
+================================================================================
+
+#37 — A PROGRAM'S TRAJECTORY MUST BE THE SUM OF ITS COMPONENTS
+
+New dbt assertion `assert_program_trajectory_component_sum.sql`, guarding the
+new `fct_program_trajectory` (grain pe_bli) against `fct_budget_trajectory`
+(grain pe_bli × organization).
+
+PROOF-CAN-FAIL.  The model redefined as A PICK rather than a sum — the primary
+org by fy2026_total, which is what `_rollup_service_org` and the old summary
+slot-2 already used, and therefore the likeliest wrong reimplementation:
+
+  $ uv run dbt build --project-dir dbt --profiles-dir dbt \
+        --select fct_program_trajectory+
+
+  2 of 5 FAIL 3 assert_program_trajectory_component_sum ......... [FAIL 3 in 0.06s]
+  Completed with 1 error, 0 partial successes, and 0 warnings:
+  Failure in test assert_program_trajectory_component_sum
+    Got 3 results, configured to fail if != 0
+
+  The three rows, (pe_bli, missing_l, missing_r, got_n, want_n, got_fy2024,
+  want_fy2024, …, got_fy2026, want_fy2026, …):
+
+    ('30',  False, False, 1, 4, 408006.0, 435163.0, …, 212900.0, 232181.0, …)
+    ('500', False, False, 1, 2, 105943.0, 110388.0, …,  79251.0,  83048.0, …)
+    ('20',  False, False, 1, 2,   2135.0,   2491.0, …,   2230.0,   3141.0, …)
+
+  — exactly the three shared BLI codes, with the component it published and
+  the program it should have.  The FY2024 numbers are the ones gate 23 leg e
+  surfaced in Sprint 3 round 3.
+
+GREEN STATE (model restored):
+
+  1 of 5 OK created sql view model main.fct_program_trajectory
+  2 of 5 PASS assert_program_trajectory_component_sum
+  3 of 5 PASS assert_program_trajectory_grain_unique
+  4 of 5 PASS not_null_fct_program_trajectory_pe_bli
+  5 of 5 PASS unique_fct_program_trajectory_pe_bli
+  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=5
+
+Full `dbt build` on the live warehouse: PASS=126 WARN=1 ERROR=0 (the warn is
+the pre-existing subaward outlier advisory, unchanged).
+
+
+#44 — FEED HEADLINE FIGURES CARRY THEIR RECEIPT
+
+Two changes to gate 2 (render-static): leg (b) now sweeps
+[data-source-text="headline"] (the `headline` kind flipped to
+quotedFigures:false) and accepts [data-prose-cite] as an anchor; new leg (a2)
+binds the rendered page to the exporter's sidecar in both directions.
+
+PROOF 1 — THE EXPORTER STOPS EMITTING SEGMENTS.  headline_segments stripped
+from all 223 cards in feed.json (the pre-#44 shape):
+
+  gate 2 render-static PASS? false
+    (a2) 225 feed-headline receipt failure(s) (first 10):
+      card concentration_shift/0601101E has no headline_segments — its dollar
+        tokens cannot carry anchors (export predates backlog #44, or stopped
+        emitting them)
+      …
+
+PROOF 2 — THE SEGMENTATION SILENTLY DEGRADES.  The money cards keep a
+headline_segments array, but collapsed to ONE text run — the shape that would
+pass a naive "segments exist" check and re-open the whole defect:
+
+  gate 2 render-static PASS? false
+    (a2) 2 feed-headline receipt failure(s) (first 10):
+      40 currency token(s) in flat headlines but 0 amount segment(s) — every
+        dollar figure a headline prints must be a segment carrying its fact id
+      /feed/ renders 40 headline prose cite(s) but the sidecar declares 0
+        amount segment(s) — every headline figure must reach the reader with
+        its receipt
+
+  This is the NON-VACUITY arm.  A gate that only asked "is every rendered
+  token anchored?" would pass a feed that printed no money at all, which is
+  the shape this defect had for months.
+
+PROOF 3 — A HEADLINE FIGURE CITES A FACT THAT DOES NOT RESOLVE.  All 40
+amount segments repointed at 0000000000000000:
+
+  gate 2 render-static PASS? false
+    (a2) 40 feed-headline receipt failure(s) (first 10):
+      card new_entrant/ALZCHEM TROSTBERG: headline amount "$150.0M" cites
+        "0000000000000000", which does not resolve
+      card new_entrant/ASRC BUILDERS CADDELL: headline amount "$111.0M" cites
+        "0000000000000000", which does not resolve
+
+PROOF 4 — PROSE AND SEGMENTS TELL TWO DIFFERENT STORIES.  One card's leading
+text run rewritten (the flat `headline` still ships in RSS/Atom/JSON and to
+search, so a divergence would publish two sentences for one event):
+
+  gate 2 render-static PASS? false
+    (a2) 1 feed-headline receipt failure(s) (first 10):
+      card new_entrant/ALZCHEM TROSTBERG: segments re-join to "A DIFFERENT
+        SENTENCE $150.0M total)" but headline is "ALZCHEM TROSTBERG new
+        defense contractor (first award FY2024, $150.0M total)"
+
+PROOF 5 — THE RENDER DROPS THE AFFORDANCE WHILE THE DATA KEEPS IT.  Every
+<span data-prose-cite> unwrapped in the built /feed/ HTML — a component
+regression, with feed.json untouched:
+
+  gate 2 render-static PASS? false
+    40 currency patterns found OUTSIDE [data-amount] (first 10):
+      feed/index.html: "$3.2B" in "$3.2B"
+      feed/index.html: "$3.0B" in "$3.0B"
+      feed/index.html: "$2.3B" in "$2.3B"
+      …
+
+PROOF 6 — THE FLIP IS LOAD-BEARING, AND (a2) IS WHY IT IS NOT THE ONLY GUARD.
+Proof 5's mutated HTML, re-run with `headline` restored to
+quotedFigures:true (the pre-#44 classification):
+
+  gate 2 render-static PASS? false
+  leg b currency errors: NONE — the 40 bare tokens are invisible again
+    (a2) 1 feed-headline receipt failure(s) …
+
+  That is the defect exactly as it shipped: forty site-computed dollar figures
+  on the syndication surface, and the currency sweep cannot see one of them.
+  Leg (a2) still fires, which is the point of binding the render to the
+  sidecar rather than trusting a single sweep.
+
+GREEN STATE (all mutations reverted, clean build):
+
+  gate 2 render-static:
+    prose cites: 136 [data-prose-cite] element(s), all resolving ✓
+    negative scan: no unattributed currency patterns ✓
+    feed headlines: 40 dollar token(s) across 223 card(s), each a cited
+      segment and each rendered as a prose cite on /feed/ ✓
+    prose allowlist: 9 page-scoped entr(ies), all in use ✓
+
+NOT A WEAKENING.  Leg (b) gained [data-prose-cite] as an accepted anchor
+because (a0) forbids [data-amount] inside a [data-source-text] subtree, so a
+headline dollar token has exactly one legal way to be anchored.  It is the
+STRICTER anchor of the two: leg (a1) requires a prose cite's data-fact-id to
+resolve in citations.json, while a bare [data-amount] may legitimately render
+state B or C with no fact at all.
+
+SUITE COUNT UNCHANGED — one new leg on gate 2 (a2), one classification flip,
+two new dbt assertions on a new model.  Still 24 gates.
