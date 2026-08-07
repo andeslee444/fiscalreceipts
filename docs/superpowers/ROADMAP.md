@@ -811,24 +811,49 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     attempts, and record that it was retried), or make the gate report
     best-of-N with the per-attempt detail persisted. Do NOT lower the threshold.
 
-37. **`programs.json`'s trajectory is an org SLICE, not the program, for BLI
-    codes shared across organisations (found by gate 23 leg e, Sprint 3 round
-    3).** `programs.json` holds one row per PE with one `org`, and its
-    `trajectory` object carries that org's share. For 1,738 of 1,741 programs
+37. ✅ **FIXED 2026-08-07 AT SOURCE — the grain is the PE, and the warehouse
+    now owns the rollup.** `programs.json` held one row per PE with one `org`,
+    and its `trajectory` carried that org's SHARE. For 1,738 of 1,741 programs
     the declared org is the only org, so the slice IS the program and nothing
-    shows. Three BLI codes are shared and there it is a component: BLI 30
-    ("Other Major Equipment") trajectory FY2024 = 408,006, which is the OSD
-    part of a 435,163 program (OSD 408,006 + DMACT 13,012 + DTRA 12,787 +
-    DoDEA 1,358); BLI 20 ("Vehicles") 356 against 2,491; BLI 500 ("Personnel
-    Administration") 105,943 against 110,388. Both FY24 and FY26 were affected,
-    and the FY26 one had been shipping since the column existed. WORKED AROUND
-    on the site: `/programs/` and `/agency/{org}/` now read the program-level
-    decade cells of `years_matrix.json` (same fact ids the program pages cite),
-    so no rendered surface carries the slice. The DATA is still wrong. Fix
-    properly: decide whether a `programs.json` row is a PE or a (PE, org) pair,
-    make the exporter emit that consistently, and add a dbt assertion that a
-    program's trajectory equals the sum of its component rows. Until then any
-    NEW consumer of `programs.json.trajectory` inherits the defect.
+    showed; three shared BLI codes published a part as the whole (FY24→FY26,
+    USD thousands): BLI 30 "Other Major Equipment" 408,006→**435,163** /
+    212,900→**232,181** (OSD + DMACT 13,012 + DTRA 12,787 + DoDEA 1,358); BLI
+    20 "Vehicles" 356→**2,491** / 911→**3,141**; BLI 500 "Personnel
+    Administration" 105,943→**110,388** / 79,251→**83,048**. Found by gate 23
+    leg e in Sprint 3 round 3; the FY26 one had been shipping since the column
+    existed.
+
+    THE GRAIN DECISION, recorded: a row is a **PE**. pe_bli is the row
+    identity, the `/program/{pe_bli}/` URL, the generateStaticParams key, the
+    dead-link page set and the corpus count — one page per PE, always. The
+    (PE, org) alternative multiplies the index against that URL space and
+    leaves the `/programs/` row and the page it links to disagreeing by
+    construction. The org grain is real and STAYS, in `fct_budget_trajectory`,
+    where an agency's share is an agency-grain question.
+
+    `fct_program_trajectory` (new dbt model, grain pe_bli) is the rollup, and
+    `assert_program_trajectory_component_sum` pins every metric to the sum of
+    its component rows — both directions, NULL-aware, change columns included.
+    Proof-can-fail: redefine the model as the primary-org pick and it FAILs 3,
+    naming BLI 30/500/20 with got/want. NOT a shipped parquet: a second public
+    "trajectory" table differing on 3 of 1,741 rows would be a fresh footgun.
+    The exporter reads it for `programs.json`, both sidecar tiers, search
+    ranking, and the summary block's slot-2 fallback — which resolved to the
+    PE's PRIMARY ORG, i.e. a component card on a program page whenever the
+    decade grain was absent. Citation identity collapses to the parent at one
+    component (1,738 programs keep their fact ids; no number gained a second
+    receipt); the three shared BLIs mint a program-scoped derived sum whose
+    inputs are every component's workbook rows, so rule 4c recomputes it.
+
+    The site KEEPS reading years_matrix's decade cells on `/programs/` and
+    `/agency/{org}/` — no longer as a workaround (the fixed trajectory agrees
+    to the cent on all 1,799 FY24 and 1,671 FY26 programs where both publish)
+    but because the decade cell is the same FACT the linked page cites. Same
+    number from two facts still gives a reader two receipts for one figure.
+
+    Enumerated and deliberately unchanged: the agency FY2026 sum stays the
+    component grain (summing program totals there would credit OSD with
+    DMACT's, DTRA's and DoDEA's money). See #45 for its coverage gap.
 
 38. ✅ **DONE 2026-08-06 — the escape hatch WAS conflating two exemptions, and
     the split is the fix.** `/methodology/` wrapped its entire
@@ -911,8 +936,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     below the minimum and stating the scale in words beneath the chart (no
     figures in that sentence — gate 2 requires every rendered dollar amount to
     sit inside a `<Cite>`, and the extremes are already in the cited grid
-    below). NOT fixed, and worth a separate pass: the x-axis still labels only
-    the first and last fiscal year, at 8px.
+    below). ✅ **Remnant CLOSED 2026-08-07:** the x-axis labelled only the
+    first and last fiscal year, at 8 viewBox units, so every dot between them
+    sat at an unlabelled position — on a chart whose own caption says to read
+    it for direction. It is labelled at a regular step now, with a tick under
+    each label, the step derived from span × plot width against a collision
+    pitch (a decade gets FY15/18/20/22/24/26; a five-year program gets every
+    year; a one-year program gets one and does not divide by zero). Type 8→9
+    units, `#9ca3af`→`#6b7280`. `axisLabelYears` is exported and unit-tested,
+    including "no two labels closer than the pitch" across every span 4–16
+    years.
 
 ## PM-review Sprint 3 — round-3 visual judging
 
@@ -1006,24 +1039,51 @@ chart baseline (#41).
     hover/focus; or default OFF with the dotted underline carrying the signal.
     Whichever, the figure should be the loudest thing in its own cell.
 
-44. **Feed headline dollar figures are uncitable (named, not hidden, by the
-    backlog-#38 split).** `data-source-text="headline"` is classified in
-    `scripts/gates/source-text-kinds.mjs` as earning the currency-scan
-    exemption, and the classification's own `why` says this is a KNOWN GAP
-    rather than a provenance claim: the sentence is composed by the export
-    pipeline as one string (`"… first award FY2025, $3.1M total"`), so its ~40
-    dollar tokens on `/feed/` and `/` cannot carry per-token anchors and are
-    the only site-computed currency figures that reach a reader without a
-    citation affordance. Before #38 this was invisible — the marker exempted
-    them silently, alongside genuinely quoted J-book prose, with nothing
-    distinguishing the two. Fix if taken: have the exporter emit headlines as
-    segments (`text` / `{amount, fact_id}`) rather than a flat string, render
-    the amount segments through `<ProseCite>` (which already exists for exactly
-    this and is gate-checked by render-static (a1)), then flip `headline` to
-    `quotedFigures: false` and delete the exemption. The `/feed/` claim-truth
-    legs (datatruth h/i) already re-derive these magnitudes from the corpus, so
-    the numbers are verified — what is missing is the reader's ability to click
-    through to the source.
+44. ✅ **FIXED 2026-08-07 — every feed headline figure now clicks through to
+    its source.** `data-source-text="headline"` earned the currency-scan
+    exemption, and its own `why` said so as a KNOWN GAP: the sentence was
+    composed by the export pipeline as one string (`"… first award FY2025,
+    $3.1M total"`), so its dollar tokens could not carry per-token anchors and
+    were the only site-computed currency figures reaching a reader with no
+    citation affordance — on the syndication surface, the most-forwarded,
+    least-context view the site has. Before #38 it was invisible; #38 named it.
+
+    **40 tokens** on the live corpus (25 `new_entrant`, 15
+    `request_vs_actuals_gap`; `yoy_swing` and `concentration_shift` headlines
+    print a percentage and an index, not money). **Every receipt already
+    existed** — all 40 matched a fact id already on the card, so nothing was
+    minted. The exporter emits `headline_segments` (text runs + `{amount,
+    fact_id}`) and `<FeedHeadline>` renders the amount runs through
+    `<ProseCite>`. Two invariants: the segments re-join to the flat `headline`
+    exactly (it still ships in RSS/Atom/JSON and to search), and a dollar
+    figure enters a headline ONLY with a receipt — where the fact does not
+    resolve the money clause is dropped rather than printed uncitable.
+
+    Gate flip: `headline` → `quotedFigures: false` (it now earns NEITHER
+    formatting exemption; it stays classified because (a0) — no nested
+    `[data-amount]` — is exactly what forces per-token anchors). One enabling
+    change, and it is a strengthening: leg (b) accepts `[data-prose-cite]` as
+    an anchor, which (a1) forces to RESOLVE, where a bare `[data-amount]` need
+    carry no fact at all. New leg **(a2)** binds render to exporter both ways —
+    segments re-join, every flat-headline currency token is covered by an
+    amount segment (the non-vacuity arm), every amount segment resolves, and
+    `/feed/` renders exactly as many headline prose cites as the sidecar
+    declares. Suite stays 24 gates.
+
+45. **The agency FY2026 sum's coverage gap (enumerated by #37, deliberately
+    not closed there).** `agencies.json`'s `fy2026_total_thousands` is the
+    COMPONENT grain by design — an agency total is an agency-grain question,
+    and summing program totals would credit OSD with DMACT's, DTRA's and
+    DoDEA's money. But it iterates `dim_programs`, which carries ONE org per
+    PE, so a shared BLI's components under a different org are absent from
+    that org's page entirely: DCSA is missing BLI 20's 2,230, DMACT BLI 30's
+    7,258, DTRA BLI 30's 12,023, DHRA BLI 500's 3,797 — $25.3M across four
+    agencies. It is not a wrong number (those pages do not list the PE either,
+    so the total is consistent with what they show) but it is an
+    under-statement with no note. Closing it means giving `dim_programs` a
+    per-org grain — a dimension change, not an aggregate fix — and would move
+    which agency page lists a shared BLI. Written down at the call site in
+    `export_site.py` in the meantime.
 
 ## Remaining launch items
 
