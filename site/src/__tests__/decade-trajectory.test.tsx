@@ -19,7 +19,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
 
-import { DecadeTrajectory } from "@/components/decade-trajectory";
+import { axisLabelYears, DecadeTrajectory } from "@/components/decade-trajectory";
 import type { DecadeSeries, ProgramBookDiff } from "@/lib/data";
 
 const SERIES: DecadeSeries = {
@@ -173,5 +173,61 @@ describe("DecadeTrajectory", () => {
     // prefers-reduced-motion collapses tokens to 1ms (final frame).
     const line = container.querySelector("[data-decade-line]") as SVGElement;
     expect(line.getAttribute("class") ?? "").toContain("decade-draw");
+  });
+});
+
+// ── X axis (ROADMAP backlog #41 remnant) ─────────────────────────────────────
+//
+// The axis labelled the first and last fiscal year only, at 8 viewBox units,
+// on the site's most-repeated chart. Two labels a decade apart do not let a
+// reader place a marker on a year.
+
+describe("axisLabelYears", () => {
+  const INNER_W = 324; // SVG_WIDTH 340 - 2 * PADDING 8
+
+  const span = (from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+  it("always labels both ends", () => {
+    for (const [from, to] of [
+      [2015, 2026],
+      [2022, 2026],
+      [2025, 2026],
+    ] as const) {
+      const labels = axisLabelYears(span(from, to), INNER_W);
+      expect(labels[0]).toBe(from);
+      expect(labels[labels.length - 1]).toBe(to);
+    }
+  });
+
+  it("labels more than the two ends across a decade", () => {
+    const labels = axisLabelYears(span(2015, 2026), INNER_W);
+    expect(labels.length).toBeGreaterThan(2);
+    expect(labels).toContain(2020);
+  });
+
+  it("labels every year when the span is short enough to fit them", () => {
+    expect(axisLabelYears(span(2022, 2026), INNER_W)).toEqual([
+      2022, 2023, 2024, 2025, 2026,
+    ]);
+  });
+
+  it("never places two labels closer than the collision pitch", () => {
+    for (let to = 2018; to <= 2030; to++) {
+      const fys = span(2015, to);
+      const labels = axisLabelYears(fys, INNER_W);
+      const perYear = INNER_W / (to - 2015);
+      for (let i = 1; i < labels.length; i++) {
+        expect(
+          (labels[i] - labels[i - 1]) * perYear,
+          `FY${labels[i - 1]}→FY${labels[i]} over ${fys.length} years`,
+        ).toBeGreaterThanOrEqual(34);
+      }
+    }
+  });
+
+  it("handles a single-year program without dividing by zero", () => {
+    expect(axisLabelYears([2026], INNER_W)).toEqual([2026]);
+    expect(axisLabelYears([], INNER_W)).toEqual([]);
   });
 });

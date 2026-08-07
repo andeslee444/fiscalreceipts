@@ -62,6 +62,46 @@ const PADDING = 8;
 const LABEL_BAND = 12;
 const POINT_R = 2.5;
 
+// X-axis type (ROADMAP backlog #41 remnant). The axis used to label the first
+// and last fiscal year only, at 8 viewBox units — on the site's most-repeated
+// chart, on 1,741 pages. Two labels ten years apart do not let a reader place
+// a marker: every dot in between was an unlabelled position.
+//
+// The axis is labelled at a regular STEP now, chosen from the span so labels
+// never collide, with the first and last year always present (the last wins
+// its slot, so the step is walked back from it). Sizes are viewBox units: the
+// svg is 340 wide and renders up to 720px, so 9 units is ~9px at the narrowest
+// phone width and ~19px on a desktop card.
+const AXIS_FONT = 9;
+/** Minimum x-distance between two "FYnn" labels, in viewBox units. */
+const AXIS_LABEL_PITCH = 34;
+
+/**
+ * The fiscal years the x-axis labels, given the span and the plot width.
+ *
+ * Always includes minFy and maxFy. Intermediate labels are placed on a fixed
+ * step walked BACK from maxFy so the right edge is never a ragged half-step,
+ * and any candidate that would sit within one pitch of either end is dropped
+ * rather than allowed to overlap it.
+ */
+export function axisLabelYears(
+  fys: number[],
+  innerWidth: number,
+): number[] {
+  if (fys.length === 0) return [];
+  const minFy = fys[0];
+  const maxFy = fys[fys.length - 1];
+  if (fys.length === 1) return [minFy];
+  const perYear = innerWidth / (maxFy - minFy);
+  const step = Math.max(1, Math.ceil(AXIS_LABEL_PITCH / perYear));
+  const out = new Set<number>([minFy, maxFy]);
+  for (let fy = maxFy - step; fy > minFy; fy -= step) {
+    if ((fy - minFy) * perYear < AXIS_LABEL_PITCH) break;
+    out.add(fy);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
 interface DecadeTrajectoryProps {
   series: DecadeSeries | null | undefined;
   bookDiff: ProgramBookDiff | null | undefined;
@@ -324,25 +364,41 @@ export function DecadeTrajectory({ series, bookDiff, reconKeys }: DecadeTrajecto
             </path>
           );
         })}
-        {/* Span labels inside the reserved band (first/last anchor at edges) */}
-        <text
-          x={Math.max(toX(minFy) - POINT_R, 1)}
-          y={SVG_HEIGHT - 2}
-          textAnchor="start"
-          fontSize="8"
-          fill="#9ca3af"
-        >
-          FY{String(minFy).slice(-2)}
-        </text>
-        <text
-          x={Math.min(toX(maxFy) + POINT_R, SVG_WIDTH - 1)}
-          y={SVG_HEIGHT - 2}
-          textAnchor="end"
-          fontSize="8"
-          fill="#9ca3af"
-        >
-          FY{String(maxFy).slice(-2)}
-        </text>
+        {/* X axis (backlog #41 remnant): labelled at a regular step, not just
+            at the two ends, with a tick under each label so a reader can put a
+            marker on a year. The ends anchor inward so they cannot overflow
+            the viewBox; everything between is centred on its year. */}
+        {axisLabelYears(gridFys, innerW).map((fy) => {
+          const isFirst = fy === minFy;
+          const isLast = fy === maxFy;
+          return (
+            <g key={`axis-${fy}`} data-decade-axis-label="" data-fy={fy}>
+              <line
+                x1={toX(fy)}
+                y1={chartBottom}
+                x2={toX(fy)}
+                y2={chartBottom + 2.5}
+                stroke="#d1d5db"
+                strokeWidth="1"
+              />
+              <text
+                x={
+                  isFirst
+                    ? Math.max(toX(fy) - POINT_R, 1)
+                    : isLast
+                      ? Math.min(toX(fy) + POINT_R, SVG_WIDTH - 1)
+                      : toX(fy)
+                }
+                y={SVG_HEIGHT - 2}
+                textAnchor={isFirst ? "start" : isLast ? "end" : "middle"}
+                fontSize={AXIS_FONT}
+                fill="#6b7280"
+              >
+                FY{String(fy).slice(-2)}
+              </text>
+            </g>
+          );
+        })}
       </svg>
       {/* The vertical scale, in words. Without it the baseline reads as zero —
           it is not, and these series never approach zero.
