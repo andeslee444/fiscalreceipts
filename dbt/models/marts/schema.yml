@@ -15,9 +15,18 @@ models:
       - name: recipient_uei
         data_tests: [unique, not_null]
   - name: fct_budget_trajectory
+    description: "COMPONENT-grain budget trajectory. Grain: (pe_bli, organization) — one row per program element PER ORGANISATION that funds it, which for the three BLI codes shared across organisations is a part of the program, not the program. Anything published under a program's name must read fct_program_trajectory (ROADMAP backlog #37)."
     columns:
       - name: pe_bli
         data_tests: [not_null]
+  - name: fct_program_trajectory
+    description: "PROGRAM-grain budget trajectory (ROADMAP backlog #37). Grain: pe_bli — every component organisation summed, which is what `programs.json` and every /program/{pe_bli}/ surface publish. Change columns are recomputed from the summed endpoints, never summed themselves. assert_program_trajectory_component_sum pins every metric to the sum of its component rows."
+    columns:
+      - name: pe_bli
+        data_tests: [unique, not_null]
+        description: "Program element / budget line identifier. Unique — one trajectory per program."
+      - name: n_org_components
+        description: "How many (pe_bli, organization) rows this program's figures were summed from. 1 for 1,738 of 1,741 programs; >1 only for BLI codes shared across organisations."
   - name: dim_programs
     description: "PB2026-edition program dimension (R-2/P-40 detail universe). Grain: one row per pe_bli. fy2024_actual_millions is the PriorYear root-row sum over DISTINCT detail tuples (pe_bli, project_number, scenario, amount, xml_path) — dual-volume J-books embed the same XML in 2+ documents and the raw per-row sum double-counts (PM-review Sprint 1: 47 Army PEs at 2×; assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin guard it)."
     columns:

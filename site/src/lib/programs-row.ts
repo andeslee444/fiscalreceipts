@@ -58,10 +58,16 @@ export interface ProgramsTableRow {
  * reconciliation strip Sprint 1 built for exactly this pair, one click from
  * every row here.
  *
- * The decade cells rather than programs.json's `trajectory` because the
- * trajectory is the row's declared-ORG slice, which for the three BLI codes
- * shared across organisations is not the program at all — see
- * getProgramDecadeCells for the three and their numbers.
+ * The decade cells rather than programs.json's `trajectory` — and they STAY
+ * the source now that backlog #37 has fixed the trajectory at the exporter
+ * (it is the program's total, not the declared org's slice, and agrees with
+ * the decade cell on all 1,799 programs where both publish an FY2024 figure
+ * and all 1,671 where both publish an FY2026 one). The reason to keep reading
+ * the decade cell is not that the trajectory is wrong; it is that the decade
+ * cell carries THE SAME FACT ID the program page and /years/ cite. Same
+ * number from two different facts still gives a reader two different receipts
+ * for one figure, and this index links straight at the page that shows the
+ * other one. One number, one fact, three surfaces.
  *
  * `fy24Xml` is gone with it: an xml_path is a J-book-detail citation state, and
  * a TOA column has no use for one. The 110 programs it served all rendered

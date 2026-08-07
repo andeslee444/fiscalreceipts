@@ -261,6 +261,22 @@ def _rollup_marts(con) -> None:
         f"insert into fct_budget_trajectory values"
         f" ('{_PE}','A',1000.0,2000.0,3000.0,1000.0,50.0)"
     )
+    # fct_program_trajectory — the PROGRAM grain (backlog #37). Rebuilt after
+    # the extra component row above, exactly as
+    # dbt/models/marts/fct_program_trajectory.sql builds it.
+    con.execute(
+        "create or replace table fct_program_trajectory as"
+        " with c as (select pe_bli, count(*) as n_org_components,"
+        "   sum(fy2024_actuals) as fy2024_actuals,"
+        "   sum(fy2025_total) as fy2025_total,"
+        "   sum(fy2026_total) as fy2026_total"
+        "  from fct_budget_trajectory group by pe_bli)"
+        " select pe_bli, n_org_components, fy2024_actuals, fy2025_total,"
+        "  fy2026_total, (fy2026_total - fy2025_total) as fy2526_change,"
+        "  case when fy2025_total is null or fy2025_total = 0 then null"
+        "   else round(100.0 * (fy2026_total - fy2025_total) / fy2025_total, 2)"
+        "  end as fy2526_pct_change from c"
+    )
 
 
 def test_sidecar_for_every_budget_lines_pe(pg_dsn, tmp_path):
@@ -297,7 +313,10 @@ def test_rollup_sidecar_carries_tier_service_title_trajectory(pg_dsn, tmp_path):
     assert rollup["tier"] == "rollup"
     assert rollup["service_org"] == "A"
     assert rollup["title"] == "Army Test Program"
+    # backlog #37: the PROGRAM's trajectory, and it says how many
+    # organisation components it was summed from.
     assert rollup["trajectory"] == {
+        "n_org_components": 1,
         "fy2024_actuals": 1000.0, "fy2025_total": 2000.0,
         "fy2026_total": 3000.0, "fy2526_change": 1000.0,
         "fy2526_pct_change": 50.0,

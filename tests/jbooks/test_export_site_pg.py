@@ -140,6 +140,23 @@ def _make_test_duckdb(db_path: Path) -> None:
     # fy2526_change = fy2026_total - fy2025_total = 295000 - 293145 = 1855
     con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
 
+    # fct_program_trajectory — the PROGRAM grain (backlog #37). Materialised
+    # here exactly as dbt/models/marts/fct_program_trajectory.sql does, so the
+    # fixture warehouse models the real one.
+    con.execute(
+        "create table fct_program_trajectory as"
+        " with c as (select pe_bli, count(*) as n_org_components,"
+        "   sum(fy2024_actuals) as fy2024_actuals,"
+        "   sum(fy2025_total) as fy2025_total,"
+        "   sum(fy2026_total) as fy2026_total"
+        "  from fct_budget_trajectory group by pe_bli)"
+        " select pe_bli, n_org_components, fy2024_actuals, fy2025_total,"
+        "  fy2026_total, (fy2026_total - fy2025_total) as fy2526_change,"
+        "  case when fy2025_total is null or fy2025_total = 0 then null"
+        "   else round(100.0 * (fy2026_total - fy2025_total) / fy2025_total, 2)"
+        "  end as fy2526_pct_change from c"
+    )
+
     # 4. dim_entities  (live cols: family_key,display_name,uei_count,total_obligation,worst_confidence)
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("insert into dim_entities values ('lockheed','Lockheed Martin',5,50000000.0,'medium')")
@@ -1138,7 +1155,17 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
 
 
 def test_programs_json_org_translation(pg_dsn, tmp_path):
-    """Forward org translation: DPAP program joins OSD trajectory row (not DPAP)."""
+    """A program's trajectory joins on pe_bli — org translation cannot break it.
+
+    Forward org translation (DPAP -> OSD) used to be LOad-bearing here: the
+    trajectory was looked up at (pe_bli, workbook_org(dim_programs.org)), so a
+    program whose declared org differed from its workbook org joined nothing
+    and rendered an honest-looking absence. Since backlog #37 the join is by
+    pe_bli against the PROGRAM grain, so a DPAP-declared program gets its
+    trajectory whatever its org token says. Translation is still load-bearing
+    for the ORG-grain joins (budget-line fact inputs, agency sums) — this test
+    pins that the program figures no longer depend on it.
+    """
     # Fixture: add DPAP program + OSD trajectory row; also keep OSD program + OSD trajectory.
     db = tmp_path / "wh.duckdb"
     db.parent.mkdir(parents=True, exist_ok=True)
@@ -1155,6 +1182,19 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
     con.execute("insert into fct_budget_trajectory values ('OSDPROG1','OSD',10000.0,11000.0,12000.0,2000.0,18.18)")
     con.execute("insert into fct_budget_trajectory values ('DPAPPROG1','OSD',5000.0,5500.0,6000.0,500.0,9.09)")
+    con.execute(
+        "create table fct_program_trajectory as"
+        " with c as (select pe_bli, count(*) as n_org_components,"
+        "   sum(fy2024_actuals) as fy2024_actuals,"
+        "   sum(fy2025_total) as fy2025_total,"
+        "   sum(fy2026_total) as fy2026_total"
+        "  from fct_budget_trajectory group by pe_bli)"
+        " select pe_bli, n_org_components, fy2024_actuals, fy2025_total,"
+        "  fy2026_total, (fy2026_total - fy2025_total) as fy2526_change,"
+        "  case when fy2025_total is null or fy2025_total = 0 then null"
+        "   else round(100.0 * (fy2026_total - fy2025_total) / fy2025_total, 2)"
+        "  end as fy2526_pct_change from c"
+    )
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
@@ -1179,9 +1219,10 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     assert by_pe["OSDPROG1"]["trajectory"] is not None, "OSD program should have trajectory"
     assert by_pe["OSDPROG1"]["trajectory"]["fy2026_total"] == 12000.0
 
-    # DPAP program joins OSD trajectory (forward translation: DPAP → OSD)
+    # DPAP-declared program gets its own trajectory row: the join is on
+    # pe_bli, so the org token cannot cost it its figures
     assert by_pe["DPAPPROG1"]["trajectory"] is not None, (
-        "DPAP program should join OSD trajectory via forward translation"
+        "a program's trajectory must join on pe_bli, not on its org token"
     )
     assert by_pe["DPAPPROG1"]["trajectory"]["fy2026_total"] == 6000.0
 

@@ -226,7 +226,29 @@ export { TRAJECTORY_FY_LABEL } from "./site";
 
 // ── programs.json ────────────────────────────────────────────────────────────
 
+/**
+ * The PROGRAM's budget trajectory — every organisation that funds the PE,
+ * summed (ROADMAP backlog #37).
+ *
+ * It used to be the row's DECLARED-ORG SLICE: read out of the component mart
+ * at (pe_bli, dim_programs.org) and published under the program's name. For
+ * 1,738 of 1,741 programs the declared org is the only org, so the slice was
+ * the program; for the three BLI codes shared across organisations it was a
+ * part (BLI 30 FY2024: OSD's 408,006 of 435,163). The exporter reads
+ * fct_program_trajectory now, whose every metric is pinned by dbt to the sum
+ * of its component rows.
+ *
+ * `org` on the row beside this is the row's LABEL — which agency page lists
+ * it — and was never the scope of these figures.
+ */
 export interface ProgramTrajectory {
+  /**
+   * How many (pe_bli, organization) rows these figures were summed from.
+   * 1 for all but three programs. Published so the grain is visible to a
+   * consumer rather than something you have to know: >1 means the citation
+   * key is the program's own derived sum, not a component's row.
+   */
+  n_org_components: number;
   fy2024_actuals: number | null;
   fy2025_total: number | null;
   fy2026_total: number | null;
@@ -1190,6 +1212,19 @@ export function getReceiptMomentFact(): ReceiptMomentFact | null {
 
 // ── feed.json ─────────────────────────────────────────────────────────────────
 
+/**
+ * One run of a feed headline: plain prose, or a dollar token with the fact id
+ * of the figure it prints (ROADMAP backlog #44).
+ *
+ * `amount` is the token EXACTLY as the exporter formatted it and is rendered
+ * verbatim — never re-derived from the fact. The two are not always the same
+ * string by design: a request-vs-actuals gap prints |delta| beside the word
+ * "above" or "below", while the fact it cites is the signed value.
+ */
+export type FeedHeadlineSegment =
+  | { text: string; amount?: undefined; fact_id?: undefined }
+  | { amount: string; fact_id: string; text?: undefined };
+
 export interface FeedCard {
   event_type:
     | "yoy_swing"
@@ -1203,6 +1238,27 @@ export interface FeedCard {
   figure_value: number | null;
   fiscal_year: number | null;
   headline: string;
+  /**
+   * ROADMAP backlog #44 — the same sentence as `headline`, split so its
+   * dollar tokens can carry the fact id of the figure they print.
+   *
+   * A feed headline is a sentence the export pipeline COMPOSES. Its dollar
+   * tokens are site-computed figures on the most-forwarded, least-context
+   * surface the site has, and while the headline was one flat string they
+   * were the only figures on the site a reader could not click through to a
+   * source. The amount segments render as <ProseCite>: dotted underline,
+   * opens the citation panel, and render-static (a1) asserts every one of
+   * those fact ids resolves in citations.json.
+   *
+   * The exporter guarantees `segments.map(text).join("") === headline`, and
+   * that a dollar figure only appears at all when its fact resolves — where
+   * it does not, the money clause is dropped rather than printed uncitable.
+   *
+   * Optional for pre-#44 exports; feedHeadlineSegments falls back to a single
+   * text segment, which the currency gate will then fail on any card that
+   * prints money — the honest failure, not a silent exemption.
+   */
+  headline_segments?: FeedHeadlineSegment[];
   organization: string | null;
   pe_bli: string | null;
   program_url: string | null;
@@ -1297,6 +1353,34 @@ export function feedDisplayHeadline(card: FeedCard): string {
   const title = card.title ?? _programTitleByPeBli.get(card.pe_bli);
   if (!title) return card.headline;
   return `${title}${card.headline.slice(card.pe_bli.length)}`;
+}
+
+/**
+ * The display headline as SEGMENTS (ROADMAP backlog #44) — what <FeedHeadline>
+ * renders, so every dollar token in it can carry its receipt.
+ *
+ * Applies the same code→title swap feedDisplayHeadline does, to the leading
+ * TEXT segment only (the code can only ever lead the sentence, and an amount
+ * segment is never the first). Falls back to one text segment carrying the
+ * flat headline when the sidecar predates #44 — which leaves any dollar token
+ * on it unanchored, and therefore visible to the currency gate rather than
+ * silently exempt.
+ */
+export function feedHeadlineSegments(card: FeedCard): FeedHeadlineSegment[] {
+  const segments = card.headline_segments;
+  if (!segments || segments.length === 0) {
+    return [{ text: feedDisplayHeadline(card) }];
+  }
+  const display = feedDisplayHeadline(card);
+  if (display === card.headline) return segments;
+  // The swap only ever rewrites the leading run; splice it back in place.
+  const [first, ...rest] = segments;
+  if (first.text === undefined) return segments;
+  const swapped = display.slice(
+    0,
+    display.length - (card.headline.length - first.text.length),
+  );
+  return [{ text: swapped }, ...rest];
 }
 
 // ── districts/index.json ──────────────────────────────────────────────────────

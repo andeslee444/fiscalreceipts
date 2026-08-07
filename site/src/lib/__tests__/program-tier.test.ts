@@ -47,6 +47,7 @@ function rollupDetails(overrides: Partial<ProgramDetails> = {}): ProgramDetails 
     service_org: "F",
     title: "Industrial Preparedness/Pol Prevention",
     trajectory: {
+      n_org_components: 1,
       fy2024_actuals: 793,
       fy2025_total: null,
       fy2026_total: 917,
@@ -215,6 +216,7 @@ describe("isZeroContentDetails", () => {
         },
       ],
       trajectory: {
+        n_org_components: 1,
         fy2024_actuals: 0,
         fy2025_total: null,
         fy2026_total: 0,
@@ -233,6 +235,7 @@ describe("isZeroContentDetails", () => {
     const withNarrative = rollupDetails({
       budget_lines: [],
       trajectory: {
+        n_org_components: 1,
         fy2024_actuals: 0,
         fy2025_total: null,
         fy2026_total: null,

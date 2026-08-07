@@ -19,6 +19,14 @@
  *     its whole container and became unscannable; the marker now grants the
  *     CITATION exemption (a0) to everything it marks and the CURRENCY
  *     exemption only to prose genuinely quoted from a source document.
+ *     [data-prose-cite] subtrees ALSO satisfy this leg (backlog #44). That is
+ *     not a second escape hatch: the anchor this leg is really asking for is a
+ *     citation affordance, and a prose cite is the STRICTER of the two — (a1)
+ *     below requires its data-fact-id to resolve in citations.json, which
+ *     [data-amount] does not (a Cite may legitimately render state B or C with
+ *     no fact at all). It exists because (a0) forbids [data-amount] inside a
+ *     [data-source-text] subtree, so a headline dollar token has exactly one
+ *     legal way to be anchored, and this is it.
  *     Allowlist (prose-allowlist.json) consulted for known prose mentions —
  *     PAGE-SCOPED via its `pages` field, with dead patterns and stale
  *     (matched-nothing) entries failing the gate.
@@ -42,6 +50,16 @@
  *      MUST carry a data-fact-id that resolves in citations.json AND must
  *      NOT carry data-amount (the a0 contract keeps computed figures out of
  *      source-text subtrees — prose cites are the sanctioned alternative).
+ *
+ * (a2) FEED HEADLINE RECEIPTS (ROADMAP backlog #44): feed.json's
+ *      headline_segments must re-join to each card's flat `headline` exactly;
+ *      every currency token in a flat headline must be covered by an amount
+ *      segment (the non-vacuity arm — a segmentation that degraded to one
+ *      text run fails here, not silently); every amount segment's fact id
+ *      must resolve; and /feed/ must render exactly as many headline
+ *      [data-prose-cite] elements as the sidecar declares amount segments.
+ *      Binds render to exporter in both directions, so neither can drop the
+ *      affordance while the other still claims it.
  *
  * (c2) EXPECTED LEDGER (regression arm): the ledger was cleared to [] when
  *      dim_geography, fct_budget_to_awards, and dim_lobbyists gained citation
@@ -800,6 +818,14 @@ export async function runRenderStaticGate() {
     //     CANNOT be <Cite>-wrapped. Site-authored prose is scanned like any
     //     other page, and its handful of non-figure dollar tokens are
     //     enumerated per page in prose-allowlist.json.
+    //   - data-prose-cite (backlog #44): the sanctioned anchor for a dollar
+    //     token that cannot be [data-amount] because it sits inside a
+    //     [data-source-text] subtree, where (a0) forbids nested amounts. This
+    //     is a STRICTER anchor than data-amount, not a looser one — (a1)
+    //     requires every prose cite's fact id to resolve in citations.json,
+    //     and a bare data-amount need carry no fact at all. Feed headlines
+    //     are the reason it is here: their ~40 dollar tokens were exempt
+    //     wholesale until #44 and are individually cited now.
     //   - data-program-name: element renders a program title label (e.g.
     //     "ORDNANCE ITEMS <$5M") — the dollar string is part of the official
     //     program name, not a site-computed figure.
@@ -841,6 +867,9 @@ export async function runRenderStaticGate() {
       const isSourceText =
         node.getAttribute &&
         exemptFromCurrencyScan(node.getAttribute("data-source-text"));
+      // (a1) proves this element's fact id resolves — see the leg (b) note.
+      const isProseCite =
+        node.getAttribute && node.getAttribute("data-prose-cite") != null;
       const isProgramName = node.getAttribute && node.getAttribute("data-program-name") != null;
       const isHead = node.tagName && node.tagName.toLowerCase() === "head";
       // svg <desc> gets the TIGHTENED check (not a wholesale skip): each of
@@ -851,7 +880,9 @@ export async function runRenderStaticGate() {
         checkDescCurrency(node);
         return;
       }
-      const nowInside = insideAmount || isAmount || isSourceText || isProgramName || isHead;
+      const nowInside =
+        insideAmount || isAmount || isSourceText || isProseCite ||
+        isProgramName || isHead;
       if (node.childNodes) {
         for (const child of node.childNodes) {
           walkText(child, nowInside);
@@ -950,6 +981,106 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`negative scan: no unattributed currency patterns ✓`);
+  }
+
+  // ── (a2) FEED HEADLINE FIGURES CARRY THEIR RECEIPT (backlog #44) ─────────
+  //
+  // Leg (b) now sweeps [data-source-text="headline"] and would fail an
+  // unanchored dollar token there — but it would pass a feed that simply
+  // stopped printing money, which is the shape this defect had for months.
+  // This leg binds the RENDER to the EXPORTER, in both directions:
+  //
+  //   a2-i   every card's segments re-join to its flat `headline` exactly
+  //          (the flat string still ships in RSS/Atom/JSON and to search; a
+  //          headline that says two different things is worse than the gap);
+  //   a2-ii  every currency token in a flat headline is covered by an amount
+  //          segment — the NON-VACUITY arm. A segmentation that silently
+  //          degraded to one text run fails here even though leg (b) would
+  //          also catch it, and it fails with the reason;
+  //   a2-iii every amount segment's fact id resolves in citations.json;
+  //   a2-iv  /feed/ renders exactly as many headline prose cites as the
+  //          sidecar declares amount segments (it renders every card once),
+  //          so a page that drops the affordance fails even while the data
+  //          still carries it.
+  let feedSidecar = null;
+  try {
+    feedSidecar = readJson(path.join(jsonDir, "feed.json"));
+  } catch (e) {
+    errors.push(`(a2) feed.json unreadable — cannot verify headline receipts: ${e.message}`);
+  }
+  if (feedSidecar) {
+    const cards = feedSidecar.cards ?? [];
+    let declaredAmountSegs = 0;
+    let flatHeadlineTokens = 0;
+    const a2Failures = [];
+    for (const card of cards) {
+      const headline = card.headline ?? "";
+      flatHeadlineTokens += (headline.match(CURRENCY_RE) ?? []).length;
+      const segs = card.headline_segments;
+      if (!Array.isArray(segs) || segs.length === 0) {
+        a2Failures.push(
+          `card ${card.event_type}/${card.pe_bli ?? card.family_key} has no ` +
+            `headline_segments — its dollar tokens cannot carry anchors ` +
+            `(export predates backlog #44, or stopped emitting them)`
+        );
+        continue;
+      }
+      const joined = segs.map((s) => s.text ?? s.amount ?? "").join("");
+      if (joined !== headline) {
+        a2Failures.push(
+          `card ${card.event_type}/${card.pe_bli ?? card.family_key}: ` +
+            `segments re-join to ${JSON.stringify(joined)} but headline is ` +
+            `${JSON.stringify(headline)}`
+        );
+      }
+      for (const s of segs) {
+        if (s.amount === undefined) continue;
+        declaredAmountSegs += 1;
+        if (!s.fact_id || !citationKeys.has(s.fact_id)) {
+          a2Failures.push(
+            `card ${card.event_type}/${card.pe_bli ?? card.family_key}: ` +
+              `headline amount ${JSON.stringify(s.amount)} cites ` +
+              `${s.fact_id ? `"${s.fact_id}", which does not resolve` : "nothing"}`
+          );
+        }
+      }
+    }
+    if (flatHeadlineTokens !== declaredAmountSegs) {
+      a2Failures.push(
+        `${flatHeadlineTokens} currency token(s) in flat headlines but ` +
+          `${declaredAmountSegs} amount segment(s) — every dollar figure a ` +
+          `headline prints must be a segment carrying its fact id`
+      );
+    }
+    const feedHtmlPath = path.join(outDir, "feed", "index.html");
+    if (!fs.existsSync(feedHtmlPath)) {
+      a2Failures.push(`built /feed/ missing at ${feedHtmlPath}`);
+    } else {
+      const feedRoot = parse(fs.readFileSync(feedHtmlPath, "utf8"));
+      let rendered = 0;
+      for (const h of feedRoot.querySelectorAll('[data-source-text="headline"]')) {
+        rendered += h.querySelectorAll("[data-prose-cite]").length;
+      }
+      if (rendered !== declaredAmountSegs) {
+        a2Failures.push(
+          `/feed/ renders ${rendered} headline prose cite(s) but the sidecar ` +
+            `declares ${declaredAmountSegs} amount segment(s) — every ` +
+            `headline figure must reach the reader with its receipt`
+        );
+      }
+    }
+    if (a2Failures.length > 0) {
+      errors.push(
+        `(a2) ${a2Failures.length} feed-headline receipt failure(s) (first 10):`
+      );
+      for (const f of a2Failures.slice(0, 10)) errors.push(`  ${f}`);
+    } else {
+      notes.push(
+        `feed headlines: ${declaredAmountSegs} dollar token(s) across ` +
+          `${cards.length} card(s), each a cited segment and each rendered ` +
+          `as a prose cite on /feed/ ✓`
+      );
+    }
   }
 
   // (b2) Stale prose-allowlist entries (backlog #38). An exemption that

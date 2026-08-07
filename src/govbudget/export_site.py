@@ -1537,6 +1537,89 @@ def _assert_family_uei_disjoint(con, families) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Program-grain trajectory (ROADMAP backlog #37)
+# ---------------------------------------------------------------------------
+#
+# THE GRAIN DECISION, stated once. A `programs.json` row is a PROGRAM ELEMENT
+# — a pe_bli — not a (pe_bli, org) pair. pe_bli is the row's identity, the
+# /program/{pe_bli}/ URL, the generateStaticParams key, the dead-link
+# contract's page-existence set, and the corpus count the site publishes.
+# There is one page per PE and there always has been.
+#
+# So every figure a row publishes must be the PROGRAM's. `trajectory` was not:
+# it was read out of fct_budget_trajectory at (pe_bli, dim_programs.org),
+# which is a COMPONENT — one organisation's share. For 1,738 of 1,741
+# programs the declared org is the only org, so the component IS the program
+# and nothing showed; for the three BLI codes shared across organisations it
+# published a part as the whole (BLI 30 FY2024: OSD's 408,006 of 435,163).
+#
+# The alternative grain — one row per (pe_bli, org) — was rejected: it would
+# multiply the index against a URL space with one page per PE, split a
+# program's own page count, and leave the /programs/ row and the page it links
+# to disagreeing by construction. The org grain is still real and still
+# published; it is just not the program. It lives in fct_budget_trajectory,
+# where an agency's share is an agency-grain question, and the agency sums
+# read it there.
+#
+# fct_program_trajectory is the PE-grain rollup, asserted in dbt against the
+# sum of its component rows (assert_program_trajectory_component_sum).
+
+_PROGRAM_TRAJECTORY_METRICS = (
+    "fy2024_actuals", "fy2025_total", "fy2026_total",
+    "fy2526_change", "fy2526_pct_change",
+)
+
+
+def _program_trajectory_index(con) -> dict:
+    """pe_bli → the PROGRAM's trajectory metrics (+ n_org_components).
+
+    Reads fct_program_trajectory, never fct_budget_trajectory: the rollup is
+    the warehouse's, so the dbt assertion that pins it to the component sum
+    pins what the site publishes. Returns {} when the mart is absent (a
+    degenerate export keeps its honest absences rather than falling back to a
+    component and calling it a program).
+    """
+    try:
+        rows = con.execute(
+            "select pe_bli, n_org_components, fy2024_actuals, fy2025_total,"
+            " fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory"
+        ).fetchall()
+    except Exception:
+        return {}
+    return {
+        r[0]: {
+            "n_org_components": r[1],
+            "fy2024_actuals": r[2],
+            "fy2025_total": r[3],
+            "fy2026_total": r[4],
+            "fy2526_change": r[5],
+            "fy2526_pct_change": r[6],
+        }
+        for r in rows
+    }
+
+
+def _trajectory_citation_key(pe_bli: str, component_orgs) -> str:
+    """The derived-citation key for a PROGRAM's trajectory metric.
+
+    Identity collapses to the parent when there is exactly one component —
+    the same rule the workbook-row `entity` token uses ("entity = pe ONLY
+    when a row is the sole workbook row on its rendered (fy, measure)
+    label"). One organisation means the program total IS that organisation's
+    row, and minting a second fact id for one number would put two receipts
+    behind one figure. More than one means the total is a genuine sum and
+    earns its own program-scoped fact, whose inputs are every component's
+    workbook rows.
+
+    Component keys stay '{pe}|{org}' and keep their own facts: they are what
+    an agency's share is, and the agency sums cite them.
+    """
+    orgs = sorted(component_orgs or ())
+    return f"{pe_bli}|{orgs[0]}" if len(orgs) == 1 else pe_bli
+
+
+# ---------------------------------------------------------------------------
 # Derived citation tier (Phase 5B-3)
 # ---------------------------------------------------------------------------
 
@@ -1735,6 +1818,61 @@ def _build_derived_citation_rows(
         # NOTE: program FY25/FY26 headline figures reuse trajectory fact_ids.
         # Program pages render state using surface='trajectory', same key and metric.
         # No separate emission here — document this once to avoid duplication.
+
+        # ---- Program-grain trajectory totals (backlog #37) ----------------
+        # surface='trajectory', key='{pe_bli}' (no org), for the programs whose
+        # figures are a SUM of components — the three BLI codes shared across
+        # organisations. Single-component programs mint nothing here: their
+        # program total is the component's own row and already has a fact
+        # (_trajectory_citation_key documents the rule).
+        #
+        # Inputs are every component's workbook rows, so the formula is the
+        # same 'sum(budget_lines…)' shape as a component metric and rule 4c
+        # recomputes it exactly — the wider input set IS the difference
+        # between the part and the whole.
+        traj_orgs_by_pe: dict[str, list[str]] = {}
+        for _t_pe, _t_org, *_rest in traj_rows:
+            traj_orgs_by_pe.setdefault(_t_pe, []).append(_t_org)
+
+        prog_traj = _program_trajectory_index(con)
+        for pe_bli, metrics in sorted(prog_traj.items()):
+            orgs = sorted(traj_orgs_by_pe.get(pe_bli, []))
+            if len(orgs) < 2:
+                continue
+            for metric in ("fy2024_actuals", "fy2025_total", "fy2026_total"):
+                value = metrics.get(metric)
+                if value is None:
+                    continue
+                input_fids: list[str] = []
+                for at in _METRIC_TO_AMOUNT_TYPES[metric]:
+                    for org in orgs:
+                        input_fids.extend(bl_key_to_fid.get((pe_bli, org, at), []))
+                unique_inputs = list(dict.fromkeys(input_fids))
+                rows.append(_null_derived_row(
+                    fact_id_derived("trajectory", pe_bli, metric),
+                    "derived", "USD thousands",
+                    (
+                        _METRIC_FORMULA[metric] if unique_inputs
+                        else _PIVOT_FORMULA
+                    ),
+                    _json.dumps(unique_inputs),
+                    f"{value:.3f}",
+                    built_at,
+                ))
+            chg = metrics.get("fy2526_change")
+            if (chg is not None and metrics.get("fy2025_total") is not None
+                    and metrics.get("fy2026_total") is not None):
+                rows.append(_null_derived_row(
+                    fact_id_derived("trajectory", pe_bli, "fy2526_change"),
+                    "derived", "USD thousands",
+                    _METRIC_FORMULA["fy2526_change"],
+                    _json.dumps([
+                        fact_id_derived("trajectory", pe_bli, "fy2026_total"),
+                        fact_id_derived("trajectory", pe_bli, "fy2025_total"),
+                    ]),
+                    f"{chg:.3f}",
+                    built_at,
+                ))
 
         # ---- Agency sums ----
         # surface='agency', key=org, metric='fy2024_total_millions'
@@ -2675,7 +2813,17 @@ def _build_summary_blocks(
             _decade_measure_token(d_kind, measure),
         )
 
-    # trajectory: pe → primary-org metrics (largest fy2026_total, org asc)
+    # trajectory: pe → the PROGRAM's metrics (backlog #37).
+    #
+    # This slot used to resolve to the PE's PRIMARY ORG (largest fy2026_total,
+    # org ascending) — a component card on a program page, whenever slot 1's
+    # decade grain was absent. It reads fct_program_trajectory now, so slot 2
+    # states the program like slot 1 does, and the fact it cites is the
+    # program's (component key when the program has one component, program key
+    # when its figures are a sum — _trajectory_citation_key).
+    #
+    # `dataset` stays 'fct_budget_trajectory': that is the shipped table the
+    # figure derives from, and the one a reader can download and re-add.
     con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
         traj_rows = con.execute(
@@ -2685,13 +2833,21 @@ def _build_summary_blocks(
         ).fetchall()
     except _duckdb.CatalogException:
         traj_rows = []
+    try:
+        prog_traj_rows = con.execute(
+            "select pe_bli, fy2024_actuals, fy2025_total, fy2026_total,"
+            " fy2526_change, fy2526_pct_change from fct_program_trajectory"
+        ).fetchall()
+    except _duckdb.CatalogException:
+        prog_traj_rows = []
     finally:
         con.close()
-    traj_primary: dict[str, tuple] = {}
-    for row in sorted(
-        traj_rows, key=lambda r: (r[0], r[4] is None, -(r[4] or 0.0), r[1])
-    ):
-        traj_primary.setdefault(row[0], row)
+    traj_orgs: dict[str, list[str]] = {}
+    for row in traj_rows:
+        traj_orgs.setdefault(row[0], []).append(row[1])
+    # (pe, fy24, fy25, fy26, change, pct) — same positions the slot code reads
+    # from index 2 onward, minus the org column it no longer needs.
+    traj_program: dict[str, tuple] = {r[0]: r for r in prog_traj_rows}
 
     # budget_lines: (pe, amount_type) → [(fid, amount)] (titled AND rollup
     # rows both render on the P-1 table; slot fallback 3 requires exactly one)
@@ -2750,7 +2906,7 @@ def _build_summary_blocks(
 
     universe = (
         set(decade_slot)
-        | set(traj_primary)
+        | set(traj_program)
         | set(detail_root)
         | {r[8] for r in bl_rows}
     )
@@ -2772,7 +2928,8 @@ def _build_summary_blocks(
     union_cit_rows: list[tuple] = []
 
     for pe in sorted(universe):
-        traj = traj_primary.get(pe)
+        traj = traj_program.get(pe)
+        traj_key = _trajectory_citation_key(pe, traj_orgs.get(pe))
         cards = []
         slot_cards: dict[str, dict] = {}
 
@@ -2790,14 +2947,14 @@ def _build_summary_blocks(
             metric = _TRAJ_METRIC_BY_SLOT[key]
             t_val = None
             if traj is not None:
-                t_val = {"fy2024_actuals": traj[2], "fy2025_total": traj[3],
-                         "fy2026_total": traj[4]}[metric]
+                t_val = {"fy2024_actuals": traj[1], "fy2025_total": traj[2],
+                         "fy2026_total": traj[3]}[metric]
             if t_val is not None:
                 meta = _TRAJECTORY_METRIC_META[metric]
                 slot_cards[key] = _card(
                     key, meta["fy"], meta["measure"], value=t_val,
                     units="USD thousands", basis=_BASIS_TOA,
-                    fid=fact_id_derived("trajectory", f"{pe}|{traj[1]}", metric),
+                    fid=fact_id_derived("trajectory", traj_key, metric),
                     dataset="fct_budget_trajectory",
                 )
                 continue
@@ -2847,13 +3004,13 @@ def _build_summary_blocks(
 
         # ---- FY25→26 change card ----
         fy25, fy26 = slot_cards["fy2025"], slot_cards["fy2026"]
-        chg = traj[5] if traj is not None else None
-        if chg is not None and traj[3] is not None and traj[4] is not None:
+        chg = traj[4] if traj is not None else None
+        if chg is not None and traj[2] is not None and traj[3] is not None:
             cards.append(_card(
                 "change", 2026, "change", value=chg, units="USD thousands",
                 basis=_BASIS_TOA,
-                fid=fact_id_derived("trajectory", f"{pe}|{traj[1]}", "fy2526_change"),
-                dataset="fct_budget_trajectory", pct=traj[6],
+                fid=fact_id_derived("trajectory", traj_key, "fy2526_change"),
+                dataset="fct_budget_trajectory", pct=traj[5],
             ))
         elif (
             fy25["basis"] == _BASIS_TOA and fy26["basis"] == _BASIS_TOA
@@ -4202,6 +4359,26 @@ def _write_all_sidecars(
             "fy2526_pct_change": r[6],
         }
 
+    # fct_program_trajectory → the PROGRAM grain (backlog #37). Everything the
+    # site publishes UNDER A PROGRAM'S NAME reads this; traj_index above stays
+    # the component grain and is read only where an ORGANISATION's share is
+    # the question (the agency sums) or where the component identity itself is
+    # the answer (_rollup_service_org).
+    prog_traj_index: dict[str, dict] = _program_trajectory_index(con)
+    # pe_bli → its component orgs, sorted — the citation-key rule's input.
+    traj_orgs_by_pe: dict[str, list[str]] = defaultdict(list)
+    for r in traj_rows:
+        traj_orgs_by_pe[r[0]].append(r[1])
+    for _pe in traj_orgs_by_pe:
+        traj_orgs_by_pe[_pe].sort()
+    _n_shared = sum(1 for v in traj_orgs_by_pe.values() if len(v) > 1)
+    if _n_shared:
+        print(
+            f"trajectory: {_n_shared} program(s) span more than one"
+            f" organisation — published as the program total, cited by a"
+            f" program-scoped derived sum (backlog #37)"
+        )
+
     # fct_program_lobbying — narratives / mentions
     # §P1-7: ONE total order serving three groupings, because filtering a
     # totally-ordered list preserves the order. Grouped by pe_bli it is the
@@ -4407,8 +4584,14 @@ def _write_all_sidecars(
     # 2. programs.json                                                    #
     # ------------------------------------------------------------------ #
 
-    def _trajectory_fact_ids(pe_bli: str, translated_org: str, traj: dict | None) -> dict | None:
-        """Derived trajectory fact_ids for a program (Task 3 flips).
+    def _trajectory_fact_ids(pe_bli: str, traj: dict | None) -> dict | None:
+        """Derived trajectory fact_ids for a PROGRAM (backlog #37).
+
+        The key is the program's, resolved by _trajectory_citation_key: the
+        component's own key when the program has exactly one component,
+        the program-scoped key when its figures are a sum of several. The
+        payload it annotates is always fct_program_trajectory's, so the fact
+        the chip opens is the fact the figure came from.
 
         Mirrors _build_derived_citation_rows emission conditions exactly:
         a metric fid is attached only when the metric value is non-None
@@ -4418,7 +4601,7 @@ def _write_all_sidecars(
         """
         if traj is None:
             return None
-        key_str = f"{pe_bli}|{translated_org}"
+        key_str = _trajectory_citation_key(pe_bli, traj_orgs_by_pe.get(pe_bli))
         out: dict[str, str | None] = {}
         for metric in ("fy2024_actuals", "fy2025_total", "fy2026_total"):
             fid = fact_id_derived("trajectory", key_str, metric)
@@ -4438,8 +4621,11 @@ def _write_all_sidecars(
     programs_list = []
     for r in all_prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
-        translated = _workbook_org(org)
-        traj = traj_index.get((pe_bli, translated))
+        # backlog #37: the PROGRAM's trajectory, not the declared org's slice.
+        # `org` still declares which agency page lists this row and is still
+        # the row's org label — it is not, and never was, the scope of these
+        # figures. For the three shared BLI codes it named one of four.
+        traj = prog_traj_index.get(pe_bli)
         programs_list.append({
             "award_count": len(awards_by_pe.get(pe_bli, [])),
             "exhibit_family": exhibit_family,
@@ -4458,7 +4644,7 @@ def _write_all_sidecars(
             "project_count": project_count,
             "title": title,
             "trajectory": traj,
-            "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, translated, traj),
+            "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, traj),
         })
 
     _write_json(json_dir / "programs.json", programs_list)
@@ -4499,6 +4685,18 @@ def _write_all_sidecars(
                 if v is not None:
                     _add(Decimal(str(v)) * 1_000,
                          fact_id_derived("trajectory", f"{pe_bli}|{t_org}", metric))
+        # The PROGRAM's own facts belong to this PE's scope too (backlog #37).
+        # Leaving them out would understate the §2c ambiguity count: a prose
+        # dollar equal to BOTH a component and the whole must resolve to
+        # neither, and it can only be seen to be ambiguous if both are here.
+        p_metrics = prog_traj_index.get(pe_bli)
+        if p_metrics and len(traj_orgs_by_pe.get(pe_bli, [])) > 1:
+            for metric in ("fy2024_actuals", "fy2025_total",
+                           "fy2026_total", "fy2526_change"):
+                v = p_metrics.get(metric)
+                if v is not None:
+                    _add(Decimal(str(v)) * 1_000,
+                         fact_id_derived("trajectory", pe_bli, metric))
         return idx
 
     def _narratives_with_links(pe_bli: str) -> list[dict]:
@@ -4653,8 +4851,12 @@ def _write_all_sidecars(
             f"{', '.join(dropped_unsafe)}"
         )
     for pe_bli in rollup_pes:
+        # service_org answers "where does the detailed justification live" —
+        # a component identity, and the only thing it is used for here. The
+        # trajectory is the PROGRAM's (backlog #37): a rollup-tier page is
+        # still one page per PE, so the same grain rule applies to it.
         service_org = _rollup_service_org(pe_bli)
-        traj = traj_index.get((pe_bli, service_org)) if service_org else None
+        traj = prog_traj_index.get(pe_bli)
         obj = {
             "awards": awards_by_pe.get(pe_bli, []),
             "budget_lines": bl_by_pe.get(pe_bli, []),
@@ -4669,10 +4871,7 @@ def _write_all_sidecars(
             "tier": "rollup",
             "title": titles_by_pe.get(pe_bli),
             "trajectory": traj,
-            "trajectory_fact_ids": (
-                _trajectory_fact_ids(pe_bli, service_org, traj)
-                if service_org else None
-            ),
+            "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, traj),
         }
         if pe_bli in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[pe_bli]
@@ -4917,7 +5116,25 @@ def _write_all_sidecars(
         org_prog_count[org] += 1
         cur = org_fy2024_millions.get(org, 0.0)
         org_fy2024_millions[org] = cur + (fy2024_actual_millions or 0.0)
-        # Sum trajectory fy2026_total for this program (using forward-translated org)
+        # Sum trajectory fy2026_total for this program (using forward-translated org).
+        #
+        # DELIBERATELY the COMPONENT grain, not fct_program_trajectory
+        # (backlog #37). An agency total is an agency-grain question: OSD's
+        # FY2026 is OSD's 212,900 of BLI 30, not the 232,181 the whole
+        # program costs — three quarters of which is DMACT's, DTRA's and
+        # DoDEA's. Summing program totals here would credit OSD with their
+        # money. So the agency page's header total and its program list
+        # answer two different questions, and the list is the program's.
+        #
+        # KNOWN, ENUMERATED COVERAGE GAP (not a wrong number): this iterates
+        # dim_programs, which carries one org per PE, so the components of a
+        # shared BLI under a DIFFERENT org are absent from that org's page
+        # entirely — DCSA is missing BLI 20's 2,230, DMACT BLI 30's 7,258,
+        # DTRA BLI 30's 12,023, DHRA BLI 500's 3,797 ($25.3M across four
+        # agencies). Those orgs have no dim_programs row for the PE, so the
+        # page does not list it either: the total is consistent with what the
+        # page shows. Closing it means giving dim_programs a per-org grain,
+        # which is a dimension change, not an aggregate fix — ROADMAP #45.
         translated = _workbook_org(org)
         traj = traj_index.get((pe_bli, translated))
         if traj and traj["fy2026_total"] is not None:
@@ -5028,8 +5245,9 @@ def _write_all_sidecars(
     # generateStaticParams source)
     for r in all_prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
-        translated = _workbook_org(org)
-        traj = traj_index.get((pe_bli, translated))
+        # The PROGRAM's total (backlog #37) — search ranks and labels a
+        # program by its own size, not by its declared org's share of it.
+        traj = prog_traj_index.get(pe_bli)
         # dollars: fy2026_total (already thousands) ?? fy2024_actual_millions * 1000
         dollars = None
         if traj and traj["fy2026_total"] is not None:
@@ -5928,6 +6146,65 @@ def _rva_gap_index(con, cited_fact_ids: set) -> dict:
     return index
 
 
+# ---------------------------------------------------------------------------
+# Feed headlines as SEGMENTS (ROADMAP backlog #44)
+# ---------------------------------------------------------------------------
+#
+# A feed headline is a sentence this pipeline COMPOSES — "…first award FY2025,
+# $3.1M total". Its dollar tokens are site-computed figures on the site's
+# most-forwarded, least-context surface, and until now they were the only ones
+# that reached a reader with no way to ask where they came from: the whole
+# sentence was one string, so no token could carry an anchor, and the
+# `data-source-text="headline"` marker exempted them from the gate that would
+# have said so (backlog #38 named the gap; this closes it).
+#
+# So a headline is emitted as a LIST OF SEGMENTS — runs of plain text and
+# amount tokens carrying the fact id of the figure they print. The site
+# renders the amount segments through <ProseCite>, which is state A: dotted
+# underline, opens the citation panel, and is gate-checked by render-static
+# (a1) to resolve in citations.json.
+#
+# TWO INVARIANTS, both cheap and both load-bearing:
+#   1. "".join(segment texts) == headline, exactly. The flat string still
+#      ships (RSS/Atom/JSON feeds, search, the display-title swap), and a
+#      headline that says one thing in prose and another in segments would be
+#      worse than the gap it replaces. _compose_headline builds both from one
+#      argument list so they cannot diverge, and asserts it.
+#   2. A dollar figure enters a headline ONLY with a receipt. Where the fact
+#      does not resolve the exporter drops the money CLAUSE rather than
+#      printing an uncitable figure — the same honest-absence rule every other
+#      surface follows.
+
+
+def _compose_headline(*parts) -> tuple:
+    """Build (flat_text, segments) from text strings and (token, fact_id) pairs.
+
+    A str part is a text run; a 2-tuple is an amount token and the fact id of
+    the figure it prints. Adjacent text runs are merged so the segment list is
+    the minimal one. Returns ("", []) for an empty headline, which no caller
+    produces.
+    """
+    segments: list[dict] = []
+    for part in parts:
+        if part is None:
+            continue
+        if isinstance(part, tuple):
+            token, fid = part
+            segments.append({"amount": token, "fact_id": fid})
+            continue
+        if not part:
+            continue
+        if segments and "text" in segments[-1]:
+            segments[-1]["text"] += part
+        else:
+            segments.append({"text": part})
+    flat = "".join(s.get("text", s.get("amount", "")) for s in segments)
+    assert flat == "".join(
+        (p if isinstance(p, str) else p[0]) for p in parts if p
+    ), "headline segments must re-join to the headline exactly"
+    return flat, segments
+
+
 def _emit_feed_sidecar(
     *,
     json_dir: Path,
@@ -6037,7 +6314,11 @@ def _emit_feed_sidecar(
         if event_type == "yoy_swing":
             direction = "increased" if (pct_change or 0) >= 0 else "decreased"
             pct_str = f"{abs(pct_change or 0):.0f}%"
-            headline_text = f"{program_title or pe_bli} {direction} {pct_str} {_TRAJECTORY_FY_LABEL}"
+            # No dollar token: the percentage is the claim, and the dollars it
+            # is a percentage OF are the magnitude line beneath the card.
+            headline_text, headline_segments = _compose_headline(
+                f"{program_title or pe_bli} {direction} {pct_str} {_TRAJECTORY_FY_LABEL}"
+            )
             # figure: pct_change (rendered as %) — cite via trajectory derived fact_id
             figure_value = pct_change
             figure_units = "pct_change"
@@ -6085,7 +6366,6 @@ def _emit_feed_sidecar(
             # real FY25 money as "$0" on all 87 shipped cards — destroying the
             # card's entire point, since the magnitude IS the news
             # (PM-review Sprint 3 Task 1b, Defect B).
-            headline_text = f"{program_title or pe_bli} zeroed out in FY2026 (had {_fmt_thousands(headline_value)} in FY25)"
             figure_value = headline_value  # last known (FY25)
             figure_units = "thousands_usd"
             figure_fact_id = None
@@ -6094,6 +6374,16 @@ def _emit_feed_sidecar(
                 fid_cand = fact_id_derived("trajectory", traj_key, "fy2025_total")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # backlog #44: the FY25 money is printed with its receipt, or the
+            # clause is dropped. An uncitable figure does not go in a headline.
+            headline_text, headline_segments = _compose_headline(
+                f"{program_title or pe_bli} zeroed out in FY2026",
+                *(
+                    (" (had ", (_fmt_thousands(headline_value), figure_fact_id),
+                     " in FY25)")
+                    if (figure_fact_id and headline_value is not None) else ()
+                ),
+            )
             # A genuine zeroing IS a pair: real FY25 money → a literal FY26
             # zero. The class is empty on the live corpus (the mart now
             # demands positive evidence of a zero), but if one ever appears
@@ -6123,7 +6413,11 @@ def _emit_feed_sidecar(
             }
 
         elif event_type == "concentration_shift":
-            headline_text = f"{program_title or pe_bli} award concentration HHI={headline_value:.0f} ({fiscal_year})"
+            # No dollar token: an HHI is an index, not money.
+            headline_text, headline_segments = _compose_headline(
+                f"{program_title or pe_bli} award concentration"
+                f" HHI={headline_value:.0f} ({fiscal_year})"
+            )
             figure_value = headline_value  # HHI
             figure_units = "hhi"
             figure_fact_id = None
@@ -6156,7 +6450,6 @@ def _emit_feed_sidecar(
         elif event_type == "new_entrant":
             fk_display = family_key or "Unknown"
             fy_str = str(int(comparison_value)) if comparison_value else "recent"
-            headline_text = f"{fk_display} new defense contractor (first award FY{fy_str}, {_fmt_dollars(headline_value)} total)"
             figure_value = headline_value  # total_obligation
             figure_units = "dollars"
             # Cited via the feed new_entrant derived row (total family
@@ -6167,6 +6460,18 @@ def _emit_feed_sidecar(
                 fid_cand = fact_id_derived("feed", f"new_entrant|{family_key}", "total_obligation")
                 if fid_cand in cited_fact_ids:
                     figure_fact_id = fid_cand
+            # backlog #44: the total carries its receipt, or the headline says
+            # only what it can back — the year, which is the event itself.
+            if figure_fact_id and headline_value is not None:
+                headline_text, headline_segments = _compose_headline(
+                    f"{fk_display} new defense contractor (first award FY{fy_str}, ",
+                    (_fmt_dollars(headline_value), figure_fact_id),
+                    " total)",
+                )
+            else:
+                headline_text, headline_segments = _compose_headline(
+                    f"{fk_display} new defense contractor (first award FY{fy_str})"
+                )
             # One magnitude: cumulative obligations since the first award.
             # There is no prior-period figure to pair it against — that is
             # what "new entrant" means — so the card states single.
@@ -6187,7 +6492,9 @@ def _emit_feed_sidecar(
             }
 
         else:
-            headline_text = f"{event_type}: {pe_bli or family_key}"
+            headline_text, headline_segments = _compose_headline(
+                f"{event_type}: {pe_bli or family_key}"
+            )
             figure_value = headline_value
             figure_units = units or "unknown"
             figure_fact_id = None
@@ -6214,6 +6521,10 @@ def _emit_feed_sidecar(
             "figure_value": float(figure_value) if figure_value is not None else None,
             "fiscal_year": int(fiscal_year) if fiscal_year is not None else None,
             "headline": headline_text,
+            # backlog #44: the same sentence as `headline`, split so its
+            # dollar tokens can carry the fact id of the figure they print.
+            # "".join(segment texts) == headline, asserted at composition.
+            "headline_segments": headline_segments,
             "organization": organization,
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli else None,
@@ -6237,10 +6548,17 @@ def _emit_feed_sidecar(
         pe_bli = g["pe_bli"]
         program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
         direction = "above" if g["delta"] > 0 else "below"
-        headline_text = (
-            f"{program_title or pe_bli} FY{g['fy']} actuals came in"
-            f" {_fmt_thousands(abs(g['delta']))} {direction} the"
-            f" PB{g['from_edition']} request (per the PB{g['to_edition']} book)"
+        # backlog #44: the gap token carries the minted book_diff fact — the
+        # same fact the card's figure cites, cited by construction
+        # (_rva_gap_rows returns only rows whose fid resolves). The prose
+        # prints |delta| and says "above"/"below"; the fact is the signed
+        # value, which is why the token is rendered verbatim by <ProseCite>
+        # rather than re-formatted from the fact by <Cite>.
+        headline_text, headline_segments = _compose_headline(
+            f"{program_title or pe_bli} FY{g['fy']} actuals came in ",
+            (_fmt_thousands(abs(g["delta"])), g["fid"]),
+            f" {direction} the PB{g['from_edition']} request"
+            f" (per the PB{g['to_edition']} book)",
         )
         cards.append({
             "event_type": "request_vs_actuals_gap",
@@ -6250,6 +6568,7 @@ def _emit_feed_sidecar(
             "figure_value": g["delta"],
             "fiscal_year": g["fy"],
             "headline": headline_text,
+            "headline_segments": headline_segments,
             "organization": None,
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/" if pe_bli in pages else None,

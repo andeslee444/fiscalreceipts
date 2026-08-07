@@ -7,13 +7,13 @@ import {
   getFeed,
   getReceiptMomentFact,
   collectCitationsWithInputs,
-  feedDisplayHeadline,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { FeedHeadline } from "@/components/feed-headline";
 import { ReceiptMoment } from "@/components/receipt-moment";
 import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
@@ -107,32 +107,24 @@ export default function HomePage() {
           {lede ? (
             <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
               <span aria-hidden="true">⚡ </span>
-              {/* data-source-text="headline": auto-generated prose from the
-                  export pipeline — dollar strings are descriptive context,
-                  not site-computed cite-able figures.
-                  data-xml-path satisfies the (a0) gate constraint that every
-                  data-source-text element must carry a citation anchor. */}
-              {lede.program_url ? (
-                <span
-                  data-source-text="headline"
-                  data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
-                >
-                  <Link
-                    href={lede.program_url}
-                    className="text-foreground hover:underline"
-                  >
-                    {feedDisplayHeadline(lede)}
-                  </Link>
-                </span>
-              ) : (
-                <span
-                  className="text-foreground"
-                  data-source-text="headline"
-                  data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
-                >
-                  {feedDisplayHeadline(lede)}
-                </span>
-              )}
+              {/* data-source-text="headline": prose COMPOSED by the export
+                  pipeline. Since backlog #44 it earns neither formatting
+                  exemption — its dollar tokens carry their own fact ids
+                  through <ProseCite> (see <FeedHeadline>). The marker's
+                  remaining job is (a0): no [data-amount] may nest inside it,
+                  which is what forces those per-token anchors.
+                  data-xml-path is the block-level anchor (a0) requires. */}
+              <span
+                className={lede.program_url ? undefined : "text-foreground"}
+                data-source-text="headline"
+                data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
+              >
+                <FeedHeadline
+                  card={lede}
+                  href={lede.program_url}
+                  linkClassName="text-foreground hover:underline"
+                />
+              </span>
               {/* Plain-language gloss for the HHI insider stat (site-authored
                   prose, so it sits OUTSIDE the data-source-text span). The
                   2,500 threshold matches the methodology's HHI bands. */}
@@ -471,17 +463,16 @@ export default function HomePage() {
                   className="flex flex-col gap-1 px-5 py-4 hover:bg-muted/60 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
                   <div className="min-w-0 flex-1">
-                    {/* data-source-text="headline": auto-generated prose from
-                        the export pipeline — dollar strings (e.g. "first award
-                        FY2025, $3.1M total") are descriptive context, not
-                        site-computed cite-able figures.
-                        data-xml-path satisfies the (a0) gate constraint. */}
+                    {/* data-source-text="headline": pipeline-composed prose
+                        whose dollar tokens carry their own fact ids through
+                        <ProseCite> (backlog #44). data-xml-path is the
+                        block-level anchor (a0) requires. */}
                     <p
                       className="text-sm font-medium line-clamp-2 sm:truncate"
                       data-source-text="headline"
                       data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? i}`}
                     >
-                      {feedDisplayHeadline(card)}
+                      <FeedHeadline card={card} />
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {card.event_type.replace(/_/g, " ")}

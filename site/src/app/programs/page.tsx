@@ -33,9 +33,11 @@ export default function ProgramsPage() {
   // Sort default: FY26 total descending (nulls last), projected to the eight
   // fields the table renders (see ProgramsTableRow — §P2-1 page weight).
   // Both money columns come from the PROGRAM-LEVEL decade cells — the same
-  // years_matrix.json payload /years/ renders, with the same fact ids the
-  // program pages cite (see getProgramDecadeCells for why not programs.json's
-  // org-sliced trajectory).
+  // years_matrix.json payload /years/ renders, with the same FACT IDS the
+  // program pages cite. programs.json's trajectory is the program's total too
+  // since backlog #37, and agrees with these to the cent; the decade cell wins
+  // because it is the same FACT, so a chip here opens the same receipt as the
+  // chip on the page this row links to (see toProgramsTableRow).
   const cells = getProgramDecadeCells();
   const sorted = [...programs]
     .map((p) => toProgramsTableRow(p, cells.get(p.pe_bli)))

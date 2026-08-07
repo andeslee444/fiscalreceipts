@@ -34,7 +34,7 @@ from pathlib import Path
 
 import duckdb
 
-from govbudget.export_site import _emit_feed_sidecar
+from govbudget.export_site import _emit_feed_sidecar, fact_id_derived
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_SQL = ROOT / "dbt" / "models" / "marts" / "fct_feed_events.sql"
@@ -158,7 +158,9 @@ class TestZeroedRequiresPositiveEvidence:
 # ---------------------------------------------------------------------------
 
 
-def _feed_cards(tmp_path: Path, feed_rows_sql: str) -> list[dict]:
+def _feed_cards(
+    tmp_path: Path, feed_rows_sql: str, cited: set | None = None,
+) -> list[dict]:
     db = tmp_path / "t.duckdb"
     con = duckdb.connect(str(db))
     con.execute(
@@ -175,21 +177,28 @@ def _feed_cards(tmp_path: Path, feed_rows_sql: str) -> list[dict]:
     json_dir.mkdir()
     try:
         _emit_feed_sidecar(
-            json_dir=json_dir, con=con, prog_titles={}, cited_fact_ids=set()
+            json_dir=json_dir, con=con, prog_titles={},
+            cited_fact_ids=cited or set(),
         )
     finally:
         con.close()
     return json.loads((json_dir / "feed.json").read_text())["cards"]
 
 
+# The FY2025 trajectory fact the zeroed card's money cites — minted for every
+# non-null fy2025_total, so it resolves for every real zeroed event.
+_E00700_FY25_FID = fact_id_derived("trajectory", "E00700|F", "fy2025_total")
+
+_ZEROED_ROW = (
+    "('zeroed_fy2026', 'E00700', 'F', NULL, 200000.0, 0.0, NULL, 2026,"
+    " 'thousands_usd', NULL)"
+)
+
+
 class TestZeroedHeadlineUsesRealMoney:
     def test_headline_states_the_fy25_money_not_zero(self, tmp_path):
         """The shipped bug printed comparison_value (always 0) as the FY25 amount."""
-        cards = _feed_cards(
-            tmp_path,
-            "('zeroed_fy2026', 'E00700', 'F', NULL, 200000.0, 0.0, NULL, 2026,"
-            " 'thousands_usd', NULL)",
-        )
+        cards = _feed_cards(tmp_path, _ZEROED_ROW, cited={_E00700_FY25_FID})
         (card,) = [c for c in cards if c["event_type"] == "zeroed_fy2026"]
         assert "$200.0M" in card["headline"], (
             "the headline must state the real FY2025 money ($200.0M from "
@@ -198,6 +207,23 @@ class TestZeroedHeadlineUsesRealMoney:
         assert "$0" not in card["headline"], (
             f"the headline must never claim $0 of FY2025 money: {card['headline']!r}"
         )
+        # backlog #44: and it states it WITH its receipt.
+        amounts = [s for s in card["headline_segments"] if "amount" in s]
+        assert [s["amount"] for s in amounts] == ["$200.0M"]
+        assert amounts[0]["fact_id"] == _E00700_FY25_FID
+
+    def test_uncitable_fy25_money_is_dropped_not_printed_bare(self, tmp_path):
+        """backlog #44: no dollar figure in a headline without a receipt.
+
+        The event still ships — the zeroing IS the news — but the money
+        clause goes rather than putting an unciteable figure on the site's
+        most-forwarded surface.
+        """
+        cards = _feed_cards(tmp_path, _ZEROED_ROW)  # nothing cited
+        (card,) = [c for c in cards if c["event_type"] == "zeroed_fy2026"]
+        assert card["headline"] == "E-7 zeroed out in FY2026"
+        assert "$" not in card["headline"]
+        assert all("amount" not in s for s in card["headline_segments"])
 
     def test_figure_value_is_the_fy25_money(self, tmp_path):
         cards = _feed_cards(

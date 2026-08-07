@@ -5,7 +5,6 @@ import {
   getEntityTopByFamilyKey,
   getProgramPeBlis,
   collectCitations,
-  feedDisplayHeadline,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -14,6 +13,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { Reveal } from "@/components/reveal";
 import { FeedMagnitudeLine } from "@/components/feed-magnitude";
+import { FeedHeadline } from "@/components/feed-headline";
 import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
 import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
 import type { FeedCard } from "@/lib/data";
@@ -214,20 +214,21 @@ function FeedCardItem({
       {...(isNewEntrant && !companySlug ? { "data-no-company-page": "" } : {})}
     >
       <div data-mobile-pair-label="" className="min-w-0 sm:flex-1">
-        {/* data-source-text="headline": auto-generated prose from export pipeline —
-            dollar strings (e.g. "first award FY2025, $3.1M total") are descriptive
-            context, not site-computed cite-able figures.
-            data-xml-path provides the block-level citation anchor, satisfying
-            the constraint that every data-source-text element must carry
-            data-xml-path. */}
+        {/* data-source-text="headline": prose COMPOSED by the export pipeline.
+            Since backlog #44 it earns neither formatting exemption
+            (source-text-kinds.mjs): the notation is ours and so are the dollar
+            tokens, which now carry their own fact ids through <ProseCite>.
+            What the marker still does is (a0) — no [data-amount] may nest
+            inside it — which is what forces those per-token anchors.
+            data-xml-path is the block-level anchor (a0) requires. */}
         {/* Headline leads with the program title when the programs index has
-            one (feedDisplayHeadline); the raw PE/BLI code is demoted to the
+            one (feedHeadlineSegments); the raw PE/BLI code is demoted to the
             metadata line below. */}
         <p
           className="text-sm font-medium leading-snug"
           data-source-text="headline"
           data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? "unknown"}`}
-        >{feedDisplayHeadline(card)}</p>
+        ><FeedHeadline card={card} /></p>
         {/* §P1-8: the dollars the headline's percentage is a percentage OF.
             Kept OUTSIDE the [data-source-text] headline — computed figures
             may not nest inside source text (render-static leg a0). */}

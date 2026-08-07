@@ -58,10 +58,17 @@ export default async function AgencyPage({
   if (!agency) notFound();
 
   // Program-level decade cells — the same figures /programs/, /years/ and each
-  // program page publish, with the same fact ids (see getProgramDecadeCells).
-  // Not programs.json's trajectory: that is the row's declared-org slice, and
-  // for the three BLI codes shared across organisations it is a component,
-  // which is how this list came to contradict the page each row links to.
+  // program page publish, with the same FACT IDS (see getProgramDecadeCells).
+  // Backlog #37 fixed programs.json's trajectory at the exporter (it is the
+  // program's total now, not the declared org's slice), so this is no longer
+  // a correctness workaround: it is the one-number-one-fact rule. A row here
+  // links straight at the page that cites this figure, and it should open the
+  // same receipt.
+  //
+  // NOTE the deliberate asymmetry with the header total below: this list is
+  // the PROGRAM's money, `agency.fy2026_total_thousands` is THIS AGENCY's
+  // share of it. For the three BLI codes shared across organisations they are
+  // different questions with different answers.
   const decadeCells = getProgramDecadeCells();
   const agencyPrograms = getPrograms()
     .filter((p) => p.org === org)

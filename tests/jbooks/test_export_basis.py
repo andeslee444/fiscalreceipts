@@ -172,6 +172,23 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
         f" ('{PE}','{ORG}',5565655.0,null,4086744.0,null,null)"
     )
 
+    # fct_program_trajectory — the PROGRAM grain (backlog #37). Materialised
+    # here exactly as dbt/models/marts/fct_program_trajectory.sql does, so the
+    # fixture warehouse models the real one.
+    con.execute(
+        "create table fct_program_trajectory as"
+        " with c as (select pe_bli, count(*) as n_org_components,"
+        "   sum(fy2024_actuals) as fy2024_actuals,"
+        "   sum(fy2025_total) as fy2025_total,"
+        "   sum(fy2026_total) as fy2026_total"
+        "  from fct_budget_trajectory group by pe_bli)"
+        " select pe_bli, n_org_components, fy2024_actuals, fy2025_total,"
+        "  fy2026_total, (fy2026_total - fy2025_total) as fy2526_change,"
+        "  case when fy2025_total is null or fy2025_total = 0 then null"
+        "   else round(100.0 * (fy2026_total - fy2025_total) / fy2025_total, 2)"
+        "  end as fy2526_pct_change from c"
+    )
+
     con.execute(
         "create table dim_entities (family_key varchar, display_name varchar,"
         " uei_count bigint, total_obligation double, worst_confidence varchar)"

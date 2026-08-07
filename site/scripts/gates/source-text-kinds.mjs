@@ -78,13 +78,19 @@ export const SOURCE_TEXT_KINDS = {
       "the marking is the honest one.",
   },
   headline: {
-    quotedFigures: true,
+    quotedFigures: false,
     sourceNotation: false,
     why:
-      "Feed headlines composed by the export pipeline, not by a source " +
-      "document. The sentence is a generated string, so its dollar tokens " +
-      "cannot carry per-token anchors today — a KNOWN GAP (ROADMAP backlog " +
-      "#44), not a provenance claim. The NOTATION is ours, so leg j sweeps it.",
+      "Feed headlines composed by the export pipeline, not quoted from any " +
+      "source document — so this kind earns NEITHER formatting exemption. " +
+      "It was the last one that did: its ~40 dollar tokens on /feed/ and / " +
+      "were site-computed figures reaching a reader with no citation " +
+      "affordance, named as a KNOWN GAP by backlog #38 and closed by #44. " +
+      "The exporter emits the sentence as segments now and each dollar " +
+      "token renders as <ProseCite>, so the currency scan can require an " +
+      "anchor on every one. What the marker still does is (a0): no " +
+      "[data-amount] may nest inside it, which is exactly what forces those " +
+      "per-token anchors instead of a block exemption.",
   },
 };
 
