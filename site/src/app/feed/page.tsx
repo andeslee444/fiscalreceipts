@@ -4,7 +4,6 @@ import {
   getFeed,
   getEntityTopByFamilyKey,
   getProgramPeBlis,
-  collectCitations,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -352,21 +351,18 @@ export default function FeedPage() {
   // linking those would 404 in the static export (G1 dead-link contract).
   const programPeBlis = new Set(getProgramPeBlis());
 
-  // Collect all fact_ids on this page — including every magnitude endpoint,
-  // whose citation must be in the page's slice or the panel opens empty.
-  const pageFactIds: string[] = [];
-  for (const card of cards) {
-    if (card.figure_fact_id) pageFactIds.push(card.figure_fact_id);
-    const m = card.magnitude;
-    if (!m) continue;
-    for (const p of [m.from, m.to, m.delta]) {
-      if (p?.fact_id) pageFactIds.push(p.fact_id);
-    }
-  }
-  const citationsSlice = collectCitations(pageFactIds);
-
   return (
-    <CitationPanelProvider citations={citationsSlice}>
+    // §P2-1 page weight: citations resolve LAZILY through cite-shards
+    // (/json/cite-shards/{fact_id[:2]}.json), so the provider mounts with an
+    // EMPTY embedded slice — the same treatment /programs/, /years/ and
+    // /flow/ already use for the same reason, and /feed/ was the last index
+    // page without it. Its 535-fact slice was 1.08 MB of a 1.72 MB document
+    // (63% of it) purely to save one fetch on the first citation click — on
+    // the SYNDICATION surface, the one page most likely to be opened once
+    // from a link and never navigated. Clicking a figure still opens its
+    // citation; the panel resolves the fact's shard first and shows the
+    // declared loading/degraded states while it does.
+    <CitationPanelProvider citations={{}}>
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Anomaly Feed" }]}
