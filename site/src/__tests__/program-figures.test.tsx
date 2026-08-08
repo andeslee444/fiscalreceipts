@@ -20,7 +20,12 @@ import {
   ProgramTrajectoryCard,
   cardLabel,
 } from "@/components/program-figures";
-import type { ProgramRow, ProgramSummary, SummaryCard } from "@/lib/data";
+import type {
+  Fy26Split,
+  ProgramRow,
+  ProgramSummary,
+  SummaryCard,
+} from "@/lib/data";
 
 const PROGRAM: ProgramRow = {
   award_count: 0,
@@ -118,6 +123,133 @@ const SUMMARY: ProgramSummary = {
   ],
   named_primes: [],
 };
+
+// ── FY2026 discretionary/reconciliation split (backlog #50) ─────────────────
+//
+// Long Range Kill Chains, PE 1203154SF: fy_2025_enacted 244,121 / disc_request
+// 1,916 / reconciliation_request 7,695,000 / fy_2026_total 7,696,916 — the
+// headline reads "+3052.9%" on the combined basis and "-99.2%" on the
+// like-for-like discretionary basis. Verified against build_fy26_split's own
+// test fixture in tests/test_fy26_split.py.
+const FY26_SPLIT: Fy26Split = {
+  disc_k: 1916,
+  recon_k: 7695000,
+  total_k: 7696916,
+  recon_share: 0.9997510691295058,
+  disc_pct_change: -99.2,
+  has_reconciliation: true,
+  disc: {
+    v: 1916,
+    units: "USD thousands",
+    fid: "07c454d28771d656",
+    public_id: "07c454d2",
+    dataset: "budget_lines",
+    basis: "toa",
+    fy: 2026,
+    measure: "disc-request",
+    edition: 2026,
+  },
+  reconciliation: {
+    v: 7695000,
+    units: "USD thousands",
+    fid: "11020da183a1c682",
+    public_id: "11020da1",
+    dataset: "budget_lines",
+    basis: "toa",
+    fy: 2026,
+    measure: "reconciliation-request",
+    edition: 2026,
+  },
+};
+
+const SUMMARY_WITH_FY26_TOTAL: ProgramSummary = {
+  ...SUMMARY,
+  cards: SUMMARY.cards.map((c) =>
+    c.key === "fy2026"
+      ? card({
+          key: "fy2026",
+          fy: 2026,
+          measure: "request",
+          value: 7696916,
+          fid: "aaaaaaaaaaaaaaaa",
+          public_id: "aaaaaaaa",
+          dataset: "fct_budget_trajectory",
+        })
+      : c,
+  ),
+};
+
+describe("ProgramFigures — FY2026 discretionary/reconciliation split (#50)", () => {
+  it("renders no split note when the sidecar carries none", () => {
+    const { container } = render(
+      <ProgramFigures program={PROGRAM} summary={SUMMARY_WITH_FY26_TOTAL} />,
+    );
+    expect(container.querySelector("[data-fy26-recon-chip]")).toBeNull();
+  });
+
+  it("renders no split note for a pure-discretionary split (has_reconciliation false)", () => {
+    const { container } = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY_WITH_FY26_TOTAL}
+        fy26Split={{ ...FY26_SPLIT, recon_k: 0, has_reconciliation: false }}
+      />,
+    );
+    expect(container.querySelector("[data-fy26-recon-chip]")).toBeNull();
+  });
+
+  it("renders the reconciliation chip, both cited addends, and the discretionary rate", () => {
+    const { container } = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY_WITH_FY26_TOTAL}
+        fy26Split={FY26_SPLIT}
+      />,
+    );
+    const chip = container.querySelector("[data-fy26-recon-chip]");
+    expect(chip).not.toBeNull();
+    expect(chip!.textContent).toContain("100.0% reconciliation");
+
+    // Both addends are their OWN cited [data-amount] figures — never plain text.
+    const disc = container.querySelector('[data-fact-id="07c454d28771d656"]');
+    expect(disc).not.toBeNull();
+    expect(disc).toHaveAttribute("data-basis", "toa");
+    expect(disc).toHaveAttribute("data-fy", "2026");
+    expect(disc).toHaveAttribute("data-measure", "disc-request");
+    expect(disc!.textContent).toBe("$1.92M");
+
+    const recon = container.querySelector('[data-fact-id="11020da183a1c682"]');
+    expect(recon).not.toBeNull();
+    expect(recon).toHaveAttribute("data-measure", "reconciliation-request");
+    expect(recon!.textContent).toBe("$7.70B");
+
+    // Not the +3052.9% combined rate — the discretionary-only, like-for-like
+    // change vs FY2025 enacted (the number this task exists to surface).
+    const pct = container.querySelector("[data-fy26-disc-pct-change]");
+    expect(pct).not.toBeNull();
+    expect(pct!.textContent).toContain("-99.2%");
+
+    // The note is a scope disclosure, not a caution — gate 2's vocabulary.
+    expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
+
+    // The combined headline figure is UNCHANGED and still the fy2026 card's
+    // own cited value — the split is additive, not a replacement.
+    const headline = container.querySelector('[data-fact-id="aaaaaaaaaaaaaaaa"]');
+    expect(headline!.textContent).toBe("$7.70B");
+  });
+
+  it("omits the discretionary-rate sentence when there is no FY2025 enacted to compare against", () => {
+    const { container } = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY_WITH_FY26_TOTAL}
+        fy26Split={{ ...FY26_SPLIT, disc_pct_change: null }}
+      />,
+    );
+    expect(container.querySelector("[data-fy26-recon-chip]")).not.toBeNull();
+    expect(container.querySelector("[data-fy26-disc-pct-change]")).toBeNull();
+  });
+});
 
 describe("ProgramFigures — summary union cards", () => {
   it("renders the union values with basis attributes + chip", () => {

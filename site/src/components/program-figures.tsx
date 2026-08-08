@@ -3,9 +3,11 @@ import { TrajectorySpark } from "@/components/trajectory-spark";
 import { DecadeTrajectory } from "@/components/decade-trajectory";
 import { ReconciliationStrip } from "@/components/reconciliation-strip";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
 import { normalizeExhibitFamily } from "@/lib/basis";
 import type {
   DecadeSeries,
+  Fy26Split,
   ProgramBookDiff,
   ProgramRow,
   ProgramSummary,
@@ -70,16 +72,86 @@ export function reconKeySet(summary: ProgramSummary | null): Set<string> {
   );
 }
 
+/**
+ * Fy26SplitNote (backlog #50) — the FY2026 card's combined figure ($7.70B
+ * for Long Range Kill Chains, PE 1203154SF) is disc + reconciliation with no
+ * visible seam. When the split has a reconciliation component, this renders
+ * beside the combined figure: a reconciliation-share chip (gate 23 leg g's
+ * [data-fy26-recon-chip] marker), then a caption stating both addends —
+ * each its OWN cited figure, never a re-typed number — and the
+ * discretionary-basis change vs FY2025 enacted (gate leg g's
+ * [data-fy26-disc-pct-change] marker), the like-for-like rate a reader can
+ * actually extrapolate. The combined figure stays the headline (it is the
+ * true total); this note is what turns "+3052.9%" from an unlabelled claim
+ * into a labelled one — the raw change card is untouched, still rendered by
+ * the sibling "change" SummaryCardCell.
+ */
+function Fy26SplitNote({ split }: { split: Fy26Split }) {
+  if (!split.reconciliation) return null; // has_reconciliation implies this is set; defensive
+  const sharePct = (split.recon_share * 100).toFixed(1);
+  return (
+    <ScopeNote label={null} className="mt-2 text-left">
+      <span
+        data-fy26-recon-chip=""
+        className="inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline"
+      >
+        {sharePct}% reconciliation
+      </span>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {split.disc && (
+          <>
+            <Cite
+              value={split.disc.v}
+              units={split.disc.units}
+              dataset={split.disc.dataset}
+              factId={split.disc.fid}
+              basis={split.disc.basis}
+              fy={split.disc.fy}
+              measure={split.disc.measure}
+              edition={split.disc.edition}
+              chip={false}
+            />
+            {" discretionary + "}
+          </>
+        )}
+        <Cite
+          value={split.reconciliation.v}
+          units={split.reconciliation.units}
+          dataset={split.reconciliation.dataset}
+          factId={split.reconciliation.fid}
+          basis={split.reconciliation.basis}
+          fy={split.reconciliation.fy}
+          measure={split.reconciliation.measure}
+          edition={split.reconciliation.edition}
+          chip={false}
+        />
+        {" one-time reconciliation."}
+        {split.disc_pct_change != null && (
+          <span data-fy26-disc-pct-change="">
+            {" "}
+            Discretionary change vs FY2025 enacted:{" "}
+            {split.disc_pct_change >= 0 ? "+" : ""}
+            {split.disc_pct_change.toFixed(1)}%.
+          </span>
+        )}
+      </p>
+    </ScopeNote>
+  );
+}
+
 function SummaryCardCell({
   card,
   reconKeys,
   exhibitFamily,
+  fy26Split,
 }: {
   card: SummaryCard;
   reconKeys: Set<string>;
   /** The page's OWN program exhibit (§48) — every TOA card on one program
    *  page shares its program's single exhibit_family. */
   exhibitFamily: ExhibitFamily;
+  /** backlog #50 — only rendered beside the fy2026 card, and only when set. */
+  fy26Split?: Fy26Split | null;
 }) {
   const label = cardLabel(card);
   return (
@@ -135,6 +207,9 @@ function SummaryCardCell({
           </span>
         )}
       </div>
+      {card.key === "fy2026" && fy26Split?.has_reconciliation && (
+        <Fy26SplitNote split={fy26Split} />
+      )}
     </div>
   );
 }
@@ -142,9 +217,16 @@ function SummaryCardCell({
 interface ProgramFiguresProps {
   program: ProgramRow;
   summary: ProgramSummary;
+  /** backlog #50 — from the sidecar's fy26_split field; absent when the
+   *  program has no FY2026 disc/reconciliation workbook row. */
+  fy26Split?: Fy26Split | null;
 }
 
-export function ProgramFigures({ program, summary }: ProgramFiguresProps) {
+export function ProgramFigures({
+  program,
+  summary,
+  fy26Split = null,
+}: ProgramFiguresProps) {
   const reconKeys = reconKeySet(summary);
   // §48: every TOA card on this grid is this ONE program's own figure, so
   // they all share the page's own exhibit_family — never "mixed" here (this
@@ -165,6 +247,7 @@ export function ProgramFigures({ program, summary }: ProgramFiguresProps) {
           <SummaryCardCell
             key={card.key}
             card={card}
+            fy26Split={card.key === "fy2026" ? fy26Split : null}
             reconKeys={reconKeys}
             exhibitFamily={exhibitFamily}
           />

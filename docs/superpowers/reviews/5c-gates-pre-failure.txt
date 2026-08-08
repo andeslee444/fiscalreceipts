@@ -4636,4 +4636,167 @@ BOTH halves of what it checks, independently, on the built artifacts a
 regression would actually touch — never on the source, and never loosened
 to make anything pass.
 
+================================================================================
+BACKLOG #50 — ONE-TIME RECONCILIATION MONEY FOLDED INTO EVERY FY2026
+"REQUEST" FIGURE (2026-08-08)
+================================================================================
+
+New pure function build_fy26_split (export_site.py) + a new per-PE export
+index (_build_fy26_split_index) + gate 23 LEG (g) (basis.mjs). fy_2026_total
+= fy_2026_disc_request + fy_2026_reconciliation_request with NO visible seam
+on any surface — verified against the shipped warehouse
+(data/site/data/budget_lines.parquet): disc_k + recon_k reproduces
+fy_2026_total EXACTLY for all 1,672 program elements that carry one, 0
+mismatches. Measured: fy_2026_total $385.27B = disc $296.26B + reconciliation
+$89.01B; against fy_2025_enacted $321.88B the combined basis reads +19.7% and
+the discretionary basis reads -8.0%. 1203154SF "Long Range Kill Chains" — the
+#1 row on /programs/ and the #1 homepage item — headlines "+3052.9%" on
+$1,916k of actual discretionary money against $7,695,000k of one-time
+reconciliation, a like-for-like -99.2%. B02100 "B-21" headlines "+113.5%"
+combined against a discretionary +32.7% (a 3.5x modelling error on the
+number a reader would extrapolate from).
+
+LETTER CHECK (mandatory per sprint discipline): basis.mjs's LEG doc block was
+read in full before writing anything. Legs a/b/c/d/e/f are all live and
+named — a, b, c, d, e (cross-page), f (#48, itself relabelled once already
+for the same reason). The next unused letter is (g); grepped
+`grep -n "leg (a)\|leg (b)\|...\|leg (g)"` across basis.mjs before writing —
+zero hits for "(g)" anywhere in the file. Used (g).
+
+SUBSTITUTION DISCLOSED (unlike A'1-A'3, this one is a NON-substitution, kept
+here because the task's own preamble required checking, not assuming): the
+prescribed build_fy26_split implementation was checked against all three
+given tests plus a fourth edge (fy25_enacted_k == 0.0, a real zero rather
+than an absent prior year) before being accepted verbatim. `if
+fy25_enacted_k:` treats a literal $0 prior year the same as an absent one
+(no comparison) rather than dividing by zero or fabricating an infinite rate
+— found correct, not a defect, and implemented as prescribed. The
+UNPRESCRIBED part of this task — where in export_site.py the split can
+safely be computed, and how the /programs/ CSV columns get their values —
+is where the real defect-hunting happened; see the ORDERING BUG below.
+
+ORDERING BUG FOUND AND FIXED BEFORE IT SHIPPED (evidence, not asserted): the
+natural place to compute the split is _write_all_sidecars (where bl_by_pe,
+the reshaped per-PE budget-lines index, already exists) — but
+citations.parquet is written by export_site() BEFORE _write_all_sidecars
+runs (export_site.py, "Write citations.parquet" precedes "6. JSON sidecars").
+A derived fact minted inside _write_all_sidecars lands in citation_rows (a
+mutable list _write_all_sidecars receives by reference) and therefore in
+citations.json (written later, inside _write_all_sidecars) but NEVER in
+citations.parquet, which was already serialized to disk by the time the new
+fact existed. Caught by DELIBERATELY checking parquet/json key-set parity on
+a real full-corpus export before trusting a first draft that computed the
+split from bl_by_pe inside _write_all_sidecars:
+
+  parquet count: 134959  json count: 134966  equal: False
+
+Fixed by moving _build_fy26_split_index to operate on bl_rows directly and
+run inside export_site() itself, immediately after the summary-card union
+(4b3) and before "Write citations.parquet" (4b4) — the same position/
+requirement _build_summary_blocks documents for its own union-change facts
+("must join citation_rows BEFORE citations.parquet is written"). Re-verified
+after the fix: 134,966 in both citations.json and citations.parquet
+(`site/public/llms.txt`'s auto-regenerated citation count also moved
+134,943 -> 134,966, the +23 exactly matching the 20 disc + 3 reconciliation
+multi-row PEs that mint a derived sum fact instead of reusing a single row's
+fact_id — verified by direct query against budget_lines.parquet before
+writing the export code, not assumed).
+
+Related, NOT fixed (adjacent task's defect, out of scope for #50, flagged
+separately): the SAME full-corpus parity check found 7 PRE-EXISTING
+citations.json-only fact_ids, all `sum(budget_lines.amount_thousands) where
+... amount_type='fy_2026_total'` — backlog #49's programs-coverage derived
+facts, minted inside _write_all_sidecars the same way this task's first
+draft did. citations.parquet is missing those 7 facts on the live corpus;
+not touched here (different task, already marked complete this sprint).
+
+GATE 23 LEG (g) — VERBATIM FAIL, both halves, independently, on the built
+artifacts (never the source), each restored and re-verified byte-identical
+afterward, exactly like #51's leg (e) mutations above.
+
+MUTATION 1 — g1 (chip presence). Removed the single real DOM
+`data-fy26-recon-chip=""` attribute from out/program/1203154SF/index.html
+(the built HTML; the escaped copy inside the page's own RSC JSON payload,
+`\"data-fy26-recon-chip\":\"\"`, was left untouched and verified still
+present after the edit — proving the mutation targeted only the rendered
+element a browser and this gate both see). RAW terminal capture, unwrapped:
+
+  FAIL
+  --- errors ---
+  X leg g1 fy26-split chip: 1 program page(s) with recon_share > 0 render no reconciliation chip (first 10):
+  X   /program/1203154SF/: sidecar fy26_split.recon_share = 100.0% but the built page renders no [data-fy26-recon-chip]
+
+Restored from a pre-mutation copy, sha256 byte-identical
+(191a1b5374fd068519edc769380da8269c72e6e90647ab15830deb5f5657475c both
+before and after), re-ran: leg g1 note reads clean again.
+
+MUTATION 2 — g2 (change accompaniment). Removed the single real DOM
+`data-fy26-disc-pct-change=""` attribute from
+out/program/B02100/index.html, leaving the sidecar's disc_pct_change (32.7)
+and the page's own combined "change" card pct (113.47, rendered as
+"+113.5%") both intact — proving the leg checks for the DISCLOSURE marker,
+not merely for the underlying numbers existing. RAW terminal capture:
+
+  FAIL
+  --- errors ---
+  X leg g2 fy26-split discretionary rate: 1 program page(s) render a combined FY25→FY26 change with no discretionary-rate disclosure (first 10):
+  X   /program/B02100/: renders a combined FY25→FY26 change of 113.47% with no [data-fy26-disc-pct-change] disclosure of the discretionary-only rate (32.7%)
+
+Restored, sha256 byte-identical
+(fbe533c01a158d1e6a8bef282a70d551976c0397159a9c1239f606bb9823fb5a both
+before and after), re-ran: leg g2 note reads clean again.
+
+MUTATION 3 — bulk, to demonstrate the task's own stated expectation ("207
+lines carry reconciliation, so expect >=200 findings") rather than only two
+single-page proofs. Stripped the real DOM `data-fy26-recon-chip=""`
+attribute (only — the escaped JSON payload copy left untouched on every
+file, spot-checked) from EVERY built program page that carried one: 200
+files, matching leg g3's own non-vacuity count exactly (recon_share > 0 on
+200 of the 1,993 built program pages this run). RAW terminal capture,
+unwrapped (first 10 of 200 shown, as the leg's own MAX_LISTED cap does):
+
+  FAIL
+  --- errors ---
+  X leg g1 fy26-split chip: 200 program page(s) with recon_share > 0 render no reconciliation chip (first 10):
+  X   /program/000999/: sidecar fy26_split.recon_share = 51.3% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0010I24000/: sidecar fy26_split.recon_share = 55.8% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0101226N/: sidecar fy26_split.recon_share = 49.4% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0101328F/: sidecar fy26_split.recon_share = 27.8% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0102417F/: sidecar fy26_split.recon_share = 34.8% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0105519N/: sidecar fy26_split.recon_share = 100.0% but the built page renders no [data-fy26-recon-chip]
+  X   /program/020400INTL/: sidecar fy26_split.recon_share = 0.1% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0204413N/: sidecar fy26_split.recon_share = 100.0% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0204SCCS/: sidecar fy26_split.recon_share = 100.0% but the built page renders no [data-fy26-recon-chip]
+  X   /program/0204SPCPRG/: sidecar fy26_split.recon_share = 45.5% but the built page renders no [data-fy26-recon-chip]
+  X   ... and 190 more
+
+All 200 files restored from per-file pre-mutation backups; a post-restore
+sha256 sweep over all 200 confirmed 0 mismatches. Full gate 23 run on the
+fully-restored, unmutated build: PASS, 0 errors, 21 notes (all legs a-g
+clean, leg g3: "200 FY2026 figures resolved with recon_share > 0 —
+non-vacuous").
+
+RENDERED FIGURES, VERIFIED IN THE BUILT HTML (not asserted from the JSON
+alone). out/program/1203154SF/index.html's Budget Figures section (text
+extracted from the built DOM, not the source): "FY26 Request$7.70B ...
+100.0% reconciliation$1.92M discretionary + $7.70B one-time reconciliation.
+Discretionary change vs FY2025 enacted: -99.2%.FY25->26 Change+$7.45B ...
+(+3052.9%)" — the combined $7.70B headline and the existing +3052.9% change
+card are BOTH still present and unchanged; the split note is additive.
+out/program/B02100/index.html renders "FY26 Request$5.55B ... 37.8%
+reconciliation$3.45B discretionary + $2.10B one-time reconciliation.
+Discretionary change vs FY2025 enacted: +32.7%.FY25->26 Change+$2.95B ...
+(+113.5%)".
+
+NOT A WEAKENING. Every leg present before this task runs unchanged and still
+passes on the real build (gate 23 full run: PASS, 0 errors, legs a-f
+unmodified — 24 gates unchanged sitewide, one new leg on gate 23). The new
+leg (g) is strictly additive, non-vacuous by construction (fails outright
+below 100 resolved FY2026 figures; 200 resolved on the real build), and
+proven to fail on BOTH halves of what it checks (g1 chip presence, g2 change
+accompaniment) independently, plus a bulk demonstration matching the task's
+own quantitative expectation — never on the source, always on the built
+artifacts, always restored and reverified byte-identical, never loosened to
+make anything pass.
+
 SUITE COUNT UNCHANGED — one new leg on gate 9 (e). Still 24 gates.

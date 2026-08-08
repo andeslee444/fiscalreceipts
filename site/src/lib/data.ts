@@ -327,6 +327,16 @@ export interface ProgramRow {
   title: string;
   trajectory: ProgramTrajectory | null;
   trajectory_fact_ids: ProgramTrajectoryFactIds | null;
+  /**
+   * FY2026 discretionary/reconciliation split (backlog #50), USD thousands,
+   * R-1/P-1 workbook TOA basis — the SAME two addends the program page's own
+   * fy26_split sidecar field cites. null means no such workbook row exists
+   * for this PE (never a fabricated zero indistinguishable from a real one).
+   * Optional: the exporter always emits both keys, but pre-#50 sidecars/test
+   * fixtures may not carry them.
+   */
+  fy2026_disc_toa_usd_thousands?: number | null;
+  fy2026_reconciliation_toa_usd_thousands?: number | null;
 }
 
 let _programs: ProgramRow[] | null = null;
@@ -549,6 +559,49 @@ export interface ProgramSummary {
   named_primes: NamedPrime[];
 }
 
+/**
+ * One cited FY2026 workbook figure feeding a Fy26Split side (backlog #50).
+ * Reuses the SAME shape as ReconciliationEntry's toa/detail sides — a fid
+ * that resolves in citations.json, always basis 'toa' (R-1/P-1 workbook).
+ */
+export interface Fy26SplitSide {
+  v: number;
+  units: "USD thousands";
+  fid: string;
+  public_id: string;
+  dataset: string;
+  basis: string;
+  fy: number;
+  measure: string;
+  edition: number;
+}
+
+/**
+ * FY2026 discretionary/reconciliation split for one program (backlog #50).
+ *
+ * The site's FY2026 "Request" figure is disc + reconciliation with no
+ * visible seam — $89.01B of the $385.27B FY2026 corpus total is one-time
+ * reconciliation-bill money. `disc_pct_change` is computed on the
+ * discretionary basis only (the like-for-like comparison to an enacted
+ * FY2025, which carries no reconciliation component of its own); a rate
+ * computed on the combined total is not a rate of anything a reader can
+ * extrapolate. See build_fy26_split in export_site.py for the exact math.
+ *
+ * `disc`/`reconciliation` are null exactly when the program has no workbook
+ * row of that kind (disc_k/recon_k then read 0 — a real, not fabricated,
+ * zero) — never render a Cite for a null side.
+ */
+export interface Fy26Split {
+  disc_k: number;
+  recon_k: number;
+  total_k: number;
+  recon_share: number;
+  disc_pct_change: number | null;
+  has_reconciliation: boolean;
+  disc: Fy26SplitSide | null;
+  reconciliation: Fy26SplitSide | null;
+}
+
 export interface ProgramDetails {
   awards: ProgramAward[];
   budget_lines: ProgramBudgetLine[];
@@ -569,6 +622,13 @@ export interface ProgramDetails {
    * ./lineage.ts for the honesty invariants.
    */
   lineage?: LineageBlock;
+  /**
+   * FY2026 discretionary/reconciliation split (backlog #50): present when
+   * the PE has a fy_2026_disc_request and/or fy_2026_reconciliation_request
+   * workbook row. Absent means neither exists — not a fabricated all-zero
+   * split.
+   */
+  fy26_split?: Fy26Split;
   /**
    * Phase 5F rollup-tier fields (Batch A): present ONLY on the rollup
    * sidecars (R-1/P-1 figures + trajectory, no J-book detail) — ~254 after

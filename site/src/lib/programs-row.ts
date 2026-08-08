@@ -54,6 +54,14 @@ export interface ProgramsTableRow {
   fy26: number | null;
   /** FY26 citation fact_id — the SAME fact the program page cites. */
   fy26Fid: string | null;
+  /**
+   * FY2026 discretionary/reconciliation split (backlog #50), USD thousands,
+   * same TOA basis as fy26 — CSV-export-only (no on-screen column; the
+   * on-screen figures are `fy26`, the combined total, and the program page's
+   * own fy26_split card). null when no such workbook row exists for this PE.
+   */
+  discK: number | null;
+  reconK: number | null;
 }
 
 /**
@@ -105,5 +113,7 @@ export function toProgramsTableRow(
     fy24Fid: cells?.fy24?.fid ?? null,
     fy26: cells?.fy26?.v ?? null,
     fy26Fid: cells?.fy26?.fid ?? null,
+    discK: p.fy2026_disc_toa_usd_thousands ?? null,
+    reconK: p.fy2026_reconciliation_toa_usd_thousands ?? null,
   };
 }

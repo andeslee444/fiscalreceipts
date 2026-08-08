@@ -316,6 +316,15 @@ export default async function ProgramPage({
     }
   }
 
+  // FY2026 discretionary/reconciliation split (backlog #50): the two Cite
+  // figures rendered beside the FY2026 headline card need their own fact
+  // ids in the page slice, or the citation panel can't resolve them.
+  const fy26Split = details.fy26_split ?? null;
+  if (fy26Split) {
+    if (fy26Split.disc?.fid) pageFactIds.push(fy26Split.disc.fid);
+    if (fy26Split.reconciliation?.fid) pageFactIds.push(fy26Split.reconciliation.fid);
+  }
+
   // Narratives (Phase 5F §2b/§2c): per-paragraph jbook_narrative fact chips
   // + prose amount-link targets both open the panel from the embedded slice.
   for (const n of details.narratives) {
@@ -464,7 +473,7 @@ export default async function ProgramPage({
       {/* 2 · Budget figures — the summary UNION cards (§P0-2) + the
           reconciliation strip (§P0-1). */}
       <ProgramSection id="figures">
-        <ProgramFigures program={program} summary={summary} />
+        <ProgramFigures program={program} summary={summary} fy26Split={fy26Split} />
       </ProgramSection>
 
       {/* 3 · Trajectory — union-card sparkline + Phase 5E decade series */}

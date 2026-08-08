@@ -129,6 +129,25 @@
  *      mode that let the original defect ship past a gate suite that never
  *      looked at label CORRECTNESS, only number↔citation agreement.
  *
+ * LEG (g) — FY2026 discretionary/reconciliation split (#50; letter checked
+ *   free against a/b/c/d/e/f above before use):
+ *
+ *   The FY2026 "Request" figure is disc + reconciliation with no visible
+ *   seam — $89.01B of the $385.27B FY2026 corpus total is one-time
+ *   reconciliation-bill money. Long Range Kill Chains (PE 1203154SF) — the
+ *   #1 row on /programs/ and the #1 homepage item — headlined "+3052.9%" on
+ *   $1,916k of actual discretionary money, a like-for-like -99.2%.
+ *
+ *   g1 CHIP PRESENCE — every program page whose sidecar (program_details/
+ *      {pe}.json's fy26_split) reports recon_share > 0 must render a
+ *      [data-fy26-recon-chip] marker.
+ *   g2 CHANGE ACCOMPANIMENT — a page rendering the COMBINED FY25→FY26
+ *      percentage (the "change" summary card's pct, read from the same
+ *      sidecar's summary.cards) on a reconciliation-affected program must
+ *      ALSO render [data-fy26-disc-pct-change] — the discretionary-only,
+ *      like-for-like rate is never optional once the combined one is shown.
+ *   g3 NON-VACUITY — fewer than 100 resolved (recon_share > 0) pages FAILS.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
@@ -1025,6 +1044,9 @@ export async function runBasisGate() {
   // ── Leg (f) — exhibit agreement (#48) ──────────────────────────────────────
   runExhibitAgreementLeg(pages, errors, notes);
 
+  // ── Leg (g) — FY2026 discretionary/reconciliation split (#50) ─────────────
+  runFy26SplitLeg(pages, errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -1488,6 +1510,139 @@ function runExhibitAgreementLeg(pages, errors, notes) {
     );
   } else {
     notes.push(`leg f3: ${resolved} basis chips resolved — non-vacuous ✓`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (g) — FY2026 DISCRETIONARY/RECONCILIATION SPLIT (#50)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect: the FY2026 "Request" figure is disc + reconciliation
+// with no visible seam — $89.01B of the $385.27B FY2026 corpus total is
+// one-time reconciliation-bill money, folded silently into every "Request"
+// label and every FY25→FY26 percentage change. Long Range Kill Chains (PE
+// 1203154SF) — the #1 row on /programs/ and the #1 homepage item — headlined
+// "+3052.9%" on $1,916k of actual discretionary money, a like-for-like
+// -99.2%. Both numbers are true; only the unlabelled one was a false claim.
+//
+// This leg reads EVERY program page's own program_details/{pe}.json sidecar
+// (the ground truth export_site.py's build_fy26_split threads through as
+// fy26_split) and checks the corresponding BUILT PAGE:
+//
+//   g1 CHIP PRESENCE — any page whose sidecar reports fy26_split.recon_share
+//      > 0 must render a [data-fy26-recon-chip] marker (program-figures.tsx's
+//      Fy26SplitNote, beside the FY2026 card). A true reconciliation share
+//      with no rendered disclosure is exactly the defect.
+//   g2 CHANGE ACCOMPANIMENT — a page renders a COMBINED FY25→FY26 percentage
+//      (the "change" summary card's parenthetical, sourced from the same
+//      sidecar's summary.cards) on a reconciliation-affected program (both
+//      recon_share > 0 and the sidecar's own disc_pct_change is computable)
+//      must ALSO render [data-fy26-disc-pct-change] — the discretionary-only,
+//      like-for-like rate. The combined change is never deleted (it is true);
+//      it must not stand alone, unlabelled.
+//   g3 NON-VACUITY — fewer than 100 resolved (recon_share > 0) program pages
+//      FAILS: the sidecar field or the chip selector silently matching
+//      nothing is exactly the failure mode a number↔citation-only gate suite
+//      let ship past it in the first place.
+const FY26_SPLIT_MIN_RESOLVED = 100;
+
+function runFy26SplitLeg(pages, errors, notes) {
+  let resolved = 0;
+  const missingChip = [];
+  const missingDiscRate = [];
+
+  for (const { pe, htmlPath } of pages) {
+    const sidecarPath = path.join(
+      repoRoot, "data", "site", "json", "program_details", `${pe}.json`,
+    );
+    if (!fs.existsSync(sidecarPath)) continue;
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(sidecarPath, "utf8"));
+    } catch (e) {
+      missingChip.push(`/program/${pe}/: sidecar failed to parse (${e.message})`);
+      continue;
+    }
+    const split = sidecar.fy26_split;
+    if (!split || !(split.recon_share > 0)) continue;
+    resolved++;
+
+    const relPath = path.relative(outDir, htmlPath);
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch (e) {
+      missingChip.push(`${relPath}: failed to parse (${e.message})`);
+      continue;
+    }
+
+    // g1 — the chip
+    if (!root.querySelector("[data-fy26-recon-chip]")) {
+      missingChip.push(
+        `/program/${pe}/: sidecar fy26_split.recon_share = ` +
+          `${(split.recon_share * 100).toFixed(1)}% but the built page renders ` +
+          `no [data-fy26-recon-chip]`,
+      );
+    }
+
+    // g2 — the combined change, if rendered, must not stand alone
+    const changeCard = (sidecar.summary?.cards || []).find(
+      (c) => c.key === "change",
+    );
+    if (
+      changeCard && changeCard.pct != null && split.disc_pct_change != null &&
+      !root.querySelector("[data-fy26-disc-pct-change]")
+    ) {
+      missingDiscRate.push(
+        `/program/${pe}/: renders a combined FY25→FY26 change of ` +
+          `${changeCard.pct}% with no [data-fy26-disc-pct-change] disclosure ` +
+          `of the discretionary-only rate (${split.disc_pct_change}%)`,
+      );
+    }
+  }
+
+  if (missingChip.length > 0) {
+    errors.push(
+      `leg g1 fy26-split chip: ${missingChip.length} program page(s) with ` +
+        `recon_share > 0 render no reconciliation chip (first ${MAX_LISTED}):`,
+    );
+    for (const m of missingChip.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (missingChip.length > MAX_LISTED)
+      errors.push(`  ... and ${missingChip.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg g1: every program page with fy26_split.recon_share > 0 renders a ` +
+        `[data-fy26-recon-chip] ✓`,
+    );
+  }
+
+  if (missingDiscRate.length > 0) {
+    errors.push(
+      `leg g2 fy26-split discretionary rate: ${missingDiscRate.length} program ` +
+        `page(s) render a combined FY25→FY26 change with no discretionary-rate ` +
+        `disclosure (first ${MAX_LISTED}):`,
+    );
+    for (const m of missingDiscRate.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (missingDiscRate.length > MAX_LISTED)
+      errors.push(`  ... and ${missingDiscRate.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg g2: every rendered combined FY25→FY26 change on a reconciliation` +
+        `-affected program is accompanied by the discretionary rate ✓`,
+    );
+  }
+
+  if (resolved < FY26_SPLIT_MIN_RESOLVED) {
+    errors.push(
+      `leg g3 is VACUOUS: only ${resolved} program page(s) resolved ` +
+        `fy26_split.recon_share > 0 (need ≥ ${FY26_SPLIT_MIN_RESOLVED}) — the ` +
+        `sidecar field or the chip selector is not matching the built pages`,
+    );
+  } else {
+    notes.push(
+      `leg g3: ${resolved} FY2026 figures resolved with recon_share > 0 — ` +
+        `non-vacuous ✓`,
+    );
   }
 }
 

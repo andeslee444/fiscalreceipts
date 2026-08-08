@@ -76,10 +76,19 @@ function csvField(s: string): string {
 }
 
 /**
- * CSV of the current view. Both dollar columns are P-1/R-1 TOA in USD
+ * CSV of the current view. All four dollar columns are P-1/R-1 TOA in USD
  * thousands — the basis the table declares in its headers — and the header
  * row says so, so an export cannot be read on the wrong basis. Missing values
  * are empty, never 0.
+ *
+ * Backlog #50: fy2026_request_toa_usd_thousands is the COMBINED total (disc +
+ * reconciliation) — the same figure the column and every program page render
+ * as "FY26 request". The two trailing columns are its addends: one-time
+ * reconciliation-bill money rides beside the ordinary discretionary request
+ * with no visible seam in that combined figure ($89.01B of the $385.27B
+ * FY2026 corpus total), so an analyst pulling this CSV to compute YoY growth
+ * needs the split to compute it on a like-for-like (discretionary) basis
+ * instead of silently mixing one-time money into the rate.
  */
 export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
@@ -89,6 +98,8 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
     "title",
     "fy2024_actual_toa_usd_thousands",
     "fy2026_request_toa_usd_thousands",
+    "fy2026_disc_toa_usd_thousands",
+    "fy2026_reconciliation_toa_usd_thousands",
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
@@ -100,6 +111,8 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
         csvField(p.title),
         p.fy24 != null ? String(p.fy24) : "",
         p.fy26 != null ? String(p.fy26) : "",
+        p.discK != null ? String(p.discK) : "",
+        p.reconK != null ? String(p.reconK) : "",
       ].join(","),
     );
   }

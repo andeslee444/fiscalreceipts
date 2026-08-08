@@ -490,6 +490,56 @@ def _display_values_agree(a_dollars: float, b_dollars: float) -> bool:
     return abs(a_dollars - b_dollars) <= granularity
 
 
+def build_fy26_split(
+    *,
+    fy25_enacted_k: float | None,
+    disc_k: float | None,
+    recon_k: float | None,
+) -> dict:
+    """FY2026 discretionary/reconciliation split for one program (backlog #50).
+
+    fy_2026_total is disc + reconciliation — verified EXACTLY against the
+    shipped warehouse (data/site/data/budget_lines.parquet): for every one of
+    the 1,672 program elements that carry a fy_2026_total row, disc_k +
+    recon_k reproduces it to the dollar, 0 mismatches. So `total_k` below is
+    never a third, independently-sourced figure that could drift from the
+    number already on the page — it is the same two addends the workbook's
+    own total row sums, summed the same way.
+
+    Reconciliation is ONE-TIME mandatory money riding beside the ordinary
+    discretionary request (Long Range Kill Chains, PE 1203154SF: $7.695B of
+    reconciliation beside $1.916M of actual discretionary request). A
+    year-over-year rate computed on the COMBINED basis is not a rate of
+    anything a reader can extrapolate to FY2027 — the reconciliation bill is
+    FY2026-only and FY2025 enacted carries no such component to compare
+    against. So the published CHANGE (`disc_pct_change`) is computed on the
+    discretionary basis only, the one comparable to an enacted prior year;
+    the combined total is still published (it is the true total), just
+    alongside the rate that means something.
+
+    No defect found against the prescribed spec (Task A'4 prelude): checked
+    the three given test cases plus the absent/zero-prior-year edge (a $0
+    fy25_enacted would divide-by-zero; `if fy25_enacted_k:` treats it as
+    "no comparison" rather than raising or fabricating an infinite rate —
+    the same honest-absence call `disc_pct_change is None` makes for a
+    missing prior year). Implemented as prescribed.
+    """
+    disc = float(disc_k or 0.0)
+    recon = float(recon_k or 0.0)
+    total = disc + recon
+    pct = None
+    if fy25_enacted_k:
+        pct = round(100 * (disc - float(fy25_enacted_k)) / float(fy25_enacted_k), 1)
+    return {
+        "disc_k": disc,
+        "recon_k": recon,
+        "total_k": total,
+        "recon_share": (recon / total) if total else 0.0,
+        "disc_pct_change": pct,
+        "has_reconciliation": recon > 0,
+    }
+
+
 # ---------------------------------------------------------------------------
 # DuckDB mart names (11 required; fct_budget_lines comes from Postgres)
 # ---------------------------------------------------------------------------
@@ -1199,6 +1249,17 @@ def export_site(
     )
     citation_rows.extend(summary_cit_rows)
 
+    # --- 4b4. FY2026 discretionary/reconciliation split (backlog #50) ---
+    # The FY2026 "Request" headline folds one-time reconciliation-bill money
+    # in with the ordinary discretionary request, with no seam a reader can
+    # see — $89.01B of the $385.27B FY2026 corpus total. bl_rows already
+    # carries every workbook row this needs, each already appended to
+    # citation_rows by the workbook citation loop above (4b) — so the common
+    # case (one row per component) reuses that fact directly. Must join
+    # citation_rows BEFORE citations.parquet is written, same as 4b3 above.
+    fy26_split_by_pe, fy26_split_cit_rows = _build_fy26_split_index(bl_rows=bl_rows)
+    citation_rows.extend(fy26_split_cit_rows)
+
     # --- 4c. LDA filing citations (from duckdb fct_program_lobbying) ---
     lda_con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
@@ -1452,6 +1513,7 @@ def export_site(
         decade_grains=decade_grains,
         decade_side_meta=decade_side_meta,
         summary_by_pe=summary_by_pe,
+        fy26_split_by_pe=fy26_split_by_pe,
     )
 
     # Update manifest with json_sidecars count
@@ -2792,6 +2854,105 @@ def _summary_absence_block() -> dict:
         "cards": cards,
         "reconciliation": [],
     }
+
+
+# amount_type slug → the fy26_split side key it feeds (backlog #50).
+_FY26_SPLIT_KEYS = {
+    "fy_2025_enacted": "fy25_enacted",
+    "fy_2026_disc_request": "disc",
+    "fy_2026_reconciliation_request": "reconciliation",
+}
+
+
+def _build_fy26_split_index(
+    *, bl_rows: list,
+) -> tuple[dict[str, dict], list[tuple]]:
+    """Per-PE FY2026 discretionary/reconciliation split (backlog #50).
+
+    Groups bl_rows (the same rows the workbook citation loop above already
+    cited — cols: fact_id=0, pe_bli=8, amount_type=10, amount_thousands=11)
+    by the three source amount_types this split needs, sums each into a
+    disc / reconciliation / fy25_enacted side, then calls build_fy26_split
+    for the honest change math.
+
+    Runs BEFORE citations.parquet is written (same requirement as the
+    summary-card union above it) so any newly-minted derived fact lands in
+    both citations.parquet and citations.json — never only the latter.
+
+    A side backed by exactly one row (the common case: 1,628/1,672 PEs for
+    disc, 197/200 for reconciliation, measured against the shipped
+    warehouse) reuses that row's OWN fact_id — already a valid 'workbook'
+    citation, no new fact minted. A side spanning >1 row (20 PEs for disc, 3
+    for reconciliation — e.g. a component split across two organizations)
+    mints a derived SUM fact (fact_id_derived + _null_derived_row), the same
+    pattern _build_decade_citation_rows uses for its own multi-row grains.
+    This sprint's #51 fix was exactly a summed total silently reusing one
+    member's fact instead of minting its own — this never does that: n>1
+    always mints, n==1 never does.
+
+    Returns (split_by_pe, cit_rows): cit_rows holds ONLY the newly-minted
+    derived rows (the caller extends citation_rows with them); split_by_pe
+    keys on every PE that has a disc and/or reconciliation row at all — a PE
+    with neither (no FY2026 R-1/P-1 request row of either kind) is absent,
+    never a fabricated zero-vs-zero split.
+    """
+    from collections import defaultdict
+
+    grouped: dict[str, dict[str, list[tuple[str, float]]]] = defaultdict(dict)
+    for row in bl_rows:
+        fid, pe_bli, amount_type, amount_thousands = row[0], row[8], row[10], row[11]
+        key = _FY26_SPLIT_KEYS.get(amount_type)
+        if key is None or amount_thousands is None:
+            continue
+        grouped[pe_bli].setdefault(key, []).append((fid, float(amount_thousands)))
+
+    split_by_pe: dict[str, dict] = {}
+    cit_rows: list[tuple] = []
+    built_at = datetime.datetime.now(datetime.UTC).isoformat()
+
+    def _side(pe_bli: str, key: str, amount_type: str, measure: str) -> dict | None:
+        hits = grouped.get(pe_bli, {}).get(key)
+        if not hits:
+            return None
+        total = sum(v for _, v in hits)
+        if len(hits) == 1:
+            fid = hits[0][0]
+        else:
+            fid = fact_id_derived("summary", pe_bli, amount_type)
+            cit_rows.append(_null_derived_row(
+                fid, "derived", "USD thousands",
+                f"sum(budget_lines.amount_thousands) where pe_bli="
+                f"'{pe_bli}' and amount_type='{amount_type}'",
+                json.dumps([f for f, _ in hits]),
+                f"{total:.3f}",
+                built_at,
+            ))
+        return {
+            "v": round(total, 3), "units": "USD thousands", "fid": fid,
+            "public_id": fid[:8], "dataset": "budget_lines",
+            "basis": _BASIS_TOA, "fy": 2026, "measure": measure, "edition": 2026,
+        }
+
+    for pe_bli in grouped:
+        disc_side = _side(pe_bli, "disc", "fy_2026_disc_request", "disc-request")
+        recon_side = _side(
+            pe_bli, "reconciliation", "fy_2026_reconciliation_request",
+            "reconciliation-request",
+        )
+        if disc_side is None and recon_side is None:
+            continue
+        fy25_hits = grouped.get(pe_bli, {}).get("fy25_enacted")
+        fy25_enacted_k = sum(v for _, v in fy25_hits) if fy25_hits else None
+        split = build_fy26_split(
+            fy25_enacted_k=fy25_enacted_k,
+            disc_k=disc_side["v"] if disc_side else None,
+            recon_k=recon_side["v"] if recon_side else None,
+        )
+        split["disc"] = disc_side
+        split["reconciliation"] = recon_side
+        split_by_pe[pe_bli] = split
+
+    return split_by_pe, cit_rows
 
 
 def _build_summary_blocks(
@@ -4148,6 +4309,7 @@ def _emit_json_sidecars(
     decade_grains: list | None = None,
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
+    fy26_split_by_pe: dict | None = None,
 ) -> int:
     """Emit all JSON sidecars to out_dir/json/.
 
@@ -4179,6 +4341,7 @@ def _emit_json_sidecars(
             decade_grains=decade_grains,
             decade_side_meta=decade_side_meta,
             summary_by_pe=summary_by_pe,
+            fy26_split_by_pe=fy26_split_by_pe,
         )
     finally:
         con.close()
@@ -4199,11 +4362,13 @@ def _write_all_sidecars(
     decade_grains: list | None = None,
     decade_side_meta: dict | None = None,
     summary_by_pe: dict | None = None,
+    fy26_split_by_pe: dict | None = None,
 ) -> int:
     """Core sidecar writer; called from _emit_json_sidecars."""
 
     n_files = 0
     summary_by_pe = summary_by_pe or {}
+    fy26_split_by_pe = fy26_split_by_pe or {}
 
     # ------------------------------------------------------------------ #
     # 0. Build in-memory indexes from already-fetched data                #
@@ -4714,6 +4879,13 @@ def _write_all_sidecars(
         # the row's org label — it is not, and never was, the scope of these
         # figures. For the three shared BLI codes it named one of four.
         traj = prog_traj_index.get(pe_bli)
+        # backlog #50: the raw disc/reconciliation dollars for the /programs/
+        # CSV export. Pulled from the split's OWN side objects (None exactly
+        # when no such workbook row exists for this PE) rather than the
+        # coalesced-to-0.0 disc_k/recon_k build_fy26_split returns — a program
+        # with no fy_2026_disc_request row at all gets a blank CSV cell, not a
+        # fabricated $0 that looks identical to a genuinely-reported zero.
+        _fy26_split = fy26_split_by_pe.get(pe_bli)
         programs_list.append({
             "award_count": len(awards_by_pe.get(pe_bli, [])),
             "exhibit_family": exhibit_family,
@@ -4733,6 +4905,13 @@ def _write_all_sidecars(
             "title": title,
             "trajectory": traj,
             "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, traj),
+            "fy2026_disc_toa_usd_thousands": (
+                _fy26_split["disc"]["v"] if _fy26_split and _fy26_split["disc"] else None
+            ),
+            "fy2026_reconciliation_toa_usd_thousands": (
+                _fy26_split["reconciliation"]["v"]
+                if _fy26_split and _fy26_split["reconciliation"] else None
+            ),
         })
 
     _write_json(json_dir / "programs.json", programs_list)
@@ -5003,6 +5182,8 @@ def _write_all_sidecars(
                 obj["book_diff"] = rva_by_pe[pe_bli]
         if pe_bli in lineage_by_pe:
             obj["lineage"] = lineage_by_pe[pe_bli]
+        if pe_bli in fy26_split_by_pe:
+            obj["fy26_split"] = fy26_split_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
 
@@ -5082,6 +5263,8 @@ def _write_all_sidecars(
                 obj["book_diff"] = rva_by_pe[pe_bli]
         if pe_bli in lineage_by_pe:
             obj["lineage"] = lineage_by_pe[pe_bli]
+        if pe_bli in fy26_split_by_pe:
+            obj["fy26_split"] = fy26_split_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
         n_files += 1
     if rollup_pes:

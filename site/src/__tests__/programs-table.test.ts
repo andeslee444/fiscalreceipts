@@ -30,6 +30,8 @@ function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
     project_count: 0,
     trajectory: null,
     trajectory_fact_ids: null,
+    fy2026_disc_toa_usd_thousands: null,
+    fy2026_reconciliation_toa_usd_thousands: null,
     ...over,
   };
 }
@@ -62,6 +64,9 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
   // The client component's props are serialized into the RSC flight payload,
   // so every field here is shipped a second time on top of the rendered HTML.
   // 1,741 full rows were 975 KB where the rendered eight are 385 KB.
+  // discK/reconK (backlog #50) are CSV-export-only — no on-screen column —
+  // but they are two small numbers, not the kind of payload this budget
+  // exists to keep out (full trajectory objects, hhi, fact-id maps).
   const RENDERED_FIELDS = [
     "pe",
     "org",
@@ -70,9 +75,11 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     "fy24Fid",
     "fy26",
     "fy26Fid",
+    "discK",
+    "reconK",
   ];
 
-  it("carries exactly the seven rendered fields — no more", () => {
+  it("carries exactly the nine rendered fields — no more", () => {
     expect(Object.keys(program()).sort()).toEqual([...RENDERED_FIELDS].sort());
   });
 
@@ -196,6 +203,23 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     // …and a program with no decade row at all still projects cleanly.
     expect(toProgramsTableRow(fullProgram(), undefined).fy26).toBeNull();
   });
+
+  // Backlog #50: the disc/reconciliation split rides alongside fy26 (the
+  // combined total) rather than replacing it.
+  it("projects the fy2026 disc/reconciliation split from ProgramRow", () => {
+    const row = program({
+      fy2026_disc_toa_usd_thousands: 1916,
+      fy2026_reconciliation_toa_usd_thousands: 7695000,
+    });
+    expect(row.discK).toBe(1916);
+    expect(row.reconK).toBe(7695000);
+  });
+
+  it("nulls a missing disc/reconciliation split rather than inventing a 0", () => {
+    const row = program();
+    expect(row.discK).toBeNull();
+    expect(row.reconK).toBeNull();
+  });
 });
 
 describe("programHaystack — the §P1-11 text filter", () => {
@@ -223,11 +247,14 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
   it("labels each dollar column with its own unit rather than converting", () => {
     const csv = buildProgramsCsv([program()]);
     const [header] = csv.split("\n");
-    // Both money columns are P-1 TOA in USD thousands now, and the header
-    // says so — the FY24 column used to export J-book detail in millions
-    // beside a TOA column in thousands.
+    // All four money columns are P-1 TOA in USD thousands now, and the
+    // header says so — the FY24 column used to export J-book detail in
+    // millions beside a TOA column in thousands. The trailing two (#50) are
+    // fy2026's own addends — disc + reconciliation.
     expect(header).toBe(
-      "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands,fy2026_request_toa_usd_thousands",
+      "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands," +
+        "fy2026_request_toa_usd_thousands,fy2026_disc_toa_usd_thousands," +
+        "fy2026_reconciliation_toa_usd_thousands",
     );
   });
 
@@ -235,7 +262,7 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     const csv = buildProgramsCsv([
       program({}, { fy24: { v: 5565655, fid: "b".repeat(16) }, fy26: null }),
     ]);
-    expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5565655,");
+    expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5565655,,,");
   });
 
   it("leaves missing values EMPTY, never 0", () => {
@@ -243,6 +270,20 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     const fields = csv.split("\n")[1].split(",");
     expect(fields[4]).toBe("");
     expect(fields[5]).toBe("");
+    expect(fields[6]).toBe("");
+    expect(fields[7]).toBe("");
+  });
+
+  it("exports the fy2026 disc/reconciliation split (backlog #50)", () => {
+    const csv = buildProgramsCsv([
+      program({
+        fy2026_disc_toa_usd_thousands: 1916,
+        fy2026_reconciliation_toa_usd_thousands: 7695000,
+      }),
+    ]);
+    const fields = csv.split("\n")[1].split(",");
+    expect(fields[6]).toBe("1916");
+    expect(fields[7]).toBe("7695000");
   });
 
   it("quotes titles containing commas", () => {
