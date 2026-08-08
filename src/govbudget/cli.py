@@ -1813,6 +1813,8 @@ def cmd_export_site(args) -> None:
     out = export_site(
         config.PG_DSN, config.DUCKDB_PATH, out_dir=config.SITE_DIR,
         pdf_base_url=config.PDF_BASE_URL,
+        dossiers_raw_dir=config.RESEARCH_DIR / "dossiers-raw",
+        snapshots_index_path=config.RESEARCH_DIR / "snapshots" / "index.json",
     )
     print(
         f"export-site: {out['datasets']} datasets, {out['citations']} citations,"
@@ -1820,6 +1822,13 @@ def cmd_export_site(args) -> None:
         f" {out['skipped_unresolved']} unresolved, {out['skipped_zero_amount']} zero-amount"
         f" -> {config.SITE_DIR}"
     )
+    dsum = out.get("dossiers")
+    if dsum is not None:
+        print(
+            f"export-site: dossiers {dsum['written']} written,"
+            f" {dsum['total_dropped']} claim(s) dropped across"
+            f" {len(dsum['dropped_by_pe'])} dossier(s)"
+        )
 
 
 def cmd_verify_phase5b2(args) -> None:

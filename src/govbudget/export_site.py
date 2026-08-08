@@ -779,8 +779,18 @@ def export_site(
     *,
     out_dir,
     pdf_base_url: str,
+    dossiers_raw_dir=None,
+    snapshots_index_path=None,
 ) -> dict:
     """Build the full site artifact bundle.
+
+    dossiers_raw_dir / snapshots_index_path (both optional, default None):
+        when provided and dossiers_raw_dir exists, dossier sidecars
+        (out_dir/json/dossiers/{pe_bli}.json) are rebuilt from the committed
+        LLM batch archives with unresolvable claims filtered out — see
+        _emit_dossier_sidecars. When omitted (the default — every existing
+        caller and test fixture), dossier sidecars are left untouched, same
+        as before this parameter existed.
 
     Returns:
         {datasets, citations, pdfs, workbooks, skipped_unresolved, skipped_zero_amount}
@@ -790,6 +800,8 @@ def export_site(
 
     out_dir = Path(out_dir)
     duckdb_path = Path(duckdb_path)
+    dossiers_raw_dir = Path(dossiers_raw_dir) if dossiers_raw_dir else None
+    snapshots_index_path = Path(snapshots_index_path) if snapshots_index_path else None
     data_dir = out_dir / "data"
     cit_dir = out_dir / "citations"
     pdfs_dir = out_dir / "pdfs"
@@ -1486,6 +1498,34 @@ def export_site(
     )
 
     # -----------------------------------------------------------------------
+    # 5b. Dossier sidecars (#52 fallout — filter dead claims, keep the
+    #     dossier). Runs BEFORE 6. JSON sidecars, not after, so
+    #     _build_named_primes (called from inside _write_all_sidecars) reads
+    #     the freshly-filtered 50-dossier set in this same export pass rather
+    #     than a stale one from the previous run. citation_rows is complete
+    #     enough here for this purpose: everything a dossier could possibly
+    #     cite (jbook_pdf, workbook, lda_filing, derived, geography) is
+    #     already minted above (steps 4a-4i); the only rows minted later, in
+    #     _write_all_sidecars itself, are _mint_coverage_fact's handful of
+    #     programs_coverage index/universe facts, which no dossier claim
+    #     cites (they are corpus-wide meta-statistics, not program facts).
+    # -----------------------------------------------------------------------
+    dossier_summary = None
+    if dossiers_raw_dir is not None and dossiers_raw_dir.is_dir():
+        citations_keyset = {row[0] for row in citation_rows}
+        snapshot_urls = (
+            _load_snapshot_urls(snapshots_index_path)
+            if snapshots_index_path is not None
+            else set()
+        )
+        dossier_summary = _emit_dossier_sidecars(
+            json_dir=out_dir / "json",
+            dossiers_raw_dir=dossiers_raw_dir,
+            citations_keyset=citations_keyset,
+            snapshot_urls=snapshot_urls,
+        )
+
+    # -----------------------------------------------------------------------
     # 6. JSON sidecars (Phase 5B-2)
     # -----------------------------------------------------------------------
     n_json = _emit_json_sidecars(
@@ -1573,6 +1613,9 @@ def export_site(
         "skipped_unresolved": skipped_unresolved,
         "skipped_zero_amount": skipped_zero_amount,
         "json_files": n_json,
+        # None when dossiers_raw_dir was not passed (existing callers/tests);
+        # {written, total_dropped, dropped_by_pe, skipped} otherwise.
+        "dossiers": dossier_summary,
     }
 
 
@@ -3374,6 +3417,162 @@ def _build_summary_blocks(
             f" {len(union_cit_rows)} union-change derived facts minted"
         )
     return summary_by_pe, union_cit_rows
+
+
+def _load_snapshot_urls(snapshots_index_path: Path) -> set[str]:
+    """{url, ...} from data/research/snapshots/index.json; empty set if absent
+    or unreadable — callers treat that as "no url citation ever resolves",
+    matching dossiers/gate.py's own reference-set convention."""
+    if not snapshots_index_path.exists():
+        return set()
+    try:
+        data = json.loads(snapshots_index_path.read_text(encoding="utf-8"))
+    except Exception:
+        return set()
+    return {entry["url"] for entry in data.get("snapshots", []) if entry.get("url")}
+
+
+def _emit_dossier_sidecars(
+    *,
+    json_dir: Path,
+    dossiers_raw_dir: Path,
+    citations_keyset: set[str],
+    snapshot_urls: set[str],
+) -> dict:
+    """Rebuild out_dir/json/dossiers/{pe_bli}.json from the committed,
+    already-paid LLM batch archives in dossiers_raw_dir. No network call, no
+    re-generation, no API spend — every raw response is already on disk.
+
+    #52 FALLOUT (docs/superpowers/ROADMAP.md item 52; the 2026-08-08 dossier
+    addendum in docs/superpowers/reviews/5c-gates-pre-failure.txt). The
+    lobbying evidence-tier fix retracted single-common-word LDA matches from
+    fct_program_lobbying, which orphaned 27 dossier "players" claims across 5
+    of the 50 dossiers — each one asserted a lobbying connection resting on
+    exactly the kind of single-word match the fix removes (one literally
+    matched on "Foreign"). `govbudget dossiers collect` rejects an ENTIRE
+    dossier file the moment any one claim's citation fails to resolve — the
+    right call for a freshly-generated batch (a bad citation there usually
+    means a generation defect worth a full retry) but too blunt for a
+    dossier that already passed that gate once and only went stale because
+    an UPSTREAM correction changed what it could truthfully cite.
+
+    So this is a SEPARATE, general rule, applied here rather than in
+    collect(): drop the individual claim whose citation no longer resolves
+    (fact_id not in citations_keyset, or url not in snapshot_urls) and keep
+    the dossier and every other claim. Never a hardcoded PE list — any
+    dossier, present or future, gets the same treatment. The number dropped
+    is recorded on the sidecar (`dropped_claims`) so the correction ships
+    labelled, per this sprint's own principle (#49/#51/#52's owner
+    decision): the site says a dossier lost claims rather than silently
+    shipping fewer of them.
+
+    A structurally invalid or unreadable raw archive is skipped (loudly
+    printed) rather than written malformed — `dossiers_present`/`structure`
+    in the real dossier_gate is what should have caught that at collection
+    time; this function does not re-implement that gate, only the citation-
+    membership half of it, at claim rather than file grain.
+
+    Returns {written, total_dropped, dropped_by_pe, skipped}.
+    """
+    from govbudget.dossiers.batch import ALL_SECTIONS, _first_text, validate_dossier
+
+    out_dir = json_dir / "dossiers"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    total_dropped = 0
+    dropped_by_pe: dict[str, int] = {}
+    skipped: list[str] = []
+
+    for path in sorted(dossiers_raw_dir.glob("*.json")):
+        if path.name == "batch_meta.json":
+            continue
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            skipped.append(f"{path.stem}: unreadable raw file ({exc})")
+            continue
+
+        pe_bli = (
+            str(raw.get("custom_id") or "").removeprefix("dossier-") or path.stem
+        )
+        message = raw.get("message")
+        text = _first_text(message) if message is not None else None
+        if text is None:
+            skipped.append(f"{pe_bli}: no text block in archived response")
+            continue
+        try:
+            dossier = json.loads(text)
+        except json.JSONDecodeError as exc:
+            skipped.append(f"{pe_bli}: invalid JSON ({exc})")
+            continue
+        errors = validate_dossier(dossier)
+        if errors:
+            skipped.append(f"{pe_bli}: schema errors ({'; '.join(errors[:3])})")
+            continue
+
+        dropped_here = 0
+        for section in ALL_SECTIONS:
+            claims = dossier.get(section, {}).get("claims", [])
+            kept = []
+            for claim in claims:
+                citation = claim.get("citation") or {}
+                if "fact_id" in citation:
+                    ok = citation["fact_id"] in citations_keyset
+                elif "url" in citation:
+                    ok = citation["url"] in snapshot_urls
+                else:
+                    ok = False  # malformed citation shape — drop, don't ship uncited
+                if ok:
+                    kept.append(claim)
+                else:
+                    dropped_here += 1
+            dossier[section]["claims"] = kept
+
+        if dropped_here:
+            total_dropped += dropped_here
+            dropped_by_pe[pe_bli] = dropped_here
+
+        model = message.get("model", "unknown") if isinstance(message, dict) else "unknown"
+        (out_dir / f"{pe_bli}.json").write_text(
+            json.dumps(
+                {
+                    "pe_bli": pe_bli,
+                    "model": model,
+                    "collected_at": raw.get("collected_at"),
+                    "dossier": dossier,
+                    # (#52) count of claims dropped for an unresolvable
+                    # citation — 0 when nothing was dropped. Rendered as a
+                    # ScopeNote on the program page when > 0 (program-
+                    # dossier.tsx) so the correction ships labelled.
+                    "dropped_claims": dropped_here,
+                },
+                ensure_ascii=False,
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
+        written += 1
+
+    if dropped_by_pe:
+        print(
+            f"dossiers: {total_dropped} claim(s) dropped across"
+            f" {len(dropped_by_pe)} dossier(s) — unresolvable citation (#52 fallout):"
+        )
+        for pe, n in sorted(dropped_by_pe.items()):
+            print(f"  {pe}: {n} dropped")
+    if skipped:
+        print(f"dossiers: {len(skipped)} raw file(s) skipped:")
+        for s in skipped:
+            print(f"  {s}")
+    print(f"dossiers: {written} sidecar(s) written -> {out_dir}")
+
+    return {
+        "written": written,
+        "total_dropped": total_dropped,
+        "dropped_by_pe": dropped_by_pe,
+        "skipped": skipped,
+    }
 
 
 def _build_named_primes(

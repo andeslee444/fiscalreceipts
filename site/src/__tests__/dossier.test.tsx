@@ -230,4 +230,91 @@ describe("ProgramDossier", () => {
       container.querySelector('[data-dossier-section="recent_developments"]'),
     ).toBeNull();
   });
+
+  // ── #52 fallout: dropped_claims (a correction ships labelled) ──────────────
+  //
+  // THE REGRESSION THIS GUARDS AGAINST: the #52 evidence-tier fix orphaned 27
+  // dossier "players" claims across 5 dossiers. _emit_dossier_sidecars now
+  // drops the individual bad claim and keeps the dossier (never the whole
+  // file, the way govbudget dossiers collect's stricter file-level rule
+  // would) — these tests pin that the PAGE does the same: a dossier that
+  // lost claims still renders, and says so, rather than disappearing.
+
+  it("renders a correction note when dropped_claims > 0", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 2;
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    const note = container.querySelector('[data-note-kind="scope"]');
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("2 claims removed");
+    expect(note!.textContent).toContain(
+      "they cited lobbying mentions that did not meet the evidence standard",
+    );
+    const hook = container.querySelector("[data-dossier-dropped-claims]");
+    expect(hook).toHaveAttribute("data-dossier-dropped-claims", "2");
+  });
+
+  it("uses singular phrasing for exactly one dropped claim", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 1;
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(container.textContent).toContain("1 claim removed");
+    expect(container.textContent).toContain("it cited lobbying mentions");
+  });
+
+  it("renders no correction note when dropped_claims is 0 or absent", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 0;
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(container.querySelector('[data-note-kind="scope"]')).toBeNull();
+    expect(container.textContent).not.toContain("removed");
+
+    delete file.dropped_claims;
+    const rerendered = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(
+      rerendered.container.querySelector('[data-note-kind="scope"]'),
+    ).toBeNull();
+  });
+
+  it("THE 0603896C shape: a required section emptied by the drop still renders the dossier, with the note, not nothing", () => {
+    const file = fixtureDossier();
+    file.dossier.players.claims = []; // every players claim was dropped
+    file.dropped_claims = 6;
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    // The section disappears (zero placeholder text, same rule as any
+    // naturally-empty section) — but the dossier itself, and its other
+    // sections, and the correction note, must all still be there.
+    expect(
+      container.querySelector('[data-dossier-section="players"]'),
+    ).toBeNull();
+    expect(container.textContent).toContain("What it is");
+    expect(container.textContent).toContain("Why it matters");
+    expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
+    expect(container.textContent).toContain("6 claims removed");
+  });
+
+  it("even a dossier with EVERY claim dropped still renders the section and the note, never silently vanishes", () => {
+    const file = fixtureDossier();
+    file.dossier.what_it_is.claims = [];
+    file.dossier.why_it_matters.claims = [];
+    file.dossier.players.claims = [];
+    file.dossier.recent_developments.claims = [];
+    file.dropped_claims = 4;
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(container.querySelector('[data-dossier]')).not.toBeNull();
+    expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
+    expect(container.textContent).toContain("4 claims removed");
+  });
 });

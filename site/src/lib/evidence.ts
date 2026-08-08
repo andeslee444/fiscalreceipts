@@ -38,10 +38,37 @@ export function evidenceKindLabel(
 }
 
 /**
- * Longer form for a methodology-adjacent tooltip/title attribute — spells
- * out why the tier counts as evidence, not just its name.
+ * Short hover-title form (a `title` attribute) — one sentence, not a
+ * paragraph. Kept deliberately terse: this repeats once per rendered
+ * mention row (up to ~130+ on the heaviest filing page today), and the
+ * full explanation already lives once on /methodology/ — see
+ * evidenceKindLongExplanation() for that copy. A verbose per-row title
+ * attribute was gate 1's page-weight ceiling failure on the heaviest
+ * /filing/ page (131 rows x ~180 bytes = 23.7KB, more than the entire
+ * overage) — this is the fix, not a workaround: the label text already
+ * says the tier; the tooltip only needs to say why briefly.
  */
 export function evidenceKindTitle(
+  kind: string | null | undefined,
+): string {
+  switch (kind) {
+    case "pe_literal":
+      return "Exact program code found in the filing text.";
+    case "alias":
+      return "A curated, verified alias was found in the filing text.";
+    case "multi_token":
+      return "2+ distinct title words found together — never just one.";
+    default:
+      return "Evidence tier not recorded.";
+  }
+}
+
+/**
+ * Full-sentence rationale per tier — for a one-time explanation (e.g. a
+ * methodology paragraph or glossary), NOT for repeating on every mention
+ * row. See evidenceKindTitle() for the per-row hover form.
+ */
+export function evidenceKindLongExplanation(
   kind: string | null | undefined,
 ): string {
   switch (kind) {

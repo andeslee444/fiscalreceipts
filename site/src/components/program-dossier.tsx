@@ -9,6 +9,7 @@ import {
 import type { PeLinkIndex } from "@/lib/data";
 import { DossierFactChip, DossierUrlChip } from "@/components/dossier-chips";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
 import { PeText } from "@/components/pe-text";
 
 /**
@@ -41,7 +42,14 @@ export function ProgramDossier({
   const sections = DOSSIER_ALL_SECTIONS.filter(
     (key) => dossier.dossier[key].claims.length > 0,
   );
-  if (sections.length === 0) return null;
+  // (#52 fallout) dropped_claims > 0 means the export-time filter removed a
+  // claim whose citation no longer resolved (see _emit_dossier_sidecars).
+  // Keep rendering the section — with the correction note — even in the
+  // (currently hypothetical) case where every section emptied out; a
+  // dossier that lost all its claims should say so, not silently vanish
+  // the way an always-had-nothing dossier correctly does.
+  const droppedCount = dossier.dropped_claims ?? 0;
+  if (sections.length === 0 && droppedCount === 0) return null;
 
   return (
     <section
@@ -56,6 +64,22 @@ export function ProgramDossier({
       </p>
       {/* Scope note — G2 contract (data-coverage="dossiers") */}
       <CoverageNote id="dossiers" className="mb-4" />
+      {/* data-dossier-dropped-claims below is the machine-checkable hook for
+          the regression test (a dossier that lost a claim still renders,
+          and says so) and for gate 21-style DOM assertions if one is ever
+          added. */}
+      {droppedCount > 0 && (
+        <ScopeNote className="mb-4" label="Correction">
+          <p
+            className="text-sm leading-relaxed"
+            data-dossier-dropped-claims={droppedCount}
+          >
+            {droppedCount} claim{droppedCount === 1 ? "" : "s"} removed:{" "}
+            {droppedCount === 1 ? "it cited" : "they cited"} lobbying mentions
+            that did not meet the evidence standard.
+          </p>
+        </ScopeNote>
+      )}
 
       <div className="space-y-5">
         {sections.map((key) => (

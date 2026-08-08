@@ -65,6 +65,15 @@ export interface DossierFile {
   model: string;
   collected_at: string;
   dossier: DossierSections;
+  /**
+   * (#52 fallout, 2026-08-08) Count of claims dropped at export time
+   * because their citation no longer resolved — most often a single-
+   * common-word LDA match the #52 evidence-tier fix retracted. 0 when
+   * nothing was dropped. Optional so a pre-#52 file parses without it.
+   * Rendered as a ScopeNote by ProgramDossier when > 0 — a correction
+   * that removed content ships labelled, not silent.
+   */
+  dropped_claims?: number;
 }
 
 /** Snapshot metadata for url-citation chips (title tooltip + retrieved note). */

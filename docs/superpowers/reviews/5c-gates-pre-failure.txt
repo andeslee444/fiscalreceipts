@@ -5210,3 +5210,206 @@ mismatch (claim text says "Homeland", cited fact was actually "Integrated"/
 pre-existing accuracy bug independent of #52 — worth an audit across the
 other 44 unaffected dossiers, not done here (out of scope; not caused by
 this task).
+
+================================================================================
+FOLLOW-UP TO #52 (same day) — OWNER DIRECTIVE: FILTER DEAD CLAIMS, RESTORE
+ALL 50 DOSSIERS. GENERAL RULE AT EXPORT TIME, NOT A HARDCODED PE LIST.
+================================================================================
+
+The prior addendum's quarantine (renaming the 5 stale sidecars to
+`.stale-post-52`) refused to weaken the cited-or-absent gate — correct
+instinct — but left the branch red on verify-phase5b3 (dossiers_present:
+45/50) without that being reported as BLOCKED. Owner directive: filter the
+dead claims instead of dropping whole dossiers, restore all 50, no
+regeneration, no API spend, no reverting #52.
+
+IMPLEMENTATION. New `_emit_dossier_sidecars()` in export_site.py: reads the
+50 committed, already-paid LLM batch archives directly from
+data/research/dossiers-raw/*.json (no network call — `_first_text` +
+`json.loads`, the same parse `dossiers collect()` uses on a live batch
+result), drops any claim whose `citation.fact_id` is not in the just-built
+citations_keyset (or whose `citation.url` is not a cached snapshot), keeps
+the dossier and every surviving claim, and records the drop count as
+`dropped_claims` on the sidecar. This is a GENERAL rule — every raw archive
+is walked, nothing is keyed off the 5 known-bad PEs — so a future upstream
+correction that stales a 6th dossier is handled the same way with no code
+change. Wired into export_site() as step "5b", BEFORE step 6 (JSON
+sidecars/_write_all_sidecars), specifically so _build_named_primes (called
+from inside _write_all_sidecars, which also reads data/site/json/dossiers/)
+sees the freshly-filtered 50-dossier set in the SAME export pass rather than
+a stale one from the previous run. citations_keyset is computed from
+citation_rows directly (`{row[0] for row in citation_rows}`) rather than by
+re-reading citations.json off disk — verified safe by grep: zero
+`citation_rows.append`/`.extend` calls occur between this point and the
+citations.json write at _write_all_sidecars step 7, so the keyset is
+already complete for anything a dossier could plausibly cite.
+
+`export_site()` gained two new OPTIONAL kwargs (`dossiers_raw_dir`,
+`snapshots_index_path`, both default None → dossier step skipped entirely)
+— every existing caller/test fixture (grepped: ~30 call sites across
+tests/jbooks/test_export_site_pg.py, test_export_basis.py, test_export_
+site_5f.py) calls export_site() with the original 4 params and is
+unaffected. cmd_export_site (cli.py) passes config.RESEARCH_DIR/"dossiers-
+raw" and .../"snapshots"/"index.json".
+
+MADE THE DROP VISIBLE (this sprint's own principle — corrections ship
+labelled). site/src/lib/dossier.ts: DossierFile gained optional
+`dropped_claims?: number`. site/src/components/program-dossier.tsx: reuses
+the site's EXISTING scope-note register (`<ScopeNote>`, `data-note-kind=
+"scope"` — notes.tsx) rather than inventing new visual vocabulary, per
+instruction. Rendered only when dropped_claims > 0: "N claim(s) removed:
+{it cited|they cited} lobbying mentions that did not meet the evidence
+standard." Also fixed a genuinely stale claim in site/src/lib/coverage-map.ts's
+"dossiers" entry — it said "a dossier whose citations do not resolve is
+dropped, not published with a caveat," which was true of collect()'s
+file-level rule but is now only half the story; reworded to describe both
+the collect-time (file-level, unchanged) and export-time (claim-level, new)
+behaviors.
+
+MEASURED, EXACTLY MATCHING THE OWNER'S OWN DAMAGE TABLE (queried
+independently from the written sidecars, not assumed):
+
+             what_it_is  why_it_matters  players   dropped_claims
+  0602025E      7/7          8/8          4/8            4
+  0603896C      6/6          7/7          0/6            6   <- players empties
+  0604250D8Z    8/8          8/8          1/7            6
+  0604874C      6/6          5/5          1/7            6
+  0607210D8Z    6/6          6/6          1/6            5
+
+`export-site` console: "dossiers: 27 claim(s) dropped across 5 dossier(s)"
+then "dossiers: 50 written". `dossiers_present` in the real dossier_gate:
+50/50 (was 45/50). `dossiers_citations_resolvable`: PASS (0 unresolved —
+every surviving claim's citation is real). `dossiers_warehouse_ratio`: PASS
+(706/706 = 100.0%, floor 80% — down from the pre-drop 733 claims, exactly
+27 fewer).
+
+ORDERING CORRECTION, DISCLOSED. The owner's step 4 listed `export-site` ->
+`verify-phase5b3` -> `pytest` -> `npm run build`. Running verify-phase5b3
+before a fresh `npm run build` fails outright — gate 1 (build.mjs) checks
+`out/.build-meta.json`'s git_head/mtime freshness and refuses to proceed on
+stale output ("out/ is stale ... re-run npm run build"), which cascaded into
+gate 14 (coverage) and gate 21 (program-skeleton) reading the OLD, 45-
+dossier build and failing on stale content, not on my code. Re-ran in the
+mechanically-necessary order (export-site -> npm run build -> verify-
+phase5b3 -> pytest, matching the eventual required state exactly) rather
+than the literal listed order; disclosing this rather than silently
+reordering it.
+
+VERBATIM — FIRST verify-phase5b3 RUN (stale build; gate 1/14/21 fail on
+staleness alone, not shown as a real content defect):
+  gate 1 build: FAIL — out/.build-meta.json git_head mismatch: built from
+    a387077e, current HEAD is 9070d11d
+  gate 14 coverage: FAIL — coverage[dossiers]: note text does not contain
+    "50 of 1,741" (got: "...dossiers cover 45 of 1,741 programs...")
+  gate 21 program-skeleton: FAIL — /program/0602025E/ WHAT-IT-IS is
+    data-what-source="fields" — a program with a gated dossier must hoist it
+  dossiers_required_sections: FAIL — empty: 0603896C: players
+  verify-phase5b3: FAIL
+
+VERBATIM — AFTER a fresh `npm run build` (50-dossier data now live in
+out/): gate 14 and gate 21 flipped to PASS immediately (confirming they
+were staleness artifacts, not real defects) —
+  gate 14 coverage: methodology: ... ✓ → PASS
+  gate 21 program-skeleton: universe: 1741 full + 252 rollup pages, 0
+    zero-content (noindex); sampled 16 pages (8/tier target): 16 fully
+    conformant → PASS
+Two failures remained:
+  gate 1 build: FAIL — page weight: /programs/ is 284,172 bytes gzipped,
+    over its 278,000-byte ceiling (+6,172) [UNRELATED — see below] | page
+    weight: /filing/*/ (heaviest) is 345,894 bytes, over its 325,000-byte
+    ceiling (+20,894) [CAUSED BY THIS TASK — see below]
+  dossiers_required_sections: FAIL — empty: 0603896C: players [THE BLOCKER
+    — see below]
+
+INVESTIGATED AND FIXED (not left as noise): the /filing/*/ overage. Measured
+directly on the named heaviest file (out/filing/82b97e10-.../index.html,
+131 mentions, the most of any filing in the corpus): the per-row
+evidence-tier `title` attribute I added (site/src/lib/evidence.ts's
+evidenceKindTitle, originally a full sentence e.g. "The filing's activity
+description contains at least two distinct, non-generic words from this
+program's title — a single common word is never sufficient on its own.")
+cost ~182 bytes x 131 rows = 23,762 bytes on this one page — MORE than the
+entire 20,894-byte overage. Fixed by shortening evidenceKindTitle to a short
+per-row form (e.g. "2+ distinct title words found together — never just
+one.") and moving the original full-sentence text to a new, separate
+evidenceKindLongExplanation() reserved for one-time use (a methodology
+paragraph), never repeated per row. Re-measured after the fix: the same
+file dropped from 345,894 to 316,251 bytes — under the 325,000 ceiling.
+Re-ran vitest (site/src/lib/__tests__/evidence.test.ts, updated to assert
+short titles under 70 chars) and the full suite — all green. This was not
+requested by the owner's message but was a direct, measured, disclosed
+consequence of this task's own change, cheap and safe to fix, so it was
+fixed rather than left for someone else to trip over.
+
+CONFIRMED UNRELATED (not fixed, not this task's to fix): the /programs/
+gzip overage (+6,169 bytes after the filing fix, effectively unchanged
+across every run in this session). Zero files under site/src/app/programs/
+or site/src/components/programs-table.tsx were touched by #52 or this
+follow-up — grepped the full diff of both commits to confirm. This ceiling
+was set from a historical baseline baked directly into site/scripts/gates/
+build.mjs's PAGE_WEIGHT_BUDGET config (`measured: "2,732,113 / 261,871"`),
+meaning it is a long-running, pre-existing drift from corpus growth across
+many past sprints, unrelated to lobbying mentions or dossiers. Flagged, not
+fixed — fixing it would mean trimming /programs/ page content, a product
+decision outside this task's scope.
+
+*** BLOCKED, PER THE OWNER'S OWN EXPLICIT INSTRUCTION — NOT SPECIAL-CASED ***
+
+dossiers_required_sections: FAIL — empty: 0603896C: players. All 6 of
+0603896C's "players" claims cited a since-retracted single-word LDA match
+(the dossier's own text: "matching on the terms 'Missile' and
+'Communications'" and similar — each pair or singleton was the exact
+species of match #52 removes). Filtering correctly drops all 6, correctly
+keeps the dossier (what_it_is 6/6, why_it_matters 7/7 intact, 50/50
+dossiers present, 0 unresolved citations, 100% warehouse-cited), and
+correctly produces an EMPTY players section — which the real dossier_gate's
+`required_sections` check (players is one of batch.py's REQUIRED_SECTIONS)
+correctly flags as failing, because "players" is required to be non-empty
+for every one of the top-50 by that check's own, unmodified definition.
+
+This is a policy conflict between two things the owner asked for
+simultaneously: (a) restore all 50 dossiers via claim-level filtering, no
+regeneration, no spend; (b) verify-phase5b3 must PASS. Both cannot hold for
+0603896C specifically as long as `required_sections` treats `players` as
+unconditionally required — filtering an already-published dossier can
+legitimately empty a required section when every one of its claims turns
+out to rest on retracted evidence, and that is a NEW scenario
+required_sections was never written to allow for (it was written to catch
+a freshly-generated BAD dossier, not an already-good one correctline itself
+into a gap). Per the explicit instruction not to special-case 0603896C,
+nothing was done to route around this — no placeholder claim was fabricated,
+no exemption was added, no gate was loosened. Reported here as BLOCKED,
+with the owner's decision needed: e.g. treat `players` as allowed-empty when
+emptied by a documented correction (a required_sections change, made
+generally, not for this PE alone); accept verify-phase5b3 red on this one
+check pending a future resubmission of 0603896C once the "no regeneration"
+constraint is lifted; or something else the owner prefers.
+
+FINAL STATE, VERBATIM:
+  gate dossier:
+    dossiers_pre_batch: PASS
+    dossiers_dossiers_present: PASS (50/50 present)
+    dossiers_structure: PASS
+    dossiers_citations_resolvable: PASS
+    dossiers_required_sections: FAIL
+      empty: 0603896C: players
+    dossiers_warehouse_ratio: PASS (706/706 = 100.0%, floor 80%)
+    dossiers_categories: PASS
+    totals: 50 dossiers, 706 claims, 706 warehouse-cited (100.0%)
+  gate dossier: → FAIL
+  npm verify (24 gates): 23/24 PASS — only gate 1 (build) FAILs, solely on
+    the pre-existing, unrelated /programs/ gzip ceiling.
+  verify-phase5b3: FAIL (for the one specific, disclosed, unresolved reason
+    above — not a regression anywhere else; 22/24 site gates that were
+    failing on staleness in the first run now PASS on the fresh build).
+
+REGRESSION TEST ADDED: tests/test_export_site_dossier_filter.py (6 cases,
+including test_a_required_section_emptied_entirely_still_ships_the_file —
+the exact 0603896C shape, pinning that the file is written with players: []
+rather than rejected) and 6 new cases in site/src/__tests__/dossier.test.tsx
+(including "THE 0603896C shape: a required section emptied by the drop
+still renders the dossier, with the note, not nothing" and a fully-empty-
+dossier edge case). uv run pytest: 1,536 passed (was 1,530). npx vitest run:
+942 passed (was 935). npx tsc --noEmit: clean. npx eslint .: 0 errors, 16
+pre-existing warnings, none in touched files. Suite count unchanged: still
+24 gates (grep -c "gateResults.push" site/scripts/verify.mjs = 24).

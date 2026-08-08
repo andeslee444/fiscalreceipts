@@ -194,9 +194,13 @@ export function getCoverageMap(): CoverageMapRow[] {
       blocker:
         "Dossiers are generated in metered batches under a per-run cost cap, " +
         "and every claim in one must resolve to a citation before it is " +
-        "published — a dossier whose citations do not resolve is dropped, not " +
-        "published with a caveat. Throughput is bounded by that budget and " +
-        "that gate, not by the availability of source material.",
+        "first published — a freshly generated dossier with even one " +
+        "unresolvable citation is rejected outright, not published with a " +
+        "caveat. If an upstream data correction later invalidates a citation " +
+        "in an already-published dossier, that individual claim is dropped " +
+        "and the removal is disclosed on the page (#52) rather than pulling " +
+        "the whole dossier. Throughput is bounded by that budget and that " +
+        "gate, not by the availability of source material.",
       targetKind: "none",
       target:
         "No dated target yet — the next batches are queued and will be taken " +
