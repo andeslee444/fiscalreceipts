@@ -24,6 +24,7 @@ export const DATASET_NAMES = [
   "dim_programs",
   "fct_budget_to_awards",
   "fct_budget_trajectory",
+  "fct_district_totals",
   "fct_improper_exposure",
   "fct_influence",
   "fct_program_concentration",

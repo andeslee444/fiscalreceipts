@@ -130,7 +130,7 @@ models:
         data_tests: [not_null]
         description: "Unit label: thousands_usd | hhi_dollars | dollars"
   - name: fct_district_programs
-    description: "High-confidence dollar grain per (pop_district, pe_bli). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. 267 rows, 106 districts, 17 programs (per recon §B)."
+    description: "High-confidence dollar grain per (pop_district, pe_bli). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. 267 rows, 106 districts, 17 programs (per recon §B). NOT summable at district grain — an award matched to N program elements appears N times with the same dollars; use fct_district_totals for the district headline (#51)."
     columns:
       - name: pop_district
         data_tests: [not_null]
@@ -138,6 +138,17 @@ models:
         data_tests: [not_null]
       - name: total_obligation
         description: "Sum of all transaction obligations for this (district, program) combination. Positive and negative values possible (de-obligations)."
+  - name: fct_district_totals
+    description: "District HEADLINE grain (#51) — one row per (pop_state, pop_district), dollars counted once per distinct award. The sum-safe companion to fct_district_programs: that model is per (district, pe_bli) and an award matched to N program elements appears N times with the same dollars, so summing it double-counts (AK-00 measured 5.0x — one $209.3M DARPA award attributed whole to five program elements, publishing $1.05B). assert_district_totals_no_double_count pins every district total to the sum of its DISTINCT awards. Unique on (pop_state, pop_district) — NOT pop_district alone, which is not globally unique (a bare '90' MULTI-STATE/unknown-state code appears against more than one raw pop_state label)."
+    columns:
+      - name: pop_state
+        data_tests: [not_null]
+      - name: pop_district
+        data_tests: [not_null]
+      - name: award_count
+        description: "count(distinct award_id_piid) contributing to this district's total — the number of distinct high-confidence-crosswalked awards, never a program-element count."
+      - name: total_obligation
+        description: "Sum of obligation dollars across this district's DISTINCT awards (never per program element). This is the figure /district/ publishes as 'linkable obligations' — do not re-derive it by summing fct_district_programs."
   - name: fct_family_obligations_by_year
     description: "Total obligations per (family_key, fiscal_year) via entity_xwalk. entity_xwalk is UNIQUE on recipient_uei — no fan-out. Covers 100.0% of total award dollars (the crosswalk spans the same contracts+assistance union). Expected ~457,243 rows; was ~365,457 / 94.2% while the crosswalk was stale (Task 5b)."
     columns:

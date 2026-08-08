@@ -4,7 +4,8 @@ tests/jbooks/conftest.py only).
 Fixture strategy:
 - Seed one jbook document + extraction_run + budget_line_detail + budget_lines
   row + provenance_pages row via build_provenance_pages.
-- Build a tiny DuckDB with 1-row versions of all 11 mart tables.
+- Build a tiny DuckDB with 1-row versions of every mart in _MART_NAMES, plus
+  fct_district_programs (optional; feeds district search docs + sidecars).
 - Call export_site and assert structural invariants.
 """
 from __future__ import annotations
@@ -123,7 +124,7 @@ def _seed_budget_line(pg_dsn: str, doc_id: int, sha: str) -> None:
 
 
 def _make_test_duckdb(db_path: Path) -> None:
-    """Build a minimal DuckDB with all 11 required mart tables (1-row each)."""
+    """Build a minimal DuckDB with every required mart table (1-row each)."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
 
@@ -204,6 +205,23 @@ def _make_test_duckdb(db_path: Path) -> None:
         "insert into fct_district_programs values"
         " ('CO', 'CO-05', '0601101E', 'Defense Research Sciences', 'DARPA', 10, 4, 2, 1500000.0),"
         " ('VA', 'VA-08', '0601101E', 'Defense Research Sciences', 'DARPA', 15, 5, 3, 5000000.0)"
+    )
+
+    # 11b. fct_district_totals (#51, required mart) — one pe_bli per district
+    # in this fixture, so the award-distinct total equals the row above
+    # exactly (no duplication to fix here; the double-count fix itself is
+    # unit-tested against a dedicated duplicated-award fixture elsewhere —
+    # see tests/test_export_site_5b3_task45.py).
+    con.execute(
+        "create table fct_district_totals ("
+        "  pop_state varchar, pop_district varchar,"
+        "  award_count bigint, total_obligation double"
+        ")"
+    )
+    con.execute(
+        "insert into fct_district_totals values"
+        " ('CO', 'CO-05', 4, 1500000.0),"
+        " ('VA', 'VA-08', 5, 5000000.0)"
     )
 
     # 11. fct_state_per_capita  (live cols: jurisdiction,comparable_category,fiscal_year varchar,total_amount_usd,population,amount_per_capita,pop_year_used,spend_source_url,pop_source_url,coverage_note)
@@ -1049,6 +1067,7 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.close()
 
@@ -1095,6 +1114,7 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.close()
 
@@ -1202,6 +1222,7 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.close()
 
@@ -1328,6 +1349,7 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
     con.execute("create table dim_geography (pop_state varchar, pop_district varchar, transaction_count bigint, total_obligation double)")
+    con.execute("create table fct_district_totals (pop_state varchar, pop_district varchar, award_count bigint, total_obligation double)")
     con.execute("create table fct_state_per_capita (jurisdiction varchar, comparable_category varchar, fiscal_year varchar, total_amount_usd double, population bigint, amount_per_capita double, pop_year_used integer, spend_source_url varchar, pop_source_url varchar, coverage_note varchar)")
     con.close()
 

@@ -506,6 +506,7 @@ _MART_NAMES = [
     "fct_improper_exposure",
     "dim_geography",
     "fct_state_per_capita",
+    "fct_district_totals",
 ]
 
 # Citation tiers — datasets that have a citation kind in this export
@@ -541,6 +542,7 @@ _CITED_DATASETS = {
     "fct_influence",
     "fct_family_obligations_by_year",
     "fct_district_programs",
+    "fct_district_totals",
     "lda_filings",
 }
 
@@ -617,6 +619,13 @@ _DATASET_SCOPES: dict[str, str] = {
         "One row per (state × congressional district) place of performance,"
         " with transaction count and total obligation aggregated from the"
         " award crosswalk."
+    ),
+    "fct_district_totals": (
+        "One row per (state × congressional district), with obligation"
+        " dollars counted once per DISTINCT high-confidence-crosswalked"
+        " award — the district headline. Its per-(district, program element)"
+        " sibling, fct_district_programs, is not summable: an award matched"
+        " to N program elements appears N times with the same dollars there."
     ),
     "fct_program_concentration": (
         "One row per program element with enough matched award dollars to"
@@ -742,7 +751,7 @@ def export_site(
     # -----------------------------------------------------------------------
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        # Verify all 11 marts exist before writing any output
+        # Verify every mart in _MART_NAMES exists before writing any output
         for name in _MART_NAMES:
             try:
                 con.execute(f"select count(*) from {name}").fetchone()
@@ -3363,16 +3372,33 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
         except Exception:
             dp_rows = []
 
-        dist_linkable: dict[str, float] = {}
-        dist_cited: dict[str, float] = {}
+        # fct_district_totals (#51): the award-DISTINCT district headline.
+        # fct_district_programs is per (district, pe_bli) — an award matched
+        # to N program elements appears N times with the same dollars, so the
+        # raw per-program sum below (dist_raw_sum) double-counts (AK-00 read
+        # $1.05B off one $209.3M award attributed to five program elements).
+        # total_linkable_dollars is read from fct_district_totals instead of
+        # that sum, by construction agreeing with _emit_district_sidecars.
+        try:
+            dt_rows = con.execute(
+                "select pop_district, total_obligation from fct_district_totals"
+            ).fetchall()
+        except Exception:
+            dt_rows = []
+        true_linkable_by_district: dict[str, float] = {
+            r[0]: float(r[1] or 0) for r in dt_rows
+        }
+
+        dist_raw_sum: dict[str, float] = {}
+        dist_cited_raw: dict[str, float] = {}
         dist_inputs: dict[str, list[str]] = {}
         dist_prog_count: dict[str, int] = {}
         for pop_state, pop_district, pe_bli, total_obl in dp_rows:
             if not pop_district:
                 continue
             dist_prog_count[pop_district] = dist_prog_count.get(pop_district, 0) + 1
-            dist_linkable[pop_district] = (
-                dist_linkable.get(pop_district, 0.0) + float(total_obl or 0)
+            dist_raw_sum[pop_district] = (
+                dist_raw_sum.get(pop_district, 0.0) + float(total_obl or 0)
             )
             if total_obl is not None:
                 usas_fid = fact_id_usaspending(
@@ -3380,29 +3406,48 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
                     f"{pop_state}|{pop_district}|{pe_bli}",
                     "total_obligation",
                 )
-                dist_cited[pop_district] = (
-                    dist_cited.get(pop_district, 0.0) + float(total_obl)
+                dist_cited_raw[pop_district] = (
+                    dist_cited_raw.get(pop_district, 0.0) + float(total_obl)
                 )
                 dist_inputs.setdefault(pop_district, []).append(usas_fid)
 
-        for pop_district in dist_linkable:
+        for pop_district in dist_raw_sum:
             input_fids = list(dict.fromkeys(dist_inputs.get(pop_district, [])))
             inputs_json = _json.dumps(input_fids)
             n_progs = dist_prog_count.get(pop_district, 0)
+            # Absent from fct_district_totals should not happen for a district
+            # with linked program rows (same base join, coarser group-by) —
+            # fall back to 0 rather than ever re-deriving from dist_raw_sum,
+            # which is exactly the double-counted quantity being replaced.
+            true_linkable = true_linkable_by_district.get(pop_district, 0.0)
+            # total_cited_dollars can never legitimately exceed the
+            # award-distinct linkable total; clamp the old per-program cited
+            # sum to it. Exact whenever citation coverage is uniform across a
+            # district's rows (all-cited or none-cited) — which is every
+            # district in the shipped corpus (every fct_district_programs row
+            # gets an unconditional usaspending citation — see
+            # _build_usaspending_citation_rows, which never filters by
+            # coverage) — and is the correct upper bound otherwise.
+            true_cited = min(dist_cited_raw.get(pop_district, 0.0), true_linkable)
             for metric, value, formula in [
                 (
                     "total_linkable_dollars",
-                    dist_linkable[pop_district],
-                    f"sum(fct_district_programs.total_obligation) for"
-                    f" pop_district={pop_district!r} ({n_progs} crosswalked"
-                    f" programs; null obligations contribute 0)",
+                    true_linkable,
+                    f"fct_district_totals.total_obligation for"
+                    f" pop_district={pop_district!r} — the award-distinct"
+                    f" total across {n_progs} crosswalked program elements;"
+                    f" supersedes summing fct_district_programs.total_obligation,"
+                    f" which counts an award once per matched program element (#51)",
                 ),
                 (
                     "total_cited_dollars",
-                    dist_cited.get(pop_district, 0.0),
-                    f"sum(fct_district_programs.total_obligation) for"
-                    f" pop_district={pop_district!r} over programs with a"
-                    f" USAspending citation ({len(input_fids)} of {n_progs})",
+                    true_cited,
+                    f"min(sum(fct_district_programs.total_obligation) over"
+                    f" {len(input_fids)} of {n_progs} USAspending-cited program"
+                    f" rows for pop_district={pop_district!r},"
+                    f" fct_district_totals.total_obligation) — capped at the"
+                    f" award-distinct total so a duplicated award's citation"
+                    f" cannot exceed it (#51)",
                 ),
             ]:
                 fid = fact_id_derived("district", pop_district, metric)
@@ -6829,13 +6874,22 @@ def _emit_district_sidecars(
     {pop_district}.json: per-district program list with cited dollars + counts
     + the district's aggregate fact_ids.
 
+    #51: total_linkable_dollars is read from fct_district_totals (one row per
+    district, dollars counted once per award) rather than summed from
+    fct_district_programs (per (district, pe_bli) — an award matched to N
+    program elements appears N times with the same dollars). Each per-program
+    row keeps its own total_obligation exactly as before, plus a new
+    shared_award_count: the largest number of program elements any one of its
+    underlying awards is ALSO matched to, so the page can say "this award,
+    matched to N programs" rather than implying N distinct awards.
+
     Returns number of files written.
     """
     import json as _json
 
     n_written = 0
 
-    # ---- District program rows from fct_district_programs ----
+    # ---- District program rows from fct_district_programs (UNCHANGED) ----
     try:
         dp_rows = con.execute(
             "select pop_state, pop_district, pe_bli, program_title,"
@@ -6846,6 +6900,59 @@ def _emit_district_sidecars(
         ).fetchall()
     except Exception:
         dp_rows = []
+
+    # ---- fct_district_totals (#51): the award-DISTINCT district headline ----
+    try:
+        dt_rows = con.execute(
+            "select pop_district, award_count, total_obligation"
+            " from fct_district_totals"
+        ).fetchall()
+    except Exception:
+        dt_rows = []
+    true_linkable_by_district: dict[str, float] = {
+        r[0]: float(r[2] or 0) for r in dt_rows
+    }
+    award_count_by_district: dict[str, int] = {r[0]: int(r[1] or 0) for r in dt_rows}
+
+    # ---- shared_award_count per (district, pe_bli) ----
+    # The largest number of DISTINCT program elements any one award
+    # contributing to this (district, pe_bli) row is ALSO crosswalked to.
+    # Second query over the linked (high-confidence) subset only — not the
+    # 40M-row fct_award_transactions table — so this is cheap (~0.2s
+    # measured). Gracefully empty when the base tables are unavailable (test
+    # fixtures); every program then defaults to shared_award_count=1, the
+    # non-alarming "not shared" state.
+    try:
+        fanout_rows = con.execute(
+            """
+            with award_fanout as (
+                select award_piid, count(distinct pe_bli) as pe_fanout
+                from fct_budget_to_awards
+                where confidence = 'high'
+                group by 1
+            ),
+            detail as (
+                select t.pop_district, b.pe_bli, t.award_id_piid
+                from fct_award_transactions t
+                join (
+                    select distinct award_piid, pe_bli
+                    from fct_budget_to_awards
+                    where confidence = 'high'
+                ) b on t.award_id_piid = b.award_piid
+                where t.pop_district is not null
+                group by 1, 2, 3
+            )
+            select d.pop_district, d.pe_bli, max(f.pe_fanout) as shared_award_count
+            from detail d
+            join award_fanout f on d.award_id_piid = f.award_piid
+            group by 1, 2
+            """
+        ).fetchall()
+    except Exception:
+        fanout_rows = []
+    shared_count_by_key: dict[tuple, int] = {
+        (r[0], r[1]): int(r[2]) for r in fanout_rows
+    }
 
     # ---- dim_geography grand total ----
     # Same SQL as _build_geography_citation_rows' grand-total row so the
@@ -6886,13 +6993,14 @@ def _emit_district_sidecars(
                 "pop_district": pop_district,
                 "pop_state": pop_state,
                 "program_count": 0,
+                "award_count": award_count_by_district.get(key, 0),
                 "total_linkable_dollars": 0.0,
-                # cited dollars: sum of dollars with a fact_id
+                # cited dollars: sum of dollars with a fact_id (old-style raw
+                # sum, held here only as an intermediate — clamped below)
                 "total_cited_dollars": 0.0,
             }
 
         district_index[key]["program_count"] += 1
-        district_index[key]["total_linkable_dollars"] += float(total_obligation or 0)
         if fact_id_for_program:
             district_index[key]["total_cited_dollars"] += float(total_obligation or 0)
 
@@ -6906,10 +7014,25 @@ def _emit_district_sidecars(
             "pe_bli": pe_bli,
             "program_url": f"/program/{pe_bli}/",
             "recipient_count": recipient_count,
+            # #51: the number of program elements the SAME award is also
+            # matched to — 1 means "not shared". >1 is the AK-00 tell: one
+            # award attributed whole to each of N program elements.
+            "shared_award_count": shared_count_by_key.get((pop_district, pe_bli), 1),
             "title": title,
             "total_obligation": float(total_obligation) if total_obligation is not None else None,
             "transaction_count": transaction_count,
         })
+
+    # ---- #51: replace the per-program sum with the award-distinct total ----
+    # total_linkable_dollars comes from fct_district_totals, never from
+    # summing fct_district_programs rows (that sum double-counts an award
+    # once per matched program element). total_cited_dollars can never
+    # legitimately exceed it — see the matching clamp + comment in
+    # _build_geography_citation_rows, which this mirrors exactly.
+    for key, info in district_index.items():
+        true_linkable = true_linkable_by_district.get(key, 0.0)
+        info["total_linkable_dollars"] = true_linkable
+        info["total_cited_dollars"] = min(info["total_cited_dollars"], true_linkable)
 
     # ---- Attach district aggregate fact_ids (derived 'district' surface) ----
     # Only when the citation row actually resolves — otherwise null and the
@@ -6926,6 +7049,7 @@ def _emit_district_sidecars(
     for key, programs in district_programs.items():
         info = district_index[key]
         obj = {
+            "award_count": info["award_count"],
             "pop_district": info["pop_district"],
             "pop_state": info["pop_state"],
             "program_count": info["program_count"],

@@ -229,6 +229,11 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
         "create table dim_geography (pop_state varchar, pop_district varchar,"
         " transaction_count bigint, total_obligation double)"
     )
+    # #51: fct_district_totals — required mart (district headline, award-distinct).
+    con.execute(
+        "create table fct_district_totals (pop_state varchar, pop_district varchar,"
+        " award_count bigint, total_obligation double)"
+    )
     con.execute(
         "create table fct_state_per_capita (jurisdiction varchar,"
         " comparable_category varchar, fiscal_year varchar,"

@@ -64,8 +64,13 @@ interface Props {
 }
 
 export function DistrictTable({ districts }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>("total_linkable_dollars");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  // #51: a ranking by "total linkable dollars" is a leaderboard claim, and
+  // this DARPA-only, place-of-performance slice cannot support "which
+  // districts get the most defense money" (it is ~0.15% of all obligations
+  // recorded with a district — see the reconciliation line above). Default
+  // to browsing by district code instead; the money column stays sortable.
+  const [sortKey, setSortKey] = useState<SortKey>("pop_district");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [stateFilter, setStateFilter] = useState<string>("");
 
   // Horizontal-scroll affordance: between `sm` and the widest layouts the
@@ -177,7 +182,7 @@ export function DistrictTable({ districts }: Props) {
         {(
           [
             ["program_count", "Programs"],
-            ["total_linkable_dollars", "Linkable $"],
+            ["total_linkable_dollars", "DARPA $"],
           ] as [SortKey, string][]
         ).map(([key, label]) => (
           <button
@@ -257,9 +262,14 @@ export function DistrictTable({ districts }: Props) {
                   onSort={handleSort}
                   className="px-3 sm:px-4 text-right hidden sm:table-cell"
                 />
+                {/* #51: was "Linkable dollars" / "Linkable $" — a name that
+                    implied "money linked to this district," full stop. It is
+                    a DARPA-only, place-of-performance slice (~0.15% of all
+                    obligations recorded with a district); the column name
+                    now says so. Attribution basis lives on the detail page. */}
                 <SortHeader
-                  label="Linkable dollars"
-                  shortLabel="Linkable $"
+                  label="DARPA place-of-performance $"
+                  shortLabel="DARPA $"
                   colKey="total_linkable_dollars"
                   sortKey={sortKey}
                   sortDir={sortDir}
@@ -313,14 +323,18 @@ export function DistrictTable({ districts }: Props) {
                     className="pl-3 pr-4 sm:pl-4 sm:pr-6 py-3 text-right font-mono tabular-nums whitespace-nowrap"
                   >
                     {d.total_linkable_dollars > 0 ? (
-                      // Derived 'district' aggregate citation — the sum of the
-                      // district's per-program USAspending-cited obligations.
-                      // State A opens the citation panel (formula + input
-                      // chips); honest state C when the fact_id is absent.
+                      // Derived 'district' aggregate citation — the
+                      // award-DISTINCT total for this district, from
+                      // fct_district_totals (#51 — fct_district_programs is
+                      // per (district, pe_bli) and NOT summable: an award
+                      // matched to N program elements appears N times with
+                      // the same dollars). State A opens the citation panel
+                      // (formula + input chips); honest state C when the
+                      // fact_id is absent.
                       <Cite
                         value={d.total_linkable_dollars}
                         units="USD"
-                        dataset="fct_district_programs"
+                        dataset="fct_district_totals"
                         factId={d.total_linkable_fact_id}
                       />
                     ) : (

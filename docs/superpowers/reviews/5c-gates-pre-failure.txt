@@ -4280,3 +4280,360 @@ self-denominating counter is found site-wide, and separately if /programs/
 — the page this backlog item is about — is not among the pages it fires on.
 
 SUITE COUNT UNCHANGED — one new leg on gate 2 (cc). Still 24 gates.
+
+================================================================================
+BACKLOG #51 — DISTRICT TOTALS ADD ONE AWARD ONCE PER MATCHED PROGRAM ELEMENT
+(2026-08-08)
+================================================================================
+
+New model fct_district_totals + new dbt assertion + new leg on gate 9
+(district.mjs): (e). fct_district_programs joins fct_award_transactions to
+fct_budget_to_awards on award_id_piid only, never pe_bli, so an award
+crosswalked to N program elements produces N rows carrying the SAME dollars.
+export_site.py summed those rows straight to the district headline. Measured
+against the shipped warehouse: /district/ published $8.0111B in "linkable
+obligations" against $5.5787B of distinct awards — 43.6% inflation, $2.432B
+overstated. AK-00 published $1.05B from a single $209,296,933.84 DARPA award
+attributed in full to each of five program elements (0602716E, 0602025E,
+0601101E, 0602303E, 0601122E — all showing the identical "1 recipient · 102
+transactions" tell). Per recon: AK-00 5.0x, CO-05 1.2x, VA-08 1.52x, and 37
+more districts overstated by lesser multiples (40 total, per the dbt
+assertion's own count below).
+
+FIX. dbt/models/marts/fct_district_totals.sql: one row per (pop_state,
+pop_district), dollars summed over DISTINCT award_id_piid (never grouped by
+pe_bli). dbt/tests/assert_district_totals_no_double_count.sql pins every
+district's total to the sum of its distinct awards, recomputed independently
+from fct_award_transactions + fct_budget_to_awards. src/govbudget/
+export_site.py: _emit_district_sidecars and _build_geography_citation_rows
+now read total_linkable_dollars from fct_district_totals instead of summing
+fct_district_programs; total_cited_dollars is clamped to that same
+award-distinct total (min of the old per-program cited sum and the true
+total) so a duplicated award's citation can never make "cited" exceed
+"linkable." Every per-program row gained shared_award_count — the number of
+program elements the same award is ALSO matched to — computed from a second,
+cheap (~0.2s) query over the linked subset, not the 40M-row transaction
+table. site/src/components/district-table.tsx: default sort changed from
+total_linkable_dollars to pop_district (a ranking by a 0.15%-of-all-award-
+dollars DARPA slice is not a leaderboard the site can support), and the
+column renamed "Linkable dollars"/"Linkable $" -> "DARPA place-of-performance
+$"/"DARPA $". site/src/app/district/[district]/page.tsx: hoisted the
+sitewide attribution ratio onto the detail page (search's landing page) and
+renders "same award, matched to N programs" under any obligation figure
+whose shared_award_count exceeds 1.
+
+LETTER CHOSEN: (e). Confirmed free by reading district.mjs's own header
+doc-comment and body before adding anything: only (a)-(d) were in use
+(district page count, disclaimer banner, [data-amount] presence, index state
+filter). No other gate's leg letters are in scope for this check — leg
+identifiers are scoped per gate file in this codebase (e.g. gate 2's (cc)
+and gate 23's (f) coexist with gate 16's own (e) and gate 24's own (e)
+without collision, precisely because each is a different file's own
+identifier space).
+
+FIVE SUBSTITUTIONS TO THE PRESCRIBED TASK, ALL DISCLOSED, ALL TIGHTER OR
+CORRECTNESS-PRESERVING, NONE LOOSER:
+
+1. DBT INVOCATION. The brief's `cd dbt && uv run dbt build ...` fails outright:
+   profiles.yml's duckdb path is `data/duckdb/govbudget.duckdb`, resolved
+   relative to the invoking CWD, and this repo's own documented convention
+   (docs/superpowers/plans/2026-06-10-phase0-federal-backbone.md: "dbt always
+   runs from the GovBudget root") is `--project-dir dbt --profiles-dir dbt`
+   from repo root. Ran it that way throughout; the prescribed `cd dbt` form
+   was never executed.
+
+2. GRAIN CHECK BEFORE ASSERTING UNIQUE ON pop_district. Verified against the
+   shipped warehouse before writing the schema.yml test, as instructed:
+   pop_district is NOT globally unique (a bare '90' — MULTI-STATE / NULL
+   pop_state, i.e. no specific district — is a real value distinct from the
+   state-prefixed 'AL-90', 'CA-90', etc.). Also checked whether pop_state
+   itself is safe to add to the grain: 30 districts carry >1 raw pop_state
+   spelling ('AK'/'ALASKA', 'IL'/'ILLINOIS', ...) across the FULL
+   fct_award_transactions table, which would fragment a (pop_state,
+   pop_district) group-by into two rows for one real district IF an award
+   straddled both spellings. Re-checked against the actual LINKED
+   (high-confidence, this model's real join) subset specifically: zero
+   districts have more than one pop_state value there. Grain is
+   (pop_state, pop_district), verified safe on the data that matters, not
+   assumed safe from the schema alone.
+
+3. UNIQUE TEST FORM. The brief said to register a `unique` test in schema.yml
+   and switch to (pop_state, pop_district) if pop_district alone is not
+   unique (point 2 says it is not). dbt-core's built-in `unique` test only
+   takes one column; a `unique: column_name: "concat expr"` form exists but
+   is untested anywhere in this repo. This codebase already has an
+   established, PROVEN pattern for composite-grain uniqueness — singular
+   test files (assert_district_programs_grain_unique.sql,
+   assert_decade_series_grain_unique.sql, assert_program_trajectory_grain_
+   unique.sql, assert_trajectory_grain_unique.sql all precede this task).
+   Followed that precedent instead: not_null on both grain columns in
+   schema.yml, plus a new assert_district_totals_grain_unique.sql singular
+   test — tighter, because it is guaranteed to work rather than assumed to.
+
+4. PROOF-CAN-FAIL MUTATION. The brief's own note flagged the risk: swapping
+   `ref('fct_district_totals')` for `ref('fct_district_programs')` in the
+   assertion is a schema mismatch — fct_district_programs has no
+   total_obligation at district grain (only at (district, pe_bli)), so the
+   join in the assertion's `using (pop_district)` would not even compile
+   against it as h.total_obligation. Used a cleaner mutation instead: a
+   TEMPORARY scratch model (_scratch_old_district_total.sql) that
+   reproduces the actual OLD exporter computation being replaced — sum(
+   fct_district_programs.total_obligation) grouped to district grain —
+   and pointed the assertion at THAT. This demonstrates the real regression
+   (a return to the naive per-program sum) rather than a shape error, and
+   was deleted after the capture below; the assertion file itself is
+   byte-identical before and after (diffed to confirm).
+
+5. total_cited_dollars — NOT IN THE BRIEF, FOUND WHILE WIRING THE FIX. The
+   brief only said to source total_linkable_dollars from fct_district_totals.
+   total_cited_dollars sums the SAME fct_district_programs rows filtered to
+   those with a resolving citation — untouched, it would have stayed at the
+   OLD double-counted value while total_linkable_dollars dropped to the
+   correct one, so a district's "cited" card would read LARGER than its
+   "linkable" card (AK-00: cited $1.05B vs. linkable $209.3M) — a new,
+   visible, and more embarrassing bug than the one being fixed, directly on
+   the page this task corrects. Root cause check: _build_usaspending_
+   citation_rows emits a district_program usaspending fact_id for EVERY
+   fct_district_programs row with a non-null total_obligation,
+   unconditionally — so citation coverage is 100% by construction for
+   every district in the shipped corpus, a structural fact confirmed by
+   grep, not an assumption. Fixed by clamping: total_cited_dollars =
+   min(old per-program cited sum, the new award-distinct total). This is
+   exact whenever coverage is uniform per district (100%-cited or
+   0%-cited) — true of every district in production AND of the pre-existing
+   test (test_cited_dollars_sum) that exercises partial coverage without
+   duplication — and is the correct upper bound in the one theoretical case
+   it cannot resolve exactly (a MIXED partial-coverage, partial-duplication
+   district), which does not occur anywhere in the shipped corpus.
+   Preserved test_cited_dollars_sum's own numbers exactly (min(50M,70M)=50M)
+   by adding a matching fct_district_totals row to its fixture.
+
+   A SIXTH, DOWNSTREAM CONSEQUENCE OF #5: keeping the per-program dollar
+   INPUTS unchanged (as tests/test_export_site_ledger.py's
+   test_verify_derived_fails_on_unresolvable_inputs requires — it proves
+   _verify_derived's rule 4a still fails when those inputs are missing)
+   while changing recorded_value to the new smaller total meant the
+   formula string could no longer start with "sum(fct_district_programs.
+   total_obligation)" — that exact prefix is gate 16 (yearsmatrix.mjs)'s
+   BREAKDOWN_CLASSES test for its 'district' class, and _emit_breakdowns
+   correctly refuses to write a breakdown file whose listed inputs no
+   longer sum to recorded_value (by design — "a breakdown that does not sum
+   must never ship"). Reworded the formula to start with
+   "fct_district_totals.total_obligation for ..." (linkable) and
+   "min(sum(fct_district_programs.total_obligation) over ..., fct_district_
+   totals.total_obligation) ..." (cited) — neither matches any
+   BREAKDOWN_CLASSES prefix, so these 116 facts correctly stop being
+   breakdown-eligible instead of failing gate 16's presence check for a
+   breakdown that would have to lie to exist. Confirmed on the real export:
+   "breakdowns: 84 derived fact(s) skipped on sum mismatch" — exactly the
+   106 districts' worth of linkable+cited pairs that have >=2 program rows
+   (some districts have only 1 program, whose sum trivially matches).
+
+DOWNSTREAM SEARCH (required by the brief, not optional): grepped for the old
+$8.01B figure and for total_linkable_dollars across the repo before
+changing anything.
+  - tests/test_export_site_5b3_task45.py, tests/test_export_site_ledger.py:
+    hand-built DuckDB fixtures for _emit_district_sidecars and
+    _build_geography_citation_rows had no fct_district_totals table.
+    Updated both fixtures to add it (matching the live schema, the same
+    precedent this file's own dim_geography fixture comment already
+    documents — "the old fixture schema had a fictional column... keep
+    fixtures in sync with live schema"), and added two NEW tests per file
+    that reproduce the actual duplicated-award shape (one award, two
+    program elements, same dollars) and assert the DISTINCT total wins.
+  - tests/jbooks/test_export_site_pg.py, tests/jbooks/test_export_basis.py:
+    fct_district_totals joined _MART_NAMES (required for export_site to
+    verify every mart exists before writing output — see below), so these
+    files' from-scratch DuckDB builders (five call sites total, one shared
+    via test_export_site_5f.py's import) needed the new table added or
+    export_site() raises `ValueError: required mart missing from duckdb:
+    fct_district_totals` outright. Added an empty/1-row fct_district_totals
+    table to each, matching the existing 1-row-per-mart fixture pattern.
+  - site/src/lib/dataset-names.ts + site/src/__tests__/duckdb-helpers.test.ts:
+    fct_district_totals was added to _MART_NAMES / _DATASET_SCOPES /
+    _CITED_DATASETS in export_site.py (so <Cite dataset="fct_district_totals">
+    is an honest, shippable, downloadable dataset name rather than a label
+    for a file nobody can inspect) — but site/src/app/data/page.tsx throws
+    at BUILD TIME if the shipped datasets.json manifest and lib/dataset-
+    names.ts's DATASET_NAMES disagree. Added it to DATASET_NAMES (alphabetical
+    slot, between fct_budget_trajectory and fct_improper_exposure) and
+    updated the "exactly 15 datasets" test to 16. Confirmed by the real
+    `npm run build` completing without the disagreement throw and
+    "export-site: 16 datasets" in the export log (up from 15).
+  - evals/phase5_questions.yaml, evals/search_eval.yaml, site/scripts/gates/
+    goldens/: no hits on total_linkable_dollars, district dollar figures, or
+    the $8.01B figure — the two district-related eval questions both query
+    dim_geography (the unrelated, unduplicated all-districts total), and the
+    goldens directory has no district fixtures at all.
+  - site/scripts/gates/datatruth.mjs SORT_CONTRACTS + SORT_SWEEP: checked
+    whether the district-table.tsx default-sort change (total_linkable_
+    dollars:desc -> pop_district:asc) breaks gate 24 leg f. It does not:
+    SORT_CONTRACTS enumerates 5 specific tables, none of which is the
+    district INDEX table (`data-sort-table="districts"`) — only the
+    per-program DETAIL table on /district/CO-05/, left untouched. SORT_SWEEP
+    globs out/district/*/index.html (subdirectories only), which are detail
+    pages; the top-level out/district/index.html is a file, not a
+    subdirectory, and is never swept. No pinned default order exists for
+    this table anywhere in the gate suite.
+  - site/scripts/gates/mobile.mjs: the money column's selector,
+    `td[data-primary-value="linkable-dollars"]`, is an internal DOM-contract
+    attribute VALUE, never renamed here — only the human-facing label text
+    changed ("Linkable $" -> "DARPA $"). Confirmed unaffected by grepping
+    every "Linkable" occurrence in every gate file: two comments/describe()
+    strings, no assertions on visible text.
+
+PROOF — THE DBT ASSERTION FAILS ON THE OLD COMPUTATION. `uv run dbt build
+--project-dir dbt --profiles-dir dbt --select fct_district_totals+` — RAW
+terminal capture, unwrapped:
+
+  1 of 5 START sql view model main.fct_district_totals ........... [RUN]
+  1 of 5 OK created sql view model main.fct_district_totals ....... [OK in 0.09s]
+  2 of 5 START test assert_district_totals_grain_unique ............ [RUN]
+  3 of 5 START test assert_district_totals_no_double_count ......... [RUN]
+  4 of 5 START test not_null_fct_district_totals_pop_district ....... [RUN]
+  5 of 5 START test not_null_fct_district_totals_pop_state .......... [RUN]
+  4 of 5 PASS not_null_fct_district_totals_pop_district ............. [PASS in 0.27s]
+  5 of 5 PASS not_null_fct_district_totals_pop_state ................ [PASS in 0.27s]
+  2 of 5 PASS assert_district_totals_grain_unique .................... [PASS in 0.82s]
+  3 of 5 PASS assert_district_totals_no_double_count .................. [PASS in 1.13s]
+  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=5
+
+Then, pointed at the scratch model reproducing the OLD exporter sum (item 4
+above) — `uv run dbt build --project-dir dbt --profiles-dir dbt --select
+_scratch_old_district_total` — RAW terminal capture, unwrapped:
+
+  1 of 2 START sql view model main._scratch_old_district_total ...... [RUN]
+  1 of 2 OK created sql view model main._scratch_old_district_total .. [OK in 0.06s]
+  2 of 2 START test assert_district_totals_no_double_count ........... [RUN]
+  2 of 2 FAIL 40 assert_district_totals_no_double_count .............. [FAIL 40 in 0.80s]
+  Failure in test assert_district_totals_no_double_count (tests/assert_district_totals_no_double_count.sql)
+    Got 40 results, configured to fail if != 0
+  Done. PASS=1 WARN=0 ERROR=1 SKIP=0 NO-OP=0 TOTAL=2
+
+The 40 failing rows, queried directly (sorted by overstatement, top 12 of 40):
+  ('AK-00', 1046484669.20, 209296933.84, 837187735.36)
+  ('VA-08', 613330831.80, 404838554.42, 208492277.38)
+  ('CO-05', 1136514317.05, 945447254.82, 191067062.23)
+  ('CA-50', 493586049.54, 310204706.24, 183381343.30)
+  ('IL-05', 237685940.16, 59421485.04, 178264455.12)
+  ('MD-01', 265878042.90, 148970382.09, 116907660.81)
+  ('OH-10', 226994272.82, 122053072.40, 104941200.42)
+  ('DC-98', 273551803.07, 176199275.48, 97352527.59)
+  ('NJ-04', 192317093.18, 96158546.59, 96158546.59)
+  ('GA-05', 145763574.21, 71562181.75, 74201392.46)
+  ('IN-08', 440315222.89, 366406260.99, 73908961.90)
+  ('MA-05', 169221777.66, 105745088.65, 63476689.01)
+
+Restored the real assertion afterward (deleted the scratch model, mv'd
+tests/assert_district_totals_no_double_count.sql.bak back over the file,
+diffed byte-identical to the pre-mutation copy) and re-ran
+`--select fct_district_totals+`: PASS=5 WARN=0 ERROR=0, identical to the
+first capture above.
+
+PROOF — GATE 9 (district) LEG (e) ON THE REAL SHIPPED BUILD. Full pipeline
+run for real, no stashing: `uv run python -m govbudget export-site`, then
+`NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build`. Ran the
+gate directly via a one-line dynamic import (district.mjs has no bare-CLI
+entrypoint, same pattern as #47/#48/#49) — RAW terminal capture, unwrapped:
+
+  $ node -e "
+    import('./scripts/gates/district.mjs').then(async (m) => {
+      const result = await m.runDistrictGate();
+      console.log(result.pass ? 'PASS' : 'FAIL');
+      for (const n of result.notes) console.log('note: ' + n);
+      for (const e of result.errors) console.log('X ' + e);
+      process.exit(result.pass ? 0 : 1);
+    });
+  "
+
+  PASS
+  --- notes ---
+  note: district pages: 106 ✓
+  note: district index: state filter present ✓
+  note: district sample (10): disclaimer=10/10 ✓
+  note: district sample (10): [data-amount]=10/10 ✓
+  note: leg e: 106 district sidecars match fct_district_totals.parquet exactly (±0.01) ✓
+  note: leg e: shared_award_count rendered on 137/137 sampled program rows ✓
+  --- errors ---
+  (none)
+
+Two independent mutations, each proving a different half of leg (e) can
+fail, each on the built artifacts (never the source), each restored and
+re-verified PASS afterward.
+
+MUTATION 1 — regress a sidecar to the OLD double-counted value. Edited
+data/site/json/districts/AK-00.json's total_linkable_dollars from
+209296933.84 to 1046484669.2 (the exact pre-fix $1.05B) and re-ran the
+gate — RAW terminal capture, unwrapped:
+
+  FAIL
+  --- notes ---
+  note: district pages: 106 ✓
+  note: district index: state filter present ✓
+  note: district sample (10): disclaimer=10/10 ✓
+  note: district sample (10): [data-amount]=10/10 ✓
+  note: leg e: shared_award_count rendered on 137/137 sampled program rows ✓
+  --- errors ---
+  X leg e: 1 district(s) where sidecar total_linkable_dollars != shipped fct_district_totals.parquet: AK-00: sidecar=1046484669.2 shipped-parquet=209296933.83999997
+
+Restored from a pre-mutation copy, diffed byte-identical, re-ran: PASS (same
+as above).
+
+MUTATION 2 — strip the shared_award_count DOM marker from a built page.
+Removed all five `data-shared-award-count="5"` attributes from
+out/district/AK-00/index.html (the built HTML, not the source) and re-ran
+the gate — RAW terminal capture, unwrapped:
+
+  FAIL
+  --- notes ---
+  note: district pages: 106 ✓
+  note: district index: state filter present ✓
+  note: district sample (10): disclaimer=10/10 ✓
+  note: district sample (10): [data-amount]=10/10 ✓
+  note: leg e: 106 district sidecars match fct_district_totals.parquet exactly (±0.01) ✓
+  note: leg e: shared_award_count rendered on 132/137 sampled program rows ✓
+  --- errors ---
+  X leg e: 5 shared-award program row(s) rendered without a [data-shared-award-count] marker: AK-00/0602303E: shared_award_count=5 but no matching [data-shared-award-count] on the built page; AK-00/0602716E: shared_award_count=5 but no matching [data-shared-award-count] on the built page; AK-00/0602025E: shared_award_count=5 but no matching [data-shared-award-count] on the built page; AK-00/0601101E: shared_award_count=5 but no matching [data-shared-award-count] on the built page; AK-00/0601122E: shared_award_count=5 but no matching [data-shared-award-count] on the built page
+
+Restored from a pre-mutation copy, diffed byte-identical, re-ran: PASS
+(identical to the GREEN capture above). Full gate 9 run on the restored,
+unmutated build: PASS, 0 errors.
+
+RENDERED FIGURES, VERIFIED IN THE BUILT HTML (not asserted from the JSON
+alone). out/district/index.html renders "USD 5.58B" for the linkable-total
+card (was 8.01B) and district links appear in the order AK-00, AL-05,
+AZ-01, AZ-04, CA-11, ... (pop_district ascending, the new default — was a
+total_linkable_dollars-descending leaderboard). Its data-sort-order attribute
+reads "pop_district:asc". The "DARPA place-of-performance $" / "DARPA $"
+column labels render (not "Linkable dollars" / "Linkable $").
+out/district/AK-00/index.html renders the header figure as "$209.3M" (not
+"$1.05B"), carries exactly five `data-shared-award-count="5"` attributes —
+one per program row, each showing "same award, matched to 5 programs" — and
+its citation panel formula reads "fct_district_totals.total_obligation for
+pop_district='AK-00' — the award-distinct total across 5 crosswalked program
+elements; supersedes summing fct_district_programs.total_obligation, which
+counts an award once per matched program element (#51)". Verified directly
+in citations.json: fact_id f53655418c1eb31a, recorded_value
+"209296933.840", inputs still the five per-program USAspending fact_ids
+(unchanged — only the recorded_value and formula text changed, per
+substitution #6 above).
+
+INDEX TOTAL, BEFORE/AFTER: sum(fct_district_programs.total_obligation) =
+$8,011,139,693.60 (the old, shipped, buggy figure — matches ROADMAP #51's
+$8.0111B exactly). sum(fct_district_totals.total_obligation) =
+$5,578,714,741.14 (matches ROADMAP #51's $5.5787B exactly). AK-00:
+$1,046,484,669.20 -> $209,296,933.84 (5.0x, matches the recon exactly),
+award_count 1.
+
+NOT A WEAKENING. Every leg present before this task runs unchanged and still
+passes on the real build (gate 9 full run: PASS, 0 errors, legs a-d
+unmodified). fct_district_programs and its per-program rows are byte-for-
+byte the same shape and the same dollar figures as before this task — only
+the district HEADLINE stopped being their naive sum. The new leg (e) is
+strictly additive, non-vacuous by construction (fails outright below 100
+resolved districts; 106 resolved on the real build), and proven to fail on
+BOTH halves of what it checks, independently, on the built artifacts a
+regression would actually touch — never on the source, and never loosened
+to make anything pass.
+
+SUITE COUNT UNCHANGED — one new leg on gate 9 (e). Still 24 gates.

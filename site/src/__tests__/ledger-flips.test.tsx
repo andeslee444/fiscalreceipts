@@ -4,8 +4,9 @@
  * 1. DistrictTable — linkable-dollars cells render Cite state A
  *    ([data-fact-id]) when the sidecar carries total_linkable_fact_id, and
  *    honest state C ([data-uncited]) when it is null. Dataset attribute is
- *    fct_district_programs (the aggregation source), never a hardcoded
- *    uncited span.
+ *    fct_district_totals (#51 — the award-distinct headline model, not the
+ *    per-program fct_district_programs it supersedes at this grain), never a
+ *    hardcoded uncited span.
  * 2. DownloadCards — the "cited" badge is manifest-driven: a dataset shows
  *    the badge IFF it is off the uncited_datasets ledger, so badges flip
  *    automatically when a dataset gains a citation tier.
@@ -23,6 +24,7 @@ function districtRow(overrides: Partial<DistrictIndexRow> = {}): DistrictIndexRo
     pop_district: "VA-08",
     pop_state: "VA",
     program_count: 2,
+    award_count: 2,
     total_cited_dollars: 70000000,
     total_cited_fact_id: "b".repeat(16),
     total_linkable_dollars: 70000000,
@@ -32,14 +34,14 @@ function districtRow(overrides: Partial<DistrictIndexRow> = {}): DistrictIndexRo
 }
 
 describe("DistrictTable linkable dollars — Cite states", () => {
-  it("renders state A with the sidecar fact_id and fct_district_programs dataset", () => {
+  it("renders state A with the sidecar fact_id and fct_district_totals dataset", () => {
     const { container } = render(
       <DistrictTable districts={[districtRow()]} />,
     );
     const el = container.querySelector("[data-amount]");
     expect(el).not.toBeNull();
     expect(el).toHaveAttribute("data-fact-id", "a".repeat(16));
-    expect(el).toHaveAttribute("data-dataset", "fct_district_programs");
+    expect(el).toHaveAttribute("data-dataset", "fct_district_totals");
     expect(el).not.toHaveAttribute("data-uncited");
   });
 
@@ -52,7 +54,7 @@ describe("DistrictTable linkable dollars — Cite states", () => {
     const el = container.querySelector("[data-amount]");
     expect(el).not.toBeNull();
     expect(el).toHaveAttribute("data-uncited", "true");
-    expect(el).toHaveAttribute("data-dataset", "fct_district_programs");
+    expect(el).toHaveAttribute("data-dataset", "fct_district_totals");
     expect(el).not.toHaveAttribute("data-fact-id");
   });
 

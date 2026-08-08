@@ -116,8 +116,8 @@ describe("resultToCsv", () => {
 // ── DATASET_NAMES ─────────────────────────────────────────────────────────────
 
 describe("DATASET_NAMES", () => {
-  it("contains exactly 15 datasets", () => {
-    expect(DATASET_NAMES).toHaveLength(15);
+  it("contains exactly 16 datasets", () => {
+    expect(DATASET_NAMES).toHaveLength(16);
   });
 
   it("registers budget_lines_decade — shipped since 5E, unqueryable until §P1-5", () => {
@@ -134,6 +134,7 @@ describe("DATASET_NAMES", () => {
       "dim_programs",
       "fct_budget_to_awards",
       "fct_budget_trajectory",
+      "fct_district_totals",
       "fct_improper_exposure",
       "fct_influence",
       "fct_program_concentration",

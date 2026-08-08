@@ -1420,6 +1420,9 @@ export interface DistrictIndexRow {
   pop_district: string;
   pop_state: string;
   program_count: number;
+  /** #51: distinct high-confidence-crosswalked awards behind this district's
+   *  total — from fct_district_totals, never a program-element count. */
+  award_count: number;
   total_cited_dollars: number;
   /** Derived 'district' surface fact_id — null when the citation is absent. */
   total_cited_fact_id: string | null;
@@ -1455,6 +1458,10 @@ export interface DistrictProgram {
   pe_bli: string;
   program_url: string;
   recipient_count: number;
+  /** #51: the largest number of program elements any one of this row's
+   *  underlying awards is ALSO crosswalked to. 1 means "not shared"; >1 is
+   *  the AK-00 tell — one award attributed whole to each of N elements. */
+  shared_award_count: number;
   title: string;
   total_obligation: number | null;
   transaction_count: number;
@@ -1464,6 +1471,9 @@ export interface DistrictDetail {
   pop_district: string;
   pop_state: string;
   program_count: number;
+  /** #51: distinct high-confidence-crosswalked awards behind this district's
+   *  total — from fct_district_totals, never a program-element count. */
+  award_count: number;
   programs: DistrictProgram[];
   total_cited_dollars: number;
   /** Derived 'district' surface fact_id — null when the citation is absent. */

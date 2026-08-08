@@ -120,7 +120,17 @@ def _rva_fid(pe: str, from_ed: int, to_ed: int) -> str:
 
 
 def _make_duckdb_with_districts(tmp_path: Path) -> Path:
-    """Create a DuckDB with fct_district_programs and dim_geography."""
+    """Create a DuckDB with fct_district_programs, fct_district_totals and
+    dim_geography.
+
+    VA-08's two program rows (DARPA $50M + Army $20M) are genuinely DISTINCT
+    programs/awards in this fixture — no double-count defect — so
+    fct_district_totals.total_obligation for VA-08 is 70M, matching the naive
+    sum exactly. This keeps the existing "no duplication" assertions valid
+    while proving _emit_district_sidecars reads the headline from the new
+    model (#51). test_district_totals_fixes_double_count below is the
+    fixture that actually exercises a duplicated award.
+    """
     db_path = tmp_path / "govbudget.duckdb"
     con = duckdb.connect(str(db_path))
 
@@ -137,6 +147,21 @@ def _make_duckdb_with_districts(tmp_path: Path) -> Path:
         "('VA', 'VA-08', '0601101E', 'DARPA', 'DARPA', 15, 5, 3, 50000000.0),"
         "('VA', 'VA-08', '0602303E', 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
         "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
+    )
+
+    # #51: LIVE mart schema (dbt/models/marts/fct_district_totals.sql) — the
+    # award-distinct district headline. No duplication in THIS fixture, so
+    # these values equal the fct_district_programs sums above exactly.
+    con.execute(
+        "CREATE TABLE fct_district_totals ("
+        "  pop_state varchar, pop_district varchar,"
+        "  award_count bigint, total_obligation double"
+        ")"
+    )
+    con.execute(
+        "INSERT INTO fct_district_totals VALUES "
+        "('VA', 'VA-08', 8, 70000000.0),"
+        "('CA', 'CA-18', 2, 15000000.0)"
     )
 
     # LIVE mart schema (dbt/models/marts/dim_geography.sql): pop_state /
@@ -625,6 +650,140 @@ class TestEmitDistrictSidecars:
         # Only DARPA (50M) is cited; Army (20M) is not
         assert va["total_cited_dollars"] == pytest.approx(50_000_000.0)
         assert va["total_linkable_dollars"] == pytest.approx(70_000_000.0)
+
+    def test_district_totals_fixes_double_count(self, tmp_path):
+        """#51: total_linkable_dollars must NOT be the naive per-program sum
+        when the underlying award is duplicated across program elements —
+        it must equal fct_district_totals, the award-distinct figure.
+
+        Reproduces the AK-00 shape: one $100M award attributed whole to two
+        program elements (fct_district_programs: $100M + $100M = $200M naive
+        sum), while fct_district_totals correctly records the single $100M.
+        """
+        db_path = tmp_path / "dup.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_district_programs ("
+            "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+            "  program_title varchar, organization varchar,"
+            "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+            "  total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES "
+            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
+        )
+        con.execute(
+            "CREATE TABLE fct_district_totals ("
+            "  pop_state varchar, pop_district varchar,"
+            "  award_count bigint, total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_totals VALUES ('TX', 'TX-09', 1, 100000000.0)"
+        )
+        con.close()
+
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        fid_a = fact_id_usaspending("district_program", "TX|TX-09|0601101E", "total_obligation")
+        fid_b = fact_id_usaspending("district_program", "TX|TX-09|0602303E", "total_obligation")
+
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={},
+                cited_fact_ids={fid_a, fid_b},
+            )
+        finally:
+            con.close()
+
+        tx = json.loads((dist_dir / "TX-09.json").read_text())
+        # NOT 200_000_000 (the naive per-program sum) — the award-distinct total.
+        assert tx["total_linkable_dollars"] == pytest.approx(100_000_000.0)
+        assert tx["award_count"] == 1
+        # total_cited_dollars is clamped: both program rows are cited (their
+        # raw sum is 200M), but it can never exceed the award-distinct total.
+        assert tx["total_cited_dollars"] == pytest.approx(100_000_000.0)
+        # Per-program rows keep their own (individually true) dollar figures.
+        obligations = sorted(p["total_obligation"] for p in tx["programs"])
+        assert obligations == [100_000_000.0, 100_000_000.0]
+
+    def test_shared_award_count_from_crosswalk(self, tmp_path):
+        """#51: shared_award_count reflects how many program elements the
+        SAME award is matched to, computed from fct_award_transactions +
+        fct_budget_to_awards — not from fct_district_programs' award_count
+        column (which counts awards, not shared program elements)."""
+        db_path = tmp_path / "shared.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_district_programs ("
+            "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+            "  program_title varchar, organization varchar,"
+            "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+            "  total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES "
+            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 10, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 10, 1, 1, 100000000.0),"
+            "('CA', 'CA-18', '0699999X', 'Solo Program', 'Army', 5, 1, 1, 15000000.0)"
+        )
+        con.execute(
+            "CREATE TABLE fct_district_totals ("
+            "  pop_state varchar, pop_district varchar,"
+            "  award_count bigint, total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_totals VALUES "
+            "('TX', 'TX-09', 1, 100000000.0),"
+            "('CA', 'CA-18', 1, 15000000.0)"
+        )
+        # The SAME award (PIID SHARED-1) crosswalked to both TX-09 PEs;
+        # a different, unshared award (SOLO-1) funds the CA-18 program.
+        con.execute(
+            "CREATE TABLE fct_budget_to_awards ("
+            "  pe_bli varchar, award_piid varchar, confidence varchar"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_budget_to_awards VALUES "
+            "('0601101E', 'SHARED-1', 'high'),"
+            "('0602303E', 'SHARED-1', 'high'),"
+            "('0699999X', 'SOLO-1', 'high')"
+        )
+        con.execute(
+            "CREATE TABLE fct_award_transactions ("
+            "  award_id_piid varchar, pop_district varchar, obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_award_transactions VALUES "
+            "('SHARED-1', 'TX-09', 100000000.0),"
+            "('SOLO-1', 'CA-18', 15000000.0)"
+        )
+        con.close()
+
+        dist_dir = tmp_path / "districts"
+        dist_dir.mkdir()
+        con = duckdb.connect(str(db_path), read_only=True)
+        try:
+            _emit_district_sidecars(
+                dist_dir=dist_dir, con=con, prog_titles={}, cited_fact_ids=set()
+            )
+        finally:
+            con.close()
+
+        tx = json.loads((dist_dir / "TX-09.json").read_text())
+        for prog in tx["programs"]:
+            assert prog["shared_award_count"] == 2, prog
+
+        ca = json.loads((dist_dir / "CA-18.json").read_text())
+        assert ca["programs"][0]["shared_award_count"] == 1
 
     def test_empty_table_produces_empty_index(self, tmp_path):
         db_path = tmp_path / "empty.duckdb"

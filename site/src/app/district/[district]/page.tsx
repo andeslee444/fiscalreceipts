@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getDistrictIndex, getDistrictDetail, collectCitations } from "@/lib/data";
-import { districtDisplayLabel } from "@/lib/format";
+import { districtDisplayLabel, formatAmountNoCurrency } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -51,6 +51,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DistrictDetailPage({ params }: Props) {
   const { district } = await params;
   const detail = getDistrictDetail(district);
+
+  // #51: the attribution basis + the sitewide DARPA-only ratio, hoisted from
+  // the /district/ index onto the detail page — this is what search lands
+  // on, so the context that makes "$209.3M" honest cannot live only one
+  // click upstream. Sitewide, not per-district: the ratio describes how
+  // small a slice the crosswalk covers of ALL award dollars recorded with a
+  // district, which is a fact about the METHOD, not about this one district.
+  const districtIndex = getDistrictIndex();
+  const sitewideLinkable = districtIndex.districts.reduce(
+    (sum, d) => sum + d.total_linkable_dollars,
+    0,
+  );
+  const sitewideRatioPct =
+    districtIndex.geo_grand_total && districtIndex.geo_grand_total > 0
+      ? (sitewideLinkable / districtIndex.geo_grand_total) * 100
+      : null;
 
   // Collect fact_ids for cited dollars — per-program USAspending citations
   // plus the district's derived aggregate citations (header stats).
@@ -151,6 +167,34 @@ export default async function DistrictDetailPage({ params }: Props) {
               Recipients and transaction counts are USAspending&rsquo;s own;
               no additional verification applied.
             </p>
+            {/* #51: the ratio that keeps the headline figure from reading as
+                bigger than it is. Sitewide (see the note above the field
+                definition) — computed from the same index totals the
+                /district/ reconciliation line uses, so the two pages can
+                never disagree about what fraction of all district-attributed
+                award dollars this crosswalk actually reaches. */}
+            {sitewideRatioPct !== null && (
+              <p className="mt-2">
+                This crosswalk only resolves for a small slice of all award
+                dollars recorded with a district — sitewide, the{" "}
+                {formatAmountNoCurrency(sitewideLinkable, "USD")} linked to a
+                budget program is roughly{" "}
+                <strong className="text-foreground">
+                  {sitewideRatioPct.toFixed(2)}%
+                </strong>{" "}
+                of the{" "}
+                {districtIndex.geo_grand_total !== null
+                  ? formatAmountNoCurrency(districtIndex.geo_grand_total, "USD")
+                  : "—"}{" "}
+                in award obligations recorded across every U.S. district.
+                Ranking districts by this figure would rank them by a
+                DARPA-only slice, not by total defense spending — see{" "}
+                <Link href="/district/" className="underline hover:text-foreground">
+                  the district index
+                </Link>{" "}
+                for that comparison in full.
+              </p>
+            )}
           </ScopeNote>
 
           {/* Summary stats */}
@@ -165,18 +209,23 @@ export default async function DistrictDetailPage({ params }: Props) {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-2xl font-bold tabular-nums">
-                {/* Derived 'district' aggregate citation — sums the district's
-                    per-program USAspending-cited obligations (state A when the
-                    citation resolves; honest state C otherwise). */}
+                {/* Derived 'district' aggregate citation — the award-DISTINCT
+                    total for this district, from fct_district_totals (#51).
+                    fct_district_programs is per (district, pe_bli) and NOT
+                    summable: an award matched to N program elements appears N
+                    times with the same dollars there. State A when the
+                    citation resolves; honest state C otherwise. */}
                 <Cite
                   value={detail.total_linkable_dollars}
                   units="USD"
-                  dataset="fct_district_programs"
+                  dataset="fct_district_totals"
                   factId={detail.total_linkable_fact_id}
                 />
               </p>
               <p className="text-muted-foreground text-xs mt-1">
-                linkable obligations <FyRange separator="· " />
+                linkable obligations <FyRange separator="· " /> ·{" "}
+                {detail.award_count} distinct award
+                {detail.award_count !== 1 ? "s" : ""}
               </p>
               {citedEqualsLinkable && (
                 <p className="text-muted-foreground text-xs mt-1">
@@ -187,10 +236,12 @@ export default async function DistrictDetailPage({ params }: Props) {
             {!citedEqualsLinkable && (
               <div className="rounded-lg border border-border bg-card p-4">
                 <p className="text-2xl font-bold tabular-nums">
+                  {/* #51: capped at total_linkable_dollars by construction —
+                      see the matching clamp in export_site.py. */}
                   <Cite
                     value={detail.total_cited_dollars}
                     units="USD"
-                    dataset="fct_district_programs"
+                    dataset="fct_district_totals"
                     factId={detail.total_cited_fact_id}
                   />
                 </p>
@@ -252,7 +303,22 @@ export default async function DistrictDetailPage({ params }: Props) {
                   <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                     {prog.organization}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono">
+                  <td
+                    className="px-4 py-3 text-right font-mono"
+                    // #51: when this row's award is ALSO matched to other
+                    // program elements, the dollar figure is one award
+                    // attributed whole to each of them, not N awards' worth
+                    // of money — data-shared-award-count is the DOM contract
+                    // the district gate checks (leg e) so this can never
+                    // silently regress to implying separate awards. React
+                    // omits the attribute entirely when the value is
+                    // undefined, so it is simply absent for count <= 1.
+                    data-shared-award-count={
+                      prog.shared_award_count > 1
+                        ? prog.shared_award_count
+                        : undefined
+                    }
+                  >
                     {prog.total_obligation !== null ? (
                       <Cite
                         value={prog.total_obligation}
@@ -262,6 +328,12 @@ export default async function DistrictDetailPage({ params }: Props) {
                       />
                     ) : (
                       <span className="text-muted-foreground">—</span>
+                    )}
+                    {prog.shared_award_count > 1 && (
+                      <span className="block text-xs font-sans font-normal text-muted-foreground mt-0.5">
+                        same award, matched to {prog.shared_award_count}{" "}
+                        programs
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">

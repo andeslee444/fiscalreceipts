@@ -112,7 +112,8 @@ class TestFactIdLdaLobbyist:
 
 
 def _make_geo_duckdb(tmp_path: Path, *, with_geo=True, with_districts=True) -> Path:
-    """DuckDB with LIVE-schema dim_geography + fct_district_programs."""
+    """DuckDB with LIVE-schema dim_geography + fct_district_programs +
+    fct_district_totals (#51)."""
     db_path = tmp_path / "govbudget.duckdb"
     con = duckdb.connect(str(db_path))
     if with_geo:
@@ -143,6 +144,20 @@ def _make_geo_duckdb(tmp_path: Path, *, with_geo=True, with_districts=True) -> P
             "('VA', 'VA-08', '0602303E', 'Army Research', 'Army', 8, 3, 2, 20000000.0),"
             "('VA', 'VA-08', '0603999X', 'Null Prog', 'Army', 1, 1, 1, NULL),"
             "('CA', 'CA-18', '0601101E', 'DARPA', 'DARPA', 7, 2, 1, 15000000.0)"
+        )
+        # #51: no duplication in this fixture (VA-08's two programs are
+        # genuinely distinct awards), so the award-distinct total equals the
+        # naive sum exactly (50M + 20M = 70M; null contributes 0).
+        con.execute(
+            "CREATE TABLE fct_district_totals ("
+            "  pop_state varchar, pop_district varchar,"
+            "  award_count bigint, total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_totals VALUES "
+            "('VA', 'VA-08', 8, 70000000.0),"
+            "('CA', 'CA-18', 2, 15000000.0)"
         )
     con.close()
     return db_path
@@ -206,6 +221,67 @@ class TestGeographyCitationRows:
             fact_id_usaspending("district_program", "VA|VA-08|0602303E", "total_obligation"),
         ]
         assert sorted(json.loads(by_fid[fid_link][_CIT_IDX["inputs"]])) == sorted(expected_inputs)
+
+    def test_district_formula_no_longer_claims_a_program_sum(self, tmp_path):
+        """#51: the formula text must NOT start with
+        'sum(fct_district_programs.total_obligation)' — that string is gate
+        16 (yearsmatrix)'s breakdown-classifier prefix for a sum-decomposable
+        fact, and this fact is no longer decomposable into its per-program
+        inputs (their sum can legitimately exceed recorded_value when an
+        award is duplicated across program elements). Keeping the OLD prefix
+        while changing recorded_value would make the exporter's breakdown
+        writer skip the fact on a sum mismatch, and the gate would then
+        flag it as a required-but-missing breakdown file."""
+        db = _make_geo_duckdb(tmp_path)
+        rows = _build_geography_citation_rows(duckdb_path=db)
+        by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
+        fid_link = fact_id_derived("district", "VA-08", "total_linkable_dollars")
+        fid_cited = fact_id_derived("district", "VA-08", "total_cited_dollars")
+        for fid in (fid_link, fid_cited):
+            formula = by_fid[fid][_CIT_IDX["formula"]]
+            assert not formula.startswith(
+                "sum(fct_district_programs.total_obligation)"
+            ), formula
+
+    def test_district_aggregate_double_count_fixed(self, tmp_path):
+        """#51: recorded_value comes from fct_district_totals, not from
+        summing fct_district_programs — reproduces the AK-00 shape (one
+        award attributed whole to two program elements)."""
+        db_path = tmp_path / "dup.duckdb"
+        con = duckdb.connect(str(db_path))
+        con.execute(
+            "CREATE TABLE fct_district_programs ("
+            "  pop_state varchar, pop_district varchar, pe_bli varchar,"
+            "  program_title varchar, organization varchar,"
+            "  transaction_count bigint, award_count bigint, recipient_count bigint,"
+            "  total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_programs VALUES "
+            "('TX', 'TX-09', '0601101E', 'DARPA A', 'DARPA', 102, 1, 1, 100000000.0),"
+            "('TX', 'TX-09', '0602303E', 'DARPA B', 'DARPA', 102, 1, 1, 100000000.0)"
+        )
+        con.execute(
+            "CREATE TABLE fct_district_totals ("
+            "  pop_state varchar, pop_district varchar,"
+            "  award_count bigint, total_obligation double"
+            ")"
+        )
+        con.execute(
+            "INSERT INTO fct_district_totals VALUES ('TX', 'TX-09', 1, 100000000.0)"
+        )
+        con.close()
+
+        rows = _build_geography_citation_rows(duckdb_path=db_path)
+        by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
+        fid_link = fact_id_derived("district", "TX-09", "total_linkable_dollars")
+        fid_cited = fact_id_derived("district", "TX-09", "total_cited_dollars")
+        # NOT "200000000.000" (the naive per-program sum).
+        assert by_fid[fid_link][_CIT_IDX["recorded_value"]] == "100000000.000"
+        # cited is clamped to the same award-distinct total (both rows are
+        # "cited" by this function's own construction — see its docstring).
+        assert by_fid[fid_cited][_CIT_IDX["recorded_value"]] == "100000000.000"
 
     def test_missing_marts_return_empty(self, tmp_path):
         db_path = tmp_path / "empty.duckdb"
