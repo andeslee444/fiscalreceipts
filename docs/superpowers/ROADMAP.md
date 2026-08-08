@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-08-04 · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-08-07 · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Phase ledger
@@ -427,10 +427,18 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 5. **$39T CPI SATCOM subaward outlier** — ~~staging-layer sanity guard
    (max-plausible-amount flag, quarantine table).~~ **DONE 2026-07-02:**
    staging quarantines subaward outliers with `is_amount_suspect` flag.
-6. **Site-mart gaps found in 5B-1 recon:** no per-family obligations-by-year mart
-   (company page time series), no feed/event mart, dim_geography lacks
+6. **Site-mart gaps found in 5B-1 recon:** ~~no per-family obligations-by-year
+   mart (company page time series), no feed/event mart~~, dim_geography lacks
    fiscal_year/pe_bli breakdown (district drill-down) — build in 5B-2/5B-3 as
    their pages need them (YAGNI until then).
+   *Correction 2026-08-07 (verified against the codebase for the backlog-drawdown
+   plan; do NOT close this entry):* the two mart sub-items are **DONE** —
+   `dbt/models/marts/fct_family_obligations_by_year.sql` and
+   `dbt/models/marts/fct_feed_events.sql` both exist. The third clause is
+   **STILL TRUE and remains OPEN**: `dim_geography` is exactly
+   `[pop_state, pop_district, transaction_count, total_obligation]` — no
+   `fiscal_year`, no `pe_bli`. The district fiscal_year/pe_bli breakdown this
+   entry asked for has not been built.
 7. **FEC → CongressionalAddDetail chain** (money in → marks → money out) —
    post-5B; the J-book XML already carries the add elements.
 8. **Refresh automation:** monthly USAspending, quarterly LDA, annual J-book,
@@ -455,6 +463,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 13. **Mistral OCR (Document AI) as fallback extractor** for scanned/legacy J-book
     PDFs — current pipeline is XML-first and doesn't need it; revisit if pre-2015
     books (scan-only) enter scope.
+    *Correction 2026-08-07 (for whoever closes this entry):* the backlog-drawdown
+    plan's verification grep, `grep -rniE "ocr|mistral|document.?ai"
+    src/govbudget/`, is a false-positive generator — the unanchored `ocr` matches
+    So**cr**ata, producing 10 spurious hits (`src/govbudget/states/`,
+    `verify_phase4.py`). Use the anchored form instead:
+    `grep -rniE "\bocr\b|mistral|document.?ai" src/govbudget/ | grep -v test` —
+    verified genuinely clean (0 hits) on 2026-08-07.
 14. **Feed title enrichment in dim_programs/exporter proper (5C):** 136 trajectory-only
     PEs currently have titles resolved at feed-export only; they need program pages and
     dim_programs entries so they appear in search and the sitemap.
@@ -704,6 +719,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     honest version of the claim the withdrawn cards were trying to make. Sizing: the
     edge extraction is Phase-2 lineage work; the "does not appear in FY2026" page note
     is small and independently shippable.
+
+    *Correction 2026-08-07 (for the planned #32a interim-note task, backlog-drawdown
+    Task B2 — not yet filed as its own entry):* the task's proposed non-vacuity floor
+    of 190 is wrong. 190 PEs carry FY2025 money and no FY2026 row, but only **165 of
+    them have a `/program/` page** to render the note on — the other 25 have no page
+    at all (that gap is backlog #28/D5 territory, not this task's). A floor of 190 can
+    never pass against a 165-page eligible set. **The verified floor is 165.**
 
 33. ✅ **DONE 2026-08-05 (PM Sprint 3 Task 5b) — a derived parquet older than its
     inputs understated the headline figure on 201 pages by 73%.**
@@ -1084,6 +1106,58 @@ chart baseline (#41).
     per-org grain — a dimension change, not an aggregate fix — and would move
     which agency page lists a shared BLI. Written down at the call site in
     `export_site.py` in the meantime.
+
+**#47–#53 (filed 2026-08-07, an independent multi-persona review): a true,
+correctly-cited figure wearing a false label.** Every one of the six passes
+every existing gate, because those gates check number↔citation and nothing
+checks claim↔citation. Sprint A′ (`docs/superpowers/plans/
+2026-08-07-sprint-a-prime-claim-citation.md`) closes all six and adds the
+gate family that makes the class visible.
+
+> **Owner decision, 2026-08-07 (#49, #51, #52):** where a published figure is currently
+> large and false, publish the smaller true one. District linkable dollars fall
+> $8.01B → $5.58B; the lobbying mention count falls by whatever the evidence rule
+> removes. These are corrections, and they ship labelled as corrections.
+
+47. **Homepage calls the FY2026 request "enacted".** `site/src/app/page.tsx:291-292`
+    reads "between FY2025 and FY2026 enacted"; `/methodology/`, `/years/` (FY26R)
+    and every program page say request. The source workbook has no FY2026
+    enacted column.
+
+48. **The basis chip says "P-1 TOA" on R-1 lines.** `site/src/lib/basis.ts:12`
+    hardcodes one label; `programs.json.exhibit_family` is rdte=1077 /
+    procurement=664, so 1,077 of 1,741 (62%) are mislabelled. The correct
+    value already ships.
+
+49. **`/programs/` publishes a row counter over a 59.3%-complete dollar
+    universe.** Columns sum to $228.46B against the site's own $385.3B
+    FY2026 universe. Largest omissions: 9999999999 Classified $73.90B, 2013
+    Virginia Class $11.08B, 1045 COLUMBIA $10.92B. The stated exclusion
+    ("not covered by the R-1/P-1 rollups") is false — COLUMBIA is a P-1 line
+    and its own page says so.
+
+50. **One-time reconciliation money is folded into every FY2026 "Request"
+    figure.** `fy_2026_total` $385.27B = disc $296.26B + reconciliation
+    $89.01B. Against `fy_2025_enacted` $321.88B the headline basis reads
+    +19.7% and the discretionary basis reads −8.0%. Long Range Kill Chains
+    headlines +3052.9% on $1,916k of discretionary.
+
+51. **District totals add one award once per matched program element.**
+    `fct_district_programs` joins on `award_id_piid` only, never `pe_bli`,
+    and the exporter sums those rows. Published $8.0111B vs $5.5787B
+    award-distinct = 43.6% inflation ($2.432B). AK-00 publishes $1.05B from
+    one $209.3M award (5.0×).
+
+52. **"Program elements named in lobbying filings" are single-common-word
+    matches.** `mentions.py` emits a row on ONE title token ≥5 chars; the
+    `GENERIC_WORDS` stoplist misses BASED, SERVICES (it lists singular
+    SERVICE), ACQUISITION, ACTIVITIES, CHEMICAL. Aggregates (34,538
+    sitewide) carry no caveat.
+
+53. **A "Stated · cited" lineage edge is built from a sentence that
+    retracts it.** `/program/1203154SF/` asserts realigned → 1203609SF from
+    "was erroneously transferred"; both edges share one page-level
+    `fact_id` `10a4acbaa3270c74`.
 
 ## Remaining launch items
 
