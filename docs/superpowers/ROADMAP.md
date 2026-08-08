@@ -1159,6 +1159,29 @@ gate family that makes the class visible.
     "was erroneously transferred"; both edges share one page-level
     `fact_id` `10a4acbaa3270c74`.
 
+54. **#50's reconciliation label stops at the program page.** Sprint A′ split
+    discretionary from one-time reconciliation money and labelled it on
+    `/program/*` (gate 23 leg (g) enforces it there). The **combined** FY25→FY26
+    percentage still renders unlabelled on `/years/`, `/feed/`, and
+    `explorer.tsx`'s canned SQL — so the same +3052.9% that is now explained on
+    Long Range Kill Chains' own page is still bare on three other surfaces.
+    Deliberately scoped out of A′4 rather than expanded mid-task; filed so #50
+    is not read as fully closed. The fix is to widen leg (g) past `/program/*`
+    once those surfaces carry the split.
+
+55. **`/company/lockheed-martin/` is honest but still incomplete.** #52 cut
+    Lockheed's mention rows 1,296 → 366 by removing single-common-word matches,
+    but the F-35 was absent before the fix and remains absent after: the
+    matcher never had evidence for it, and removing false positives cannot
+    manufacture a true one. The gap is alias curation —
+    `dbt/seeds/program_aliases.csv` needs entries (F-35, JSF → ATA000, and the
+    equivalents for RTX's and Boeing's flagship lines) so `evidence_kind='alias'`
+    can carry programs whose titles share no two distinctive tokens with how
+    lobbyists actually write them. Measured 2026-08-08: of 10,447 mention rows,
+    9,714 are `multi_token` and 733 are `pe_literal` — **`alias` matches zero**,
+    despite 11 curated aliases already in the seed. The alias path is wired but
+    inert, so this is a data-curation gap, not a code gap.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
