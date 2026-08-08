@@ -426,26 +426,32 @@ Shipbuilding and Conversion, Navy". The real criterion is "lacks R-2/P-40 detail
 
 - [ ] **Step 1: Reproduce the gap and the true criterion**
 
+> **Units correction (2026-08-08, found during execution):** `trajectory.fy2026_total`
+> is **USD THOUSANDS**, not millions — verified on ATA000, which reads `4086744`
+> against a warehouse figure of $4.087B. The $228.46B / 59.3% conclusions are right;
+> the unit label in the first draft of this script was not, and a literal reading of
+> it would have been off by 1000×. The script below is the corrected version.
+
 ```bash
 uv run python - <<'PY'
 import duckdb, json
 con = duckdb.connect('data/duckdb/govbudget.duckdb', read_only=True)
 rows = json.load(open('data/site/json/programs.json'))
-t26 = sum((r['trajectory'] or {}).get('fy2026_total') or 0 for r in rows)   # USD millions
-u = con.execute("select sum(amount_thousands)/1e3 from fct_budget_lines"
-                " where amount_type='fy_2026_total'").fetchone()[0]         # USD millions
-print(f"index ${t26/1000:.2f}B of universe ${u/1000:.2f}B = {100*t26/u:.1f}%")
+t26 = sum((r['trajectory'] or {}).get('fy2026_total') or 0 for r in rows)   # USD THOUSANDS
+u = con.execute("select sum(amount_thousands) from fct_budget_lines"
+                " where amount_type='fy_2026_total'").fetchone()[0]         # USD THOUSANDS
+print(f"index ${t26/1e6:.2f}B of universe ${u/1e6:.2f}B = {100*t26/u:.1f}%")
 have = {r['pe_bli'] for r in rows}
-for pe, title, m in con.execute(
-    "select pe_bli, any_value(title), sum(amount_thousands)/1e3 m from fct_budget_lines"
+for pe, title, k in con.execute(
+    "select pe_bli, any_value(title), sum(amount_thousands) k from fct_budget_lines"
     " where amount_type='fy_2026_total' group by 1 order by 3 desc limit 40").fetchall():
     if pe not in have:
-        print(f"  EXCLUDED {pe:12s} {str(title)[:42]:42s} ${m/1000:>6.2f}B")
+        print(f"  EXCLUDED {pe:12s} {str(title)[:42]:42s} ${k/1e6:>6.2f}B")
 PY
 ```
 
-Expected: `59.3%`, and an excluded list headed by 9999999999 Classified $73.90B,
-2013 Virginia Class $11.08B, 1045 COLUMBIA $10.92B.
+Expected: `index $228.46B of universe $385.27B = 59.3%`, and an excluded list headed by
+9999999999 Classified $73.90B, 2013 Virginia Class $11.08B, 1045 COLUMBIA $10.92B.
 
 - [ ] **Step 2: Write the failing test**
 
