@@ -231,6 +231,14 @@ const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[BMK]?/g;
  * even matched this leg's own prescribed fix text. Tight adjacency is what a
  * mislabel actually looks like ("FY2026 enacted", "FY2026/enacted") and a
  * multi-year comparison never does.
+ *
+ * KNOWN RECALL GAP, accepted deliberately: a verb-separated assertion —
+ * "the FY2026 budget was enacted in December" — is a real false claim and
+ * this leg does NOT catch it. No such phrasing exists in the corpus today.
+ * The alternative was 3,172 hits at 2 true positives, and a gate that cries
+ * wolf 3,170 times is a gate someone switches off. If a verb-separated
+ * instance ever ships, widen to a verb-aware pattern rather than to raw
+ * proximity — proximity is the thing that was already tried and failed here.
  */
 const ENACTED_FY26_RE =
   /\bFY\s*2026\b['’]?s?[\s:()-]{1,4}enacted\b|\benacted\b[\s:()-]{1,4}\bFY\s*2026\b/i;
