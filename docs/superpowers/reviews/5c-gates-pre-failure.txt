@@ -3801,3 +3801,148 @@ state B or C with no fact at all.
 
 SUITE COUNT UNCHANGED — one new leg on gate 2 (a2), one classification flip,
 two new dbt assertions on a new model.  Still 24 gates.
+
+
+================================================================================
+BACKLOG #47 — THE HOMEPAGE CALLS THE FY2026 REQUEST "ENACTED" (2026-08-08)
+================================================================================
+
+New leg on gate 2 (render-static): (t) request/enacted vocabulary. FY2026 is
+a REQUEST in every edition this site ships — the source workbook has no
+FY2026 enacted column — and the home page's "Largest … changes" caption
+called it "FY2026 enacted" anyway, on the module beside the largest number on
+the site.
+
+PROOF 1 — THE LEG FAILS ON REAL SHIPPED STATE, NOT A SYNTHETIC PLANT. First
+draft of the regex (same-clause proximity: "FY2026" and "enacted" within ~60
+chars, either order — the shape given in the task brief), run against the
+build as it actually shipped:
+
+  gate 2 render-static PASS? false
+  2 page(s) couple FY2026 with "enacted" [FIRST DRAFT REGEX, over-broad — see
+  PROOF 2]:
+    index.html: "FY2026 enacted"
+    methodology/index.html: "FY2026 enacted"
+
+  — but that same first-draft regex, run over the full 6,734-page build,
+  actually returned 1,581 pages / 3,172 hits, not 2. The two above are the
+  real defect. The other 1,579 pages are a design flaw in the regex itself,
+  caught before it shipped:
+
+PROOF 2 — THE FIRST-DRAFT REGEX IS UNFIT FOR PURPOSE. A same-clause proximity
+window cannot distinguish "enacted describes FY2026" from "enacted describes
+a different, correctly-named year sitting in the same sentence." Full sweep
+of the first draft's 3,172 hits collapsed to 14 distinct phrasings:
+
+  files with >=1 hit: 1581
+  total hits: 3172
+  distinct patterns: 14
+  count=3158  "FY2026): a line through the actuals (filled dots), with the
+    enacted (hollow circles) and request (diamonds) …" — the decade-
+    trajectory chart's <desc> legend, naming three marker types, asserting
+    nothing about FY2026 itself. Renders on every /program/ page.
+  count=10 (1 each)  "FY2026, down from $1,612,819 thousand enacted" and
+    siblings — dossier "why_it_matters" narrative, correctly comparing the
+    FY2026 request against a NAMED prior year's enacted amount
+    (data/research/dossiers-raw/*.json: "requested for FY2026, down from
+    $1,612,819 thousand enacted in FY2025").
+  count=1  "FY2026 J-books, not enacted" (methodology) — a negation, exactly
+    the correct claim.
+  count=1  "Enacted/Total, the FY2026" (methodology) — a column-header list,
+    each year already correctly labelled.
+  count=1  "Enacted Amount contained in the above FY 2026" (program MAMRA0
+    dossier) — quoting a source P-40 table's own column name.
+  count=2  "FY2026 enacted" — the two real mislabels: this page, and
+    methodology's "FY2025 and FY2026 enacted/requested budget workbook
+    lines."
+
+  Worse than noisy: the first-draft regex also matched the FIX this task
+  prescribes. "…between FY2025 enacted and the FY2026 request…" puts
+  "enacted" 9 characters before "FY2026" — well inside a 60-char window —
+  so the leg as originally specified would still fail the homepage AFTER the
+  fix landed. Verified directly:
+
+    node -e '
+    const RE = /FY\s*2026[^.<]{0,60}?\benacted\b|\benacted\b[^.<]{0,60}?FY\s*2026/i;
+    console.log("FY2025 enacted and the FY2026 request".match(RE));
+    '
+    → [ 'enacted and the FY2026', index: 20, … ]
+
+  A gate leg that fails its own prescribed fix, and fails 1,579 pages that
+  say nothing false, is not ready to ship. Fixed by requiring DIRECT
+  adjacency instead of same-clause proximity — "FY2026" and "enacted"
+  separated only by whitespace or a short punctuation run (colon, parens,
+  hyphen, possessive's), in either order. That is exactly the shape of a
+  mislabel ("FY2026 enacted", "FY2026/enacted") and exactly not the shape of
+  a real comparison, which always has other words between the two terms.
+  Re-run against all 14 phrasings above: the adjacency regex matches ONLY
+  the 2 real mislabels and none of the other 12 — including passing the
+  prescribed fix text, which the first draft failed.
+
+PROOF 3 — FINAL LEG FAILS ON REAL SHIPPED STATE (2 pages, both real). Both
+prose fixes below stashed out of the working tree, rebuilt, gate run — RAW
+terminal capture, unwrapped:
+
+  render-static.mjs has no bare-CLI entrypoint (it only exports
+  runRenderStaticGate(), consumed by scripts/verify.mjs), so it is invoked
+  here via a one-line dynamic import — functionally identical to what
+  `node scripts/gates/render-static.mjs` would print if the file had a
+  `require.main`-style runner:
+
+    $ node -e "
+      import('./scripts/gates/render-static.mjs').then(async (m) => {
+        const r = await m.runRenderStaticGate();
+        console.log('gate 2 render-static PASS?', r.pass);
+        console.log('--- errors ---');
+        for (const e of r.errors) console.log(e);
+      });
+    "
+
+  gate 2 render-static PASS? false
+  --- errors ---
+  2 page(s) couple FY2026 with "enacted" — FY2026 is a request in every shipped edition (first 10):
+    index.html: prose couples FY2026 with "enacted" — FY2026 is a request in every shipped edition: "FY2026 enacted"
+    methodology/index.html: prose couples FY2026 with "enacted" — FY2026 is a request in every shipped edition: "FY2026 enacted"
+
+FIXES. Two files, same defect, same one-move fix (swap which year "enacted"
+modifies):
+
+  site/src/app/page.tsx — "between FY2025 and FY2026 enacted" →
+    "between FY2025 enacted and the FY2026 request"
+  site/src/app/methodology/page.tsx — "FY2025 and FY2026 enacted/requested
+    budget workbook lines" → "FY2025 enacted and FY2026 requested budget
+    workbook lines" (methodology's OWN correct convention, stated two
+    paragraphs earlier in the same file — "FY2024 Actuals, FY2025
+    Enacted/Total, the FY2026 request" — makes this an unambiguous same-
+    defect fix, not a judgment call.)
+
+  The methodology fix is NOT in the task's original three-file list. It is
+  included because leaving it unfixed would ship this leg permanently RED at
+  HEAD on a real, same-species instance the leg itself was built to catch —
+  worse than not shipping the leg at all. It earns the same one-word-order
+  treatment as the homepage, nothing more.
+
+GREEN STATE (both fixes popped back from the stash, clean rebuild) — RAW
+terminal capture, unwrapped:
+
+  gate 2 render-static PASS? true
+  --- errors ---
+  --- notes (tail 5) ---
+  title template: no doubled site-name suffixes ✓
+  request/enacted vocabulary: no page couples FY2026 with "enacted" ✓
+  company names: 453 [data-company-name] element(s), each matching displayCompanyName() of its own registry string ✓
+  derivations: 1713 strip(s), 1736 printed equation(s), all closing exactly at their printed precision ✓
+  jsx glue: 119 .tsx file(s) scanned, 0 space-eaten expression/text joins ✓
+
+  (all other gate 2 legs unaffected — full notes list unchanged from the
+  #37+#44 green state above, plus the new note.)
+
+NOT A WEAKENING. The shipped regex is TIGHTER than the task's first draft,
+not looser: it requires direct adjacency where the first draft accepted
+60 characters of anything. It still catches the real defect (proven in
+PROOF 3) and now also catches methodology's instance the first draft would
+have caught too (mixed in with 1,579 false alarms). Nothing that was a real
+violation under the first draft stopped being a violation; only the false
+alarms stopped alarming.
+
+SUITE COUNT UNCHANGED — one new leg on gate 2 (t). Still 24 gates.

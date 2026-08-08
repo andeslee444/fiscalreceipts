@@ -155,6 +155,41 @@
  *      wrote a line break. Affixes ({n !== 1 ? "s" : ""}), explicit {" "},
  *      punctuation edges and FY-style prefixes are not glue.
  *      Non-vacuity: zero .tsx files scanned FAILS.
+ *
+ * (t) REQUEST/ENACTED VOCABULARY (backlog #47). FY2026 is a REQUEST in every
+ *      edition this site ships — the source workbook has no FY2026 enacted
+ *      column, and /methodology/, /years/ (column header FY26R) and every
+ *      program page say so. This is a claim-level check, not a
+ *      number↔citation one: the figure beside the wrong word is correctly
+ *      cited, which is exactly why leg (a)/(b) cannot see the defect.
+ *      Runs on each page's script/style-stripped HTML (the same string leg
+ *      (b)'s currency sweep already built for the page).
+ *
+ *      A first draft matched "FY2026" and "enacted" anywhere within ~60
+ *      characters of each other, on the theory that the two terms in the same
+ *      clause is already the tell. Proof-can-fail against the real build
+ *      falsified that theory before it shipped: it hit 1,581 pages / 3,172
+ *      instances, ~3,158 of them the decade-trajectory chart legend ("a line
+ *      through the actuals … with the enacted … and request … markers"),
+ *      which names three marker types and asserts nothing about FY2026
+ *      specifically. Worse, it also fired on the CORRECT comparison sentence
+ *      this very fix installs ("FY2025 enacted and the FY2026 request") and
+ *      on the dossier narrative's own correct pattern ("requested for
+ *      FY2026, down from $X thousand enacted in FY2025") — a proximity
+ *      window cannot tell "enacted describes FY2026" from "enacted describes
+ *      a different, correctly-named year sitting in the same sentence."
+ *
+ *      The leg instead requires "FY2026" and "enacted" to be DIRECTLY
+ *      adjacent — separated only by whitespace or a short run of punctuation
+ *      (colon, parens, hyphen, a trailing possessive's) — in either order.
+ *      That is precisely the shape of a mislabel ("FY2026 enacted",
+ *      "FY2026/enacted"), and precisely NOT the shape of a legitimate
+ *      multi-year comparison, which always has other words (year names,
+ *      "down from", "and the", "not") between the two terms. Verified
+ *      against every one of the 14 distinct phrasings this leg's first draft
+ *      surfaced site-wide: adjacency catches exactly the 2 real mislabels
+ *      (this page, and methodology's "FY2025 and FY2026 enacted/requested")
+ *      and none of the other 12.
  */
 
 import fs from "fs";
@@ -178,6 +213,33 @@ const allowlistPath = path.resolve(__dirname, "prose-allowlist.json");
 // Currency pattern: $X,XXX(.XX)? optionally followed by B/M/K
 // Must be in a text node (not a URL/href)
 const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[BMK]?/g;
+
+/**
+ * LEG (t) — request/enacted vocabulary (#47).
+ *
+ * FY2026 is a REQUEST in every edition this site ships; the source workbook
+ * has no FY2026 enacted column. This is a claim-level check: the figures
+ * beside these words are correctly cited, which is exactly why no other leg
+ * can see it.
+ *
+ * DIRECT ADJACENCY ONLY (see the file-header leg (t) note for the
+ * proof-can-fail history): "FY2026" and "enacted" must sit next to each
+ * other — only whitespace, or a short run of punctuation, between them, in
+ * either order. A wider proximity window matched thousands of correct
+ * sentences that merely mention both terms (a chart legend naming three
+ * marker types; "requested for FY2026, down from $X enacted in FY2025") and
+ * even matched this leg's own prescribed fix text. Tight adjacency is what a
+ * mislabel actually looks like ("FY2026 enacted", "FY2026/enacted") and a
+ * multi-year comparison never does.
+ */
+const ENACTED_FY26_RE =
+  /\bFY\s*2026\b['’]?s?[\s:()-]{1,4}enacted\b|\benacted\b[\s:()-]{1,4}\bFY\s*2026\b/i;
+
+function checkRequestEnactedVocabulary(pageText, relPath) {
+  const hit = pageText.match(ENACTED_FY26_RE);
+  if (!hit) return null;
+  return `${relPath}: prose couples FY2026 with "enacted" — FY2026 is a request in every shipped edition: ${JSON.stringify(hit[0].slice(0, 120))}`;
+}
 
 // (c2) Expected uncited ledger — EMPTY since the ledger-clearance work minted
 // citation tiers for dim_geography (derived place-of-performance rows),
@@ -317,6 +379,7 @@ export async function runRenderStaticGate() {
   const titleFailures = [];
   const inferredFailures = [];
   const statedFailures = [];
+  const requestEnactedFailures = [];
 
   // ── (st)/(inf) non-vacuity expectation from the emitted sidecars ─────────
   // Count stated / inferred rail entries across data/site/json/program_details
@@ -398,7 +461,7 @@ export async function runRenderStaticGate() {
       continue;
     }
 
-    // ── (t) title-template doubling: the layout template appends
+    // ── title-template doubling: the layout template appends
     //        "| Fiscal Receipts" to every page title, so a page metadata title
     //        that includes the site name itself renders "… | Fiscal Receipts
     //        | Fiscal Receipts". Any title with the site name twice is a bug.
@@ -892,6 +955,16 @@ export async function runRenderStaticGate() {
     }
     walkText(stripped, false);
 
+    // ── (t) request/enacted vocabulary (#47) ────────────────────────────────
+    // Runs against strippedHtml — the same script/style-stripped per-page
+    // string leg (b) just built above — reused rather than re-parsed. See
+    // ENACTED_FY26_RE's own comment for why this checks direct adjacency
+    // rather than same-clause proximity.
+    {
+      const enactedHit = checkRequestEnactedVocabulary(strippedHtml, relPath);
+      if (enactedHit) requestEnactedFailures.push(enactedHit);
+    }
+
     // ── (tc) company display names carry their registry string ─────────────
     for (const el of root.querySelectorAll("[data-company-name]")) {
       companyNameCount += 1;
@@ -1226,6 +1299,22 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`title template: no doubled site-name suffixes ✓`);
+  }
+
+  // ── (t) request/enacted vocabulary summary (#47) ─────────────────────────
+  if (requestEnactedFailures.length > 0) {
+    errors.push(
+      `${requestEnactedFailures.length} page(s) couple FY2026 with "enacted" ` +
+        `— FY2026 is a request in every shipped edition (first 10):`
+    );
+    for (const f of requestEnactedFailures.slice(0, 10)) {
+      errors.push(`  ${f}`);
+    }
+    if (requestEnactedFailures.length > 10) {
+      errors.push(`  ... and ${requestEnactedFailures.length - 10} more`);
+    }
+  } else {
+    notes.push(`request/enacted vocabulary: no page couples FY2026 with "enacted" ✓`);
   }
 
   // ── (tc) company display names summary ───────────────────────────────────

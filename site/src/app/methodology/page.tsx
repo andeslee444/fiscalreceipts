@@ -860,7 +860,7 @@ export default function MethodologyPage() {
               Programs where FY2025 total is ≥ $50M and the absolute
               percentage change to FY2026 is ≥ 50%. Budget figures come from
               the <code className="text-xs bg-muted px-1 rounded">fct_budget_trajectory</code>{" "}
-              mart (trajectory pivot of FY2025 and FY2026 enacted/requested
+              mart (trajectory pivot of FY2025 enacted and FY2026 requested
               budget workbook lines). The figure shown is the percentage
               change; the delta in dollar terms is the cited trajectory figure.
             </p>
