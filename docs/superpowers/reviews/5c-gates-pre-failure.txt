@@ -4281,6 +4281,69 @@ self-denominating counter is found site-wide, and separately if /programs/
 
 SUITE COUNT UNCHANGED — one new leg on gate 2 (cc). Still 24 gates.
 
+UPDATE (2026-08-08, found while implementing backlog #50): this task's OWN
+_mint_coverage_fact calls (index total, universe total, 5 largest-excluded
+lines — 7 citation_rows.append calls total, all inside _write_all_sidecars)
+mint AFTER export_site()'s "Write citations.parquet" step, which runs
+earlier in the pipeline (before _emit_json_sidecars/_write_all_sidecars is
+even called). The 7 facts land in citations.json (written later, inside
+_write_all_sidecars) but never in citations.parquet — the exact defect class
+this sprint exists to close, one layer down: a receipt that resolves in the
+site's own citation panel but not in the downloadable Parquet dataset on
+/data/. Measured on the real full-corpus export: citations.json 134,966
+fact_ids, citations.parquet 134,959, 0 parquet-only, 7 json-only —
+05e4065252f3ca55 (index), 0e3993847b73392d, 2c02ecd3083ac2cf,
+709cbd08c6b7dfb0, 8fb3b88872488060, 958ea07f4017c279, bcf4d57137b6ec07 (the
+universe fact plus the 5 largest-excluded-line facts). Not caught earlier
+because the existing regression test for this invariant
+(tests/jbooks/test_export_site_pg.py::test_citations_json_keyed_by_fact_id)
+seeds a single-budget-line fixture that never triggers the coverage-minting
+code path (needs a fy_2026_total row and _universe_fy26_thousands > 0).
+
+FIX: moved the "Write citations.parquet" call itself (not the coverage
+computation — see below) to run AFTER _emit_json_sidecars() completes,
+inside export_site(). citation_rows is one list, mutated in place by every
+callee via .append()/.extend(), so the reference export_site() holds is
+fully assembled — every derived-fact tier that exists today AND any future
+one — by the time _emit_json_sidecars() returns; writing the parquet there
+instead of before is therefore correct for every mint site, not just this
+one, and cannot regress the same way a fourth time.
+
+SUBSTITUTION DISCLOSED: the fix that closed backlog #50's own version of
+this exact bug (see the #50 entry above) moved the SPLIT'S COMPUTATION
+earlier, because it needed only bl_rows (already in scope in export_site()
+before the parquet write). This task's coverage computation needs
+programs_list (award/hhi/narrative counts, per-PE trajectory figures via
+_program_trajectory_index) and a DuckDB mart connection, both of which exist
+ONLY inside _write_all_sidecars — hoisting the computation would mean either
+opening a second DuckDB connection early and re-deriving a meaningful slice
+of _write_all_sidecars's own logic (duplication, with the drift risk that
+implies), or splitting _write_all_sidecars into two passes. Moving the WRITE
+instead of the computation avoids both and is the more general fix (it
+protects every mint site inside that function, present and future, not only
+this one) — checked against the alternative before choosing it, not defaulted
+to for convenience.
+
+REGRESSION TEST ADDED: tests/test_citation_parity.py, run against the
+shipped data/site/ build (skipped when absent) — asserts
+set(citations.json.keys()) == set(citations.parquet.fact_id), with a failure
+message naming the divergent ids and which side they are missing from.
+Observed RED (before the fix, on the stale pre-fix build):
+
+  AssertionError: citations.json (134966 fact_ids) and citations.parquet
+  (134959 fact_ids) disagree: 7 fact_id(s) in citations.json ONLY (never
+  reached the published Parquet download) ['05e4065252f3ca55',
+  '0e3993847b73392d', '2c02ecd3083ac2cf', '709cbd08c6b7dfb0',
+  '8fb3b88872488060', '958ea07f4017c279', 'bcf4d57137b6ec07']; 0 fact_id(s)
+  in citations.parquet ONLY [].
+
+Observed GREEN after the fix and a fresh `export-site` run: json-only 0,
+parquet-only 0; `tests/test_citation_parity.py` PASSED.
+
+NOT A NEW GATE LEG — this is a data-pipeline ordering fix plus a pytest
+regression test, not a site-facing npm gate. Suite count unaffected: still
+24 gates.
+
 ================================================================================
 BACKLOG #51 — DISTRICT TOTALS ADD ONE AWARD ONCE PER MATCHED PROGRAM ELEMENT
 (2026-08-08)

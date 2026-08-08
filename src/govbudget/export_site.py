@@ -1410,33 +1410,9 @@ def export_site(
     )
     citation_rows.extend(flow_cit_rows)
 
-    # Write citations.parquet
-    _write_typed_parquet(
-        cit_dir / "citations.parquet",
-        columns=[
-            ("fact_id", "varchar"), ("kind", "varchar"),
-            ("units", "varchar"), ("amount_text", "varchar"),
-            ("page_number", "integer"),
-            ("x0", "double"), ("x1", "double"),
-            ("top_pt", "double"), ("bottom_pt", "double"),
-            ("page_width", "double"), ("page_height", "double"),
-            ("resolution", "varchar"),
-            ("sheet", "varchar"), ("cells", "varchar"),
-            ("amount_thousands", "double"),
-            ("sha256", "varchar"),
-            ("hosted_pdf_url", "varchar"), ("official_url", "varchar"),
-            ("xml_path", "varchar"), ("retrieved_at", "varchar"),
-            # Derived-tier columns (nullable for all other kinds)
-            ("formula", "varchar"), ("inputs", "varchar"),
-            ("query_body", "varchar"), ("recorded_value", "varchar"),
-            # pdf_page resolution columns (Task 5B-4): enable eval citation resolution
-            ("pe_bli", "varchar"),       # populated for jbook_pdf + workbook + lda_filing kinds
-            ("scenario", "varchar"),     # populated for jbook_pdf only
-            ("amount_type", "varchar"),  # populated for workbook only
-        ],
-        rows=citation_rows,
-    )
-    dataset_counts["citations"] = len(citation_rows)
+    # citations.parquet is written LATER now (backlog #49 regression, found
+    # while fixing #50 — see the "Write citations.parquet" block after
+    # _emit_json_sidecars() below, and its own comment for why).
 
     # -----------------------------------------------------------------------
     # 5. Manifest
@@ -1515,6 +1491,62 @@ def export_site(
         summary_by_pe=summary_by_pe,
         fy26_split_by_pe=fy26_split_by_pe,
     )
+
+    # Write citations.parquet — AFTER _emit_json_sidecars(), not before
+    # (backlog #49 regression, found and fixed while implementing #50; see
+    # docs/superpowers/reviews/5c-gates-pre-failure.txt's dated #49 entry for
+    # the full account).
+    #
+    # citation_rows is a single list, threaded BY REFERENCE all the way down
+    # into _write_all_sidecars (_emit_json_sidecars's callee), which mints
+    # several more derived-fact tiers of its own via citation_rows.append(...)
+    # — most visibly _mint_coverage_fact's programs_coverage facts (index +
+    # universe + up to 5 largest-excluded lines), which need programs_list
+    # and a DuckDB mart connection that only exist inside that function, so
+    # they cannot be hoisted up to run before this write the way #50's
+    # fy26_split facts were (that fix worked because it needed only bl_rows,
+    # already in scope here). Writing citations.parquet BEFORE that call
+    # returns is exactly how #49 shipped 7 real derived facts into
+    # citations.json that never reached the published Parquet download —
+    # measured on the real corpus export: citations.json had 134,966 keys,
+    # citations.parquet had 134,959 rows, and the missing 7 were precisely
+    # _mint_coverage_fact's index/universe/5-excluded facts.
+    #
+    # The general fix is this ONE relocation rather than a chase of every
+    # individual mint site: citation_rows is fully assembled by the time
+    # _emit_json_sidecars() returns (Python mutates the list in place; the
+    # reference here sees every append/extend any callee made), so writing
+    # the parquet here is correct for every CURRENT derived-fact tier and
+    # every FUTURE one — nothing minted inside _write_all_sidecars can ever
+    # again be admitted to citations.json without also reaching
+    # citations.parquet. tests/test_citation_parity.py pins this on the
+    # shipped build.
+    _write_typed_parquet(
+        cit_dir / "citations.parquet",
+        columns=[
+            ("fact_id", "varchar"), ("kind", "varchar"),
+            ("units", "varchar"), ("amount_text", "varchar"),
+            ("page_number", "integer"),
+            ("x0", "double"), ("x1", "double"),
+            ("top_pt", "double"), ("bottom_pt", "double"),
+            ("page_width", "double"), ("page_height", "double"),
+            ("resolution", "varchar"),
+            ("sheet", "varchar"), ("cells", "varchar"),
+            ("amount_thousands", "double"),
+            ("sha256", "varchar"),
+            ("hosted_pdf_url", "varchar"), ("official_url", "varchar"),
+            ("xml_path", "varchar"), ("retrieved_at", "varchar"),
+            # Derived-tier columns (nullable for all other kinds)
+            ("formula", "varchar"), ("inputs", "varchar"),
+            ("query_body", "varchar"), ("recorded_value", "varchar"),
+            # pdf_page resolution columns (Task 5B-4): enable eval citation resolution
+            ("pe_bli", "varchar"),       # populated for jbook_pdf + workbook + lda_filing kinds
+            ("scenario", "varchar"),     # populated for jbook_pdf only
+            ("amount_type", "varchar"),  # populated for workbook only
+        ],
+        rows=citation_rows,
+    )
+    dataset_counts["citations"] = len(citation_rows)
 
     # Update manifest with json_sidecars count
     manifest["json_sidecars"] = n_json
