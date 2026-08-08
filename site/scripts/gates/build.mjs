@@ -83,7 +83,16 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "244,825 / 27,797" },
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "209,273 / 24,156" },
   { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "85,650 / 12,122" },
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 110_000, maxGzip: 30_000, measured: "98,081 / 27,307" },
+  // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
+  // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
+  // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
+  // denominator, stated lineage edges 31→29, the FY2026 reconciliation split,
+  // and the R-1 basis chip). The page is heavier because it now documents six
+  // corrections — that is this page's job, and trimming the disclosure to fit a
+  // budget would be the wrong trade. Ceilings carry the SAME proportional
+  // headroom the previous pair did (raw ×1.1215, gzip ×1.0986), so the budget
+  // still catches unintended growth from here.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 128_000, maxGzip: 34_500, measured: "114,369 / 31,412" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   { label: "/coverage/", file: "coverage/index.html", maxRaw: 92_000, maxGzip: 16_500, measured: "85,920 / 15,360" },
