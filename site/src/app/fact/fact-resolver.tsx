@@ -45,6 +45,7 @@ import { ExternalLink } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CitationPanelContext, basisChipText } from "@/components/cite";
+import { exhibitFamilyFromSheet, type ExhibitFamily } from "@/lib/basis";
 import { useAssetUrl } from "@/components/asset-config";
 import { fetchCitationShard, shardPrefix } from "@/lib/cite-shards";
 import {
@@ -246,11 +247,17 @@ const CORE_MEASURE_LABELS: Record<string, string> = {
  * optional (absent context drops, never renders a guess). The basis+edition
  * segment reuses basisChipText, the SAME vocabulary the site's basis chips
  * render, so this page can never disagree with a chip about the basis.
+ *
+ * §48: `exhibitFamily` qualifies a TOA basis to the CLICKED CITATION's own
+ * exhibit — the caller derives it from `citation.sheet` via
+ * exhibitFamilyFromSheet, the same locator-based signal the citation drawer
+ * uses (workbook-card.tsx). Omitted, this degrades to "P-1/R-1 TOA".
  */
 export function semanticHeaderText(
   figure: SidecarFigureContext,
   title: string | null,
   peBli: string,
+  exhibitFamily?: ExhibitFamily,
 ): string {
   const parts: string[] = [title ? `${title} (${peBli})` : peBli];
   if (figure.fy != null && /^\d{4}$/.test(String(figure.fy))) {
@@ -261,6 +268,7 @@ export function semanticHeaderText(
         figure.basis,
         figure.measure ?? undefined,
         figure.edition ?? undefined,
+        exhibitFamily,
       )
     : null;
   if (figure.measure && CORE_MEASURE_LABELS[figure.measure]) {
@@ -357,7 +365,12 @@ function FactCard({
           data-testid="fact-semantic-header"
           className="mb-1 text-sm font-medium text-foreground"
         >
-          {semanticHeaderText(semantic.figure, semantic.title, peBli)}
+          {semanticHeaderText(
+            semantic.figure,
+            semantic.title,
+            peBli,
+            exhibitFamilyFromSheet(citation.sheet),
+          )}
         </p>
       )}
 

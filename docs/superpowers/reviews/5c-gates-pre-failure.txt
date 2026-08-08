@@ -3946,3 +3946,184 @@ violation under the first draft stopped being a violation; only the false
 alarms stopped alarming.
 
 SUITE COUNT UNCHANGED — one new leg on gate 2 (t). Still 24 gates.
+
+================================================================================
+BACKLOG #48 — THE BASIS CHIP SAYS "P-1 TOA" ON R-1 LINES (2026-08-08)
+================================================================================
+
+New leg on gate 23 (basis.mjs): exhibit agreement. site/src/lib/basis.ts
+hardcoded BASIS_LABEL.toa = "P-1 TOA" for every TOA figure on the site. P-1
+is the procurement exhibit; R-1 is RDT&E. Measured against the shipped
+warehouse: programs.json's exhibit_family is "rdte" on 1,077 of 1,741 corpus
+programs and "procurement" on the other 664 — so every RDT&E program page
+(62% of the corpus) stamped a procurement label on an RDT&E line, while its
+own citation records (workbook `sheet`) said "Exhibit R-1" and its own
+budget-line table correctly grouped rows under "Exhibit R-1" two sections
+below the wrong chip.
+
+LETTER SUBSTITUTION, DISCLOSED. The task brief called this leg "(d)". By the
+time it was written, (d) already named the entity-totals leg in this same
+file (PM Sprint 3 Task 5b, shipped, in this record under that letter) —
+reusing it would have silently overwritten a working leg's identity, not
+added one. The next unused letter is (f); a1/a2 exist, b1/b2 exist, c exists,
+d0-d3 exist (entity totals), e1-e3 exist (cross-page one-label-one-basis).
+Recorded here, in the leg's own doc-comment in basis.mjs, and in the commit
+message, per the "gather evidence, disclose the substitution" rule — never
+silently conform to a spec you have evidence is wrong, never silently depart
+from one either.
+
+A SECOND SUBSTITUTION: THE PRESCRIBED programs-row.ts CHANGE DOES NOT
+BELONG. The task's Step 5 prescribed adding `exhibitFamily` to
+ProgramsTableRow (site/src/lib/programs-row.ts) and populating it "where the
+row is built." Reading every <Cite>/basisChipText call in
+site/src/components/programs-table.tsx before touching it: the /programs/
+index renders NO per-row basis chip at all — its fy24/fy26 <Cite> cells pass
+no `basis` prop, so they emit neither a chip nor a data-basis attribute. The
+table's only basis-chip text is the COLUMN header (BasisColumnLabel) and a
+mobile footer note, ONE label for all 1,741 rows spanning BOTH exhibits — a
+genuine cross-program aggregate, the same shape as /agency/* and /years/. A
+per-row exhibitFamily would be shipped weight this component cannot use —
+exactly the anti-pattern this file's own §P2-1 doc-comment exists to
+prevent, and the file's own existing tests ("carries exactly the seven
+rendered fields — no more", "drops the payload the table never reads")
+already pin exhibit_family's absence from this exact row. Not made: instead,
+programs-table.tsx's two chip call sites now pass "mixed" explicitly (same
+treatment as /agency/*), and programs-row.ts gained a doc-comment recording
+why exhibitFamily was deliberately NOT added, so the next reader does not
+"fix" this into a regression.
+
+PROOF — THE LEG FAILS ON REAL SHIPPED STATE. site/src/lib/basis.ts,
+programs-row.ts (comment only), cite.tsx, program-figures.tsx,
+trajectory-spark.tsx, programs-table.tsx, program/[peBli]/page.tsx,
+agency/[org]/page.tsx, citation-panel/workbook-card.tsx and
+fact/fact-resolver.tsx stashed out of the working tree (basis.mjs — the leg
+itself, including its updated BASIS_LABEL mirror — and the test files stayed
+IN, since the leg has to exist to run), rebuilt
+(NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build), leg run via
+one-line dynamic import (basis.mjs has no bare-CLI entrypoint, same pattern
+as render-static.mjs — only runBasisGate() consumed by verify.mjs) — RAW
+terminal capture, unwrapped:
+
+  $ node -e "
+    import('./scripts/gates/basis.mjs').then(async (m) => {
+      const result = await m.runBasisGate();
+      console.log('gate 23 basis: ' + result.notes.slice(0,3).join('; ') + ' -> ' + (result.pass ? 'PASS' : 'FAIL'));
+      for (const n of result.notes) console.log('  note: ' + n);
+      for (const e of result.errors) console.log('  X ' + e);
+      process.exit(result.pass ? 0 : 1);
+    });
+  "
+
+  gate 23 basis: scanning 1993 program pages; leg a1: all 80253 program-page
+  figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled
+  collisions ✓ -> FAIL
+  --- notes ---
+  note: scanning 1993 program pages
+  note: leg a1: all 80253 program-page figures carry basis attrs ✓
+  note: leg a2 (attribute path): no unreconciled collisions ✓
+  note: leg a2 (bootstrap): no FY24-actuals collision detected on /program/ATA000/
+  note: leg b1: 7145 numeric summary cards agree with detail figures ✓
+  note: leg b2: 0 absence cards, none contradicted by details ✓
+  note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+  note: leg c: pdf footnote matches golden ✓
+  note: leg c: workbook footnote matches golden ✓
+  note: leg c: derived footnote matches golden ✓
+  note: leg e2: 4605 of 4605 index figures joined to their program page; every one agrees under one label and one basis ✓
+  note: leg d1: all 235 entity_xwalk-derived facts reproduce from their own query_body (entity 210, feed 25) ✓
+  note: leg d2: the crosswalk's own totals reproduce the lake over exactly FY2017–FY2026, the window the pages label (FY2017–FY2026) ✓
+  note: leg d3: entity_xwalk.parquet is newer than every award partition it reads ✓
+  note: leg f2: no unexplained "P-1/R-1" chip on any program page ✓
+  note: leg f3: 8715 basis chips resolved — non-vacuous ✓
+  --- errors ---
+  X leg e1 index basis declaration: 1565 problem(s) (first 10):
+  X   /programs/: table "programs" column "FY24 actual ↕P-1 TOA · PB2026" declares basis=toa in an attribute but never says "P-1/R-1 TOA" where a reader can see it
+  X   /programs/: table "programs" column "FY26 request ↓P-1 TOA · PB2026" declares basis=toa in an attribute but never says "P-1/R-1 TOA" where a reader can see it
+  X   /agency/A/: figure "$2.81B" declares basis=toa in an attribute but the page never says "P-1/R-1 TOA" where a reader can see it
+  X   ... and 1562 more
+  X leg f1 exhibit agreement: 4905 basis chip(s) name an exhibit that disagrees with their own program's exhibit_family (first 10):
+  X   program/0101113F/index.html: chip reads "P-1 TOA · PB2026" (claims procurement) but programs.json's exhibit_family for pe_bli "0101113F" is "rdte"
+  X   program/0101113F/index.html: chip reads "P-1 TOA · PB2026" (claims procurement) but programs.json's exhibit_family for pe_bli "0101113F" is "rdte"
+  X   program/0101122F/index.html: chip reads "P-1 TOA · PB2026" (claims procurement) but programs.json's exhibit_family for pe_bli "0101122F" is "rdte"
+  X   ... and 4895 more
+
+  (leg e1's 1,565 problems are a HARNESS ARTIFACT of this proof method, not
+  an independent regression: basis.mjs's BASIS_LABEL mirror was updated
+  in-place, IN the working tree, to stay consistent with its own "change one,
+  change both" doc-comment — so this run compares the FIXED gate mirror
+  against UNFIXED page source. A true pre-#48 commit never had this
+  mismatch, because the mirror and the source constant were always "P-1
+  TOA" together. Leg f1/f2/f3 — the leg this task adds — are the ones
+  proven here on a real apples-to-apples basis: 4,905 real chips misnaming
+  their own row's exhibit, at the volume the 1,077/1,741 rdte-program
+  measurement predicts, with a real pe_bli/exhibit_family pair named in
+  every line.)
+
+FIX. site/src/lib/basis.ts: BASIS_LABEL.toa changed from "P-1 TOA" to
+"P-1/R-1 TOA" (the honest default for any call site not yet threading an
+exhibit); added ExhibitFamily type, TOA_LABEL_BY_EXHIBIT, basisChipForExhibit
+(rdte → "R-1 TOA", procurement → "P-1 TOA", mixed/unknown → "P-1/R-1 TOA"),
+normalizeExhibitFamily (narrows ProgramRow.exhibit_family's raw string to the
+two known tokens, degrading anything else to the honest mixed form), and
+exhibitFamilyFromSheet (reads a workbook citation's OWN `sheet` locator —
+"Exhibit R-1" / "Exhibit P-1" / "Exhibit P-1R", verified against all 256
+shipped cite-shards: exactly these three values occur, 27,578 / 7,959 / 403
+times, P-1R resolving to procurement per footnote.ts's own WORKBOOK_TITLES).
+basisChipText gained an optional 4th exhibit parameter. Threaded exhibitFamily
+through <Cite>/<CiteChips> (cite.tsx) and every call site that renders a
+VISIBLE TOA chip: program-figures.tsx (the program's own exhibit_family, one
+value for the whole page), trajectory-spark.tsx (same), the program page's
+AnswerStrip "What changed" CiteChips (same); agency/[org]/page.tsx and
+programs-table.tsx (both genuinely cross-program aggregates — "mixed",
+declared explicitly, never left to default); the citation drawer
+(workbook-card.tsx) and the /fact/{id} permalink page (fact-resolver.tsx),
+both deriving from the CLICKED CITATION's own sheet via
+exhibitFamilyFromSheet — tighter than a program lookup, since it is the
+citation's own locator. Every <Cite> call site that renders its basis chip
+with chip={false} (decade-trajectory.tsx, reconciliation-strip.tsx,
+program-budget-lines.tsx, program-details-table.tsx, flow-chart.tsx,
+family-funding-line.tsx) needed no change: chip={false} means no chip text
+is ever rendered from that call, so there was nothing for this leg to
+misname.
+
+GREEN STATE (all files popped back from the stash, clean rebuild) — RAW
+terminal capture, unwrapped:
+
+  gate 23 basis: scanning 1993 program pages; leg a1: all 80253 program-page
+  figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled
+  collisions ✓ -> PASS
+  --- notes ---
+  note: scanning 1993 program pages
+  note: leg a1: all 80253 program-page figures carry basis attrs ✓
+  note: leg a2 (attribute path): no unreconciled collisions ✓
+  note: leg a2 (bootstrap): no FY24-actuals collision detected on /program/ATA000/
+  note: leg b1: 7145 numeric summary cards agree with detail figures ✓
+  note: leg b2: 0 absence cards, none contradicted by details ✓
+  note: leg c: 3 golden fixtures self-validate (field manifest) ✓
+  note: leg c: pdf footnote matches golden ✓
+  note: leg c: workbook footnote matches golden ✓
+  note: leg c: derived footnote matches golden ✓
+  note: leg e1: 24 index surface(s) declare basis, fy and measure — visibly ✓
+  note: leg e2: 4605 of 4605 index figures joined to their program page; every one agrees under one label and one basis ✓
+  note: leg d1: all 235 entity_xwalk-derived facts reproduce from their own query_body (entity 210, feed 25) ✓
+  note: leg d2: the crosswalk's own totals reproduce the lake over exactly FY2017–FY2026, the window the pages label (FY2017–FY2026) ✓
+  note: leg d3: entity_xwalk.parquet is newer than every award partition it reads ✓
+  note: leg f1: 7746 single-exhibit basis chips agree with their program's exhibit_family (969 chip(s) on rows absent from programs.json skipped) ✓
+  note: leg f2: no unexplained "P-1/R-1" chip on any program page ✓
+  note: leg f3: 8715 basis chips resolved — non-vacuous ✓
+  --- errors ---
+  (none)
+
+NOT A WEAKENING. Every leg present before this task (a1/a2, b1/b2, c, d0-d3,
+e1-e3) still runs unchanged and still passes on real data — leg e1 in fact
+NEWLY passes here (it was a casualty of the proof harness's partial stash
+above, not of the fix). The new leg (f) is strictly additive: f1 checks a
+property the suite had literally no leg for (label CORRECTNESS, as opposed
+to every other leg's number↔citation or number↔number agreement), f2 closes
+the obvious escape hatch (silently reaching for the honest-but-uninformative
+"P-1/R-1" form everywhere instead of naming the real exhibit), f3 guards
+against the leg quietly matching nothing (the failure mode that let the
+original defect ship past 23 gates that never looked at this). Nothing that
+used to fail is now allowed to pass; the corrected chip text is verified
+against the corpus's OWN exhibit_family, not against a looser pattern.
+
+SUITE COUNT UNCHANGED — one new leg on gate 23 (f). Still 24 gates.

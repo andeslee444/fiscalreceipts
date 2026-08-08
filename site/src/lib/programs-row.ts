@@ -17,6 +17,25 @@
  * This lives in lib/ rather than beside the table because programs-table.tsx
  * is a "use client" module — the server page cannot call a function exported
  * from one.
+ *
+ * §48 NOTE (deliberately NOT threading exhibitFamily here): the task that
+ * fixed the mislabelled TOA chip prescribed adding `exhibitFamily` to this
+ * row. It does not belong here, and the reason is this file's own opening
+ * paragraph: exhibit_family was ALREADY dropped from this exact projection
+ * for being payload the table never reads, and that has not changed. The
+ * /programs/ table renders no PER-ROW basis chip at all — the fy24/fy26
+ * <Cite> cells (programs-table.tsx) pass no `basis` prop, so they emit no
+ * chip and no data-basis attribute. The table's only basis chip is the
+ * COLUMN header + a mobile footer note, ONE label for all 1,741 rows
+ * (both RDT&E and procurement) — a genuine cross-program aggregate, the same
+ * shape as /agency/*, /years/ and /feed/. Both those call sites now pass
+ * "mixed" explicitly (programs-table.tsx's BasisColumnLabel and its mobile
+ * note). A per-row exhibitFamily would be shipped weight this component
+ * cannot use — exactly the anti-pattern §P2-1 exists to prevent, and the
+ * existing "carries exactly the seven rendered fields" / "drops the payload
+ * the table never reads" tests below (programs-table.test.ts) already pin
+ * exhibit_family's absence. Verified by reading every <Cite>/basisChipText
+ * call in programs-table.tsx before making this call — see the PR notes.
  */
 
 import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";

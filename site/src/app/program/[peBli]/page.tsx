@@ -36,6 +36,7 @@ import { findPeLinks } from "@/lib/pe-link";
 import { formatAmount } from "@/lib/format";
 import { hasLineage } from "@/lib/lineage";
 import { Cite, CiteChips } from "@/components/cite";
+import { normalizeExhibitFamily } from "@/lib/basis";
 import { LineageRail } from "@/components/lineage/lineage-rail";
 import { FamilyFundingLine } from "@/components/lineage/family-funding-line";
 import { dossierFactIds, isFactCitation } from "@/lib/dossier";
@@ -939,6 +940,9 @@ function AnswerStrip({
   const pct = changeCard?.pct ?? null;
   const hhi = program.hhi;
   const primes = summary.named_primes;
+  // §48: this whole strip is ONE program's own answers — the change card's
+  // TOA chip shares the page's own exhibit_family, never "mixed".
+  const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
 
   return (
     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 rounded-lg border border-border bg-card divide-y md:divide-y-0 md:divide-x divide-border">
@@ -979,6 +983,7 @@ function AnswerStrip({
                   fy={changeCard.fy}
                   measure={changeCard.measure}
                   edition={changeCard.edition}
+                  exhibitFamily={exhibitFamily}
                   chip={false}
                 />
               </span>
@@ -999,6 +1004,7 @@ function AnswerStrip({
               basis={changeCard.basis}
               measure={changeCard.measure}
               edition={changeCard.edition}
+              exhibitFamily={exhibitFamily}
             />
           </>
         ) : (

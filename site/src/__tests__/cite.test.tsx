@@ -409,6 +409,11 @@ describe("Cite three-state contract", () => {
 
   // ── Basis threading (PM Sprint 1 Task 3, gate 23 legs a1/a2) ──────────────
   describe("basis attributes + chip", () => {
+    // fact 5b532c52d3ebb4c2 is the real F-35/ATA000 FY2024 actuals TOA figure
+    // (workbook-card.test.tsx's F35_CITATION carries the same fact_id, sheet
+    // "Exhibit P-1") — a genuinely procurement figure, so exhibitFamily:
+    // "procurement" here is the fixture's OWN true value, not an arbitrary
+    // label (§48).
     const basisProps = {
       value: 5565655,
       units: "USD thousands" as const,
@@ -418,6 +423,7 @@ describe("Cite three-state contract", () => {
       fy: 2024,
       measure: "actuals",
       edition: 2026,
+      exhibitFamily: "procurement" as const,
     };
 
     it("renders data-basis / data-fy / data-measure on the amount element (leg a1)", () => {
@@ -456,6 +462,24 @@ describe("Cite three-state contract", () => {
       const el = container.querySelector("[data-amount]")!;
       expect(el.textContent).toBe("$5.57B");
       expect(container.textContent).toContain("P-1 TOA · PB2026");
+    });
+
+    // §48: an R-1 line may not claim the P-1 exhibit — and a TOA figure
+    // whose exhibit is not yet threaded must not claim EITHER single
+    // exhibit it cannot prove.
+    it("labels an RDT&E figure's chip R-1, not the P-1 default", () => {
+      const { container } = render(
+        <Cite {...basisProps} exhibitFamily="rdte" />,
+      );
+      expect(container.textContent).toContain("R-1 TOA · PB2026");
+      expect(container.textContent).not.toContain("P-1 TOA");
+    });
+
+    it("degrades to the honest both-exhibits chip when exhibitFamily is not threaded", () => {
+      const { container } = render(
+        <Cite {...basisProps} exhibitFamily={undefined} />,
+      );
+      expect(container.textContent).toContain("P-1/R-1 TOA · PB2026");
     });
 
     it("labels jbook-detail basis as P-40 detail", () => {
@@ -536,6 +560,7 @@ describe("Cite three-state contract", () => {
             basis="toa"
             measure="change"
             edition={2026}
+            exhibitFamily="procurement"
           />
         </ReceiptsContext.Provider>,
       );
@@ -554,7 +579,9 @@ describe("Cite three-state contract", () => {
         </ReceiptsContext.Provider>,
       );
       expect(container.textContent).not.toContain("#b38a20e9");
-      expect(container.textContent).toContain("P-1 TOA · PB2026");
+      // §48: no exhibitFamily threaded here — the honest both-exhibits form,
+      // never a guessed single exhibit.
+      expect(container.textContent).toContain("P-1/R-1 TOA · PB2026");
     });
 
     it("renders nothing when there is neither a factId nor a chip-vocabulary basis", () => {

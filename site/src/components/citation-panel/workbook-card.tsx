@@ -44,7 +44,12 @@ import React, { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import type { WorkbookCitation } from "@/lib/data";
 import { usdEquivalence } from "@/lib/format";
-import { basisChipText, CORE_MEASURES } from "@/lib/basis";
+import {
+  basisChipText,
+  exhibitFamilyFromSheet,
+  CORE_MEASURES,
+  type ExhibitFamily,
+} from "@/lib/basis";
 import { documentTitleFromUrl, type FootnoteFigure } from "@/lib/footnote";
 import { useAssetUrl } from "@/components/asset-config";
 import {
@@ -88,9 +93,17 @@ function fmtCell(v: number): string {
  * rendered in the chip's vocabulary and nothing else. Null when the figure
  * declared no basis (drill-down opens, legacy callers): an invented basis
  * would be worse than none.
+ *
+ * §48: `exhibitFamily` qualifies a TOA basis to the figure's own exhibit
+ * (rdte → R-1, procurement → P-1). The caller (WorkbookCard, below) derives
+ * it from the CLICKED CITATION's own `sheet` field via exhibitFamilyFromSheet
+ * — the tightest signal available here, since it is the citation's own
+ * locator rather than a program-level lookup. Omitted, this degrades to the
+ * honest "P-1/R-1 TOA" form.
  */
 export function amountBasisLine(
   figure: FootnoteFigure | null | undefined,
+  exhibitFamily?: ExhibitFamily,
 ): string | null {
   if (!figure) return null;
   const parts: string[] = [];
@@ -106,7 +119,12 @@ export function amountBasisLine(
     parts.push(figure.measure);
   }
   const chip = figure.basis
-    ? basisChipText(figure.basis, figure.measure ?? undefined, figure.edition ?? undefined)
+    ? basisChipText(
+        figure.basis,
+        figure.measure ?? undefined,
+        figure.edition ?? undefined,
+        exhibitFamily,
+      )
     : null;
   if (chip) parts.push(chip);
   else if (figure.edition) parts.push(`PB${figure.edition}`);
@@ -157,7 +175,9 @@ export function CellRef({ cell }: { cell: string }) {
 export function WorkbookCard({ citation, factId, figure }: WorkbookCardProps) {
   const assetUrl = useAssetUrl();
   const preview = useWorkbookPreview(factId);
-  const basisLine = amountBasisLine(figure);
+  // §48: derived from THIS citation's own sheet locator, not a program
+  // lookup — see amountBasisLine's doc comment.
+  const basisLine = amountBasisLine(figure, exhibitFamilyFromSheet(citation.sheet));
 
   const cellChips = citation.cells
     ? citation.cells.split(",").map((c) => c.trim()).filter(Boolean)

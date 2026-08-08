@@ -1,7 +1,8 @@
 /**
  * Unit tests for gate 23 (basis.mjs) helpers — value normalization,
- * 3-significant-digit agreement, FY-label token extraction, and the golden
- * footnote field-manifest parser. Run via `npm test` (vitest).
+ * 3-significant-digit agreement, FY-label token extraction, the golden
+ * footnote field-manifest parser, and leg (f)'s chip classification (#48).
+ * Run via `npm test` (vitest).
  */
 
 import { describe, it, expect } from "vitest";
@@ -13,6 +14,8 @@ import {
   valuesAgree,
   fyTokensFromLabel,
   validateGoldenFootnote,
+  chipExhibitClaim,
+  isBasisChipClassName,
 } from "../basis.mjs";
 
 const goldensDir = path.resolve(
@@ -170,5 +173,59 @@ describe("validateGoldenFootnote", () => {
     expect(validateGoldenFootnote(fixture, tampered).join("; ")).toMatch(
       /retrieved date/,
     );
+  });
+});
+
+// ── chipExhibitClaim / isBasisChipClassName — leg (f) (#48) ─────────────────
+
+describe("chipExhibitClaim", () => {
+  it("reads an RDT&E chip", () => {
+    expect(chipExhibitClaim("R-1 TOA · PB2026")).toBe("rdte");
+  });
+
+  it("reads a procurement chip", () => {
+    expect(chipExhibitClaim("P-1 TOA · PB2026")).toBe("procurement");
+  });
+
+  it("reads the combined both-exhibits chip as mixed, not procurement", () => {
+    // The leading substring is literally "P-1" for both forms — the "/"
+    // check must run BEFORE the "P-1 " (space) check, or every mixed chip
+    // misreads as a procurement claim.
+    expect(chipExhibitClaim("P-1/R-1 TOA · PB2026")).toBe("mixed");
+  });
+
+  it("returns null for a non-TOA chip (no opinion)", () => {
+    expect(chipExhibitClaim("P-40 detail · PB2026")).toBeNull();
+  });
+
+  it("returns null for empty/absent text", () => {
+    expect(chipExhibitClaim("")).toBeNull();
+    expect(chipExhibitClaim(null)).toBeNull();
+    expect(chipExhibitClaim(undefined)).toBeNull();
+  });
+});
+
+describe("isBasisChipClassName", () => {
+  // The exact className cite.tsx renders the chip with (Cite's basisChip and
+  // CiteChips' chipText spans — verified identical at both call sites).
+  const CHIP_CLASS =
+    "ml-1 inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline";
+
+  it("matches the chip's real rendered class string", () => {
+    expect(isBasisChipClassName(CHIP_CLASS)).toBe(true);
+  });
+
+  it("does not match the fact-id chip's class (.cite-id-chip, a named class — no overlapping tokens)", () => {
+    expect(isBasisChipClassName("cite-id-chip")).toBe(false);
+  });
+
+  it("does not match an unrelated span missing the distinguishing tokens", () => {
+    expect(isBasisChipClassName("text-xs text-muted-foreground")).toBe(false);
+  });
+
+  it("handles missing/empty class attributes", () => {
+    expect(isBasisChipClassName(null)).toBe(false);
+    expect(isBasisChipClassName(undefined)).toBe(false);
+    expect(isBasisChipClassName("")).toBe(false);
   });
 });

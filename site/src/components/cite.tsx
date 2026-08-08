@@ -110,8 +110,9 @@ export const ReceiptsContext = createContext<ReceiptsContextValue>({
 // like TrajectorySpark's shared-provenance caption call it too); re-exported
 // here so existing client imports keep working.
 
-import { basisChipText } from "@/lib/basis";
+import { basisChipText, type ExhibitFamily } from "@/lib/basis";
 export { basisChipText };
+export type { ExhibitFamily };
 
 // ── Cite Props ─────────────────────────────────────────────────────────────
 
@@ -173,6 +174,15 @@ export interface CiteProps {
   entity?: string | null;
   /** PB edition year — rendered inside the basis chip ("· PB2026"). */
   edition?: number | null;
+  /**
+   * The figure's own exhibit family (§48 — gate 23 leg d): 'rdte' | 'procurement'
+   * for a TOA figure known to sit on one exhibit, 'mixed' for a DECLARED
+   * cross-exhibit aggregate. Omitted (the common case for call sites not yet
+   * threading it) renders the honest "P-1/R-1 TOA" form — never a guessed
+   * single exhibit. Only affects the 'toa' basis; every other basis is
+   * unaffected (see basisChipForExhibit).
+   */
+  exhibitFamily?: ExhibitFamily;
   /**
    * True when this figure is a member of a DECLARED (fy, measure)
    * reconciliation group (the sidecar's reconciliation payload) — emits
@@ -321,15 +331,18 @@ export function CiteChips({
   basis,
   measure,
   edition,
+  exhibitFamily,
 }: {
   factId?: string | null;
   basis?: string | null;
   measure?: string | null;
   edition?: number | null;
+  /** See CiteProps.exhibitFamily (§48). */
+  exhibitFamily?: ExhibitFamily;
 }) {
   const { receiptsOn } = useContext(ReceiptsContext);
   const chipText = basis
-    ? basisChipText(basis, measure ?? undefined, edition ?? undefined)
+    ? basisChipText(basis, measure ?? undefined, edition ?? undefined, exhibitFamily)
     : null;
   const showReceipts = receiptsOn && Boolean(factId);
   if (!showReceipts && !chipText) return null;
@@ -369,6 +382,7 @@ export function Cite({
   measure,
   entity,
   edition,
+  exhibitFamily,
   reconciled,
   chip = true,
 }: CiteProps) {
@@ -389,7 +403,10 @@ export function Cite({
 
   // The always-visible basis chip — SIBLING of [data-amount], see contract
   // note above. ≥12px (text-xs) per P1-1: 10px provenance chips are banned.
-  const chipText = basis && chip ? basisChipText(basis, measure ?? undefined, edition ?? undefined) : null;
+  const chipText =
+    basis && chip
+      ? basisChipText(basis, measure ?? undefined, edition ?? undefined, exhibitFamily)
+      : null;
   const basisChip = chipText ? (
     <span className="ml-1 inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline">
       {chipText}

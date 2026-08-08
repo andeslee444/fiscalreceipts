@@ -1,7 +1,7 @@
 import type { SummaryCard } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { ChartFigure, chartDescId } from "@/components/chart-figure";
-import { basisChipText } from "@/lib/basis";
+import { basisChipText, type ExhibitFamily } from "@/lib/basis";
 import { formatAmount } from "@/lib/format";
 
 /**
@@ -41,6 +41,9 @@ interface TrajectorySparkProps {
   cards: SummaryCard[];
   /** "fy|measure" keys with a declared reconciliation entry (gate 23 a2). */
   reconKeys?: Set<string>;
+  /** The page's own program exhibit (§48) — every card here is the SAME
+   *  program's own figure, so they all share one exhibit_family. */
+  exhibitFamily?: ExhibitFamily;
 }
 
 function toDollars(card: SummaryCard): number {
@@ -49,7 +52,7 @@ function toDollars(card: SummaryCard): number {
     : card.value! * 1_000;
 }
 
-export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
+export function TrajectorySpark({ cards, reconKeys, exhibitFamily }: TrajectorySparkProps) {
   const slots = cards.filter((c) => c.key !== "change");
   const defined = slots.filter((c) => c.value !== null && c.units !== null);
 
@@ -107,6 +110,7 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
           p.card.basis,
           p.card.measure ?? undefined,
           p.card.edition ?? undefined,
+          exhibitFamily,
         )
       : null,
   );
@@ -270,6 +274,7 @@ export function TrajectorySpark({ cards, reconKeys }: TrajectorySparkProps) {
                     fy={p.card.fy}
                     measure={p.card.measure}
                     edition={p.card.edition}
+                    exhibitFamily={exhibitFamily}
                     reconciled={reconKeys?.has(`${p.card.fy}|${p.card.measure}`)}
                     chip={!sharedChipText}
                   />

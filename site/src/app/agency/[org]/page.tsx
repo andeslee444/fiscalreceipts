@@ -251,8 +251,11 @@ export default async function AgencyPage({
             data-basis-declared
             className="mb-4 text-xs text-muted-foreground"
           >
-            FY24 figures are {basisChipText("toa", "actuals", 2026)} — total
-            obligational authority as the PB2026 books report it, in USD
+            {/* §48: an agency spans BOTH exhibits (its programs mix RDT&E and
+                procurement), so this declares "mixed" explicitly rather than
+                defaulting — a recorded decision, not an omission. */}
+            FY24 figures are {basisChipText("toa", "actuals", 2026, "mixed")} —
+            total obligational authority as the PB2026 books report it, in USD
             thousands, the same basis{" "}
             <Link href="/programs/" className="underline hover:text-foreground">
               the program index

@@ -509,21 +509,47 @@ describe("workbook drawer — the AMOUNT line declares its basis (fix round)", (
   // preview table. A reporter skimming would quote $5.57B as FY2026
   // procurement. Same helper as the inline chip — one vocabulary, not two.
 
+  // §48: amountBasisLine's `exhibitFamily` param qualifies a TOA label to the
+  // figure's own exhibit. F35_CITATION/fact 5b532c52d3ebb4c2 is the real
+  // F-35 procurement figure (sheet "Exhibit P-1"), so passing "procurement"
+  // here reflects the fixture's own true exhibit — it is not an arbitrary
+  // label chosen to keep the assertion passing.
   it("names the fiscal year, the measure and the basis", () => {
     expect(
-      amountBasisLine({ fy: 2024, measure: "actuals", basis: "toa", edition: 2026 }),
+      amountBasisLine(
+        { fy: 2024, measure: "actuals", basis: "toa", edition: 2026 },
+        "procurement",
+      ),
     ).toBe("FY2024 · actuals · P-1 TOA · PB2026");
   });
 
   it("leaves an extended measure to the chip rather than saying it twice", () => {
-    const line = amountBasisLine({
-      fy: 2026,
-      measure: "disc-request",
-      basis: "toa",
-      edition: 2026,
-    })!;
+    const line = amountBasisLine(
+      {
+        fy: 2026,
+        measure: "disc-request",
+        basis: "toa",
+        edition: 2026,
+      },
+      "procurement",
+    )!;
     expect(line).toBe("FY2026 · P-1 TOA · discretionary request · PB2026");
     expect(line.match(/request/g)!.length).toBe(1);
+  });
+
+  it("labels an RDT&E figure R-1, not the P-1 default", () => {
+    expect(
+      amountBasisLine(
+        { fy: 2024, measure: "actuals", basis: "toa", edition: 2026 },
+        "rdte",
+      ),
+    ).toBe("FY2024 · actuals · R-1 TOA · PB2026");
+  });
+
+  it("degrades to the honest both-exhibits chip when exhibitFamily is not passed", () => {
+    expect(
+      amountBasisLine({ fy: 2024, measure: "actuals", basis: "toa", edition: 2026 }),
+    ).toBe("FY2024 · actuals · P-1/R-1 TOA · PB2026");
   });
 
   it("renders nothing rather than inventing a basis", () => {
@@ -535,7 +561,7 @@ describe("workbook drawer — the AMOUNT line declares its basis (fix round)", (
     expect(amountBasisLine({ fy: "all-years" })).toBe("all-years");
   });
 
-  it("renders on the card when the clicked figure declared context", async () => {
+  it("renders on the card when the clicked figure declared context — deriving the exhibit from the CITATION's own sheet (§48)", async () => {
     render(
       <WorkbookCard
         citation={F35_CITATION}
@@ -544,7 +570,23 @@ describe("workbook drawer — the AMOUNT line declares its basis (fix round)", (
       />,
     );
     const el = await screen.findByTestId("workbook-amount-basis");
+    // F35_CITATION.sheet is "Exhibit P-1" — WorkbookCard derives "procurement"
+    // from it (exhibitFamilyFromSheet), with no figure.exhibitFamily and no
+    // program lookup involved.
     expect(el.textContent).toBe("FY2024 · actuals · P-1 TOA · PB2026");
+  });
+
+  it("labels the basis line R-1 for a citation whose OWN sheet is Exhibit R-1 — the live defect this task fixes", async () => {
+    render(
+      <WorkbookCard
+        citation={SINGLE_CITATION}
+        factId={SINGLE_FID}
+        figure={{ fy: 2019, measure: "total", basis: "toa", edition: 2026 }}
+      />,
+    );
+    const el = await screen.findByTestId("workbook-amount-basis");
+    expect(el.textContent).toBe("FY2019 · total · R-1 TOA · PB2026");
+    expect(el.textContent).not.toContain("P-1 TOA");
   });
 
   it("is absent — not fabricated — for a drill-down open with no figure", () => {

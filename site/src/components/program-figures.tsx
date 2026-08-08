@@ -1,8 +1,9 @@
-import { Cite } from "@/components/cite";
+import { Cite, type ExhibitFamily } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
 import { DecadeTrajectory } from "@/components/decade-trajectory";
 import { ReconciliationStrip } from "@/components/reconciliation-strip";
 import { CoverageNote } from "@/components/coverage-note";
+import { normalizeExhibitFamily } from "@/lib/basis";
 import type {
   DecadeSeries,
   ProgramBookDiff,
@@ -72,9 +73,13 @@ export function reconKeySet(summary: ProgramSummary | null): Set<string> {
 function SummaryCardCell({
   card,
   reconKeys,
+  exhibitFamily,
 }: {
   card: SummaryCard;
   reconKeys: Set<string>;
+  /** The page's OWN program exhibit (§48) — every TOA card on one program
+   *  page shares its program's single exhibit_family. */
+  exhibitFamily: ExhibitFamily;
 }) {
   const label = cardLabel(card);
   return (
@@ -104,6 +109,7 @@ function SummaryCardCell({
               fy={card.fy}
               measure={card.measure}
               edition={card.edition}
+              exhibitFamily={exhibitFamily}
               reconciled={reconKeys.has(`${card.fy}|${card.measure}`)}
             />
             {card.key === "change" && card.pct != null && (
@@ -138,8 +144,12 @@ interface ProgramFiguresProps {
   summary: ProgramSummary;
 }
 
-export function ProgramFigures({ summary }: ProgramFiguresProps) {
+export function ProgramFigures({ program, summary }: ProgramFiguresProps) {
   const reconKeys = reconKeySet(summary);
+  // §48: every TOA card on this grid is this ONE program's own figure, so
+  // they all share the page's own exhibit_family — never "mixed" here (this
+  // is not an aggregate surface).
+  const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
   return (
     <div className="mb-8">
       <h2
@@ -152,7 +162,12 @@ export function ProgramFigures({ summary }: ProgramFiguresProps) {
       {/* Key figures grid — the union cards, in slot order */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {summary.cards.map((card) => (
-          <SummaryCardCell key={card.key} card={card} reconKeys={reconKeys} />
+          <SummaryCardCell
+            key={card.key}
+            card={card}
+            reconKeys={reconKeys}
+            exhibitFamily={exhibitFamily}
+          />
         ))}
       </div>
 
@@ -176,6 +191,7 @@ export function ProgramFigures({ summary }: ProgramFiguresProps) {
  * never interpolated) when the sidecar carries one.
  */
 export function ProgramTrajectoryCard({
+  program,
   summary,
   decadeSeries = null,
   bookDiff = null,
@@ -184,6 +200,7 @@ export function ProgramTrajectoryCard({
   bookDiff?: ProgramBookDiff | null;
 }) {
   const reconKeys = reconKeySet(summary);
+  const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
   const sparkCards = summary.cards.filter(
     (c) => c.key !== "change" && c.value !== null,
   );
@@ -194,7 +211,11 @@ export function ProgramTrajectoryCard({
         Budget Trajectory
       </div>
       {sparkCards.length > 0 && (
-        <TrajectorySpark cards={summary.cards} reconKeys={reconKeys} />
+        <TrajectorySpark
+          cards={summary.cards}
+          reconKeys={reconKeys}
+          exhibitFamily={exhibitFamily}
+        />
       )}
       {decadeSeries && (
         <div className={sparkCards.length >= 2 ? "mt-4 border-t border-border pt-4" : undefined}>

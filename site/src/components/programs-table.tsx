@@ -120,9 +120,13 @@ const FIGURE_EDITION = 2026;
  * requires the declaration to be VISIBLE, not only parseable). Same
  * vocabulary as the per-figure chip on program pages — basisChipText — so the
  * index and the pages it links to say the same words.
+ *
+ * §48: this ONE column spans all 1,741 programs — both RDT&E and
+ * procurement — so it declares "mixed" explicitly (never a single exhibit
+ * it cannot prove for every row underneath it).
  */
 function BasisColumnLabel({ measure }: { measure: string }) {
-  const text = basisChipText(FIGURE_BASIS, measure, FIGURE_EDITION);
+  const text = basisChipText(FIGURE_BASIS, measure, FIGURE_EDITION, "mixed");
   if (!text) return null;
   return (
     <span
@@ -307,8 +311,8 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
         className="mb-2 text-xs text-muted-foreground sm:hidden"
       >
         Both money figures below are{" "}
-        {basisChipText(FIGURE_BASIS, "actuals", FIGURE_EDITION)} — total
-        obligational authority in USD thousands.
+        {basisChipText(FIGURE_BASIS, "actuals", FIGURE_EDITION, "mixed")} —
+        total obligational authority in USD thousands.
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-border">

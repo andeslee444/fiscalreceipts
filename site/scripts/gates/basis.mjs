@@ -98,9 +98,41 @@
  *   The contract is the property, not a choice of basis: an index may
  *   publish either basis as long as it says which.
  *
+ * LEG (f) — exhibit agreement (#48; NOTE ON THE LETTER — the task that
+ *   prescribed this leg called it "(d)". By the time this leg was written,
+ *   (d) already named the entity-totals leg below (PM Sprint 3 Task 5b,
+ *   shipped and in the pre-failure record under that letter) — reusing it
+ *   here would silently overwrite an existing, working leg's identity. The
+ *   next unused letter is (f); the substitution is recorded here, in
+ *   docs/superpowers/reviews/5c-gates-pre-failure.txt, and in the commit
+ *   message, per the "gather evidence, disclose the substitution" rule):
+ *
+ *   A TOA basis chip that names a SINGLE exhibit (starts "R-1" or "P-1 ",
+ *   never "P-1/") must match the exhibit its own program's row reports in
+ *   programs.json's `exhibit_family` field. This is the direct regression
+ *   check for the defect this task fixes: site/src/lib/basis.ts hardcoded
+ *   "P-1 TOA" for every TOA chip regardless of exhibit, so 1,077 of 1,741
+ *   corpus programs (the RDT&E ones) rendered a P-1 claim on an R-1 line.
+ *
+ *   f1 AGREEMENT — for every rendered basis-chip span on a program page whose
+ *      text resolves to a single-exhibit claim (rdte/procurement), that claim
+ *      must equal programs.json's exhibit_family for the page's own pe_bli.
+ *   f2 UNEXPLAINED MIXED — a chip rendering the both-exhibits "P-1/R-1 TOA"
+ *      form on a single-program page is allowed ONLY inside a
+ *      [data-reconciliation] ancestor (the two-basis reconciliation strip) or
+ *      a [data-basis-declared] ancestor (an aggregate surface's own
+ *      declaration point, same attribute /agency/* and /programs/ use) —
+ *      a program page otherwise has exactly one exhibit and should be able to
+ *      name it, not fall back to the honest-but-uninformative mixed form.
+ *   f3 NON-VACUITY — fewer than 100 resolved chips FAILS: the chip selector
+ *      or the exhibit map silently matching nothing is exactly the failure
+ *      mode that let the original defect ship past a gate suite that never
+ *      looked at label CORRECTNESS, only number↔citation agreement.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
- * valuesAgree, fyTokensFromLabel, validateGoldenFootnote.
+ * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
+ * isBasisChipClassName.
  */
 
 import fs from "fs";
@@ -156,9 +188,16 @@ const CROSS_PAGE_INDEXES = [
  * <Cite>'s chip and the /programs/ column label both render. Change one,
  * change both; the leg fails loudly on an unknown basis rather than skipping
  * it, so a new basis token cannot slip past unlabelled.
+ *
+ * §48: toa's mirror value updated from "P-1 TOA" to "P-1/R-1 TOA" alongside
+ * src/lib/basis.ts's BASIS_LABEL.toa — the cross-page index surfaces (leg e)
+ * declare "mixed" explicitly now, so their visible text is the both-exhibits
+ * form, not the old single-exhibit constant. Leg (f) below is the finer-
+ * grained check: it reads the PROGRAM PAGE'S OWN chip, which is exhibit-
+ * qualified per row, against this same vocabulary.
  */
 const BASIS_LABEL = {
-  toa: "P-1 TOA",
+  toa: "P-1/R-1 TOA",
   "jbook-detail": "P-40 detail",
 };
 
@@ -214,6 +253,46 @@ export function fyTokensFromLabel(label) {
   const single = label.match(/FY\s*(\d{2,4})/i);
   if (single) return { years: [norm(single[1])], change: false };
   return { years: [], change: false };
+}
+
+// ── Leg (f) helpers — exhibit-chip classification ───────────────────────────
+//
+// The rendered basis chip has no data-* marker of its own (it is a plain
+// <span> — see cite.tsx's Cite/CiteChips). What DOES uniquely identify it is
+// the exact inline utility-class signature both call sites render it with;
+// verified (grep) to appear at exactly those two spots in src/components/
+// cite.tsx and nowhere else — the fact-id chip is a NAMED class
+// (.cite-id-chip in globals.css), not this raw utility-class combination.
+const CHIP_CLASS_TOKENS = [
+  "rounded",
+  "bg-muted",
+  "leading-none",
+  "no-underline",
+  "text-muted-foreground",
+];
+
+/** True when a rendered element's `class` attribute is the basis chip's. */
+export function isBasisChipClassName(className) {
+  const tokens = (className || "").split(/\s+/).filter(Boolean);
+  return CHIP_CLASS_TOKENS.every((t) => tokens.includes(t));
+}
+
+/**
+ * Classify a rendered chip's text against the exhibit vocabulary
+ * (TOA_LABEL_BY_EXHIBIT in src/lib/basis.ts — mirror, change one change
+ * both): 'rdte' for "R-1 …", 'procurement' for "P-1 …" (the space matters —
+ * "P-1/R-1 …" is the combined form, checked FIRST so it is never
+ * misread as a procurement claim), 'mixed' for "P-1/R-1 …". Returns null for
+ * chip text this leg has no opinion about (non-TOA chips like "P-40 detail",
+ * or plain prose that happens to match the class signature but not the
+ * vocabulary — defensive, should not occur).
+ */
+export function chipExhibitClaim(text) {
+  const t = (text || "").trim();
+  if (t.startsWith("P-1/")) return "mixed";
+  if (t.startsWith("R-1 ")) return "rdte";
+  if (t.startsWith("P-1 ")) return "procurement";
+  return null;
 }
 
 // ── Golden footnote field manifest ───────────────────────────────────────────
@@ -943,6 +1022,9 @@ export async function runBasisGate() {
   // ── Leg (d) — entity totals: reproduce, and mean the period they name ──────
   runEntityTotalsLeg(errors, notes);
 
+  // ── Leg (f) — exhibit agreement (#48) ──────────────────────────────────────
+  runExhibitAgreementLeg(pages, errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -1265,6 +1347,147 @@ function runEntityTotalsLeg(errors, notes) {
     notes.push(
       `leg d3: entity_xwalk.parquet is newer than every award partition it reads ✓`,
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (f) — EXHIBIT AGREEMENT (#48)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect: site/src/lib/basis.ts hardcoded BASIS_LABEL.toa =
+// "P-1 TOA" for every TOA figure on the site. P-1 is the procurement
+// exhibit; R-1 is RDT&E. Measured against the shipped warehouse:
+// programs.json carries exhibit_family "rdte" on 1,077 of 1,741 corpus
+// programs and "procurement" on the other 664 — so 62% of program pages were
+// stamping a procurement label on an RDT&E line, while their own citation
+// records (workbook `sheet`) said "Exhibit R-1" and the /program/ page's own
+// budget-line table correctly grouped rows under "Exhibit R-1".
+//
+// This leg reads programs.json's exhibit_family (the ground truth the fix
+// threads through as `exhibitFamily`) and walks every rendered basis-chip
+// span on every /program/{pe}/ page, checking that a single-exhibit claim
+// (starts "R-1 " or "P-1 ") matches the page's own row.
+/** programs.json's pe_bli → exhibit_family, or null if the file is missing. */
+function readExhibitFamilyMap() {
+  const p = path.join(repoRoot, "data", "site", "json", "programs.json");
+  if (!fs.existsSync(p)) return null;
+  let rows;
+  try {
+    rows = JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(rows)) return null;
+  const map = new Map();
+  for (const row of rows) {
+    if (row && typeof row.pe_bli === "string") {
+      map.set(row.pe_bli, row.exhibit_family ?? null);
+    }
+  }
+  return map;
+}
+
+const MIN_CHIPS_RESOLVED = 100;
+
+function runExhibitAgreementLeg(pages, errors, notes) {
+  const exhibitByPe = readExhibitFamilyMap();
+  if (!exhibitByPe) {
+    errors.push(
+      "leg f exhibit agreement: could not read data/site/json/programs.json — " +
+        "cannot verify a single chip against the corpus's own exhibit_family",
+    );
+    return;
+  }
+
+  let resolved = 0;
+  let agreed = 0;
+  let rowsUnlabelled = 0;
+  const mismatches = [];
+  const unexplainedMixed = [];
+
+  for (const { pe, htmlPath } of pages) {
+    const relPath = path.relative(outDir, htmlPath);
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch {
+      continue; // already reported by the leg (a) read loop above
+    }
+    const rowExhibit = exhibitByPe.get(pe);
+
+    for (const el of root.querySelectorAll("span")) {
+      if (!isBasisChipClassName(el.getAttribute("class"))) continue;
+      const chipText = (el.text || "").trim();
+      const claim = chipExhibitClaim(chipText);
+      if (claim == null) continue; // not a TOA chip (e.g. "P-40 detail")
+      resolved++;
+
+      if (claim === "mixed") {
+        const exempt =
+          hasAncestorWith(el, (a) => a.getAttribute("data-reconciliation") != null) ||
+          hasAncestorWith(el, (a) => a.getAttribute("data-basis-declared") != null);
+        if (!exempt) {
+          unexplainedMixed.push(
+            `${relPath}: chip "${chipText}" renders the both-exhibits form with no ` +
+              `[data-reconciliation] or [data-basis-declared] ancestor — a single ` +
+              `program page has ONE exhibit (this one is "${rowExhibit ?? "unlabelled"}") ` +
+              `and should be able to name it`,
+          );
+        }
+        continue;
+      }
+
+      if (rowExhibit == null) {
+        rowsUnlabelled++; // e.g. a rollup-tier page absent from programs.json
+        continue;
+      }
+      if (claim !== rowExhibit) {
+        mismatches.push(
+          `${relPath}: chip reads "${chipText}" (claims ${claim}) but programs.json's ` +
+            `exhibit_family for pe_bli "${pe}" is "${rowExhibit}"`,
+        );
+      } else {
+        agreed++;
+      }
+    }
+  }
+
+  if (mismatches.length > 0) {
+    errors.push(
+      `leg f1 exhibit agreement: ${mismatches.length} basis chip(s) name an exhibit ` +
+        `that disagrees with their own program's exhibit_family (first ${MAX_LISTED}):`,
+    );
+    for (const m of mismatches.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (mismatches.length > MAX_LISTED)
+      errors.push(`  ... and ${mismatches.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg f1: ${agreed} single-exhibit basis chips agree with their program's ` +
+        `exhibit_family (${rowsUnlabelled} chip(s) on rows absent from programs.json skipped) ✓`,
+    );
+  }
+
+  if (unexplainedMixed.length > 0) {
+    errors.push(
+      `leg f2 unexplained mixed chip: ${unexplainedMixed.length} chip(s) render ` +
+        `"P-1/R-1 TOA" on a single-program page outside any declared-aggregate or ` +
+        `reconciliation context (first ${MAX_LISTED}):`,
+    );
+    for (const m of unexplainedMixed.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (unexplainedMixed.length > MAX_LISTED)
+      errors.push(`  ... and ${unexplainedMixed.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg f2: no unexplained "P-1/R-1" chip on any program page ✓`);
+  }
+
+  if (resolved < MIN_CHIPS_RESOLVED) {
+    errors.push(
+      `leg f3 is VACUOUS: only ${resolved} basis chip(s) resolved to an exhibit claim ` +
+        `across ${pages.length} program pages (need ≥ ${MIN_CHIPS_RESOLVED}) — the chip ` +
+        `selector or exhibitFamily threading is not matching the built pages`,
+    );
+  } else {
+    notes.push(`leg f3: ${resolved} basis chips resolved — non-vacuous ✓`);
   }
 }
 
