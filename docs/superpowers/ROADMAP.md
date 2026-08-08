@@ -1114,6 +1114,41 @@ checks claim↔citation. Sprint A′ (`docs/superpowers/plans/
 2026-08-07-sprint-a-prime-claim-citation.md`) closes all six and adds the
 gate family that makes the class visible.
 
+> **✅ ALL SIX CLOSED 2026-08-08** on branch `sprint-a-prime-claim-citation`
+> (20 commits, HEAD `b41ddaa`). Verified at final HEAD: **24/24 gates PASS**,
+> 1,551 pytest, 949 vitest, `tsc` clean, 0 eslint errors, `verify-lineage` PASS
+> (6 legs), `verify-phase5b3` PASS (50/50 dossiers), eval 47/48 · citations
+> 43/43 (the one miss is q022, a pre-existing eval-wording defect owned by the
+> backlog-drawdown plan's Task A4, not by this sprint). Citation parity
+> json↔parquet 110,875 == 110,875. **Not deployed** — deploy is the
+> controller's call.
+>
+> **New gate legs, all attached to existing gates so the suite stays 24:**
+> gate 2 leg (t) request-vs-enacted vocabulary · gate 2 leg (cc) dollar
+> denominators · gate 23 leg (f) exhibit agreement · gate 23 leg (g)
+> reconciliation split · gate 9 leg (e) district no-double-count ·
+> `verify-lineage` leg (f) no-retraction · dbt `assert_district_totals_no_double_count`,
+> `assert_district_totals_grain_unique`, `assert_program_mentions_evidence` ·
+> regression tests `test_citation_parity.py`, `test_export_site_dossier_filter.py`.
+>
+> **What each fix cost in published numbers** — see the corrections table on
+> `/methodology/`: district linkable $8.01B → $5.58B; lobbying mentions
+> 34,538 → 10,447; `/programs/` counter → $228.5B of $385.3B (59.3%); stated
+> lineage edges 31 → 29; FY2026 figures gained a discretionary/reconciliation
+> split; the R-1 basis chip corrected on 1,077 of 1,741 programs.
+>
+> **Not closed by this sprint, filed as #54 and #55:** #50's label reaches
+> `/program/*` only, and Lockheed still lacks the F-35 pending alias curation.
+>
+> **Process note for the next sprint.** Every one of the seven tasks found a
+> defect in the plan's *prescribed code* — a regex matching its own prescribed
+> fix, a gate letter colliding with a live leg, units off 1000×, a
+> grain-mismatched fail-proof, a prescribed file needing no change, a
+> misattributed page-weight regression, and a negation window that would have
+> deleted a legitimate edge. The plan's *measured figures* held up every time,
+> because they were reproduced against the warehouse. The code was never
+> executed before being written down. Write plans accordingly.
+
 > **Owner decision, 2026-08-07 (#49, #51, #52):** where a published figure is currently
 > large and false, publish the smaller true one. District linkable dollars fall
 > $8.01B → $5.58B; the lobbying mention count falls by whatever the evidence rule
