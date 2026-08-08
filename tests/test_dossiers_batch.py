@@ -943,6 +943,122 @@ class TestGate:
         assert not res["checks"]["required_sections"]["ok"]
         assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
 
+    # -----------------------------------------------------------------------
+    # required_sections TIGHTENING (follow-up to #52, 2026-08): an empty
+    # required section still fails UNLESS the sidecar records the section's
+    # own drop count AND the built page actually discloses it. Three arms,
+    # matching the PR description's own "prove it can still fail" ask:
+    #   1. drop recorded, but no built site available to verify   -> FAIL
+    #   2. drop recorded, built site exists but does NOT disclose -> FAIL
+    #   3. drop recorded AND the built page discloses it          -> PASS
+    # Arm 1's sibling (no drop recorded at all) is
+    # test_empty_required_section_fails above — unchanged by this feature.
+    # -----------------------------------------------------------------------
+
+    def test_arm1_drop_recorded_but_no_built_site_still_fails(self, gate_fixture):
+        """No built_site_dir passed (the standalone `dossiers gate` shape,
+        run right after collect, before any site build exists) — the
+        exception cannot be granted without something to verify against, so
+        this must fail exactly as the ORIGINAL, unconditional rule always
+        did. Recording a drop is necessary but not sufficient."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["dropped_claims"] = 3
+        doc["dropped_claims_by_section"] = {"players": 3}
+        path.write_text(json.dumps(doc))
+        res = _run_gate(gate_fixture)  # no built_site_dir kwarg
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+
+    def test_arm2_drop_recorded_but_page_does_not_disclose_it_still_fails(
+        self, gate_fixture, site_fixture,
+    ):
+        """A built site IS available, but the actual page — a renderer
+        regression, or simply the wrong page — does not carry the
+        disclosure. The gate must check the ARTIFACT, not the sidecar's own
+        say-so; a claimed drop with no visible correction note is exactly
+        the silent-content risk this whole feature exists to prevent."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["dropped_claims"] = 3
+        doc["dropped_claims_by_section"] = {"players": 3}
+        path.write_text(json.dumps(doc))
+        built = site_fixture.tmp / "out"
+        (built / "program" / PE2).mkdir(parents=True)
+        (built / "program" / PE2 / "index.html").write_text(
+            "<html><body>no correction note anywhere on this page</body></html>"
+        )
+        res = _run_gate(gate_fixture, built_site_dir=built)
+        assert not res["checks"]["required_sections"]["ok"]
+        assert f"{PE2}: players" in res["checks"]["required_sections"]["empty"]
+
+    def test_arm2b_page_carries_the_attribute_at_zero_still_fails(
+        self, gate_fixture, site_fixture,
+    ):
+        """A present-but-zero attribute is a sidecar/page disagreement, not
+        a disclosure — must not be treated as one."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["dropped_claims"] = 3
+        doc["dropped_claims_by_section"] = {"players": 3}
+        path.write_text(json.dumps(doc))
+        built = site_fixture.tmp / "out"
+        (built / "program" / PE2).mkdir(parents=True)
+        (built / "program" / PE2 / "index.html").write_text(
+            '<html><body><p data-dossier-dropped-claims="0">nothing removed</p></body></html>'
+        )
+        res = _run_gate(gate_fixture, built_site_dir=built)
+        assert not res["checks"]["required_sections"]["ok"]
+
+    def test_arm3_drop_recorded_and_page_discloses_it_passes(
+        self, gate_fixture, site_fixture,
+    ):
+        """The ONLY situation that may pass with an empty required section —
+        strictly NARROWER than the old rule, which never permitted any.
+        Both conditions genuinely hold: the sidecar attributes the empty
+        section to a citation-membership drop, and the built page's own
+        DOM proves a reader will see the correction note."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        doc["dropped_claims"] = 3
+        doc["dropped_claims_by_section"] = {"players": 3}
+        path.write_text(json.dumps(doc))
+        built = site_fixture.tmp / "out"
+        (built / "program" / PE2).mkdir(parents=True)
+        (built / "program" / PE2 / "index.html").write_text(
+            '<html><body><p data-note-kind="scope" data-dossier-dropped-claims="3">'
+            "3 claims removed: they cited lobbying mentions that did not meet"
+            " the evidence standard.</p></body></html>"
+        )
+        res = _run_gate(gate_fixture, built_site_dir=built)
+        assert res["checks"]["required_sections"]["ok"], res["checks"]["required_sections"]
+        assert res["ok"]
+
+    def test_a_section_with_no_claims_and_no_drop_still_fails_even_with_a_built_site(
+        self, gate_fixture, site_fixture,
+    ):
+        """The exception is scoped to genuinely-dropped sections only — a
+        built site being available must not, by itself, excuse an empty
+        section that was never populated in the first place (the ORIGINAL
+        defect this check exists to catch)."""
+        path = gate_fixture.dossier_dir / f"{PE2}.json"
+        doc = json.loads(path.read_text())
+        doc["dossier"]["players"]["claims"] = []
+        # No dropped_claims_by_section at all — this section is empty for
+        # some other (unknown, unproven-safe) reason.
+        path.write_text(json.dumps(doc))
+        built = site_fixture.tmp / "out"
+        (built / "program" / PE2).mkdir(parents=True)
+        (built / "program" / PE2 / "index.html").write_text(
+            '<html><body><p data-dossier-dropped-claims="3">disclosed</p></body></html>'
+        )
+        res = _run_gate(gate_fixture, built_site_dir=built)
+        assert not res["checks"]["required_sections"]["ok"]
+
     def test_missing_dossier_file_fails(self, gate_fixture):
         (gate_fixture.dossier_dir / f"{PE2}.json").unlink()
         res = _run_gate(gate_fixture)

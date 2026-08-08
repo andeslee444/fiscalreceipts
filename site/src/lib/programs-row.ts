@@ -58,10 +58,23 @@ export interface ProgramsTableRow {
    * FY2026 discretionary/reconciliation split (backlog #50), USD thousands,
    * same TOA basis as fy26 — CSV-export-only (no on-screen column; the
    * on-screen figures are `fy26`, the combined total, and the program page's
-   * own fy26_split card). null when no such workbook row exists for this PE.
+   * own fy26_split card).
+   *
+   * (2026-08 page-weight fix, gate 1) OPTIONAL — omitted from the row
+   * entirely, not carried as null, for the 1,577 of 1,741 programs with no
+   * reconciliation at all. For those, discK always equals fy26 exactly
+   * (backlog #50's own identity: disc + reconciliation = total; with no
+   * reconciliation, disc IS the total already on the row as `fy26`), so
+   * shipping it was 1,577 redundant copies of a number already present —
+   * measured as the direct cause of /programs/'s page-weight ceiling
+   * failure (discK/reconK appeared once per row across all 1,741 rows).
+   * buildProgramsCsv (programs-table.tsx) derives the discretionary CSV
+   * column back from fy26 when discK is absent AND there is no
+   * reconciliation; present only when the program genuinely has a nonzero
+   * reconciliation split.
    */
-  discK: number | null;
-  reconK: number | null;
+  discK?: number;
+  reconK?: number;
 }
 
 /**
@@ -105,7 +118,7 @@ export function toProgramsTableRow(
   p: ProgramRow,
   cells: ProgramDecadeCells | undefined,
 ): ProgramsTableRow {
-  return {
+  const base: ProgramsTableRow = {
     pe: p.pe_bli,
     org: p.org,
     title: p.title,
@@ -113,7 +126,20 @@ export function toProgramsTableRow(
     fy24Fid: cells?.fy24?.fid ?? null,
     fy26: cells?.fy26?.v ?? null,
     fy26Fid: cells?.fy26?.fid ?? null,
-    discK: p.fy2026_disc_toa_usd_thousands ?? null,
-    reconK: p.fy2026_reconciliation_toa_usd_thousands ?? null,
+  };
+  const reconK = p.fy2026_reconciliation_toa_usd_thousands;
+  // "No reconciliation" — omit both fields (see the discK/reconK doc comment
+  // above for why this is safe: discretionary == fy26 in that case, and
+  // buildProgramsCsv derives it back). A genuinely absent value (`null`) and
+  // an explicit zero are treated the same; the live corpus only ever
+  // produces null for "no split exists," never a literal 0, but either way
+  // means the same thing here.
+  if (reconK == null || reconK === 0) {
+    return base;
+  }
+  return {
+    ...base,
+    discK: p.fy2026_disc_toa_usd_thousands ?? undefined,
+    reconK,
   };
 }

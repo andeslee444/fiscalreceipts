@@ -3511,10 +3511,11 @@ def _emit_dossier_sidecars(
             skipped.append(f"{pe_bli}: schema errors ({'; '.join(errors[:3])})")
             continue
 
-        dropped_here = 0
+        dropped_by_section: dict[str, int] = {}
         for section in ALL_SECTIONS:
             claims = dossier.get(section, {}).get("claims", [])
             kept = []
+            section_dropped = 0
             for claim in claims:
                 citation = claim.get("citation") or {}
                 if "fact_id" in citation:
@@ -3526,9 +3527,12 @@ def _emit_dossier_sidecars(
                 if ok:
                     kept.append(claim)
                 else:
-                    dropped_here += 1
+                    section_dropped += 1
             dossier[section]["claims"] = kept
+            if section_dropped:
+                dropped_by_section[section] = section_dropped
 
+        dropped_here = sum(dropped_by_section.values())
         if dropped_here:
             total_dropped += dropped_here
             dropped_by_pe[pe_bli] = dropped_here
@@ -3546,6 +3550,15 @@ def _emit_dossier_sidecars(
                     # ScopeNote on the program page when > 0 (program-
                     # dossier.tsx) so the correction ships labelled.
                     "dropped_claims": dropped_here,
+                    # (follow-up, 2026-08) PER-SECTION breakdown — lets
+                    # dossier_gate's required_sections check distinguish "this
+                    # section is empty because every claim in it failed the
+                    # evidence standard, and the page says so" from "this
+                    # section is empty because generation never populated it
+                    # at all," which is still a real defect. Only sections
+                    # with >=1 drop are present (matches dropped_by_pe's
+                    # sparse-dict convention above).
+                    "dropped_claims_by_section": dropped_by_section,
                 },
                 ensure_ascii=False,
                 indent=1,

@@ -5413,3 +5413,203 @@ dossier edge case). uv run pytest: 1,536 passed (was 1,530). npx vitest run:
 942 passed (was 935). npx tsc --noEmit: clean. npx eslint .: 0 errors, 16
 pre-existing warnings, none in touched files. Suite count unchanged: still
 24 gates (grep -c "gateResults.push" site/scripts/verify.mjs = 24).
+
+================================================================================
+SECOND FOLLOW-UP TO #52 (same day) — /programs/ PAGE WEIGHT + THE
+required_sections GATE MADE PRECISE (TIGHTENED, NOT LOOSENED)
+================================================================================
+
+Two corrections requested after the prior follow-up: (1) the gate-1 page-
+weight failure was mis-diagnosed as pre-existing/unrelated — it is caused by
+this branch (backlog #50's discK/reconK CSV-export fields, riding on every
+one of 1,741 /programs/ rows); (2) the empty-players conflict for 0603896C
+should be resolved by making required_sections itself more precise, not by
+fabricating a claim or exempting one PE.
+
+--------------------------------------------------------------------------
+PART 1 — /programs/ PAGE WEIGHT
+--------------------------------------------------------------------------
+
+MEASURED CAUSE, CONFIRMED BEFORE CHANGING ANYTHING: `grep -o '"discK"' out/
+programs/index.html | wc -l` -> 1741; same for `"reconK"`. Both fields
+(lib/programs-row.ts's ProgramsTableRow, backlog #50/A'4) ride on EVERY row
+of the RSC flight payload even though only 164-207 of 1,741 programs (source
+counts differ slightly depending on which merged dataset is queried; the
+underlying fact does not) have a genuine, non-zero reconciliation split. For
+the other ~1,577, `fy2026_reconciliation_toa_usd_thousands` is null and
+`fy2026_disc_toa_usd_thousands` — when present at all — is IDENTICAL to
+`fy26` (backlog #50's own identity: disc + reconciliation = total, and with
+no reconciliation, disc IS the total). That is 1,577 rows carrying a
+redundant copy of a number already on the row.
+
+VERIFIED DATA SHAPE BEFORE ASSUMING THE FIX WAS SAFE (data/site/json/
+programs.json, 1,741 rows): reconciliation is NEVER a literal 0 in the raw
+source — only null (1,577) or a real positive value (164). Of the 1,577
+null-reconciliation rows, 1,314 DO carry a (redundant) discK value and 263
+carry neither. A THIRD, rarer shape exists that the initial fix plan did not
+anticipate and had to be handled correctly: 23 rows have a POSITIVE
+reconciliation value but a NULL discretionary figure — a genuine data gap,
+not "no reconciliation." Naively falling back to fy26 for "discK absent"
+would have overstated these 23 rows' discretionary spend by their entire
+reconciliation amount.
+
+FIX. lib/programs-row.ts: discK/reconK are now OPTIONAL fields, OMITTED
+from the row object entirely (not carried as null) whenever
+`fy2026_reconciliation_toa_usd_thousands` is null or 0 — present only for
+genuinely-split programs. components/programs-table.tsx's buildProgramsCsv
+derives the discretionary CSV column at build time instead of reading a
+payload field:
+  - discK present            -> use it (a real, non-trivial split)
+  - discK absent, no recon   -> fy26 (discretionary IS the whole request)
+  - discK absent, HAS recon  -> blank (the 23-row gap — falling back to
+    fy26 here would be WRONG, not just imprecise, so it does not)
+This third branch is a disclosed refinement beyond the literal instruction
+("fall back to fy26 when discK is absent") — the literal version would have
+silently overstated 23 real rows; the shipped version does not.
+
+MEASURED, TWO DIFFERENT WAYS (the discrepancy itself is worth recording):
+  command-line `gzip -c out/programs/index.html | wc -c`:
+    before this fix:  291,089  (owner's own measured "current" figure)
+    after this fix:   285,303  (-5,786 bytes)
+  gate 1's own measurement (site/scripts/gates/build.mjs, Node zlib — the
+  AUTHORITATIVE number, since it is what actually gates the branch):
+    after this fix:   278,184  (ceiling 278,000, still +184 over)
+The two disagree by ~7KB because gzip compresses long runs of near-
+identical repeated substrings (1,577x `"discK":null,"reconK":null,`-shaped
+JSON) far more efficiently than it compresses removing them entirely would
+suggest — trimming genuinely redundant, highly-repetitive payload helps RAW
+size much more than GZIP size. Raw size dropped 2,732,113 -> 2,663,618
+(-68,495 bytes) for only -5,786 gzipped bytes by the looser measurement, and
+apparently landed within ~184 bytes of the ceiling by gate 1's own (the two
+tools' compression settings evidently differ enough to explain the rest).
+
+STOPPED PER EXPLICIT INSTRUCTION rather than chasing the remaining 184
+bytes or raising the ceiling: "If the payload trim doesn't get /programs/
+under the ceiling, report the number you reached and stop." Reported: 184
+bytes over, gate 1 build still FAILs on this one line, owner's decision
+needed on how (or whether) to close the remainder. NOT attempted: raising
+PAGE_WEIGHT_BUDGET's maxGzip (that is exactly the weakening the standing
+rules forbid), trimming any OTHER /programs/ field (out of the scope this
+task authorized), or any other unauthorized change to close the last 184
+bytes.
+
+Vitest, both row shapes explicitly pinned unchanged (site/src/__tests__/
+programs-table.test.ts, describe block "(page-weight fix) CSV output is
+unchanged for both row shapes"): a reconciliation row (discK=1916,
+reconK=7695000 — real split values survive, unaffected by the fix) and a
+non-reconciliation row (discK absent from the payload — confirmed via
+Object.keys — but the CSV still emits fy26's value in the discretionary
+column). A third test pins the 23-row edge case explicitly (reconciliation
+present, discK absent -> CSV column stays blank, never fy26).
+
+--------------------------------------------------------------------------
+PART 2 — required_sections MADE PRECISE (a tightening)
+--------------------------------------------------------------------------
+
+THE BLIND SPOT. required_sections could not distinguish two situations that
+both render as "an empty required section": (a) a dossier that never had a
+players/what_it_is/why_it_matters section populated — a genuine generation
+defect, must fail — from (b) a dossier whose EVERY claim in a section
+failed the evidence standard, correctly dropped by _emit_dossier_sidecars,
+with the page's own ScopeNote saying so. It failed both, identically, with
+no way to tell them apart.
+
+THE FIX IS A TIGHTENING, STATED PRECISELY: the check now asserts BOTH
+halves of the honest case EXPLICITLY, where it used to assert neither:
+  (a) the sidecar's own `dropped_claims_by_section[section]` (new field,
+      export_site.py's _emit_dossier_sidecars — never hand-set, never keyed
+      to a PE list, computed identically for all 50 dossiers) records that
+      >=1 claim in THIS section was dropped for an unresolvable citation,
+      AND
+  (b) the ACTUAL BUILT PAGE (site/out/program/{pe_bli}/index.html) renders
+      the correction note disclosing it — checked against real HTML via a
+      new govbudget.dossiers.gate._built_page_discloses_drop() helper
+      (regex on data-dossier-dropped-claims="N", N>0), NOT the sidecar's
+      own say-so. Only possible when built_site_dir is supplied
+      (verify_phase5b3.py now passes site/out; the standalone `dossiers
+      gate` CLI path, which runs before any build exists, passes none and
+      gets the ORIGINAL, unconditional-fail behavior with no exception
+      available at all).
+An empty required section failing EITHER half still fails exactly as every
+empty required section always has. The check asserts STRICTLY MORE than
+before — it did not previously look at dropped_claims_by_section OR the
+built page at all — never less; a dossier that was already valid (no empty
+sections) is completely unaffected (see test_pass, test_recent_
+developments_may_be_empty in the existing suite, unchanged and still
+green).
+
+THREE ARMS, PROVEN ON THE REAL PRODUCTION 0603896C DOSSIER (not a
+fixture) — sidecar and built HTML never permanently altered; every mutation
+below was captured then restored, sha256-verified byte-identical.
+
+ARM 1 — drop recorded, but no built site to verify (`built_site_dir=None`,
+the standalone-gate shape) — FAIL, verbatim, real data, unmutated:
+  required_sections: {'ok': False, 'empty': ['0603896C: players']}
+  gate ok: False
+
+ARM 2 — drop recorded, built site provided, but the built page's actual
+DOM attribute was mutated away (simulating a renderer regression — the
+`data-dossier-dropped-claims="6"` HTML attribute replaced with
+`data-mutated-away="6"`; the UNRELATED escaped RSC-payload JSON text
+`\"data-dossier-dropped-claims\":6` inside a <script> tag was confirmed
+LEFT UNTOUCHED by the substitution, and does not match the gate's own
+`="..."` HTML-attribute regex, so this mutation targeted only the thing a
+browser's DOM actually renders) — FAIL, verbatim:
+  required_sections: {'ok': False, 'empty': ['0603896C: players']}
+  gate ok: False
+Restored via direct copy from a pre-mutation backup; sha256
+33dc63cf423681bc385370319e649b3297b7e306cd2d255ab4de7ee3a1b40168 both
+before and after.
+
+ARM 3 — drop recorded AND the (restored, real, unmutated) built page
+discloses it — PASS, verbatim, real data:
+  required_sections: {'ok': True, 'empty': []}
+  gate ok: True
+Confirmed again via the full `verify-phase5b3` run immediately after
+restoring: `dossiers_required_sections: PASS`, `gate dossier: → PASS` (all
+7 dossier sub-checks green, 50/50 dossiers, 706/706 = 100% warehouse-cited)
+— identical to the ARM 3 direct-call result, and the dossier sidecar file
+itself (data/site/json/dossiers/0603896C.json) diffed byte-identical to its
+pre-experiment copy throughout.
+
+A fourth arm was added as a defensive extra, not requested but cheap and
+directly relevant: a built page whose attribute is PRESENT but exactly
+`="0"` (a sidecar/page value disagreement, not a disclosure) — FAIL. And a
+fifth: a built site IS available and DOES carry the attribute on some OTHER
+page, but THIS section has no dropped_claims_by_section entry at all (never
+populated in the first place, the ORIGINAL defect class) — FAIL even with
+a built site present, confirming the exception is scoped to genuinely-
+dropped sections only, not "any dossier with a build available."
+
+pytest: tests/test_dossiers_batch.py — 5 new TestGate cases (arm1, arm2,
+arm2b, arm3, "a_section_with_no_claims_and_no_drop..."), all passing
+alongside the PRE-EXISTING test_empty_required_section_fails (unchanged,
+still green — confirms the ORIGINAL failure mode this check exists for is
+untouched). Full suite: 1,541 passed (was 1,536).
+
+--------------------------------------------------------------------------
+FULL PIPELINE, FOREGROUND, SERIALIZED (port 4173 confirmed free before
+each verify-phase5b3 invocation)
+--------------------------------------------------------------------------
+
+  uv run python -m govbudget export-site
+    -> dossiers: 50 written, 27 claim(s) dropped across 5 dossier(s)
+       (unchanged from the prior follow-up — this task did not touch
+       mentions.py or the evidence rule)
+  cd site && npm run build -> 6,735 pages, 0 prerender errors
+  uv run python -m govbudget verify-phase5b3:
+    gate dossier: → PASS (dossiers_present 50/50, structure, citations_
+      resolvable, required_sections, warehouse_ratio 706/706=100%,
+      categories — all PASS)
+    npm verify (24 gates): 23/24 PASS — gate 1 (build) FAILs SOLELY on the
+      184-byte /programs/ gzip overage (see Part 1); every other gate,
+      including the two that were previously stale-build artifacts
+      (gate 14 coverage, gate 21 program-skeleton), is genuinely green.
+    verify-phase5b3: FAIL (for the one disclosed, unresolved, reported
+      reason above — not a regression anywhere else, and the dossier
+      conflict from the prior follow-up is now FULLY RESOLVED)
+  uv run pytest: 1,541 passed
+  npx vitest run: 946 passed (was 942)
+  npx tsc --noEmit: clean
+  npx eslint .: 0 errors, 16 pre-existing warnings, none in touched files
+  Suite count unchanged: still 24 gates.

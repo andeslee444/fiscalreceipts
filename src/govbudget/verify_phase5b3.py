@@ -82,6 +82,13 @@ def _run_real_gate(site_json_dir: Path, repo_root: Path) -> dict:
     citations_path = site_json_dir / "citations.json"
     snapshots_index = repo_root / "data" / "research" / "snapshots" / "index.json"
     categories_csv = repo_root / "data-seeds" / "program_categories.csv"
+    # built_site_dir: the built Next.js output. verify-phase5b3 documents (and
+    # this call now relies on) `export-site` then `npm run build` having
+    # already run — by the time this executes, site/out/ is the CURRENT
+    # build, which is what lets required_sections's empty-section exception
+    # (see dossier_gate's docstring) check the ACTUAL rendered page rather
+    # than trusting the sidecar alone.
+    built_site_dir = repo_root / "site" / "out"
 
     top50_list = top50(config.DUCKDB_PATH)
     dim_pe = dim_programs_pe_set(config.DUCKDB_PATH)
@@ -93,6 +100,7 @@ def _run_real_gate(site_json_dir: Path, repo_root: Path) -> dict:
         categories_csv,
         top50_list,
         dim_programs_pe=dim_pe,
+        built_site_dir=built_site_dir,
     )
 
 

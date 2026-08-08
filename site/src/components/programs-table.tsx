@@ -89,6 +89,18 @@ function csvField(s: string): string {
  * FY2026 corpus total), so an analyst pulling this CSV to compute YoY growth
  * needs the split to compute it on a like-for-like (discretionary) basis
  * instead of silently mixing one-time money into the rate.
+ *
+ * (2026-08 page-weight fix) discK/reconK are no longer carried on rows with
+ * no reconciliation (lib/programs-row.ts) — 1,577 of 1,741 rows were
+ * shipping a `discK` that always equaled `fy26` exactly. The discretionary
+ * column here derives that back at CSV-build time instead of reading a
+ * payload field, so every row still gets a correct value:
+ *   - discK present            -> use it (a genuine, non-trivial split)
+ *   - discK absent, no recon   -> fy26 (discretionary IS the whole request)
+ *   - discK absent, HAS recon  -> blank (a real gap: we know there is a
+ *     split but not its discretionary side — falling back to fy26 here
+ *     would overstate it by the reconciliation amount, so this stays
+ *     empty exactly as it did before this fix)
  */
 export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
@@ -103,6 +115,8 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
+    const discValue =
+      p.discK != null ? p.discK : p.reconK == null ? p.fy26 : null;
     lines.push(
       [
         csvField(p.pe),
@@ -111,7 +125,7 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
         csvField(p.title),
         p.fy24 != null ? String(p.fy24) : "",
         p.fy26 != null ? String(p.fy26) : "",
-        p.discK != null ? String(p.discK) : "",
+        discValue != null ? String(discValue) : "",
         p.reconK != null ? String(p.reconK) : "",
       ].join(","),
     );

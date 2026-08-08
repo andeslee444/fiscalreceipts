@@ -64,10 +64,16 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
   // The client component's props are serialized into the RSC flight payload,
   // so every field here is shipped a second time on top of the rendered HTML.
   // 1,741 full rows were 975 KB where the rendered eight are 385 KB.
-  // discK/reconK (backlog #50) are CSV-export-only — no on-screen column —
-  // but they are two small numbers, not the kind of payload this budget
-  // exists to keep out (full trajectory objects, hhi, fact-id maps).
-  const RENDERED_FIELDS = [
+  //
+  // (2026-08 page-weight fix, gate 1) discK/reconK (backlog #50) are
+  // CSV-export-only — no on-screen column — and are now OMITTED from the
+  // row entirely for the 1,577 of 1,741 programs with no reconciliation:
+  // for those, discK always equals fy26 exactly, so carrying it was a
+  // redundant copy of a number already on the row, and it was measured as
+  // the direct cause of /programs/'s page-weight ceiling failure. They are
+  // present only for the minority of rows with a genuine, non-trivial
+  // reconciliation split.
+  const RENDERED_FIELDS_NO_RECON = [
     "pe",
     "org",
     "title",
@@ -75,12 +81,27 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     "fy24Fid",
     "fy26",
     "fy26Fid",
+  ];
+  const RENDERED_FIELDS_WITH_RECON = [
+    ...RENDERED_FIELDS_NO_RECON,
     "discK",
     "reconK",
   ];
 
-  it("carries exactly the nine rendered fields — no more", () => {
-    expect(Object.keys(program()).sort()).toEqual([...RENDERED_FIELDS].sort());
+  it("carries exactly the seven rendered fields when there is no reconciliation — no more", () => {
+    expect(Object.keys(program()).sort()).toEqual(
+      [...RENDERED_FIELDS_NO_RECON].sort(),
+    );
+  });
+
+  it("adds discK/reconK ONLY when the program has a real, non-zero reconciliation split", () => {
+    const row = program({
+      fy2026_disc_toa_usd_thousands: 1916,
+      fy2026_reconciliation_toa_usd_thousands: 7695000,
+    });
+    expect(Object.keys(row).sort()).toEqual(
+      [...RENDERED_FIELDS_WITH_RECON].sort(),
+    );
   });
 
   it("drops the payload the table never reads", () => {
@@ -215,10 +236,12 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     expect(row.reconK).toBe(7695000);
   });
 
-  it("nulls a missing disc/reconciliation split rather than inventing a 0", () => {
-    const row = program();
-    expect(row.discK).toBeNull();
-    expect(row.reconK).toBeNull();
+  it("OMITS the disc/reconciliation split entirely when there is none, rather than carrying a redundant null or inventing a 0", () => {
+    const row = program() as unknown as Record<string, unknown>;
+    expect(row.discK).toBeUndefined();
+    expect(row.reconK).toBeUndefined();
+    expect(Object.keys(row)).not.toContain("discK");
+    expect(Object.keys(row)).not.toContain("reconK");
   });
 });
 
@@ -284,6 +307,53 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     const fields = csv.split("\n")[1].split(",");
     expect(fields[6]).toBe("1916");
     expect(fields[7]).toBe("7695000");
+  });
+
+  // (2026-08 page-weight fix) discK/reconK no longer ride on every row's
+  // payload — buildProgramsCsv now derives the discretionary column from
+  // fy26 when there is no reconciliation. These two cases are the ones the
+  // fix must leave byte-for-byte unchanged.
+  describe("(page-weight fix) CSV output is unchanged for both row shapes", () => {
+    it("a RECONCILIATION row: the real split values, not a fy26 fallback", () => {
+      const row = program({
+        fy2026_disc_toa_usd_thousands: 1916,
+        fy2026_reconciliation_toa_usd_thousands: 7695000,
+      });
+      // Confirms the payload actually carries discK for this row (the
+      // "present only when real" half of the fix).
+      expect((row as unknown as Record<string, unknown>).discK).toBe(1916);
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[6]).toBe("1916");
+      expect(fields[7]).toBe("7695000");
+    });
+
+    it("a NON-RECONCILIATION row: discK is absent from the payload, but the CSV still emits the correct (fy26) value", () => {
+      const row = program({}, {
+        fy24: null,
+        fy26: { v: 4086744, fid: "d".repeat(16) },
+      });
+      // Confirms the payload win — discK really is gone, not just null.
+      expect(
+        Object.keys(row as unknown as Record<string, unknown>),
+      ).not.toContain("discK");
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[5]).toBe("4086744"); // fy26 column, unchanged
+      expect(fields[6]).toBe("4086744"); // disc column falls back to fy26
+      expect(fields[7]).toBe("");        // no reconciliation — stays blank
+    });
+
+    it("the rare row with reconciliation but no recorded discretionary figure stays blank, never fy26", () => {
+      // A genuine data gap (23 such rows in the live corpus): falling back
+      // to fy26 here would overstate discretionary spend by the
+      // reconciliation amount, so this must NOT trigger the fallback.
+      const row = program({
+        fy2026_disc_toa_usd_thousands: null,
+        fy2026_reconciliation_toa_usd_thousands: 500,
+      });
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[6]).toBe("");
+      expect(fields[7]).toBe("500");
+    });
   });
 
   it("quotes titles containing commas", () => {

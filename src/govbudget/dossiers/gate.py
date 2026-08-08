@@ -11,6 +11,13 @@ Per the plan's evaluator design (dossier_gate bullet):
 - >= 80% of claims CORPUS-WIDE carry warehouse (fact_id) citations.
 - required sections (what_it_is / why_it_matters / players) are non-empty;
   recent_developments MAY be empty (warehouse-only dossiers are valid).
+  EXCEPTION (follow-up to #52, 2026-08 — a tightening, not a loosening):
+  an empty required section still fails UNLESS the sidecar's own
+  dropped_claims_by_section records that every claim in it was removed for
+  failing the evidence standard AND the built page (built_site_dir) actually
+  renders the correction note disclosing it. Both conditions are checked
+  independently; either one failing still fails the section, exactly as an
+  empty required section always has.
 - program_categories.csv covers all top-50 pe_blis with an enum category and
   a resolvable source_ref (snapshot:{sha} resolving to a cached snapshot, a
   J-book xml_path, jbook:{pe_bli}:{xml_path}, or lda:{filing_uuid} — the
@@ -71,6 +78,27 @@ def pre_batch_check(top50_pe: list[str], dim_programs_pe: set[str]) -> dict:
     return {"ok": not missing, "count": len(pes), "missing": missing}
 
 
+_DROPPED_CLAIMS_ATTR_RE = re.compile(r'data-dossier-dropped-claims="(\d+)"')
+
+
+def _built_page_discloses_drop(built_site_dir: Path, pe_bli: str) -> bool:
+    """True iff out/program/{pe_bli}/index.html actually renders the
+    dropped-claims correction note (program-dossier.tsx's ScopeNote,
+    data-dossier-dropped-claims > 0) — real HTML, not the sidecar's own
+    claim that one exists. False on any missing file, read error, or a
+    present-but-zero attribute (would mean the sidecar and the page
+    disagree, which is itself something this check must NOT paper over)."""
+    page = Path(built_site_dir) / "program" / pe_bli / "index.html"
+    if not page.exists():
+        return False
+    try:
+        html = page.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    match = _DROPPED_CLAIMS_ATTR_RE.search(html)
+    return bool(match) and int(match.group(1)) > 0
+
+
 def source_ref_resolvable(ref: str, snapshot_shas: set[str]) -> bool:
     """program_categories.csv source_ref conventions (research.py docstring)."""
     ref = (ref or "").strip()
@@ -99,9 +127,21 @@ def dossier_gate(
     *,
     dim_programs_pe: set[str] | None = None,
     warehouse_floor: float = WAREHOUSE_FLOOR,
+    built_site_dir: str | Path | None = None,
 ) -> dict:
-    """The cited-or-absent dossier gate. Returns {ok, checks, totals}."""
+    """The cited-or-absent dossier gate. Returns {ok, checks, totals}.
+
+    built_site_dir (optional, e.g. site/out): when provided, required_sections
+    verifies its "empty section, honestly disclosed" exception (see below)
+    against the ACTUAL BUILT PAGE, not just the sidecar's own say-so — the
+    strongest available proof a reader will see the correction, not just that
+    the data claims one exists. Omitted in the standalone `dossiers gate`
+    CLI path (run right after `dossiers collect`, before any site build
+    exists) — with no build to check, the exception cannot be granted at
+    all, and an empty required section fails exactly as it always has.
+    """
     dossier_dir = Path(dossier_dir)
+    built_site_dir = Path(built_site_dir) if built_site_dir is not None else None
     top_pe = _top_pe(top50_list)
     checks: dict[str, dict] = {}
 
@@ -143,10 +183,43 @@ def dossier_gate(
         if errors:
             structure_errors.extend(f"{pe_bli}: {e}" for e in errors)
             continue
+        dropped_by_section = (
+            doc.get("dropped_claims_by_section") or {}
+            if isinstance(doc, dict)
+            else {}
+        )
         for section in ALL_SECTIONS:
             claims = sections[section]["claims"]
             if section in REQUIRED_SECTIONS and not claims:
-                empty_required.append(f"{pe_bli}: {section}")
+                # TIGHTENING, not a loosening (follow-up to #52, 2026-08):
+                # this used to fail EVERY empty required section, with no way
+                # to tell "generation never populated this section — a real
+                # defect" apart from "every claim in this section was
+                # correctly dropped for failing the evidence standard, and
+                # the page discloses it." The check now asserts BOTH halves
+                # of the honest case explicitly instead of assuming either:
+                #   (a) the sidecar itself records that THIS section lost
+                #       >=1 claim to the citation-membership filter
+                #       (_emit_dossier_sidecars's dropped_claims_by_section —
+                #       never hand-set, never keyed to a PE list), AND
+                #   (b) the actual BUILT PAGE renders the correction note
+                #       explaining it (checked against real HTML, not the
+                #       sidecar's own say-so) — only possible when
+                #       built_site_dir is supplied.
+                # An empty section failing EITHER half still fails, exactly
+                # as every empty required section always has; with no build
+                # to check (built_site_dir=None), the exception cannot be
+                # granted at all and the original, unconditional failure
+                # applies. So this check asserts STRICTLY MORE than before,
+                # never less.
+                section_dropped = dropped_by_section.get(section, 0)
+                disclosed = (
+                    section_dropped > 0
+                    and built_site_dir is not None
+                    and _built_page_discloses_drop(built_site_dir, pe_bli)
+                )
+                if not disclosed:
+                    empty_required.append(f"{pe_bli}: {section}")
             for i, claim in enumerate(claims):
                 total_claims += 1
                 citation = claim["citation"]
