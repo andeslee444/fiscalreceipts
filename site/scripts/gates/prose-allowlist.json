@@ -43,5 +43,45 @@
     "pattern": "$0",
     "pages": ["/methodology/"],
     "reason": "The literal zero inside the quoted feed-card template ('zeroed out in FY2026 (had $0 in FY25)') the write-up is dissecting."
+  },
+  {
+    "pattern": "$8.01B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table, WAS column: the withdrawn district total. A superseded value cannot carry a citation — the facts behind it were withdrawn — and a correction has to be able to state what it is correcting. Same class as the $7.07B defect-writeup entry above."
+  },
+  {
+    "pattern": "$5.58B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table, NOW column: the award-distinct district total. Live on /district/ where it is cited; here it is the other half of a before/after pair and would read as a dangling number alone."
+  },
+  {
+    "pattern": "$1.05B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table: Alaska's withdrawn published total, quoted to show the five-fold duplicate concretely. Superseded, so uncitable."
+  },
+  {
+    "pattern": "$209.3M",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table: the single real Alaska award the $1.05B was five copies of. Cited on /district/AK-00/; here it is narrative explaining the arithmetic of a fixed defect."
+  },
+  {
+    "pattern": "$228.5B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table, NOW column: the /programs/ dollar denominator. Cited on /programs/ itself via programs_coverage; restated here as the replacement for the withdrawn row counter."
+  },
+  {
+    "pattern": "$385.3B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table: the FY2026 request universe the index is denominated against. Cited on /programs/; the pair is meaningless split apart."
+  },
+  {
+    "pattern": "$89.01B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table: the one-time reconciliation share of the FY2026 request, explaining why program pages gained a discretionary/reconciliation split."
+  },
+  {
+    "pattern": "$385.27B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table: the FY2026 request total the $89.01B is a share of, at the precision the reconciliation arithmetic needs."
   }
 ]

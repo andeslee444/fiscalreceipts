@@ -988,6 +988,99 @@ export default function MethodologyPage() {
           the current best value alongside the correction history if one
           exists.
         </p>
+
+        <h3 className="text-base font-semibold mt-6 mb-2">
+          Corrections issued 2026-08-08
+        </h3>
+        <p className="text-muted-foreground leading-7">
+          An independent review found six published figures that were correctly
+          cited but wrongly labelled — each number matched its source, while the
+          sentence around it claimed something the source did not support. Four
+          of the corrections make a published figure <em>smaller</em>. We publish
+          the smaller true number rather than the larger false one.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm tabular-nums">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="py-1 pr-4 font-medium">Figure</th>
+                <th className="py-1 pr-4 font-medium">Was</th>
+                <th className="py-1 pr-4 font-medium">Now</th>
+                <th className="py-1 font-medium">Why</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">District linkable obligations</td>
+                <td className="py-2 pr-4">$8.01B</td>
+                <td className="py-2 pr-4">$5.58B</td>
+                <td className="py-2">
+                  One award matched to N program elements was counted N times.
+                  Alaska&apos;s $1.05B was a single $209.3M award counted five
+                  times. Totals now count each award once.
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">Lobbying program mentions</td>
+                <td className="py-2 pr-4">34,538</td>
+                <td className="py-2 pr-4">10,447</td>
+                <td className="py-2">
+                  A mention required one shared word of five or more letters, so
+                  &ldquo;Based&rdquo;, &ldquo;Services&rdquo; and
+                  &ldquo;Chemical&rdquo; counted as namings. A mention now
+                  requires a program-element code, two distinctive words, or a
+                  curated alias, and each row shows which.
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">Program index coverage</td>
+                <td className="py-2 pr-4">1,741 of 1,741</td>
+                <td className="py-2 pr-4">$228.5B of $385.3B</td>
+                <td className="py-2">
+                  The row counter denominated the index by itself. It is now
+                  denominated in dollars against the FY2026 request, and the
+                  largest excluded lines are named.
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">Program lineage (stated edges)</td>
+                <td className="py-2 pr-4">31</td>
+                <td className="py-2 pr-4">29</td>
+                <td className="py-2">
+                  Two edges were extracted from sentences that retract
+                  themselves — one described a transfer made
+                  &ldquo;erroneously&rdquo; and reversed in the next sentence.
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">FY2026 request figures</td>
+                <td className="py-2 pr-4">unlabelled</td>
+                <td className="py-2 pr-4">split disclosed</td>
+                <td className="py-2">
+                  $89.01B of the $385.27B request is one-time reconciliation
+                  money. Program pages now show the discretionary and
+                  reconciliation parts, and the discretionary change rate,
+                  beside the combined figure.
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4">Basis chip on RDT&amp;E lines</td>
+                <td className="py-2 pr-4">P-1 TOA</td>
+                <td className="py-2 pr-4">R-1 TOA</td>
+                <td className="py-2">
+                  P-1 is the procurement exhibit; 1,077 of 1,741 programs are
+                  RDT&amp;E and are reported on R-1. The chip now reads from each
+                  row&apos;s own exhibit.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-muted-foreground leading-7">
+          Twenty-seven claims in five research dossiers cited lobbying mentions
+          that no longer meet the evidence standard. Those claims were removed
+          and the affected dossiers say so.
+        </p>
       </section>
 
       {/* §7 ─────────────────────────────────────────────────────────── */}
