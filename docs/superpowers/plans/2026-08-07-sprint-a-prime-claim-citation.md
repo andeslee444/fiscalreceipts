@@ -35,6 +35,19 @@ React 19, Tailwind v4, Playwright; gate suite under `site/scripts/gates/`.
 was reproduced against the shipped warehouse and source on 2026-08-07 — the numbers in
 each task are measured, not estimated.
 
+> **The prescribed code in this plan is a starting point, not gospel — verify it before
+> you trust it.** Learned the hard way on Task A′1: the regex this plan prescribed for
+> leg (t) matched **its own prescribed fix text**, so the task as written could never
+> have reached its own stated PASS, and against the full build it scored 2 true
+> positives out of 3,172 hits. The measured *figures* in this plan were reproduced
+> against the warehouse and are reliable. The *code* was written without being executed.
+> When a prescribed snippet doesn't survive contact with real data, the right move is
+> what A′1 did: gather programmatic evidence, replace it with something **tighter**
+> (never looser — that would be weakening a gate), and disclose the substitution in the
+> code comment, the proof-can-fail record, and the commit message. Do not silently
+> conform to a spec you have evidence is wrong, and do not silently depart from one
+> either.
+
 ---
 
 ## Relationship to the backlog-drawdown plan
