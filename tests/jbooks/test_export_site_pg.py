@@ -169,11 +169,11 @@ def _make_test_duckdb(db_path: Path) -> None:
     # 6. fct_program_lobbying — MUST include filing_uuid, pe_bli, matched_term, filing_url
     # Use a proper UUID format so citation_gate5b1's UUID regex check passes.
     _lda_uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute(
         f"insert into fct_program_lobbying values"
         f" ('{_lda_uuid}','0601101E','Defense Research Sciences','darpa','mentioned DARPA',"
-        f"'https://lda.senate.gov/filings/{_lda_uuid}/','Lockheed Martin','lockheed','2025')"
+        f"'https://lda.senate.gov/filings/{_lda_uuid}/','Lockheed Martin','lockheed','2025','alias')"
     )
 
     # 7. dim_lobbyists
@@ -1062,7 +1062,7 @@ def test_programs_json_fy2024_fact_id_null_case(pg_dsn, tmp_path):
     con.execute("insert into fct_budget_trajectory values ('0601101E','DARPA',280494.0,293145.0,295000.0,1855.0,0.63)")
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
-    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
@@ -1109,7 +1109,7 @@ def test_programs_json_fy2024_fact_id_null_when_zero_amount(pg_dsn, tmp_path):
     con.execute("create table fct_budget_trajectory (pe_bli varchar, organization varchar, fy2024_actuals double, fy2025_total double, fy2026_total double, fy2526_change double, fy2526_pct_change double)")
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
-    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
@@ -1217,7 +1217,7 @@ def test_programs_json_org_translation(pg_dsn, tmp_path):
     )
     con.execute("create table dim_entities (family_key varchar, display_name varchar, uei_count bigint, total_obligation double, worst_confidence varchar)")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
-    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")
@@ -1344,7 +1344,7 @@ def test_entity_details_matching_family_gets_awards(pg_dsn, tmp_path):
     con.execute("insert into dim_entities values ('boeing','The Boeing Company',3,30000000.0,'high')")
     con.execute("create table fct_influence (family_key varchar, display_name varchar, filing_year varchar, filings_count integer, lobbying_income_usd double, lobbying_expense_usd double, lobbying_total_usd double, family_obligations_usd double)")
     con.execute("insert into fct_influence values ('lockheed','Lockheed Martin','2025',3,1000000.0,0.0,1000000.0,50000000.0)")
-    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar)")
+    con.execute("create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar, program_title varchar, matched_term varchar, description_snippet varchar, filing_url varchar, client_name varchar, family_key varchar, filing_year varchar, evidence_kind varchar)")
     con.execute("create table dim_lobbyists (name varchar, covered_position varchar, filings_count integer, revolving_door boolean)")
     con.execute("create table fct_program_concentration (pe_bli varchar, hhi double, top_family varchar, family_count bigint, program_dollars double)")
     con.execute("create table fct_improper_exposure (agency_code varchar, program_count bigint, derived_improper_amount_usd double, weighted_rate_pct double, latest_fiscal_year integer)")

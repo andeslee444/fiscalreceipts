@@ -208,7 +208,7 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
         "create table fct_program_lobbying (filing_uuid varchar, pe_bli varchar,"
         " program_title varchar, matched_term varchar, description_snippet varchar,"
         " filing_url varchar, client_name varchar, family_key varchar,"
-        " filing_year varchar)"
+        " filing_year varchar, evidence_kind varchar)"
     )
     con.execute(
         "create table dim_lobbyists (name varchar, covered_position varchar,"

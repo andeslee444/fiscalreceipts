@@ -279,9 +279,9 @@ def make_lake(data_dir: Path):
     )
     duckdb.sql(
         f"copy (select * from (values "
-        f"('uuid-lda-001','0604122D8Z','JADC2','FY26 NDAA issues related to JADC2 and acquisition.'),"
-        f"('uuid-lda-002','2012C130J','C-130J','Issues related to C-130J aircraft and appropriations.')"
-        f") t(filing_uuid, pe_bli, matched_term, description_snippet))"
+        f"('uuid-lda-001','0604122D8Z','JADC2','alias','FY26 NDAA issues related to JADC2 and acquisition.'),"
+        f"('uuid-lda-002','2012C130J','C-130J','alias','Issues related to C-130J aircraft and appropriations.')"
+        f") t(filing_uuid, pe_bli, matched_term, evidence_kind, description_snippet))"
         f" to '{influence}/lda_program_mentions.parquet' (format parquet)"
     )
 

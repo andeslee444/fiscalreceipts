@@ -13,6 +13,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { isTruncatedSnippet, tidySnippet } from "@/lib/snippet";
+import { evidenceKindLabel, evidenceKindTitle } from "@/lib/evidence";
 
 // ── SSG config — 4,258 filing pages, no fallback ──────────────────────────────
 
@@ -285,6 +286,16 @@ export default async function FilingPage({ params }: Props) {
                         matched: “{m.matched_term}”
                       </span>
                     )}
+                    {/* (#52) evidence tier — the machine-checked reason this
+                        row exists, not just what it matched on. A single
+                        common title word is never sufficient on its own. */}
+                    <span
+                      data-evidence-kind={m.evidence_kind ?? ""}
+                      title={evidenceKindTitle(m.evidence_kind)}
+                      className="rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {evidenceKindLabel(m.evidence_kind)}
+                    </span>
                   </div>
                   {m.description_snippet && (
                     <p className="mt-1 text-sm text-muted-foreground">

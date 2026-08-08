@@ -98,14 +98,19 @@ def _make_filing_fixture(tmp_path: Path) -> Path:
 
 
 def _lob_rows() -> list[tuple]:
-    """fct_program_lobbying-shaped rows (mentions)."""
+    """fct_program_lobbying-shaped rows (mentions).
+
+    (#52) evidence_kind added as the 5th column — fct_program_lobbying now
+    carries which evidence tier (pe_literal | alias | multi_token) qualified
+    the row alongside matched_term.
+    """
     return [
-        # (filing_uuid, pe_bli, program_title, matched_term,
+        # (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
         #  description_snippet, filing_url, client_name, family_key, filing_year)
-        (_UUID1, "0601101E", "Defense Research Sciences", "DARPA",
+        (_UUID1, "0601101E", "Defense Research Sciences", "DARPA", "alias",
          "…DARPA research…", f"https://lda.senate.gov/api/v1/filings/{_UUID1}/",
          "ACME CORP", "ACME", "2025"),
-        (_UUID3, "9999X", "Unknown Program", "unknown",
+        (_UUID3, "9999X", "Unknown Program", "unknown", "alias",
          "…unknown…", f"https://lda.senate.gov/api/v1/filings/{_UUID3}/",
          "GAMMA LLC", "GAMMA", "2025"),
     ]

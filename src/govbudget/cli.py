@@ -1285,9 +1285,34 @@ def cmd_influence_restamp(args) -> None:
     print(f"influence restamp: done → {filings_path}")
 
 
-def cmd_influence(args) -> None:
-    import json
+def _write_program_mentions_parquet(mentions: list[dict], mentions_path) -> None:
+    """Write lda_program_mentions.parquet (shared by `pull` and `rematch`).
 
+    Schema carries evidence_kind (#52) alongside the original four columns —
+    every row's matching tier (pe_literal | alias | multi_token) travels with
+    it from here through fct_program_lobbying to the rendered page.
+    """
+    import duckdb
+
+    mcon = duckdb.connect()
+    try:
+        mcon.execute(
+            "create table _m (filing_uuid varchar, pe_bli varchar,"
+            " matched_term varchar, evidence_kind varchar,"
+            " description_snippet varchar)"
+        )
+        mcon.executemany(
+            "insert into _m values (?,?,?,?,?)",
+            [(m["filing_uuid"], m["pe_bli"], m["matched_term"], m["evidence_kind"],
+              m["description_snippet"])
+             for m in mentions],
+        )
+        mcon.execute(f"copy _m to '{mentions_path}' (format parquet, compression zstd)")
+    finally:
+        mcon.close()
+
+
+def cmd_influence(args) -> None:
     import duckdb
 
     from govbudget.influence.lda import pull_top_families
@@ -1324,21 +1349,68 @@ def cmd_influence(args) -> None:
 
     # Write lda_program_mentions.parquet
     mentions_path = out_dir / "lda_program_mentions.parquet"
-    mcon = duckdb.connect()
-    try:
-        mcon.execute(
-            "create table _m (filing_uuid varchar, pe_bli varchar,"
-            " matched_term varchar, description_snippet varchar)"
-        )
-        mcon.executemany(
-            "insert into _m values (?,?,?,?)",
-            [(m["filing_uuid"], m["pe_bli"], m["matched_term"], m["description_snippet"])
-             for m in mentions],
-        )
-        mcon.execute(f"copy _m to '{mentions_path}' (format parquet, compression zstd)")
-    finally:
-        mcon.close()
+    _write_program_mentions_parquet(mentions, mentions_path)
     print(f"influence pull: mentions -> {mentions_path}")
+
+
+def cmd_influence_rematch(args) -> None:
+    """Re-run program-mention matching over the existing lda_filings/activities
+    parquet using the current evidence rule (#52) — no network calls, no
+    re-pull.
+
+    Re-pulling from the LDA API is forbidden for this task: it would change
+    filing amounts (income_usd/expenses_usd, dollar-bearing dossier facts),
+    and fact identity includes amount — a re-pull would orphan the 50 static
+    dossier claims (backlog D1's problem, not this one's). This command only
+    re-derives lda_program_mentions.parquet from data already on disk,
+    exactly mirroring cmd_influence_restamp's shape for lda_filings.parquet.
+    """
+    import duckdb
+
+    from govbudget.influence.mentions import build_program_terms, find_mentions
+
+    out_dir = config.PARQUET_DIR / "influence"
+    activities_path = out_dir / "lda_activities.parquet"
+    mentions_path = out_dir / "lda_program_mentions.parquet"
+
+    if not activities_path.exists():
+        print(f"influence rematch: no activities parquet at {activities_path}")
+        sys.exit(1)
+
+    print(f"influence rematch: reading {activities_path} ...")
+    acon = duckdb.connect()
+    rows = acon.execute(
+        f"select filing_uuid, description from read_parquet('{activities_path}')"
+    ).fetchall()
+    acon.close()
+    activities = [{"filing_uuid": r[0], "description": r[1]} for r in rows]
+
+    pcon = duckdb.connect(str(config.DUCKDB_PATH), read_only=True)
+    programs = pcon.execute("select pe_bli, title from dim_programs").fetchall()
+    pcon.close()
+
+    program_terms = build_program_terms(programs)
+
+    before_count = 0
+    if mentions_path.exists():
+        bcon = duckdb.connect()
+        before_count = bcon.execute(
+            f"select count(*) from read_parquet('{mentions_path}')"
+        ).fetchone()[0]
+        bcon.close()
+
+    mentions = find_mentions(activities, program_terms)
+    _write_program_mentions_parquet(mentions, mentions_path)
+
+    by_kind: dict[str, int] = {}
+    for m in mentions:
+        by_kind[m["evidence_kind"]] = by_kind.get(m["evidence_kind"], 0) + 1
+
+    print(f"influence rematch: BEFORE rows: {before_count}")
+    print(f"influence rematch: AFTER rows: {len(mentions)}")
+    for kind, n in sorted(by_kind.items()):
+        print(f"  {kind}: {n}")
+    print(f"influence rematch: done -> {mentions_path}")
 
 
 def cmd_dossiers(args) -> None:
@@ -1975,6 +2047,14 @@ def main(argv=None) -> None:
         ),
     )
     inf_restamp.set_defaults(func=cmd_influence_restamp)
+    inf_rematch = inf_sub.add_parser(
+        "rematch",
+        help=(
+            "Re-run program-mention matching over the existing lda_filings.parquet "
+            "using the current evidence rule; no network calls, no re-pull."
+        ),
+    )
+    inf_rematch.set_defaults(func=cmd_influence_rematch)
 
     an = sub.add_parser("analyst", help="text-to-SQL analyst agent (phase 5B-4)")
     an.add_argument("question", help="Natural-language question to answer")

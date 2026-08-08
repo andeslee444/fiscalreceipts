@@ -439,6 +439,12 @@ export interface ProgramAward {
 export interface ProgramMention {
   client_name: string;
   description_snippet: string;
+  /**
+   * (#52) which evidence tier qualified this row: 'pe_literal' | 'alias' |
+   * 'multi_token'. A single common title word is never sufficient on its
+   * own — see site/src/lib/evidence.ts for the rendered label.
+   */
+  evidence_kind: string;
   /** Can be null for dangling family_keys (2,781 / 32,780 lobbying rows). */
   family_key: string | null;
   filing_url: string;
@@ -878,6 +884,12 @@ export interface EntityMentionRow {
   pe_bli: string;
   program_title: string;
   matched_term: string;
+  /**
+   * (#52) which evidence tier qualified this row: 'pe_literal' | 'alias' |
+   * 'multi_token'. A single common title word is never sufficient on its
+   * own — see site/src/lib/evidence.ts for the rendered label.
+   */
+  evidence_kind: string;
   filing_year: string;
   filing_url: string;
 }
@@ -1819,6 +1831,12 @@ export interface FilingLobbyist {
 export interface FilingMention {
   description_snippet: string | null;
   matched_term: string | null;
+  /**
+   * (#52) which evidence tier qualified this row: 'pe_literal' | 'alias' |
+   * 'multi_token'. A single common title word is never sufficient on its
+   * own — see site/src/lib/evidence.ts for the rendered label.
+   */
+  evidence_kind: string | null;
   pe_bli: string;
   program_title: string | null;
   /** Null when pe_bli has no program page (plain-text mention). */

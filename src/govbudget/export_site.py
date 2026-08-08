@@ -657,8 +657,11 @@ _DATASET_SCOPES: dict[str, str] = {
     ),
     "fct_program_lobbying": (
         "One row per (LDA filing × matched program element) mention — a filing"
-        " appears once for every program its issue text names, so rows count"
-        " mentions, not filings."
+        " appears once for every program its issue text has keyword"
+        " co-occurrence with (an exact PE/BLI code, a curated alias, or"
+        " >=2 distinct title words; see evidence_kind), never a claim that the"
+        " filing names the program. Rows count evidence-tiered mentions, not"
+        " filings."
     ),
     "fct_budget_to_awards": (
         "One row per (program element × USAspending award) crosswalk link,"
@@ -1267,6 +1270,14 @@ def export_site(
             "select filing_uuid, pe_bli, matched_term, filing_url"
             " from fct_program_lobbying"
         ).fetchall()
+        # Note: evidence_kind is intentionally NOT selected here — this loop
+        # only builds citation_rows (fact_id -> official_url), which does not
+        # render evidence_kind. See §4c comment on fact_id_lda: the fact id
+        # hash is over (filing_uuid, pe_bli, matched_term) only, unaffected
+        # by the #52 evidence-tier change other than matched_term's new
+        # "|"-joined multi_token shape (a fresh fact_id, not a mutated one —
+        # same fact-id-is-immutable-once-cited discipline as every other
+        # figure on the site).
     except _duckdb.CatalogException:
         lda_rows = []
     finally:
@@ -4674,7 +4685,7 @@ def _write_all_sidecars(
     # 240 of 244 program mention lists were not newest-first, and the SSG cap
     # of 25 rows meant the arbitrary order also decided WHICH mentions shipped.
     lob_rows = con.execute(
-        "select filing_uuid, pe_bli, program_title, matched_term,"
+        "select filing_uuid, pe_bli, program_title, matched_term, evidence_kind,"
         " description_snippet, filing_url, client_name, family_key, filing_year"
         " from fct_program_lobbying"
         " order by filing_year desc, client_name, program_title, pe_bli,"
@@ -4682,13 +4693,14 @@ def _write_all_sidecars(
     ).fetchall()
     mentions_by_pe: dict[str, list] = defaultdict(list)
     for r in lob_rows:
-        (filing_uuid, pe_bli, program_title, matched_term,
+        (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
          description_snippet, filing_url, client_name, family_key, filing_year) = r
         if not filing_uuid or not pe_bli:
             continue
         mentions_by_pe[pe_bli].append({
             "filing_uuid": filing_uuid,
             "matched_term": matched_term,
+            "evidence_kind": evidence_kind,
             "description_snippet": description_snippet,
             "filing_url": filing_url,
             "client_name": client_name,
@@ -4833,7 +4845,7 @@ def _write_all_sidecars(
     # fct_program_lobbying keyed by family_key (for entity_details/mentions)
     mentions_by_fk: dict[str, list] = defaultdict(list)
     for r in lob_rows:
-        (filing_uuid, pe_bli, program_title, matched_term,
+        (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
          description_snippet, filing_url, client_name, family_key, filing_year) = r
         if not family_key or not pe_bli:
             continue
@@ -4842,6 +4854,7 @@ def _write_all_sidecars(
             "pe_bli": pe_bli,
             "program_title": program_title,
             "matched_term": matched_term,
+            "evidence_kind": evidence_kind,
             "filing_year": filing_year,
             "filing_url": filing_url,
         })
@@ -7325,8 +7338,8 @@ def _emit_filing_sidecars(
                 income_fact_id, expenses_fact_id},
        activities: [{issue_code, issue_display, description}],
        lobbyists:  [{name, covered_position}],
-       mentions:   [{pe_bli, program_title, matched_term, description_snippet,
-                     program_url}]}
+       mentions:   [{pe_bli, program_title, matched_term, evidence_kind,
+                     description_snippet, program_url}]}
 
     Index file: {filings: [{filing_uuid, client_name, registrant_name,
                             filing_year, filing_type, has_mentions,
@@ -7408,11 +7421,11 @@ def _emit_filing_sidecars(
 
     # Mentions per filing_uuid from the already-fetched fct_program_lobbying rows.
     # lob_rows cols: (filing_uuid, pe_bli, program_title, matched_term,
-    #                 description_snippet, filing_url, client_name, family_key,
-    #                 filing_year)
+    #                 evidence_kind, description_snippet, filing_url,
+    #                 client_name, family_key, filing_year)
     mentions_by_uuid: dict[str, list] = {}
     for r in lob_rows:
-        (filing_uuid, pe_bli, program_title, matched_term,
+        (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
          description_snippet, _filing_url, _client_name, _family_key,
          _filing_year) = r
         if not filing_uuid or not pe_bli:
@@ -7420,6 +7433,7 @@ def _emit_filing_sidecars(
         mentions_by_uuid.setdefault(filing_uuid, []).append({
             "description_snippet": description_snippet,
             "matched_term": matched_term,
+            "evidence_kind": evidence_kind,
             "pe_bli": pe_bli,
             "program_title": prog_titles.get(pe_bli, program_title),
             "program_url": (
@@ -8713,6 +8727,7 @@ def _build_mentions(raw_mentions: list, top200_family_keys: set) -> list:
         result.append({
             "client_name": m.get("client_name"),
             "description_snippet": m.get("description_snippet"),
+            "evidence_kind": m.get("evidence_kind"),
             "family_key": m.get("family_key"),
             "filing_url": m.get("filing_url"),
             "filing_uuid": m.get("filing_uuid"),

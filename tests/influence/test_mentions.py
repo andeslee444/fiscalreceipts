@@ -124,22 +124,24 @@ def test_build_program_terms_returns_all_programs():
 
 
 def test_build_program_terms_jadc2_has_alias():
+    # (#52) terms are now 3-tuples (term, pattern, kind) — kind lets
+    # find_mentions apply the evidence-tier rule.
     terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
-    term_strs = [t for t, _ in terms["0604122D8Z"]]
+    term_strs = [t for t, _pattern, _kind in terms["0604122D8Z"]]
     assert "JADC2" in term_strs
 
 
 def test_build_program_terms_c130j_has_alias():
     terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
     assert "2012C130J" in terms
-    term_strs = [t for t, _ in terms["2012C130J"]]
+    term_strs = [t for t, _pattern, _kind in terms["2012C130J"]]
     assert "C-130J" in term_strs
 
 
 def test_build_program_terms_no_duplicate_terms_per_program():
     terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
     for pe_bli, term_list in terms.items():
-        term_strs_upper = [t.upper() for t, _ in term_list]
+        term_strs_upper = [t.upper() for t, _pattern, _kind in term_list]
         assert len(term_strs_upper) == len(set(term_strs_upper)), (
             f"Duplicate terms for {pe_bli}: {term_strs_upper}"
         )
@@ -148,10 +150,20 @@ def test_build_program_terms_no_duplicate_terms_per_program():
 def test_build_program_terms_compiled_patterns_are_case_insensitive():
     terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
     assert "0604122D8Z" in terms
-    for term, pattern in terms["0604122D8Z"]:
+    for term, pattern, _kind in terms["0604122D8Z"]:
         if term.upper() == "JADC2":
             assert pattern.search("jadc2") is not None
             assert pattern.search("JADC2") is not None
+
+
+def test_build_program_terms_jadc2_tagged_as_alias():
+    """(#52) JADC2 is both a title token and a curated alias for this
+    program; the curated classification wins so a lone JADC2 mention still
+    qualifies as evidence (kind="alias"), not the weaker "title_token" tier
+    that requires a second distinct token."""
+    terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
+    kinds = {t.upper(): kind for t, _pattern, kind in terms["0604122D8Z"]}
+    assert kinds["JADC2"] == "alias"
 
 
 # ---------------------------------------------------------------------------
@@ -197,11 +209,14 @@ def test_find_mentions_no_match():
 
 def test_find_mentions_result_has_required_keys():
     results = find_mentions(_ACTIVITIES_WITH_JADC2, _PROGRAM_TERMS)
+    assert results, "expected at least one match to check keys on"
     for r in results:
         assert "filing_uuid" in r
         assert "pe_bli" in r
         assert "matched_term" in r
         assert "description_snippet" in r
+        # (#52) every row now carries its evidence tier.
+        assert r["evidence_kind"] in ("pe_literal", "alias", "multi_token")
 
 
 def test_find_mentions_deduplicates_same_term_in_text():

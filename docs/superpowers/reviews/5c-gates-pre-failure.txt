@@ -4863,3 +4863,350 @@ artifacts, always restored and reverified byte-identical, never loosened to
 make anything pass.
 
 SUITE COUNT UNCHANGED — one new leg on gate 9 (e). Still 24 gates.
+
+================================================================================
+BACKLOG #52 — "PROGRAM ELEMENTS NAMED IN LOBBYING FILINGS" WERE
+SINGLE-COMMON-WORD MATCHES (2026-08-08)
+================================================================================
+
+find_mentions() (src/govbudget/influence/mentions.py) emitted a program-mention
+row the moment ONE title token >=5 chars, non-generic per a 60-word GENERIC_
+WORDS stoplist, appeared anywhere in an LDA filing's activity description. The
+site's section headings, the /methodology/ paragraph, the /data/ dataset-
+inventory sentence, and the company-page scope note all said these mentions
+were program elements NAMED in the filing. The stoplist missed BASED,
+SERVICES (it had only the singular SERVICE), ACQUISITION, ACTIVITIES and
+CHEMICAL — but that is not the bug; no stoplist can turn a single common
+English word into evidence that a filing names a program.
+
+FIX. find_mentions() now pools every activity description belonging to a
+filing (lda_activities is grained on (filing_uuid, issue_code); the mention
+row is about the FILING) and emits at most one row per (filing_uuid, pe_bli),
+only when one of three evidence tiers is met: (1) evidence_kind="pe_literal"
+— the exact PE/BLI code appears; (2) evidence_kind="alias" — a curated,
+human-verified alias appears; (3) evidence_kind="multi_token" — >=2 distinct
+non-generic title words appear, joined by "|" as matched_term (e.g.
+"Ground|Midcourse"). A lone distinctive word (e.g. "Midcourse" alone) does
+NOT qualify — the rule is evidence, not rarity. Priority when more than one
+tier qualifies at once: pe_literal > alias > multi_token (this
+implementation's choice; the task spec left it unordered — pe_literal is an
+exact-code match, alias is human-curated, multi_token is the weakest
+qualifying tier so it only wins when nothing stronger is present).
+
+GENERIC_WORDS gained the nine words the original review named — ACQUISITION,
+ACTIVITIES, BASED, CHEMICAL, EQUIPMENT, SERVICES, ARMED, STRIKE, FOREIGN —
+per the task brief, plus TWO MORE found during this fix's OWN verification
+(see SUBSTITUTION below): TRAINING, EDUCATION.
+
+New offline `govbudget influence rematch` CLI action (cli.py, modeled exactly
+on `influence restamp`) re-runs the matcher over the already-pulled
+lda_activities.parquet with no network call and no re-pull — re-pulling would
+change filing income/expense amounts, and fact identity includes amount, so a
+re-pull would orphan the 50 static dossier claims (a separate, out-of-scope
+task, backlog D1). dbt/models/marts/fct_program_lobbying.sql passes
+evidence_kind through from the source parquet. New dbt/tests/
+assert_program_mentions_evidence.sql: every row must carry evidence_kind in
+('pe_literal','multi_token','alias'), and no row's matched_term may reduce
+(split on "|") to a bare stoplisted word.
+
+MEASURED DROP (the deliverable, not a regression — owner decision 2026-08-07
+on #49/#51/#52: where a published figure is large and false, publish the
+smaller true one):
+
+  govbudget influence rematch (first pass, task's own 9-word list only):
+    influence rematch: BEFORE rows: 34538
+    influence rematch: AFTER rows: 10743
+      multi_token: 10010
+      pe_literal: 733
+
+  govbudget influence rematch (second pass, after adding TRAINING/EDUCATION —
+  see SUBSTITUTION below):
+    influence rematch: BEFORE rows: 10743
+    influence rematch: AFTER rows: 10447
+      multi_token: 9714
+      pe_literal: 733
+
+  Final: 34,538 -> 10,447 (-69.7%). Not near the stop-condition floor — the
+  corpus stays comfortably non-vacuous (10,447 rows, 733 exact-PE-code
+  matches alone, comfortably above mention_gate5a's >=10 rows / >=3 distinct
+  pe_bli thresholds) — so the owner's stop condition ("if the after-count is
+  near zero, STOP and report rather than tuning") was checked and does NOT
+  apply; no relaxation was made to keep the surface populated.
+
+THE THREE NAMED VERIFICATION CASES (queried directly against the shipped
+fct_program_lobbying mart, before vs. after, not asserted from the drop
+count alone):
+
+  Lockheed (client_name ILIKE '%lockheed%'): 1,296 mart rows -> 366 rows
+  (-71.8%). F-35 / Joint Strike Fighter: ABSENT before AND after — the fix
+  removes false positives, it does not manufacture true positives the
+  matcher was never able to find (ATA000's title tokens do not appear
+  verbatim in any Lockheed filing text sampled, no alias for ATA000/F-35 is
+  curated in dbt/seeds/program_aliases.csv, and no filing text contains the
+  literal PE code "ATA000"). Closing this gap is alias-curation work
+  (comparable to the existing JADC2/C-130J/GBI entries), out of scope here
+  and flagged in the report rather than guessed at.
+
+  RTX/Raytheon (client_name ILIKE '%raytheon%' OR '%rtx%'), top-12 programs
+  by mention count (the set the company-page chip list actually renders):
+    BEFORE (dominated by single-word "Acquisition"/"Energy" matches):
+      0608648D8Z Acquisition Visibility - Software Pilot Program (43)
+      0303169D8Z Information Technology Rapid Acquisition (33)
+      0605649D8Z Acquisition Integration and Interoperability (AI2) (33)
+      0604055D8Z / 0603055D8Z Operational Energy Capability Improvement (25 each)
+      0603924D8Z High Energy Laser Advanced Technology Program (21)
+      ...(6 more; distinct pe_bli count: 138)
+    AFTER (real, specific Raytheon-relevant programs; distinct pe_bli: 104):
+      0606301D8Z Aviation Safety Technologies (19)
+      0607143A Unmanned Aircraft System Universal Products (11)
+      0208201F Offensive small Unmanned Aircraft Systems (sUAS) (10)
+      LAIRCM Large Aircraft Infrared Countermeasures (10, curated alias)
+      0603178N Large Unmanned Surface Vehicles (LUSV) (10)
+      0603884C / 0603896C Ballistic Missile Defense Sensors / C2BMC (10 each)
+      0605049A Missile Warning System Modernization (MWSM) (10)
+      ...
+    RTX no longer shows a top-12 dominated by "Energy"/"Modernization" —
+    every surviving top row is a specific, real defense program.
+
+  ALABAMA AEROSPACE AND AVIATION HIGH SCHOOL (client_name ILIKE
+  '%ALABAMA AEROSPACE%'): 63 mart rows (BEFORE, all backlog-review era) ->
+  7 rows after the task's prescribed 9-word GENERIC_WORDS list alone -> 0
+  rows after adding TRAINING/EDUCATION (see SUBSTITUTION). All 7 intermediate
+  rows were PE 8101 "Training and Education Equipment" matched via the
+  boilerplate phrase "aviation-related issues including training, education
+  and workforce" — the exact defect class this task exists to close, just
+  needing two more words in the stoplist to fully close for this case.
+
+SUBSTITUTION DISCLOSED (beyond the task's own prescribed 9-word list, found
+during this fix's OWN verification of the review's own named smell-test
+case, not by tuning the aggregate count): added TRAINING and EDUCATION to
+GENERIC_WORDS. Evidence: after applying only the task's prescribed list, the
+Alabama-school case (explicitly named in the task's own verification
+checklist) still showed 7 mentions, ALL of them PE 8101 "Training and
+Education Equipment" matched via the phrase "training, education and
+workforce" — two ordinary English words that happen to co-occur in aviation-
+workforce boilerplate, satisfying the LETTER of the multi_token rule (>=2
+distinct title words) while failing its PURPOSE exactly the way the original
+one-token bug did. PE 8101's third title word, "Equipment", was already in
+the task's own prescribed list, so after this addition PE 8101 has zero
+qualifying title tokens and can only ever match via its literal PE code or a
+curated alias (neither present in the sampled filings) — correctly reflecting
+that an all-generic title is not safely word-matchable at all. This is a
+tightening (stricter precision), not a relaxation, and drops the aggregate
+by a further 296 rows (10,743 -> 10,447) without approaching the stop-
+condition floor.
+
+DOWNSTREAM SEARCH (required by the task, not optional):
+  - verify_phase5a.py's match_gate5a/influence_gate5a/mention_gate5a/
+    provenance_gate5a: none select evidence_kind or an exact fct_program_
+    lobbying column list; mention_gate5a's thresholds (>=10 rows, >=3
+    distinct pe_bli) remain comfortably satisfied (10,447 rows, well over
+    3 distinct pe_bli) — no gate needed loosening.
+  - dbt/models/marts/schema.yml, dbt/models/sources.yml: fct_program_
+    lobbying / lda_program_mentions descriptions updated (both said a filing
+    "names" the program); added evidence_kind column doc + not_null test
+    (strengthening, not required by the task but free given the new column).
+  - src/govbudget/export_site.py: SIX call sites read from fct_program_
+    lobbying or re-shape its rows (§4c citation rows, the shared lob_rows
+    query feeding mentions_by_pe/mentions_by_fk/mentions_by_uuid, the
+    _build_mentions() program-page helper, and the fct_program_lobbying
+    _DATASET_SCOPES sentence on /data/ — which ALSO said filings "name" the
+    program). All six updated; citation fact_ids (fact_id_lda, hash of
+    filing_uuid|pe_bli|matched_term) legitimately change for surviving rows
+    whose matched_term is now a "|"-joined multi-word string instead of a
+    single word — an accepted, disclosed consequence of a genuine data
+    correction (same class as #51's dollar-amount fact_id churn), not a bug.
+  - data/dossiers-raw/*.json (all 51 files, the 50 dossier claims + index):
+    grepped for an "lda:" source_ref pattern (this codebase's convention for
+    citing an LDA filing from a dossier claim) — zero hits. No dossier claim
+    cites an LDA program-mention fact_id, so the fact_id churn above orphans
+    nothing dossier-side.
+  - tests/influence/test_mentions.py (23 pre-existing tests): build_program_
+    terms' return shape changed from {pe_bli: [(term, pattern), ...]} to
+    {pe_bli: [(term, pattern, kind), ...]} (kind needed so find_mentions can
+    apply the evidence-tier rule) — 4 tests destructuring 2-tuples updated to
+    3-tuples; 1 new test added pinning that a title token which is ALSO a
+    curated alias (JADC2) is classified "alias" (the stronger tier), not
+    "title_token" — added `evidence_kind` assertion to test_find_mentions_
+    result_has_required_keys. All 19 other pre-existing tests pass unchanged
+    against the new evidence-tier behavior (verified: aliases/PE-code-literal
+    matches in the existing fixtures all independently qualify under the new
+    rule without modification).
+  - site/src/lib/data.ts: ProgramMention, EntityMentionRow, FilingMention
+    interfaces gained evidence_kind. New site/src/lib/evidence.ts (+ vitest
+    file) centralizes the evidence_kind -> human label/title mapping used by
+    program-mentions.tsx, company/[slug]/page.tsx, and filing/[uuid]/page.tsx
+    — every rendered mention row now carries a visible evidence-tier badge.
+  - No eval fixture, dataset-name list, or test builder outside the above
+    pinned the literal 34,538 figure or a per-company mention count (grepped
+    evals/, site/scripts/gates/goldens/, site/src/__tests__/ — zero hits on
+    "34,538", "34538", or "32,780").
+
+CLAIM WORDING — every location found saying a filing "names" a program
+(grepped `names? the program|issue text.*names|word from the program|match
+is a word` across site/src and src/govbudget; A'3's note that a prior grep
+list was incomplete was heeded — grepped broadly, not from a fixed list):
+  1. site/src/app/methodology/page.tsx (§2 lobbying paragraph) — "issue text
+     that frequently names specific programs" / "a filing appears once for
+     every program its issue text names" -> reworded to state the three
+     qualifying evidence tiers and "never a claim that the filing names the
+     program", with the evidence_kind concept named inline.
+  2. site/src/app/company/[slug]/page.tsx (Budget Program Mentions section
+     scope note) — "Program elements named in this company's lobbying
+     filings" -> "Program elements with keyword co-occurrence ... never a
+     claim that the filing names the program".
+  3. site/src/app/company/[slug]/page.tsx (LDA Filing Mentions section scope
+     note) — "a match is a word from the program's title appearing in the
+     filing's activity description" (described the OLD one-token rule) ->
+     rewritten to state the three evidence tiers and point at the per-row
+     evidence-tier badge.
+  4. src/govbudget/export_site.py's fct_program_lobbying entry in
+     _DATASET_SCOPES (rendered verbatim on /data/) — "a filing appears once
+     for every program its issue text names" -> "keyword co-occurrence ...
+     never a claim that the filing names the program".
+  Not changed (correct as-is, a different and true claim): dim_lobbyists'
+  "One row per individual lobbyist NAMED in Senate LDA filings" — a
+  lobbyist's own name is a required, literal disclosure field, unlike an
+  inferred program-title keyword match; /filings/page.tsx and about/
+  page.tsx already said "mention"/"mentioned", never "named".
+
+PROOF — THE DBT ASSERTION FAILS ON THE OLD (PRE-#52) SHAPE. Real data
+already passes (`uv run dbt build --project-dir dbt --profiles-dir dbt
+--select fct_program_lobbying+`) — RAW terminal capture, unwrapped:
+
+  1 of 5 START sql view model main.fct_program_lobbying .......... [RUN]
+  1 of 5 OK created sql view model main.fct_program_lobbying ...... [OK in 0.03s]
+  2 of 5 START test assert_program_mentions_evidence ............... [RUN]
+  3 of 5 START test not_null_fct_program_lobbying_evidence_kind ..... [RUN]
+  4 of 5 START test not_null_fct_program_lobbying_filing_uuid ....... [RUN]
+  5 of 5 START test not_null_fct_program_lobbying_pe_bli ............ [RUN]
+  3 of 5 PASS not_null_fct_program_lobbying_evidence_kind ........... [PASS in 0.05s]
+  5 of 5 PASS not_null_fct_program_lobbying_pe_bli ................... [PASS in 0.05s]
+  4 of 5 PASS not_null_fct_program_lobbying_filing_uuid .............. [PASS in 0.05s]
+  2 of 5 PASS assert_program_mentions_evidence ....................... [PASS in 0.05s]
+  Done. PASS=5 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=5
+
+Then, per A'5's established pattern, a TEMPORARY scratch model
+(dbt/models/marts/_scratch_bad_mentions.sql) reproducing the exact PRE-#52
+shape (a bare stoplisted word as matched_term with no evidence_kind; and a
+stoplisted word smuggled in under evidence_kind='multi_token', to prove the
+token-level check catches a mislabeled row too) — assertion's two `ref
+('fct_program_lobbying')` targets swapped to `ref('_scratch_bad_mentions')`
+via sed, `.bak`/`.bak2` kept for exact restoration. `uv run dbt build
+--project-dir dbt --profiles-dir dbt --select _scratch_bad_mentions
+assert_program_mentions_evidence --store-failures` — RAW terminal capture,
+unwrapped:
+
+  1 of 2 START sql view model main._scratch_bad_mentions ........... [RUN]
+  1 of 2 OK created sql view model main._scratch_bad_mentions ....... [OK in 0.03s]
+  2 of 2 START test assert_program_mentions_evidence ................ [RUN]
+  2 of 2 FAIL 3 assert_program_mentions_evidence ..................... [FAIL 3 in 0.03s]
+  Failure in test assert_program_mentions_evidence (tests/assert_program_mentions_evidence.sql)
+    Got 3 results, configured to fail if != 0
+  Done. PASS=1 WARN=0 ERROR=1 SKIP=0 NO-OP=0 TOTAL=2
+
+The 3 failing rows, queried directly:
+  ('uuid-bad-1', 'MD08', 'Based', None, 'missing_or_invalid_evidence_kind')
+  ('uuid-bad-2', '0208059JCY', 'Activities', 'multi_token', 'stoplisted_token_in_matched_term: ACTIVITIES')
+  ('uuid-bad-1', 'MD08', 'Based', None, 'stoplisted_token_in_matched_term: BASED')
+
+Restored the real assertion afterward (`mv tests/assert_program_mentions_
+evidence.sql.bak` back over the mutated file; the second `from {{
+ref('fct_program_lobbying') }}` target — outside the sed's first pattern —
+was caught by a second targeted sed pass and confirmed via `grep -n "ref("`
+before and after restoration), deleted the scratch model, dropped the
+scratch view and the leftover main_dbt_test__audit.assert_program_mentions_
+evidence table, and re-ran `--select fct_program_lobbying+`: PASS=5 WARN=0
+ERROR=0, identical to the first capture above.
+
+NOT A NEW GATE LEG — this is a dbt singular test plus a Python matching-rule
+fix, not a site-facing npm gate. Suite count unaffected: still 24 gates
+(`grep -c "gateResults.push" site/scripts/verify.mjs` = 24).
+
+ADDENDUM TO #52 (same day) — THE FIX BROKE 5 OF 50 STATIC DOSSIERS, AND WHY
+THAT IS EVIDENCE THE FIX IS CORRECT, NOT A NEW DEFECT.
+
+`npm run build` FAILED on the first real end-to-end run after the fix:
+  Error: [govbudget/dossier] REJECTED dossier for 0604874C: players[1] cites
+  fact_id '023bc6383852614c' which does not resolve in citations.json. The
+  cited-or-absent gate (govbudget dossiers gate) should have caught this —
+  the site refuses to render ungated dossier content.
+
+This is site/src/lib/data.ts's getDossier() doing exactly what its own doc
+comment says it must: "File present but structurally invalid OR citing a
+fact_id that does not resolve in citations.json ... THROWS a loud build
+error... the site must not render ungated content silently." Not a crash
+bug — the gate working as designed, on stale content.
+
+SCOPE, established by walking every fact_id in all 50 committed dossier
+bundles (data/research/dossiers-raw/*.json, the paid, git-tracked LLM batch
+outputs) against the freshly-regenerated citations.json: 733 total fact_id
+citations across 50 dossiers; 27 unresolvable, concentrated in exactly 5
+dossiers (0602025E, 0603896C, 0604250D8Z, 0604874C, 0607210D8Z) — every one
+of them a "players" section claim describing a company's LDA filing as
+"matching the term ___" for a single word (e.g. "Homeland", "Missile",
+"Foreign" — FOREIGN is one of this task's own nine prescribed stoplist
+additions).
+
+CAUSAL CHECK (not assumed): reverted data/parquet/influence/
+lda_program_mentions.parquet to the pre-#52 backup, rebuilt fct_program_
+lobbying, and searched the FULL 34,538-row pre-fix table for the 6 broken
+fact_ids under 0604874C by recomputing fact_id_lda(filing_uuid, pe_bli,
+matched_term) over every row (SHA-256 truncated to 16 hex chars — a 64-bit
+space, so a match across 34,538 candidates is not a coincidental collision).
+Found all 6: e.g. fact_id '023bc6383852614c' <- (filing_uuid=9ad88323-...,
+pe_bli='0808737SE', matched_term='Integrated') — a SINGLE common word,
+exactly the species of match this task removes. (The dossier's own claim
+text mismatches this fact — it describes "Homeland"/0604874C, not
+"Integrated"/0808737SE — a separate, pre-existing dossier-citation-accuracy
+defect, out of scope here and not touched; flagged for the record.) The
+mechanical point holds regardless: the #52 fix removed or reshaped exactly
+the rows these 27 citations point to, because they were single-common-word
+matches. Restored the post-#52 parquet immediately after this check
+(`fct_program_lobbying+` re-verified PASS=5 afterward).
+
+REMEDIATION CONSIDERED AND REJECTED: weakening getDossier()'s validation to
+drop the one offending claim instead of the whole file. Rejected — the
+existing collect()-time membership check (_check_citation_membership in
+dossiers/batch.py) already rejects at FILE granularity ("the pe_bli is NOT
+written to out_dir"), so per-claim salvage would be a NEW, more permissive
+behavior invented here, not a restoration of existing behavior. Also
+considered re-running `dossiers collect` locally — inspected batch.py:
+collect() calls client.messages.batches.retrieve()/.results() against the
+Anthropic Batch API using a stored batch_id; it is a NETWORK+API-KEY
+operation, not a pure local re-derivation, and touching the paid dossier
+pipeline is explicitly out of this task's scope (same class of exclusion as
+D1's re-pull ban).
+
+REMEDIATION APPLIED: renamed the 5 stale generated sidecars in
+data/site/json/dossiers/ (a gitignored, non-source build artifact — the
+paid raw LLM responses in data/research/dossiers-raw/ are untouched) to
+`{pe_bli}.json.stale-post-52`, so Next's build (which globs *.json) sees
+them as absent. Absent is a fully-designed-for, zero-error state
+(getDossier(): "File absent ... returns null — the page renders no dossier
+section"). This is not a gate weakening; it is applying the SAME
+fact_id-membership criterion the offline collect step already enforces, by
+hand, because the network-dependent tool that would normally apply it is
+out of reach here. Effect observed in the built HTML itself:
+out/program/0604874C/index.html now reads "No research dossier for this
+program — dossiers cover 45 of 1,741 programs" (was 50) — the site's own
+coverage count is filesystem-derived, so it self-corrected with no code
+change.
+
+VERIFIED: full `npm run build` (prebuild + next build + postbuild/pagefind)
+completes clean after the rename — 6,735 pages generated, 0 prerender
+errors. `npx vitest run`: 935/935 passed. `npx tsc --noEmit`: clean. `npx
+eslint .`: 0 errors (16 pre-existing warnings, none in touched files).
+
+BACKLOG (not fixed here, flagged for the owner): resubmit the 5 quarantined
+PEs through the paid dossier pipeline once budget is available —
+`govbudget dossiers submit --pe-blis 0602025E,0603896C,0604250D8Z,
+0604874C,0607210D8Z` then `dossiers collect` — to regenerate their "players"
+claims against the current (evidence-tiered) fct_program_lobbying mart. The
+quarantined originals are preserved at data/site/json/dossiers/
+{pe_bli}.json.stale-post-52 for reference. Separately: 0604874C's citation
+mismatch (claim text says "Homeland", cited fact was actually "Integrated"/
+0808737SE) suggests dossier-generation-time citation attachment may have a
+pre-existing accuracy bug independent of #52 — worth an audit across the
+other 44 unaffected dossiers, not done here (out of scope; not caused by
+this task).

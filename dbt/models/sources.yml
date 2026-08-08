@@ -59,7 +59,7 @@ sources:
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_lobbyists.parquet')"
       - name: lda_program_mentions
-        description: "Deterministic program-mention matches from LDA activity descriptions. One row per (filing_uuid, pe_bli, matched_term). Citation-ready: filing_uuid resolves to filing URL. All-varchar."
+        description: "Deterministic program-mention matches from LDA activity descriptions. At most one row per (filing_uuid, pe_bli) (#52 evidence-tier fix — a single common title word is no longer sufficient to emit a row). evidence_kind is one of pe_literal | alias | multi_token. Citation-ready: filing_uuid resolves to filing URL. All-varchar."
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/influence/lda_program_mentions.parquet')"
   - name: states

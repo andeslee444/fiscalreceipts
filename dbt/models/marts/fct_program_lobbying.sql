@@ -1,8 +1,20 @@
 -- fct_program_lobbying: program-mention rows linking LDA filings to dim_programs.
--- Grain: one row per (filing_uuid, pe_bli, matched_term).
--- Source: lda_program_mentions parquet (written by the influence pull pipeline).
+-- Grain: one row per (filing_uuid, pe_bli) — at most one row per pair since
+-- the #52 evidence-tier fix (mentions.py find_mentions) collects every
+-- matching term for a (filing, pe_bli) pair before emitting once. matched_term
+-- remains part of the declared key for backward compatibility with existing
+-- ORDER BY / dedup logic downstream, but it is no longer possible for the
+-- same (filing_uuid, pe_bli) to appear twice with different matched_term.
+-- Source: lda_program_mentions parquet (written by the influence pull/rematch
+-- pipeline).
 -- Every row is citation-ready: filing_uuid resolves to a filing URL via
 -- lda_filings (filing_uuid → url column).
+--
+-- evidence_kind (#52 — docs/superpowers/ROADMAP.md item 52): one of
+-- 'pe_literal' | 'alias' | 'multi_token'. A row's presence is evidence-tiered
+-- keyword co-occurrence with the filing's activity description, never a
+-- claim that the filing "names" the program — enforced by
+-- dbt/tests/assert_program_mentions_evidence.sql.
 --
 -- Neutral language: matched_term is a disclosed term from the statutory filing;
 -- no inference of intent or causation is made here.
@@ -11,6 +23,7 @@ with mentions as (
         filing_uuid,
         pe_bli,
         matched_term,
+        evidence_kind,
         description_snippet
     from {{ source('influence', 'lda_program_mentions') }}
 ),
@@ -57,6 +70,7 @@ select
     m.pe_bli,
     p.program_title,
     m.matched_term,
+    m.evidence_kind,
     m.description_snippet,
     f.filing_url,
     f.client_name,

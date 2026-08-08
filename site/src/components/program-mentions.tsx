@@ -7,6 +7,9 @@
  *
  * Per plan:
  *   - matched_term chip
+ *   - evidence_kind badge (#52) — pe_literal | alias | multi_token; a single
+ *     common title word is never sufficient evidence on its own, and every
+ *     row now says out loud which tier qualified it (@/lib/evidence)
  *   - snippet + …
  *   - internal /filing/{uuid}/ link (every mention has a filing page) with
  *     the canonical lda.senate.gov link alongside (Phase 5C Goal 2 —
@@ -29,12 +32,19 @@ import type { ProgramDetails } from "@/lib/data";
 import { PeText } from "@/components/pe-text";
 import { formatCount } from "@/lib/format";
 import { tidySnippet } from "@/lib/snippet";
+import { evidenceKindLabel, evidenceKindTitle } from "@/lib/evidence";
 
 // Inline ProgramMention type to avoid importing server-only data.ts
 // Note: family_key can be null (dangling entity — 2,781 / 32,780 lobbying rows)
 interface ProgramMention {
   client_name: string;
   description_snippet: string;
+  /**
+   * (#52) which evidence tier qualified this row: 'pe_literal' | 'alias' |
+   * 'multi_token'. A single common title word is never sufficient on its
+   * own — see @/lib/evidence for the rendered label.
+   */
+  evidence_kind: string;
   family_key: string | null;
   filing_url: string;
   filing_uuid: string;
@@ -135,6 +145,17 @@ function MentionRow({
 
         {/* Filing year */}
         <span className="text-xs text-muted-foreground">{mention.filing_year}</span>
+
+        {/* (#52) evidence tier, on every row — the machine-checked reason
+            this row exists, not just what it matched on. A single common
+            title word is never sufficient on its own; see @/lib/evidence. */}
+        <span
+          data-evidence-kind={mention.evidence_kind ?? ""}
+          title={evidenceKindTitle(mention.evidence_kind)}
+          className="inline-block px-1.5 py-0.5 rounded border border-border text-xs text-muted-foreground"
+        >
+          {evidenceKindLabel(mention.evidence_kind)}
+        </span>
       </div>
 
       {/* Snippet — PE tokens with pages become internal links (§2a) */}

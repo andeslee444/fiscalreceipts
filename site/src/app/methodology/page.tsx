@@ -234,16 +234,26 @@ export default function MethodologyPage() {
               </code>
               ) contains filings for 2025 and prior years, each with a
               permanent UUID, registrant, client company, dollar amounts,
-              agencies lobbied, and issue text that frequently names specific
-              programs. We have linked LDA client names to our
-              company-family database:{" "}
+              agencies lobbied, and issue text. We have linked LDA client
+              names to our company-family database and match each filing&rsquo;s
+              issue text against our program titles for{" "}
+              <strong className="text-foreground">
+                keyword co-occurrence
+              </strong>{" "}
+              — never a claim that the filing names the program.{" "}
               {programLobbyingRows.toLocaleString("en-US")} program mentions
-              connect filings to budget lines — one row per filing × matched
-              program element, so a filing appears once for every program its
-              issue text names (see the{" "}
+              connect filings to budget lines this way: one row per filing ×
+              matched program element, qualifying only when the exact PE/BLI
+              code appears, a curated alias appears, or at least two distinct,
+              non-generic title words co-occur in the same filing — a single
+              common word is never treated as evidence (see the{" "}
               <a href="/data/" className="underline hover:text-foreground">
                 dataset inventory
               </a>
+              , which states the qualifying tier per row as{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                evidence_kind
+              </code>
               ). Lobbying income and
               expenditure by year are shown alongside federal obligations
               received — influence is presented side by side with outcomes,
