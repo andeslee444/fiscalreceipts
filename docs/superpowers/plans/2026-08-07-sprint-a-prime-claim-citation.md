@@ -50,7 +50,7 @@ plan runs (Task A′0 files them):
 | Existing step | Correction |
 |---|---|
 | A1 Step 2 (#6) | **The contingency fires.** `dim_geography` is `[pop_state, pop_district, transaction_count, total_obligation]` — no `fiscal_year`, no `pe_bli`. Close the two mart sub-items; re-file the `dim_geography` half. |
-| A1 Step 3 (#13) | The grep is a false-positive generator: unanchored `ocr` matches So**cr**ata (10 hits). Use `grep -rniE "\bocr\b\|mistral\|document.?ai"` — genuinely clean. |
+| A1 Step 3 (#13) | The grep is a false-positive generator: unanchored `ocr` matches So**cr**ata (14 hits). Use `grep -rniE "\bocr\b\|mistral\|document.?ai" src/govbudget/ \| grep -v test` — genuinely clean, 0 hits. |
 | B2 Step 1 (#32a) | 190 PEs qualify, but only **165 have a `/program/` page**. A non-vacuity floor of 190 can never pass. Floor is 165. |
 | A2 (#46) | The allowlist mirror is at `prose-allowlist.mjs:44`, not :43 (43 is its doc comment). |
 

@@ -466,7 +466,7 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     *Correction 2026-08-07 (for whoever closes this entry):* the backlog-drawdown
     plan's verification grep, `grep -rniE "ocr|mistral|document.?ai"
     src/govbudget/`, is a false-positive generator — the unanchored `ocr` matches
-    So**cr**ata, producing 10 spurious hits (`src/govbudget/states/`,
+    So**cr**ata, producing 14 spurious hits (`src/govbudget/states/`,
     `verify_phase4.py`). Use the anchored form instead:
     `grep -rniE "\bocr\b|mistral|document.?ai" src/govbudget/ | grep -v test` —
     verified genuinely clean (0 hits) on 2026-08-07.
