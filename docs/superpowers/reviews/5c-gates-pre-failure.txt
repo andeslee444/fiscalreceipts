@@ -5613,3 +5613,86 @@ each verify-phase5b3 invocation)
   npx tsc --noEmit: clean
   npx eslint .: 0 errors, 16 pre-existing warnings, none in touched files
   Suite count unchanged: still 24 gates.
+
+================================================================================
+THIRD FOLLOW-UP TO #52 (same day) — /programs/ CLEARED BY DERIVING discK,
+NOT RE-BASELINING THE BUDGET
+================================================================================
+
+Step 1 (derive discK = fy26 - reconK, drop it from the payload entirely) was
+authorized to be tried before Step 2 (re-baselining the ceiling). It cleared
+the gate on its own — Step 2 was not needed and not taken.
+
+CHANGE. lib/programs-row.ts: `discK` is no longer a field at all (the prior
+follow-up only made it conditionally-present; this one removes it
+outright). For a genuine split, discK always equals fy26 - reconK exactly
+(backlog #50's own identity, holds for all 1,672 programs that carry a
+split) — carrying it was still a fully redundant second number even after
+the first fix stopped shipping it on no-reconciliation rows.
+components/programs-table.tsx's buildProgramsCsv now derives it:
+  - reconK absent            -> discretionary = fy26 (no split at all)
+  - reconK positive          -> discretionary = fy26 - reconK (derived)
+  - reconK negative(*)       -> discretionary = blank (see sentinel below)
+
+SENTINEL, SIZED BEFORE CHOOSING (not guessed): the 23 live-corpus rows with
+a positive reconciliation figure but no recorded discretionary one cannot
+use the fy26-reconK derivation (there is nothing to confirm the identity
+holds for them) and must stay blank exactly as before. Distinguishing
+"derivation valid" from "derivation invalid" needs one more bit of
+information per row. Two ways to carry it, sized:
+  - a third field (e.g. `"discUnknown":true`) on those 23 rows: ~19 bytes/
+    row x 23 = ~437 bytes.
+  - the SIGN of reconK itself as the flag (negative = invalid), no new
+    key: 1 byte/row (a "-" character) x 23 = 23 bytes.
+Sign sentinel chosen: >19x smaller for identical information. Real reconK
+values in the live corpus are never zero and never negative (confirmed by
+a new vitest canary that reads data/site/json/programs.json directly and
+fails if that ever changes — see below); the CSV always renders
+Math.abs(reconK), so the sign never reaches a reader.
+
+PROVEN EQUIVALENT, NOT ASSUMED (as instructed): a new test builds a row
+from the real 1203154SF ("Long Range Kill Chains") figures — disc $1,916k,
+reconciliation $7,695,000k, fy26 $7,696,916k (the module's own #50 worked
+example) — asserts the payload contains no "1916" anywhere
+(`JSON.stringify(row)`), then asserts buildProgramsCsv's OUTPUT still reads
+"1916" in the discretionary column: the exact string the OLD carried-discK
+code used to emit verbatim, now recomputed from fy26 - reconK with nothing
+on the payload naming it. All three pre-existing shape tests (reconciliation
+row, non-reconciliation row, the 23-row gap) kept green, updated only where
+they asserted against fields (`row.discK`) that no longer exist — their
+CSV-level assertions (what a reader/consumer actually sees) are unchanged
+byte-for-byte.
+
+MEASURED, WITH GATE 1's OWN METHOD (zlib.gzipSync(buf, {level: 9}) —
+site/scripts/gates/build.mjs:100 — confirmed by reading the gate's source
+before measuring again, not by re-guessing with a command-line tool that
+disagreed once already):
+  before ANY page-weight work (owner's own figure):  291,089 bytes
+  after Step 1 of the FIRST pass (discK made optional):  278,184 bytes (ceiling
+    278,000 — still +184 over)
+  after Step 1 of THIS pass (discK removed, derived instead): 277,322 bytes
+    — 678 bytes UNDER the 278,000 ceiling.
+Step 2 (re-baselining PAGE_WEIGHT_BUDGET's maxGzip, with the #49/#50
+disclosure-growth rationale recorded) was authorized but not needed and
+NOT taken — the budget is untouched, at its original value, because a
+correctness-preserving payload trim closed the gap on its own.
+
+VERBATIM, gate 1, after this fix (uncommitted-but-built state — git_head
+compares against actual HEAD regardless of working-tree edits, so this is
+the true post-fix reading):
+  gate 1 build: sidecars: 1993 program pages (1741 full tier, 0 zero-content/
+    noindex), 200 companies, 23 agencies, 110875 citations; build-meta
+    git_head: d17a54f1 ✓; build freshness: out/ is newer than all watched
+    source files ✓ → PASS
+No page-weight error line at all — the ceiling check is silent when it
+passes, exactly like every other page in PAGE_WEIGHT_BUDGET that has never
+been close to its limit.
+
+FULL RUN: `uv run python -m govbudget verify-phase5b3` ->
+  gate dossier: PASS (unchanged from the prior follow-up — this task did
+    not touch anything dossier-related)
+  npm verify (24 gates): 24/24 PASS
+  verify-phase5b3: PASS
+pytest: 1,541 passed (unchanged — no Python touched this pass). vitest: 949
+passed (was 946). tsc: clean. eslint: 0 errors, 16 pre-existing warnings.
+Suite count unchanged: still 24 gates.

@@ -90,17 +90,22 @@ function csvField(s: string): string {
  * needs the split to compute it on a like-for-like (discretionary) basis
  * instead of silently mixing one-time money into the rate.
  *
- * (2026-08 page-weight fix) discK/reconK are no longer carried on rows with
- * no reconciliation (lib/programs-row.ts) — 1,577 of 1,741 rows were
- * shipping a `discK` that always equaled `fy26` exactly. The discretionary
- * column here derives that back at CSV-build time instead of reading a
- * payload field, so every row still gets a correct value:
- *   - discK present            -> use it (a genuine, non-trivial split)
- *   - discK absent, no recon   -> fy26 (discretionary IS the whole request)
- *   - discK absent, HAS recon  -> blank (a real gap: we know there is a
- *     split but not its discretionary side — falling back to fy26 here
- *     would overstate it by the reconciliation amount, so this stays
- *     empty exactly as it did before this fix)
+ * (2026-08, second page-weight pass) `discK` is no longer carried on the
+ * payload AT ALL (lib/programs-row.ts) — for a genuine split, discK always
+ * equals fy26 - reconK exactly (backlog #50's own identity), so the field
+ * was a second redundant number even after the first pass only omitted it
+ * for no-reconciliation rows. The discretionary column here is DERIVED at
+ * CSV-build time from fy26 and the reconK sign sentinel instead:
+ *   - reconK absent                -> fy26 (discretionary IS the whole
+ *     request; no reconciliation at all)
+ *   - reconK positive (a real split, fy26 known) -> fy26 - reconK
+ *   - reconK negative (the sentinel: a split exists but no discretionary
+ *     figure was ever recorded for it — 23 such rows in the live corpus) ->
+ *     blank. Deriving fy26 - |reconK| here would be a GUESS with no
+ *     recorded discK to confirm the identity actually holds for this row;
+ *     blank is what this column has always shown for that gap.
+ * reconK itself is always rendered as its magnitude (Math.abs) — the sign
+ * is payload-internal, never shown to a reader.
  */
 export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
@@ -115,8 +120,18 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
-    const discValue =
-      p.discK != null ? p.discK : p.reconK == null ? p.fy26 : null;
+    let discValue: number | null;
+    let reconValue: number | null;
+    if (p.reconK == null) {
+      discValue = p.fy26;
+      reconValue = null;
+    } else if (p.reconK < 0) {
+      discValue = null;
+      reconValue = -p.reconK;
+    } else {
+      reconValue = p.reconK;
+      discValue = p.fy26 != null ? p.fy26 - p.reconK : null;
+    }
     lines.push(
       [
         csvField(p.pe),
@@ -126,7 +141,7 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
         p.fy24 != null ? String(p.fy24) : "",
         p.fy26 != null ? String(p.fy26) : "",
         discValue != null ? String(discValue) : "",
-        p.reconK != null ? String(p.reconK) : "",
+        reconValue != null ? String(reconValue) : "",
       ].join(","),
     );
   }

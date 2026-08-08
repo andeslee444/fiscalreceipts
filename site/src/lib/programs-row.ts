@@ -55,25 +55,36 @@ export interface ProgramsTableRow {
   /** FY26 citation fact_id — the SAME fact the program page cites. */
   fy26Fid: string | null;
   /**
-   * FY2026 discretionary/reconciliation split (backlog #50), USD thousands,
-   * same TOA basis as fy26 — CSV-export-only (no on-screen column; the
-   * on-screen figures are `fy26`, the combined total, and the program page's
-   * own fy26_split card).
+   * FY2026 reconciliation split (backlog #50), USD thousands, same TOA basis
+   * as fy26 — CSV-export-only (no on-screen column; the on-screen figures
+   * are `fy26`, the combined total, and the program page's own fy26_split
+   * card). Present ONLY for the ~200 of 1,741 programs with a genuine,
+   * non-zero reconciliation split; omitted entirely for the rest (no
+   * reconciliation at all).
    *
-   * (2026-08 page-weight fix, gate 1) OPTIONAL — omitted from the row
-   * entirely, not carried as null, for the 1,577 of 1,741 programs with no
-   * reconciliation at all. For those, discK always equals fy26 exactly
-   * (backlog #50's own identity: disc + reconciliation = total; with no
-   * reconciliation, disc IS the total already on the row as `fy26`), so
-   * shipping it was 1,577 redundant copies of a number already present —
-   * measured as the direct cause of /programs/'s page-weight ceiling
-   * failure (discK/reconK appeared once per row across all 1,741 rows).
-   * buildProgramsCsv (programs-table.tsx) derives the discretionary CSV
-   * column back from fy26 when discK is absent AND there is no
-   * reconciliation; present only when the program genuinely has a nonzero
-   * reconciliation split.
+   * (2026-08, second page-weight pass) `discK` is GONE from the payload —
+   * not just optional, never carried at all. For a program with a real
+   * split, discK always equals fy26 - reconK exactly (backlog #50's own
+   * identity: disc + reconciliation = total; measured against the shipped
+   * warehouse, holds for every one of the 1,672 program elements that carry
+   * a split), so shipping it was a second redundant number on top of the
+   * first pass's fix. buildProgramsCsv (programs-table.tsx) derives it.
+   *
+   * SENTINEL — a NEGATIVE value means "this program has a reconciliation
+   * split but no recorded discretionary figure" (23 such rows in the live
+   * corpus: reconciliation is positive, `fy2026_disc_toa_usd_thousands` is
+   * null). The fy26-reconK derivation is NOT valid for these — we have no
+   * proof the identity holds without a recorded discK to check it against —
+   * so buildProgramsCsv must render the discretionary column blank for
+   * them, exactly as it always has, not a derived-but-possibly-wrong
+   * number. The real reconciliation amount for these rows is
+   * Math.abs(reconK); the sign is a flag, never a genuine negative
+   * reconciliation (the live corpus has none — see the vitest canary in
+   * programs-table.test.ts). Chosen over a third boolean field on those 23
+   * rows because it is smaller: a sign costs 1 byte per row (23 bytes
+   * total) where a `"discUnknown":true`-shaped key costs ~19 bytes per row
+   * (~437 bytes total) — over 19x more for the same information.
    */
-  discK?: number;
   reconK?: number;
 }
 
@@ -128,18 +139,20 @@ export function toProgramsTableRow(
     fy26Fid: cells?.fy26?.fid ?? null,
   };
   const reconK = p.fy2026_reconciliation_toa_usd_thousands;
-  // "No reconciliation" — omit both fields (see the discK/reconK doc comment
-  // above for why this is safe: discretionary == fy26 in that case, and
-  // buildProgramsCsv derives it back). A genuinely absent value (`null`) and
-  // an explicit zero are treated the same; the live corpus only ever
-  // produces null for "no split exists," never a literal 0, but either way
-  // means the same thing here.
+  // "No reconciliation" — omit the field entirely (see the reconK doc
+  // comment above: buildProgramsCsv derives discretionary == fy26 in this
+  // case). A genuinely absent value (`null`) and an explicit zero are
+  // treated the same; the live corpus only ever produces null for "no
+  // split exists," never a literal 0, but either way means the same thing.
   if (reconK == null || reconK === 0) {
     return base;
   }
+  // Sign sentinel: negative means "reconciliation exists but no recorded
+  // discretionary figure" — see the doc comment above. Real reconK values
+  // in the corpus are always positive, so Math.sign is unambiguous here.
+  const hasRecordedDisc = p.fy2026_disc_toa_usd_thousands != null;
   return {
     ...base,
-    discK: p.fy2026_disc_toa_usd_thousands ?? undefined,
-    reconK,
+    reconK: hasRecordedDisc ? reconK : -reconK,
   };
 }

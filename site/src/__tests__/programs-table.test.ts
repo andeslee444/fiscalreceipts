@@ -4,6 +4,8 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";
 import {
   buildProgramsCsv,
@@ -65,14 +67,13 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
   // so every field here is shipped a second time on top of the rendered HTML.
   // 1,741 full rows were 975 KB where the rendered eight are 385 KB.
   //
-  // (2026-08 page-weight fix, gate 1) discK/reconK (backlog #50) are
-  // CSV-export-only — no on-screen column — and are now OMITTED from the
-  // row entirely for the 1,577 of 1,741 programs with no reconciliation:
-  // for those, discK always equals fy26 exactly, so carrying it was a
-  // redundant copy of a number already on the row, and it was measured as
-  // the direct cause of /programs/'s page-weight ceiling failure. They are
-  // present only for the minority of rows with a genuine, non-trivial
-  // reconciliation split.
+  // (2026-08, second page-weight pass) `discK` (backlog #50) is GONE from
+  // the payload entirely now — not just omitted for no-reconciliation rows
+  // (the first pass's fix), but never carried at all, for ANY row: it
+  // always equals fy26 - reconK when a real split exists, so
+  // buildProgramsCsv derives it instead of reading it. Only `reconK`
+  // survives, present ONLY for the minority of rows with a genuine,
+  // non-zero reconciliation split (omitted entirely otherwise).
   const RENDERED_FIELDS_NO_RECON = [
     "pe",
     "org",
@@ -82,11 +83,7 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     "fy26",
     "fy26Fid",
   ];
-  const RENDERED_FIELDS_WITH_RECON = [
-    ...RENDERED_FIELDS_NO_RECON,
-    "discK",
-    "reconK",
-  ];
+  const RENDERED_FIELDS_WITH_RECON = [...RENDERED_FIELDS_NO_RECON, "reconK"];
 
   it("carries exactly the seven rendered fields when there is no reconciliation — no more", () => {
     expect(Object.keys(program()).sort()).toEqual(
@@ -94,7 +91,7 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     );
   });
 
-  it("adds discK/reconK ONLY when the program has a real, non-zero reconciliation split", () => {
+  it("adds reconK ONLY when the program has a real, non-zero reconciliation split — discK never rides along", () => {
     const row = program({
       fy2026_disc_toa_usd_thousands: 1916,
       fy2026_reconciliation_toa_usd_thousands: 7695000,
@@ -102,6 +99,7 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     expect(Object.keys(row).sort()).toEqual(
       [...RENDERED_FIELDS_WITH_RECON].sort(),
     );
+    expect((row as unknown as Record<string, unknown>).discK).toBeUndefined();
   });
 
   it("drops the payload the table never reads", () => {
@@ -225,23 +223,58 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
     expect(toProgramsTableRow(fullProgram(), undefined).fy26).toBeNull();
   });
 
-  // Backlog #50: the disc/reconciliation split rides alongside fy26 (the
-  // combined total) rather than replacing it.
-  it("projects the fy2026 disc/reconciliation split from ProgramRow", () => {
+  // Backlog #50: reconK rides alongside fy26 (the combined total) rather
+  // than replacing it. discK is derived by buildProgramsCsv, never carried.
+  it("projects reconK POSITIVE from ProgramRow when discK is genuinely recorded", () => {
     const row = program({
       fy2026_disc_toa_usd_thousands: 1916,
       fy2026_reconciliation_toa_usd_thousands: 7695000,
     });
-    expect(row.discK).toBe(1916);
     expect(row.reconK).toBe(7695000);
   });
 
-  it("OMITS the disc/reconciliation split entirely when there is none, rather than carrying a redundant null or inventing a 0", () => {
+  it("OMITS reconK entirely when there is no reconciliation, rather than carrying a redundant null or inventing a 0", () => {
     const row = program() as unknown as Record<string, unknown>;
-    expect(row.discK).toBeUndefined();
     expect(row.reconK).toBeUndefined();
-    expect(Object.keys(row)).not.toContain("discK");
     expect(Object.keys(row)).not.toContain("reconK");
+    expect(Object.keys(row)).not.toContain("discK");
+  });
+
+  // (2026-08, second page-weight pass) THE SENTINEL: 23 rows in the live
+  // corpus have a real reconciliation split but no recorded discretionary
+  // figure — fy26 - reconK is not a provable identity for these, so
+  // buildProgramsCsv must render the discretionary column blank rather
+  // than a derived-but-unverified number. reconK's SIGN carries that
+  // distinction; this pins the projection side of it.
+  it("SENTINEL: projects reconK NEGATIVE when reconciliation exists but discK was never recorded", () => {
+    const row = program({
+      fy2026_disc_toa_usd_thousands: null,
+      fy2026_reconciliation_toa_usd_thousands: 500,
+    });
+    expect(row.reconK).toBe(-500);
+  });
+
+  // Canary against the sentinel's own precondition: the sign trick is only
+  // safe because the live corpus never produces a genuinely negative
+  // reconciliation figure. If it ever does, this test — not a silently
+  // wrong CSV column — is what should catch it first.
+  it("CANARY: no program in the live corpus has a genuinely negative reconciliation figure", () => {
+    const path = resolve(
+      __dirname,
+      "../../../data/site/json/programs.json",
+    );
+    let rows: { fy2026_reconciliation_toa_usd_thousands?: number | null }[];
+    try {
+      rows = JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return; // no local export yet (e.g. a fresh clone) — nothing to canary
+    }
+    const negative = rows.filter(
+      (r) =>
+        r.fy2026_reconciliation_toa_usd_thousands != null &&
+        r.fy2026_reconciliation_toa_usd_thousands < 0,
+    );
+    expect(negative).toEqual([]);
   });
 });
 
@@ -297,62 +330,101 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     expect(fields[7]).toBe("");
   });
 
-  it("exports the fy2026 disc/reconciliation split (backlog #50)", () => {
+  // The real 1203154SF ("Long Range Kill Chains") figures, in USD thousands:
+  // disc $1,916k + reconciliation $7,695,000k = fy26 total $7,696,916k —
+  // module docstring's own worked example (#50). Used below wherever the
+  // disc/recon/fy26 IDENTITY has to actually hold, since discK is now
+  // DERIVED from fy26 - reconK rather than carried — a row whose fixture
+  // fy26 doesn't equal disc+recon no longer describes a real program.
+  const RECON_FY26 = { v: 1916 + 7695000, fid: "d".repeat(16) };
+
+  it("exports the fy2026 disc/reconciliation split (backlog #50), derived from fy26 - reconK", () => {
     const csv = buildProgramsCsv([
-      program({
-        fy2026_disc_toa_usd_thousands: 1916,
-        fy2026_reconciliation_toa_usd_thousands: 7695000,
-      }),
+      program(
+        {
+          fy2026_disc_toa_usd_thousands: 1916,
+          fy2026_reconciliation_toa_usd_thousands: 7695000,
+        },
+        { fy24: null, fy26: RECON_FY26 },
+      ),
     ]);
     const fields = csv.split("\n")[1].split(",");
     expect(fields[6]).toBe("1916");
     expect(fields[7]).toBe("7695000");
   });
 
-  // (2026-08 page-weight fix) discK/reconK no longer ride on every row's
-  // payload — buildProgramsCsv now derives the discretionary column from
-  // fy26 when there is no reconciliation. These two cases are the ones the
-  // fix must leave byte-for-byte unchanged.
-  describe("(page-weight fix) CSV output is unchanged for both row shapes", () => {
-    it("a RECONCILIATION row: the real split values, not a fy26 fallback", () => {
-      const row = program({
-        fy2026_disc_toa_usd_thousands: 1916,
-        fy2026_reconciliation_toa_usd_thousands: 7695000,
-      });
-      // Confirms the payload actually carries discK for this row (the
-      // "present only when real" half of the fix).
-      expect((row as unknown as Record<string, unknown>).discK).toBe(1916);
+  // (2026-08, second page-weight pass) discK is now GONE from the payload
+  // entirely — buildProgramsCsv derives the discretionary column from
+  // fy26 and the reconK sign sentinel. These three cases are the ones the
+  // fix must leave byte-for-byte unchanged, PLUS a fourth proving the
+  // derivation is actually equivalent to the old carried-discK value
+  // rather than merely assumed to be.
+  describe("(page-weight fix, both passes) CSV output is unchanged for every row shape", () => {
+    it("a RECONCILIATION row: the real split values, derived — not a fy26 fallback", () => {
+      const row = program(
+        {
+          fy2026_disc_toa_usd_thousands: 1916,
+          fy2026_reconciliation_toa_usd_thousands: 7695000,
+        },
+        { fy24: null, fy26: RECON_FY26 },
+      );
+      // Confirms the payload carries ONLY reconK for this row — discK
+      // never rides along, even for a genuine split.
+      expect((row as unknown as Record<string, unknown>).discK).toBeUndefined();
+      expect(row.reconK).toBe(7695000);
       const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
       expect(fields[6]).toBe("1916");
       expect(fields[7]).toBe("7695000");
     });
 
-    it("a NON-RECONCILIATION row: discK is absent from the payload, but the CSV still emits the correct (fy26) value", () => {
+    it("PROVES EQUIVALENCE: the derived discretionary value matches the pre-derivation (carried-discK) CSV output exactly", () => {
+      // Before this pass, discK=1916 was carried on the payload and
+      // buildProgramsCsv read it verbatim. Now nothing on the row says
+      // "1916" anywhere — it is recomputed as fy26 - reconK
+      // (7,696,916 - 7,695,000) at CSV-build time. Same output, from a
+      // payload that no longer contains the number at all.
+      const row = program(
+        {
+          fy2026_disc_toa_usd_thousands: 1916,
+          fy2026_reconciliation_toa_usd_thousands: 7695000,
+        },
+        { fy24: null, fy26: RECON_FY26 },
+      );
+      expect(JSON.stringify(row)).not.toContain("1916");
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      const PRE_CHANGE_DISC_CSV_VALUE = "1916"; // what discK used to export verbatim
+      expect(fields[6]).toBe(PRE_CHANGE_DISC_CSV_VALUE);
+    });
+
+    it("a NON-RECONCILIATION row: reconK is absent from the payload, but the CSV still emits the correct (fy26) value", () => {
       const row = program({}, {
         fy24: null,
         fy26: { v: 4086744, fid: "d".repeat(16) },
       });
-      // Confirms the payload win — discK really is gone, not just null.
+      // Confirms the payload win — reconK really is gone, not just null.
       expect(
         Object.keys(row as unknown as Record<string, unknown>),
-      ).not.toContain("discK");
+      ).not.toContain("reconK");
       const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
       expect(fields[5]).toBe("4086744"); // fy26 column, unchanged
       expect(fields[6]).toBe("4086744"); // disc column falls back to fy26
       expect(fields[7]).toBe("");        // no reconciliation — stays blank
     });
 
-    it("the rare row with reconciliation but no recorded discretionary figure stays blank, never fy26", () => {
-      // A genuine data gap (23 such rows in the live corpus): falling back
-      // to fy26 here would overstate discretionary spend by the
-      // reconciliation amount, so this must NOT trigger the fallback.
+    it("the rare row with reconciliation but no recorded discretionary figure stays blank, never a derived guess", () => {
+      // A genuine data gap (23 such rows in the live corpus): deriving
+      // fy26 - reconK here would be an UNVERIFIED guess (no recorded discK
+      // to confirm the identity holds for this row), so this must NOT
+      // trigger the derivation — exactly as it never triggered the old
+      // fy26 fallback either.
       const row = program({
         fy2026_disc_toa_usd_thousands: null,
         fy2026_reconciliation_toa_usd_thousands: 500,
       });
+      expect(row.reconK).toBe(-500); // the sentinel
       const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
       expect(fields[6]).toBe("");
-      expect(fields[7]).toBe("500");
+      expect(fields[7]).toBe("500"); // shown as its magnitude, sign hidden
     });
   });
 
