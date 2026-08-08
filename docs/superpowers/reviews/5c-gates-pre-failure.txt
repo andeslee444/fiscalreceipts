@@ -4127,3 +4127,156 @@ used to fail is now allowed to pass; the corrected chip text is verified
 against the corpus's OWN exhibit_family, not against a looser pattern.
 
 SUITE COUNT UNCHANGED — one new leg on gate 23 (f). Still 24 gates.
+
+================================================================================
+BACKLOG #49 — /programs/ PUBLISHES A ROW COUNTER OVER A 59.3%-COMPLETE DOLLAR
+UNIVERSE (2026-08-08)
+================================================================================
+
+New leg on gate 2 (render-static.mjs): (cc), corpus counter needs a dollar
+denominator. components/programs-table.tsx's filter-status counter renders
+"1,741 of 1,741 programs" once unfiltered — true, and useless: it
+denominates the index by itself. Measured against the shipped warehouse,
+programs.json's FY2026 columns summed to $228.46B against the site's own
+$385.27B FY2026 request universe (fct_budget_lines, amount_type=
+'fy_2026_total') — 59.3% coverage. The stated exclusion criterion was also
+false: the page said the gap was "appropriations not covered by the R-1/P-1
+rollups", but the three largest excluded lines (Classified Programs $73.90B,
+Virginia Class Submarine $11.08B, COLUMBIA Class Submarine $10.92B) are ALL
+P-1 lines — COLUMBIA's own program page prints "Exhibit P-1 · Shipbuilding
+and Conversion, Navy". The real criterion is that the line lacks R-2/P-40
+project detail.
+
+LETTER CHOSEN: (cc). Confirmed free by extracting every `(xx)` token from
+render-static.mjs's header doc-comment and body: a, a0, a0k, a1, a2, b, b2,
+c, c2, ch, dv, inf, nk, sp, st, t, tc were all in use; (d) and (e) appear
+only as JS variable names (`catch (e)`) or as another gate's leg reference
+("verify-lineage leg (d)"), never as this file's own leg identifier. (cc) —
+"corpus coverage counter" — collided with nothing.
+
+THREE SUBSTITUTIONS TO THE PRESCRIBED TASK, ALL DISCLOSED, ALL TIGHTER:
+
+1. programs-table.tsx DOES NOT CONTAIN THE FALSE CRITERION. The brief said to
+   fix it there "around line 480" — grepping the built source found no such
+   text in that file at all. What line ~271-275 of that file DOES contain is
+   the ACTUAL row counter the whole backlog item is about ("{filtered} of
+   {total} program(s)"). The false criterion's real, sole Python source is
+   export_site.py's `_CORPUS_SCOPE_TAIL` constant, consumed by THREE
+   surfaces: (a) site_meta.corpus_scope → <CorpusStatement> on /programs/,
+   /years/, /methodology/, /data/; (b) site_meta.scope_qualifier → the
+   homepage hero caption; (c) two HAND-TYPED literal duplicates the brief
+   never mentioned — page.tsx's top-movers note and feed/page.tsx's
+   per-event-type scope note, both copying the string verbatim instead of
+   reading it. Fixed at the single Python source and converted both
+   hand-typed duplicates to read site_meta.corpus_scope, closing the
+   duplication instead of just correcting its text in two more places.
+
+2. THE FIX RIPPLES INTO AN EXISTING GATE MIRROR. gate 24 (datatruth.mjs) leg
+   d hardcodes `CORPUS_SCOPE_TAIL`, a lowercase copy of the same string,
+   and requires every corpus-statement page's text to CONTAIN it verbatim.
+   Changing the Python constant without updating this JS mirror would make
+   leg d fail on every one of its four pages the moment the export re-ran —
+   the exact "change one, change both" lesson #48's BASIS_LABEL mirror
+   already taught this codebase. Updated in the same commit.
+
+3. UNITS BUG IN THE TASK'S OWN REPRODUCTION SCRIPT. Its code comment labelled
+   `trajectory.fy2026_total` "USD MILLIONS". Running the prescribed query
+   verbatim gave "59299.1%" — nonsense. Cross-checked ATA000 (F-35) against
+   fct_budget_lines directly: trajectory.fy2026_total = 4086744.0,
+   fct_budget_lines.amount_thousands for amount_type='fy_2026_total' on the
+   same pe_bli = 4086744.0 — identical. The field is USD THOUSANDS, matching
+   the warehouse's own amount_thousands convention everywhere else. Using
+   the corrected units reproduces the brief's own target numbers exactly
+   (59.3%, $228.46B / $385.27B, Classified $73.90B, Virginia $11.08B,
+   COLUMBIA $10.92B) — the wrong-units run did not. build_programs_coverage
+   itself needed no change; only the call site's unit conversion did, and it
+   is now asserted in a code comment rather than assumed.
+
+A FOURTH, SMALLER SUBSTITUTION: the prescribed export code queried
+fct_budget_lines fresh via `con.execute(...)`. Used bl_rows instead — the
+list already fetched earlier in the same function, already carrying real
+workbook fact_ids (fact_id_workbook), and verified byte-identical to the
+mart (budget_lines.parquet's own fy_2026_total rows: 1,714 rows,
+$385,268,393 thousand, same as fct_budget_lines). This let every coverage
+dollar figure carry a REAL citation (state A, kind='derived', formula +
+input fact_ids — the same pattern the file's existing "Agency FY26 sums"
+derived citations use) instead of a fresh, uncited aggregate.
+
+DEGENERATE-WAREHOUSE GUARD FOUND BY THE PYTHON SUITE, NOT ANTICIPATED BY THE
+BRIEF: `uv run pytest` initially failed test_export_site_5f.py's
+test_narrative_citation_gains_page_bbox with ZeroDivisionError —
+its minimal synthetic fixture warehouse carries zero fy_2026_total budget
+lines, so universe_total_millions was 0. Guarded: programs_coverage stays
+None (site_meta key absent) when the universe sum is non-positive, the same
+optional-field pattern `hero` and `award_fy_range` already use for exports
+that predate or cannot support the feature. Confirmed clean afterward: `uv
+run pytest` — 1517 passed.
+
+PROOF — THE LEG FAILS ON REAL SHIPPED STATE. Full pipeline run for real (no
+stashing needed — this leg is purely additive over freshly-rendered HTML):
+`uv run python -m govbudget export-site`, then `NEXT_PUBLIC_SITE_URL=
+https://fiscalreceipts.com npm run build`, confirmed the real
+/programs/index.html renders `data-programs-coverage-pct="59.3"` beside the
+real "1,741 of 1,741 programs" counter. To prove the leg actually fails
+rather than vacuously passing, mutated the BUILT html only (not the source):
+forced that attribute to "100" (simulating the honesty marker regressing to
+claim full coverage) and re-ran the gate via a one-line dynamic import
+(render-static.mjs has no bare-CLI entrypoint, same pattern as #47/#48) —
+RAW terminal capture, unwrapped:
+
+  $ node -e "
+    const f='out/programs/index.html', fs=require('fs');
+    const h=fs.readFileSync(f,'utf8');
+    fs.writeFileSync(f+'.bak', h);
+    const mutated = h.replace(/data-programs-coverage-pct=\"[^\"]*\"/, 'data-programs-coverage-pct=\"100\"');
+    fs.writeFileSync(f, mutated);
+  "
+  $ node -e "
+    import('./scripts/gates/render-static.mjs').then(async (m) => {
+      const result = await m.runRenderStaticGate();
+      console.log((result.pass ? 'PASS' : 'FAIL'));
+      for (const e of result.errors) console.log('  X ' + e);
+      process.exit(result.pass ? 0 : 1);
+    });
+  "
+
+  FAIL
+  --- errors (cc only) ---
+  X 1 page(s) render a self-denominating "N of N" corpus counter without an honest (<100%) dollar coverage figure (first 10):
+  X   programs/index.html: renders a self-denominating corpus counter ("1,741 of 1,741 programs") beside [data-programs-coverage-pct="100"] — not a real percentage below 100
+
+GREEN STATE (file restored from the .bak, `mv out/programs/index.html.bak
+out/programs/index.html`, no rebuild needed since the source html was never
+touched) — RAW terminal capture, unwrapped:
+
+  PASS
+  --- notes (cc only) ---
+  note: corpus counter (cc): 1 page(s) render a self-denominating "N of N" counter (incl. /programs/), each paired with a dollar coverage figure below 100% ✓
+
+Full gate 2 run on the restored, unmutated build: PASS, 0 errors.
+
+RENDERED FIGURES, VERIFIED IN THE BUILT HTML (not asserted from the JSON
+alone): /programs/'s ScopeNote renders exactly "$228.5B of the $385.3B
+FY2026 request (59.3%). This index covers program elements that publish
+R-2/P-40 project detail. Lines without that detail are absent even when
+they are large and even when they are P-1 — the biggest are Classified
+Programs ($73.9B), Virginia Class Submarine ($11.1B) and COLUMBIA Class
+Submarine ($10.9B)." Every dollar figure is a real <span data-amount="true"
+data-fact-id="...">, state A, resolving in citations.json to a kind=
+'derived' row with its own formula and input fact_ids. NOTE: the excluded
+lines display at <Cite>'s standard 1-decimal-above-$10B precision ("$11.1B",
+"$10.9B") rather than the task brief's illustrative 2-decimal text
+("$11.08B", "$10.92B") — deliberate: the brief said never to hardcode a
+figure into the page, so display was routed through the site's ONE
+compact-currency formatter (lib/format.ts formatAmount, via <Cite>) rather
+than a hand-rolled string built to match the brief's own example digit for
+digit. The underlying JSON (site_meta.programs_coverage) still carries the
+2-decimal `billions` field for programmatic use.
+
+NOT A WEAKENING. Every leg present before this task runs unchanged (full
+gate 2 suite: 0 errors on the corrected build). The new leg (cc) is strictly
+additive and non-vacuous by construction: it fails loudly if no
+self-denominating counter is found site-wide, and separately if /programs/
+— the page this backlog item is about — is not among the pages it fires on.
+
+SUITE COUNT UNCHANGED — one new leg on gate 2 (cc). Still 24 gates.

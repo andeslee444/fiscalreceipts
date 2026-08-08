@@ -103,9 +103,17 @@ const CORPUS_PAGES = ["/programs/", "/years/", "/methodology/", "/data/"];
 const CORPUS_RE =
   /([\d,]+)\s+browsable program pages;\s*([\d,]+)\s+of them carry detail-grade/i;
 
-/** §P0-5 scope tail — same language as the hero qualifier. */
+/**
+ * §P0-5 scope tail — same language as the hero qualifier.
+ *
+ * Backlog #49 MIRROR: this must change together with
+ * export_site.py's `_CORPUS_SCOPE_TAIL` (same lesson as basis.mjs's
+ * BASIS_LABEL mirror in #48) — the old text ("appropriations not covered by
+ * the R-1/P-1 rollups") was false; COLUMBIA Class Submarine is a P-1 line
+ * and still absent from the corpus. Change one, change both.
+ */
 const CORPUS_SCOPE_TAIL =
-  "excludes personnel, o&m, and appropriations not covered by the r-1/p-1 rollups";
+  "excludes personnel, o&m, and r-1/p-1 lines that lack r-2/p-40 project detail";
 
 /** A page with fewer cards than this is a parse failure, not a pass. */
 const MIN_DATASET_CARDS = 10;

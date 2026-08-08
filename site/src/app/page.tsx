@@ -294,11 +294,17 @@ export default function HomePage() {
             increases, that is the result, not a filter. Dollar deltas carry
             derived workbook citations — click a figure to inspect the formula
             and inputs.
-            {scopeQualifier && (
+            {/* Backlog #49: this used to hand-type the scope tail, which had
+                drifted false ("appropriations not covered by the R-1/P-1
+                rollups" — COLUMBIA is a P-1 line and still absent). Reads
+                meta.corpus_scope now — the SAME string the hero qualifier
+                and the /programs/, /years/, /methodology/, /data/ corpus
+                statement carry, so this sentence cannot drift from them
+                again. */}
+            {scopeQualifier && meta.corpus_scope && (
               <span className="block mt-1 text-xs">
                 Scope: ranked across the R&D and procurement program elements
-                in our corpus (excludes personnel, O&M, and appropriations not
-                covered by the R-1/P-1 rollups).
+                in our corpus ({meta.corpus_scope}).
               </span>
             )}
           </p>

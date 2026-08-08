@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getProgramDecadeCells, getPrograms } from "@/lib/data";
+import { getProgramDecadeCells, getPrograms, getProgramsCoverage } from "@/lib/data";
 import { formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -8,6 +8,8 @@ import { CoverageNote } from "@/components/coverage-note";
 import { ProgramsTable } from "@/components/programs-table";
 import { toProgramsTableRow } from "@/lib/programs-row";
 import { CitationPanelProvider } from "@/components/citation-panel";
+import { Cite } from "@/components/cite";
+import { ScopeNote } from "@/components/notes";
 
 // Data-driven page count (programs.json length) — never a hardcoded literal.
 // Evaluated at build time (SSG); includes the trajectory-only feed programs
@@ -29,6 +31,8 @@ export const metadata: Metadata = {
 
 export default function ProgramsPage() {
   const programs = getPrograms();
+  const coverage = getProgramsCoverage();
+  const namedExcluded = coverage.largest_excluded.slice(0, 3);
 
   // Sort default: FY26 total descending (nulls last), projected to the eight
   // fields the table renders (see ProgramsTableRow — §P2-1 page weight).
@@ -82,6 +86,59 @@ export default function ProgramsPage() {
         <CorpusStatement className="mt-2" />
         {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
         <CoverageNote id="fy2026-partial" className="mt-2" />
+        {/* Backlog #49: the table below renders "N of N programs" once its
+            filter is unfiltered (ProgramsTable's own filter-status counter,
+            components/programs-table.tsx) — true, and useless: it
+            denominates the index by itself. This denominates it in dollars
+            against the site's own FY2026 request universe, and names the
+            true exclusion criterion: R-2/P-40 project detail, NOT "not
+            covered by the R-1/P-1 rollups" (the site used to say that in two
+            other hand-typed spots — page.tsx's top-movers note and
+            feed/page.tsx — both now read this same site_meta.corpus_scope
+            string instead of a hardcoded, driftable copy). Every figure
+            below is a real <Cite> — never a hardcoded literal.
+            data-programs-coverage-pct is gate 2 leg (cc)'s hook: it must be
+            < 100 on any page that also renders an N-of-N corpus counter. */}
+        <ScopeNote className="mt-2" label={null}>
+          <p
+            className="text-sm leading-6"
+            data-programs-coverage-pct={coverage.coverage_pct}
+          >
+            <strong className="text-foreground">
+              <Cite
+                value={coverage.index_total_thousands}
+                units="USD thousands"
+                dataset="fct_budget_trajectory"
+                factId={coverage.index_fact_id}
+              />{" "}
+              of the{" "}
+              <Cite
+                value={coverage.universe_total_thousands}
+                units="USD thousands"
+                dataset="budget_lines"
+                factId={coverage.universe_fact_id}
+              />{" "}
+              FY2026 request ({coverage.coverage_pct}%).
+            </strong>{" "}
+            This index covers program elements that publish R-2/P-40 project
+            detail. Lines without that detail are absent even when they are
+            large and even when they are P-1 — the biggest are{" "}
+            {namedExcluded.map((e, i) => (
+              <span key={e.pe_bli}>
+                {i > 0 && (i === namedExcluded.length - 1 ? " and " : ", ")}
+                {e.title} (
+                <Cite
+                  value={e.amount_thousands}
+                  units="USD thousands"
+                  dataset="budget_lines"
+                  factId={e.fact_id}
+                />
+                )
+              </span>
+            ))}
+            .
+          </p>
+        </ScopeNote>
       </div>
       <ProgramsTable programs={sorted} orgs={orgs} />
     </div>

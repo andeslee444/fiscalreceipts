@@ -20,7 +20,7 @@ const state = {
   meta: {
     counts: { agencies: 23, citations: 1, companies: 200, programs: 1741, program_pages: 1993 },
     corpus_scope:
-      "excludes personnel, O&M, and appropriations not covered by the R-1/P-1 rollups",
+      "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail",
   } as Record<string, unknown>,
 };
 
@@ -34,7 +34,7 @@ vi.mock("@/lib/data", () => ({
 import { getCorpus, corpusStatement } from "@/lib/corpus";
 
 const SCOPE =
-  "excludes personnel, O&M, and appropriations not covered by the R-1/P-1 rollups";
+  "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project detail";
 
 function reset() {
   state.detailGrade = 1739;

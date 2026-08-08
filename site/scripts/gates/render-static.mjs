@@ -190,6 +190,31 @@
  *      surfaced site-wide: adjacency catches exactly the 2 real mislabels
  *      (this page, and methodology's "FY2025 and FY2026 enacted/requested")
  *      and none of the other 12.
+ *
+ * (cc) CORPUS COUNTER NEEDS A DOLLAR DENOMINATOR (backlog #49). /programs/
+ *      published "1,741 of 1,741 programs" (components/programs-table.tsx's
+ *      filter-status counter, unfiltered) — true, and useless: it
+ *      denominates the index by itself. Measured against the shipped
+ *      warehouse, the index's columns summed to $228.46B against the site's
+ *      own $385.27B FY2026 request universe (fct_budget_lines,
+ *      amount_type='fy_2026_total') — 59.3% coverage, with the largest
+ *      excluded lines (Classified Programs $73.90B, Virginia Class Submarine
+ *      $11.08B, COLUMBIA Class Submarine $10.92B) all P-1 lines the index
+ *      simply does not carry.
+ *
+ *      Any page whose text renders an "N of N program(s)" counter (N === M,
+ *      the row count denominating itself) MUST ALSO carry a
+ *      [data-programs-coverage-pct] element on the SAME page, with a numeric
+ *      value strictly less than 100 — a corpus that denominated itself
+ *      completely would have nothing left to disclose, and 100 read here
+ *      would mean the honesty marker regressed to lying the same way the
+ *      row counter always did.
+ *
+ *      Non-vacuity: the leg must find at least one N-of-N counter, and
+ *      /programs/ itself must be among the pages it fires on — a suite that
+ *      stopped rendering the counter (or renamed it) would otherwise pass by
+ *      finding nothing to check, exactly the failure mode #47/#48 both
+ *      guarded against for their own claims.
  */
 
 import fs from "fs";
@@ -247,6 +272,50 @@ function checkRequestEnactedVocabulary(pageText, relPath) {
   const hit = pageText.match(ENACTED_FY26_RE);
   if (!hit) return null;
   return `${relPath}: prose couples FY2026 with "enacted" — FY2026 is a request in every shipped edition: ${JSON.stringify(hit[0].slice(0, 120))}`;
+}
+
+/**
+ * LEG (cc) — corpus counter needs a dollar denominator (#49).
+ *
+ * Matches the shape of components/programs-table.tsx's filter-status
+ * counter — "{filtered} of {total} program(s)" — wherever it appears in a
+ * page's rendered text. A match with EQUAL grouped-number values is the
+ * row-count-denominates-itself shape this leg exists to police ("1,741 of
+ * 1,741 programs"); a match with unequal values is an honest filtered view
+ * ("12 of 1,741 programs") and carries no obligation.
+ */
+const N_OF_N_PROGRAMS_RE = /(\d[\d,]*)\s+of\s+(\d[\d,]*)\s+programs?\b/gi;
+
+function findSelfDenominatingCounter(pageText) {
+  let m;
+  N_OF_N_PROGRAMS_RE.lastIndex = 0;
+  while ((m = N_OF_N_PROGRAMS_RE.exec(pageText))) {
+    if (Number(m[1].replace(/,/g, "")) === Number(m[2].replace(/,/g, ""))) {
+      return m[0];
+    }
+  }
+  return null;
+}
+
+const NON_CONTENT_TAGS = new Set(["script", "style", "noscript", "template"]);
+
+/** Walk LEAF elements (no element children) looking for a self-denominating
+ * "N of N program(s)" phrase within ONE leaf's own text — see the (cc) leg
+ * comment at its call site for why the scan is leaf-scoped. Skips
+ * script/style/noscript/template subtrees (never rendered figure text —
+ * same exclusion gate 24 leg j applies before its own leaf walk). */
+function walkLeavesForSelfDenominatingCounter(node) {
+  const tag = node.tagName ? node.tagName.toLowerCase() : null;
+  if (tag && NON_CONTENT_TAGS.has(tag)) return null;
+  const childEls = (node.childNodes || []).filter((c) => c.nodeType === 1);
+  if (childEls.length === 0) {
+    return findSelfDenominatingCounter(node.text || "");
+  }
+  for (const c of childEls) {
+    const hit = walkLeavesForSelfDenominatingCounter(c);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // (c2) Expected uncited ledger — EMPTY since the ledger-clearance work minted
@@ -388,6 +457,10 @@ export async function runRenderStaticGate() {
   const inferredFailures = [];
   const statedFailures = [];
   const requestEnactedFailures = [];
+  // (cc) corpus counter needs a dollar denominator (#49).
+  const corpusCounterFailures = [];
+  const corpusCounterPages = new Set();
+  let corpusCounterProgramsPageSeen = false;
 
   // ── (st)/(inf) non-vacuity expectation from the emitted sidecars ─────────
   // Count stated / inferred rail entries across data/site/json/program_details
@@ -973,6 +1046,39 @@ export async function runRenderStaticGate() {
       if (enactedHit) requestEnactedFailures.push(enactedHit);
     }
 
+    // ── (cc) corpus counter needs a dollar denominator (#49) ────────────────
+    // Per LEAF ELEMENT (no element children) — the same granularity gate 24
+    // leg j uses for numeric-notation sweeps, and for the same reason: React
+    // splits "{n} of {m} programs" into text nodes separated by `<!-- -->`
+    // comments, so a per-text-node scan misses the reassembled phrase, and a
+    // whole-page-text scan can glue unrelated numbers from sibling elements
+    // into a phantom match. `.text` on a LEAF element is exactly the phrase
+    // a reader sees in one run, no more and no less.
+    {
+      const counterHit = walkLeavesForSelfDenominatingCounter(root);
+      if (counterHit) {
+        corpusCounterPages.add(relPath);
+        if (pagePath === "/programs/") corpusCounterProgramsPageSeen = true;
+        const covEl = root.querySelector("[data-programs-coverage-pct]");
+        const pctAttr = covEl?.getAttribute("data-programs-coverage-pct");
+        const pct = pctAttr == null ? null : Number(pctAttr);
+        if (!covEl) {
+          corpusCounterFailures.push(
+            `${relPath}: renders a self-denominating corpus counter ` +
+              `(${JSON.stringify(counterHit)}) but no [data-programs-coverage-pct] ` +
+              `dollar-coverage figure anywhere on the page`
+          );
+        } else if (!Number.isFinite(pct) || pct >= 100) {
+          corpusCounterFailures.push(
+            `${relPath}: renders a self-denominating corpus counter ` +
+              `(${JSON.stringify(counterHit)}) beside ` +
+              `[data-programs-coverage-pct=${JSON.stringify(pctAttr)}] — not a real ` +
+              `percentage below 100`
+          );
+        }
+      }
+    }
+
     // ── (tc) company display names carry their registry string ─────────────
     for (const el of root.querySelectorAll("[data-company-name]")) {
       companyNameCount += 1;
@@ -1323,6 +1429,39 @@ export async function runRenderStaticGate() {
     }
   } else {
     notes.push(`request/enacted vocabulary: no page couples FY2026 with "enacted" ✓`);
+  }
+
+  // ── (cc) corpus counter needs a dollar denominator summary (#49) ─────────
+  if (corpusCounterFailures.length > 0) {
+    errors.push(
+      `${corpusCounterFailures.length} page(s) render a self-denominating ` +
+        `"N of N" corpus counter without an honest (<100%) dollar coverage ` +
+        `figure (first 10):`
+    );
+    for (const f of corpusCounterFailures.slice(0, 10)) {
+      errors.push(`  ${f}`);
+    }
+    if (corpusCounterFailures.length > 10) {
+      errors.push(`  ... and ${corpusCounterFailures.length - 10} more`);
+    }
+  } else if (corpusCounterPages.size === 0) {
+    errors.push(
+      `corpus-counter leg (cc) is VACUOUS: found no self-denominating "N of ` +
+        `N program(s)" counter site-wide — the leg has nothing to check.`
+    );
+  } else if (!corpusCounterProgramsPageSeen) {
+    errors.push(
+      `corpus-counter leg (cc) is VACUOUS for /programs/: found ` +
+        `${corpusCounterPages.size} self-denominating counter page(s) ` +
+        `site-wide, but /programs/ — the page this backlog item is about — ` +
+        `was not among them.`
+    );
+  } else {
+    notes.push(
+      `corpus counter (cc): ${corpusCounterPages.size} page(s) render a ` +
+        `self-denominating "N of N" counter (incl. /programs/), each paired ` +
+        `with a dollar coverage figure below 100% ✓`
+    );
   }
 
   // ── (tc) company display names summary ───────────────────────────────────

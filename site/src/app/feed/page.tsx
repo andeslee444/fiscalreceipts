@@ -4,6 +4,7 @@ import {
   getFeed,
   getEntityTopByFamilyKey,
   getProgramPeBlis,
+  getSiteMeta,
 } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
@@ -337,6 +338,14 @@ function FeedCardItem({
 
 export default function FeedPage() {
   const { cards, total, scope_qualifier } = getFeed();
+  // Backlog #49: the section scope note below used to hand-type its own
+  // parenthetical, which had drifted false ("appropriations not covered by
+  // the R-1/P-1 rollups" — COLUMBIA is a P-1 line and still absent). Reads
+  // site_meta's corpus_scope now — the bare tail, not the full hero-style
+  // scope_qualifier sentence above (which reads as a superlative caption,
+  // not a "ranked across" clause) — so it cannot drift from the homepage,
+  // /programs/, /years/, /methodology/ and /data/ wording again.
+  const corpusScope = getSiteMeta().corpus_scope;
   const grouped = groupByEventType(cards);
 
   // family_key → company slug lookup (SSG) from the same top-200 entity
@@ -417,11 +426,10 @@ export default function FeedPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {meta.description}
                   </p>
-                  {SCOPED_EVENT_TYPES.has(etype) && scope_qualifier && (
+                  {SCOPED_EVENT_TYPES.has(etype) && scope_qualifier && corpusScope && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Scope: ranked across the R&D and procurement program
-                      elements in our corpus (excludes personnel, O&M, and
-                      appropriations not covered by the R-1/P-1 rollups).
+                      elements in our corpus ({corpusScope}).
                     </p>
                   )}
                   <p className="mt-1">

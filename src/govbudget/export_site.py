@@ -184,9 +184,20 @@ _BASIS_DETAIL = "jbook-detail"
 # `corpus_scope`, so the canonical corpus statement on /programs/, /years/,
 # /methodology/ and /data/ words the scope caveat with the SAME string the
 # hero superlative carries — one wording, one source.
+#
+# Backlog #49: the tail used to read "appropriations not covered by the
+# R-1/P-1 rollups" — false. COLUMBIA Class Submarine (pe_bli 1045, $10.92B)
+# IS a P-1 line; its own program page prints "Exhibit P-1 · Shipbuilding and
+# Conversion, Navy". So are Virginia Class Submarine ($11.08B), DDG-51
+# ($5.41B) and every other excluded line measured against the shipped
+# warehouse — they are covered by the R-1/P-1 rollups and STILL absent from
+# this corpus. The real criterion, verified against the same warehouse
+# (build_programs_coverage's largest_excluded), is that the line lacks
+# R-2/P-40 project detail — the finer-grained J-book justification data this
+# tier requires and the R-1/P-1 workbook total alone does not carry.
 _CORPUS_SCOPE_TAIL = (
-    "excludes personnel, O&M, and appropriations not covered by the"
-    " R-1/P-1 rollups"
+    "excludes personnel, O&M, and R-1/P-1 lines that lack R-2/P-40 project"
+    " detail"
 )
 _SCOPE_QUALIFIER_TEMPLATE = (
     "largest single R&D or procurement program element in our corpus"
@@ -328,6 +339,38 @@ def _build_checks_block() -> dict:
 def scope_qualifier(n_lines: int) -> str:
     """The P0-5 scope-qualifier string with a live corpus count."""
     return _SCOPE_QUALIFIER_TEMPLATE.format(n_lines=f"{n_lines:,}")
+
+
+def build_programs_coverage(
+    *,
+    index_total_millions: float,
+    universe_total_millions: float,
+    excluded: list[tuple[str, str, float]],
+) -> dict:
+    """Dollar-denominated coverage for the /programs/ index (backlog #49).
+
+    The row counter ("1,741 of 1,741") is true and useless: it denominates the
+    index by itself. This denominates it by the FY2026 request universe the
+    site publishes elsewhere (fct_budget_lines, amount_type='fy_2026_total'),
+    and names what is missing.
+
+    All amounts are USD MILLIONS in and out. The caller (the programs.json
+    writer in _write_all_sidecars) is responsible for converting: programs.json's
+    own trajectory.fy2026_total and fct_budget_lines.amount_thousands are both
+    USD THOUSANDS on disk — dividing by 1,000 lands here in millions. That
+    thousands/millions/billions boundary is exactly where the original defect's
+    sibling bug would hide, so it is asserted, not assumed, at the one call site
+    (see the comment there).
+    """
+    return {
+        "index_billions": round(index_total_millions / 1000, 1),
+        "universe_billions": round(universe_total_millions / 1000, 1),
+        "coverage_pct": round(100 * index_total_millions / universe_total_millions, 1),
+        "largest_excluded": [
+            {"pe_bli": pe, "title": title, "billions": round(m / 1000, 2)}
+            for pe, title, m in sorted(excluded, key=lambda x: -x[2])[:5]
+        ],
+    }
 
 
 def _amount_type_meta(amount_type: str, edition: int) -> tuple[int | None, str | None]:
@@ -4651,6 +4694,121 @@ def _write_all_sidecars(
     n_files += 1
 
     # ------------------------------------------------------------------ #
+    # 2b. programs_coverage (backlog #49)                                #
+    # ------------------------------------------------------------------ #
+    # /programs/ said "1,741 of 1,741 programs" — true and useless, since it
+    # denominates the index by itself. This denominates it by the FY2026
+    # request universe the site's own workbook-sourced budget lines carry,
+    # and every dollar figure it produces gets a real citation — never the
+    # uncited-ledger escape hatch (closed by the (c2) regression check, and
+    # this is not an uncited *dataset*, it is a fresh derived aggregate) and
+    # never the prose-allowlist (that exists for figures the site did NOT
+    # compute for the reader to check — a coverage percentage is exactly the
+    # opposite). The pattern mirrors the existing "Agency FY26 sums" derived
+    # citations above: fact_id_derived(surface, key, metric) + a formula +
+    # the input fact_ids that sum to it.
+    #
+    # SOURCE, not a fresh mart query: bl_rows (already fetched, already
+    # workbook-cited — see fact_id_workbook above) is the SAME data
+    # fct_budget_lines materializes from. Verified byte-for-byte against the
+    # shipped warehouse: budget_lines.parquet's own fy_2026_total rows
+    # (1,714 rows, $385,268,393 thousand) equal fct_budget_lines' (same
+    # count, same sum) exactly. Using bl_rows means the citation's
+    # recorded_value and the rendered figure can never drift — they are the
+    # same sum computed once.
+    #
+    # UNITS, asserted not assumed (the task brief's own reproduction script
+    # mislabeled trajectory.fy2026_total "USD MILLIONS" in a code comment;
+    # it is USD THOUSANDS — verified against ATA000, whose
+    # trajectory.fy2026_total (4086744.0) equals fct_budget_lines'
+    # amount_thousands for amount_type='fy_2026_total' on that pe_bli
+    # (4086744.0) exactly). Both sums below are thousands on read, divided
+    # by 1,000 once to reach the millions build_programs_coverage expects.
+    _index_fy26_thousands = sum(
+        (p["trajectory"] or {}).get("fy2026_total") or 0 for p in programs_list
+    )
+    _have_pe_blis = {p["pe_bli"] for p in programs_list}
+    _bl_fy26_by_pe: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    for _bl in bl_rows:
+        if _bl[10] == "fy_2026_total":  # amount_type
+            _bl_fy26_by_pe[_bl[8]].append((_bl[0], _bl[11]))  # (fact_id, amount_thousands)
+    _universe_fy26_thousands = sum(
+        amt for rows in _bl_fy26_by_pe.values() for _, amt in rows
+    )
+
+    # Degenerate-warehouse guard: fixture/test databases (e.g. tests/jbooks/
+    # test_export_site_5f.py's minimal synthetic warehouse) carry no
+    # fy_2026_total budget-line rows at all. A 0-dollar universe is "no data
+    # to measure coverage against", not "0% coverage" — build_programs_
+    # coverage's division would raise ZeroDivisionError, and even a caught
+    # 0/0 would be a fabricated percentage, exactly what this task exists to
+    # stop shipping. site_meta.programs_coverage stays optional (absent) on
+    # these exports, the same pattern `hero` and `award_fy_range` already use.
+    programs_coverage: dict | None = None
+    if _universe_fy26_thousands > 0:
+        _bl_titles_by_pe = {_bl[8]: _bl[9] for _bl in bl_rows}
+        _excluded_thousands = [
+            (pe, _bl_titles_by_pe.get(pe, pe), sum(amt for _, amt in rows))
+            for pe, rows in _bl_fy26_by_pe.items()
+            if pe not in _have_pe_blis
+        ]
+        programs_coverage = build_programs_coverage(
+            index_total_millions=_index_fy26_thousands / 1000,
+            universe_total_millions=_universe_fy26_thousands / 1000,
+            excluded=[(pe, title, m / 1000) for pe, title, m in _excluded_thousands],
+        )
+
+        def _mint_coverage_fact(
+            key: str, formula: str, input_fids: list[str], value_thousands: float
+        ) -> str:
+            fid = fact_id_derived("programs_coverage", key, "fy2026_total_thousands")
+            citation_rows.append(_null_derived_row(
+                fid, "derived", "USD thousands", formula,
+                json.dumps(input_fids), f"{value_thousands:.3f}",
+                manifest.get("built_at"),
+            ))
+            return fid
+
+        programs_coverage["index_fact_id"] = _mint_coverage_fact(
+            "index",
+            f"sum(fct_budget_trajectory.fy2026_total) over the {len(programs_list)}-program"
+            " /programs/ index",
+            [
+                p["trajectory_fact_ids"]["fy2026_total"]
+                for p in programs_list
+                if p.get("trajectory_fact_ids") and p["trajectory_fact_ids"].get("fy2026_total")
+            ],
+            _index_fy26_thousands,
+        )
+        programs_coverage["universe_fact_id"] = _mint_coverage_fact(
+            "universe",
+            "sum(budget_lines.amount_thousands) where amount_type='fy_2026_total' across"
+            " every FY2026 P-1/R-1 workbook line",
+            [fid for rows in _bl_fy26_by_pe.values() for fid, _ in rows],
+            _universe_fy26_thousands,
+        )
+        # Raw USD-thousands alongside the rounded *_billions fields above: the
+        # page renders every figure through <Cite value units="USD thousands">
+        # (lib/format.ts's formatAmount is the ONE compact-currency formatter —
+        # see its own doc-comment on why every other formatter in the repo
+        # mirrors it rather than reimplementing "$X.XB"), so the exact value
+        # has to travel, not just its pre-rounded display string.
+        programs_coverage["index_total_thousands"] = _index_fy26_thousands
+        programs_coverage["universe_total_thousands"] = _universe_fy26_thousands
+        for _entry in programs_coverage["largest_excluded"]:
+            _pe = _entry["pe_bli"]
+            _rows = _bl_fy26_by_pe.get(_pe, [])
+            _pe_total_thousands = sum(amt for _, amt in _rows)
+            _entry["amount_thousands"] = _pe_total_thousands
+            _entry["fact_id"] = _mint_coverage_fact(
+                f"excluded/{_pe}",
+                f"sum(budget_lines.amount_thousands) where pe_bli={_pe!r} and"
+                " amount_type='fy_2026_total'",
+                [fid for fid, _ in _rows],
+                _pe_total_thousands,
+            )
+
+    # ------------------------------------------------------------------ #
     # 3. program_details/{pe_bli}.json  (one file per distinct PE)       #
     # ------------------------------------------------------------------ #
 
@@ -5465,6 +5623,9 @@ def _write_all_sidecars(
         # must never re-derive it).
         "hero": hero,
         "scope_qualifier": _corpus_qualifier,
+        # backlog #49: dollar-denominated /programs/ coverage — see
+        # build_programs_coverage's doc-comment and the 2b block above.
+        "programs_coverage": programs_coverage,
         # PM Sprint 2 (§P1-5): the bare scope caveat, shared with the hero
         # qualifier above. The canonical corpus statement appends it verbatim
         # so the two surfaces cannot drift apart in wording.

@@ -130,6 +130,37 @@ export interface SiteMeta {
     string,
     { basis: string; edition: number; fy: number; measure: string }
   >;
+  /**
+   * Backlog #49: dollar-denominated /programs/ coverage. The row counter
+   * ("1,741 of 1,741") is true and useless — it denominates the index by
+   * itself. This denominates it by the FY2026 request universe
+   * fct_budget_lines actually carries, and names the largest excluded
+   * lines. Absent on pre-#49 exports.
+   */
+  programs_coverage?: SiteMetaProgramsCoverage;
+}
+
+export interface SiteMetaProgramsCoverageExcluded {
+  pe_bli: string;
+  title: string;
+  billions: number;
+  /** Raw USD thousands — for <Cite value units="USD thousands">, not display. */
+  amount_thousands: number;
+  /** Derived citation (fact_id_derived("programs_coverage", `excluded/{pe_bli}`, …)). */
+  fact_id: string;
+}
+
+export interface SiteMetaProgramsCoverage {
+  index_billions: number;
+  universe_billions: number;
+  coverage_pct: number;
+  largest_excluded: SiteMetaProgramsCoverageExcluded[];
+  /** Raw USD thousands — for <Cite value units="USD thousands">, not display. */
+  index_total_thousands: number;
+  universe_total_thousands: number;
+  /** Derived citations minted alongside the figures (export_site.py §2b). */
+  index_fact_id: string;
+  universe_fact_id: string;
 }
 
 export interface SiteMetaHero {
@@ -1841,6 +1872,23 @@ export function getFlowsCount(): number {
 /** Total number of program pages (from programs.json length). */
 export function getProgramsCount(): number {
   return getPrograms().length;
+}
+
+/**
+ * Backlog #49: the dollar-denominated /programs/ coverage figure. Throws if
+ * the export predates it (a page that renders "N of N" without also
+ * rendering the dollar denominator is exactly the defect this closes) —
+ * never falls back to a guessed or hardcoded percentage.
+ */
+export function getProgramsCoverage(): SiteMetaProgramsCoverage {
+  const meta = getSiteMeta();
+  if (!meta.programs_coverage) {
+    throw new Error(
+      "[govbudget/data] site_meta.json has no programs_coverage — re-run " +
+        '"uv run python -m govbudget export-site" (backlog #49 added it).',
+    );
+  }
+  return meta.programs_coverage;
 }
 
 /** Number of dossier sidecars present (gated, cited-or-absent research files). */
