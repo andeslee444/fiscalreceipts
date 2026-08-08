@@ -14,6 +14,7 @@ direction (first-person R-2 narratives: "This work was transferred to PE X") doe
 `this` supply the unnamed endpoint, exactly as before.
 """
 from __future__ import annotations
+import hashlib
 import re
 from govbudget.lineage.model import LineageEdge
 
@@ -114,6 +115,59 @@ def sentence_named_pairs(sent: str) -> dict[tuple[str, str], str]:
     return pairs
 
 
+# Cues that a transfer sentence describes an error, a reversal, or a
+# non-event. "Stated" is the site's strongest evidence tier; a sentence that
+# retracts itself cannot carry it (#53: /program/1203154SF/ shipped REALIGNED
+# TO -> 1203609SF from "…was erroneously transferred to Program Element
+# 1203609SF", whose own paragraph's NEXT sentence says the funds will be
+# realigned BACK).
+#
+# Checked against the sentence AND its immediate successor via
+# _window_is_negated — but NOT blindly: a same-sentence cue always negates,
+# while a next-sentence cue only negates when that next sentence also names
+# one of THIS edge's own PE endpoints. The endpoint scoping is not
+# precautionary — a blind "does sent+next contain any cue" window was tried
+# first and DISPROVEN against the live FY2026 corpus before this shipped: in
+# 1203154SF's real narrative the CLEAN "…transferred to PE 1203155SF"
+# sentence is immediately followed by the unrelated erroneous
+# "…transferred to PE 1203609SF" sentence, so a blind window kills that
+# legitimate edge too (see test_a_blind_current_plus_next_window_would_
+# wrongly_kill_a_neighbor and the corpus scan in the #53 commit). Endpoint
+# scoping keeps the real catch (the retraction sentence necessarily names
+# where the money goes "back" to) without that false positive.
+#
+# "no longer" was in the original candidate list and is deliberately
+# EXCLUDED: it describes a natural, EXPECTED side effect of any legitimate
+# transfer ("PE X will no longer receive this funding") rather than a
+# retraction of the transfer itself, and keeping it would risk suppressing
+# correct edges on exactly the boilerplate follow-up sentence most transfers
+# already carry. It had zero matches in the live FY2026 corpus either way
+# (verified before shipping), so dropping it costs nothing measurable today
+# and removes a structurally-broad future risk.
+NEGATION_CUES = (
+    "erroneously", "in error", "incorrectly", "realigned back",
+    "transferred back", "will be returned", "rescinded",
+)
+
+
+def _window_is_negated(sent: str, next_sent: str | None, from_pe: str, to_pe: str) -> bool:
+    """True iff `sent` retracts itself, directly or via its scoped successor.
+
+    A cue found IN `sent` itself always negates unconditionally — the
+    transfer clause and its own retraction share one sentence (#53's actual
+    shipped bug: "was erroneously transferred to PE 1203609SF"). A cue found
+    only in `next_sent` negates ONLY when that next sentence also mentions one
+    of this edge's own endpoints (from_pe or to_pe) — see NEGATION_CUES'
+    comment for the concrete false positive this scoping prevents.
+    """
+    if any(cue in sent.lower() for cue in NEGATION_CUES):
+        return True
+    if next_sent and any(cue in next_sent.lower() for cue in NEGATION_CUES):
+        if from_pe in next_sent or to_pe in next_sent:
+            return True
+    return False
+
+
 def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:
     """narratives: dicts with pe_bli, fiscal_year, fact_id, page, body."""
     out: list[LineageEdge] = []
@@ -126,22 +180,35 @@ def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:
         if key in seen:
             return
         seen.add(key)
+        stripped = sent.strip()
+        # Per-edge disambiguator (#53) — see model.py's edge_fact_id comment
+        # for why this is NOT evidence_fact_id (which must stay the
+        # narrative's own fact_id_narrative(...) value for citation
+        # resolution; a shared evidence_fact_id across several edges from one
+        # narrative is normal, not itself a defect).
+        edge_fid = hashlib.sha256(
+            f"{frm}|{to}|{n['fiscal_year']}|{relation}|{stripped}".encode()
+        ).hexdigest()[:16]
         out.append(LineageEdge(
             from_pe_bli=frm, to_pe_bli=to, fiscal_year=n["fiscal_year"],
             relation=relation, confidence="stated",
             evidence_fact_id=n.get("fact_id"), evidence_page=n.get("page"),
-            evidence_sentence=sent.strip(), portion_amount=None,
-            inference_basis=None))
+            evidence_sentence=stripped, portion_amount=None,
+            inference_basis=None, edge_fact_id=edge_fid))
 
     for n in narratives:
         this = n["pe_bli"]
         body = n.get("body") or ""
-        for sent in _SENT.findall(body):
+        sents = _SENT.findall(body)
+        for i, sent in enumerate(sents):
+            next_sent = sents[i + 1] if i + 1 < len(sents) else None
             named = sentence_named_pairs(sent)
             if named:
                 # BOTH endpoints named: the sentence is the evidence for the
                 # pair it asserts — `this` is not involved (Defect 1).
                 for (frm, to), relation in named.items():
+                    if _window_is_negated(sent, next_sent, frm, to):
+                        continue
                     mint(n, frm, to, relation, sent)
                 continue
             # Single direction (or only self-pairs): today's behavior — the
@@ -151,9 +218,13 @@ def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:
             for other, relation in preds:
                 if other == this:
                     continue
+                if _window_is_negated(sent, next_sent, other, this):
+                    continue
                 mint(n, other, this, relation, sent)
             for other, relation in succs:
                 if other == this:
+                    continue
+                if _window_is_negated(sent, next_sent, this, other):
                     continue
                 mint(n, this, other, relation, sent)
     return out

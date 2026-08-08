@@ -1699,6 +1699,7 @@ def cmd_verify_lineage(args) -> None:
         family_integrity_leg,
         funding_point_value_leg,
         lake_binding_leg,
+        no_retraction_leg,
         one_to_one_sum_leg,
         stated_cite_leg,
     )
@@ -1795,6 +1796,18 @@ def cmd_verify_lineage(args) -> None:
     for kind, reason in e["failures"][:10]:
         print(f"  FAIL [{kind}] {reason}")
     gates_ok = gates_ok and ge_ok
+
+    # Leg f: no-self-retraction — a stated edge's own citation must not
+    # retract it (#53)
+    f = no_retraction_leg(config.PG_DSN)
+    gf_ok = f["ok"]
+    print(
+        f"leg f no-retraction: checked={f['checked']} passed={f['passed']}"
+        f" failures={len(f['failures'])} → {'PASS' if gf_ok else 'FAIL'}"
+    )
+    for grain, reason in f["failures"][:10]:
+        print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gf_ok
 
     print("verify-lineage:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)

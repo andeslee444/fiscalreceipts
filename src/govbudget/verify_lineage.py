@@ -54,6 +54,30 @@ always-pass.
     families. A MISSING parquet is a FAIL, never a skip — an un-staged lake
     silently decouples the site from the verified warehouse.
 
+  Leg (f) — no-self-retraction (#53, 2026-08-08). No confidence='stated' edge
+    may be backed by a sentence that retracts itself, directly or via its own
+    immediate successor within the SAME cited narrative body: re-derive the
+    (sentence, next-sentence) window from detail_narratives (the SAME
+    narrative index leg (a) resolves the citation against) and re-run
+    lineage/extract.py's OWN NEGATION_CUES / _window_is_negated (imported,
+    never duplicated — the same one-rule-set discipline sentence_named_pairs
+    already enforces for leg (a)) against it. A match is a FAIL. This is a
+    drift check on the LIVE, persisted table — extract_stated_edges is
+    negation-aware at mint time, so a freshly-rebuilt program_lineage should
+    never contain one of these; leg (f) catches a stale/reverted rebuild that
+    shipped one anyway. Non-vacuous: zero checkable stated edges is a FAIL.
+
+    NOT implemented: the spec's other proposed clause, "no two edges on one
+    program may share an evidence_fact_id." Checked against the LIVE
+    program_lineage table before shipping and disproven — evidence_fact_id
+    595b7bc230776350 is shared, correctly, by 5 edges (one rollup paragraph
+    naming five separate PE-to-PE transfers on one page) and
+    76c131e6f01ef8fa by 2 (one PE fanning out to two destinations). A shared
+    narrative fact_id is normal, not a defect signature; enforcing uniqueness
+    would fail the gate on correct, already-shipped data while adding no
+    protection #53 needs (the actual retraction is caught by the negation
+    check above regardless of whether its fact_id happens to be shared).
+
 All gate functions take explicit DSNs/paths — never read config. No network.
 Exit code 0 iff all legs pass; nonzero otherwise.
 """
@@ -743,5 +767,81 @@ def lake_binding_leg(dsn: str, duckdb_path: Path) -> dict:
         "lineage_rows_lake": sum(lake_edges.values()),
         "family_pes_db": len(db_pes),
         "family_pes_lake": len(lake_pes),
+        "failures": failures,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Leg (f): no-self-retraction — a stated edge's own citation must not retract
+# it (#53, 2026-08-08)
+# ---------------------------------------------------------------------------
+
+
+def no_retraction_leg(dsn: str) -> dict:
+    """No stated edge is backed by a sentence that retracts itself (spec §7
+    leg f, #53).
+
+    For each stated edge, resolve its evidence_fact_id to the SAME narrative
+    bodies leg (a) uses (_load_narrative_index), find the body containing
+    evidence_sentence verbatim, split it into sentences with extract.py's OWN
+    _SENT regex, locate the matching sentence, and re-run extract.py's OWN
+    _window_is_negated against (that sentence, its immediate successor,
+    from_pe_bli, to_pe_bli) — imported, never duplicated, so the extractor
+    and this gate can never apply different negation rules. A match is a
+    FAIL: the row asserts, at the site's strongest evidence tier, a transfer
+    its own cited paragraph takes back.
+
+    This is a LIVE-table drift check, not a re-run of extraction:
+    extract_stated_edges already refuses to mint a negated edge, so a
+    freshly-rebuilt program_lineage should never trip this leg. It exists to
+    catch a stale row that survived an old (pre-negation-aware) build, or a
+    hand-edited/reverted one.
+
+    Deliberately NOT checked here: "no two edges share an evidence_fact_id"
+    (see module docstring for the live-corpus evidence this would fail on
+    correct data and is dropped).
+
+    Returns: ok, checked, passed, failures [(grain, reason)].
+    """
+    import psycopg
+
+    from govbudget.lineage.extract import _SENT, _window_is_negated
+
+    edges = _load_edges(dsn)
+    stated = [e for e in edges if e.confidence == "stated"]
+
+    with psycopg.connect(dsn) as con:
+        fid_to_bodies = _load_narrative_index(con)
+
+    failures: list[tuple[str, str]] = []
+    checked = 0
+    for e in stated:
+        sent = e.evidence_sentence
+        if not sent or not e.evidence_fact_id:
+            continue  # leg (a) already reports a missing/absent citation
+        checked += 1
+        bodies = fid_to_bodies.get(e.evidence_fact_id) or []
+        negated = False
+        for body in bodies:
+            if sent not in body:
+                continue
+            sents = _SENT.findall(body)
+            for i, s in enumerate(sents):
+                if s.strip() != sent:
+                    continue
+                next_sent = sents[i + 1] if i + 1 < len(sents) else None
+                if _window_is_negated(sent, next_sent, e.from_pe_bli, e.to_pe_bli):
+                    negated = True
+        if negated:
+            grain = f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation})"
+            failures.append(
+                (grain, f"evidence_sentence retracts itself (or its own"
+                        f" immediate successor does): {sent[:160]!r}")
+            )
+
+    return {
+        "ok": checked > 0 and len(failures) == 0,
+        "checked": checked,
+        "passed": checked - len(failures),
         "failures": failures,
     }

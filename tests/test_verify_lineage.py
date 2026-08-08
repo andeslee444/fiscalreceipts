@@ -23,6 +23,7 @@ from govbudget.verify_lineage import (
     family_integrity_leg,
     funding_point_value_leg,
     lake_binding_leg,
+    no_retraction_leg,
     one_to_one_sum_leg,
     stated_cite_leg,
 )
@@ -741,6 +742,80 @@ def test_leg_e_fails_on_family_partition_drift(pg, tmp_path):
 
 
 # ===========================================================================
+# Leg (f) — no-self-retraction (#53, 2026-08-08)
+# ===========================================================================
+
+
+def test_leg_f_passes_on_a_clean_transfer(pg):
+    body = "Funding for PE 0601101E was realigned to PE 0601102E."
+    fid = seed_narrative(
+        pg, sha="s1", pe_bli="0601101E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=body)
+    g = no_retraction_leg(pg)
+    assert g["ok"] is True, g["failures"]
+    assert g["checked"] == 1 and g["passed"] == 1
+
+
+def test_leg_f_fails_on_a_same_sentence_retraction(pg):
+    """proof-can-fail: the #53 shape — a cue in the edge's OWN sentence."""
+    body = "In FY 2026, funds were erroneously transferred to PE 0601102E."
+    fid = seed_narrative(
+        pg, sha="s2", pe_bli="0601101E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=body)
+    g = no_retraction_leg(pg)
+    assert g["ok"] is False
+    assert any("retracts itself" in r for _, r in g["failures"])
+
+
+def test_leg_f_fails_on_a_next_sentence_retraction_naming_the_edges_own_pe(pg):
+    """proof-can-fail: the #53 REAL shape — the cue is the NEXT sentence, and
+    it names one of this edge's own endpoints (the "back to PE X" pattern)."""
+    body = ("Project X is transferred to Program Element 0601102E. "
+            "This funding will be realigned back to PE 0601101E.")
+    fid = seed_narrative(
+        pg, sha="s3", pe_bli="0601101E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    seed_edge(
+        pg, "0601101E", "0601102E", fact_id=fid,
+        sentence="Project X is transferred to Program Element 0601102E.",
+    )
+    g = no_retraction_leg(pg)
+    assert g["ok"] is False
+    assert any("retracts itself" in r for _, r in g["failures"])
+
+
+def test_leg_f_passes_when_next_sentence_cue_is_about_a_different_program(pg):
+    """Companion (the false-positive this leg must NOT produce): a cue in the
+    next sentence that names a DIFFERENT PE pair entirely must not retract
+    this edge — mirrors the real 1203154SF page where a clean transfer
+    sentence is immediately followed by an unrelated erroneous one."""
+    body = ("Project M is transferred to Program Element 0601102E. "
+            "Project N was erroneously transferred to Program Element 0699999E.")
+    fid = seed_narrative(
+        pg, sha="s4", pe_bli="0601101E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]", body=body,
+    )
+    seed_edge(
+        pg, "0601101E", "0601102E", fact_id=fid,
+        sentence="Project M is transferred to Program Element 0601102E.",
+    )
+    g = no_retraction_leg(pg)
+    assert g["ok"] is True, g["failures"]
+
+
+def test_leg_f_is_non_vacuous_with_zero_stated_edges(pg):
+    """proof-can-fail: an empty program_lineage must FAIL, not vacuously PASS."""
+    g = no_retraction_leg(pg)
+    assert g["ok"] is False
+    assert g["checked"] == 0
+
+
+# ===========================================================================
 # All-pass end-to-end
 # ===========================================================================
 
@@ -761,4 +836,7 @@ def test_all_legs_pass_on_clean_mini_warehouse(pg, tmp_path):
     c = one_to_one_sum_leg(pg, db)
     d = funding_point_value_leg(facts_db, details)
     e = lake_binding_leg(pg, base / "wh.duckdb")
-    assert a["ok"] and b["ok"] and c["ok"] and d["ok"] and e["ok"], (a, b, c, d, e)
+    f = no_retraction_leg(pg)
+    assert a["ok"] and b["ok"] and c["ok"] and d["ok"] and e["ok"] and f["ok"], (
+        a, b, c, d, e, f,
+    )

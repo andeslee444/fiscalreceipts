@@ -5696,3 +5696,247 @@ FULL RUN: `uv run python -m govbudget verify-phase5b3` ->
 pytest: 1,541 passed (unchanged — no Python touched this pass). vitest: 949
 passed (was 946). tsc: clean. eslint: 0 errors, 16 pre-existing warnings.
 Suite count unchanged: still 24 gates.
+
+================================================================================
+BACKLOG #53 — A "STATED" LINEAGE EDGE BUILT FROM A SENTENCE THAT RETRACTS IT
+(2026-08-08)
+================================================================================
+
+CONFIRMED defect (live on fiscalreceipts.com): /program/1203154SF/ asserted,
+at the site's strongest evidence tier, REALIGNED TO -> 1203609SF from "In
+FY 2026, Project Auxiliary Payloads was erroneously transferred to Program
+Element 1203609SF." The very next sentence of the SAME paragraph, rendered
+lower on the same page: "This funding will be realigned back to PE 1203154SF
+for proper execution following enactment." extract_stated_edges walked
+_SENT.findall(body) one sentence at a time, so the retraction was invisible
+to it. Both edges on the program also shared ONE page-level fact_id
+(10a4acbaa3270c74, "Ambiguous: first matching page"), so per-edge provenance
+was displayed but not actually held.
+
+--- FIX: NEGATION-AWARE EXTRACTION OVER A (SENTENCE, SUCCESSOR) WINDOW ---
+lineage/extract.py gains NEGATION_CUES + _window_is_negated(sent, next_sent,
+from_pe, to_pe): a cue found IN a transfer sentence itself always negates it
+unconditionally; a cue found only in the NEXT sentence negates only when
+that next sentence ALSO names one of the edge's own endpoints. mint() now
+also computes a per-edge edge_fact_id (sha256 of from|to|fy|relation|
+sentence)[:16] so each edge carries its own identity distinct from the
+narrative's shared page-level evidence_fact_id.
+
+--- TDD: FAILING TEST FIRST (tests/lineage/test_extract_negation.py) ---
+Verbatim RED, before any implementation:
+
+    tests/lineage/test_extract_negation.py::test_an_erroneous_transfer_yields_no_stated_edge FAILED
+    tests/lineage/test_extract_negation.py::test_the_negation_cue_may_sit_in_the_following_sentence FAILED
+    tests/lineage/test_extract_negation.py::test_a_blind_current_plus_next_window_would_wrongly_kill_a_neighbor FAILED
+    tests/lineage/test_extract_negation.py::test_each_edge_mints_its_own_fact_id FAILED
+    (test_a_clean_transfer_still_yields_a_stated_edge PASSED — no negation
+    logic needed for the already-correct clean-transfer case)
+    4 failed, 1 passed in 0.05s
+
+Verbatim GREEN, after implementation: `uv run pytest tests/lineage/ -v` ->
+27 passed in 0.34s (5 new negation tests + all 22 pre-existing lineage
+tests, including every equality-based `LineageEdge(...) in edges` assertion
+in test_extract.py/test_load.py, unaffected by the new edge_fact_id field).
+
+--- SUBSTITUTION 1 (evidence-gathered BEFORE writing code): evidence_fact_id
+stays untouched; per-edge identity lives on a NEW field, not a replacement ---
+The assigned code for mint() read `evidence_fact_id=edge_fid` (the newly
+minted per-edge hash) with the narrative's own id moved to a new
+source_fact_id field. Checked against the codebase BEFORE implementing:
+verify_lineage._edge_citation_resolves (leg a) re-derives evidence_fact_id
+against detail_narratives via fact_id_narrative(sha256, pe_bli, kind,
+xml_path) — a freshly-minted hash can never equal that derivation — and
+export_site.py:4348 HARD-RAISES ValueError for any stated edge whose
+evidence_fact_id is not in the site's cited_fact_ids universe (itself built
+ONLY from fact_id_narrative(...) values, jbook fact ids, and derived fact
+ids — never arbitrary hashes, confirmed by reading citation_rows.append
+call sites in export_site.py). Swapping evidence_fact_id would have broken
+citation resolution for EVERY stated edge in the corpus, not just the
+retracted one — verified by literally trying it and running verify-lineage
+leg (a) against the rebuilt table: 100% of stated edges failed with
+"re-derives to no narrative". Reverted; evidence_fact_id keeps its original
+meaning (n['fact_id'], the narrative's own fact_id_narrative(...) value).
+The per-edge disambiguator instead lives on a NEW field, edge_fact_id,
+disclosed in a model.py comment, with dataclass field(compare=False) so
+none of the 15 existing `LineageEdge(...) ==`/`in edges` assertions across
+the test suite needed touching. NOT persisted to Postgres today —
+program_lineage (migrations/008_program_lineage.sql) has no column for it
+and lineage/load.py's INSERT does not carry it — disclosed as a known limit
+rather than silently done; wiring it through needs a migration and is left
+for the per-edge-citation-UI work this enables, not invented here.
+
+Live-corpus evidence that a shared evidence_fact_id is NORMAL, not itself a
+defect signature (queried BEFORE deciding this, from the pre-fix
+program_lineage table):
+    fact_id 595b7bc230776350 shared by 5 edges — one rollup paragraph (page
+      607) naming five separate PE-to-PE transfers (0305550F/0708550F/
+      0208550F/0408550F -> 0303005F, 0207436F -> 0303004F).
+    fact_id 76c131e6f01ef8fa shared by 2 edges — one PE (0604270F) fanning
+      out to two destinations (0207407F, 0207039F) in one sentence.
+Only 10a4acbaa3270c74 (2 edges) was the #53 defect shape.
+
+--- SUBSTITUTION 2: NEGATION_CUES drops "no longer" from the candidate list ---
+The task's own worry ("the program is no longer funded under X" may be a
+legitimate transfer statement) was checked, not assumed. Ran every
+NEGATION_CUES candidate against a same-sentence-or-scoped-successor window
+over all 11,308 FY2026 narratives (both deduped, matching what actually
+ships, and un-deduped, matching every candidate directional match before
+dedup — 72 total). "no longer" matched ZERO sentences either way, so
+dropping it costs nothing measurable today; kept anyway is a live risk
+because "PE X will no longer receive this funding" is a natural, EXPECTED
+side effect of any legitimate transfer (the source PE obviously stops being
+funded once its money moves) rather than a retraction of the transfer
+itself — the asymmetry (zero proven benefit, an obvious future
+false-positive shape) is why it was cut rather than kept "just in case".
+Shipped NEGATION_CUES: erroneously, in error, incorrectly, realigned back,
+transferred back, will be returned, rescinded.
+
+--- SUBSTITUTION 3 (found BY the corpus check, not assumed): the next-
+sentence cue window must be ENDPOINT-SCOPED, not blind ---
+The assigned _window_is_negated(sent, next_sent) took no endpoints and
+would negate on ANY cue anywhere in sent+next. Run against the real corpus
+BEFORE shipping, this naive form removes 3 edges, not 2 — including the
+LEGITIMATE 1203154SF -> 1203155SF edge, because 1203154SF's real narrative
+sequence is: [clean "...transferred to PE 1203155SF..."] immediately
+followed by [unrelated, erroneous "...transferred to PE 1203609SF..."]. A
+blind window kills the clean sentence because its OWN successor (someone
+else's retracted transfer) happens to carry a cue. Verbatim from the
+corpus-scan script (kept in scratchpad, not committed):
+
+    =========== NAIVE (current+next, unscoped) ===========
+    cue 'erroneously': 3 edge(s) affected
+      [NEXT sentence] 1203154SF -> 1203155SF (realigned, FY2026)
+         sent: In FY 2026, Project Moving Target Indicator is transferred to Program Element 1203155SF to better align efforts with the USSF mission areas.
+         next: In FY 2026, Project Auxiliary Payloads was erroneously transferred to Program Element 1203609SF.
+      [SAME sentence] 1203154SF -> 1203609SF (realigned, FY2026)
+      [SAME sentence] 1206427SF -> 1203609SF (realigned, FY2026)
+    === TOTAL distinct edges removed (NAIVE): 3 ===
+
+    =========== SCOPED (next must name this edge's own PE) ===========
+    cue 'erroneously': 2 edge(s) affected (both SAME-sentence)
+    cue 'realigned back': 1 edge(s) affected (NEXT sentence, endpoint-matched)
+    === TOTAL distinct edges removed (SCOPED): 2 ===
+
+_window_is_negated therefore requires the next-sentence cue's OWN sentence
+to also mention one of the edge's own endpoints (from_pe or to_pe) before
+it counts — true for every real "…transferred back to PE X" retraction
+(the retraction necessarily names where the money goes), false for an
+unrelated neighboring sentence. Pinned by
+test_a_blind_current_plus_next_window_would_wrongly_kill_a_neighbor and
+by tests/test_verify_lineage.py::test_leg_f_passes_when_next_sentence_cue_
+is_about_a_different_program (the same shape, at the gate level).
+
+--- NEW GATE LEG (f) — no-self-retraction ---
+verify_lineage.no_retraction_leg re-derives each stated edge's (sentence,
+successor) window from the SAME narrative index leg (a) uses, and re-runs
+extract.py's OWN NEGATION_CUES/_window_is_negated against it (imported, not
+duplicated — same one-rule-set discipline sentence_named_pairs already
+enforces for leg a). A match is a FAIL. Non-vacuous: zero checkable stated
+edges is a FAIL (test_leg_f_is_non_vacuous_with_zero_stated_edges).
+
+--- SUBSTITUTION 4: the spec's "no two edges share an evidence_fact_id"
+clause for leg (f) is DROPPED, not implemented ---
+Checked against the live (pre-fix) program_lineage table before writing the
+leg: TWO fact_ids are already, legitimately, shared by multiple edges (the
+595b7bc230776350 5-way rollup and 76c131e6f01ef8fa 2-way fan-out cited
+above). A "no sharing" gate would fail the CLI on that correct, currently-
+shipped data while adding no protection #53 needs — the actual retraction
+is caught by the negation check regardless of whether its fact_id happens
+to be shared. Implementing the literal clause would have been shipping a
+FALSE invariant as a gate; dropping it is documented here, in the
+verify_lineage.py module docstring, and in the commit message, per this
+sprint's disclosure convention for departing from a prescribed design.
+
+--- UNIT PROOF-CAN-FAIL, leg (f) (tests/test_verify_lineage.py, throwaway
+DB govbudget_test_lineage) ---
+    test_leg_f_passes_on_a_clean_transfer PASSED
+    test_leg_f_fails_on_a_same_sentence_retraction PASSED (asserts FAIL,
+      "retracts itself", for the direct #53 shape)
+    test_leg_f_fails_on_a_next_sentence_retraction_naming_the_edges_own_pe
+      PASSED (asserts FAIL for the "back to PE X" NEXT-sentence shape)
+    test_leg_f_passes_when_next_sentence_cue_is_about_a_different_program
+      PASSED (the false-positive companion — proves the scoping holds)
+    test_leg_f_is_non_vacuous_with_zero_stated_edges PASSED (empty table ->
+      FAIL, not a vacuous PASS)
+`uv run pytest tests/test_verify_lineage.py -v` -> 39 passed in 1.82s (34
+pre-existing leg a-e/e2e tests unaffected + 5 new leg f tests).
+
+--- PROOF-CAN-FAIL ON THE REAL WAREHOUSE (genuine historical defect, not
+synthetic — captured BEFORE running `lineage build`, so this is the actual
+production data that was live) ---
+$ uv run python -m govbudget verify-lineage
+leg a stated-cite: checked=31 passed=31 failures=0 → PASS
+leg b family-integrity: recomputed_pes=53 persisted_pes=53 failures=0 → PASS
+leg c one-to-one-sum: families_checked=22 cyclic_fallbacks=0 dangling_terminals=1 failures=0 → PASS
+  NOTE successor 0207429F (family root 0207604) is cited but unresolved in the ingested request series (dangling terminal); the funding line ends here and the successor must be rendered as an unresolved reference, not a clean thread
+  NOTE family root 0207604 is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0207436F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0208550F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0101101F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+leg d funding-point-value: files_scanned=1993 points_checked=528 failures=0 → PASS
+leg e lake-binding: lineage_rows_db=34 lineage_rows_lake=34 family_pes_db=53 family_pes_lake=53 failures=0 → PASS
+leg f no-retraction: checked=31 passed=29 failures=2 → FAIL
+  FAIL 1203154SF->1203609SF (realigned): evidence_sentence retracts itself (or its own immediate successor does): 'In FY 2026, Project Auxiliary Payloads was erroneously transferred to Program Element 1203609SF.'
+  FAIL 1206427SF->1203609SF (realigned): evidence_sentence retracts itself (or its own immediate successor does): 'In FY 2026, 40.687M was erroneously transferred from PE 1206427SF, Project 645601 / Space Defense Capabilities (Title:'
+verify-lineage: FAIL
+(exit code 1)
+
+Legs a-e ALL PASS on this same live data — proving the FAIL is leg (f)'s
+own teeth, not incidental corpus rot. The second edge (1206427SF ->
+1203609SF) is a genuine SECOND instance of the identical defect shape,
+found only by running the negation check across the whole corpus, not
+prescribed by the task: its narrative reads "In FY 2026, 40.687M was
+erroneously transferred from PE 1206427SF, ... to Project 670010..." with a
+same-page companion "The funds will be transferred back for proper
+execution following enactment." — confirmed by reading the full narrative
+body directly from detail_narratives before treating it as real.
+
+--- REBUILT: `uv run python -m govbudget lineage build` ---
+lineage built: {'stated': 29, 'inferred': 3, 'families': 22, 'edges': 32}
+31 -> 29 stated (drop of exactly 2 — both genuine retractions, both listed
+above; well under the "stop and report if >2-3 disappear" threshold).
+Inferred unchanged at 3.
+
+--- LEG (e) NEEDED A LAKE RE-STAGE, NOT JUST A DB REBUILD (found, not
+prescribed) ---
+Immediately after `lineage build`, `verify-lineage` showed leg (e) FAIL:
+the staged jbooks parquet lake (program_lineage.parquet/program_family.
+parquet) still carried the OLD 34-edge state while Postgres now had the
+NEW 32-edge state — a genuine drift, not a #53 regression. The task's own
+prior fix (Defect 2, above) documents the real pipeline order as `lineage
+build -> jbooks export-facts -> export-site -> verify-lineage`; this task's
+prescribed Step 6 named only the first and last. Ran `uv run python -m
+govbudget jbooks export-facts` (writes to data/parquet/jbooks/*.parquet —
+the warehouse-side lake, NOT site/ or site/out/, and NOT one of the three
+forbidden commands `npm run build` / `npm run verify` / `export-site`) to
+re-stage the lake before the final verify-lineage run below.
+
+--- MADE TO PASS ON THE REBUILT WAREHOUSE (verbatim) ---
+$ uv run python -m govbudget verify-lineage
+leg a stated-cite: checked=29 passed=29 failures=0 → PASS
+leg b family-integrity: recomputed_pes=51 persisted_pes=51 failures=0 → PASS
+leg c one-to-one-sum: families_checked=22 cyclic_fallbacks=0 dangling_terminals=1 failures=0 → PASS
+  NOTE successor 0207429F (family root 0207604) is cited but unresolved in the ingested request series (dangling terminal); the funding line ends here and the successor must be rendered as an unresolved reference, not a clean thread
+  NOTE family root 0207604 is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0207436F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0208550F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+  NOTE family root 0101101F is a cited dangling ORIGIN — named as a source in a genuinely-cited sentence but absent from the ingested series; the funding line starts at the first ingested member and the origin must render as an unresolved reference
+leg d funding-point-value: files_scanned=1993 points_checked=528 failures=0 → PASS
+leg e lake-binding: lineage_rows_db=32 lineage_rows_lake=32 family_pes_db=51 family_pes_lake=51 failures=0 → PASS
+leg f no-retraction: checked=29 passed=29 failures=0 → PASS
+verify-lineage: PASS
+(exit code 0)
+
+The 1203155SF edge (the legitimate transfer on the SAME program as the
+retracted one) survives, confirmed directly:
+    ('1203154SF', '1203155SF', 2026, 'realigned', 'stated', ...) present
+    ('1203154SF', '1203609SF', ...) and ('1206427SF', '1203609SF', ...) GONE
+
+citation_parity unaffected: `uv run pytest tests/test_citation_parity.py`
+-> 1 passed (evidence_fact_id, the field citations.json/citations.parquet
+parity depends on, was never touched — only the new, unpersisted
+edge_fact_id field was added).
+
+FULL SUITE: `uv run pytest -q` -> 1,551 passed in 70.4s (1,541 baseline +
+10 new: 5 in tests/lineage/test_extract_negation.py, 5 in
+tests/test_verify_lineage.py leg (f) section).
