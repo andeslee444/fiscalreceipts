@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603882C",
+ "batch_id": "msgbatch_01LmP2YgLwytPMgN16QPiN5n",
+ "collected_at": "2026-08-11T13:32:39.895761+00:00",
+ "message": {
+  "id": "msg_011Cdw3UXXfKRhFRXEwkFVGs",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Ballistic Missile Defense Midcourse Defense Segment (program element 0603882C) is run by the Missile Defense Agency (MDA) and funds the Ground-Based Midcourse Defense (GMD) Weapon System, which gives combatant commands including U.S. Northern Command (USNORTHCOM) a continuously available homeland-defense system that operates 24 hours a day, 7 days a week, 365 days a year.\",\"citation\":{\"fact_id\":\"3a342a9d49406a23\"}},{\"text\":\"The system's Ground Based Interceptors deliver a single kill vehicle to counter threats in space during the midcourse phase of a ballistic missile's flight, and the program is developing a future mixed fleet of Ground Based Interceptors and Next Generation Interceptors.\",\"citation\":{\"fact_id\":\"3a342a9d49406a23\"}},{\"text\":\"The Ground Systems include the Ground Fire Control (GFC), with two nodes at Fort Greely, Alaska and the Missile Defense Integration and Operations Center in Colorado Springs, Colorado; the communications network; In-flight Data Terminals; and Ground Support Systems located at Fort Greely and Vandenberg Space Force Base, California.\",\"citation\":{\"fact_id\":\"ef19558dbef9d485\"}},{\"text\":\"The GMD Cyber Operations project provides cybersecurity and cyber resiliency to maintain and operate all mission and mission-support systems, hardening the system against cyber-attacks and reducing vulnerabilities before fielding.\",\"citation\":{\"fact_id\":\"017cda8d83a2be1d\"}},{\"text\":\"Beginning in FY 2026, MDA is transferring the Ground Based Interceptor and Ground Based Interceptor Service Life Extension Program budget accomplishments into a new accomplishment called Interceptor Fleet Management, yielding a net decrease from efficiencies gained through the fleet-management approach.\",\"citation\":{\"fact_id\":\"e89f0a8d93ce2d69\"}},{\"text\":\"MDA completed the transition from The Boeing Company as the Ground-Based Midcourse Defense Program Lead System Integrator to MDA itself executing as the Weapon System Integrator.\",\"citation\":{\"fact_id\":\"d54c7f771b0f79c9\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"A January 27, 2025 Presidential Executive Order established a goal of protecting U.S. citizens, safeguarding critical infrastructure, and securing second-strike capability against missile attack, and this budget submission reflects changes needed to meet that mission.\",\"citation\":{\"fact_id\":\"3a342a9d49406a23\"}},{\"text\":\"The program funds interceptor fleet management aimed at sustaining a minimal workforce and infrastructure, maintaining the existing fleet, extending the service life of the Ground Based Interceptors, and executing repairs until they are retired or replaced by Next Generation Interceptors.\",\"citation\":{\"fact_id\":\"851e042b32edf007\"}},{\"text\":\"The program's actual spending was about $866.6 million (USD thousands: 866,585) in fiscal year 2024.\",\"citation\":{\"fact_id\":\"6113ddf090007e3b\"}},{\"text\":\"Congress enacted about $752.0 million (751,963 in USD thousands) for fiscal year 2025.\",\"citation\":{\"fact_id\":\"1403a74c0e06959d\"}},{\"text\":\"The fiscal year 2026 request is about $825.9 million (825,919 in USD thousands).\",\"citation\":{\"fact_id\":\"5be35c38f5e46a3e\"}},{\"text\":\"The fiscal year 2026 request is about $74.0 million higher than the 2025 total, an increase of roughly 9.84 percent.\",\"citation\":{\"fact_id\":\"f0ddc60755455c11\"}}]},\"players\":{\"claims\":[{\"text\":\"The largest project within the program is Ground Based Midcourse (project MD08), with a fiscal year 2026 request of about $767.5 million.\",\"citation\":{\"fact_id\":\"bf24144a210174a1\"}},{\"text\":\"Ground Based Midcourse (project MD08) had actual spending of about $805.5 million in fiscal year 2024.\",\"citation\":{\"fact_id\":\"2ae597aa10272cc1\"}},{\"text\":\"The Cyber Operations project (MC08) has a fiscal year 2026 request of about $30.3 million.\",\"citation\":{\"fact_id\":\"cdc4d5a1a345c316\"}},{\"text\":\"The Program-Wide Support project (MD40) has a fiscal year 2026 request of about $28.1 million.\",\"citation\":{\"fact_id\":\"1f62a61a92c5a687\"}},{\"text\":\"Cumulative prior-year funding for the Ground Based Midcourse project (MD08) totals about $9.2 billion.\",\"citation\":{\"fact_id\":\"6249d9d91dcae5ec\"}},{\"text\":\"MDA completed the transition from The Boeing Company, which had served as the Lead System Integrator, and awarded contracts including a GWS Contract for Ground Systems and Fire Control and a System Integration, Test, & Readiness (SITR) Contract for Element Engineering.\",\"citation\":{\"fact_id\":\"d54c7f771b0f79c9\"}},{\"text\":\"Lobbying filings by client BAE Systems Inc referenced the program in a 2026 filing addressing the National Defense Authorization Act, 2027 and provisions on research and development.\",\"citation\":{\"fact_id\":\"01f9b661cd76819d\"}},{\"text\":\"An earlier 2024 lobbying filing by BAE Systems Inc referenced the program in connection with the Department of Defense Appropriations Act of 2024.\",\"citation\":{\"fact_id\":\"004fd92e0be59371\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 2661,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 2661,
+   "cache_read_input_tokens": 0,
+   "inference_geo": "global",
+   "input_tokens": 17286,
+   "output_tokens": 1978,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

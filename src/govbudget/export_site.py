@@ -3793,6 +3793,32 @@ def _emit_dossier_sidecars(
     total_dropped = 0
     dropped_by_pe: dict[str, int] = {}
     skipped: list[str] = []
+    retired: list[str] = []
+
+    # #56 FALLOUT, third failure mode: a program can LEAVE the top-50 set.
+    # De-fusing the collided keys dropped 3010 and 3050 out of the top-50 by
+    # dollar size, and their paid dossiers describe the program they used to
+    # be — 3010's first claim literally reads "funding split across the Other
+    # Procurement, Navy and Shipbuilding..." , which is the fused premise #56
+    # exists to remove. The raw archives stay on disk (paid research is never
+    # deleted), but a dossier is BY DEFINITION the top-50's, so a program
+    # outside that set no longer renders one. This is membership, not a
+    # hardcoded PE list: it re-derives from the seed every export.
+    _top_set: set[str] = set()
+    try:
+        import csv as _csv
+        _cat_csv = (
+            Path(__file__).resolve().parents[2] / "data-seeds" / "program_categories.csv"
+        )
+        if _cat_csv.exists():
+            with _cat_csv.open(newline="", encoding="utf-8") as _fh:
+                _top_set = {
+                    (r.get("pe_bli") or "").strip()
+                    for r in _csv.DictReader(_fh)
+                    if (r.get("pe_bli") or "").strip()
+                }
+    except Exception:
+        _top_set = set()  # seed unreadable → emit everything, as before
 
     for path in sorted(dossiers_raw_dir.glob("*.json")):
         if path.name == "batch_meta.json":
@@ -3806,6 +3832,14 @@ def _emit_dossier_sidecars(
         pe_bli = (
             str(raw.get("custom_id") or "").removeprefix("dossier-") or path.stem
         )
+        if _top_set and pe_bli not in _top_set:
+            # Retired, not skipped: nothing is wrong with the archive, the
+            # program simply is not in the top-50 any more. Stale sidecars
+            # from a previous export are removed so the set cannot drift.
+            retired.append(pe_bli)
+            (out_dir / f"{pe_bli}.json").unlink(missing_ok=True)
+            continue
+
         message = raw.get("message")
         text = _first_text(message) if message is not None else None
         if text is None:
@@ -3925,6 +3959,7 @@ def _emit_dossier_sidecars(
         "total_dropped": total_dropped,
         "dropped_by_pe": dropped_by_pe,
         "skipped": skipped,
+        "retired": retired,
     }
 
 

@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0603891C",
+ "batch_id": "msgbatch_01LmP2YgLwytPMgN16QPiN5n",
+ "collected_at": "2026-08-11T13:32:39.895761+00:00",
+ "message": {
+  "id": "msg_011Cdw3UXXATh8bN59jH5CrV",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Special Programs - MDA is a research and development budget line run by the Missile Defense Agency (MDA), funded through the Research, Development, Test and Evaluation, Defense-Wide account.\",\"citation\":{\"fact_id\":\"ff838c19a86b3f59\"}},{\"text\":\"The program is reported in accordance with Title 10, United States Code, Section 119 in the annual Special Access Program Budget Justification submission to Congress — meaning it is a classified special-access program.\",\"citation\":{\"fact_id\":\"d33c062f553ef4c5\"}},{\"text\":\"It is also reported under Title 10, U.S. Code, Section 119(a)(1) in the Special Access Program Annual Report to Congress.\",\"citation\":{\"fact_id\":\"a7e6e7fa60135530\"}},{\"text\":\"The program's budget detail is organized under a single project, MD27, titled 'Special Programs.'\",\"citation\":{\"fact_id\":\"31480e52d64a8c42\"}},{\"text\":\"Across all prior years, the program had accumulated $4,190.494 million (about $4.19 billion) in funding.\",\"citation\":{\"fact_id\":\"3c8a8edafe46e1c9\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program spent $551.028 million (recorded as $551,028 thousand) in actual funding in fiscal year 2024.\",\"citation\":{\"fact_id\":\"ff838c19a86b3f59\"}},{\"text\":\"For fiscal year 2025, Congress enacted $495.57 million (recorded as $495,570 thousand).\",\"citation\":{\"fact_id\":\"ea0b5dee9a518cd0\"}},{\"text\":\"The full fiscal year 2026 request totals $821.43 million (recorded as $821,430 thousand).\",\"citation\":{\"fact_id\":\"4d1d59c7767d68bd\"}},{\"text\":\"That fiscal year 2026 total combines a base discretionary request of $498.63 million (recorded as $498,630 thousand) with an additional reconciliation request of $322.8 million (recorded as $322,800 thousand).\",\"citation\":{\"fact_id\":\"c5666bada354a3bd\"}},{\"text\":\"The reconciliation portion of the fiscal year 2026 request is $322,800 thousand, roughly $322.8 million.\",\"citation\":{\"fact_id\":\"93d95c1f72850fc0\"}},{\"text\":\"The change from FY2025 to FY2026 amounts to an increase of $325.86 million (recorded as $325,860 thousand).\",\"citation\":{\"fact_id\":\"f267900a6b254055\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Missile Defense Agency (MDA), and its budget detail is captured entirely within a single organizational component.\",\"citation\":{\"fact_id\":\"4d1d59c7767d68bd\"}}]},\"recent_developments\":{\"claims\":[{\"text\":\"An automated budget-tracking event flagged that Special Programs - MDA increased 66% from FY2025 to FY2026, a jump of $325,860 thousand from $495,570 thousand to $821,430 thousand.\",\"citation\":{\"fact_id\":\"f267900a6b254055\"}}]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 2661,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 2661,
+   "cache_read_input_tokens": 0,
+   "inference_geo": "global",
+   "input_tokens": 4389,
+   "output_tokens": 1071,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}
