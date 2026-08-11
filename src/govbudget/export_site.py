@@ -1518,11 +1518,20 @@ def export_site(
             if snapshots_index_path is not None
             else set()
         )
+        # #56 fallout: fact_id -> recorded_value (index 23 of the 27-element
+        # citation row), so _emit_dossier_sidecars can catch a dossier claim
+        # whose citation still RESOLVES but whose own hardcoded prose no
+        # longer matches what that fact_id currently records (a #56 account
+        # re-key changed the value under a stable fact_id).
+        fact_id_to_recorded_value = {
+            row[0]: row[23] for row in citation_rows if row[23] is not None
+        }
         dossier_summary = _emit_dossier_sidecars(
             json_dir=out_dir / "json",
             dossiers_raw_dir=dossiers_raw_dir,
             citations_keyset=citations_keyset,
             snapshot_urls=snapshot_urls,
+            fact_id_to_recorded_value=fact_id_to_recorded_value,
         )
 
     # -----------------------------------------------------------------------
@@ -1892,8 +1901,8 @@ def _build_derived_citation_rows(
     rows: list[tuple] = []
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
 
-    # Build a fast lookup: (pe_bli, org_translated, amount_type) → fact_id
-    # from the already-built bl_rows.
+    # Build a fast lookup: (pe_bli, org_translated, amount_type) → [(fact_id,
+    # amount_thousands), ...] from the already-built bl_rows.
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
     #   organization, budget_activity, budget_activity_title, pe_bli, title,
     #   amount_type, amount_thousands, units, document_sha256, source_sheet, source_cells)
@@ -1902,13 +1911,27 @@ def _build_derived_citation_rows(
     # (pe_bli, org, amount_type); fct_budget_trajectory pivots detail rows only,
     # so including rollup fact_ids here would make sum(inputs) exceed the
     # recorded trajectory value and fail the derived-sum recompute gate.
-    bl_key_to_fid: dict[tuple, list[str]] = {}
+    #
+    # #56: the value is carried alongside the fact_id (not just the fact_id)
+    # so the trajectory-metric loop below can pick the SAME single account
+    # fct_budget_trajectory.sql itself picked for the 10 pe_bli values
+    # coincidentally shared by two different real appropriation accounts —
+    # a naive "every fact_id sharing (pe_bli, org, amount_type)" join would
+    # include BOTH accounts' fact_ids as inputs while fct_budget_trajectory's
+    # own recorded_value now reflects only one of them (fct_budget_trajectory
+    # picks per (pe_bli, organization), never sums across accounts), and
+    # sum(both accounts' inputs) != recorded_value fails verify_phase5b1's
+    # derived-sum recompute (rule 4c) for real. Measured pre-fix (2026-08-11
+    # export): 11 derived facts across the 10 known collision keys skipped
+    # by _emit_breakdowns on exactly this mismatch (e.g. '3010' fy2024:
+    # sum of 2 inputs = 528,574 != recorded_value 28,574).
+    bl_key_to_fid: dict[tuple, list[tuple[str, float]]] = {}
     for r in bl_rows:
-        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, bl_title, bl_amt_type, _, _, _, _, _ = r
+        fid_bl, _, _, _, _, bl_org, _, _, bl_pe, bl_title, bl_amt_type, bl_amt, _, _, _, _ = r
         if bl_title is None:
             continue
         k = (bl_pe, bl_org, bl_amt_type)
-        bl_key_to_fid.setdefault(k, []).append(fid_bl)
+        bl_key_to_fid.setdefault(k, []).append((fid_bl, bl_amt))
 
     con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
@@ -1967,9 +1990,26 @@ def _build_derived_citation_rows(
                 fid = fact_id_derived("trajectory", key_str, metric)
                 # Collect budget_lines fact_ids as inputs
                 amt_types = _METRIC_TO_AMOUNT_TYPES[metric]
-                input_fids: list[str] = []
+                input_pairs: list[tuple[str, float]] = []
                 for at in amt_types:
-                    input_fids.extend(bl_key_to_fid.get((pe_bli, translated_org, at), []))
+                    input_pairs.extend(bl_key_to_fid.get((pe_bli, translated_org, at), []))
+                # #56: when this (pe_bli, org, amount_type) slot has rows from
+                # >1 account (a coincidental key collision, not a multi-org
+                # component — fct_budget_trajectory.sql picks exactly one
+                # account for this value instead of summing), keep only the
+                # row(s) whose OWN amount matches this metric's recorded
+                # value — the same account fct_budget_trajectory picked —
+                # so sum(inputs) always equals recorded_value. A non-
+                # colliding slot has exactly one row already, so this filter
+                # is a no-op there (it always matches).
+                if len(input_pairs) > 1:
+                    matched = [
+                        (f, a) for f, a in input_pairs
+                        if a is not None and abs(a - value) < 0.0005
+                    ]
+                    if matched:
+                        input_pairs = matched
+                input_fids = [f for f, _a in input_pairs]
                 # Deduplicate while preserving order
                 seen: set[str] = set()
                 unique_inputs: list[str] = []
@@ -2043,10 +2083,18 @@ def _build_derived_citation_rows(
                 value = metrics.get(metric)
                 if value is None:
                     continue
+                # #56 type note: BLI 30/20/500 (this loop's actual multi-org
+                # cases) share one account across every component org, so
+                # each (pe_bli, org, at) key below has exactly one entry —
+                # no account-plurality ambiguity to resolve here, unlike the
+                # single-org, multi-account collision keys the loop above
+                # handles. Just unwrap (fid, amount) → fid.
                 input_fids: list[str] = []
                 for at in _METRIC_TO_AMOUNT_TYPES[metric]:
                     for org in orgs:
-                        input_fids.extend(bl_key_to_fid.get((pe_bli, org, at), []))
+                        input_fids.extend(
+                            f for f, _a in bl_key_to_fid.get((pe_bli, org, at), [])
+                        )
                 unique_inputs = list(dict.fromkeys(input_fids))
                 rows.append(_null_derived_row(
                     fact_id_derived("trajectory", pe_bli, metric),
@@ -2106,8 +2154,16 @@ def _build_derived_citation_rows(
         org_to_total: dict[str, float] = {}
         for pe_bli, org, fy24_m in prog_rows_d:
             translated = _workbook_org(org)
-            # workbook fact_ids for fy_2024_actuals for this program
-            fids_24 = bl_key_to_fid.get((pe_bli, translated, "fy_2024_actuals"), [])
+            # workbook fact_ids for fy_2024_actuals for this program. This
+            # formula ('sum(dim_programs.fy2024_actual_millions)...') is not
+            # a 'sum(budget_lines...)' shape and is not numerically
+            # recomputed by verify_phase5b1 rule 4c (org-wide aggregate, not
+            # a per-program pivot) — #56's account-plurality fix does not
+            # need to reach this specific citation; just unwrap (fid, amount).
+            fids_24 = [
+                f for f, _a in
+                bl_key_to_fid.get((pe_bli, translated, "fy_2024_actuals"), [])
+            ]
             org_to_fids.setdefault(org, []).extend(fids_24)
             if fy24_m is not None:
                 org_to_total[org] = org_to_total.get(org, 0.0) + fy24_m
@@ -3139,6 +3195,36 @@ def _build_summary_blocks(
         ).fetchall()
     except _duckdb.CatalogException:
         prog_traj_rows = []
+    # #56 collision PEs: pe_bli values coincidentally shared by two
+    # DIFFERENT real appropriation accounts within one amount_type slot
+    # (same grain as dbt/tests/assert_program_key_unique.sql — kept in
+    # sync deliberately; see that file's comment for why fiscal_year alone
+    # is the wrong grain and 1045/COLUMBIA must not appear here). This
+    # mart's own fct_budget_trajectory row is now correctly account-scoped
+    # (fct_budget_trajectory.sql's #56 fix), but fct_decade_series (a
+    # separate Phase 5E model, not re-keyed by this ticket — its blast
+    # radius spans all ten PB editions) still silently sums across both
+    # accounts, and decade_slot normally wins summary-card priority 1 over
+    # trajectory's priority 2. Excluding these PEs from decade_slot below
+    # forces the union onto the now-correct trajectory tier instead.
+    try:
+        collision_pes: set[str] = {
+            r[0] for r in con.execute(
+                "select pe_bli"
+                " from (select pe_bli, amount_type,"
+                "       count(distinct account_title) as n"
+                "       from fct_budget_lines"
+                "       where account_title is not null"
+                "         and pe_bli <> '9999999999'"
+                "         and fiscal_year = 2026"
+                "         and amount_type in"
+                "             ('fy_2024_actuals', 'fy_2025_total', 'fy_2026_total')"
+                "       group by pe_bli, amount_type)"
+                " where n > 1"
+            ).fetchall()
+        }
+    except _duckdb.CatalogException:
+        collision_pes = set()
     finally:
         con.close()
     traj_orgs: dict[str, list[str]] = {}
@@ -3233,8 +3319,14 @@ def _build_summary_blocks(
         slot_cards: dict[str, dict] = {}
 
         for key, default_fy, default_measure in _SUMMARY_SLOTS:
-            # 1. decade grain
-            grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+            # 1. decade grain — skipped for #56 collision PEs: fct_decade_
+            # series is not account-scoped (see collision_pes comment above)
+            # and would re-serve the fused figure this union exists to
+            # avoid. Falls through to slot 2, which IS account-scoped.
+            grain = (
+                None if pe in collision_pes
+                else decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+            )
             if grain is not None:
                 v, fid, measure, _token = grain
                 slot_cards[key] = _card(
@@ -3364,8 +3456,13 @@ def _build_summary_blocks(
                     "dataset": card["dataset"],
                 }
             else:
-                # decade grid cell rendering exactly (fy, measure)…
-                grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+                # decade grid cell rendering exactly (fy, measure)… skipped
+                # for #56 collision PEs, same reason as the summary-card
+                # union above: fct_decade_series is not account-scoped.
+                grain = (
+                    None if pe in collision_pes
+                    else decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
+                )
                 if grain is not None and grain[3] == measure:
                     toa_side = {
                         "v": grain[0], "units": "USD thousands",
@@ -3432,12 +3529,79 @@ def _load_snapshot_urls(snapshots_index_path: Path) -> set[str]:
     return {entry["url"] for entry in data.get("snapshots", []) if entry.get("url")}
 
 
+# #56 fallout: fact_id_derived() hashes (surface, key, metric) — stable
+# across rebuilds even though a #56 account re-key can change WHICH single
+# account a trajectory fact_id's recorded_value now describes. A dossier
+# claim written before the fix keeps citing a fact_id that "still resolves"
+# (it is in citations_keyset) while its own hardcoded prose states a dollar
+# figure the citation no longer backs — e.g. '3010's why_it_matters claim
+# "The program's total FY2026 funding across both accounts is $2,620,900
+# thousand" cites fact_id 21956c874a3b2de1, whose recorded_value is now
+# 20,900 (the #56-corrected, single-account figure) — a live contradiction
+# between the sentence and its own footnote chip. Matches this codebase's
+# consistent "$X,XXX thousand" dossier-prose convention.
+_CLAIM_THOUSANDS_RE = re.compile(r"\$([\d,]+(?:\.\d+)?)\s*thousand\b", re.IGNORECASE)
+
+
+def _claim_value_still_matches(text: str, recorded_value: str | None) -> bool:
+    """True (keep the claim) unless the check actually applies and fails.
+
+    Uses findall, not the first match: a single sentence routinely states
+    MORE THAN ONE "$X thousand" figure ("...rises from $2,424,208 thousand
+    in FY2025 to $3,479,362 thousand requested for FY2026" — one sentence,
+    two real, both-still-correct figures with ONE citation on the whole
+    claim). Taking only the first match and comparing it against a citation
+    that actually backs the SECOND number is a false positive — measured on
+    the real corpus: 15 dossiers' still-accurate claims wrongly flagged this
+    way before this fix, vs. the true #56 collision claims (a single stale
+    figure, no other number in the sentence to fall back on).
+
+    True (keep the claim) unless: the claim states at least one parseable
+    "$X,XXX thousand" figure AND the citation carries a numeric
+    recorded_value AND NONE of the claim's figures are within 1% of it.
+    Absence of either half is not itself a reason to drop (most claims cite
+    non-numeric facts, non-dollar facts, or a source document) — this only
+    catches an ACTUAL, now-detectable contradiction: every number the
+    sentence states disagrees with what its own citation currently records."""
+    if recorded_value is None:
+        return True
+    matches = _CLAIM_THOUSANDS_RE.findall(text)
+    if not matches:
+        return True
+    try:
+        actual = float(recorded_value)
+    except ValueError:
+        return True
+    stated_values: list[float] = []
+    for raw in matches:
+        try:
+            stated_values.append(float(raw.replace(",", "")))
+        except ValueError:
+            continue
+    if not stated_values:
+        return True
+    if actual == 0:
+        return any(v == 0 for v in stated_values)
+    # _CLAIM_THOUSANDS_RE never captures a sign (dollar figures don't print
+    # "-$X thousand" in English prose) — a "decrease of $X thousand" claim
+    # states X as a bare magnitude while its citation's own recorded_value
+    # is signed (-X, a real negative change fact). Comparing the magnitude
+    # against BOTH the value and its negation avoids flagging that entirely
+    # correct phrasing as a false mismatch (measured: 3 dossiers' genuinely
+    # accurate "decrease of $X" claims were wrongly dropped before this).
+    return any(
+        abs(v - actual) / abs(actual) < 0.01 or abs(v - abs(actual)) / abs(actual) < 0.01
+        for v in stated_values
+    )
+
+
 def _emit_dossier_sidecars(
     *,
     json_dir: Path,
     dossiers_raw_dir: Path,
     citations_keyset: set[str],
     snapshot_urls: set[str],
+    fact_id_to_recorded_value: dict[str, str] | None = None,
 ) -> dict:
     """Rebuild out_dir/json/dossiers/{pe_bli}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
@@ -3472,8 +3636,20 @@ def _emit_dossier_sidecars(
     time; this function does not re-implement that gate, only the citation-
     membership half of it, at claim rather than file grain.
 
+    #56 FALLOUT (same general rule, a second failure mode): a claim can also
+    go stale WITHOUT its citation ever failing to resolve — fact_id_derived()
+    is a stable hash of (surface, key, metric), so a #56 account re-key can
+    change WHICH single account a trajectory fact_id's recorded_value now
+    describes while the fact_id itself, and therefore `ok` above, stays
+    unchanged. `_claim_value_still_matches` catches the case that check
+    cannot: the claim's own hardcoded prose states a dollar figure the
+    citation's CURRENT value no longer backs. Same drop-not-fabricate
+    treatment, same dropped_claims accounting — the reader never sees a
+    sentence contradicting the footnote chip right below it.
+
     Returns {written, total_dropped, dropped_by_pe, skipped}.
     """
+    fact_id_to_recorded_value = fact_id_to_recorded_value or {}
     from govbudget.dossiers.batch import ALL_SECTIONS, _first_text, validate_dossier
 
     out_dir = json_dir / "dossiers"
@@ -3512,22 +3688,41 @@ def _emit_dossier_sidecars(
             continue
 
         dropped_by_section: dict[str, int] = {}
+        # Reason breakdown (2026-08 #56 addendum): the ORIGINAL #52 drop
+        # reason (citation no longer resolves) and the NEW #56 one (citation
+        # still resolves, but the claim's own prose no longer matches its
+        # CURRENT value) are different defects with different explanations —
+        # program-dossier.tsx's "Correction" note used to hardcode the #52
+        # wording ("cited lobbying mentions that did not meet the evidence
+        # standard") unconditionally, which would have been FALSE for a #56
+        # drop (nothing to do with lobbying). Tracked separately so the UI
+        # can say which one actually happened here.
+        dropped_reasons_here: dict[str, int] = {}
         for section in ALL_SECTIONS:
             claims = dossier.get(section, {}).get("claims", [])
             kept = []
             section_dropped = 0
             for claim in claims:
                 citation = claim.get("citation") or {}
+                reason = None
                 if "fact_id" in citation:
-                    ok = citation["fact_id"] in citations_keyset
+                    fid = citation["fact_id"]
+                    if fid not in citations_keyset:
+                        reason = "unresolvable_citation"
+                    elif not _claim_value_still_matches(
+                        claim.get("text", ""), fact_id_to_recorded_value.get(fid),
+                    ):
+                        reason = "stale_value"
                 elif "url" in citation:
-                    ok = citation["url"] in snapshot_urls
+                    if citation["url"] not in snapshot_urls:
+                        reason = "unresolvable_citation"
                 else:
-                    ok = False  # malformed citation shape — drop, don't ship uncited
-                if ok:
+                    reason = "unresolvable_citation"  # malformed shape — drop, don't ship uncited
+                if reason is None:
                     kept.append(claim)
                 else:
                     section_dropped += 1
+                    dropped_reasons_here[reason] = dropped_reasons_here.get(reason, 0) + 1
             dossier[section]["claims"] = kept
             if section_dropped:
                 dropped_by_section[section] = section_dropped
@@ -3559,6 +3754,16 @@ def _emit_dossier_sidecars(
                     # with >=1 drop are present (matches dropped_by_pe's
                     # sparse-dict convention above).
                     "dropped_claims_by_section": dropped_by_section,
+                    # (#56 addendum) WHY each drop happened:
+                    # 'unresolvable_citation' (#52's original reason — the
+                    # fact_id/url no longer resolves at all) vs 'stale_value'
+                    # (#56's — the citation still resolves, but the claim's
+                    # own prose no longer matches its current value). Only
+                    # present keys had >=1 drop for that reason; empty dict
+                    # when dropped_claims is 0. program-dossier.tsx reads
+                    # this to render an accurate Correction note instead of
+                    # a hardcoded #52-only explanation.
+                    "dropped_reasons": dropped_reasons_here,
                 },
                 ensure_ascii=False,
                 indent=1,
@@ -3570,7 +3775,8 @@ def _emit_dossier_sidecars(
     if dropped_by_pe:
         print(
             f"dossiers: {total_dropped} claim(s) dropped across"
-            f" {len(dropped_by_pe)} dossier(s) — unresolvable citation (#52 fallout):"
+            f" {len(dropped_by_pe)} dossier(s) — unresolvable citation or"
+            " stale prose vs. a corrected fact's current value (#52/#56 fallout):"
         )
         for pe, n in sorted(dropped_by_pe.items()):
             print(f"  {pe}: {n} dropped")
@@ -4707,6 +4913,51 @@ def _write_all_sidecars(
     # Only these are safe to emit as data-fact-id (gate 2 Cite state A contract).
     _cited_fact_ids: set[str] = {row[0] for row in citation_rows}
 
+    # #56: pe_bli values coincidentally shared by two DIFFERENT real
+    # appropriation accounts within one amount_type slot. fct_decade_series
+    # (below) is a SEPARATE Phase 5E model spanning all ten PB editions —
+    # re-keying it is out of this ticket's blast radius (dim_programs.sql /
+    # fct_budget_trajectory.sql carry the #56 fix; fct_decade_series does
+    # not) — and it is NOT confined to the PB2026 edition: pe_bli '3010'
+    # shows n_source_rows=2 (a same-moment account collision, not a
+    # legitimate multi-org sum) in the PB2024 and PB2025 editions too, not
+    # just PB2026 (verified against the shipped warehouse, 2026-08-11). A
+    # decade sparkline point this mart still fuses would contradict the
+    # page's own #56-corrected headline card sitting right above it — gate
+    # 23 leg a2 (PM-review Sprint 1's pre-existing "one label, one basis"
+    # collision check) catches exactly this. Excluded here at the SOURCE
+    # (decade_series_by_pe is also what _emit_lineage threads into family
+    # funding-line points, so filtering upstream keeps both surfaces honest)
+    # rather than picking which points are safe per edition — an honest gap
+    # ("no year-over-year trajectory row for this line") is better than a
+    # sparkline that might still fuse two programs on SOME of its ten points.
+    try:
+        _decade_collision_pes: set[str] = {
+            r[0] for r in con.execute(
+                "select pe_bli"
+                " from (select pe_bli, amount_type,"
+                "       count(distinct account_title) as n"
+                "       from fct_budget_lines"
+                "       where account_title is not null"
+                "         and pe_bli <> '9999999999'"
+                "         and fiscal_year = 2026"
+                "         and amount_type in"
+                "             ('fy_2024_actuals', 'fy_2025_total', 'fy_2026_total')"
+                "       group by pe_bli, amount_type)"
+                " where n > 1"
+            ).fetchall()
+        }
+    except Exception:
+        _decade_collision_pes = set()
+    # Filtered once, used everywhere decade_grains feeds a rendered surface
+    # within this function — the per-program sidecar loop directly below AND
+    # years_matrix.json (#17 below, the /years/ grid), which reads
+    # decade_grains independently of decade_series_by_pe and would otherwise
+    # still publish the fused figure in its own cells.
+    decade_grains = [
+        g for g in (decade_grains or []) if g[0] not in _decade_collision_pes
+    ]
+
     # Decade series index (Phase 5E): pe_bli → {amount_type_kind: [entry…]}.
     # Entries are {fy, v, fid, edition, basis, measure} sorted by fy; absent
     # editions are GAPS (no entry), never zeros; uncited grains never render
@@ -4716,6 +4967,7 @@ def _write_all_sidecars(
     # decade_grains 7-tuple comment), never blindly from the series kind.
     decade_series_by_pe: dict[str, dict] = {}
     for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid, d_at in (decade_grains or []):
+        # (#56 collision pes are already filtered out of decade_grains above)
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
             continue
         _, d_measure = _amount_type_meta(d_at, d_edition)
@@ -4808,6 +5060,16 @@ def _write_all_sidecars(
             "amount_thousands": amount_thousands,
             "units": units,
             "account_title": account_title,
+            # #56: the workbook row's own title. Usually redundant with the
+            # page's program.title (both describe the same line) — but for
+            # the 10 pe_bli values coincidentally shared by two DIFFERENT
+            # appropriation accounts, a row's title can differ from the
+            # page's own title (e.g. '3010' carries both "LPD Flight II"
+            # rows and "Shipboard Tactical Communications" rows). Lets the
+            # page group budget_lines by account_title and label each
+            # group with the program it actually describes, instead of
+            # implying every row is about the page's own program.
+            "title": title,
             "organization": organization,
             "source_sheet": source_sheet,
             "source_cells": source_cells,

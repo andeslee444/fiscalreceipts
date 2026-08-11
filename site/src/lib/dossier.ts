@@ -74,6 +74,19 @@ export interface DossierFile {
    * that removed content ships labelled, not silent.
    */
   dropped_claims?: number;
+  /**
+   * (#56 addendum, 2026-08-11) WHY each drop happened, so the ScopeNote can
+   * say the true reason instead of always assuming #52's ("cited lobbying
+   * mentions that did not meet the evidence standard"):
+   *   - unresolvable_citation: #52's original reason — the fact_id/url no
+   *     longer resolves at all.
+   *   - stale_value: the citation still resolves, but the claim's own
+   *     hardcoded prose no longer matches its CURRENT value (e.g. a #56
+   *     account re-key changed what a stable fact_id now records).
+   * Only present keys had >=1 drop for that reason. Optional so a file
+   * written before this addendum parses without it.
+   */
+  dropped_reasons?: { unresolvable_citation?: number; stale_value?: number };
 }
 
 /** Snapshot metadata for url-citation chips (title tooltip + retrieved note). */

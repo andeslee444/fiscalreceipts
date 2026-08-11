@@ -1047,6 +1047,9 @@ export async function runBasisGate() {
   // ── Leg (g) — FY2026 discretionary/reconciliation split (#50) ─────────────
   runFy26SplitLeg(pages, errors, notes);
 
+  // ── Leg (h) — account-collision fused rows (#56) ───────────────────────────
+  runAccountCollisionLeg(pages, errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -1643,6 +1646,179 @@ function runFy26SplitLeg(pages, errors, notes) {
       `leg g3: ${resolved} FY2026 figures resolved with recon_share > 0 — ` +
         `non-vacuous ✓`,
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (h) — ACCOUNT-COLLISION (#56)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect: /program/3010/ rendered $2.62B under the title
+// "Shipboard Tactical Communications" (a $20.9M Other Procurement, Navy
+// line) — the $2.62B was LPD Flight II's Shipbuilding & Conversion, Navy
+// reconciliation funding, fused into the same row because '3010' happens to
+// be BOTH accounts' pe_bli/BLI code. Every constituent cell was correctly
+// cited and the row's own arithmetic was internally consistent (a genuine
+// SUM of two real cited numbers) — no existing basis-gate leg is within-row
+// arithmetic and would ever see this: it is a defect in the GROUPING KEY,
+// not a number that disagrees with its own citation.
+//
+// This leg: no rendered program row or program page may aggregate figures
+// whose citation records name more than one account_title. Concretely, a
+// program's own budget_lines already carry account_title per row (each row
+// is correctly single-account, always was — the defect was only ever in
+// the AGGREGATE cards built on top of them). For every program page whose
+// own budget_lines span >1 distinct account_title within a single
+// amount_type (a same-moment collision — see dbt/tests/
+// assert_program_key_unique.sql for why this is the right grain, not
+// (pe_bli, fiscal_year) alone, which would flag 1045/COLUMBIA Class
+// Submarine's cross-time account rename as a false positive):
+//
+//   h1 NO FUSED CARD — every numeric summary card (fy2024/fy2025/fy2026)
+//      whose own (fy, measure) maps to a colliding amount_type must equal
+//      ONE account's own contribution (recomputed from budget_lines),
+//      never their sum. This is the recompute the shipped defect fails:
+//      pre-fix, fct_budget_trajectory summed both accounts (3010's
+//      fy2024_actuals card read 528,574 — neither account's real figure).
+//   h2 NO FUSED-SOURCE DATASET — no such card may cite dataset
+//      "fct_decade_series": that mart is not account-scoped (a separate
+//      Phase 5E model spanning ten PB editions, out of this fix's blast
+//      radius) and would silently re-serve the fused figure even after
+//      fct_budget_trajectory itself is corrected.
+//
+// Read from the program_details/{pe}.json sidecar rather than parsed
+// [data-cite-fact-id] chains: citations.json's own workbook records carry
+// sheet/cell provenance but no account_title field, so the sidecar (which
+// already threads account_title onto every budget_lines row for the page)
+// is the more precise instrument — and it is exactly what page.tsx renders
+// the card values FROM, so a mismatch caught here is a mismatch the page
+// will show.
+//
+// Non-vacuity: fail if fewer than 100 program pages resolve a sidecar (this
+// leg must actually walk the corpus, not just the ~6 known collision
+// pages — the whole point is catching a NEW collision nobody has looked
+// for yet).
+
+const MIN_ACCOUNT_PAGES_RESOLVED = 100;
+
+// summary card key → the budget_lines amount_type it is sourced from when
+// the card's dataset is fct_budget_trajectory or fct_program_trajectory —
+// MIRRORS _TRAJ_METRIC_BY_SLOT in src/govbudget/export_site.py. Change one,
+// change both.
+const CARD_KEY_TO_AMOUNT_TYPE = {
+  fy2024: "fy_2024_actuals",
+  fy2025: "fy_2025_total",
+  fy2026: "fy_2026_total",
+};
+
+function runAccountCollisionLeg(pages, errors, notes) {
+  let resolved = 0;
+  const fusedCardMismatches = [];
+  const fusedSourceDataset = [];
+
+  for (const { pe } of pages) {
+    const sidecarPath = path.join(
+      repoRoot, "data", "site", "json", "program_details", `${pe}.json`,
+    );
+    if (!fs.existsSync(sidecarPath)) continue;
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(sidecarPath, "utf8"));
+    } catch {
+      continue;
+    }
+    resolved++;
+
+    const budgetLines = Array.isArray(sidecar.budget_lines) ? sidecar.budget_lines : [];
+    // amount_type → account_title → summed amount_thousands
+    const perSlot = new Map();
+    for (const bl of budgetLines) {
+      if (!bl || bl.account_title == null || bl.amount_type == null) continue;
+      if (typeof bl.amount_thousands !== "number") continue;
+      if (!perSlot.has(bl.amount_type)) perSlot.set(bl.amount_type, new Map());
+      const m = perSlot.get(bl.amount_type);
+      m.set(bl.account_title, (m.get(bl.account_title) || 0) + bl.amount_thousands);
+    }
+    const collisionSlots = new Set(
+      [...perSlot.entries()].filter(([, m]) => m.size > 1).map(([at]) => at),
+    );
+    if (collisionSlots.size === 0) continue;
+
+    const cards = Array.isArray(sidecar.summary?.cards) ? sidecar.summary.cards : [];
+    for (const card of cards) {
+      const amountType = CARD_KEY_TO_AMOUNT_TYPE[card.key];
+      if (!amountType || !collisionSlots.has(amountType)) continue;
+
+      // h2 — a card on a colliding slot may never cite the non-account-
+      // scoped mart, no matter what value it holds.
+      if (card.dataset === "fct_decade_series") {
+        fusedSourceDataset.push(
+          `/program/${pe}/: summary card "${card.key}" cites dataset ` +
+            `"fct_decade_series" on a page whose own budget_lines span >1 ` +
+            `account_title for ${amountType} (${[...perSlot.get(amountType).keys()].join(" | ")})`,
+        );
+        continue;
+      }
+      if (card.dataset !== "fct_budget_trajectory" && card.dataset !== "fct_program_trajectory") {
+        continue; // a budget_lines/jbook_details single-row card is already single-account
+      }
+      if (typeof card.value !== "number") continue;
+
+      // h1 — the card's value must equal ONE account's own contribution.
+      const perAccount = perSlot.get(amountType);
+      const matchesOne = [...perAccount.values()].some(
+        (v) => Math.abs(v - card.value) < 0.5,
+      );
+      if (!matchesOne) {
+        const breakdown = [...perAccount.entries()]
+          .map(([acct, v]) => `${acct}=${v}`)
+          .join(", ");
+        fusedCardMismatches.push(
+          `/program/${pe}/: summary card "${card.key}" = ${card.value} ` +
+            `(dataset ${card.dataset}) matches NEITHER account's own ` +
+            `${amountType} figure (${breakdown}) — looks like a cross-account sum`,
+        );
+      }
+    }
+  }
+
+  if (fusedCardMismatches.length > 0) {
+    errors.push(
+      `leg h1 account-collision fused card: ${fusedCardMismatches.length} summary ` +
+        `card(s) on a shared-key program page aggregate figures across >1 account ` +
+        `(first ${MAX_LISTED}):`,
+    );
+    for (const m of fusedCardMismatches.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (fusedCardMismatches.length > MAX_LISTED)
+      errors.push(`  ... and ${fusedCardMismatches.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg h1: every summary card on a shared-key program page matches exactly ` +
+        `one account's own figure — no cross-account sum ✓`,
+    );
+  }
+
+  if (fusedSourceDataset.length > 0) {
+    errors.push(
+      `leg h2 account-collision fused-source dataset: ${fusedSourceDataset.length} ` +
+        `summary card(s) on a shared-key program page cite fct_decade_series, which ` +
+        `is not account-scoped (first ${MAX_LISTED}):`,
+    );
+    for (const m of fusedSourceDataset.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (fusedSourceDataset.length > MAX_LISTED)
+      errors.push(`  ... and ${fusedSourceDataset.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg h2: no shared-key program page cites fct_decade_series ✓`);
+  }
+
+  if (resolved < MIN_ACCOUNT_PAGES_RESOLVED) {
+    errors.push(
+      `leg h3 is VACUOUS: only ${resolved} program page(s) resolved a ` +
+        `program_details sidecar (need ≥ ${MIN_ACCOUNT_PAGES_RESOLVED}) — the ` +
+        `sidecar path is not matching the built pages`,
+    );
+  } else {
+    notes.push(`leg h3: ${resolved} program pages resolved — non-vacuous ✓`);
   }
 }
 

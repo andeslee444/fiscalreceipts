@@ -317,4 +317,70 @@ describe("ProgramDossier", () => {
     expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
     expect(container.textContent).toContain("4 claims removed");
   });
+
+  // ── #56 addendum: dropped_reasons — the note must say the TRUE reason ──────
+  //
+  // THE REGRESSION THIS GUARDS AGAINST: fact_id_derived() is a stable hash,
+  // so a #56 program-key re-key can change WHICH value a citation resolves
+  // to WITHOUT the citation ever failing to resolve — the pre-existing
+  // #52-only wording ("cited lobbying mentions that did not meet the
+  // evidence standard") would be FALSE for this reason (nothing to do with
+  // lobbying). dropped_reasons lets the note distinguish them.
+
+  it("says a stale-value reason accurately, not the #52 lobbying wording", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 2;
+    file.dropped_reasons = { stale_value: 2 };
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    const note = container.querySelector('[data-note-kind="scope"]');
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain("2 claims removed");
+    expect(note!.textContent).toContain(
+      "they stated figures a later correction changed",
+    );
+    expect(note!.textContent).not.toContain("lobbying");
+  });
+
+  it("singular stale-value phrasing for exactly one dropped claim", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 1;
+    file.dropped_reasons = { stale_value: 1 };
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(container.textContent).toContain("1 claim removed");
+    expect(container.textContent).toContain(
+      "it stated a figure a later correction changed",
+    );
+  });
+
+  it("states BOTH reasons when a dossier has drops from both, each with its own count", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 7;
+    file.dropped_reasons = { unresolvable_citation: 6, stale_value: 1 };
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    const text = container.textContent!;
+    expect(text).toContain("7 claims removed");
+    expect(text).toContain(
+      "6 cited lobbying mentions that did not meet the evidence standard",
+    );
+    expect(text).toContain("one stated a figure a later correction changed");
+  });
+
+  it("still renders the exact #52 wording when dropped_reasons is absent (pre-#56 sidecar)", () => {
+    const file = fixtureDossier();
+    file.dropped_claims = 3;
+    // dropped_reasons intentionally NOT set — a sidecar written before this
+    // field existed must fall back to the original, already-tested wording.
+    const { container } = render(
+      <ProgramDossier dossier={file} snapshotMeta={SNAPSHOT_META} />,
+    );
+    expect(container.textContent).toContain(
+      "they cited lobbying mentions that did not meet the evidence standard",
+    );
+  });
 });

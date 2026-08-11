@@ -413,6 +413,12 @@ export interface ProgramNarrative {
 
 export interface ProgramBudgetLine {
   account_title: string;
+  /** #56: the workbook row's own title — usually the page's own title, but
+   *  for the 10 pe_bli values coincidentally shared by two different real
+   *  appropriation accounts, a row's title can name a DIFFERENT program
+   *  than the page's own (see app/program/[peBli]/page.tsx's
+   *  SharedKeyDisclosure). */
+  title?: string | null;
   amount_thousands: number;
   amount_type: string;
   exhibit: string;

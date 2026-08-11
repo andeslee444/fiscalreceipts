@@ -6131,3 +6131,301 @@ that used to silently pass a real contradiction is now allowed to.
 
 SUITE COUNT UNCHANGED — one new leg on gate 8 (l). Still 24 gates
 (`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).
+
+================================================================================
+BACKLOG #56 — PROGRAM KEYS COLLIDE ACROSS APPROPRIATION ACCOUNTS
+(2026-08-11)
+================================================================================
+
+/program/3010/ was a live 200 rendering $2.62B under the title "Shipboard
+Tactical Communications" — a $20.9M Other Procurement, Navy communications
+line — because an unrelated Shipbuilding & Conversion line, LPD Flight II
+($2.6B FY2026 reconciliation), coincidentally shares the pe_bli/BLI key
+'3010'. fct_budget_trajectory grouped by (pe_bli, organization, amount_type)
+and summed straight across both accounts; dim_programs' title join, joined
+on pe_bli alone, picked up whichever account's stg_budget_lines rows won an
+unconstrained max(). Ten pe_bli values collide this way in the PB2026
+corpus (0145, 1350, 2101, 2210, 2292, 3010, 3050, 3215, 3302, 4217); six had
+live pages (2210, 3010, 3050, 3215, 3302, 4217). 9999999999 (12 accounts) is
+the intentional classified sentinel, excluded by name throughout.
+
+URL DECISION: no new URLs. Enumerated dossiers (3010/3050 already had one,
+hand-authored about the correct small program), decade_series/book_diff
+(fct_decade_series has NO account column and would still show a fused
+10-year sparkline under a "split" title — worse than today), lineage rail,
+LDA lobbying mentions (matched by bare PE code text, not account-specific —
+splitting would either duplicate ambiguous evidence or fabricate
+specificity it doesn't have), and the award/concentration crosswalk (same
+issue). None of those systems carry an account dimension, so composite-slug
+splitting (option a/b) would produce a page that is correctly titled but
+internally self-contradictory below the fold. Chose option (c): one page
+per key, headline figures re-keyed to a single account (no cross-account
+sum), a plain-text "shares this budget line" disclosure naming the other
+program and citing its own already-cited figure directly (no new derived
+sum minted), the line-items table below already correctly showed
+account_title per row. generateStaticParams / sitemap.ts / linkgraph /
+program-skeleton / search_quick.json / cite-shards / /fact/{id} resolution
+are all unaffected — same page-details JSON file set as before (program
+count unchanged: dim_programs 1,739 rows before and after).
+
+--- dbt/tests/assert_program_key_unique.sql: FAIL demonstration ---
+
+Ran the collision-detection half of the assertion (the part independent of
+the fix) directly, BEFORE dim_programs.sql / fct_budget_trajectory.sql were
+edited:
+
+  $ uv run python -c "
+  import duckdb
+  con = duckdb.connect('data/duckdb/govbudget.duckdb', read_only=True)
+  rows = con.execute('''
+    select pe_bli, amount_type, count(distinct account_title) n
+    from fct_budget_lines
+    where account_title is not null and pe_bli <> '9999999999'
+      and fiscal_year = 2026
+      and amount_type in ('fy_2024_actuals','fy_2025_total','fy_2026_total')
+    group by pe_bli, amount_type having n > 1 order by 1,2
+  ''').fetchall()
+  for r in rows: print(r)
+  print(len(rows), 'distinct pe_bli:', sorted(set(r[0] for r in rows)))
+  "
+
+  ('0145', 'fy_2024_actuals', 2)
+  ('0145', 'fy_2026_total', 2)
+  ('1350', 'fy_2024_actuals', 2)
+  ('2101', 'fy_2024_actuals', 2)
+  ('2210', 'fy_2026_total', 2)
+  ('2292', 'fy_2024_actuals', 2)
+  ('2292', 'fy_2026_total', 2)
+  ('3010', 'fy_2024_actuals', 2)
+  ('3010', 'fy_2026_total', 2)
+  ('3050', 'fy_2026_total', 2)
+  ('3215', 'fy_2024_actuals', 2)
+  ('3215', 'fy_2026_total', 2)
+  ('3302', 'fy_2024_actuals', 2)
+  ('3302', 'fy_2026_total', 2)
+  ('4217', 'fy_2024_actuals', 2)
+  ('4217', 'fy_2026_total', 2)
+  16 distinct pe_bli: ['0145', '1350', '2101', '2210', '2292', '3010',
+  '3050', '3215', '3302', '4217']
+
+1045/COLUMBIA Class Submarine (an account RENAMED between the fiscal years
+its own PB2026 book reports, never two accounts under the SAME amount_type)
+correctly absent — confirms the amount_type-grouped grain is the right one;
+the originally-prescribed (pe_bli, fiscal_year) grain flags 1045 as a false
+positive (fiscal_year on fct_budget_lines is the EDITION, not the amount's
+own fiscal year — verified separately, 1045 appears in an ungrouped
+(pe_bli, fiscal_year) scan).
+
+Full assertion (with dim_programs/fct_budget_trajectory still pre-fix),
+via `dbt test`:
+
+  $ uv run dbt run --project-dir dbt --profiles-dir dbt --select dim_programs fct_budget_trajectory
+  (unmodified pre-fix models, rebuilt clean)
+  $ uv run dbt test --project-dir dbt --profiles-dir dbt --select assert_program_key_unique
+
+  1 of 1 START test assert_program_key_unique .......... [RUN]
+  1 of 1 FAIL 16 assert_program_key_unique ............... [FAIL 16] in 0.03s
+  Got 16 results, configured to fail if != 0
+
+Rows (queried directly, same 16 as above, plus fct_budget_trajectory's
+fused amount alongside each): 3010/fy_2024_actuals mart_amount=528574.0
+(neither the OPN 28,574 nor the SCN 500,000 figure — the SUM); 3010/
+fy_2026_total mart_amount=2620900.0 (28,574+500,000... i.e. 20,900+
+2,600,000 — again the sum). Matches the task's own reported live figures
+exactly ($2.62B on /program/3010/).
+
+--- assert_program_key_unique.sql: PASS after the fix ---
+
+  $ uv run dbt run --project-dir dbt --profiles-dir dbt --select dim_programs fct_budget_trajectory fct_program_trajectory
+  (rebuilt with the #56 fixes)
+  $ uv run dbt test --project-dir dbt --profiles-dir dbt --select assert_program_key_unique
+
+  1 of 1 START test assert_program_key_unique .......... [RUN]
+  1 of 1 PASS assert_program_key_unique .................. [PASS] in 0.09s
+
+Full dbt build after the fix: `uv run dbt build --project-dir dbt --profiles-dir dbt`
+-> 134 PASS, 1 pre-existing unrelated WARN (warn_subaward_amount_exceeds_50b,
+3 results — untouched by this change), 0 ERROR. All PRE-EXISTING guard
+tests (assert_program_trajectory_component_sum, assert_program_trajectory_
+grain_unique, assert_dim_programs_pb2026_pin, assert_dim_programs_detail_
+dedup, assert_dim_programs_dual_volume_dedup_pin) pass UNCHANGED — the fix
+is grain-preserving (fct_budget_trajectory stays (pe_bli, organization);
+dim_programs stays pe_bli-unique), so nothing downstream needed updating.
+
+--- basis.mjs leg h (account-collision): FAIL demonstration ---
+
+Ran leg h's recompute directly against the program_details/3010.json
+sidecar BEFORE the export_site.py summary-card fix (dim_programs/
+fct_budget_trajectory fixed, but _build_summary_blocks still consulting
+fct_decade_series first, which is not account-scoped and independently
+reproduces the same fused figures from raw parquet):
+
+  summary card "fy2026" = 2620900.0 (dataset fct_decade_series) on a page
+  whose own budget_lines span >1 account_title for fy_2026_total
+  (Other Procurement, Navy | Shipbuilding and Conversion, Navy)
+  -> leg h2 FAIL (fused-source dataset)
+
+--- basis.mjs leg h: PASS after the fix ---
+
+program_details/3010.json post-fix: fy2024 card value=28574.0 dataset=
+fct_budget_trajectory (matches the Other Procurement, Navy row exactly,
+never the SCN row or their sum); fy2026 card value=20900.0 dataset=
+fct_budget_trajectory (matches Other Procurement, Navy exactly). Same
+pattern confirmed for 3050 (162075.0 vs the old fused 2126016.0) and 2210
+(56482.0 vs the old fused 358340.0). Reconciliation entries dropped from
+1 (a spurious "$500,000K delta") to 0 for 3010's fy2024 slot — the toa and
+detail bases now agree because both correctly describe the OPN account.
+
+BEFORE/AFTER, all six live keys (title unchanged throughout — dim_programs'
+fix only changed WHICH account the money is scoped to, not which title
+wins the join):
+
+  key   title                             fy2024 before -> after   fy2026 before -> after
+  2210  Submarine Acoustic Warfare System   41,695 -> 41,695         358,340 -> 56,482
+  3010  Shipboard Tactical Communications  528,574 -> 28,574       2,620,900 -> 20,900
+  3050  Ship Communications Automation     103,352 -> 103,352      2,126,016 -> 162,075
+  3215  Satellite Communications Systems  173,941 -> 69,855           176,456 -> 62,943
+  3302  Joint Communications Support Elem.   7,619 -> 3,473              7,717 -> 3,389
+  4217  Advanced Arresting Gear (AAG)      107,658 -> 12,376           88,453 -> 4,484
+  (USD thousands)
+
+CORPUS INTEGRITY: dim_programs row count 1,739 before and after (the
+title/account join was fixed in place; grain never changed — no program
+gained or lost a row). 1045/COLUMBIA Class Submarine unaffected at every
+layer (fct_budget_trajectory fy2024_actuals=7,789,332 / fy2026_total=
+10,920,486, identical before and after — confirmed it never trips the
+same-slot collision gate). 9999999999 untouched (excluded by name in
+every query touched by this fix).
+
+DOWNSTREAM DEPENDENT FOUND AND FIXED: the trajectory derived-fact input-
+gathering in export_site.py's _build_derived_citation_rows (bl_key_to_fid
+join by (pe_bli, organization, amount_type) alone) was naively including
+BOTH accounts' workbook fact_ids as "inputs" to a derived fact whose
+recorded_value now reflects only the picked account — sum(inputs) !=
+recorded_value, failing verify_phase5b1's rule 4c derived-sum recompute.
+Measured: 11 derived facts across the 10 collision keys silently SKIPPED
+by _emit_breakdowns's own graceful-degradation path pre-fix-to-this-part
+(103 total skips including ~92 pre-existing unrelated ones); after
+filtering bl_key_to_fid's ambiguous slots to the fct_budget_trajectory-
+matching amount, the same export dropped to 84 skips (0 from the 10
+collision keys) — confirmed via full export-site re-run.
+
+A SECOND downstream dependent found and fixed: data-seeds/program_
+categories.csv (Task 7a's top-50-by-dollar dossier-category seed) is
+tested (tests/test_dossiers_research.py::test_covers_live_top50_exactly)
+to exactly match top50()'s live ranking. 3010 and 3050 were only ever
+top-50 BECAUSE of their fused fy2026_total; correcting it drops them out
+and promotes 0603891C ("Special Programs - MDA") and 0603882C ("Ground-
+Based Midcourse Defense") in their place. Verified dossier CONTENT is
+decoupled from top-50 ranking (_emit_dossier_sidecars rebuilds from
+committed, already-paid LLM batch archives on disk — it does not call
+top50() or read the CSV — so 3010/3050's existing dossiers are untouched
+and remain accurate, they were already about the correct small OPN
+program) and that "default" category (all four rows involved) renders no
+visual difference either way. Updated the CSV: removed 3010/3050, added
+0603891C/0603882C with real jbook_narratives xml_path source_refs
+(ProgramElement[6], ProgramElement[3]) and conservative "default"-category
+rationale. `uv run pytest -q` after: 1,551 passed (0 failed).
+
+FULL LOOP after the fix: `uv run dbt build` 134/135 (1 pre-existing
+unrelated warn) / `uv run python -m govbudget export-site` clean (16
+datasets, 110,866 citations) / `uv run pytest -q` 1,551 passed.
+
+SUITE COUNT UNCHANGED — one new leg (h, three sub-legs h1/h2/h3) on gate 23
+(basis). Still 24 gates (`grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24).
+
+--- ADDENDUM (same day): two more #56 leak points found via the FULL loop ---
+
+Running the actual leg h implementation against a real build (not the
+hand-traced examples above) surfaced two further leak points the initial
+fix missed — both caught by re-running the loop end to end rather than
+stopping at "leg h passes."
+
+(1) LEG A2 (pre-existing, PM-review Sprint 1) still FAILED post-fix:
+
+  X leg a2 collision (attribute path): 16 unreconciled (entity, fy, measure)
+    collisions (first 10):
+      program/3010/index.html: (3010|2026|request) renders 2 distinct
+      values [$20.9M (basis=toa) vs $2.62B (basis=toa)] outside a
+      [data-reconciliation] component
+      program/2210/index.html: (2210|2026|request) renders 2 distinct
+      values [$56.5M (basis=toa) vs $358.3M (basis=toa)] outside a
+      [data-reconciliation] component
+      ... (16 total, across all 8 pe_bli with a live page or decade grain)
+
+Root cause: fct_decade_series (Phase 5E, spans all ten PB editions) is a
+SEPARATE model from fct_budget_trajectory and was correctly left un-re-keyed
+(its blast radius is out of this ticket's scope) — but it still fuses the
+same two accounts, and it is NOT confined to the PB2026 edition: pe_bli
+'3010' shows n_source_rows=2 in the PB2024 and PB2025 editions too (verified
+directly against fct_decade_series). The decade sparkline / "asked vs
+spent" book_diff on these program pages therefore still rendered the OLD
+fused figure, directly contradicting the #56-corrected headline card sitting
+above it on the SAME page — exactly the "one label, two values" defect leg
+a2 exists to catch, and it caught it.
+
+Fix: excluded the 10 known collision pe_blis from decade_grains at its
+single construction point inside _write_all_sidecars (feeds BOTH the
+per-program decade_series sidecar field AND years_matrix.json's /years/
+grid, which reads decade_grains independently) — an honest gap ("No
+year-over-year trajectory row for this line") rather than a number that
+might still fuse two programs on some of its ten editions. book_diff is
+nested inside the same `if pe_bli in decade_series_by_pe` guard in both
+sidecar-writing loops, so it is suppressed for free.
+
+Verified: `node -e "import('./scripts/gates/basis.mjs').then(...)"` against
+the rebuilt site now returns leg a2 with 0 errors for these keys (see FULL
+LOOP result below).
+
+(2) DOSSIER CLAIMS: fact_id_derived() hashes (surface, key, metric) — a
+STABLE id across rebuilds — but a #56 re-key changes WHICH VALUE that
+stable id resolves to. '3010' and '3050' both have hand-generated (LLM,
+2026-07-05) dossiers whose "why_it_matters" prose hardcodes dollar figures
+computed under the OLD fused fct_budget_trajectory, e.g. 3010: "The
+program's total FY2026 funding across both accounts is $2,620,900 thousand"
+citing fact_id 21956c874a3b2de1 — same fact_id, but its recorded_value is
+now 20,900 post-fix. The claim's citation still "resolves" (passes the
+existing #52-era unresolvable-citation check untouched) while its own
+hardcoded English sentence now contradicts the number its own footnote
+chip would show if clicked.
+
+Fix: extended _emit_dossier_sidecars with _claim_value_still_matches — for
+a claim whose citation carries a numeric recorded_value, parse every
+"$X,XXX thousand" figure in the claim's own text (findall, not the first
+match only) and drop the claim if NONE of them are within 1% of the
+citation's current value. Two false-positive patterns found and fixed
+during validation before shipping:
+  a) .search() (first match only) mis-flagged sentences stating TWO real,
+     both-still-correct figures ("...rises from $2,424,208 thousand in
+     FY2025 to $3,479,362 thousand requested for FY2026" — one sentence,
+     one citation, two numbers) — 15 dossiers' accurate claims wrongly
+     dropped. Fixed: findall + match-ANY, not match-the-first.
+  b) "a decrease of $X thousand" claims cite a NEGATIVE recorded_value
+     (-X, a real signed change fact) while English prose states the bare
+     magnitude (X) — 3 more dossiers' accurate claims wrongly dropped.
+     Fixed: compare the stated magnitude against BOTH the value and its
+     negation.
+Final, validated result (simulated directly against citations.json before
+committing to a full re-export, to iterate fast): exactly 3 claims dropped
+across exactly 2 dossiers — 3010 (2 claims: the FY2026 total, the FY2024
+actuals) and 3050 (1 claim: the FY2026 total) — precisely the #56 keys,
+zero false positives elsewhere. The pre-existing #52 unresolvable-citation
+mechanism (unrelated to #56, natural corpus drift since 2026-08-08) still
+independently drops 27 claims across 5 other dossiers — unchanged by this
+fix, correctly left alone.
+
+The dossier's "Correction" ScopeNote (program-dossier.tsx) previously
+hardcoded #52's wording ("cited lobbying mentions that did not meet the
+evidence standard") for EVERY drop reason — which would have been FALSE
+for a #56 drop (nothing to do with lobbying). Extended the sidecar schema
+with `dropped_reasons: {unresolvable_citation, stale_value}` so the
+component can state the actual reason.
+
+FULL LOOP after all fixes: `uv run dbt build` 134/135 (1 pre-existing
+unrelated warn) / `uv run python -m govbudget export-site` clean / `uv run
+pytest -q` 1,551 passed / `uv run python -m govbudget verify-phase5b1`
+PASS (derived_formula_and_value=PASS specifically) / `cd site && npm run
+build` succeeds, 1,993 program pages / basis.mjs leg h: PASS (h1, h2, h3
+all clean, 1,993 pages resolved) / basis.mjs leg a2: 0 errors on all ten
+#56 keys post-fix.

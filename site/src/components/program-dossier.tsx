@@ -51,6 +51,37 @@ export function ProgramDossier({
   const droppedCount = dossier.dropped_claims ?? 0;
   if (sections.length === 0 && droppedCount === 0) return null;
 
+  // (#56 addendum) The wording depends on WHY claims were dropped — #52's
+  // reason (citation no longer resolves) has nothing to do with #56's (the
+  // citation still resolves, but its OWN CURRENT value no longer matches
+  // what the claim's hardcoded prose says — e.g. a program-key re-key
+  // changed which single account a stable fact_id now describes). Both can
+  // fire on the same dossier. A sidecar this component predates (no
+  // dropped_reasons field at all) falls back to #52's EXACT original
+  // wording — the only reason that existed before this field did, and the
+  // phrasing the existing regression tests pin verbatim.
+  const reasons = dossier.dropped_reasons;
+  const unresolvedN = reasons ? (reasons.unresolvable_citation ?? 0) : droppedCount;
+  const staleN = reasons ? (reasons.stale_value ?? 0) : 0;
+  const pronoun = droppedCount === 1 ? "it" : "they";
+  const subjectFor = (n: number) =>
+    n === droppedCount ? pronoun : n === 1 ? "one" : `${n}`;
+  const correctionParts: string[] = [];
+  if (unresolvedN > 0) {
+    correctionParts.push(
+      `${subjectFor(unresolvedN)} cited lobbying mentions that did not meet the evidence standard`,
+    );
+  }
+  if (staleN > 0) {
+    correctionParts.push(
+      `${subjectFor(staleN)} stated ${staleN === 1 ? "a figure" : "figures"} a later correction changed`,
+    );
+  }
+  const correctionText =
+    correctionParts.length > 0
+      ? correctionParts.join("; ")
+      : "did not meet the evidence standard";
+
   return (
     <section
       className="mt-8 pt-6 border-t border-border"
@@ -75,8 +106,7 @@ export function ProgramDossier({
             data-dossier-dropped-claims={droppedCount}
           >
             {droppedCount} claim{droppedCount === 1 ? "" : "s"} removed:{" "}
-            {droppedCount === 1 ? "it cited" : "they cited"} lobbying mentions
-            that did not meet the evidence standard.
+            {correctionText}.
           </p>
         </ScopeNote>
       )}

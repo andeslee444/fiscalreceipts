@@ -20,6 +20,7 @@ import {
 import type {
   CitationsMap,
   JbookPdfCitation,
+  ProgramBudgetLine,
   ProgramDetails,
   ProgramRow,
   ProgramSummary,
@@ -437,6 +438,11 @@ export default async function ProgramPage({
         />
       </div>
 
+      {/* #56 shared-key disclosure — this budget line number (peBli) is
+          coincidentally shared by another appropriation account entirely.
+          See SharedKeyDisclosure below: renders only when it actually is. */}
+      <SharedKeyDisclosure peBli={peBli} program={program} budgetLines={details.budget_lines} />
+
       {/* §P1-8 watch feed — rendered only when this program has feed events,
           the same rule the metadata autodiscovery uses. "The site that tells
           you when a program's budget moves, with the receipt attached." */}
@@ -750,6 +756,112 @@ export default async function ProgramPage({
       </ProgramSection>
     </div>
     </CitationPanelProvider>
+  );
+}
+
+// ── #56 shared-key disclosure ────────────────────────────────────────────────
+//
+// The shipped defect: /program/3010/ rendered $2.62B under the title
+// "Shipboard Tactical Communications" — a $20.9M Other Procurement, Navy
+// line — because an unrelated Shipbuilding & Conversion line, LPD Flight II
+// ($2.6B FY2026 reconciliation), coincidentally carries the same numeric
+// key ('3010' is both accounts' pe_bli/BLI code; 10 such keys exist in the
+// PB2026 corpus — see dbt/tests/assert_program_key_unique.sql).
+//
+// dim_programs and fct_budget_trajectory are fixed (#56) to stop fusing the
+// two accounts' money into one figure — this page's own title and headline
+// cards now describe ONLY this program's account. What they cannot do is
+// make the OTHER program disappear: it is real, it is cited, and a reader
+// who searched "3010" deserves to know a second program answers to the same
+// key rather than silently landing on one of the two with no explanation.
+//
+// Rather than a second URL (redirect story + dossier/lineage/lobbying-
+// mention/decade-series ambiguity across systems that have no per-account
+// grain at all — see the #56 commit message), this renders a plain-text
+// disclosure on the SAME page, naming the other program and citing its
+// largest already-cited budget-line figure directly (no new derived sum is
+// minted here — every dollar shown already has its own fact_id from the
+// budget_lines the line-items table below renders).
+function SharedKeyDisclosure({
+  peBli,
+  program,
+  budgetLines,
+}: {
+  peBli: string;
+  program: ProgramRow;
+  budgetLines: ProgramBudgetLine[];
+}) {
+  const groups = new Map<string, { title: string | null; rows: ProgramBudgetLine[] }>();
+  for (const bl of budgetLines) {
+    if (!bl.account_title) continue;
+    const g = groups.get(bl.account_title) ?? { title: bl.title ?? null, rows: [] };
+    if (!g.title && bl.title) g.title = bl.title;
+    g.rows.push(bl);
+    groups.set(bl.account_title, g);
+  }
+  if (groups.size < 2) return null;
+
+  // This page's own account is whichever group's title matches program.title
+  // (dim_programs resolved that pairing — see dim_programs.sql's #56 fix);
+  // fall back to the largest group by row count if nothing matches (should
+  // not happen for a resolved program.title, kept only as a display guard).
+  const others = [...groups.entries()].filter(
+    ([, g]) => g.title !== program.title,
+  );
+  if (others.length === 0) return null;
+
+  return (
+    <div
+      data-shared-key-disclosure=""
+      className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/60 px-4 py-3 text-sm"
+    >
+      <p className="text-foreground">
+        <strong>Budget line {peBli}</strong> is also used by{" "}
+        {others.map(([accountTitle, g], i) => {
+          const largest = [...g.rows].sort(
+            (a, b) => Math.abs(b.amount_thousands) - Math.abs(a.amount_thousands),
+          )[0];
+          return (
+            <span key={accountTitle}>
+              {i > 0 && ", "}
+              <span className="font-medium">{g.title ?? "an unnamed program"}</span>
+              {" ("}
+              {accountTitle}
+              {largest && (
+                <>
+                  {", "}
+                  <Cite
+                    value={largest.amount_thousands}
+                    units="USD thousands"
+                    dataset="budget_lines"
+                    factId={largest.fact_id}
+                    basis={largest.basis}
+                    fy={largest.fy ?? "all"}
+                    measure={largest.measure ?? largest.amount_type}
+                    entity={largest.entity}
+                    edition={largest.edition}
+                    chip={false}
+                  />
+                </>
+              )}
+              {")"}
+            </span>
+          );
+        })}
+        {" — a completely separate program that coincidentally shares this "}
+        numeric key under a different appropriation account. Every figure on
+        this page describes only <span data-program-name>{program.title}</span>
+        ; none of them are combined with the other program&apos;s money. See{" "}
+        <a
+          href="#budget-lines-heading"
+          className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+        >
+          the line items below
+        </a>{" "}
+        for both programs&apos; own cited figures, each labeled with its own
+        account.
+      </p>
+    </div>
   );
 }
 
