@@ -1,5 +1,6 @@
 import type { ProgramHHI } from "@/lib/data";
 import { Cite } from "@/components/cite";
+import { hhiBand } from "@/lib/hhi-band.mjs";
 
 /**
  * ProgramConcentration — HHI concentration card.
@@ -9,22 +10,30 @@ import { Cite } from "@/components/cite";
  * carried on the sidecar (dataset fct_program_concentration):
  *   - HHI value → hhi_fact_id (display override — index, not currency)
  *   - program_dollars → program_dollars_fact_id
+ *
+ * Band vocabulary lives in hhi-band.mjs (backlog #57) — this is the
+ * DESTINATION page a homepage/feed concentration claim links to, and
+ * scripts/gates/feed.mjs leg (l) reads the [data-hhi-band] attribute below
+ * to check that claim against what this page actually renders. Color stays
+ * local (presentational only, not part of the shared vocabulary).
  */
 
 interface ProgramConcentrationProps {
   hhi: ProgramHHI | null;
 }
 
-function hhiLabel(hhi: number): { label: string; color: string } {
-  if (hhi < 1500) return { label: "Competitive", color: "text-green-700" };
-  if (hhi < 2500) return { label: "Moderately Concentrated", color: "text-yellow-700" };
-  return { label: "Highly Concentrated", color: "text-red-700" };
-}
+const BAND_COLOR: Record<string, string> = {
+  competitive: "text-green-700",
+  moderate: "text-yellow-700",
+  concentrated: "text-red-700",
+};
 
 export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
   if (!hhi) return null;
 
-  const { label, color } = hhiLabel(hhi.hhi);
+  const band = hhiBand(hhi.hhi);
+  const { label } = band;
+  const color = BAND_COLOR[band.key];
 
   return (
     <section aria-labelledby="concentration-heading" className="mb-8">
@@ -63,7 +72,11 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
                 measure="hhi"
               />
             </div>
-            <div className={`text-xs font-medium ${color}`}>{label}</div>
+            {/* data-hhi-band: the pooled all-years band, stable selector for
+                scripts/gates/feed.mjs leg (l) — see hhi-band.mjs. */}
+            <div className={`text-xs font-medium ${color}`} data-hhi-band={label}>
+              {label}
+            </div>
           </div>
 
           {/* Top family */}

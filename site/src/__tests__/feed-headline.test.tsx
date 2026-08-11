@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { FeedHeadline } from "@/components/feed-headline";
+import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
 import type { FeedCard } from "@/lib/data";
 
 function card(over: Partial<FeedCard> = {}): FeedCard {
@@ -126,5 +126,69 @@ describe("<FeedHeadline>", () => {
     const { container } = render(<FeedHeadline card={hhi} />);
     expect(container.querySelectorAll("[data-prose-cite]").length).toBe(0);
     expect(screen.getByText(/HHI=8662/)).toBeTruthy();
+  });
+});
+
+describe("hhiScopeNote", () => {
+  it("returns null for a non-hhi card", () => {
+    expect(hhiScopeNote(card())).toBeNull();
+  });
+
+  it("returns null when the hhi card carries no figure_value", () => {
+    expect(
+      hhiScopeNote(
+        card({ event_type: "concentration_shift", figure_units: "hhi", figure_value: null }),
+      ),
+    ).toBeNull();
+  });
+
+  // backlog #57: the destination /program/0601101E/ page renders a pooled
+  // all-years HHI of 505.5 ("Competitive") for the same program — a
+  // DIFFERENT measure this note exists to disclose, not to match.
+  it("names the standard band and the fiscal year, and discloses the pooled figure can differ", () => {
+    const note = hhiScopeNote(
+      card({
+        event_type: "concentration_shift",
+        figure_units: "hhi",
+        figure_value: 8662.294,
+        fiscal_year: 2020,
+        pe_bli: "0601101E",
+        program_url: "/program/0601101E/",
+      }),
+    );
+    expect(note).not.toBeNull();
+    expect(note!.band).toBe("Highly Concentrated");
+    expect(note!.text).toContain("FY2020");
+    expect(note!.text).toContain("Highly Concentrated");
+    expect(note!.text.toLowerCase()).toContain("pooled");
+    expect(note!.text.toLowerCase()).toContain("differ");
+  });
+
+  it("uses the standard vocabulary, not an editorial adjective, below the highly-concentrated floor", () => {
+    // The old two-way split called ANYTHING under 2500 "a high supplier-
+    // concentration score" — false for a genuinely competitive value.
+    const note = hhiScopeNote(
+      card({
+        event_type: "concentration_shift",
+        figure_units: "hhi",
+        figure_value: 800,
+        fiscal_year: 2022,
+      }),
+    );
+    expect(note!.band).toBe("Competitive");
+    expect(note!.text).not.toMatch(/near-monopoly/i);
+    expect(note!.text).not.toMatch(/high supplier-concentration/i);
+  });
+
+  it("falls back to 'that year' when fiscal_year is absent", () => {
+    const note = hhiScopeNote(
+      card({
+        event_type: "concentration_shift",
+        figure_units: "hhi",
+        figure_value: 3000,
+        fiscal_year: null,
+      }),
+    );
+    expect(note!.text).toContain("that year");
   });
 });

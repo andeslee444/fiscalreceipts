@@ -35,6 +35,44 @@ import Link from "next/link";
 
 import { ProseCite } from "@/components/prose-cite";
 import { feedHeadlineSegments, type FeedCard } from "@/lib/data";
+import { hhiBand } from "@/lib/hhi-band.mjs";
+
+/**
+ * hhiScopeNote — the "this is one year, not the program's pooled figure"
+ * disclosure for an hhi-unit feed card (backlog #57).
+ *
+ * WHY THIS EXISTS. concentration_shift cards headline a SINGLE (pe_bli,
+ * fiscal_year)'s HHI over high-confidence award transactions for that year
+ * alone (dbt fct_feed_events). The /program/{peBli}/ page a card links to
+ * renders a DIFFERENT figure: fct_program_concentration's HHI pooled across
+ * every year and high+medium-confidence links. Both are real, correctly
+ * computed numbers — they are just not the same measure, and a single
+ * concentrated year can sit next to a competitive pooled figure (or the
+ * reverse) with no error anywhere. Without this note, a reader who reads
+ * "HHI=8662 (2020)" glossed with a concentration adjective, then clicks
+ * through and finds the page calling the SAME program "Competitive," has no
+ * way to tell that apart from the site contradicting itself.
+ *
+ * Returns null for non-hhi cards. Text and band both derive from the SAME
+ * shared hhiBand() the destination page's own badge uses (hhi-band.mjs) —
+ * see that file's doc-comment for why it is .mjs, not .ts. Consumed by both
+ * the homepage lede (page.tsx, inline span) and every /feed/ card
+ * (feed/page.tsx, block <p>) — one function, two renderings, so the note
+ * cannot read differently in the two places it appears.
+ */
+export function hhiScopeNote(
+  card: FeedCard,
+): { band: string; text: string } | null {
+  if (card.figure_units !== "hhi" || card.figure_value === null) return null;
+  const band = hhiBand(card.figure_value);
+  const yearText = card.fiscal_year ? `FY${card.fiscal_year}` : "that year";
+  return {
+    band: band.label,
+    text:
+      `${band.label} in ${yearText} — the program's pooled, all-years HHI ` +
+      `can differ; see the program page.`,
+  };
+}
 
 export function FeedHeadline({
   card,

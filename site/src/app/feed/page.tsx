@@ -13,7 +13,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { Cite } from "@/components/cite";
 import { Reveal } from "@/components/reveal";
 import { FeedMagnitudeLine } from "@/components/feed-magnitude";
-import { FeedHeadline } from "@/components/feed-headline";
+import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
 import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
 import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
 import type { FeedCard } from "@/lib/data";
@@ -45,7 +45,7 @@ const EVENT_META: Record<
   concentration_shift: {
     label: "Award Concentration Shifts",
     description:
-      "Programs whose Herfindahl-Hirschman Index (HHI) indicates high award concentration (≥ $5M matched obligations). An HHI above 2,500 suggests a near-monopoly supplier.",
+      "Programs whose Herfindahl-Hirschman Index (HHI) for a single fiscal year falls in the DOJ/FTC “moderately” or “highly concentrated” band (≥ $5M matched obligations). Each card is a one-year snapshot — it can land in a different band than the pooled, all-years HHI shown on the program's own page.",
     anchorId: "feed-concentration_shift",
   },
   request_vs_actuals_gap: {
@@ -185,6 +185,8 @@ function FeedCardItem({
   const isConcentration = card.event_type === "concentration_shift";
   const isNewEntrant = card.event_type === "new_entrant";
   const isRvaGap = card.event_type === "request_vs_actuals_gap";
+  // §57: null for non-hhi cards — see feed-headline.tsx's hhiScopeNote doc-comment.
+  const hhiScope = hhiScopeNote(card);
 
   // Basis threading (PM Sprint 1): budget-figure cards carry
   // basis/fy/measure/edition from the sidecar; award-derived cards
@@ -229,6 +231,19 @@ function FeedCardItem({
           data-source-text="headline"
           data-xml-path={`site:feed/${card.event_type}/${card.pe_bli ?? card.family_key ?? "unknown"}`}
         ><FeedHeadline card={card} /></p>
+        {/* §57: this card's figure is one fiscal year's HHI, not the
+            program's pooled all-years figure — see hhi-band.mjs and
+            feed-headline.tsx's hhiScopeNote doc-comment. Read by
+            scripts/gates/feed.mjs leg (l). */}
+        {hhiScope && (
+          <p
+            data-hhi-scope-note=""
+            data-hhi-band={hhiScope.band}
+            className="mt-0.5 text-xs text-muted-foreground"
+          >
+            {hhiScope.text}
+          </p>
+        )}
         {/* §P1-8: the dollars the headline's percentage is a percentage OF.
             Kept OUTSIDE the [data-source-text] headline — computed figures
             may not nest inside source text (render-static leg a0). */}

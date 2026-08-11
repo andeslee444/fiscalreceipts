@@ -13,7 +13,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
-import { FeedHeadline } from "@/components/feed-headline";
+import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
 import { ReceiptMoment } from "@/components/receipt-moment";
 import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
@@ -90,6 +90,8 @@ export default function HomePage() {
   // Falls back to the static subtitle when the feed sidecar is empty
   // (same guard the teaser uses).
   const lede = feedTeaser.length > 0 ? feedTeaser[0] : null;
+  // §57: the HHI scope note (null for non-hhi ledes) — see feed-headline.tsx.
+  const ledeHhiScope = lede ? hhiScopeNote(lede) : null;
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -125,15 +127,30 @@ export default function HomePage() {
                   linkClassName="text-foreground hover:underline"
                 />
               </span>
-              {/* Plain-language gloss for the HHI insider stat (site-authored
-                  prose, so it sits OUTSIDE the data-source-text span). The
-                  2,500 threshold matches the methodology's HHI bands. */}
-              {lede.figure_units === "hhi" && lede.figure_value !== null && (
+              {/* HHI scope note (site-authored prose, so it sits OUTSIDE the
+                  data-source-text span — see feed-headline.tsx doc-comment).
+                  Backlog #57: this used to gloss ANY hhi lede with a
+                  two-way "near-monopoly" / "high supplier-concentration"
+                  editorial split at the DOJ/FTC "highly concentrated"
+                  FLOOR (>=2500 — four EQUAL competitors alone produce
+                  2,500), which both overstated the band name and implied
+                  the figure describes the PROGRAM generally. It is a single
+                  fiscal year's HHI; the /program/ page it links to renders
+                  a different, pooled all-years figure that can legitimately
+                  land in a different band (dbt fct_feed_events year-slice
+                  vs fct_program_concentration all-years/high+medium-
+                  confidence pool) — hhiScopeNote() names the standard band
+                  for THAT figure and says so explicitly, so a reader who
+                  clicks through and finds a different band on the program
+                  page can reconcile the two instead of catching the site in
+                  a contradiction. data-hhi-band/data-hhi-scope-note are read
+                  by scripts/gates/feed.mjs leg (l). */}
+              {ledeHhiScope && (
                 <>
                   {" — "}
-                  {lede.figure_value >= 2500
-                    ? "a near-monopoly concentration score"
-                    : "a high supplier-concentration score"}
+                  <span data-hhi-scope-note="" data-hhi-band={ledeHhiScope.band}>
+                    {ledeHhiScope.text}
+                  </span>
                 </>
               )}
               {" — "}

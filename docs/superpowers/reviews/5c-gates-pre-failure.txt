@@ -5940,3 +5940,194 @@ edge_fact_id field was added).
 FULL SUITE: `uv run pytest -q` -> 1,551 passed in 70.4s (1,541 baseline +
 10 new: 5 in tests/lineage/test_extract_negation.py, 5 in
 tests/test_verify_lineage.py leg (f) section).
+
+================================================================================
+BACKLOG #57 — THE HOMEPAGE HHI GLOSS CONTRADICTS THE PAGE IT LINKS TO
+(2026-08-11)
+================================================================================
+
+New leg on gate 8 (site/scripts/gates/feed.mjs). The homepage lede (and
+every /feed/ card) glossed a concentration_shift card's HHI with a two-way
+`value >= 2500 ? "a near-monopoly concentration score" : "a high supplier-
+concentration score"` split. Two problems, both verified against the
+shipped corpus:
+
+(1) 2,500 is the DOJ/FTC "highly concentrated" FLOOR, not a near-monopoly
+line — four EQUAL-share firms alone produce exactly 2,500 (4 * 25^2) — and
+everything under it, including genuinely competitive values, was called
+"a high supplier-concentration score."
+
+(2) The card's HHI is ONE FISCAL YEAR's figure (dbt fct_feed_events,
+high-confidence links only); the /program/{peBli}/ page it links to renders
+a DIFFERENT, POOLED all-years HHI (fct_program_concentration, high+medium-
+confidence links). Both are real, correctly computed numbers for
+0601101E — a card headlined "HHI=9716 (2018)" glossed "a near-monopoly
+concentration score," landing on a page whose own "Contractor Concentration"
+card reads HHI 505.5 / "Competitive" across 165 families. Measured across
+all 84 hhi cards in feed.json: 70 (83%) resolve to a DIFFERENT DOJ/FTC band
+than their destination's pooled figure, 58 of those the OPPOSITE extreme
+(Highly Concentrated that year vs. Competitive pooled) — every one of the
+84 destinations happens to be "Competitive" pooled, which is exactly what
+you would expect from an event type built to surface YEARS that look
+unusually concentrated, which pooling then smooths back out.
+
+NOT A "VALUES MUST MATCH" LEG — evidence-gathered, disclosed per the
+task's substitution rule. The task's own Step 4 language ("the band
+implied by the card's claim must not contradict the band ... the
+destination page actually renders") reads, taken literally as equality, as
+requiring band(one year) == band(pooled all-years) — but those are
+different queries over different confidence tiers and time grains by
+construction (dbt models/marts/fct_feed_events.sql's concentration_shift
+CTE joins `confidence = 'high'` only and groups by fiscal_year;
+fct_program_concentration.sql pools every year and both high+medium
+confidence). Requiring literal equality would fail on 70 of 84 cards no
+matter how the wording were fixed, and would be the WRONG assertion —
+diverging bands are not themselves a defect, they are the expected result
+of pooling smoothing out exactly the years concentration_shift exists to
+flag. What IS assertable, and what this leg checks: the band IMPLIED BY THE
+CARD'S OWN RENDERED FIGURE (parsed from [data-primary-value="feed-figure"],
+ground truth, unaffected by whether any disclosure exists) vs. the band the
+destination page ACTUALLY RENDERS (its own new [data-hhi-band] attribute on
+program-concentration.tsx, not a JSON recompute) — and where they diverge,
+the card must carry an explicit [data-hhi-scope-note] disclosure (checked
+by TEXT CONTENT — "pooled" and "differ" both required — not just presence,
+so an empty marker cannot satisfy the gate). Recorded here, in the leg's
+own doc-comment in feed.mjs, and in the commit message.
+
+LEG LETTER, CONFIRMED FREE. Read feed.mjs's existing leg index first:
+(a) card count, (b) event types, (c) [data-amount] presence, (d) "why?"
+links, (e) junk sentinel, (f)-(j) syndication (file exists/well-formed,
+item count, dollars+receipt, guid stability, discovery links), (k)
+company-feed linkage basis. Confirmed via `grep -n '// ── (' feed.mjs` —
+a-k all used, l unused. Took (l).
+
+THE FIX. site/src/lib/hhi-band.mjs (NEW): the single hhiBand() function,
+plain .mjs (not .ts) on purpose — scripts/gates/*.mjs cannot import .ts
+modules (same constraint that forces format.ts's COMPACT_RUNGS to be
+hand-mirrored into feed-model.mjs, kept in sync only by a vitest parity
+sweep, and the same failure mode that let BASIS_LABEL go stale in #48).
+Making this module .mjs from the start means program-concentration.tsx
+(the destination badge), page.tsx (homepage gloss), feed-headline.tsx (the
+per-card note), methodology/page.tsx (documented bands, via formatCount()
++ template literal, never hand-typed numbers) and feed.mjs (the gate) all
+call the literal same function — nothing to mirror, nothing to drift.
+program-concentration.tsx's local hhiLabel() was deleted in favor of it and
+now stamps [data-hhi-band] on its badge. feed-headline.tsx gained
+hhiScopeNote(card), consumed by both page.tsx (homepage lede, inline
+<span>) and feed/page.tsx (every /feed/ card, block <p>) — one function,
+two renderings, so the note cannot read differently in the two places it
+appears. Neither page.tsx's nor feed/page.tsx's fix touches
+[data-source-text="headline"] — the note renders as a sibling, same
+boundary the original gloss already respected ("site-authored prose, so it
+sits OUTSIDE the data-source-text span").
+
+FOUND WHILE VERIFYING, NOT PRESCRIBED: a JSX whitespace bug in the first
+draft of the methodology/page.tsx prose. `{formatCount(HHI_CONCENTRATED_MIN)}
+is the ...` where the continuation text wraps to a new line silently drops
+the leading space in the built HTML — confirmed by grepping the actual
+`out/methodology/index.html` for the raw byte sequence, not assumed:
+`concentrated (<!-- -->2,500<!-- -->is the "highly concentrated" ...` (no
+space between the two hydration comments). Root cause: JSX's multi-line
+text-trim collapses each line's OWN leading/trailing whitespace before
+joining lines with a single space, and does not special-case a text child
+whose first line began right after a same-line expression. Fixed by moving
+the whole sentence into a single plain-JS template literal (immune to JSX
+text trimming, and the only place the DOJ/FTC numbers appear as code, not
+retyped prose) rather than hand-placing more {" "} tokens and hoping.
+
+PROOF — THE LEG FAILS ON THE REAL SHIPPED CORPUS. `git stash push` on
+exactly the "claim" side (site/src/app/page.tsx, site/src/components/
+feed-headline.tsx, site/src/app/feed/page.tsx, plus the test file) reverted
+those four files to their PRE-FIX committed state — restoring the old
+two-way gloss with no scope note anywhere. Left IN the working tree: the
+leg itself (feed.mjs), the shared hhiBand() (hhi-band.mjs, a new untracked
+file — stashing tracked-file changes only, so it survives), AND the
+DESTINATION fix (program-concentration.tsx, so [data-hhi-band] is real and
+the leg has genuine ground truth to check the old cards against — reverting
+it too would have proven a weaker, different thing: "destination renders no
+badge" rather than "a genuine band mismatch went undisclosed"). Rebuilt
+(NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build), leg run
+via one-line dynamic import (feed.mjs has no bare-CLI entrypoint, only
+runFeedGate() consumed by verify.mjs) — RAW terminal capture, unwrapped:
+
+  $ node -e "
+    import('./scripts/gates/feed.mjs').then(async (m) => {
+      const result = await m.runFeedGate();
+      console.log('gate 8 feed: ' + (result.pass ? 'PASS' : 'FAIL'));
+      console.log('--- notes (leg l + surrounding) ---');
+      for (const n of result.notes) if (n.includes('leg l') || n.startsWith('feed cards') || n.startsWith('feed event')) console.log('  note: ' + n);
+      console.log('--- errors ---');
+      const legL = result.errors.filter(e => e.startsWith('feed leg l'));
+      console.log('total errors: ' + result.errors.length + ', leg l errors: ' + legL.length);
+      for (const e of legL.slice(0, 10)) console.log('  X ' + e);
+      process.exit(result.pass ? 0 : 1);
+    });
+  "
+
+  gate 8 feed: FAIL
+  --- notes (leg l + surrounding) ---
+    note: feed cards: 223 >= 30 ✓
+    note: feed event types: 4 (feed-yoy_swing, feed-request_vs_actuals_gap, feed-concentration_shift, feed-new_entrant) ✓
+  --- errors ---
+  total errors: 70, leg l errors: 70
+    X feed leg l: card for 0601101E implies "Highly Concentrated" (HHI 9716) but /program/0601101E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601101E implies "Highly Concentrated" (HHI 8662) but /program/0601101E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601101E implies "Highly Concentrated" (HHI 3820) but /program/0601101E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601101E implies "Highly Concentrated" (HHI 8740) but /program/0601101E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601101E implies "Highly Concentrated" (HHI 7630) but /program/0601101E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601122E implies "Highly Concentrated" (HHI 5998) but /program/0601122E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601122E implies "Highly Concentrated" (HHI 9414) but /program/0601122E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601122E implies "Highly Concentrated" (HHI 5932) but /program/0601122E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601122E implies "Highly Concentrated" (HHI 6242) but /program/0601122E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+    X feed leg l: card for 0601122E implies "Highly Concentrated" (HHI 7799) but /program/0601122E/ renders "Competitive" — a single fiscal year's HHI can legitimately differ from the pooled all-years figure, but the card must say so; found no [data-hhi-scope-note] at all
+
+70 errors, matching the 70/84-cards-diverge measurement above exactly —
+this is the real historical defect, not a synthetic count.
+
+RESTORED (`git stash pop`), rebuilt clean — RAW terminal capture, unwrapped:
+
+  $ node -e "
+    import('./scripts/gates/feed.mjs').then(async (m) => {
+      const result = await m.runFeedGate();
+      console.log('gate 8 feed: ' + (result.pass ? 'PASS' : 'FAIL'));
+      for (const n of result.notes) console.log('  note: ' + n);
+      for (const e of result.errors) console.log('  X ' + e);
+      process.exit(result.pass ? 0 : 1);
+    });
+  "
+
+  gate 8 feed: PASS
+    note: feed cards: 223 >= 30 ✓
+    note: feed event types: 4 (feed-yoy_swing, feed-request_vs_actuals_gap, feed-concentration_shift, feed-new_entrant) ✓
+    note: feed [data-amount]: 674 elements ✓
+    note: feed why? links: 223 ✓
+    note: feed: junk sentinel "9999999999" absent from rendered text ✓
+    note: leg l: 84 hhi card(s) checked against the /program/ page they link to — 14 share their destination's band, 70 diverge and explicitly disclose it, 0 silent contradictions ✓
+    note: leg f: 335 feed files parsed as XML across 167 feeds (whole + per event type + 123 program + 39 company watch feeds) ✓
+    note: leg g: whole feed = 223 items = card count; the 4 event-type feeds partition it exactly ✓
+    note: leg h: 223 items each carry a dollar magnitude (451 cited endpoints), a resolving /fact/{id} receipt, and a real pubDate ✓
+    note: leg i: 2221 feed ids across 335 files — unique within each feed and every one reproducible from its card ✓
+    note: leg j: 38 <link rel="alternate"> feed URLs across 9 sampled pages all resolve to emitted files ✓
+    note: leg k: 355 company watch-feed items across 39 companies each state their linkage basis (230 lobbying-filing mention, 134 award crosswalk, 0 names-the-family), every basis one the company page asserts for that PE; 198 program-feed items correctly carry none ✓
+  --- errors ---
+  (none)
+
+READER TEST, WALKED ON THE BUILT HTML. Homepage lede (out/index.html):
+"⚡ Defense Research Sciences award concentration HHI=9716 (2018) —
+Highly Concentrated in FY2018 — the program's pooled, all-years HHI can
+differ; see the program page. — see the feed →". Destination
+(out/program/0601101E/index.html), Contractor Concentration card: "HHI
+Index 506 ... Competitive ... Top Contractor RTX ... Contractor Families
+165 ... Program Obligations $3.79B". A reader who reads the lede now knows
+FY2018 was an outlier year and that the program's own pooled figure can
+differ BEFORE clicking through — 505.5/"Competitive" then reads as the
+disclosed reconciliation, not a caught contradiction.
+
+NOT A WEAKENING. Every leg present before this task (a-k) still runs
+unchanged and still passes on real data. The new leg (l) is strictly
+additive and checks a property no other leg in the 24-gate suite checks: a
+claim against the page it links to, not against its own source. Nothing
+that used to silently pass a real contradiction is now allowed to.
+
+SUITE COUNT UNCHANGED — one new leg on gate 8 (l). Still 24 gates
+(`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).

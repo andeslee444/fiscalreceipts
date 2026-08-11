@@ -7,6 +7,7 @@ import { getCoverage } from "@/lib/coverage";
 import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
+import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
 import { CoverageNote } from "@/components/coverage-note";
@@ -936,9 +937,33 @@ export default function MethodologyPage() {
               non-trivial. The HHI floor is $5M in matched obligations.
               HHI = sum(share² × 10,000) where share = family_obligation /
               total_obligation; only positive obligations are included
-              (negative/recoupment flows are excluded). An HHI above 2,500
-              indicates near-monopoly concentration; above 1,500 is
-              moderately concentrated.
+              (negative/recoupment flows are excluded).{" "}
+              {
+                // Plain JS string, not JSX text, so the DOJ/FTC threshold
+                // numbers can never drift from hhi-band.mjs AND so this
+                // sentence cannot fall into the JSX multi-line-text
+                // whitespace trap that silently ate the space after
+                // "${HHI_CONCENTRATED_MIN)}" here on the first pass (JSX
+                // strips the LEADING space of a text child that follows an
+                // expression when that child's content wraps to a new
+                // line — verified against the built HTML, not assumed).
+                `Bands follow the DOJ/FTC Horizontal Merger Guidelines convention: below ${formatCount(HHI_MODERATE_MIN)} is competitive, ${formatCount(HHI_MODERATE_MIN)}–${formatCount(HHI_CONCENTRATED_MIN)} is moderately concentrated, and ${formatCount(HHI_CONCENTRATED_MIN)} or above is highly concentrated (${formatCount(HHI_CONCENTRATED_MIN)} is the "highly concentrated" floor, not a near-monopoly line — four equal-share firms alone produce exactly ${formatCount(HHI_CONCENTRATED_MIN)}).`
+              }
+            </p>
+            <p className="mt-2">
+              <strong>
+                This figure is a single fiscal year&rsquo;s HHI, not a
+                program&rsquo;s overall concentration.
+              </strong>{" "}
+              A program&rsquo;s own page (its &ldquo;Contractor
+              Concentration&rdquo; card) renders a different, pooled HHI
+              computed across every award year and both high- and
+              medium-confidence links. The two are legitimately different
+              measures of the same program — a single concentrated year can
+              sit next to a competitive pooled figure, or the reverse, with
+              no error on either page. Every concentration_shift card states
+              which fiscal year its HHI covers and that the program&rsquo;s
+              pooled figure can differ.
             </p>
           </div>
           <div id="feed-request_vs_actuals_gap">

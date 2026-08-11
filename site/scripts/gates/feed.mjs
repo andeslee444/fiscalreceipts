@@ -49,6 +49,28 @@
  *     do NOT carry the block — a program element's own feed has no ambiguous
  *     linkage, and labelling there would train readers to skip the label
  *     where it matters.
+ * (l) A CONCENTRATION CLAIM MUST NOT CONTRADICT THE PAGE IT LINKS TO
+ *     (backlog #57). The first leg in this suite that checks a claim
+ *     against the DESTINATION page it points at, rather than against its
+ *     own source. Every hhi-unit feed card headlines one (pe_bli,
+ *     fiscal_year)'s HHI; its "view program" link goes to /program/{pe}/,
+ *     which renders a DIFFERENT, pooled all-years HHI
+ *     (fct_program_concentration). Both are real numbers computed by
+ *     different, legitimate queries — a single concentrated year sitting
+ *     next to a competitive pooled figure is not itself a defect (measured
+ *     on the shipped corpus, 70 of 84 cards land in a different DOJ/FTC
+ *     band than their destination; requiring literal band equality would
+ *     be the wrong tool and would flag nearly the whole event type). What
+ *     IS a defect: a band mismatch with NOTHING on the card telling the
+ *     reader the two figures are different measures — that is what reads
+ *     as the site contradicting itself the moment someone clicks through.
+ *     So this leg computes the band implied by each card's OWN rendered
+ *     figure and the band the destination page ACTUALLY renders (its own
+ *     [data-hhi-band], not a JSON recompute — a template regression that
+ *     stopped rendering the badge fails this too), and where they diverge,
+ *     requires the card to carry an explicit [data-hhi-scope-note]
+ *     disclosure (checked by content, not just presence). See hhi-band.mjs
+ *     for the shared band function both card and destination render with.
  */
 
 import fs from "fs";
@@ -57,6 +79,7 @@ import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
 import { JSDOM } from "jsdom";
 import { companyDisplay } from "../../src/lib/company-name.mjs";
+import { hhiBand } from "../../src/lib/hhi-band.mjs";
 import {
   FR_NS,
   feedGuid,
@@ -173,10 +196,143 @@ export async function runFeedGate() {
     notes.push('feed: junk sentinel "9999999999" absent from rendered text ✓');
   }
 
+  // ── (l) a concentration claim must not contradict its destination ─────────
+  runHhiDestinationLeg(errors, notes, root);
+
   // ── (f)-(j) Syndication (PM-review Sprint 3 Task 2, §P1-8) ──────────────────
   runSyndicationLegs(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (l) — HHI claim vs. destination (backlog #57)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Non-vacuity floor: the shipped corpus holds exactly 84 hhi feed cards. */
+const MIN_HHI_CARDS = 84;
+
+/**
+ * leg l — see this file's top doc-comment for the full rationale. Reads
+ * ONLY rendered HTML: the card's own figure text (ground truth for "the
+ * band implied by the card's claim"), the destination page's own
+ * [data-hhi-band] badge, and — where the two disagree — the card's own
+ * [data-hhi-scope-note] disclosure text. Nothing here recomputes from
+ * feed.json/programs.json; a template regression that stopped rendering
+ * either attribute fails this leg exactly as a wrong number would.
+ */
+function runHhiDestinationLeg(errors, notes, root) {
+  const cards = root.querySelectorAll("[data-feed-card]").filter((el) => {
+    const fig = el.querySelector('[data-primary-value="feed-figure"]');
+    return Boolean(fig && /\bHHI\s+-?[\d,.]/.test(fig.text || ""));
+  });
+
+  if (cards.length < MIN_HHI_CARDS) {
+    errors.push(
+      `feed leg l: resolved only ${cards.length} hhi card(s) on /feed/ ` +
+        `(expected >= ${MIN_HHI_CARDS}) — the leg would be vacuous`,
+    );
+    return;
+  }
+
+  let checked = 0;
+  let agree = 0;
+  let disclosedDivergence = 0;
+  const destBandCache = new Map(); // pe_bli -> band label | null | "missing"
+
+  for (const el of cards) {
+    const fig = el.querySelector('[data-primary-value="feed-figure"]');
+    const figMatch = (fig.text || "").match(/\bHHI\s+(-?[\d,.]+)/);
+    if (!figMatch) {
+      errors.push(
+        `feed leg l: could not parse an HHI value out of ${JSON.stringify(fig.text)}`,
+      );
+      continue;
+    }
+    const cardValue = Number(figMatch[1].replace(/,/g, ""));
+    if (!Number.isFinite(cardValue)) {
+      errors.push(`feed leg l: unparseable HHI value ${JSON.stringify(figMatch[1])}`);
+      continue;
+    }
+    const cardBand = hhiBand(cardValue).label;
+
+    const link = el
+      .querySelectorAll("a[href]")
+      .find((a) => /^\/program\/[^/]+\/$/.test(a.getAttribute("href") ?? ""));
+    if (!link) {
+      errors.push(
+        `feed leg l: hhi card (HHI ${cardValue}) links to no /program/ page — ` +
+          `a concentration claim the gate cannot check against its destination`,
+      );
+      continue;
+    }
+    const programUrl = link.getAttribute("href");
+    const peBli = programUrl.split("/").filter(Boolean)[1];
+    checked += 1;
+
+    let destBand = destBandCache.get(peBli);
+    if (destBand === undefined) {
+      const destPath = path.join(outDir, programUrl.replace(/^\//, ""), "index.html");
+      if (!fs.existsSync(destPath)) {
+        destBand = "missing";
+      } else {
+        try {
+          const destRoot = parse(fs.readFileSync(destPath, "utf8"), { comment: false });
+          const badge = destRoot.querySelector("[data-hhi-band]");
+          destBand = badge ? badge.getAttribute("data-hhi-band") : null;
+        } catch {
+          destBand = "missing";
+        }
+      }
+      destBandCache.set(peBli, destBand);
+    }
+
+    if (destBand === "missing") {
+      errors.push(
+        `feed leg l: /program/${peBli}/ did not build or would not parse — card ` +
+          `(HHI ${cardValue}) claims a concentration figure with no checkable destination`,
+      );
+      continue;
+    }
+    if (destBand === null) {
+      errors.push(
+        `feed leg l: /program/${peBli}/ renders no [data-hhi-band] — card ` +
+          `(HHI ${cardValue}) links to a page with no concentration figure to reconcile against`,
+      );
+      continue;
+    }
+
+    if (destBand === cardBand) {
+      agree += 1;
+      continue;
+    }
+
+    // Bands diverge — expected for a single-year figure vs. a pooled one,
+    // but only if the card SAYS so.
+    const note = el.querySelector("[data-hhi-scope-note]");
+    const noteText = (note?.text || "").toLowerCase();
+    const discloses = Boolean(note) && noteText.includes("pooled") && noteText.includes("differ");
+    if (!discloses) {
+      errors.push(
+        `feed leg l: card for ${peBli} implies "${cardBand}" (HHI ${cardValue}) but ` +
+          `/program/${peBli}/ renders "${destBand}" — a single fiscal year's HHI can ` +
+          `legitimately differ from the pooled all-years figure, but the card must say ` +
+          `so; found ${note ? "a [data-hhi-scope-note] that doesn't disclose it" : "no [data-hhi-scope-note] at all"}`,
+      );
+      continue;
+    }
+    disclosedDivergence += 1;
+  }
+
+  if (checked === 0) {
+    errors.push("feed leg l: no hhi card resolved a /program/ destination — the leg is vacuous");
+  } else if (errors.every((e) => !e.startsWith("feed leg l"))) {
+    notes.push(
+      `leg l: ${checked} hhi card(s) checked against the /program/ page they link ` +
+        `to — ${agree} share their destination's band, ${disclosedDivergence} diverge ` +
+        `and explicitly disclose it, 0 silent contradictions ✓`,
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
