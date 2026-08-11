@@ -1553,12 +1553,34 @@ def export_site(
         fact_id_to_recorded_value = {
             row[0]: row[23] for row in citation_rows if row[23] is not None
         }
+        # #56: membership for the dossier set is read HERE, by the caller,
+        # and passed in — the emitter takes a set, never a path (see its
+        # top_set docstring). Unreadable/absent seed → None → emit everything,
+        # which is the pre-#56 behaviour.
+        import csv as _csv
+        from govbudget.config import ROOT as _CFG_ROOT
+
+        _dossier_top_set: set[str] | None = None
+        _cat_csv = _CFG_ROOT / "data-seeds" / "program_categories.csv"
+        try:
+            if _cat_csv.exists():
+                with _cat_csv.open(newline="", encoding="utf-8") as _fh:
+                    _dossier_top_set = {
+                        (r.get("pe_bli") or "").strip()
+                        for r in _csv.DictReader(_fh)
+                        if (r.get("pe_bli") or "").strip()
+                    } or None
+        except Exception as exc:  # pragma: no cover — seed is committed
+            print(f"export-site: program_categories.csv unreadable ({exc}) —"
+                  " emitting every archived dossier")
+
         dossier_summary = _emit_dossier_sidecars(
             json_dir=out_dir / "json",
             dossiers_raw_dir=dossiers_raw_dir,
             citations_keyset=citations_keyset,
             snapshot_urls=snapshot_urls,
             fact_id_to_recorded_value=fact_id_to_recorded_value,
+            top_set=_dossier_top_set,
         )
 
     # -----------------------------------------------------------------------
@@ -3736,6 +3758,7 @@ def _emit_dossier_sidecars(
     citations_keyset: set[str],
     snapshot_urls: set[str],
     fact_id_to_recorded_value: dict[str, str] | None = None,
+    top_set: set[str] | None = None,
 ) -> dict:
     """Rebuild out_dir/json/dossiers/{pe_bli}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
@@ -3799,26 +3822,17 @@ def _emit_dossier_sidecars(
     # De-fusing the collided keys dropped 3010 and 3050 out of the top-50 by
     # dollar size, and their paid dossiers describe the program they used to
     # be — 3010's first claim literally reads "funding split across the Other
-    # Procurement, Navy and Shipbuilding..." , which is the fused premise #56
+    # Procurement, Navy and Shipbuilding...", which is the fused premise #56
     # exists to remove. The raw archives stay on disk (paid research is never
     # deleted), but a dossier is BY DEFINITION the top-50's, so a program
-    # outside that set no longer renders one. This is membership, not a
-    # hardcoded PE list: it re-derives from the seed every export.
-    _top_set: set[str] = set()
-    try:
-        import csv as _csv
-        _cat_csv = (
-            Path(__file__).resolve().parents[2] / "data-seeds" / "program_categories.csv"
-        )
-        if _cat_csv.exists():
-            with _cat_csv.open(newline="", encoding="utf-8") as _fh:
-                _top_set = {
-                    (r.get("pe_bli") or "").strip()
-                    for r in _csv.DictReader(_fh)
-                    if (r.get("pe_bli") or "").strip()
-                }
-    except Exception:
-        _top_set = set()  # seed unreadable → emit everything, as before
+    # outside that set no longer renders one.
+    #
+    # top_set is a PARAMETER, not a file this function reads: the caller owns
+    # where membership comes from. The first version read
+    # data-seeds/program_categories.csv here and broke four unit tests whose
+    # fixtures use synthetic pe_blis — a function that reaches out for repo
+    # config cannot be tested on synthetic data. None = emit everything.
+    _top_set = top_set or set()
 
     for path in sorted(dossiers_raw_dir.glob("*.json")):
         if path.name == "batch_meta.json":
