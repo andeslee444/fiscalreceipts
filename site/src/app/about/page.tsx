@@ -39,6 +39,46 @@ export default function AboutPage() {
         </p>
       </section>
 
+      {/* Publisher — §B′3 (#58). The 2026-08-07 review found no masthead: no
+          publisher, no funder, no reachable contact, and a CC0 licence that
+          existed only in JSON-LD. Every fact below came from the owner
+          directly for this task — nothing here is inferred, and nothing
+          beyond what the owner supplied (no title, no organisation, no repo
+          link — none was given) is added. */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-3">Publisher</h2>
+        <p className="text-muted-foreground leading-7">
+          {SITE_NAME} is written and maintained by Andes Lee. It is an
+          independent, unfunded personal project — no institutional
+          affiliation, no funder.
+        </p>
+        <p className="text-muted-foreground leading-7 mt-3">
+          Contact:{" "}
+          <a
+            href="mailto:andes.han.lee@gmail.com"
+            className="underline hover:text-foreground"
+          >
+            andes.han.lee@gmail.com
+          </a>
+        </p>
+        <p className="text-muted-foreground leading-7 mt-3">
+          Data licence: the underlying datasets are released under{" "}
+          <a
+            href="https://creativecommons.org/publicdomain/zero/1.0/"
+            className="underline hover:text-foreground"
+            rel="license noopener noreferrer"
+            target="_blank"
+          >
+            CC0 1.0
+          </a>{" "}
+          — public domain, no rights reserved. See{" "}
+          <Link href="/downloads/" className="underline hover:text-foreground">
+            Downloads
+          </Link>{" "}
+          for the exports.
+        </p>
+      </section>
+
       {/* Correlational, not causal — §P2-6: this is the site declaring the
           limit of its own claims, which is the strongest thing on the page.
           It read as a warning box; it now reads as a scope statement. */}
@@ -98,9 +138,16 @@ export default function AboutPage() {
           </li>
         </ol>
         <p className="text-muted-foreground leading-7 mt-4">
-          To report an error, include the citation that contradicts the
-          published figure (document title, page, and the value you believe
-          is correct). We will investigate and respond.
+          To report an error, email{" "}
+          <a
+            href="mailto:andes.han.lee@gmail.com"
+            className="underline hover:text-foreground"
+          >
+            andes.han.lee@gmail.com
+          </a>{" "}
+          with the citation that contradicts the published figure (document
+          title, page, and the value you believe is correct). We will
+          investigate and respond.
         </p>
       </section>
 
@@ -137,7 +184,7 @@ export default function AboutPage() {
           <Link href="/downloads/" className="underline hover:text-foreground">
             Downloads
           </Link>{" "}
-          page. The source data pipeline is open-source. Researchers,
+          page, released under CC0 1.0 (see Publisher, above). Researchers,
           journalists, and oversight advocates are encouraged to build on it.
         </p>
       </section>

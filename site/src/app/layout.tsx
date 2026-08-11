@@ -219,6 +219,24 @@ export default function RootLayout({
                 <Link href="/about/" className="hover:text-foreground transition-colors">
                   About
                 </Link>
+                {/* §B′3 (#58) — publisher contact and data licence, visible
+                    site-wide (not only on /about/, and not only in JSON-LD).
+                    Kept to two short entries: this footer ships on 6,700+
+                    pages. */}
+                <a
+                  href="mailto:andes.han.lee@gmail.com"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Contact
+                </a>
+                <a
+                  href="https://creativecommons.org/publicdomain/zero/1.0/"
+                  className="hover:text-foreground transition-colors"
+                  rel="license noopener noreferrer"
+                  target="_blank"
+                >
+                  Data: CC0 1.0
+                </a>
               </div>
             </div>
           </footer>
