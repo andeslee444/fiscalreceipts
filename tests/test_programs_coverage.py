@@ -40,3 +40,54 @@ def test_coverage_refuses_to_claim_full_coverage_when_dollars_are_missing():
         index_total_millions=199.0, universe_total_millions=200.0, excluded=[]
     )
     assert cov["coverage_pct"] < 100.0
+
+
+# ── #56 addendum: reason threading ──────────────────────────────────────────
+#
+# THE REGRESSION THIS GUARDS AGAINST: a pe_bli whose program key collides
+# with another program (#56) is a program page in the index (one of the two
+# won the re-key) while the OTHER one's money is fully absent — a different
+# defect from #49's original "no R-2/P-40 detail" exclusion, and the page
+# must not claim the wrong reason for it.
+
+
+def test_bare_3tuple_defaults_to_no_detail_reason():
+    """Backward compat: an un-migrated 3-tuple (every pre-#56 caller) still
+    gets a reason field, defaulting to the only reason that existed before
+    this field did."""
+    cov = build_programs_coverage(
+        index_total_millions=100.0,
+        universe_total_millions=200.0,
+        excluded=[("A", "Big", 60.0)],
+    )
+    assert cov["largest_excluded"][0]["reason"] == "no_detail"
+
+
+def test_4tuple_carries_its_own_reason():
+    cov = build_programs_coverage(
+        index_total_millions=100.0,
+        universe_total_millions=300.0,
+        excluded=[
+            ("A", "No-detail line", 60.0, "no_detail"),
+            ("3010", "LPD Flight II", 140.0, "key_collision"),
+        ],
+    )
+    by_title = {e["title"]: e["reason"] for e in cov["largest_excluded"]}
+    assert by_title["No-detail line"] == "no_detail"
+    assert by_title["LPD Flight II"] == "key_collision"
+
+
+def test_mixed_3tuple_and_4tuple_rows_both_thread_correctly():
+    """A caller migrating incrementally can mix bare 3-tuples (default
+    reason) with explicit 4-tuples in the same call."""
+    cov = build_programs_coverage(
+        index_total_millions=100.0,
+        universe_total_millions=300.0,
+        excluded=[
+            ("A", "Old-style row", 60.0),
+            ("3010", "LPD Flight II", 140.0, "key_collision"),
+        ],
+    )
+    by_title = {e["title"]: e["reason"] for e in cov["largest_excluded"]}
+    assert by_title["Old-style row"] == "no_detail"
+    assert by_title["LPD Flight II"] == "key_collision"

@@ -345,7 +345,7 @@ def build_programs_coverage(
     *,
     index_total_millions: float,
     universe_total_millions: float,
-    excluded: list[tuple[str, str, float]],
+    excluded: list[tuple[str, str, float]] | list[tuple[str, str, float, str]],
 ) -> dict:
     """Dollar-denominated coverage for the /programs/ index (backlog #49).
 
@@ -361,14 +361,34 @@ def build_programs_coverage(
     thousands/millions/billions boundary is exactly where the original defect's
     sibling bug would hide, so it is asserted, not assumed, at the one call site
     (see the comment there).
+
+    #56 addendum: `excluded` rows may carry an optional 4th element, `reason`
+    — 'no_detail' (the original #49 criterion: the line publishes no R-2/P-40
+    project detail and never became a program page at all) or
+    'key_collision' (the line's OWN pe_bli/BLI code IS a program page, but a
+    DIFFERENT, unrelated program coincidentally shares that same numeric key
+    and lost the #56 re-key — its own money is real, cited, and absent from
+    every program page, not just this index). A bare 3-tuple defaults to
+    'no_detail' — the only reason that existed before this field did, and
+    what the existing callers/tests already pass.
     """
+    def _reason(row: tuple) -> tuple[str, str, float, str]:
+        if len(row) == 4:
+            pe, title, m, reason = row
+        else:
+            pe, title, m = row
+            reason = "no_detail"
+        return pe, title, m, reason
+
     return {
         "index_billions": round(index_total_millions / 1000, 1),
         "universe_billions": round(universe_total_millions / 1000, 1),
         "coverage_pct": round(100 * index_total_millions / universe_total_millions, 1),
         "largest_excluded": [
-            {"pe_bli": pe, "title": title, "billions": round(m / 1000, 2)}
-            for pe, title, m in sorted(excluded, key=lambda x: -x[2])[:5]
+            {"pe_bli": pe, "title": title, "billions": round(m / 1000, 2), "reason": reason}
+            for pe, title, m, reason in sorted(
+                (_reason(r) for r in excluded), key=lambda x: -x[2],
+            )[:5]
         ],
     }
 
@@ -5471,12 +5491,16 @@ def _write_all_sidecars(
         (p["trajectory"] or {}).get("fy2026_total") or 0 for p in programs_list
     )
     _have_pe_blis = {p["pe_bli"] for p in programs_list}
-    _bl_fy26_by_pe: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    # pe_bli -> [(fact_id, amount_thousands, title), ...]. `title` travels
+    # alongside the amount (not just a separate pe_bli->title dict) because
+    # #56 requires grouping a pe_bli's OWN rows by title, not just its bare
+    # key — see the exclusion computation below.
+    _bl_fy26_by_pe: dict[str, list[tuple[str, float, str]]] = defaultdict(list)
     for _bl in bl_rows:
         if _bl[10] == "fy_2026_total":  # amount_type
-            _bl_fy26_by_pe[_bl[8]].append((_bl[0], _bl[11]))  # (fact_id, amount_thousands)
+            _bl_fy26_by_pe[_bl[8]].append((_bl[0], _bl[11], _bl[9]))  # (fact_id, amount_thousands, title)
     _universe_fy26_thousands = sum(
-        amt for rows in _bl_fy26_by_pe.values() for _, amt in rows
+        amt for rows in _bl_fy26_by_pe.values() for _, amt, _title in rows
     )
 
     # Degenerate-warehouse guard: fixture/test databases (e.g. tests/jbooks/
@@ -5488,17 +5512,63 @@ def _write_all_sidecars(
     # stop shipping. site_meta.programs_coverage stays optional (absent) on
     # these exports, the same pattern `hero` and `award_fy_range` already use.
     programs_coverage: dict | None = None
+    # pe_bli -> title -> [(fact_id, amount_thousands), ...] — the rows an
+    # excluded entry's own fact gets minted from below. Built regardless of
+    # the guard above so both branches (index-present and index-absent) can
+    # share it.
+    _bl_fy26_by_pe_title: dict[str, dict[str, list[tuple[str, float]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for _pe, _rows in _bl_fy26_by_pe.items():
+        for _fid, _amt, _title in _rows:
+            _bl_fy26_by_pe_title[_pe][_title or _pe].append((_fid, _amt))
     if _universe_fy26_thousands > 0:
-        _bl_titles_by_pe = {_bl[8]: _bl[9] for _bl in bl_rows}
-        _excluded_thousands = [
-            (pe, _bl_titles_by_pe.get(pe, pe), sum(amt for _, amt in rows))
-            for pe, rows in _bl_fy26_by_pe.items()
-            if pe not in _have_pe_blis
-        ]
+        # #56: "excluded" is computed from what is ACTUALLY absent from the
+        # index, never a hardcoded criterion — so a future re-key cannot make
+        # this drift out of sync again. Two shapes, both real:
+        #  (a) 'no_detail' (the original #49 case) — the WHOLE pe_bli never
+        #      became a program page (no R-2/P-40 detail): every title under
+        #      it is excluded.
+        #  (b) 'key_collision' — the pe_bli IS a program page (one program
+        #      under that key won the #56 re-key: dbt/models/marts/
+        #      fct_budget_trajectory.sql / dim_programs.sql), but the index
+        #      total for it does not cover every title the universe carries
+        #      under the same numeric key. Whichever title's OWN sum equals
+        #      what the index counts (float tolerance) IS the represented
+        #      program; every OTHER title sharing that pe_bli is a
+        #      DIFFERENT, unrelated program that lost the collision — named
+        #      by its own title (the bare pe_bli does not identify it), with
+        #      its own properly-scoped fact (the specific rows for THAT
+        #      title, never all of the shared pe_bli's rows — see the
+        #      per-entry fact-minting loop below, which looks up by
+        #      (pe_bli, title), not by pe_bli alone).
+        _index_fy26_by_pe: dict[str, float] = {
+            p["pe_bli"]: (p["trajectory"] or {}).get("fy2026_total") or 0.0
+            for p in programs_list
+        }
+        _excluded_thousands: list[tuple[str, str, float, str]] = []
+        for _pe, _by_title in _bl_fy26_by_pe_title.items():
+            if _pe not in _have_pe_blis:
+                for _title, _title_rows in _by_title.items():
+                    _excluded_thousands.append((
+                        _pe, _title, sum(a for _, a in _title_rows), "no_detail",
+                    ))
+                continue
+            if len(_by_title) < 2:
+                continue  # one title under this pe_bli: it IS the index entry
+            _index_amt = _index_fy26_by_pe.get(_pe, 0.0)
+            for _title, _title_rows in _by_title.items():
+                _title_amt = sum(a for _, a in _title_rows)
+                if abs(_title_amt - _index_amt) < 0.5:
+                    continue  # this title's sum IS what the index counts here
+                _excluded_thousands.append((_pe, _title, _title_amt, "key_collision"))
         programs_coverage = build_programs_coverage(
             index_total_millions=_index_fy26_thousands / 1000,
             universe_total_millions=_universe_fy26_thousands / 1000,
-            excluded=[(pe, title, m / 1000) for pe, title, m in _excluded_thousands],
+            excluded=[
+                (pe, title, m / 1000, reason)
+                for pe, title, m, reason in _excluded_thousands
+            ],
         )
 
         def _mint_coverage_fact(
@@ -5527,7 +5597,7 @@ def _write_all_sidecars(
             "universe",
             "sum(budget_lines.amount_thousands) where amount_type='fy_2026_total' across"
             " every FY2026 P-1/R-1 workbook line",
-            [fid for rows in _bl_fy26_by_pe.values() for fid, _ in rows],
+            [fid for rows in _bl_fy26_by_pe.values() for fid, _amt, _title in rows],
             _universe_fy26_thousands,
         )
         # Raw USD-thousands alongside the rounded *_billions fields above: the
@@ -5540,16 +5610,46 @@ def _write_all_sidecars(
         programs_coverage["universe_total_thousands"] = _universe_fy26_thousands
         for _entry in programs_coverage["largest_excluded"]:
             _pe = _entry["pe_bli"]
-            _rows = _bl_fy26_by_pe.get(_pe, [])
+            _title = _entry["title"]
+            # #56: scoped to (pe_bli, title), never to the bare pe_bli — a
+            # 'key_collision' entry shares its pe_bli with the program that
+            # DOES appear in the index, so summing ALL of _bl_fy26_by_pe[_pe]
+            # would silently re-fuse the two accounts back together in this
+            # fact, exactly the defect #56 exists to fix. _bl_fy26_by_pe_title
+            # is keyed by the SAME (title or pe fallback) the exclusion
+            # computation above used, so this always finds the right rows.
+            _rows = _bl_fy26_by_pe_title.get(_pe, {}).get(_title, [])
             _pe_total_thousands = sum(amt for _, amt in _rows)
             _entry["amount_thousands"] = _pe_total_thousands
             _entry["fact_id"] = _mint_coverage_fact(
-                f"excluded/{_pe}",
+                f"excluded/{_pe}/{_title}",
                 f"sum(budget_lines.amount_thousands) where pe_bli={_pe!r} and"
-                " amount_type='fy_2026_total'",
+                f" title={_title!r} and amount_type='fy_2026_total'",
                 [fid for fid, _ in _rows],
                 _pe_total_thousands,
             )
+
+        # programs_excluded.json (#56 addendum): the FULL exclusion list,
+        # never truncated. largest_excluded (above) is deliberately top-5
+        # ONLY — the /programs/ prose can name a handful of lines in a
+        # sentence, not hundreds — so it cannot be the completeness source a
+        # gate checks "is every dropped program disclosed somewhere" against;
+        # a program ranked 6th would silently pass that check forever. This
+        # file is the honest completeness manifest: every (pe_bli, title)
+        # with FY2026 money absent from the index, no size cutoff. No new
+        # fact_ids are minted here (this is a machine-checkable manifest for
+        # gate verification, not a set of clickable page figures — the
+        # underlying dollars are already cited via budget_lines wherever
+        # they render, e.g. the program page's own line-items table for a
+        # 'key_collision' entry).
+        _write_json(json_dir / "programs_excluded.json", [
+            {
+                "pe_bli": pe, "title": title,
+                "amount_thousands": m, "reason": reason,
+            }
+            for pe, title, m, reason in sorted(_excluded_thousands, key=lambda x: -x[2])
+        ])
+        n_files += 1
 
     # ------------------------------------------------------------------ #
     # 3. program_details/{pe_bli}.json  (one file per distinct PE)       #

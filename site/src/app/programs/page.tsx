@@ -98,7 +98,14 @@ export default function ProgramsPage() {
             string instead of a hardcoded, driftable copy). Every figure
             below is a real <Cite> — never a hardcoded literal.
             data-programs-coverage-pct is gate 2 leg (cc)'s hook: it must be
-            < 100 on any page that also renders an N-of-N corpus counter. */}
+            < 100 on any page that also renders an N-of-N corpus counter.
+            #56 addendum: a named line can be excluded for a SECOND, distinct
+            reason — 'key_collision' — a program whose own numeric key is
+            already a page in the index (a different, unrelated program won
+            it), not one that lacks R-2/P-40 detail. Stating "no R-2/P-40
+            detail" for a $2.6B line that publishes plenty of detail under a
+            key someone else's page occupies would be the exact false-label
+            defect #56 exists to fix, so the sentence branches per reason. */}
         <ScopeNote className="mt-2" label={null}>
           <p
             className="text-sm leading-6"
@@ -121,10 +128,13 @@ export default function ProgramsPage() {
               FY2026 request ({coverage.coverage_pct}%).
             </strong>{" "}
             This index covers program elements that publish R-2/P-40 project
-            detail. Lines without that detail are absent even when they are
-            large and even when they are P-1 — the biggest are{" "}
+            detail, one page per program key. Lines without that detail are
+            absent even when they are large and even when they are P-1; a
+            line whose own program key is already a different, unrelated
+            program&apos;s page is absent for that separate reason — the
+            biggest missing either way are{" "}
             {namedExcluded.map((e, i) => (
-              <span key={e.pe_bli}>
+              <span key={`${e.pe_bli}-${e.title}`}>
                 {i > 0 && (i === namedExcluded.length - 1 ? " and " : ", ")}
                 {e.title} (
                 <Cite
@@ -133,6 +143,16 @@ export default function ProgramsPage() {
                   dataset="budget_lines"
                   factId={e.fact_id}
                 />
+                {e.reason === "key_collision" && (
+                  <span
+                    data-excluded-reason="key_collision"
+                    className="text-muted-foreground"
+                  >
+                    {" — shares budget-line key "}
+                    {e.pe_bli}
+                    {" with a different program already listed below"}
+                  </span>
+                )}
                 )
               </span>
             ))}

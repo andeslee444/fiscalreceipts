@@ -6429,3 +6429,133 @@ PASS (derived_formula_and_value=PASS specifically) / `cd site && npm run
 build` succeeds, 1,993 program pages / basis.mjs leg h: PASS (h1, h2, h3
 all clean, 1,993 pages resolved) / basis.mjs leg a2: 0 errors on all ten
 #56 keys post-fix.
+
+================================================================================
+BACKLOG #56 — CORRECTION: THE OTHER PROGRAM DID NOT JUST STOP BEING FUSED,
+IT VANISHED FROM THE PUBLISHED CORPUS (coordinator review, same day)
+================================================================================
+
+The dbt/export/gate fix above correctly stops fct_budget_trajectory from
+SUMMING two accounts into one figure. What it does NOT do on its own is
+represent the account that was NOT picked — dim_programs and
+fct_budget_trajectory both stay pe_bli-unique, so the losing account (LPD
+Flight II, Tomahawk, Naval Strike Missile, and seven more — $5.74B combined)
+has no row, no trajectory, no page, and — until this correction — no
+disclosure anywhere. "Corpus count unchanged (1,739 before/after)" was
+reported as a good property; it is actually the tell that ten real programs
+were silently dropped, not split. Backlog #49's own coverage math (index vs.
+universe dollars) caught the SHRINKAGE honestly and automatically — the
+percentage moved from 59.3% to 58.0% on its own — but named none of the ten
+specific programs responsible for it.
+
+FIX: `excluded` in build_programs_coverage() is now computed by GROUPING
+each pe_bli's own fct_budget_lines rows by TITLE (a collision manifests as
+>1 distinct title under one shared pe_bli) and diffing each title's sum
+against what programs.json's trajectory actually counts for that pe_bli —
+never a hardcoded criterion, so it is derived from what is ACTUALLY absent
+and cannot drift out of sync with a future re-key. Two reasons, both real:
+'no_detail' (#49's original case — the whole pe_bli never became a page)
+and 'key_collision' (#56's — the pe_bli IS a page, one program under it
+won, but a DIFFERENT, unrelated program sharing the same numeric key lost).
+A new programs_excluded.json ships the FULL, untruncated list (no size
+cutoff) as the completeness source a gate can check — largest_excluded
+(site_meta.json, the page's own prose) stays top-5-only by design, since a
+sentence cannot name hundreds of lines.
+
+--- programs_excluded.json: all ten #56 keys, verbatim (2026-08-11) ---
+
+  {'pe_bli': '3010', 'title': 'LPD Flight II', 'amount_thousands': 2600000.0, 'reason': 'key_collision'}
+  {'pe_bli': '3050', 'title': 'Medium Landing Ship', 'amount_thousands': 1963941.0, 'reason': 'key_collision'}
+  {'pe_bli': '2210', 'title': 'Joint Advance Tactical Missile (JATM)', 'amount_thousands': 301858.0, 'reason': 'key_collision'}
+  {'pe_bli': '2101', 'title': 'Tomahawk', 'amount_thousands': 206570.0, 'reason': 'no_detail'}
+  {'pe_bli': '2292', 'title': 'Naval Strike Missile (NSM)', 'amount_thousands': 199938.0, 'reason': 'no_detail'}
+  {'pe_bli': '1350', 'title': 'Infantry Weapons Ammunition', 'amount_thousands': 180867.0, 'reason': 'no_detail'}
+  {'pe_bli': '3215', 'title': 'MK-54 Torpedo Mods', 'amount_thousands': 113513.0, 'reason': 'key_collision'}
+  {'pe_bli': '4217', 'title': 'Gun Mount Mods', 'amount_thousands': 83969.0, 'reason': 'key_collision'}
+  {'pe_bli': '0145', 'title': 'F/A-18E/F (Fighter) Hornet', 'amount_thousands': 50607.0, 'reason': 'no_detail'}
+  {'pe_bli': '0145', 'title': 'General Purpose Bombs', 'amount_thousands': 30915.0, 'reason': 'no_detail'}
+  {'pe_bli': '3302', 'title': 'ASW Range Support', 'amount_thousands': 4328.0, 'reason': 'key_collision'}
+
+Every amount matches the coordinator's own measurement exactly. 0145 splits
+into two 'no_detail' rows (F/A-18E/F + General Purpose Bombs, $81,522K
+combined) because dim_programs has no row for 0145 at all — neither of its
+two colliding accounts ever became a full-tier page, so both are named
+under the pre-existing #49 reason, not 'key_collision' — an honest
+distinction: 'key_collision' means "one of the two IS in the index"; 0145
+has neither.
+
+--- basis.mjs leg h4 (new): FAIL demonstration ---
+
+Simulated the pre-fix symptom directly: replaced data/site/json/
+programs_excluded.json with `[]` (an exporter that computed the correct,
+de-fused dim_programs/fct_budget_trajectory data but disclosed nothing about
+what it dropped — exactly what shipped before this correction), then ran
+the actual runBasisGate() function (not a hand-traced approximation):
+
+  $ node -e "
+    import('./scripts/gates/basis.mjs').then(async (m) => {
+      const result = await m.runBasisGate();
+      console.log('gate 23 basis: ' + (result.pass ? 'PASS' : 'FAIL'));
+      for (const e of result.errors) console.log('  X ' + e);
+    });
+  "
+
+  gate 23 basis: FAIL
+  X leg h4 coverage disclosure: 211 program(s) with FY2026 money in
+    fct_budget_lines are absent from programs.json AND not named in
+    programs_excluded.json (first 10):
+  X   0465 "Other Support Aircraft" ($19,812K) — pe_bli has no program page
+      and this title is not in programs_excluded.json
+  X   0544 "E-2 Series" ($143,772K) — pe_bli has no program page and this
+      title is not in programs_excluded.json
+  X   1250 "Trident II Mods" ($2,644,029K) — pe_bli has no program page and
+      this title is not in programs_excluded.json
+  X   3050 "Medium Landing Ship" ($1,963,941K) — pe_bli='3050' has a
+      program page, but its index total (162075.0) does not cover this
+      title's own money (1963941.0), and this title is not in
+      programs_excluded.json
+  X   4217 "Gun Mount Mods" ($83,969K) — pe_bli='4217' has a program page,
+      but its index total (4484.0) does not cover this title's own money
+      (83969.0), and this title is not in programs_excluded.json
+  X   ... and 201 more
+  X leg h4 is VACUOUS on the known #56 set: 10/10 known collision key(s)
+    were not independently confirmed disclosed by the recompute: 0145,
+    1350, 2101, 2210, 2292, 3010, 3050, 3215, 3302, 4217 — the check is not
+    actually exercising the case it exists to catch
+
+The recompute (site/scripts/gates/programs-excluded-recompute.py) reads
+fct_budget_lines DIRECTLY from the duckdb warehouse — never programs.json's
+or programs_excluded.json's own upstream reasoning — so this is not a
+tautological "does the exporter agree with itself" check; it independently
+re-derives the universe and catches BOTH shapes: a whole pe_bli absent (the
+0465/0544/1250 "no_detail" lines), AND a title absent under a pe_bli that IS
+present (the 3050/4217 "key_collision" lines, caught the same way for the
+same reason on the SAME run — the check does not need to know in advance
+which shape a given absence will be).
+
+--- basis.mjs leg h4: PASS after restoring the real programs_excluded.json ---
+
+  $ node -e "... same runBasisGate() call ..."
+
+  gate 23 basis: PASS
+  total errors: 0
+    note: leg h4: every program with FY2026 money absent from
+      programs.json is named in programs_excluded.json (212 disclosed,
+      1684 universe pairs checked) ✓
+    note: leg h4: non-vacuous — all 10 known #56 collision keys
+      independently confirmed correctly disclosed ✓
+
+Full gate 23 (basis): PASS, 0 errors — h1/h2/h3 (the earlier #56 legs) and
+h4 (this correction) all clean together.
+
+CORRECTED SELF-REVIEW: "Corpus count unchanged" is NOT evidence of
+correctness for this defect class — it is the SYMPTOM. A program dropped
+outright and a program correctly split both leave dim_programs' row count
+exactly where it was; only a completeness check against the raw universe
+(this leg) can tell them apart. Filed as the standing lesson for any future
+task in this cluster: never report an unchanged row count as reassuring
+without also checking whether every dollar the count used to represent is
+still named somewhere.
+
+SUITE COUNT UNCHANGED — one more sub-leg (h4) on gate 23's existing leg h.
+Still 24 gates (`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).

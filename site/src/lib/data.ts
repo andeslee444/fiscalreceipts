@@ -146,8 +146,21 @@ export interface SiteMetaProgramsCoverageExcluded {
   billions: number;
   /** Raw USD thousands — for <Cite value units="USD thousands">, not display. */
   amount_thousands: number;
-  /** Derived citation (fact_id_derived("programs_coverage", `excluded/{pe_bli}`, …)). */
+  /** Derived citation (fact_id_derived("programs_coverage", `excluded/{pe_bli}/{title}`, …)). */
   fact_id: string;
+  /**
+   * (#56 addendum) WHY this line is absent from the index — computed from
+   * what is ACTUALLY missing, never a hardcoded criterion:
+   *   - 'no_detail': the original #49 case — the whole pe_bli publishes no
+   *     R-2/P-40 project detail and never became a program page at all.
+   *   - 'key_collision': pe_bli IS a program page (one program under that
+   *     key won the #56 re-key), but a DIFFERENT, unrelated program
+   *     coincidentally shares the same numeric key and lost — its own
+   *     money is real, cited, and absent from every program page, not
+   *     just this index. Named by ITS OWN title; the shared pe_bli does
+   *     not identify it.
+   */
+  reason: "no_detail" | "key_collision";
 }
 
 export interface SiteMetaProgramsCoverage {

@@ -1820,6 +1820,101 @@ function runAccountCollisionLeg(pages, errors, notes) {
   } else {
     notes.push(`leg h3: ${resolved} program pages resolved — non-vacuous ✓`);
   }
+
+  runCoverageDisclosureLeg(errors, notes);
+}
+
+// #56 leg h4 — the disclosure must be COMPLETE, not just "currently
+// nothing is undisclosed". Re-keying dim_programs / fct_budget_trajectory
+// to stop FUSING two accounts' money (h1/h2/h3 above) has a silent failure
+// mode of its own: a program can simply be DROPPED from the published
+// corpus instead of fused — h1/h2/h3 would report clean (there is no fused
+// card to catch), the index total honestly shrinks (backlog #49's own
+// coverage math), but the specific program that vanished is never named
+// anywhere a reader can see. Ten real programs (Tomahawk, LPD Flight II,
+// Naval Strike Missile, and seven more — $5.74B combined) shipped exactly
+// this way in an earlier build of this fix.
+//
+// Delegates the actual recompute to a Python helper (same pattern as leg d's
+// entitytotals-recompute.py): this needs to read fct_budget_lines directly
+// from the DUCKDB WAREHOUSE, independent of programs.json's and
+// programs_excluded.json's own upstream reasoning — reading only those two
+// shipped artifacts (as plain membership sets, never their logic) would make
+// the gate tautological, confirming only that the exporter agrees with
+// itself. Non-vacuity requires resolving all 10 known #56 keys — the
+// disclosure completeness this leg exists to prove, not just an absence of
+// counterexamples.
+const KNOWN_COLLISION_KEYS_H4 = [
+  "0145", "1350", "2101", "2210", "2292", "3010", "3050", "3215", "3302", "4217",
+];
+
+function runCoverageDisclosureLeg(errors, notes) {
+  const script = path.join(__dirname, "programs-excluded-recompute.py");
+  if (!fs.existsSync(script)) {
+    errors.push(`leg h4: recompute helper missing at ${script}`);
+    return;
+  }
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    errors.push(
+      `leg h4: programs-excluded-recompute.py failed (status ${res.status}): ` +
+        `${(res.stderr || res.error?.message || "").slice(0, 400)}`,
+    );
+    return;
+  }
+  let truth;
+  try {
+    truth = JSON.parse(res.stdout);
+  } catch (e) {
+    errors.push(`leg h4: recompute produced non-JSON output (${e.message})`);
+    return;
+  }
+  if (truth.__error__) {
+    errors.push(`leg h4: recompute could not run — ${truth.__error__}`);
+    return;
+  }
+
+  const undisclosed = truth.undisclosed || [];
+  if (undisclosed.length > 0) {
+    errors.push(
+      `leg h4 coverage disclosure: ${undisclosed.length} program(s) with FY2026 ` +
+        `money in fct_budget_lines are absent from programs.json AND not named ` +
+        `in programs_excluded.json (first ${MAX_LISTED}):`,
+    );
+    for (const u of undisclosed.slice(0, MAX_LISTED)) {
+      errors.push(
+        `  ${u.pe_bli} "${u.title}" ($${Math.round(u.amount_thousands).toLocaleString()}K) — ${u.why}`,
+      );
+    }
+    if (undisclosed.length > MAX_LISTED)
+      errors.push(`  ... and ${undisclosed.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg h4: every program with FY2026 money absent from programs.json is ` +
+        `named in programs_excluded.json (${truth.n_disclosed} disclosed, ` +
+        `${truth.n_universe_pairs} universe pairs checked) ✓`,
+    );
+  }
+
+  const resolvedKnown = new Set(truth.resolved_known_keys || []);
+  const missingKnown = KNOWN_COLLISION_KEYS_H4.filter((k) => !resolvedKnown.has(k));
+  if (missingKnown.length > 0) {
+    errors.push(
+      `leg h4 is VACUOUS on the known #56 set: ${missingKnown.length}/` +
+        `${KNOWN_COLLISION_KEYS_H4.length} known collision key(s) were not ` +
+        `independently confirmed disclosed by the recompute: ${missingKnown.join(", ")} ` +
+        `— the check is not actually exercising the case it exists to catch`,
+    );
+  } else {
+    notes.push(
+      `leg h4: non-vacuous — all ${KNOWN_COLLISION_KEYS_H4.length} known #56 ` +
+        `collision keys independently confirmed correctly disclosed ✓`,
+    );
+  }
 }
 
 // ── Direct run: node scripts/gates/basis.mjs ─────────────────────────────────
