@@ -6559,3 +6559,150 @@ still named somewhere.
 
 SUITE COUNT UNCHANGED — one more sub-leg (h4) on gate 23's existing leg h.
 Still 24 gates (`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).
+
+================================================================================
+BACKLOG #59 — THE RECONCILIATION DISCLOSURE NEVER REACHED THE ROLLUPS
+================================================================================
+
+SCOPE, checked first: the review's claim was "agency totals are computed
+on a different basis than the rows beneath them" — NOT reproducible.
+agencies.json's fy2024_total_millions equals the sum of dim_programs.
+fy2024_actual_millions for every one of the 23 shipped agencies, diff
+0.000 (F/A/N/OSD/MDA spot-checked, 2026-08-11). What IS live is the
+review's own closing sentence: program pages already carry a
+reconciliation strip disclosing the P-40-vs-TOA divergence
+(ReconciliationStrip, [data-reconciliation]) and it never reached the
+rollups that sum those same P-40 figures.
+
+MEASURED (dim_programs-scoped, matching agencies.json's own
+program_count and fy2024_total_millions denominator):
+
+  org   programs  not-reconciled  P-40 total(M)   TOA total(M)   gap(M)
+  A          507             100     55,456.672     59,844.067  4,387.395
+  F          519              34     76,086.623     78,628.205  2,541.582
+  N          387               5     40,438.644     41,143.184    704.540
+  OSD        128               1     10,600.446     10,959.502    359.056
+
+  140 programs, $7,992.573M corpus-wide (dim_programs-scoped).
+
+SUBSTITUTION, evidenced (the task brief's own prescribed measurement
+script iterates programs.json, not dim_programs): programs.json carries
+2 synthesized trajectory-only rows (backlog #17 — feed events referencing
+pe_blis in fct_budget_trajectory but not dim_programs) whose
+fy2024_actual_millions is None. The prescribed script folds that absence
+to $0 and compares it against fct_budget_lines' real TOA figure,
+manufacturing a "reconciliation gap" for a program with no P-40 basis
+figure to reconcile against anything. Measured 2026-08-11: pe_bli
+0708083D (org A) contributes a phantom $1,000.467M; pe_bli 0603115DHA
+(org DHA — which has NO dim_programs row and therefore no /agency/ page
+at all) contributes a phantom $2,067.717M — $3,068.184M combined
+(11,060.757 naive vs 7,992.573 dim_programs-scoped = 3,068.184, exact).
+Scoping the disclosure's Python computation to dim_programs (the SAME
+set agencies.json's program_count and fy2024_total_millions already use,
+and what /agency/{org}/ actually renders aggregate figures from) excludes
+both — the tighter, correct number, not a hardcoded shrink.
+
+fully_reconciled CHECKED, and it does NOT mean "this program's FY24
+figure differs from fy_2024_actuals": it is bool_and(reconciled) across
+ALL FOUR workbook scenarios (PriorYear/CurrentYear/BudgetYearOne/
+BudgetYearOneBase — dbt/models/marts/dim_programs.sql), so a program can
+be fully_reconciled:false purely on a FY2025/FY2026 mismatch while its
+FY2024 actuals matches the TOA figure exactly. Measured 2026-08-11:
+1,397 programs are fully_reconciled:false corpus-wide, but only 142 (the
+naive count) / 140 (dim_programs-scoped) actually diverge on FY2024
+specifically — 1,271 of the 1,397 have NO FY2024 divergence at all. Using
+the badge's own flag for this note would have overstated what the FY2024
+column excludes by roughly 10x. The disclosure's count is computed
+independently in Python (export_site.py, agencies.json's
+fy2024_not_reconciled_count) directly from the same TOA-vs-P40 comparison
+Step 1 measured, never from fully_reconciled.
+
+FIX: export_site.py mints a per-agency P-1/R-1 TOA-basis derived citation
+(fact_id_derived("agency", org, "fy2024_toa_actuals_millions"),
+inputs=[] + a literal runnable query_body — a same-shape fact-id input
+list as the existing fy2024_total_millions citation would ~double every
+/agency/{org}/ page's embedded citation payload for no reader benefit,
+and /agency/F/ has only ~10KB of gzip headroom under its
+PAGE_WEIGHT_BUDGET ceiling) alongside the existing P-40-basis
+fy2024_total_millions, plus the per-agency non-reconciled program count.
+/agency/{org}/'s page.tsx renders a ScopeNote (data-note-kind="scope")
+reusing reconciliation-strip.tsx's own header line ("Two official
+figures, one label") and mechanism sentence almost verbatim rather than
+inventing a second vocabulary, with both totals as real <Cite> figures
+(basis="toa"/"jbook-detail", no data-entity — this is an agency
+aggregate, not a per-program figure, so leg (e)'s FIGURE-form cross-page
+join correctly never sees it) and the delta computed via
+reproducibleDifference (site/src/lib/derivation.ts), the same
+arithmetic-closes-at-display-precision helper ReconciliationStrip already
+uses — never a second delta-formatting idiom. Rendered only when
+fy2024_not_reconciled_count > 0 (4 of 23 agencies: A, F, N, OSD).
+
+--- basis.mjs leg i (new): FAIL demonstration ---
+
+Stripped the [data-agency-reconciliation-note] block from the built
+out/agency/F/index.html (F has 34 non-reconciling programs per its
+sidecar) and ran the actual runBasisGate() function against the live
+build:
+
+  $ node -e "
+    import('./scripts/gates/basis.mjs').then(async (m) => {
+      const result = await m.runBasisGate();
+      console.log('gate 23 basis: ' + (result.pass ? 'PASS' : 'FAIL'));
+      for (const e of result.errors) console.log('  X ' + e);
+    });
+  "
+
+  gate 23 basis: FAIL
+  X leg i1 agency-reconciliation completeness: 1 agency page(s) with a
+    non-reconciling program render no disclosure (first 10):
+  X   /agency/F/: sidecar reports fy2024_not_reconciled_count=34 but the
+    page renders no [data-agency-reconciliation-note]
+
+--- basis.mjs leg i: PASS after restoring the real out/agency/F/index.html ---
+
+  $ node -e "... same runBasisGate() call ..."
+
+  gate 23 basis: PASS
+    note: leg i1: every resolved agency page with a non-reconciling
+      program renders the disclosure ✓
+    note: leg i1: every rendered count matches its sidecar ✓
+    note: leg i2: no agency page renders the disclosure without cause ✓
+    note: leg i3: 23 agency pages resolved, 4 with ≥1 non-reconciling
+      program — non-vacuous ✓
+
+Full gate 23 (basis): PASS, 30 notes, 0 errors.
+
+LETTER: (i) — legs a through h (h1-h4) were taken; checked free against
+all of them before use.
+
+NON-VACUITY NUMBER, substituted and disclosed (the task brief's own
+prescribed floor, "20 agency pages," read as "20 pages that RENDER the
+disclosure" is unsatisfiable by the site's true data — only 4 of 23
+agency pages have any FY2024 P-40-vs-TOA divergence at all; a 5th
+apparent org, DHA, is the phantom explained above and correctly ships no
+/agency/ page). Substituted the SAME number (20) against "agency pages
+RESOLVED" (built HTML found and joined to an agencies.json sidecar row)
+instead — leg h3's own precedent ("100 program pages resolve a sidecar",
+not "100 pages exhibit the fused-card defect") for exactly this reason:
+leg g3 uses "resolved = matched the condition" because FY2026
+reconciliation-split affects ≥100 programs, a naturally large true-
+positive count; #59's condition is rare by construction (4 of 23), so
+h3's convention — corpus-coverage floor, not condition-count floor — is
+the one that applies. i1/i2 (completeness + no-spurious-render) are what
+actually check the defect, unconditionally, on every resolved page; i3
+only proves the leg walked real pages instead of a token handful. 23
+agency pages ship, so 20-of-23 resolved (~87%) is still a real,
+non-trivial requirement — never loosened, retargeted at what the site's
+own data can support.
+
+FILES CHANGED: src/govbudget/export_site.py (mint the per-agency TOA
+derived citation + non-reconciled count, dim_programs-scoped, both in
+_build_derived_citation_rows and the agencies.json emission block — each
+wrapped in try/except matching the codebase's existing guard for optional
+marts, after a lightweight-fixture pytest run caught the FIRST version's
+unguarded query taking down every export_site test); site/src/lib/data.ts
+(AgencyRow: 3 new fields); site/src/app/agency/[org]/page.tsx (the
+ScopeNote); site/scripts/gates/basis.mjs (leg i, 4 sub-checks).
+
+SUITE COUNT UNCHANGED — one new leg (i) on gate 23. Still 24 gates
+(`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).

@@ -2216,6 +2216,113 @@ def _build_derived_citation_rows(
                 built_at,
             ))
 
+        # ---- Agency FY24 P-1/R-1 TOA sums + non-reconciling program counts ----
+        # surface='agency', key=org, metric='fy2024_toa_actuals_millions'
+        # (#59: the reconciliation disclosure ReconciliationStrip already
+        # renders per program never reached the agency rollups — this mints
+        # the SAME two-basis comparison one level up.)
+        #
+        # org_to_total above (fy2024_total_millions) sums dim_programs.
+        # fy2024_actual_millions — the R-2/P-40 J-BOOK DETAIL basis
+        # (reconciliation-strip.tsx's "detail" side; the PriorYear-scenario
+        # XML rows in stg_budget_details). This is the SAME agency's TOA
+        # (P-1/R-1 workbook) side of that same strip: fct_budget_lines is
+        # stg_budget_lines unfiltered (dbt/models/marts/fct_budget_lines.sql
+        # is literally `select * from stg_budget_lines`), so summing its
+        # fy_2024_actuals rows per pe_bli and attributing that sum to
+        # dim_programs' OWN org call (never fct_budget_lines' own
+        # "organization" column — a pe_bli's agency identity is
+        # dim_programs' decision everywhere else on this page, including the
+        # P-40 sum directly above) reproduces exactly the P-40-vs-TOA gap:
+        # verified against the shipped warehouse 2026-08-11 (org F:
+        # 78,628.205 TOA − 76,086.623 P-40 = 2,541.582, matching the task
+        # brief's own figure). #56's ten known collision pe_blis legitimately
+        # sum >1 account here, same as dim_programs.dbt's own account_match —
+        # leg h elsewhere guards those 10 keys individually; this aggregate
+        # does not re-litigate them.
+        #
+        # SUBSTITUTION, evidenced (task brief's own prescribed measurement
+        # script iterates programs.json, not dim_programs — this loop
+        # iterates prog_rows_d, i.e. dim_programs, the SAME set org_to_total
+        # above and agencies.json's program_count already use): programs.json
+        # carries 2 synthesized trajectory-only rows (backlog #17; feed
+        # events reference pe_blis that live in fct_budget_trajectory but not
+        # dim_programs) with fy2024_actual_millions=None. The prescribed
+        # script's `s = r.get('fy2024_actual_millions') or 0` folds that
+        # absence into $0 and compares it against fct_budget_lines' real TOA
+        # figure — manufacturing a "reconciliation gap" for a program that
+        # has no P-40 basis figure to reconcile ANYTHING against. Measured
+        # 2026-08-11: pe_bli 0708083D (org A) contributes a phantom
+        # $1,000.467M; pe_bli 0603115DHA (org DHA, which has NO dim_programs
+        # row at all and therefore no /agency/ page to render a disclosure
+        # on) contributes a phantom $2,067.717M — $3,068.184M combined,
+        # entirely absent from a REAL P-40-vs-TOA comparison. Scoping this
+        # loop to dim_programs (matching program_count and what
+        # /agency/{org}/'s program list actually sources its aggregate
+        # figures from) excludes both, and the disclosure's own count and
+        # gap total are the tighter, correct ones as a result — never
+        # widen a true number to match an inflated one.
+        #
+        # inputs=[] (self-describing query_body, NOT a per-fact-id sum):
+        # fy2024_total_millions's OWN input list above already carries the
+        # (decorative, cross-basis) workbook fact_ids for these same
+        # programs, and every /agency/{org}/ page embeds its derived
+        # citations' full input-fact payload (collectCitationsWithInputs) —
+        # a same-shape second list here would ~double that payload for no
+        # reader benefit, and /agency/F/ (the heaviest agency page) has only
+        # ~10KB of gzip headroom under its PAGE_WEIGHT_BUDGET ceiling
+        # (site/scripts/gates/build.mjs). query_body is a literal, runnable
+        # SQL statement instead — an auditor reproduces the figure by running
+        # it, not by trusting a fact-id chain.
+        toa_fy2024_by_pe: dict[str, float] = {}
+        try:
+            toa_fy2024_by_pe = {
+                r[0]: r[1] for r in con.execute(
+                    "select pe_bli, sum(amount_thousands)/1000.0"
+                    " from fct_budget_lines where amount_type ="
+                    " 'fy_2024_actuals' group by 1"
+                ).fetchall()
+            }
+        except Exception:
+            toa_fy2024_by_pe = {}
+
+        # Tolerance mirrors govbudget.jbooks.reconcile.TOLERANCE_M (Gate B's
+        # own workbook-vs-detail tolerance) — not a new number invented for
+        # this note.
+        _TOA_GAP_TOLERANCE_M = 0.001
+        org_to_toa_total: dict[str, float] = {}
+        org_to_not_reconciled: dict[str, int] = {}
+        for pe_bli, org, fy24_m in prog_rows_d:
+            toa_v = toa_fy2024_by_pe.get(pe_bli, 0.0) or 0.0
+            org_to_toa_total[org] = org_to_toa_total.get(org, 0.0) + toa_v
+            if abs(toa_v - (fy24_m or 0.0)) > _TOA_GAP_TOLERANCE_M:
+                org_to_not_reconciled[org] = org_to_not_reconciled.get(org, 0) + 1
+
+        for org, toa_total in org_to_toa_total.items():
+            fid = fact_id_derived("agency", org, "fy2024_toa_actuals_millions")
+            n_gap = org_to_not_reconciled.get(org, 0)
+            formula_text = (
+                f"sum(fct_budget_lines.amount_thousands)/1000 where"
+                f" amount_type='fy_2024_actuals', grouped by pe_bli and"
+                f" attributed to dim_programs.org, for org={org!r}"
+                f" ({n_gap} of this org's programs differ from the P-40"
+                f" detail total above by more than {_TOA_GAP_TOLERANCE_M}M)"
+            )
+            rows.append(_null_derived_row(
+                fid, "derived", "USD millions",
+                formula_text,
+                "[]",
+                f"{toa_total:.3f}",
+                built_at,
+                query_body=(
+                    "select sum(fbl.amount_thousands)/1000.0"
+                    " from fct_budget_lines fbl join dim_programs dp"
+                    " on dp.pe_bli = fbl.pe_bli"
+                    " where fbl.amount_type = 'fy_2024_actuals'"
+                    f" and dp.org = '{org}'"
+                ),
+            ))
+
         # ---- Agency FY26 sums ----
         # surface='agency', key=org, metric='fy2026_total_thousands'
         # Mirrors the agencies.json sidecar sum: per program, join trajectory
@@ -6123,11 +6230,41 @@ def _write_all_sidecars(
     org_fy2024_millions: dict[str, float] = {}
     org_fy2026_thousands: dict[str, float] = {}
 
+    # #59: FY2024 P-1/R-1 TOA basis per pe_bli (fct_budget_lines) — the
+    # SAME agency-page reconciliation disclosure query as the derived
+    # citation minted above in _build_derived_citation_rows (kept as a
+    # SEPARATE recompute here rather than threaded across the function
+    # boundary, matching this block's own existing pattern: org_fy2024_millions
+    # below is already an independent recompute of the same figure
+    # _build_derived_citation_rows's org_to_total computes for its citation).
+    # Tolerance mirrors govbudget.jbooks.reconcile.TOLERANCE_M.
+    # try/except mirrors prog_rows_d's own guard a few hundred lines up
+    # (and _build_derived_citation_rows's copy of this exact query) — several
+    # unit-test fixtures build a lightweight warehouse without every mart, and
+    # fct_budget_lines absent must degrade this ONE disclosure honestly to
+    # "nothing differs", never take down the whole export.
+    try:
+        _toa_fy2024_by_pe: dict[str, float] = {
+            r[0]: r[1] for r in con.execute(
+                "select pe_bli, sum(amount_thousands)/1000.0 from fct_budget_lines"
+                " where amount_type = 'fy_2024_actuals' group by 1"
+            ).fetchall()
+        }
+    except Exception:
+        _toa_fy2024_by_pe = {}
+    _TOA_GAP_TOLERANCE_M = 0.001
+    org_fy2024_toa_millions: dict[str, float] = {}
+    org_fy2024_not_reconciled: Counter = Counter()
+
     for r in prog_rows:
         pe_bli, org, exhibit_family, title, project_count, fy2024_actual_millions, fully_reconciled = r
         org_prog_count[org] += 1
         cur = org_fy2024_millions.get(org, 0.0)
         org_fy2024_millions[org] = cur + (fy2024_actual_millions or 0.0)
+        _toa_v = _toa_fy2024_by_pe.get(pe_bli, 0.0) or 0.0
+        org_fy2024_toa_millions[org] = org_fy2024_toa_millions.get(org, 0.0) + _toa_v
+        if abs(_toa_v - (fy2024_actual_millions or 0.0)) > _TOA_GAP_TOLERANCE_M:
+            org_fy2024_not_reconciled[org] += 1
         # Sum trajectory fy2026_total for this program (using forward-translated org).
         #
         # DELIBERATELY the COMPONENT grain, not fct_program_trajectory
@@ -6159,6 +6296,10 @@ def _write_all_sidecars(
         fy26 = org_fy2026_thousands.get(org)  # None if no trajectories
         fy24_fid = fact_id_derived("agency", org, "fy2024_total_millions")
         fy26_fid = fact_id_derived("agency", org, "fy2026_total_thousands")
+        # #59: the P-1/R-1 TOA basis of the SAME fy2024_total_millions figure
+        # (above), and how many of this org's programs the two bases
+        # disagree on — /agency/{org}/'s reconciliation disclosure input.
+        toa_fid = fact_id_derived("agency", org, "fy2024_toa_actuals_millions")
         agencies_list.append({
             "fy2024_total_millions": org_fy2024_millions.get(org, 0.0),
             "fy2024_fact_id_derived": fy24_fid if fy24_fid in _cited_fact_ids else None,
@@ -6168,6 +6309,11 @@ def _write_all_sidecars(
             ),
             "org": org,
             "program_count": org_prog_count[org],
+            "fy2024_toa_actuals_millions": org_fy2024_toa_millions.get(org, 0.0),
+            "fy2024_toa_actuals_fact_id_derived": (
+                toa_fid if toa_fid in _cited_fact_ids else None
+            ),
+            "fy2024_not_reconciled_count": org_fy2024_not_reconciled.get(org, 0),
         })
 
     _write_json(json_dir / "agencies.json", agencies_list)

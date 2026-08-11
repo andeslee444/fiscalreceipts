@@ -16,6 +16,9 @@ import { Cite } from "@/components/cite";
 import { basisChipText } from "@/lib/basis";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
+import { ScopeNote } from "@/components/notes";
+import { formatCount } from "@/lib/format";
+import { reproducibleDifference } from "@/lib/derivation";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const dynamicParams = false;
@@ -89,6 +92,10 @@ export default async function AgencyPage({
   const pageFactIds: string[] = [];
   if (agency.fy2024_fact_id_derived) pageFactIds.push(agency.fy2024_fact_id_derived);
   if (agency.fy2026_fact_id_derived) pageFactIds.push(agency.fy2026_fact_id_derived);
+  // #59: the agency-level reconciliation disclosure's TOA-basis total.
+  if (agency.fy2024_toa_actuals_fact_id_derived) {
+    pageFactIds.push(agency.fy2024_toa_actuals_fact_id_derived);
+  }
   for (const p of agencyPrograms) {
     // The FY24 figure this list renders is the program-level TOA fact, not the
     // J-book detail fact it used to render (gate 23 leg e) — so that is the
@@ -100,6 +107,23 @@ export default async function AgencyPage({
     pageFactIds.push(gao.overlay.improper.fact_id);
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
+
+  // #59: reconciliation disclosure — reuses ReconciliationStrip's own
+  // TOA-minus-detail arithmetic (site/src/lib/derivation.ts), one grain up.
+  // Rendered only when the sidecar reports ≥1 non-reconciling program AND
+  // the TOA-total citation actually resolved (both totals need a real
+  // fact_id — an uncited delta would be arithmetic between a real number
+  // and a guess).
+  const showReconciliationNote =
+    agency.fy2024_not_reconciled_count > 0 &&
+    agency.fy2024_toa_actuals_fact_id_derived != null;
+  const reconciliationDelta = showReconciliationNote
+    ? reproducibleDifference(
+        agency.fy2024_toa_actuals_millions,
+        agency.fy2024_total_millions,
+        agency.fy2024_toa_actuals_millions - agency.fy2024_total_millions,
+      )
+    : null;
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
@@ -166,6 +190,87 @@ export default async function AgencyPage({
           </p>
           {/* FY2026 partial-year scope note (Phase 5C Task 8) */}
           <CoverageNote id="fy2026-partial" className="mt-2" />
+
+          {/* #59: the rollup reconciliation disclosure — program pages
+              already carry ReconciliationStrip (P0-1) and the
+              fully_reconciled badge; this is the SAME two-basis
+              divergence, summed for the agency. Wording mirrors
+              reconciliation-strip.tsx's own header line and mechanism
+              sentence rather than inventing a second vocabulary. Rendered
+              only when this org actually has a non-reconciling program —
+              gate 23 leg i requires exactly this condition. */}
+          {showReconciliationNote && (
+            <ScopeNote className="mt-2" label={null}>
+              <div
+                data-agency-reconciliation-note=""
+                data-agency-org={org}
+                data-not-reconciled-count={agency.fy2024_not_reconciled_count}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                  Two official figures, one label
+                  <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground">
+                    — reconciled on each program page
+                  </span>
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {formatCount(agency.fy2024_not_reconciled_count)} of{" "}
+                  {org}&rsquo;s {formatCount(agency.program_count)} programs
+                  carry an FY2024 figure that has not reconciled between the
+                  R-2/P-40 J-book program line (the FY24 total above) and the
+                  P-1/R-1 workbook total obligation authority (TOA) Fiscal
+                  Receipts uses as its headline basis sitewide — the workbook
+                  TOA includes budget rows (such as advance procurement) the
+                  J-book line excludes. See the reconciliation on each
+                  affected program&rsquo;s own page, or{" "}
+                  <Link
+                    href="/methodology/"
+                    className="underline decoration-dotted hover:text-foreground hover:decoration-solid"
+                  >
+                    how the two bases relate &rarr;
+                  </Link>
+                  .
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <Cite
+                    value={agency.fy2024_toa_actuals_millions}
+                    units="USD millions"
+                    dataset="budget_lines"
+                    factId={agency.fy2024_toa_actuals_fact_id_derived}
+                    basis="toa"
+                    fy={2024}
+                    measure="actuals"
+                    edition={2026}
+                    chip={false}
+                  />{" "}
+                  TOA &minus;{" "}
+                  <Cite
+                    value={agency.fy2024_total_millions}
+                    units="USD millions"
+                    dataset="dim_programs"
+                    factId={agency.fy2024_fact_id_derived}
+                    basis="jbook-detail"
+                    fy={2024}
+                    measure="actuals"
+                    edition={2026}
+                    chip={false}
+                  />{" "}
+                  P-40 detail
+                  {reconciliationDelta && (
+                    <>
+                      {" = "}
+                      <span
+                        title="Difference between the two cited agency totals — arithmetic, not a parsed budget row"
+                        className="font-mono tabular-nums"
+                      >
+                        {reconciliationDelta.delta}
+                      </span>{" "}
+                      {reconciliationDelta.unitLabel}
+                    </>
+                  )}
+                </p>
+              </div>
+            </ScopeNote>
+          )}
         </div>
 
         {/* GAO oversight overlay (Task 6b) */}

@@ -954,6 +954,28 @@ export interface AgencyRow {
   fy2026_fact_id_derived: string | null;
   org: string;
   program_count: number;
+  /**
+   * #59: the P-1/R-1 workbook TOA basis of the SAME FY2024 figure
+   * fy2024_total_millions reports on the R-2/P-40 J-book detail basis —
+   * sum(fct_budget_lines.amount_thousands)/1000 for this org's programs,
+   * same source ReconciliationStrip's "toa" side reads.
+   */
+  fy2024_toa_actuals_millions: number;
+  /** Derived citation fact_id for the FY24 agency TOA sum (nullable). */
+  fy2024_toa_actuals_fact_id_derived: string | null;
+  /**
+   * Count of this org's programs whose FY2024 figure differs (>0.001M,
+   * the same tolerance govbudget.jbooks.reconcile.TOLERANCE_M uses) between
+   * the P-40 detail basis (fy2024_total_millions's own programs) and the
+   * TOA basis above. NOT the same set as dim_programs.fully_reconciled —
+   * that flag is bool_and(reconciled) across ALL FOUR workbook scenarios
+   * (PriorYear/CurrentYear/BudgetYearOne/BudgetYearOneBase), so a program
+   * can be fully_reconciled:false purely on a FY2025/FY2026 mismatch while
+   * its FY2024 actuals matches exactly (1,271 of 1,397 such programs,
+   * verified 2026-08-11) — using that flag here would overstate what the
+   * FY2024 column specifically excludes.
+   */
+  fy2024_not_reconciled_count: number;
 }
 
 let _agencies: AgencyRow[] | null = null;

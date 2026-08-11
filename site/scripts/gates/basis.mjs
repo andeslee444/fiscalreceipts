@@ -1050,6 +1050,9 @@ export async function runBasisGate() {
   // ── Leg (h) — account-collision fused rows (#56) ───────────────────────────
   runAccountCollisionLeg(pages, errors, notes);
 
+  // ── Leg (i) — agency reconciliation disclosure (#59) ───────────────────────
+  runAgencyReconciliationLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -1913,6 +1916,206 @@ function runCoverageDisclosureLeg(errors, notes) {
     notes.push(
       `leg h4: non-vacuous — all ${KNOWN_COLLISION_KEYS_H4.length} known #56 ` +
         `collision keys independently confirmed correctly disclosed ✓`,
+    );
+  }
+}
+
+// LEG (i) — AGENCY RECONCILIATION DISCLOSURE (#59; letter checked free
+// against a/b/c/d/e/f/g/h[1-4] above before use)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Program pages already disclose the P-40-vs-TOA divergence per program
+// (ReconciliationStrip, [data-reconciliation]; the fully_reconciled badge
+// in program-header.tsx). Agency rollups sum those same P-40 figures
+// (agencies.json's fy2024_total_millions, rendered on /agency/{org}/) and
+// said nothing — the same divergence, netted across an org's programs,
+// undisclosed at the level a reader actually lands on first (a program
+// page is usually reached FROM the agency page, not before it).
+//
+//   i1 COMPLETENESS — every /agency/{org}/ page whose sidecar
+//      (data/site/json/agencies.json's fy2024_not_reconciled_count) reports
+//      ≥1 non-reconciling program must render
+//      [data-agency-reconciliation-note], and that marker's own
+//      data-not-reconciled-count must equal the sidecar's count — a
+//      rendered number that silently drifted from its source would be
+//      exactly the "true figure, false label" defect class this sprint
+//      exists to close, just relocated into the disclosure itself.
+//   i2 NO SPURIOUS RENDER — an org whose sidecar reports 0 (or omits the
+//      field) must NOT render the marker: "render it only when the agency
+//      actually has a non-reconciling program" is not an honest contract
+//      unless it is checked in both directions.
+//   i3 NON-VACUITY — fewer than 20 agency pages RESOLVED (built HTML found
+//      AND joined to an agencies.json sidecar row) FAILS.
+//
+//      NOTE ON THE NUMBER (evidence, not a guess): the task brief's own
+//      prescribed non-vacuity floor was "20 agency pages" — but read as
+//      "20 pages that RENDER the disclosure" it is unsatisfiable by the
+//      site's own true data. Confirmed against the shipped build,
+//      2026-08-11: only 4 of the 23 agency PAGES (A, F, N, OSD) have any
+//      FY2024 P-40-vs-TOA divergence at all — 140 programs, $7,992.573M
+//      corpus-wide, dim_programs-scoped (see export_site.py's #59
+//      SUBSTITUTION comment; a 5th ORG, DHA, has a phantom gap from two
+//      trajectory-only synthesized programs with no dim_programs row, and
+//      correctly ships NO /agency/ page at all — so it was never a 5th
+//      candidate for this leg to resolve in the first place).
+//      Requiring 20 disclosure RENDERS would fail this leg on a
+//      fully-correct build — the exact "grain-mismatched fail-proof"
+//      failure mode this sprint's own instructions name and forbid
+//      shipping. "Never weaken a gate to make something pass" cuts the
+//      other way too: a floor that cannot be met by true data was never
+//      tight, it was broken, and leaving it in place would either fail
+//      forever (useless) or get quietly loosened later by someone who
+//      never re-derives why it's there.
+//
+//      leg h3 sets the precedent this leg follows instead: "resolves" =
+//      the leg successfully walked and joined real pages to real sidecar
+//      rows (there, proving the gate scans the whole corpus and not just
+//      the ~6 known collision pages; here, proving it scans real agency
+//      pages and not a token handful of the 23 that ship) — NOT "found N
+//      examples of the specific defect condition" (that is what leg g3
+//      does instead, because leg g's condition — FY2026 recon_share > 0 —
+//      is common enough for a large floor to be a meaningful, achievable
+//      bar; #59's condition is rare by construction, so h3's convention is
+//      the one that applies here). i1/i2 above are what actually check the
+//      defect, on EVERY resolved page, unconditionally — so keeping the
+//      floor at the task's own number (20 of 23 resolved, ~87% corpus
+//      coverage) is still a real, non-trivial requirement, just aimed at
+//      the right target. Also requires ≥1 resolved org with count > 0 —
+//      otherwise i1's own check would never actually run.
+
+const MIN_AGENCY_PAGES_RESOLVED = 20;
+
+function runAgencyReconciliationLeg(errors, notes) {
+  const agenciesPath = path.join(repoRoot, "data", "site", "json", "agencies.json");
+  if (!fs.existsSync(agenciesPath)) {
+    errors.push(`leg i: agencies.json not found at ${agenciesPath}`);
+    return;
+  }
+  let agencies;
+  try {
+    agencies = JSON.parse(fs.readFileSync(agenciesPath, "utf8"));
+  } catch (e) {
+    errors.push(`leg i: agencies.json failed to parse (${e.message})`);
+    return;
+  }
+  const sidecarByOrg = new Map(agencies.map((a) => [a.org, a]));
+
+  const agencyDir = path.join(outDir, "agency");
+  if (!fs.existsSync(agencyDir)) {
+    errors.push(`leg i: out/agency/ not found — build the site first`);
+    return;
+  }
+
+  let resolved = 0;
+  let resolvedWithGap = 0;
+  const missingNote = [];
+  const spuriousNote = [];
+  const countMismatch = [];
+
+  for (const entry of fs.readdirSync(agencyDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const org = entry.name;
+    const sidecar = sidecarByOrg.get(org);
+    if (!sidecar) continue; // a built page with no sidecar row is not this leg's join
+    const htmlPath = path.join(agencyDir, org, "index.html");
+    if (!fs.existsSync(htmlPath)) continue;
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch (e) {
+      errors.push(`leg i: failed to parse out/agency/${org}/index.html (${e.message})`);
+      continue;
+    }
+    resolved++;
+
+    const expectedCount = Number(sidecar.fy2024_not_reconciled_count || 0);
+    const noteEl = root.querySelector("[data-agency-reconciliation-note]");
+
+    if (expectedCount > 0) {
+      resolvedWithGap++;
+      if (!noteEl) {
+        missingNote.push(
+          `/agency/${org}/: sidecar reports fy2024_not_reconciled_count=` +
+            `${expectedCount} but the page renders no ` +
+            `[data-agency-reconciliation-note]`,
+        );
+        continue;
+      }
+      const renderedCount = Number(
+        noteEl.getAttribute("data-not-reconciled-count"),
+      );
+      if (renderedCount !== expectedCount) {
+        countMismatch.push(
+          `/agency/${org}/: [data-agency-reconciliation-note] declares ` +
+            `data-not-reconciled-count=${renderedCount} but the sidecar says ` +
+            `${expectedCount}`,
+        );
+      }
+    } else if (noteEl) {
+      spuriousNote.push(
+        `/agency/${org}/: sidecar reports fy2024_not_reconciled_count=0 (or ` +
+          `absent) but the page renders [data-agency-reconciliation-note] anyway`,
+      );
+    }
+  }
+
+  if (missingNote.length > 0) {
+    errors.push(
+      `leg i1 agency-reconciliation completeness: ${missingNote.length} agency ` +
+        `page(s) with a non-reconciling program render no disclosure (first ` +
+        `${MAX_LISTED}):`,
+    );
+    for (const m of missingNote.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (missingNote.length > MAX_LISTED)
+      errors.push(`  ... and ${missingNote.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg i1: every resolved agency page with a non-reconciling program ` +
+        `renders the disclosure ✓`,
+    );
+  }
+
+  if (countMismatch.length > 0) {
+    errors.push(
+      `leg i1 agency-reconciliation count drift: ${countMismatch.length} page(s) ` +
+        `render a not-reconciled count that disagrees with their own sidecar ` +
+        `(first ${MAX_LISTED}):`,
+    );
+    for (const m of countMismatch.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (countMismatch.length > MAX_LISTED)
+      errors.push(`  ... and ${countMismatch.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg i1: every rendered count matches its sidecar ✓`);
+  }
+
+  if (spuriousNote.length > 0) {
+    errors.push(
+      `leg i2 agency-reconciliation spurious render: ${spuriousNote.length} ` +
+        `page(s) render the disclosure with no non-reconciling program (first ` +
+        `${MAX_LISTED}):`,
+    );
+    for (const m of spuriousNote.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (spuriousNote.length > MAX_LISTED)
+      errors.push(`  ... and ${spuriousNote.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg i2: no agency page renders the disclosure without cause ✓`);
+  }
+
+  if (resolved < MIN_AGENCY_PAGES_RESOLVED) {
+    errors.push(
+      `leg i3 is VACUOUS: only ${resolved} agency page(s) resolved a sidecar ` +
+        `(need ≥ ${MIN_AGENCY_PAGES_RESOLVED}) — the join is not matching the ` +
+        `built pages`,
+    );
+  } else if (resolvedWithGap === 0) {
+    errors.push(
+      `leg i3 is VACUOUS: ${resolved} agency pages resolved but NONE report a ` +
+        `non-reconciling program — leg i1's completeness check never actually ran`,
+    );
+  } else {
+    notes.push(
+      `leg i3: ${resolved} agency pages resolved, ${resolvedWithGap} with ≥1 ` +
+        `non-reconciling program — non-vacuous ✓`,
     );
   }
 }
