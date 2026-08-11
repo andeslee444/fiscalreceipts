@@ -83,5 +83,15 @@
     "pattern": "$385.27B",
     "pages": ["/methodology/"],
     "reason": "2026-08-08 corrections table: the FY2026 request total the $89.01B is a share of, at the precision the reconciliation arithmetic needs."
+  },
+  {
+    "pattern": "$2.62B",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table (#56), WAS column: the figure /program/3010/ published while two unrelated programs were fused under one key. Withdrawn, so uncitable — the same rule as the $8.01B district entry above."
+  },
+  {
+    "pattern": "$20.9M",
+    "pages": ["/methodology/"],
+    "reason": "2026-08-08 corrections table (#56): the true size of Shipboard Tactical Communications, quoted to show how far the fused figure overstated it. Cited on its own program page; here it is the other half of a before/after pair."
   }
 ]

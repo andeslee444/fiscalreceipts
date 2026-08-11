@@ -182,6 +182,9 @@ export interface SiteMetaProgramsCoverage {
    */
   key_collision_count: number;
   key_collision_millions: number;
+  /** Raw USD thousands + its derived citation, for <Cite>. */
+  key_collision_thousands: number;
+  key_collision_fact_id: string;
 }
 
 export interface SiteMetaHero {

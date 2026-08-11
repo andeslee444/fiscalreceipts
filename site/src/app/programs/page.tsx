@@ -169,7 +169,12 @@ export default function ProgramsPage() {
                 <span data-excluded-collision-summary={coverage.key_collision_count}>
                   {formatCount(coverage.key_collision_count)} of the absent lines
                   are missing for that second reason, totalling{" "}
-                  {formatAmount(coverage.key_collision_millions * 1000, "USD thousands")}
+                  <Cite
+                    value={coverage.key_collision_thousands}
+                    units="USD thousands"
+                    dataset="budget_lines"
+                    factId={coverage.key_collision_fact_id}
+                  />
                   ; they are listed in full in{" "}
                   <a
                     href="/json/programs_excluded.json"

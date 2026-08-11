@@ -5765,6 +5765,34 @@ def _write_all_sidecars(
         ])
         n_files += 1
 
+        # #56: /programs/ states the key_collision subtotal in prose, beside
+        # figures that are all cited. An uncited dollar token there would be
+        # the page's only receipt-less number — and gate 2's currency sweep
+        # is right to reject it. Mint it like every other coverage figure,
+        # with the underlying budget_lines facts as its inputs, so the total
+        # opens the same receipt chain its members do.
+        _collision = [
+            (pe, title, m) for pe, title, m, reason in _excluded_thousands
+            if reason == "key_collision"
+        ]
+        if _collision:
+            _collision_inputs = [
+                fid
+                for pe, title, _ in _collision
+                for fid, _ in _bl_fy26_by_pe_title.get(pe, {}).get(title, [])
+            ]
+            programs_coverage["key_collision_fact_id"] = _mint_coverage_fact(
+                "key_collision_subtotal",
+                "sum(budget_lines.amount_thousands) over the"
+                f" {len(_collision)} FY2026 line(s) absent from the index because"
+                " their pe_bli is already a different program's page",
+                _collision_inputs,
+                sum(m for _, _, m in _collision),
+            )
+            programs_coverage["key_collision_thousands"] = sum(
+                m for _, _, m in _collision
+            )
+
     # ------------------------------------------------------------------ #
     # 3. program_details/{pe_bli}.json  (one file per distinct PE)       #
     # ------------------------------------------------------------------ #
