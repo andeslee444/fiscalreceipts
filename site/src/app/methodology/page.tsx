@@ -1088,7 +1088,7 @@ export default function MethodologyPage() {
                   beside the combined figure.
                 </td>
               </tr>
-              <tr>
+              <tr className="border-b border-border">
                 <td className="py-2 pr-4">Basis chip on RDT&amp;E lines</td>
                 <td className="py-2 pr-4">P-1 TOA</td>
                 <td className="py-2 pr-4">R-1 TOA</td>
@@ -1096,6 +1096,36 @@ export default function MethodologyPage() {
                   P-1 is the procurement exhibit; 1,077 of 1,741 programs are
                   RDT&amp;E and are reported on R-1. The chip now reads from each
                   row&apos;s own exhibit.
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">
+                  Programs sharing a budget-line key
+                </td>
+                <td className="py-2 pr-4">fused</td>
+                <td className="py-2 pr-4">separated</td>
+                <td className="py-2">
+                  Six pages summed two unrelated programs that share a numeric
+                  key. <em>Shipboard Tactical Communications</em> published
+                  $2.62B; it is a $20.9M line, and the rest belonged to{" "}
+                  <em>LPD Flight II</em>. The keys are now account-aware. The
+                  displaced programs are named in the coverage note on{" "}
+                  <Link href="/programs/" className="underline hover:text-foreground">
+                    Programs
+                  </Link>
+                  , not silently dropped.
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4">Concentration (HHI) wording</td>
+                <td className="py-2 pr-4">&ldquo;near-monopoly&rdquo;</td>
+                <td className="py-2 pr-4">DOJ/FTC bands</td>
+                <td className="py-2">
+                  2,500 was labelled a near-monopoly; it is the
+                  &ldquo;highly concentrated&rdquo; floor, and four equal firms
+                  produce exactly 2,500. A single year&apos;s concentration also
+                  now says so, because the pooled all-years figure on the page it
+                  links to can legitimately differ.
                 </td>
               </tr>
             </tbody>

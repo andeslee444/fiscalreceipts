@@ -1217,6 +1217,41 @@ gate family that makes the class visible.
     despite 11 curated aliases already in the seed. The alias path is wired but
     inert, so this is a data-curation gap, not a code gap.
 
+> **✅ #56–#59 CLOSED 2026-08-08** on branch `sprint-b-prime-remaining-review`.
+> **#56** six fused pages de-fused (3010 $2.62B → $20.9M and five more), dbt
+> `assert_program_key_unique` at `(pe_bli, amount_type)` grain — 1045 COLUMBIA
+> correctly excluded as a cross-edition migration, 9999999999 excluded by name —
+> plus gate 23 legs (h1–h4). **#57** DOJ/FTC bands replace "near-monopoly" from a
+> single shared `hhi-band.mjs`; gate 8 leg (l) checks all 84 cards against the
+> band their destination page renders — 70 diverge legitimately and now disclose
+> it, 0 silent contradictions. **#58** masthead: publisher, unfunded status,
+> contact and CC0 visible on `/about/` and in the footer. **#59** gate 23 leg (i):
+> the reconciliation disclosure program pages already carried now renders on the
+> four agency rollups that need it.
+>
+> **Two review claims were falsified during this sprint and are recorded rather
+> than inherited.** Agency headers *do* equal the sum of their rows exactly
+> (FY2024 and FY2026, every agency) — the live gap was only that program-page
+> reconciliation disclosure never reached the rollups. And `1045` is COLUMBIA
+> Class Submarine migrating accounts between editions, not a collision; splitting
+> it would have torn one real program in two.
+>
+> **Two of my own figures were also wrong and were corrected by measurement.** The
+> FY24 reconciliation gap is **139 programs / $7.99B**, not 142 / $11.06B — the
+> larger figure came from treating two synthesized trajectory-only programs'
+> `None` as `$0`. And `#56`'s first fix reported "corpus count unchanged" as a
+> success when it was the symptom: keeping one program per key silently dropped
+> **$5.74B**, including Tomahawk, LPD Flight II and Medium Landing Ship. Those 17
+> lines totalling $5.82B are now named on `/programs/` with their own
+> `key_collision` reason, and gate 23 leg (h4) makes a silent drop impossible.
+>
+> **Filed, not closed:** actually *splitting* the collided keys into their own
+> pages is estimated at 5–9 days, dominated by `fct_decade_series` (the collision
+> spans PB2024/PB2025 too, and there is no pre-PB2026 anchor to pick a primary
+> account consistently). A 2–3 day middle path — split the money/title/URL layer
+> and ship the new pages with an honest "no decade history yet" gap — is the
+> cheaper option if Tomahawk on the site is worth more than a complete sparkline.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
