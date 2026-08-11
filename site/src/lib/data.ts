@@ -174,6 +174,14 @@ export interface SiteMetaProgramsCoverage {
   /** Derived citations minted alongside the figures (export_site.py §2b). */
   index_fact_id: string;
   universe_fact_id: string;
+  /**
+   * (#56) The key_collision subset's own count and total, in USD millions.
+   * largest_excluded is ranked by dollars and every collision line is smaller
+   * than the biggest no_detail ones, so the category would otherwise be
+   * described on /programs/ but never quantified.
+   */
+  key_collision_count: number;
+  key_collision_millions: number;
 }
 
 export interface SiteMetaHero {

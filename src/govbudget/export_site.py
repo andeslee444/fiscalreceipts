@@ -380,15 +380,22 @@ def build_programs_coverage(
             reason = "no_detail"
         return pe, title, m, reason
 
+    normalized = [_reason(r) for r in excluded]
+    # #56: the largest_excluded list is ranked by DOLLARS, and every
+    # key_collision line is smaller than the five biggest no_detail ones — so
+    # a reader of the top-N prose would never learn the collision category
+    # exists at all. Publishing the category's own count and total is what
+    # makes the disclosure reachable rather than merely present in the JSON.
+    collisions = [r for r in normalized if r[3] == "key_collision"]
     return {
         "index_billions": round(index_total_millions / 1000, 1),
         "universe_billions": round(universe_total_millions / 1000, 1),
         "coverage_pct": round(100 * index_total_millions / universe_total_millions, 1),
+        "key_collision_count": len(collisions),
+        "key_collision_millions": round(sum(r[2] for r in collisions), 3),
         "largest_excluded": [
             {"pe_bli": pe, "title": title, "billions": round(m / 1000, 2), "reason": reason}
-            for pe, title, m, reason in sorted(
-                (_reason(r) for r in excluded), key=lambda x: -x[2],
-            )[:5]
+            for pe, title, m, reason in sorted(normalized, key=lambda x: -x[2])[:5]
         ],
     }
 

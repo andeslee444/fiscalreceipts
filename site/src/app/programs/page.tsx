@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getProgramDecadeCells, getPrograms, getProgramsCoverage } from "@/lib/data";
-import { formatCount } from "@/lib/format";
+import { formatAmount, formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CorpusStatement } from "@/components/corpus-statement";
@@ -157,6 +157,30 @@ export default function ProgramsPage() {
               </span>
             ))}
             .
+            {/* #56: the list above is ranked by dollars, and every
+                key_collision line is smaller than the five biggest
+                no_detail ones — so the collision category would be
+                described here but never exemplified, and a reader would
+                have no way to learn how much it accounts for. The count
+                and total come from programs_coverage, never a literal. */}
+            {coverage.key_collision_count > 0 && (
+              <>
+                {" "}
+                <span data-excluded-collision-summary={coverage.key_collision_count}>
+                  {formatCount(coverage.key_collision_count)} of the absent lines
+                  are missing for that second reason, totalling{" "}
+                  {formatAmount(coverage.key_collision_millions * 1000, "USD thousands")}
+                  ; they are listed in full in{" "}
+                  <a
+                    href="/json/programs_excluded.json"
+                    className="underline hover:text-foreground"
+                  >
+                    programs_excluded.json
+                  </a>
+                  .
+                </span>
+              </>
+            )}
           </p>
         </ScopeNote>
       </div>
