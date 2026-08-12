@@ -103,8 +103,15 @@ GENERIC_WORDS = {
 # number alone. Disclosed per this sprint's substitution convention (see
 # commit message and docs/superpowers/reviews/5c-gates-pre-failure.txt).
 
+# parents[3] is the GovBudget project root (this file is at
+# GovBudget/src/govbudget/influence/mentions.py). It was parents[4] until
+# 2026-08-08, which resolved one level too high — outside the project — so
+# _load_aliases hit its exists() guard and returned {} on every call, and the
+# curated alias tier matched ZERO rows corpus-wide. Harmless while `alias` was
+# only one of several signals; load-bearing once #52 made it a tier that
+# qualifies a mention on its own.
 _SEED_PATH = (
-    Path(__file__).resolve().parents[4] / "dbt" / "seeds" / "program_aliases.csv"
+    Path(__file__).resolve().parents[3] / "dbt" / "seeds" / "program_aliases.csv"
 )
 
 

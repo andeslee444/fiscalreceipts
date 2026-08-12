@@ -1212,10 +1212,26 @@ gate family that makes the class visible.
     `dbt/seeds/program_aliases.csv` needs entries (F-35, JSF → ATA000, and the
     equivalents for RTX's and Boeing's flagship lines) so `evidence_kind='alias'`
     can carry programs whose titles share no two distinctive tokens with how
-    lobbyists actually write them. Measured 2026-08-08: of 10,447 mention rows,
-    9,714 are `multi_token` and 733 are `pe_literal` — **`alias` matches zero**,
-    despite 11 curated aliases already in the seed. The alias path is wired but
-    inert, so this is a data-curation gap, not a code gap.
+    lobbyists actually write them.
+
+    *Correction 2026-08-08 (found by the post-merge code review; the first
+    version of this entry had the cause wrong).* I originally wrote that
+    `alias` matching zero rows was "a data-curation gap, not a code gap". It
+    was a **code gap**: `mentions.py`'s `_SEED_PATH` used `parents[4]`, which
+    resolves one level above the project, so `_load_aliases` hit its
+    `exists()` guard and silently returned `{}` on every call — all 11
+    curated aliases were dead. Harmless while `alias` was one signal among
+    several; load-bearing the moment #52 made it a tier that qualifies a
+    mention on its own. Fixed to `parents[3]`; `alias` now matches **53**
+    rows (THAAD, Aegis, JASSM, GBI, C2BMC, SBX, MQ-9, CV-22, JADC2, C-130J,
+    Iron Dome), taking the corpus from 10,447 to **10,500**.
+
+    **What remains genuinely a curation gap:** the seed has no F-35/JSF
+    entry, so Lockheed's flagship program is still absent from its page for
+    the original reason — no alias, and no two distinctive title tokens that
+    survive the evidence rule. Adding F-35 → ATA000 and the RTX/Boeing
+    equivalents is the actual remaining work, and it will now take effect,
+    which it would not have before.
 
 > **✅ #56–#59 CLOSED 2026-08-08** on branch `sprint-b-prime-remaining-review`.
 > **#56** six fused pages de-fused (3010 $2.62B → $20.9M and five more), dbt
