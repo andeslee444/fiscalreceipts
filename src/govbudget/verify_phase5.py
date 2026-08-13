@@ -198,6 +198,16 @@ def _score_answer(agent_result: dict, entry: dict) -> bool:
     expected_refuse_class.
     For answered entries: canonical string compare within tolerance.
     """
+    # An agent CRASH is not a judgment (2026-08-13). The except-handler below
+    # used to synthesise {"refuse": True, "refuse_reason_class":
+    # "structurally_absent"} from any exception, so a question the agent never
+    # ran — turns=0, cost=$0.00 — scored CORRECT against every REFUSE entry.
+    # Measured on eval-20260813T012743Z: q042 (THAAD bid prices) errored with
+    # zero turns and was counted as a correct refusal, silently inflating
+    # refusal coverage. An error can never be right about anything.
+    if agent_result.get("error", False):
+        return False
+
     expected = str(entry.get("expected_answer", ""))
     if expected == "REFUSE":
         if not agent_result.get("refuse", False):
@@ -566,10 +576,16 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
                 "reason": str(exc),
             }
         except Exception as exc:
+            # `error` is the load-bearing flag: _score_answer returns False
+            # for it unconditionally. `refuse` stays True only so the
+            # citation-resolution branch below skips a run that produced no
+            # SQL to resolve — it must never be read as the agent having
+            # JUDGED the question unanswerable.
             result = {
                 "answer": "ERROR",
+                "error": True,
                 "refuse": True,
-                "refuse_reason_class": "structurally_absent",
+                "refuse_reason_class": None,
                 "sql": None,
                 "citation_kind": "none",
                 "citation": str(exc),
@@ -601,6 +617,7 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
             "question": question[:80],
             "expected": expected,
             "agent_answer": result.get("answer", ""),
+            "agent_error": result.get("error", False),
             "agent_refuse": result.get("refuse", False),
             "agent_refuse_class": result.get("refuse_reason_class"),
             "correct": is_correct,
