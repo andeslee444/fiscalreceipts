@@ -1048,7 +1048,7 @@ export default function MethodologyPage() {
               <tr className="border-b border-border">
                 <td className="py-2 pr-4">Lobbying program mentions</td>
                 <td className="py-2 pr-4">34,538</td>
-                <td className="py-2 pr-4">10,500</td>
+                <td className="py-2 pr-4">10,560</td>
                 <td className="py-2">
                   A mention required one shared word of five or more letters, so
                   &ldquo;Based&rdquo;, &ldquo;Services&rdquo; and

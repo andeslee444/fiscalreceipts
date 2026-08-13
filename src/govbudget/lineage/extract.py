@@ -163,9 +163,30 @@ def _window_is_negated(sent: str, next_sent: str | None, from_pe: str, to_pe: st
     if any(cue in sent.lower() for cue in NEGATION_CUES):
         return True
     if next_sent and any(cue in next_sent.lower() for cue in NEGATION_CUES):
-        if from_pe in next_sent or to_pe in next_sent:
+        # Word-boundary, not substring (post-merge code review, 2026-08-08).
+        # Numeric pe_blis are real — '3010', '1045', '2210' — and a bare
+        # `in` test matches them inside unrelated digit strings. "Project X
+        # is transferred to Program Element 3010. The prior $13,010 thousand
+        # obligation was rescinded." would negate a legitimate edge, because
+        # '3010' is a substring of '13,010' and the successor carries a cue.
+        # The failure is silent: a true edge simply disappears.
+        if any(_pe_named(pe, next_sent) for pe in (from_pe, to_pe)):
             return True
     return False
+
+
+def _pe_named(pe: str, text: str) -> bool:
+    """True iff `pe` appears in `text` as a whole token.
+
+    Mirrors mentions.py's _build_word_boundary_re: pe_blis are alphanumeric,
+    so \\b is unreliable at an alphanumeric/alphanumeric join — use explicit
+    negative lookaround on [A-Za-z0-9] instead.
+    """
+    if not pe:
+        return False
+    return re.search(
+        r"(?<![A-Za-z0-9])" + re.escape(pe) + r"(?![A-Za-z0-9])", text
+    ) is not None
 
 
 def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:

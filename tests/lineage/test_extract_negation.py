@@ -88,3 +88,33 @@ def test_each_edge_mints_its_own_fact_id():
     assert len({e.evidence_fact_id for e in got}) == 1
     assert len({e.edge_fact_id for e in got}) == len(got)
     assert "10a4acbaa3270c74" not in {e.edge_fact_id for e in got}
+
+
+# ── post-merge code-review finding (2026-08-08) ──────────────────────────────
+# _window_is_negated scoped its next-sentence cue with a bare `in` substring
+# test. Numeric pe_blis are real ('3010', '1045', '2210'), so a cue sentence
+# containing an unrelated digit string could negate a legitimate edge. Latent
+# rather than firing — the extractor does not currently resolve a bare numeric
+# key as an endpoint from prose — but silent if it ever did.
+
+
+def test_a_digit_substring_does_not_scope_a_negation_cue():
+    from govbudget.lineage.extract import _window_is_negated
+
+    assert not _window_is_negated(
+        "Project X is transferred to Program Element 3010.",
+        "The prior $13,010 thousand obligation was rescinded.",
+        "1203154SF",
+        "3010",
+    )
+
+
+def test_the_endpoint_named_as_a_whole_token_still_scopes_the_cue():
+    from govbudget.lineage.extract import _window_is_negated
+
+    assert _window_is_negated(
+        "Project X is transferred to Program Element 3010.",
+        "That transfer to 3010 was rescinded.",
+        "1203154SF",
+        "3010",
+    )

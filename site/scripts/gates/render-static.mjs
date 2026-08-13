@@ -10,7 +10,7 @@
  *     Any element with data-amount that matches none → FAIL.
  *
  * (b) NEGATIVE: text nodes containing currency pattern
- *       $[\d,]+(\.\d+)?\s*[BMK]?  (comma-grouped dollars)
+ *       $[\d,]+(\.\d+)?\s*[TBMK]?  (comma-grouped dollars)
  *     OUTSIDE [data-amount] subtrees → FAIL (listing page + snippet).
  *     Exceptions: content inside <script>, <style>, JSON-LD <script> tags.
  *     [data-source-text] subtrees are skipped ONLY for the marker kinds that
@@ -237,7 +237,7 @@ const allowlistPath = path.resolve(__dirname, "prose-allowlist.json");
 
 // Currency pattern: $X,XXX(.XX)? optionally followed by B/M/K
 // Must be in a text node (not a URL/href)
-const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[BMK]?/g;
+const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[TBMK]?/g;
 
 /**
  * LEG (t) — request/enacted vocabulary (#47).

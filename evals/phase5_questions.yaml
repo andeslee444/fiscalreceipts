@@ -231,7 +231,8 @@
 - id: q022
   question: What is the HHI for the Missile Defense Agency (rounded to one decimal
     place), and how many distinct vendor families does it use? Report both values
-    as integers, exactly as the SQL returns them (e.g. 2068, not 2068.0).
+    exactly as the SQL returns them — do not add or drop decimal places (e.g. 2068,
+    not 2068.0; 2118.5, not 2118).
   answer_sql: |
     select round(hhi, 1), family_count
     from fct_agency_concentration

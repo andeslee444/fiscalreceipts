@@ -10,3 +10,5 @@ GBI,MD08,Ground Based Interceptor; abbreviation for Ground Based Midcourse progr
 SBX,0603907C,Sea Based X-Band Radar; abbreviation used in congressional lobbying text
 MQ-9,1108MQ9,MQ-9 Reaper unmanned aerial vehicle; short alias for MQ-9 Unmanned Aerial Vehicle program
 CV-22,1000CV2200,CV-22 Osprey tiltrotor; abbreviation for CV-22 Modification program
+F-35,ATA000,Lockheed F-35 Joint Strike Fighter; the program is universally written "F-35" in LDA filings and shares no two distinctive title tokens with "F-35" alone (#55)
+JSF,ATA000,Joint Strike Fighter; the pre-2006 name still used in lobbying text for the same program (ATA000)

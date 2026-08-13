@@ -41,7 +41,7 @@
 import path from "path";
 
 /** Anchored form of render-static's CURRENCY_RE — a legal allowlist pattern. */
-const CURRENCY_TOKEN_RE = /^\$[\d,]+(\.\d+)?\s*[BMK]?$/;
+const CURRENCY_TOKEN_RE = /^\$[\d,]+(\.\d+)?\s*[TBMK]?$/;
 
 /**
  * Built-file path → the page path a reader sees.

@@ -1226,12 +1226,12 @@ gate family that makes the class visible.
     rows (THAAD, Aegis, JASSM, GBI, C2BMC, SBX, MQ-9, CV-22, JADC2, C-130J,
     Iron Dome), taking the corpus from 10,447 to **10,500**.
 
-    **What remains genuinely a curation gap:** the seed has no F-35/JSF
-    entry, so Lockheed's flagship program is still absent from its page for
-    the original reason — no alias, and no two distinctive title tokens that
-    survive the evidence rule. Adding F-35 → ATA000 and the RTX/Boeing
-    equivalents is the actual remaining work, and it will now take effect,
-    which it would not have before.
+    ✅ **CLOSED 2026-08-08.** F-35 → ATA000 and JSF → ATA000 added to the
+    seed. ATA000 went **0 → 60** mention rows, Lockheed 366 → 425, the alias
+    tier 53 → 113, and the corpus 10,500 → **10,560**. Lockheed's flagship
+    program now appears on its own page, which was this entry's whole point.
+    Equivalent aliases for RTX's and Boeing's flagship lines are the same
+    shape of work and are NOT done — re-file if they matter.
 
 > **✅ #56–#59 CLOSED 2026-08-08** on branch `sprint-b-prime-remaining-review`.
 > **#56** six fused pages de-fused (3010 $2.62B → $20.9M and five more), dbt
@@ -1267,6 +1267,26 @@ gate family that makes the class visible.
 > account consistently). A 2–3 day middle path — split the money/title/URL layer
 > and ship the new pages with an honest "no decade history yet" gap — is the
 > cheaper option if Tomahawk on the site is worth more than a complete sparkline.
+
+> **✅ #4, #13, #26 CLOSED 2026-08-08 (drawdown Sprint A, Task A1).** Verified,
+> not asserted:
+> **#4** superseded by Phase 5E — `fct_budget_lines` carries all ten editions
+> PB2017–PB2026, where #4 asked only for PB2025/PB2024.
+> **#13** moot — every ingested era embeds structured `.zzz` XML, so extraction
+> is deterministic and no OCR path was needed. The **anchored** grep
+> (`grep -rniE "\bocr\b|mistral|document.?ai" src/govbudget/ | grep -v test`)
+> returns **0**; the drawdown plan's unanchored version returns 14 false
+> positives because `ocr` matches So**cr**ata. If a future source lacks XML this
+> returns as a new entry naming that source.
+> **#26** contingent-not-applicable — the feed's event types are exactly
+> `concentration_shift`, `new_entrant`, `request_vs_actuals_gap`, `yoy_swing`;
+> no request-vs-request type exists, so the dead-PE `request_vs_request` fact
+> has nothing to serve. Re-open with the event type that needs it.
+>
+> **#6 stays OPEN** — its two mart sub-items are done, but `dim_geography` is
+> still `[pop_state, pop_district, transaction_count, total_obligation]` with no
+> `fiscal_year`/`pe_bli` breakdown. Closing it would be the false-completion
+> this ledger keeps catching elsewhere.
 
 ## Remaining launch items
 
