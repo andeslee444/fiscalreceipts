@@ -917,17 +917,35 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     three these sweeps would have caught). Proof-can-fail recorded for all four
     arms.
 
-39. **`Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) is
-    missing the space after its ampersand.** The string is verbatim from the
-    source workbook and propagates to `programs.json`, `search_quick.json`,
-    `feed.json` and `years_matrix.json`. Not fixed in round 3 because both
-    available fixes are disproportionate to one missing space: a display-time
-    rewrite needs a rule that cannot also mangle `RDT&E`, `HM&E`, `S&T`, `D&UP`
-    or `R&D` (and would need its own gate to prove it does not), and a
-    source-time fix needs an alias/override table plus a full `export-site`
-    re-run and eval. Fix separately, source-side, as a titles-override table
-    the exporter applies — with the override list itself published, so a
-    corrected title is visibly a correction rather than a silent edit.
+39. ✅ **FIXED 2026-08-13 — a published, enumerated titles-override table,
+    applied at every point the exporter emits a program title.**
+    `Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) was
+    missing the space after its ampersand, verbatim from the source workbook.
+    `data-seeds/title_overrides.csv` (`pe_bli, source_title, display_title,
+    reason, verified_on`) is keyed on the SOURCE title as well as the PE, so
+    an upstream workbook correction silently disarms the row instead of
+    rewriting a title it no longer describes. `apply_title_override()` /
+    `load_title_overrides()` route through it — the fan-out was larger than
+    the plan's five named surfaces: correcting `all_prog_rows`,
+    `titles_by_pe` and `bl_titles` once each (rather than patching every
+    dict-literal call site) covers `programs.json`, `program_details`'
+    `budget_lines` rows, `search_quick.json`, `feed.json`, `years_matrix.json`,
+    the /companies/ `linked_programs` list, district/filing/flows sidecars,
+    and the `breakdowns/` show-your-work labels — 8 call sites across 2
+    genuinely independent raw-title reads inside `_emit_breakdowns` that the
+    first pass missed and a manual post-build grep caught. `workbook-cells/`
+    is deliberately EXCLUDED — it quotes the cited .xlsx cell verbatim, typo
+    and all, because a citation drawer has to show what the source actually
+    says. A missing seed raises `FileNotFoundError` at export time (the #55
+    silent-`{}` failure mode is exactly what this refuses to repeat); an
+    export-time gate re-reads the built JSON surfaces and raises if any
+    listed `source_title` survived uncorrected; a row that never matched
+    anything in the corpus prints (not raises — a PE can legitimately drop
+    out of a future budget). The override list itself is published
+    (`title_overrides.json` → `/methodology/`), so the correction is visible,
+    not silent. `RDT&E`, `HM&E`, `S&T`, `D&UP` and `R&D` are unaffected
+    site-wide (confirmed on the built HTML) — this was never a display-time
+    regex.
 
 40. **The mobile navigation drawer shipped as a 32px sliver on every page —
     and no gate could see it (found by round-3 visual judging, FIXED

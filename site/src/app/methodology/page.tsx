@@ -4,7 +4,12 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { getCoverage } from "@/lib/coverage";
-import { getDatasetManifest, getFlowChartMeta, getSiteMeta } from "@/lib/data";
+import {
+  getDatasetManifest,
+  getFlowChartMeta,
+  getSiteMeta,
+  getTitleOverrides,
+} from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
 import { HHI_MODERATE_MIN, HHI_CONCENTRATED_MIN } from "@/lib/hhi-band.mjs";
@@ -90,6 +95,9 @@ export default function MethodologyPage() {
   const buildChecks = siteMeta.build_checks ?? {};
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
+  // ROADMAP #39: the published title-override table — read through data.ts
+  // like every other build-derived methodology table, never hardcoded here.
+  const titleOverrides = getTitleOverrides()?.rows ?? [];
 
   return (
     <>
@@ -1136,6 +1144,66 @@ export default function MethodologyPage() {
           that no longer meet the evidence standard. Those claims were removed
           and the affected dossiers say so.
         </p>
+
+        <h3 className="text-base font-semibold mt-6 mb-2">
+          Title overrides
+        </h3>
+        <p className="text-muted-foreground leading-7">
+          A handful of program titles are verbatim source-workbook text with a
+          typo the workbook itself never fixed. We do not run a display-time
+          find-and-replace for this — this corpus also carries{" "}
+          <span className="tabular-nums">RDT&amp;E</span>,{" "}
+          <span className="tabular-nums">S&amp;T</span>,{" "}
+          <span className="tabular-nums">HM&amp;E</span>,{" "}
+          <span className="tabular-nums">D&amp;UP</span> and{" "}
+          <span className="tabular-nums">R&amp;D</span>, and a rule that
+          inserts a space after every ampersand would corrupt every one of
+          those. Instead each correction is a specific, published row below:
+          the exact source string, what we display instead, and why. A row
+          stops applying automatically if the source workbook is ever
+          corrected upstream — the title it names must still match the
+          workbook&apos;s current text, or it no longer takes effect.
+        </p>
+        {titleOverrides.length === 0 ? (
+          <p className="mt-3 text-muted-foreground leading-7">
+            No title overrides are currently in effect.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm tabular-nums">
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th className="py-1 pr-4 font-medium">PE / BLI</th>
+                  <th className="py-1 pr-4 font-medium">Source title</th>
+                  <th className="py-1 pr-4 font-medium">Displayed title</th>
+                  <th className="py-1 pr-4 font-medium">Why</th>
+                  <th className="py-1 font-medium">Verified</th>
+                </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
+                {titleOverrides.map((row, i) => (
+                  <tr
+                    key={row.pe_bli + row.source_title}
+                    className={i < titleOverrides.length - 1 ? "border-b border-border" : ""}
+                  >
+                    <td className="py-2 pr-4 font-mono">
+                      <Link
+                        href={`/program/${row.pe_bli}/`}
+                        className="underline hover:text-foreground"
+                      >
+                        {row.pe_bli}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-4">{row.source_title}</td>
+                    <td className="py-2 pr-4">{row.display_title}</td>
+                    <td className="py-2 pr-4">{row.reason}</td>
+                    <td className="py-2">{row.verified_on}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* §7 ─────────────────────────────────────────────────────────── */}

@@ -883,6 +883,47 @@ export function getEntityFamilyEvents(): FamilyEventsPayload | null {
   return payload;
 }
 
+// ── title_overrides.json — published title corrections (ROADMAP #39) ────────
+
+export interface TitleOverrideRow {
+  pe_bli: string;
+  source_title: string;
+  display_title: string;
+  reason: string;
+  verified_on: string;
+}
+
+export interface TitleOverridesPayload {
+  schema_version: number;
+  rows: TitleOverrideRow[];
+}
+
+let _titleOverrides: TitleOverridesPayload | null | undefined;
+
+/**
+ * The published title-override table (ROADMAP #39): every case where a
+ * displayed program title differs from the source workbook's as-ingested
+ * title, and why — e.g. `Joint Hypersonic Technology Development
+ * &Transition` (PE 0603183D8Z), whose source workbook omits the space
+ * after its ampersand. /methodology/ renders every row here so a corrected
+ * title is visibly a correction, not a silent edit; null (or an empty
+ * `rows`) on an export that predates the sidecar or lists none, in which
+ * case the section renders zero rows rather than failing the build —
+ * matches getEntityFamilyEvents' absent-seed tolerance above.
+ */
+export function getTitleOverrides(): TitleOverridesPayload | null {
+  if (_titleOverrides !== undefined) return _titleOverrides;
+  getSiteMeta();
+  const full = join(jsonDir(), "title_overrides.json");
+  if (!existsSync(full)) {
+    _titleOverrides = null;
+    return null;
+  }
+  const payload = JSON.parse(readFileSync(full, "utf8")) as TitleOverridesPayload;
+  _titleOverrides = payload;
+  return payload;
+}
+
 // ── entity_details/{slug}.json ───────────────────────────────────────────────
 
 export interface EntityInfluenceRow {

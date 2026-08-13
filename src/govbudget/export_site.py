@@ -37,6 +37,7 @@ import json
 import re
 import shutil
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -793,6 +794,146 @@ def _stage_parquet_path(duckdb_path, stage: str, filename: str):
         if c.exists():
             return c
     return None
+
+
+# ---------------------------------------------------------------------------
+# Program title overrides (drawdown Sprint A, ROADMAP #39)
+# ---------------------------------------------------------------------------
+#
+# `Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) is
+# missing the space after its ampersand — verbatim from the source workbook,
+# so it propagates to every surface that reads a workbook-derived title:
+# programs.json, program_details' budget_lines rows, search_quick.json,
+# feed.json, years_matrix.json, the /companies/ linked_programs list,
+# district and filing sidecars, flows sidecars, and the breakdowns
+# "show your work" labels.
+#
+# A display-time regex is NOT an option here: the same corpus carries
+# 'RDT&E', 'S&T', 'HM&E', 'D&UP' and 'R&D', and a rule that inserts a space
+# after every '&' would corrupt every one of those. So the fix is
+# source-side and enumerated — one seed row per (pe_bli, source_title) pair
+# — and it is published (title_overrides.json, rendered on /methodology/)
+# so a corrected title is visibly a correction, not a silent edit.
+#
+# Keyed on the SOURCE title as well as the PE: if the workbook is corrected
+# upstream, source_title no longer matches what the mart returns for that
+# pe_bli, the key lookup misses, and the override silently DISARMS itself
+# instead of rewriting a title it no longer describes
+# (test_title_overrides.py's third case).
+#
+# workbook-cells/*.json and breakdowns'... no: breakdowns' `label` fields
+# ARE corrected (they are a derived display convenience, sourced from
+# dim_pe_titles/dim_programs — see _emit_breakdowns). workbook-cells/*.json
+# is the one surface that must NOT be touched: govbudget.workbook_cells
+# reads the cited cell straight out of the .xlsx bytes, and a citation drawer
+# quoting the source cell has to quote what the cell actually says, typo and
+# all — "correcting" it there would misrepresent the evidence.
+
+
+@lru_cache(maxsize=1)
+def _title_override_seed_rows() -> tuple[dict, ...]:
+    """Parsed + VALIDATED data-seeds/title_overrides.csv rows, ALL columns.
+
+    The one place this project's curated-seed loaders keep going silent on a
+    bad path: #55's `_load_aliases` hit an `exists()` guard and returned {}
+    on every call for weeks (parents[4] resolved one directory above the
+    project root) because nothing there was loud about it. This loader has
+    no guard — a missing file, a missing required column, a blank required
+    cell, or two rows disagreeing on the same (pe_bli, source_title) key all
+    raise, so an export with a broken seed fails at export time instead of
+    shipping a correction that silently never applied.
+
+    load_title_overrides() (the (pe_bli, source_title) -> display_title map
+    every title-emission call site keys off) and the title_overrides.json
+    publisher (full provenance, for /methodology/) both derive from this one
+    parse — a single read+validate, not two copies of the same checks.
+    """
+    import csv as _csv
+
+    from govbudget.config import ROOT as _ROOT
+
+    csv_path = _ROOT / "data-seeds" / "title_overrides.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"title_overrides seed missing: {csv_path} — every "
+            "program-title emission point in export_site.py depends on "
+            "load_title_overrides(); an absent seed must fail the export "
+            "loudly, not silently ship every listed title uncorrected."
+        )
+    required = {"pe_bli", "source_title", "display_title"}
+    rows: list[dict] = []
+    seen: dict[tuple[str, str], str] = {}
+    with csv_path.open(newline="", encoding="utf-8") as f:
+        reader = _csv.DictReader(f)
+        if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+            raise ValueError(
+                f"title_overrides.csv: missing required column(s) "
+                f"{required - set(reader.fieldnames or [])} (header was "
+                f"{reader.fieldnames!r})"
+            )
+        for i, row in enumerate(reader, start=2):  # header occupies line 1
+            pe_bli = (row.get("pe_bli") or "").strip()
+            source_title = (row.get("source_title") or "").strip()
+            display_title = (row.get("display_title") or "").strip()
+            if not pe_bli or not source_title or not display_title:
+                raise ValueError(
+                    f"title_overrides.csv line {i}: pe_bli, source_title and"
+                    f" display_title are all required — got {row!r}"
+                )
+            key = (pe_bli, source_title)
+            if key in seen and seen[key] != display_title:
+                raise ValueError(
+                    f"title_overrides.csv: {key!r} maps to two different "
+                    f"display titles ({seen[key]!r} at an earlier line and "
+                    f"{display_title!r} at line {i}) — refusing to load an "
+                    "ambiguous override"
+                )
+            seen[key] = display_title
+            rows.append({
+                "pe_bli": pe_bli,
+                "source_title": source_title,
+                "display_title": display_title,
+                "reason": (row.get("reason") or "").strip(),
+                "verified_on": (row.get("verified_on") or "").strip(),
+            })
+    return tuple(rows)
+
+
+@lru_cache(maxsize=1)
+def load_title_overrides() -> dict[tuple[str, str], str]:
+    """(pe_bli, source_title) -> display_title.
+
+    Keyed on the SOURCE title as well as the PE so an upstream correction
+    silently disarms the override instead of rewriting a title it no longer
+    describes — see the module comment above this section.
+    """
+    return {
+        (row["pe_bli"], row["source_title"]): row["display_title"]
+        for row in _title_override_seed_rows()
+    }
+
+
+def apply_title_override(
+    pe_bli: str,
+    title: str | None,
+    overrides: dict[tuple[str, str], str] | None = None,
+) -> str | None:
+    """Return the corrected display title for (pe_bli, title).
+
+    Returns `title` unchanged (including None) whenever (pe_bli, title)
+    isn't a key in `overrides` — an unlisted PE, or a listed PE whose
+    current title no longer equals the seed's source_title, both take this
+    path, which is the point: the override never touches a title it wasn't
+    written to describe.
+
+    `overrides` defaults to load_title_overrides() (lru_cache'd); export's
+    title-emission loops pass the same dict explicitly so a hot loop over
+    thousands of rows does one dict lookup per row rather than one function
+    call into the cache wrapper per row.
+    """
+    if overrides is None:
+        overrides = load_title_overrides()
+    return overrides.get((pe_bli, title), title)
 
 
 # ---------------------------------------------------------------------------
@@ -5014,6 +5155,21 @@ def _write_all_sidecars(
     summary_by_pe = summary_by_pe or {}
     fy26_split_by_pe = fy26_split_by_pe or {}
 
+    # ROADMAP #39: program title overrides. Loaded once; _title_overrides_used
+    # tracks which (pe_bli, source_title) keys actually matched something in
+    # THIS export's corpus, so a listed-but-never-matching row (the PE is
+    # absent, or the workbook title no longer equals source_title) can be
+    # reported at the end rather than going unnoticed — the failure mode #55's
+    # dead alias loader hit. See the module comment above load_title_overrides.
+    _title_overrides = load_title_overrides()
+    _title_overrides_used: set[tuple[str, str]] = set()
+
+    def _corrected_title(pe_bli: str, title: str | None) -> str | None:
+        key = (pe_bli, title)
+        if key in _title_overrides:
+            _title_overrides_used.add(key)
+        return apply_title_override(pe_bli, title, _title_overrides)
+
     # ------------------------------------------------------------------ #
     # 0. Build in-memory indexes from already-fetched data                #
     # ------------------------------------------------------------------ #
@@ -5252,7 +5408,10 @@ def _write_all_sidecars(
             # page group budget_lines by account_title and label each
             # group with the program it actually describes, instead of
             # implying every row is about the page's own program.
-            "title": title,
+            # ROADMAP #39: this row's OWN title, so it needs its own
+            # correction (it is not necessarily the same pe_bli/title pair
+            # programs.json corrected via all_prog_rows above).
+            "title": _corrected_title(pe_bli, title),
             "organization": organization,
             "source_sheet": source_sheet,
             "source_cells": source_cells,
@@ -5295,6 +5454,17 @@ def _write_all_sidecars(
             f"programs.json: +{len(synth_prog_rows)} trajectory-only feed programs"
             f" (total {len(all_prog_rows)})"
         )
+
+    # ROADMAP #39: correct titles HERE, once, before any consumer reads a row.
+    # all_prog_rows is the single upstream source for programs.json (below),
+    # search_quick.json's program docs, prog_titles (→ entity_details'
+    # linked_programs, feed.json, districts, filings), and years_matrix.json
+    # (which iterates all_prog_rows directly) — fixing it here means every one
+    # of those inherits the correction without a separate touch at each site.
+    all_prog_rows = [
+        (r[0], r[1], r[2], _corrected_title(r[0], r[3]), *r[4:])
+        for r in all_prog_rows
+    ]
 
     # fct_budget_trajectory → keyed by (pe_bli, organization)
     traj_rows = con.execute(
@@ -5948,6 +6118,11 @@ def _write_all_sidecars(
             f"program_details rollup: dim_pe_titles unavailable ({exc});"
             " rollup titles will be null"
         )
+    # ROADMAP #39: corrected once here — feeds _emit_lineage's other_pe /
+    # chain_head_title AND the rollup-tier program_details "title" field below.
+    titles_by_pe = {
+        pe: _corrected_title(pe, t) for pe, t in titles_by_pe.items()
+    }
 
     # Route-safety filter (used for both the rollup universe and the lineage
     # `resolved` check): a program page is a Next.js static route, so the pe_bli
@@ -6878,6 +7053,80 @@ def _write_all_sidecars(
     else:
         print("flow_chart.json: NOT written (fct_flow_edges missing/empty)")
 
+    # ------------------------------------------------------------------ #
+    # 20. title_overrides.json (published corrections table, ROADMAP #39) #
+    # ------------------------------------------------------------------ #
+    # The seed's full provenance (source_title, reason, verified_on), not
+    # just the (pe_bli, source_title)->display_title map load_title_overrides
+    # returns — /methodology/ renders this so a corrected title is visibly a
+    # correction, never a silent edit. Read through site/src/lib/data.ts like
+    # every other build-derived methodology table (see getTitleOverrides).
+    _write_json(json_dir / "title_overrides.json", {
+        "schema_version": 1,
+        "rows": [dict(row) for row in _title_override_seed_rows()],
+    })
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
+    # Title-override loud checks (ROADMAP #39)                            #
+    # ------------------------------------------------------------------ #
+    # Two independent failure modes, both must be loud rather than silent
+    # (the #55 lesson: a curated seed that silently applies to nothing can
+    # ship for weeks unnoticed):
+    #
+    #  (a) a listed override never matched anything in THIS export's corpus
+    #      — informational only. Either the PE is absent from this build, or
+    #      the workbook title no longer equals source_title (the seed's OWN
+    #      designed self-disarm — see load_title_overrides). Not necessarily
+    #      a bug, but silently invisible is exactly the wrong default, so
+    #      it's printed for a human to act on (retire the row, or notice the
+    #      PE dropped out).
+    #
+    #  (b) an override's uncorrected source_title survives verbatim in a
+    #      surface that SHOULD have been corrected — this IS a bug: a call
+    #      site was missed. Checked against the BUILT files, not the code
+    #      path, because trusting that every call site remembered to route
+    #      through apply_title_override is exactly how #55's dead alias
+    #      loader went unnoticed. Deliberately excludes workbook-cells/ (raw
+    #      .xlsx cell quotes — must NOT change) and, for performance,
+    #      breakdowns/ (~18k files; its `titles` dict IS corrected above —
+    #      see _emit_breakdowns — this is a belt-and-suspenders scan of the
+    #      surfaces cheap enough to re-read on every export).
+    _unused_overrides = set(_title_overrides) - _title_overrides_used
+    if _unused_overrides:
+        print(
+            f"title_overrides: {len(_unused_overrides)} row(s) never matched"
+            " anything in this export's corpus (now inert): "
+            + ", ".join(f"{pe}:{src!r}" for pe, src in sorted(_unused_overrides))
+        )
+
+    _leak_source_titles = {src for (_pe, src) in _title_overrides}
+    if _leak_source_titles:
+        _leak_surfaces = [
+            json_dir / "programs.json",
+            json_dir / "search_quick.json",
+            json_dir / "feed.json",
+            json_dir / "years_matrix.json",
+        ]
+        for _sub in ("program_details", "entity_details", "districts", "flows", "filings"):
+            _d = json_dir / _sub
+            if _d.is_dir():
+                _leak_surfaces.extend(sorted(_d.glob("*.json")))
+        _leaks: list[str] = []
+        for _path in _leak_surfaces:
+            if not _path.exists():
+                continue
+            _text = _path.read_text(encoding="utf-8")
+            for _src in _leak_source_titles:
+                if _src in _text:
+                    _leaks.append(f"{_path.relative_to(json_dir)}: {_src!r}")
+        if _leaks:
+            raise ValueError(
+                "title_overrides: the uncorrected source_title survived in "
+                f"{len(_leaks)} place(s) that should have been corrected — a"
+                " call site was missed: " + "; ".join(_leaks[:10])
+            )
+
     return n_files
 
 
@@ -7506,7 +7755,13 @@ def _emit_feed_sidecar(
         ).fetchall()
     except Exception:
         bl_title_rows = []
-    bl_titles: dict = {r[0]: r[1] for r in bl_title_rows}
+    # ROADMAP #39: corrected here — every `program_title = prog_titles.get(...)
+    # or bl_titles.get(...)` fallback below (both card loops) inherits it.
+    _title_overrides = load_title_overrides()
+    bl_titles: dict = {
+        r[0]: apply_title_override(r[0], r[1], _title_overrides)
+        for r in bl_title_rows
+    }
 
     _WHY_BASE = "/methodology/#feed"
 
@@ -8007,12 +8262,20 @@ def _emit_district_sidecars(
     district_index: dict[str, dict] = {}
     district_programs: dict[str, list] = {}
 
+    # ROADMAP #39: prog_titles (param) was already corrected by the caller;
+    # this covers only the fct_district_programs fallback path (a pe_bli
+    # absent from prog_titles), which reads its own raw title independently.
+    _title_overrides = load_title_overrides()
+
     for (pop_state, pop_district, pe_bli, program_title, organization,
          transaction_count, award_count, recipient_count, total_obligation) in dp_rows:
         if not pop_district:
             continue
         key = pop_district
-        title = prog_titles.get(pe_bli, program_title or "")
+        title = prog_titles.get(
+            pe_bli,
+            apply_title_override(pe_bli, program_title, _title_overrides) or "",
+        )
 
         # Compute the usaspending fact_id for this (district, program)
         key_str = f"{pop_state}|{pop_district}|{pe_bli}"
@@ -8228,6 +8491,10 @@ def _emit_filing_sidecars(
     #                 evidence_kind, description_snippet, filing_url,
     #                 client_name, family_key, filing_year)
     mentions_by_uuid: dict[str, list] = {}
+    # ROADMAP #39: prog_titles (param) was already corrected by the caller;
+    # this covers only the fct_program_lobbying fallback (pe_bli absent from
+    # prog_titles), which reads its own raw title independently.
+    _title_overrides = load_title_overrides()
     for r in lob_rows:
         (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,
          description_snippet, _filing_url, _client_name, _family_key,
@@ -8239,7 +8506,9 @@ def _emit_filing_sidecars(
             "matched_term": matched_term,
             "evidence_kind": evidence_kind,
             "pe_bli": pe_bli,
-            "program_title": prog_titles.get(pe_bli, program_title),
+            "program_title": prog_titles.get(
+                pe_bli, apply_title_override(pe_bli, program_title, _title_overrides)
+            ),
             "program_url": (
                 f"/program/{pe_bli}/" if pe_bli in prog_titles else None
             ),
@@ -8970,13 +9239,23 @@ def _emit_breakdowns(
         if row[24]:
             pe_by_fid[fid] = row[24]
 
+    # ROADMAP #39: loaded once, reused by every raw-title source below.
+    # `titles`, `bl_by_fid`'s stashed title, and `usas_meta`'s dp_title all
+    # only LABEL a breakdown row (readability) — none is a workbook-cell
+    # quote (that is workbook-cells/*.json's job, read straight from the
+    # .xlsx bytes and deliberately NOT corrected — see the module comment
+    # above load_title_overrides). Safe to correct all three for display.
+    _title_overrides = load_title_overrides()
+
     # workbook fid → (amount_thousands, title, pe_bli); decade rows (old
     # editions) share the shape and extend the same lookup
     bl_by_fid: dict[str, tuple] = {}
     for r in bl_rows:
-        bl_by_fid[r[0]] = (r[11], r[9], r[8])
+        bl_by_fid[r[0]] = (r[11], apply_title_override(r[8], r[9], _title_overrides), r[8])
     for r in (decade_bl_rows or []):
-        bl_by_fid.setdefault(r[0], (r[11], r[9], r[8]))
+        bl_by_fid.setdefault(
+            r[0], (r[11], apply_title_override(r[8], r[9], _title_overrides), r[8])
+        )
 
     # dim_pe_titles (single deterministic title mart)
     try:
@@ -8985,6 +9264,10 @@ def _emit_breakdowns(
         )
     except Exception:
         titles = {}
+    titles = {
+        pe: apply_title_override(pe, t, _title_overrides)
+        for pe, t in titles.items()
+    }
 
     # trajectory reverse index: derived fid → (pe_bli, metric)
     traj_meta: dict[str, tuple] = {}
@@ -9014,7 +9297,7 @@ def _emit_breakdowns(
             "district_program", f"{pop_state}|{pop_district}|{dp_pe}",
             "total_obligation",
         )
-        usas_meta[fid_us] = (dp_pe, dp_title)
+        usas_meta[fid_us] = (dp_pe, apply_title_override(dp_pe, dp_title, _title_overrides))
 
     def _input_meta(fid: str, *, op: str) -> tuple:
         """(label, pe_bli) for an input fact_id."""
@@ -9312,8 +9595,9 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
 
     # Get program metadata
     try:
+        _title_overrides = load_title_overrides()
         prog_meta = {
-            r[0]: {"title": r[1], "org": r[2]}
+            r[0]: {"title": apply_title_override(r[0], r[1], _title_overrides), "org": r[2]}
             for r in con.execute(
                 "select pe_bli, title, org from dim_programs"
             ).fetchall()
