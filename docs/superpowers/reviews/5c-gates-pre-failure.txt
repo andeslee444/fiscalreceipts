@@ -6706,3 +6706,167 @@ ScopeNote); site/scripts/gates/basis.mjs (leg i, 4 sub-checks).
 
 SUITE COUNT UNCHANGED — one new leg (i) on gate 23. Still 24 gates
 (`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).
+
+================================================================================
+BACKLOG #36 — A "CITATION-RECOMPUTE RETRY" THAT ONLY REPLAYS THE FROZEN SQL
+IS A MATHEMATICAL NO-OP FOR THE FLAKE IT WAS BUILT TO FIX (2026-08-12)
+================================================================================
+
+SCOPE. verify-phase5's citation gate is a 100% bar. It failed one sprint run
+at citation 42/43 because q011 returned the right answer through
+literal/echo SQL ("SELECT 293.145", no FROM/JOIN), leaving touched_tables
+empty; an immediate re-run of the same gate, same build, same data scored
+43/43. q011 has flaked this way twice before. The Sprint 3 loop note filed
+this explicitly: "this is agent nondeterminism against a 100% bar, filed as
+backlog #36" (ROADMAP.md, PM-S3 row). The task brief sanctioned option (a):
+"Bounded retry of the citation-recompute step ... max 2 attempts ... it
+retries only the demonstrably-flaky step rather than the whole answer."
+
+THE DEFECT IN THE PRESCRIBED CODE (this is the fifth-plus instance the
+plan family has had one — see A1-A4/B1-B4's own entries). The prescribed
+Step 4 implementation retries by calling `recompute(question_id)` again,
+and the obvious literal reading of "citation-recompute step" is
+`_resolve_citation`'s own recompute: re-execute `agent.sql` (the SQL text
+the agent already submitted, frozen at agent-run time) through a fresh
+SqlTool instance. Read `_extract_touched_tables` (analyst/sql_tool.py:134):
+
+    for m in re.finditer(r"(?:from|join)\s+([a-zA-Z_]\w*)", stripped, ...):
+        ...
+    return touched
+
+This is a PURE regex function of the SQL TEXT alone — no DB state, no
+randomness, no I/O. Given the identical `agent.sql` string, it returns the
+identical `touched_tables` set on every call, forever. A literal-echo SQL
+string has no FROM/JOIN clause to extract in the first place, so re-running
+THAT SAME STRING through a fresh SqlTool any number of times cannot ever
+produce a non-empty result. A "retry" built around this operation is
+therefore a no-op for exactly the failure this task exists to fix — it
+would either pass on attempt 1 (nothing to retry) or fail identically on
+every subsequent attempt, silently converting "bounded retry" into "spend
+nothing, retry nothing, always report attempts:2 and still FAIL."
+
+WHERE THE ACTUAL NONDETERMINISM LIVES: one layer up, in the agent's SQL
+GENERATION — a full model call. analyst/agent.py sets `temperature=0` on
+every call and says why in its own comment: "Deterministic sampling: the
+answer contract is copy-paste of the canonical string run_sql returns;
+temperature 0 keeps repeated eval runs from flaking on formatting/query
+choice" — an intent, not a guarantee; Anthropic's API does not promise
+byte-identical output across separate calls even at temperature 0. That is
+the only thing capable of producing a DIFFERENT `agent.sql` for the same
+question on a second try, and getting it requires a genuine, paid,
+`agent_run()` call.
+
+SUBSTITUTION, disclosed here per the task's own instruction ("if a retry
+would incur API spend, say so explicitly rather than shipping something
+that quietly costs $0.85 a pop"): `resolve_citation_with_retry` ships
+EXACTLY as specified (tests 1-3 below are verbatim) — it is a generic
+primitive, agnostic to what `recompute` does. What changed is what
+`recompute` IS, in `_citation_retry_recompute` (verify_phase5.py): attempt 1
+is FREE — it reuses the agent_run() the main eval_gate loop already paid
+for (the wiring only ever constructs this closure once it already knows
+attempt 1 failed with EXACTLY the empty-touched-tables reason, so nothing
+is wasted re-deriving that). Attempt 2, bounded to at most one extra call
+by max_attempts=2, genuinely re-samples the agent for that ONE question —
+real, non-zero, disclosed API spend (~$0.01-0.02 for one question's turns,
+vs ~$0.55-0.85 for the full 48-question run), narrowly gated so it can
+NEVER fire for a wrong answer, a REFUSE, or an `error: True` crash (only
+for: already-scored-correct AND citation failed for EXACTLY
+`_EMPTY_TOUCHED_REASON`). The re-sampled attempt is re-scored from scratch
+and reported as "resolved" only when it is BOTH still correct AND its
+citation resolves — never on citation alone — which is what makes it
+impossible for the retry to mask a genuinely wrong answer, the same
+invariant the (a) vs (b) choice was made to protect.
+`cmd_verify_phase5` prints the spend whenever it happens
+(`gate eval: citation retry — N question(s) resampled the agent
+(+$X.XXXX API spend)`) and `citation_retry_count` /
+`citation_retry_total_cost_usd` land in the persisted eval-run JSON — never
+silently incurred.
+
+INTERACTION WITH THE JUST-LANDED e243f51 FIX (an agent crash is not a
+correct refusal): an errored run sets `refuse=True` too, so eval_gate's
+`if not result.get("refuse", False):` citation block — which is the ONLY
+path that can construct a retry — never runs for it at all. Verified by
+`test_retry_never_triggers_for_an_agent_error` below: a client that raises
+on every call scores `citation_retried=False`,
+`citation_retry_attempts=None`, zero extra calls.
+
+--- Step 3: FAIL (ImportError, before implementation) ---
+
+  $ uv run pytest tests/test_verify_phase5_retry.py -v
+  ============================= test session starts ==============================
+  collecting ... collected 0 items / 1 error
+  ==================================== ERRORS ====================================
+  ______________ ERROR collecting tests/test_verify_phase5_retry.py ______________
+  ImportError while importing test module '.../tests/test_verify_phase5_retry.py'.
+  Traceback:
+  tests/test_verify_phase5_retry.py:41: in <module>
+      from govbudget.verify_phase5 import (
+  E   ImportError: cannot import name '_EMPTY_TOUCHED_REASON' from
+  'govbudget.verify_phase5' (.../src/govbudget/verify_phase5.py)
+  =========================== short test summary info ============================
+  ERROR tests/test_verify_phase5_retry.py
+  !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+  =============================== 1 error in 0.09s ===============================
+
+--- Step 5 + Step 6: PASS (after implementation + wiring) ---
+
+  $ uv run pytest tests/test_verify_phase5_retry.py -v
+  ============================= test session starts ==============================
+  collecting ... collected 7 items
+
+  tests/test_verify_phase5_retry.py::test_retries_once_when_touched_tables_is_empty PASSED [ 14%]
+  tests/test_verify_phase5_retry.py::test_does_not_retry_when_the_first_attempt_resolves PASSED [ 28%]
+  tests/test_verify_phase5_retry.py::test_gives_up_after_max_attempts_and_reports_failure PASSED [ 42%]
+  tests/test_verify_phase5_retry.py::test_retry_rescues_a_correct_answer_whose_first_sql_was_a_literal_echo PASSED [ 57%]
+  tests/test_verify_phase5_retry.py::test_retry_exhausts_and_gate_still_fails_when_citation_never_resolves PASSED [ 71%]
+  tests/test_verify_phase5_retry.py::test_retry_never_triggers_for_a_wrong_answer PASSED [ 85%]
+  tests/test_verify_phase5_retry.py::test_retry_never_triggers_for_an_agent_error PASSED [100%]
+
+  ============================== 7 passed in 0.38s ==============================
+
+The 6th test above (`test_retry_exhausts_and_gate_still_fails_when_citation_
+never_resolves`) IS the Step 6 proof-can-fail: the agent echoes a literal
+BOTH times (genuinely unresolvable citation, not a build defect); the
+retry must not manufacture a resolution. Asserted directly on
+citation_ok(0) != citation_total(1) rather than result["ok"] — a
+1-question fixture already fails result["ok"] on the unrelated
+ACCURACY_THRESHOLD=44 floor regardless of citation outcome, so checking
+citation counts directly is the assertion that actually exercises the
+"retry cannot rescue a real failure" claim. The score entry for that
+question carries `citation_retried: True, citation_retry_attempts: 2,
+citation_reason: _EMPTY_TOUCHED_REASON` — the retry is visible in the
+artifact even though it did not help, which is the whole point: an
+invisible retry is indistinguishable from a lowered bar.
+
+--- Full suite after the change ---
+
+  $ uv run pytest -q
+  ...
+  1568 passed in 57.95s
+
+(1561 prior + 7 new in tests/test_verify_phase5_retry.py = 1568.)
+
+LETTER: n/a (Python gate suite — not a numbered site gate). This is a
+verify-phase5 eval_gate behavior change, covered by its own dedicated test
+file rather than a lettered leg on the 24-gate site suite.
+
+FILES CHANGED: src/govbudget/verify_phase5.py (`_EMPTY_TOUCHED_REASON`
+constant shared between `_resolve_citation` and the retry wiring;
+`resolve_citation_with_retry` — the generic primitive, verbatim per the
+task brief; `_error_agent_result` — the e243f51 error shape, reused so the
+retry closure's own crash handling can't drift from eval_gate's;
+`_citation_retry_recompute` — the actual `recompute` wired in, which
+re-samples the agent rather than replaying frozen SQL; `eval_gate`'s
+per-question loop — retry trigger gated on `is_correct AND reason ==
+_EMPTY_TOUCHED_REASON`, `citation_retried`/`citation_retry_attempts`/
+`citation_retry_cost_usd` persisted per question, `citation_retry_count`/
+`citation_retry_total_cost_usd` aggregated into the returned dict and the
+two early-return (BLOCKED / SystemExit) paths; `cmd_verify_phase5` — prints
+the retry spend disclosure whenever citation_retry_count > 0); new
+tests/test_verify_phase5_retry.py (7 tests: 3 generic-primitive tests
+verbatim from the task brief, 4 wiring-integration tests using a
+multi-run-aware FakeClient).
+
+SUITE COUNT: +7 tests (1561 -> 1568). No gate threshold changed —
+ACCURACY_THRESHOLD stays 44/48, citation resolution stays 100%, never
+lowered.

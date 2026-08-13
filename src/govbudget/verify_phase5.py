@@ -16,7 +16,17 @@ Gates (CLI: verify-phase5):
      (when the answer scored correct) the EXPECTED answer within tolerance.
      pdf_page citation: citations.parquet lookup on (pe_bli, canonical
      amount_text) with page_number non-null. source_url citation: per-table
-     URL-column map. 100% resolution required.
+     URL-column map. 100% resolution required — never lowered. A question
+     that scored correct but failed resolution ONLY because the agent's
+     final SQL was a literal echo (empty touched_tables — backlog #36, a
+     twice-observed agent-sampling flake, not a build defect) gets ONE
+     bounded, recorded retry that genuinely re-samples the agent for that
+     question (resolve_citation_with_retry / _citation_retry_recompute) —
+     this is real, disclosed, narrowly-scoped API spend, never a re-run of
+     the same frozen SQL (which is a mathematical no-op, see the retry's own
+     docstring). A wrong answer, a REFUSE, or an `error: True` crash never
+     triggers it. `retried`/`attempts` are persisted per question so a
+     retried pass is never invisible in the eval-run artifact.
 
   3. assembly_gate — subprocess-invokes verify-phase{1,2,3,4,5a,5b1,5b3} (NOT
      5b2 — 5b3 runs the same npm suite) PLUS verify-lineage (the program-
@@ -90,6 +100,11 @@ def _expand_equivalence(tables: set[str]) -> set[str]:
 # f"{millions:,.3f}" e.g. "293.145" or "1,234.567"
 def _canonical_amount_text(millions: float) -> str:
     return f"{millions:,.3f}"
+
+# Exact reason string _resolve_citation returns when the recompute step's
+# touched_tables comes back empty (literal/echo agent SQL). Shared with the
+# citation-retry wiring below so the two can never drift apart.
+_EMPTY_TOUCHED_REASON = "recompute: empty touched_tables (literal/echo SQL)"
 
 # Per-table URL-column map (binding from plan rev-2 recon facts)
 # key = table name in KNOWN_TABLES, value = column name with URL
@@ -276,7 +291,7 @@ def _resolve_citation(
 
     # touched_tables must be non-empty
     if not touched:
-        return {"ok": False, "reason": "recompute: empty touched_tables (literal/echo SQL)"}
+        return {"ok": False, "reason": _EMPTY_TOUCHED_REASON}
 
     # touched ∩ tables(answer_sql) must be non-empty
     # Extract tables from the ENTRY's answer_sql (the correct SQL)
@@ -496,6 +511,158 @@ def _resolve_source_url(
         return {"ok": False, "reason": f"source_url lookup error: {exc}"}
 
 
+# ---------------------------------------------------------------------------
+# Bounded, recorded citation-resolution retry (backlog #36)
+# ---------------------------------------------------------------------------
+#
+# verify-phase5's citation gate is a 100% bar sampled ONCE from a
+# nondeterministic LLM agent. q011 has flaked twice: the agent's final
+# submit_answer(sql=...) is occasionally a literal echo ("SELECT 293.145",
+# no FROM/JOIN) even when the ANSWER is correct, which leaves touched_tables
+# empty and the citation unresolvable. An immediate re-run of the same gate
+# against the SAME build/data scored 43/43 — the build was never wrong.
+
+
+def resolve_citation_with_retry(question_id, recompute, max_attempts=2):
+    """Retry a citation-resolution attempt, bounded, and only when it came
+    back empty.
+
+    This is a GENERIC primitive: `recompute` is caller-defined — it is not
+    prescribed to mean "re-execute the same frozen SQL string." That
+    distinction matters. `_extract_touched_tables` (analyst/sql_tool.py) is a
+    pure regex function of the SQL TEXT alone: re-running the exact same
+    `agent.sql` through a fresh SqlTool reproduces byte-identical
+    touched_tables on every call, forever — a literal-echo SQL string has no
+    FROM/JOIN to extract, so a "retry" that only re-executes that string is a
+    mathematical no-op for the flake this exists to fix. `_citation_retry_recompute`
+    below is the actual `recompute` this project wires in: it re-samples the
+    AGENT for the one flaky question (a genuine, and genuinely paid, retry),
+    not the frozen SQL. See its docstring for the full argument and the cost
+    disclosure.
+
+    A citation that does not resolve is still a failure — this does not
+    lower the bar. It distinguishes "the agent echoed a literal on this
+    sample" from "the build has no citation," which a single sample cannot.
+    Every retry is recorded (`retried`, `attempts`) so a retried pass is
+    never mistaken for a clean one.
+    """
+    result = recompute(question_id)
+    if result.get("touched_tables"):
+        return {**result, "retried": False, "attempts": 1}
+    for attempt in range(2, max_attempts + 1):
+        result = recompute(question_id)
+        if result.get("touched_tables"):
+            return {**result, "retried": True, "attempts": attempt}
+    return {**result, "retried": True, "attempts": max_attempts}
+
+
+def _error_agent_result(reason: str) -> dict:
+    """Same error shape eval_gate's own except-handler builds (commit
+    e243f51) — `error: True` disqualifies unconditionally in `_score_answer`.
+    """
+    return {
+        "answer": "ERROR",
+        "error": True,
+        "refuse": True,
+        "refuse_reason_class": None,
+        "sql": None,
+        "citation_kind": "none",
+        "citation": reason,
+        "turns": 0,
+        "cost_usd": 0.0,
+        "touched_tables": set(),
+    }
+
+
+def _citation_retry_recompute(
+    question: str,
+    entry: dict,
+    *,
+    agent_run_fn,
+    client,
+    duckdb_path: Path | None,
+    citations_parquet: Path | None,
+    first_result: dict,
+    first_is_correct: bool,
+    first_citation: dict,
+):
+    """Build the `recompute` callable passed to resolve_citation_with_retry.
+
+    COST DISCLOSURE: attempt 1 is FREE — it reuses the agent_run() the main
+    eval_gate loop already paid for (the caller only invokes this factory
+    once it already knows attempt 1 failed with the empty-touched-tables
+    reason, so nothing is wasted re-deriving that). Attempt 2+ (bounded by
+    max_attempts, so at most ONE extra call per question given this
+    project's max_attempts=2) calls the REAL agent again — a genuine,
+    non-zero API cost (~$0.01-0.02 for one question's turns, vs ~$0.55-0.85
+    for a full 48-question eval run). This is deliberate and unavoidable:
+    the flake lives in the agent's SQL GENERATION (a full model call), not
+    in the deterministic recompute step, so nothing short of a fresh sample
+    can plausibly change the outcome. The retry is narrowly scoped — it is
+    only ever constructed by eval_gate for a question that (a) already
+    scored correct and (b) failed citation resolution for EXACTLY the
+    empty-touched-tables reason — never for a wrong answer, a REFUSE, or an
+    `error: True` crash (those are filtered out before this factory is ever
+    called; see eval_gate).
+
+    The re-sampled attempt is re-scored from scratch (`_score_answer`) and
+    its citation re-resolved (`_resolve_citation`) exactly as the original
+    was. It is reported as "resolved" (non-empty touched_tables, the signal
+    resolve_citation_with_retry checks) ONLY when the fresh sample is BOTH
+    still correct AND its citation resolves — never on citation alone. This
+    is what makes it impossible for the retry to mask a genuinely wrong
+    answer: a fresh sample that answers incorrectly is reported as
+    unresolved regardless of what its SQL touched, so it can never look like
+    a pass.
+    """
+    state = {"call": 0}
+
+    def _recompute(question_id):  # noqa: ARG001 - kept for interface parity with the generic primitive
+        state["call"] += 1
+        if state["call"] == 1:
+            fresh, fresh_correct, cit = first_result, first_is_correct, first_citation
+        else:
+            try:
+                fresh = agent_run_fn(
+                    question, client=client, duckdb_path=duckdb_path, print_cost=False,
+                )
+            except SystemExit as exc:
+                fresh = _error_agent_result(f"SystemExit during citation retry: {exc}")
+            except Exception as exc:  # noqa: BLE001 - mirror eval_gate's own top-level guard
+                fresh = _error_agent_result(f"citation retry crashed: {exc}")
+
+            fresh_correct = _score_answer(fresh, entry)
+            if fresh.get("refuse", False) or fresh.get("error", False):
+                # The resample refused or crashed — nothing to resolve. This
+                # already fails fresh_correct too (an entry with a non-REFUSE
+                # expected_answer scores any refuse=True as False, and
+                # error:True disqualifies unconditionally), so `resolved`
+                # below is False either way; this branch just avoids handing
+                # a None/refused SQL to _resolve_citation.
+                cit = {"ok": False, "reason": "citation retry: agent refused or crashed on resample"}
+            else:
+                cit = _resolve_citation(
+                    fresh, entry,
+                    duckdb_path=duckdb_path,
+                    citations_parquet=citations_parquet,
+                    is_correct=fresh_correct,
+                )
+
+        resolved = bool(fresh_correct and cit.get("ok"))
+        return {
+            # A synthetic truthy/falsy marker for resolve_citation_with_retry's
+            # own empty-check — NOT the real touched-tables set (which lives
+            # inside `citation`/`_resolve_citation`'s own accounting and isn't
+            # needed by anything downstream of this closure).
+            "touched_tables": ["resolved"] if resolved else [],
+            "result": fresh,
+            "is_correct": fresh_correct,
+            "citation": cit,
+        }
+
+    return _recompute
+
+
 def eval_gate(
     *,
     client=None,
@@ -507,11 +674,18 @@ def eval_gate(
     Returns:
         ok (bool)
         blocked (bool)  — True when ANTHROPIC_API_KEY is absent
-        scores (list of dicts, one per question)
+        scores (list of dicts, one per question) — each also carries
+            citation_retried (bool) / citation_retry_attempts (int | None) /
+            citation_retry_cost_usd (float): backlog #36's bounded, recorded
+            citation-resolution retry (see resolve_citation_with_retry).
         accuracy (int)  — number of correctly scored answers
         total (int)     — 48
         citation_ok (int)    — answered questions with resolved citations
         citation_total (int) — answered questions evaluated for citation
+        citation_retry_count (int)          — questions that triggered a
+            REAL paid agent resample (backlog #36)
+        citation_retry_total_cost_usd (float) — API spend incurred by those
+            resamples, on top of the base ~48-question run cost
         reason (str | None)  — set when BLOCKED or FAIL
     """
     from govbudget.common.anthropic_client import require_client
@@ -538,6 +712,8 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
             "total": 48,
             "citation_ok": 0,
             "citation_total": 0,
+            "citation_retry_count": 0,
+            "citation_retry_total_cost_usd": 0.0,
             "reason": _NO_KEY_MSG,
         }
 
@@ -549,6 +725,8 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
     correct = 0
     citation_ok = 0
     citation_total = 0
+    citation_retry_count = 0
+    citation_retry_total_cost_usd = 0.0
 
     for entry in entries:
         eid = entry["id"]
@@ -573,6 +751,8 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
                 "total": len(entries),
                 "citation_ok": citation_ok,
                 "citation_total": citation_total,
+                "citation_retry_count": citation_retry_count,
+                "citation_retry_total_cost_usd": citation_retry_total_cost_usd,
                 "reason": str(exc),
             }
         except Exception as exc:
@@ -598,10 +778,18 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
         if is_correct:
             correct += 1
 
-        # Citation resolution — only for answered (non-REFUSE) questions
+        # Citation resolution — only for answered (non-REFUSE) questions.
+        # `error: True` runs are excluded automatically: the except-handler
+        # above sets refuse=True on them too (commit e243f51), so this block
+        # never sees a crash — and therefore the retry below never resamples
+        # a question the agent never actually ran.
         cit_result: dict | None = None
+        retried = False
+        retry_attempts: int | None = None
+        retry_cost_usd = 0.0
         if not result.get("refuse", False):
             citation_total += 1
+            retry_attempts = 1
             cit_result = _resolve_citation(
                 result,
                 entry,
@@ -609,6 +797,45 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
                 citations_parquet=citations_parquet,
                 is_correct=is_correct,
             )
+
+            # Bounded, recorded retry (backlog #36). Gated on is_correct so
+            # this can NEVER rescue a genuinely wrong answer — it only fires
+            # for the documented flake shape: answer already scored correct,
+            # citation failed for EXACTLY the empty-touched-tables reason
+            # (literal/echo agent SQL), which is agent-sampling noise, not a
+            # build defect. See _citation_retry_recompute's docstring for
+            # why this must re-sample the agent (costs API money) rather
+            # than re-running the same frozen SQL (a no-op — see
+            # resolve_citation_with_retry's docstring).
+            if is_correct and not cit_result["ok"] and cit_result["reason"] == _EMPTY_TOUCHED_REASON:
+                recompute = _citation_retry_recompute(
+                    question, entry,
+                    agent_run_fn=agent_run,
+                    client=real_client,
+                    duckdb_path=duckdb_path,
+                    citations_parquet=citations_parquet,
+                    first_result=result,
+                    first_is_correct=is_correct,
+                    first_citation=cit_result,
+                )
+                retry_out = resolve_citation_with_retry(eid, recompute, max_attempts=2)
+                retried = retry_out["retried"]
+                retry_attempts = retry_out["attempts"]
+                if retried:
+                    # A real agent call happened (attempt 2) whether or not
+                    # it ended up resolving — cost is incurred either way.
+                    retry_cost_usd = retry_out["result"].get("cost_usd", 0.0)
+                    citation_retry_count += 1
+                    citation_retry_total_cost_usd += retry_cost_usd
+                    if retry_out["touched_tables"]:
+                        # Adopt the retry's CITATION outcome only — never its
+                        # answer/correctness, which stay pinned to the
+                        # original scoring so `correct` can never drift from
+                        # what this score entry displays.
+                        cit_result = retry_out["citation"]
+                    # else: exhausted without resolving — cit_result (the
+                    # ORIGINAL failure) stands; the gate still FAILS here.
+
             if cit_result["ok"]:
                 citation_ok += 1
 
@@ -624,6 +851,9 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
             "citation_kind": result.get("citation_kind"),
             "citation_resolved": cit_result["ok"] if cit_result else None,
             "citation_reason": cit_result["reason"] if cit_result else None,
+            "citation_retried": retried,
+            "citation_retry_attempts": retry_attempts,
+            "citation_retry_cost_usd": retry_cost_usd,
             "turns": result.get("turns", 0),
             "cost_usd": result.get("cost_usd", 0.0),
         })
@@ -639,6 +869,11 @@ Nothing was run and nothing was spent. (~48 questions × ~8 turns ≈ $0.55 unca
         "total": len(entries),
         "citation_ok": citation_ok,
         "citation_total": citation_total,
+        # backlog #36: bounded, recorded citation-resolution retry. Non-zero
+        # citation_retry_count means real API spend was incurred beyond the
+        # 48-question base cost — see cmd_verify_phase5's printed disclosure.
+        "citation_retry_count": citation_retry_count,
+        "citation_retry_total_cost_usd": citation_retry_total_cost_usd,
         "reason": None if (accuracy_ok and citation_ok_all) else (
             f"accuracy {correct}/{len(entries)} < {ACCURACY_THRESHOLD} threshold"
             if not accuracy_ok
@@ -793,6 +1028,15 @@ def cmd_verify_phase5(args) -> None:  # noqa: ARG001
         )
         run_path.write_text(json.dumps(eg, indent=2, sort_keys=True, default=str))
         print(f"gate eval: per-question results -> {run_path}")
+
+    # backlog #36 cost disclosure: a citation retry re-samples the agent
+    # (see resolve_citation_with_retry / _citation_retry_recompute) — this
+    # must be visible whenever it happens, not buried only in the artifact.
+    if eg.get("citation_retry_count", 0) > 0:
+        print(
+            f"gate eval: citation retry — {eg['citation_retry_count']} question(s) "
+            f"resampled the agent (+${eg['citation_retry_total_cost_usd']:.4f} API spend)"
+        )
 
     if eg["blocked"]:
         print(f"gate eval: BLOCKED — {eg['reason'].splitlines()[0]}")
