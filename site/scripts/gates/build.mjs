@@ -80,14 +80,14 @@ function dirExists(p) {
 // the parse/DOM cost, which is what actually hurts a phone, so both are pinned.
 export const PAGE_WEIGHT_BUDGET = [
   // Singleton pages. `measured` is the Sprint 3 post-fix build.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 2_900_000, maxGzip: 278_000, measured: "2,732,113 / 261,871" },
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "28,332 / 5,823" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,585,770 / 84,913" },
-  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,242,417 / 78,354" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "658,659 / 63,836" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "244,825 / 27,797" },
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "209,273 / 24,156" },
-  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "85,650 / 12,122" },
+  { label: "/programs/", file: "programs/index.html", maxRaw: 2_900_000, maxGzip: 278_000, measured: "2,659,239 / 277,357" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "31,277 / 6,345" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,424,350 / 71,767" },
+  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,247,670 / 79,370" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,425 / 67,111" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,140 / 28,172" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,258 / 25,473" },
+  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "91,869 / 13,024" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -102,7 +102,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // budget would be the wrong trade. Ceilings carry the SAME proportional
   // headroom the previous pair did (raw ×1.1215, gzip ×1.0986), so the budget
   // still catches unintended growth from here.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 128_000, maxGzip: 34_500, measured: "114,369 / 31,412" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 128_000, maxGzip: 34_500, measured: "125,112 / 33,863" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -123,12 +123,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // Both ceilings re-derived at the SAME proportional headroom the previous
   // pair carried (raw ×1.0708, gzip ×1.0742), so the budget still catches
   // unintended growth from here rather than being merely widened.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "89,948 / 16,513" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "90,156 / 16,547" },
   // Templated classes — the heaviest built instance of each.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,925,805 / 126,967 (/agency/F/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,094,513 / 139,890 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "504,530 / 23,039 (/company/lockheed-martin/)" },
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "298,182 / 25,125" },
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,747 / 110,061 (/agency/F/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,056 / 142,216 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "380,223 / 23,701 (/company/lockheed-martin/)" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "317,376 / 21,784" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
@@ -168,10 +168,14 @@ function resolveBudgetTarget(entry) {
 }
 
 /** The leg. Returns {errors, notes} so runBuildGate can fold them in. */
+/** Gzip-ceiling usage at or above which a page is reported as near-ceiling. */
+const NEAR_CEILING_PCT = 90;
+
 export function checkPageWeight() {
   const errors = [];
   const notes = [];
   const lines = [];
+  const nearCeiling = [];
 
   for (const entry of PAGE_WEIGHT_BUDGET) {
     const target = resolveBudgetTarget(entry);
@@ -192,11 +196,35 @@ export function checkPageWeight() {
         `page weight: ${entry.label} is ${gzip.toLocaleString()} bytes gzipped, over its ${entry.maxGzip.toLocaleString()}-byte ceiling (+${(gzip - entry.maxGzip).toLocaleString()}) — measured at ${entry.measured} when the ceiling was set [${target.rel}]`
       );
     }
+    // NEAR-CEILING WARNING (2026-08-14). A ceiling is a cliff: it says nothing
+    // until it says FAIL. /coverage/ drifted to NINE bytes of headroom through
+    // ordinary prose growth and nobody knew until a one-line footer link tipped
+    // it, and /methodology/ did the same thing a week earlier. Worse, every
+    // `measured` string in this file had gone stale — /programs/ recorded
+    // 261,871 while actually shipping 277,357, so the file itself told a reader
+    // there was 6% headroom where there was 0.2%. The strings were refreshed
+    // 2026-08-14; this note is what stops them rotting again unnoticed.
+    //
+    // A NOTE, not an error: six pages are legitimately above 94% today, and
+    // failing on that would be inventing a stricter budget than anyone agreed
+    // to. It is early warning, so the next person to add a sentence knows
+    // before they spend an hour on the build that fails.
+    const pctUsed = (100 * gzip) / entry.maxGzip;
+    if (pctUsed >= NEAR_CEILING_PCT) {
+      nearCeiling.push(
+        `${entry.label} ${pctUsed.toFixed(1)}% (${gzip.toLocaleString()}/${entry.maxGzip.toLocaleString()} gzip, ${(entry.maxGzip - gzip).toLocaleString()} bytes left)`
+      );
+    }
     lines.push(
       `${entry.label} ${raw.toLocaleString()}/${gzip.toLocaleString()}`
     );
   }
 
+  if (nearCeiling.length > 0) {
+    notes.push(
+      `page weight: ${nearCeiling.length} page(s) at or above ${NEAR_CEILING_PCT}% of the gzip ceiling — ${nearCeiling.join("; ")}`
+    );
+  }
   if (errors.length === 0) {
     notes.push(
       `page weight: ${PAGE_WEIGHT_BUDGET.length} page budgets within ceiling ✓ (raw/gzip: ${lines.slice(0, 3).join("; ")}; …)`
