@@ -1306,6 +1306,46 @@ gate family that makes the class visible.
 > `fiscal_year`/`pe_bli` breakdown. Closing it would be the false-completion
 > this ledger keeps catching elsewhere.
 
+> **✅ #60–#66 CLOSED 2026-08-14 (Sprint C — usability).** None of these was a
+> correctness defect; the site said nothing untrue going in. They were
+> reachability and comprehension gaps.
+> **#60** `/glossary/` ships — 14 terms, one shared `GLOSSARY` map, and TOA is
+> finally expanded ("total obligational authority" went from **0** occurrences
+> sitewide to defined-and-linked) after being stamped on ~80,000 figures.
+> **#61** `/fact/{id}/` no longer 404s — the rewrite was `/fact/:id` only, and
+> Vercel's edge matched it more strictly than `path-to-regexp` does locally, so
+> the trailing-slash form the rest of the site trains never fired. Gate 1 leg
+> (f1) pins the second rule. Config-shape only — it can only be *proved* on
+> deploy, and that is stated in the leg.
+> **#62** `/agency/` index — 23 agencies, every figure cited, footer-linked.
+> **#63** CSV exports carry `fy2024_fact_id`, `fy2026_fact_id` and both
+> permalinks; the provenance chain survives entry into a spreadsheet.
+> **#64** `/years/` has a chart. It plots a **balanced panel** — the 524 of 1,741
+> programs reporting in all 12 years — because a naive full-corpus sum shows
+> spending sextupling FY2015→FY2026, which is corpus-ingestion coverage (35% →
+> 90%), not budget movement. The chart says so in its own accessible name and
+> description. A chart is a claim; that one would have been dramatic and false.
+> **#65** the 768–1023px horizontal overflow is gone — `container` clamped to
+> 768 at exactly the breakpoint the nav switched on. Measured +167/+101/+51px
+> before, 0 after, at six widths on two pages. Gate 3 leg (m5) covers the band.
+> **#66** dark mode via `prefers-color-scheme`, one token vocabulary. Gate 6 leg
+> (d) re-runs axe in a real dark Playwright context — and caught a genuine
+> 2.48:1 contrast failure on its first run, which was fixed rather than waived.
+>
+> **Also fixed, unplanned:** every `measured` string in `PAGE_WEIGHT_BUDGET` had
+> gone stale — `/programs/` recorded 261,871 while shipping 277,357, telling a
+> reader there was 6% headroom where there was 0.2%. All 14 refreshed, and gate 1
+> now emits a near-ceiling note at 90% so the record cannot rot unnoticed again.
+> Eleven pages are at or above 90% today. `/coverage/` was re-baselined
+> (16,500 → 17,700 gzip) for the sitewide glossary link after drifting to **nine
+> bytes** of headroom.
+>
+> **Two prescriptions in this sprint did not survive inspection**, continuing the
+> pattern: the plan said #61 needed a resolver fix (the resolver was already
+> correct — its regex ended `\/?$`), and said the review's overflow numbers
+> needed confirming (they were exactly right, the first prescribed table this
+> whole effort that needed no correction).
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
