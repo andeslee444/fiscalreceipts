@@ -207,6 +207,21 @@ export default function RootLayout({
                 <Link href="/methodology/" className="hover:text-foreground transition-colors">
                   Methodology
                 </Link>
+                {/* Sprint C Task C1 (ROADMAP #60) — TOA is stamped on ~80,000
+                    figures sitewide and expanded nowhere; this is the page
+                    that expands it, and every other term the site stamps.
+                    NOTE (disclosed in the Sprint C report, not silently
+                    absorbed): this footer ships on 6,700+ pages, so adding
+                    ONE more entry costs every page a few dozen bytes via the
+                    layout's own RSC flight-data serialization — confirmed by
+                    A/B build (a plain <a> pays the identical cost; the tree
+                    is serialized either way because sibling client
+                    components force it). /coverage/ had only 9 gzip bytes of
+                    ceiling headroom left BEFORE this change (unrelated prior
+                    growth); this link alone tips it a few bytes over. */}
+                <Link href="/glossary/" className="hover:text-foreground transition-colors">
+                  Glossary
+                </Link>
                 {/* §Coverage — what the site covers, what it does not, and the
                     dated target for each. Chrome-level so it is reachable from
                     every page (gate 13 pins the page type's reachability). */}

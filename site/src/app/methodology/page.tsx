@@ -203,7 +203,11 @@ export default function MethodologyPage() {
               fallback, with an accuracy gate requiring ≥98% numeric-field
               agreement against XML-backed ground truth. We also download the
               official R-1 and P-1 Excel rollups, which serve as independent
-              control totals. Update cadence: annual.
+              control totals for{" "}
+              <Link href="/glossary/#toa" className="underline hover:text-foreground">
+                total obligational authority (TOA)
+              </Link>
+              . Update cadence: annual.
             </p>
           </div>
 

@@ -6,7 +6,7 @@
  *   trajectory-only feed programs)
  * - agency pages == distinct orgs from agencies.json
  * - company pages == 200 (entities_top.json count)
- * - core pages present (/, /programs, /companies, /data, /flow, /downloads, /methodology, /about)
+ * - core pages present (/, /programs, /companies, /data, /flow, /downloads, /methodology, /glossary, /about)
  * - out/pagefind/pagefind.js exists
  * - sitemap URL count == emitted pages AND every URL starts with SITE_URL origin
  * - robots.txt present
@@ -379,6 +379,7 @@ export async function runBuildGate() {
     { path: path.join("flow", "index.html"), label: "/flow/" },
     { path: path.join("downloads", "index.html"), label: "/downloads/" },
     { path: path.join("methodology", "index.html"), label: "/methodology/" },
+    { path: path.join("glossary", "index.html"), label: "/glossary/" },
     { path: path.join("about", "index.html"), label: "/about/" },
   ];
   for (const { path: rel, label } of corePages) {
@@ -443,15 +444,17 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(10) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(10) = /, /programs/, /companies/, /companies/families/, /data/,
-    //              /flow/, /downloads/, /methodology/, /coverage/, /about/
+    // Expected: static(11) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(11) = /, /programs/, /companies/, /companies/families/, /data/,
+    //              /flow/, /downloads/, /methodology/, /glossary/, /coverage/,
+    //              /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
     //  §P1-3 — the curated rename/acquisition table; /coverage/ in Sprint 3
-    //  Task 6 — the roadmap page.)
+    //  Task 6 — the roadmap page; /glossary/ in Sprint C Task C1 — ROADMAP
+    //  #60, term definitions.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 10;
+    const STATIC_SITEMAP_PAGES = 11;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
