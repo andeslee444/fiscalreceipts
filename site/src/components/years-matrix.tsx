@@ -48,6 +48,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, Download, GitBranch } from "lucide-react";
 import { Cite, CiteLegend } from "@/components/cite";
 import { CollapsibleBelowSm } from "@/components/collapsible-below-sm";
+import { YearsTotalsChart } from "@/components/years-totals-chart";
 import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 import { formatCount } from "@/lib/format";
@@ -733,6 +734,12 @@ export function YearsMatrix() {
 
   return (
     <div className="space-y-3">
+      {/* ── Totals per year (Sprint C Task C5, ROADMAP #64) — the page is
+          titled "Budget over time" and answers "up or down?" here, at the
+          top, before the 39-column matrix a reader would otherwise have to
+          add up by hand. See years-totals-chart.tsx for why this total is
+          a balanced-panel sum rather than a <Cite>-backed figure. */}
+      <YearsTotalsChart matrix={matrix} entries={allEntries} />
       {/* ── Controls: filter, column picker, CSV ── */}
       <div className="flex flex-wrap items-center gap-2">
         <input
