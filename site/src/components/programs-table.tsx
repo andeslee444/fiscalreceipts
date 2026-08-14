@@ -30,6 +30,7 @@ import { basisChipText } from "@/lib/basis";
 import { serviceOrgName } from "@/lib/program-tier";
 import { aliasChipText, aliasChipParts, aliasHitsForQuery } from "@/lib/aliases";
 import { formatCount } from "@/lib/format";
+import { SITE_URL } from "@/lib/site";
 
 type SortKey = "fy2026_total" | "fy2024_actual" | "title" | "org";
 
@@ -106,7 +107,37 @@ function csvField(s: string): string {
  *     blank is what this column has always shown for that gap.
  * reconK itself is always rendered as its magnitude (Math.abs) — the sign
  * is payload-internal, never shown to a reader.
+ *
+ * ROADMAP #63 (Sprint C Task C4): four trailing columns carry the citation
+ * provenance forward into the export. Every dollar figure this table renders
+ * carries a `data-fact-id` in the DOM (the <Cite> figures below) — the CSV
+ * used to drop that on the floor, so a reader who exported the view for
+ * their own analysis lost the one thing this whole site's thesis rests on:
+ * being able to trace a number back to its source. `fy24Fid`/`fy26Fid` are
+ * already on ProgramsTableRow (lib/programs-row.ts) — the SAME fact ids the
+ * program page and /years/ cite for that cell (see toProgramsTableRow's own
+ * doc comment) — so this reads them rather than inventing a new lookup.
+ *
+ * Permalink form and the public (8-hex) id are the SAME derivation
+ * cite.tsx's ReceiptsChip uses (`factId.slice(0, 8)`, joined to SITE_URL) —
+ * reused here, not reimplemented, so a fact id copied from a chip and one
+ * read off this CSV always resolve to the same /fact/{id} page. SITE_URL
+ * (lib/site.ts) rather than footnote.ts's separate hardcoded
+ * "https://fiscalreceipts.com" constant: this file already sits in the
+ * Next.js app (footnote.ts's constant exists for callers outside it), and
+ * the verify build always sets NEXT_PUBLIC_SITE_URL to the production
+ * origin, so the two never diverge in a shipped build.
+ *
+ * A row with no FY26 figure (p.fy26 == null) has no FY26 fact either — the
+ * fact id and permalink columns stay BLANK for it, same "absent, never a
+ * guess" contract every other column here already keeps. reconK/discK have
+ * no fact id of their own (they are arithmetic on fy26's own fact, not a
+ * separately cited figure), so no columns are added for them.
  */
+export function factPermalink(fid: string): string {
+  return `${SITE_URL.replace(/\/$/, "")}/fact/${fid.slice(0, 8)}`;
+}
+
 export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
   const header = [
     "pe_bli",
@@ -117,6 +148,10 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
     "fy2026_request_toa_usd_thousands",
     "fy2026_disc_toa_usd_thousands",
     "fy2026_reconciliation_toa_usd_thousands",
+    "fy2024_fact_id",
+    "fy2026_fact_id",
+    "fy2024_permalink",
+    "fy2026_permalink",
   ];
   const lines = [header.join(",")];
   for (const p of rows) {
@@ -142,6 +177,10 @@ export function buildProgramsCsv(rows: readonly ProgramsTableRow[]): string {
         p.fy26 != null ? String(p.fy26) : "",
         discValue != null ? String(discValue) : "",
         reconValue != null ? String(reconValue) : "",
+        p.fy24Fid ?? "",
+        p.fy26Fid ?? "",
+        p.fy24Fid ? factPermalink(p.fy24Fid) : "",
+        p.fy26Fid ? factPermalink(p.fy26Fid) : "",
       ].join(","),
     );
   }

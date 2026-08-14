@@ -9,6 +9,7 @@ import { resolve } from "node:path";
 import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";
 import {
   buildProgramsCsv,
+  factPermalink,
   filterPrograms,
   programHaystack,
 } from "@/components/programs-table";
@@ -310,7 +311,8 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     expect(header).toBe(
       "pe_bli,org,org_name,title,fy2024_actual_toa_usd_thousands," +
         "fy2026_request_toa_usd_thousands,fy2026_disc_toa_usd_thousands," +
-        "fy2026_reconciliation_toa_usd_thousands",
+        "fy2026_reconciliation_toa_usd_thousands,fy2024_fact_id,fy2026_fact_id," +
+        "fy2024_permalink,fy2026_permalink",
     );
   });
 
@@ -318,7 +320,10 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     const csv = buildProgramsCsv([
       program({}, { fy24: { v: 5565655, fid: "b".repeat(16) }, fy26: null }),
     ]);
-    expect(csv.split("\n")[1]).toBe("ATA000,F,Air Force,F-35,5565655,,,");
+    expect(csv.split("\n")[1]).toBe(
+      "ATA000,F,Air Force,F-35,5565655,,,," +
+        `${"b".repeat(16)},,${factPermalink("b".repeat(16))},`,
+    );
   });
 
   it("leaves missing values EMPTY, never 0", () => {
@@ -328,6 +333,53 @@ describe("buildProgramsCsv — §P1-11 export parity with /years/", () => {
     expect(fields[5]).toBe("");
     expect(fields[6]).toBe("");
     expect(fields[7]).toBe("");
+  });
+
+  // ROADMAP #63 (Sprint C Task C4) — the fact-id and permalink columns.
+  describe("fact-id and permalink columns (ROADMAP #63)", () => {
+    it("carries the SAME fact id the rendered <Cite> chip for that cell uses (factId={p.fy24Fid}/{p.fy26Fid}, programs-table.tsx)", () => {
+      const row = program(
+        {},
+        {
+          fy24: { v: 5565655, fid: "b".repeat(16) },
+          fy26: { v: 4086744, fid: "d".repeat(16) },
+        },
+      );
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[8]).toBe(row.fy24Fid);
+      expect(fields[9]).toBe(row.fy26Fid);
+    });
+
+    it("the permalink is the SAME derivation as cite.tsx's ReceiptsChip (factId.slice(0, 8), joined to SITE_URL) — a copied fact id and a CSV permalink resolve to the same /fact/{id}", () => {
+      const row = program(
+        {},
+        {
+          fy24: { v: 5565655, fid: "b".repeat(16) },
+          fy26: { v: 4086744, fid: "d".repeat(16) },
+        },
+      );
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[10]).toBe(`${factPermalink("b".repeat(16))}`);
+      expect(fields[10]).toContain(`/fact/${"b".repeat(8)}`);
+      expect(fields[11]).toContain(`/fact/${"d".repeat(8)}`);
+    });
+
+    it("a row with no FY26 figure has no FY26 fact id or permalink either — blank, never a broken link", () => {
+      const row = program({}, { fy24: { v: 5565655, fid: "b".repeat(16) }, fy26: null });
+      expect(row.fy26Fid).toBeNull();
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[9]).toBe("");
+      expect(fields[11]).toBe("");
+    });
+
+    it("a row with neither figure leaves all four trailing columns blank", () => {
+      const row = program({}, { fy24: null, fy26: null });
+      const fields = buildProgramsCsv([row]).split("\n")[1].split(",");
+      expect(fields[8]).toBe("");
+      expect(fields[9]).toBe("");
+      expect(fields[10]).toBe("");
+      expect(fields[11]).toBe("");
+    });
   });
 
   // The real 1203154SF ("Long Range Kill Chains") figures, in USD thousands:
