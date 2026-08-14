@@ -4,7 +4,11 @@
  * Legs: (m1) no page-level horizontal overflow, (m2) the primary value is on
  * screen, (m3) no label painted across its value, (m4) the site's own
  * navigation is usable — see runNavLeg at the bottom for why the first three
- * could not see the nav defect that shipped.
+ * could not see the nav defect that shipped. (m5) no page-level horizontal
+ * overflow in the TABLET band (768/900/1000px) — see runTabletOverflowLeg,
+ * added for Sprint C Task C6 (ROADMAP #65) for the reason this file's other
+ * four legs, all fixed at 390×844, could never have caught it: the defect
+ * lived entirely between 768 and 1023px, a band none of them visit.
  *
  * PM-review Sprint 3 Task 1 / ROADMAP backlog #31.
  *
@@ -675,6 +679,9 @@ export async function runMobileLeg({ baseUrl, browser }) {
   // ── (m4) the site's own navigation is usable at 390 ────────────────────
   await runNavLeg({ baseUrl, browser: b, errors, notes });
 
+  // ── (m5) no page-level horizontal overflow in the 768–1023 tablet band ──
+  await runTabletOverflowLeg({ baseUrl, browser: b, errors, notes });
+
   notes.push(
     `mobile leg: ${overflowOk}/${sample.length} pages free of page-level horizontal overflow; ${valueElements} value element(s) measured across ${valuePages} value-bearing page(s); ${pairElements} label/value pair(s) checked for collision across ${pairPages} page(s)`
   );
@@ -799,4 +806,174 @@ async function runNavLeg({ baseUrl, browser, errors, notes }) {
   } finally {
     await context.close();
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// (m5) TABLET-BAND HORIZONTAL OVERFLOW — 768, 900, 1000px
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Sprint C Task C6 (ROADMAP #65). Tailwind's `container` utility clamps
+// max-width to the CURRENT breakpoint (768 at md, 1024 at lg, …), not to
+// the viewport width, so any `container` row whose content needs more room
+// than that clamp allows overflows the document for the ENTIRE span between
+// one breakpoint and the next — concretely 768–1023px, where `container` is
+// pinned to 768px right up until the viewport reaches 1024. The site header
+// hit exactly this: nine nav links + search + receipts toggle needed more
+// than 768px, the right-hand cluster is `shrink-0` so nothing gave way, and
+// `documentElement.scrollWidth` measured +167px past `clientWidth` at 768,
+// +101px at 900, +51px at 1000 — clean again at 1024, where `container`
+// itself widens to match.
+//
+// (m1) runs only at 390×844 — strictly below this band — so it could not
+// have caught this, and neither could (m4), which opens the mobile nav (a
+// 390-only affordance) rather than measuring the header at rest. This leg
+// is (m1)'s same assertion — document.documentElement.scrollWidth <=
+// clientWidth (+1px rounding) — re-run at three widths inside the band that
+// was actually broken.
+//
+// PAGE SAMPLE. Reuses buildMobileSample()'s page list (every page class
+// carrying a table or a wide chart, plus templated program/company/filing
+// instances) rather than a bespoke list — the header markup is shared
+// layout-wide, so any page trips the same defect, and reusing the existing,
+// already-curated sample avoids a second list to keep in sync. Only the
+// `path`/`ready`/`openDetails` fields are used; `value`/`pairs` are
+// 390-specific and not relevant to a page-level overflow check.
+//
+// NON-VACUITY. If the page sample resolves to zero pages (the upstream
+// sidecars are empty/missing), this leg FAILS outright rather than passing
+// on nothing measured.
+const TABLET_WIDTHS = [768, 900, 1000];
+
+/**
+ * In-page measurement — the same overflow computation as (m1)'s block in
+ * measureInPage above, but standalone: page.evaluate() serializes this
+ * function's own source and re-runs it inside the browser, so it cannot
+ * close over anything else defined in this module. Duplicated rather than
+ * shared for that reason (see measureInPage's near-identical (m1) block).
+ */
+function measureTabletOverflow({ tolerance }) {
+  const de = document.documentElement;
+  const vw = window.innerWidth;
+  const overflowPx = de.scrollWidth - de.clientWidth;
+  const out = {
+    innerWidth: vw,
+    docScrollWidth: de.scrollWidth,
+    docClientWidth: de.clientWidth,
+    overflowPx,
+    widest: null,
+  };
+  if (overflowPx > tolerance) {
+    let worst = null;
+    for (const el of document.body.querySelectorAll("*")) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      if (r.right <= vw + tolerance) continue;
+      // Ignore elements that overflow INSIDE a deliberately scrollable
+      // ancestor — those do not push the document wide.
+      let a = el.parentElement;
+      let contained = false;
+      while (a && a !== de) {
+        if (a.scrollWidth > a.clientWidth + 1) {
+          contained = true;
+          break;
+        }
+        a = a.parentElement;
+      }
+      if (contained) continue;
+      if (!worst || r.right > worst.right) {
+        worst = {
+          right: r.right,
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.getAttribute("class") ?? "").slice(0, 70),
+          text: (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 60),
+        };
+      }
+    }
+    out.widest = worst;
+  }
+  return out;
+}
+
+async function runTabletOverflowLeg({ baseUrl, browser, errors, notes }) {
+  const instances = computeMobileInstancePages();
+  const pages = buildMobileSample(instances).map((s) => ({
+    path: s.path,
+    label: s.label,
+    ready: s.ready,
+    openDetails: s.openDetails,
+  }));
+
+  if (pages.length === 0) {
+    errors.push(
+      "mobile (m5) tablet-band overflow: page sample resolved to 0 pages — non-vacuity floor tripped, nothing was measured",
+    );
+    return;
+  }
+
+  let checksOk = 0;
+  let checksTotal = 0;
+
+  for (const width of TABLET_WIDTHS) {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    try {
+      for (const cfg of pages) {
+        checksTotal += 1;
+        const page = await context.newPage();
+        try {
+          const response = await page.goto(`${baseUrl}${cfg.path}`, {
+            waitUntil: "networkidle",
+            timeout: 60000,
+          });
+          if (response && response.status() >= 400) {
+            errors.push(`mobile (m5) ${width}px ${cfg.path}: HTTP ${response.status()}`);
+            continue;
+          }
+          if (cfg.ready) {
+            try {
+              await page.waitForSelector(cfg.ready.selector, {
+                timeout: cfg.ready.timeout ?? 30000,
+              });
+            } catch {
+              errors.push(
+                `mobile (m5) ${width}px ${cfg.path}: island never rendered — "${cfg.ready.selector}" absent (cannot measure an empty page)`,
+              );
+              continue;
+            }
+          }
+          if (cfg.openDetails) {
+            await page.evaluate(() => {
+              for (const d of document.querySelectorAll("details")) d.open = true;
+            });
+            await page.waitForTimeout(200);
+          }
+          await page.waitForTimeout(300);
+
+          const m = await page.evaluate(measureTabletOverflow, {
+            tolerance: OVERFLOW_TOLERANCE_PX,
+          });
+
+          if (m.overflowPx > OVERFLOW_TOLERANCE_PX) {
+            const w = m.widest
+              ? ` — widest offender <${m.widest.tag} class="${m.widest.cls}"> right=${Math.round(m.widest.right)}px "${m.widest.text}"`
+              : "";
+            errors.push(
+              `mobile (m5) ${cfg.path} (${cfg.label}) scrolls horizontally at ${width}px (tablet band): documentElement.scrollWidth ${m.docScrollWidth} > clientWidth ${m.docClientWidth} (+${m.overflowPx}px)${w}`,
+            );
+          } else {
+            checksOk += 1;
+          }
+        } catch (e) {
+          errors.push(`mobile (m5) ${width}px ${cfg.path}: navigation/measure failed: ${e.message}`);
+        } finally {
+          await page.close();
+        }
+      }
+    } finally {
+      await context.close();
+    }
+  }
+
+  notes.push(
+    `mobile (m5) tablet-band overflow: ${checksOk}/${checksTotal} page×width check(s) free of horizontal overflow across [${TABLET_WIDTHS.join(", ")}]px on ${pages.length} page(s)`,
+  );
 }

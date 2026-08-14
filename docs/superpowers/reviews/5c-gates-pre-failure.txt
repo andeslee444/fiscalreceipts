@@ -6870,3 +6870,241 @@ multi-run-aware FakeClient).
 SUITE COUNT: +7 tests (1561 -> 1568). No gate threshold changed —
 ACCURACY_THRESHOLD stays 44/48, citation resolution stays 100%, never
 lowered.
+
+================================================================================
+BACKLOG #65 — EVERY PAGE SCROLLS SIDEWAYS BETWEEN 768 AND 1023PX (2026-08-13)
+================================================================================
+
+SCOPE, checked first: the review's own table.
+
+  viewport   scrollWidth   overflow
+     375        375          0     <- clean (hamburger)
+     768        935       +167px
+     900       1001       +101px
+    1000       1051        +51px
+    1024       1024          0     <- clean
+    1280       1280          0
+
+Measured directly (Playwright chromium, scripts/serve-static.mjs's real
+server, on the build already sitting in out/ — git_head 9a6ac88b, current
+source) at all six widths on BOTH `/` and `/programs/`. All twelve
+readings matched the review's table exactly, digit for digit, on both
+pages. The review's numbers were RIGHT — no correction needed this time
+(cf. the #59/TOA-count entry above and six other entries in this file
+where the prescribed table or mechanism was wrong). Widest-offender scan
+at 900px confirms the mechanism by construction: the header's right-hand
+cluster (`ml-auto flex items-center gap-2 shrink-0` — search trigger +
+`hidden md:flex` receipts toggle) right-edges at 1001px inside a 900px
+viewport, exactly the measured +101px. Tailwind's `container` utility
+(layout.tsx:75 header, :185 footer, and every page body via `container
+mx-auto ... max-w-*`) sets `max-width` to the CURRENT breakpoint rather
+than the viewport, so it stays pinned to 768 for the entire 768-1023 span
+and only advances to the `lg` clamp (1024) at 1024 itself — the nav
+switches on at `md` (768), the same width the clamp is stuck at, so the
+header needs more room than the clamp allows for the whole band.
+
+FIX CHOSEN: (a) — move the desktop-nav switch from `md:` to `lg:`, not
+(b) replacing `container` with `w-full max-w-screen-xl`. Reasoning,
+verified rather than assumed:
+
+  - Every page body already compounds `container` with its OWN `max-w-*`
+    override (programs/companies: max-w-6xl=1152px; home/methodology:
+    max-w-3xl/4xl/5xl) — grepped across src/app/**/page.tsx. So the
+    header's plain `container` was NEVER pixel-identical to page content
+    at most widths, even before this fix (confirmed: at 900px, /programs/'s
+    content div measures left=0/right=900 because its 1152px max-w-6xl
+    cap does not bind at 900px, while the header's plain container clamps
+    to 768 centered, left=66/right=834 — already divergent pre-fix).
+  - Fix (a) does not touch the `container` class at all, so it changes
+    NOTHING about that pre-existing per-page relationship — every page
+    keeps exactly the alignment it already shipped and was already judged
+    on at every width outside 768-1023. It only moves WHEN the nav
+    switches from hamburger to inline links.
+  - Fix (b) would have changed the header's own box model at EVERY width,
+    not just the broken band, diverging further from whatever each page's
+    own max-w override already does — the header's relationship to page
+    content would have become width-dependent in a NEW way instead of the
+    old one, worse for the "wordmark aligned with content" goal, not
+    better.
+  - mobile-nav.tsx's panel is `absolute` against the `sticky` <header>
+    (its containing block per CSS spec) and rendered `w-full` of THAT
+    header bar, not of the inner `.container` row — so widening the
+    hamburger's range from md to lg does not touch the panel's own
+    positioning logic at all.
+
+CHANGE: layout.tsx — `hidden md:flex` -> `hidden lg:flex` (desktop nav,
+receipts-toggle span) and `flex md:hidden` -> `flex lg:hidden` (hamburger
+span). Three sites, all in the header's right-hand cluster + nav.
+mobile-nav.tsx: docstring only ("below md" -> "below lg"), no functional
+change.
+
+AFTER, same six widths, same two pages, same build (rebuilt post-fix,
+git_head 9a6ac88b post-fix source):
+
+  viewport   scrollWidth   overflow
+     375        375          0
+     768        768          0
+     900        900          0
+    1000       1000          0
+    1024       1024          0
+    1280       1280          0
+
+Zero overflow at all six widths on both `/` and `/programs/` — the band
+is clean, not just the header: `document.documentElement.scrollWidth`
+(the whole document, not a component) matched `clientWidth` exactly at
+768/900/1000, where it previously ran +167/+101/+51px over.
+
+--- mobile.mjs leg (m5): FAIL demonstration (pre-fix source) ---
+
+Stashed ONLY layout.tsx (`git stash push --keep-index -- .../layout.tsx`),
+rebuilt (`NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build`,
+pre-fix git_head 9a6ac88b with layout.tsx reverted), ran the real
+runMobileLeg() against that build with a browser passed in explicitly
+(mirrors render-live.mjs's actual invocation — see note below on why not
+the repo's existing scripts/run-mobile-leg.mjs):
+
+  PASS: false
+  ...
+  mobile (m5) tablet-band overflow: 0/42 page x width check(s) free of
+    horizontal overflow across [768, 900, 1000]px on 14 page(s)
+  ERRORS:
+  ✗ mobile (m5) / (home) scrolls horizontally at 768px (tablet band):
+    documentElement.scrollWidth 935 > clientWidth 768 (+167px)
+  ✗ mobile (m5) /programs/ (programs index) scrolls horizontally at
+    768px (tablet band): documentElement.scrollWidth 935 > clientWidth
+    768 (+167px)
+  ... (14 pages x 3 widths = 42 error lines total, one per page/width
+      pair, e.g. companies/, companies/families/, data/, years/,
+      district/, coverage/, flow/, feed/, program/0606301D8Z/,
+      company/lockheed-martin/, methodology/, filing/<uuid>/)
+  ✗ mobile (m5) /filing/006717f8-089e-4fc2-bb2b-f0e359c4b8e3/ (filing
+    page) scrolls horizontally at 1000px (tablet band):
+    documentElement.scrollWidth 1051 > clientWidth 1000 (+51px)
+
+0/42 checks passed. All 14 sampled pages named, all three widths, the
+exact overflow amounts from the before-table (167/101/51px), naming the
+band explicitly ("tablet band") in every line.
+
+--- mobile.mjs leg (m5): PASS after restoring layout.tsx ---
+
+`git stash pop`, rebuilt again (post-fix, same git_head, layout.tsx
+restored), ran the identical driver:
+
+  PASS: true
+  ...
+  mobile (m5) tablet-band overflow: 42/42 page x width check(s) free of
+    horizontal overflow across [768, 900, 1000]px on 14 page(s)
+  mobile nav: 9 link(s) in a 390px panel, all on screen, none clipped ✓
+
+42/42 checks passed, zero errors. The 390 leg's own nav check ((m4)) is
+unaffected — still 9/9 links on screen, none clipped, confirming the
+390 hamburger contract gate 3 already pins is unchanged.
+
+NOTE ON THE DRIVER. The repo's existing standalone runner,
+scripts/run-mobile-leg.mjs, calls `runMobileLeg({ baseUrl })` with NO
+browser argument, which sets `ownBrowser = true`. runMobileLeg's 390-
+sample loop then does `if (ownBrowser) await b.close()` in its own
+`finally` block — BEFORE (m4)'s runNavLeg and my new (m5) run, both of
+which reuse that same `b`. Ran it directly to confirm: it throws
+`browser.newContext: Target page, context or browser has been closed` at
+runNavLeg, every time, regardless of source state. This is a PRE-EXISTING
+bug (present at HEAD before this task, not introduced here) that the real
+gate suite never hits — verify.mjs's gate 3 (render-live.mjs) always
+passes its own browser into runMobileLeg, so `ownBrowser` is false there
+and the early close never fires. Proof-can-fail above used a one-off
+driver that passes `browser` explicitly, i.e. the SAME call shape
+production gate 3 already uses, not a workaround around a real defect.
+Left unfixed: out of scope for this task (mobile.mjs's own standalone
+CLI wrapper, not the gate itself, not one of the three files this task
+was scoped to touch on functional grounds), flagged here for a future
+one-line fix (move the `if (ownBrowser) await b.close()` to the very end
+of runMobileLeg, after (m4)/(m5)).
+
+ALSO OBSERVED (diagnostic-only, does not affect pass/fail): the FAIL
+messages above did not carry a "widest offender" suffix, even though (m1)
+carries that diagnostic for its own overflow errors. Root cause: the
+widest-offender loop (both (m1)'s copy in measureInPage and (m5)'s copy
+in measureTabletOverflow — necessarily duplicated, since page.evaluate()
+re-executes each function's own source in-browser and cannot close over
+sibling functions) skips any element with a scrollable ANCESTOR, to avoid
+blaming content that is correctly contained inside its own
+`overflow-x-auto` wrapper. When the whole DOCUMENT overflows (this
+defect, not a contained-table defect), `<body>` itself inherits
+`scrollWidth > clientWidth`, and `<body>` is an ancestor of literally
+everything — so the skip fires for every candidate and `widest` comes
+back null. Pre-existing in (m1)'s original block (copied verbatim, not
+introduced by (m5)); this appears to be the first genuinely
+document-level (m1)-class failure this repo has hit, which is likely why
+the quirk was never exposed before. Does not change any PASS/FAIL
+verdict — only omits one diagnostic clause from the error string, which
+already names page + width + exact overflow px. Not fixed here, flagged
+for whoever next touches the widest-offender helper.
+
+LETTER: (m5) — legs (m1)-(m4) already taken in this file, checked free
+before use (`grep -n "^ \* (m" scripts/gates/mobile.mjs` / the file's own
+docstring index).
+
+NON-VACUITY: guarded explicitly — if buildMobileSample()'s page list
+resolves to 0 pages, (m5) fails outright ("page sample resolved to 0
+pages — non-vacuity floor tripped, nothing was measured") rather than
+passing on nothing measured. Not merely theoretical: the live run
+resolved 14 pages x 3 widths = 42 checks, all fired.
+
+PAGE SAMPLE: reused buildMobileSample()'s existing page list (every page
+class carrying a table or a wide chart, plus templated program/company/
+filing instances — the same 14-page, already-curated sample (m1)-(m3)
+run against) rather than a second bespoke list, since the header markup
+that caused this defect is shared layout-wide and any page trips it
+identically. Only `path`/`ready`/`openDetails` are read from each sample
+entry; `value`/`pairs` are 390-specific and irrelevant to a page-level
+overflow check.
+
+VERIFY (post-fix, full suite):
+
+  $ cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
+  ... build succeeds, out/.build-meta.json git_head=9a6ac88b
+
+  $ npx vitest run
+  Test Files  58 passed (58)
+       Tests  972 passed (972)
+  (includes scripts/gates/__tests__/mobile.test.mjs, 10/10 — pins the
+  SAME buildMobileSample() sample (m5) reuses; untouched, still passing)
+
+  $ npx tsc --noEmit
+  (clean, no output)
+
+  $ npx eslint .
+  ✖ 18 problems (0 errors, 18 warnings)
+  (all 18 pre-existing, in files this task did not touch)
+
+  $ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run verify
+  gate 1 build: PASS
+  gate 2 render-static: PASS
+  gate 3 render-live: PASS          <- carries (m5); would print every
+                                        (m5) error here on failure
+  ... (all 24 gates)
+  overall: PASS
+
+PAGE WEIGHT: unaffected. layout.tsx's only shipped-output change is
+`md`->`lg` in three className strings (identical character count;
+surrounding prose comments are stripped by the JSX/TSX compiler and never
+reach out/). Measured directly post-fix: /coverage/ 89,948 raw / 16,539
+gzip (ceiling 96,000 / 17,700); /methodology/ 124,904 raw / 34,017 gzip
+(ceiling 128,000 / 34,500). Both within ceiling, both effectively
+unchanged from their pre-sprint baselines (89,948/16,513 and
+114,369/31,412 respectively, per the ceilings' own comments — the small
+gzip drift is noise, not a regression: layout.tsx ships on every page,
+including these two, and its output byte count did not change).
+
+FILES CHANGED: site/src/app/layout.tsx (three `md:` -> `lg:` breakpoint
+switches — desktop nav, desktop receipts-toggle span, hamburger span —
+plus explanatory comments); site/src/components/mobile-nav.tsx (docstring
+only, "below md" -> "below lg", no functional change);
+site/scripts/gates/mobile.mjs (leg (m5): TABLET_WIDTHS constant,
+measureTabletOverflow() in-page function, runTabletOverflowLeg(), wired
+into runMobileLeg() alongside (m4); top-of-file docstring index updated).
+
+SUITE COUNT UNCHANGED — one more leg ((m5)) on gate 3's existing mobile
+sub-leg set, folded into gate 3's own errors/notes exactly as (m4)
+already is. Still 24 gates (`grep -c "gateResults.push"
+site/scripts/verify.mjs` -> 24).

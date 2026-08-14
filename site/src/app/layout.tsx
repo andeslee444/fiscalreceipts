@@ -81,10 +81,26 @@ export default function RootLayout({
                 {SITE_NAME}
               </Link>
 
-              {/* Desktop nav — hidden below md */}
+              {/* Desktop nav — hidden below lg.
+                  Was `md:flex` (768px). Tailwind's `container` (used here AND
+                  by every page body, so the wordmark stays aligned with page
+                  content) clamps max-width to the CURRENT breakpoint, so
+                  anywhere in 768–1023 the header box was pinned to 768px
+                  while nine nav links + search + receipts toggle needed more
+                  — the right cluster is `shrink-0`, so nothing gave way and
+                  the header (and with it, `documentElement`) overflowed by
+                  up to +167px (measured: 768px→935px, 900px→1001px,
+                  1000px→1051px; clean again at 1024, where `container`
+                  itself advances to the `lg` clamp). Sprint C Task C6
+                  (ROADMAP #65). Moving the switch to `lg` (1024px) makes the
+                  hamburger cover the whole band instead: at 768–1023 the
+                  header carries only the wordmark, search trigger, and
+                  hamburger — comfortably inside a 768px-clamped container —
+                  and the desktop nav only appears once `container` itself
+                  widens to match at 1024. */}
               <nav
                 data-site-nav
-                className="hidden md:flex items-center gap-4 text-sm"
+                className="hidden lg:flex items-center gap-4 text-sm"
                 aria-label="Main navigation"
               >
                 <Link
@@ -153,11 +169,17 @@ export default function RootLayout({
               <div className="ml-auto flex items-center gap-2 shrink-0">
                 {/* Search trigger — always visible */}
                 <SearchTriggerButton />
-                {/* Receipts toggle — desktop only (also in mobile menu) */}
-                <span className="hidden md:flex">
+                {/* Receipts toggle — desktop only (also in mobile menu).
+                    Moved from `md:flex` to `lg:flex` with the nav above
+                    (Sprint C Task C6, ROADMAP #65) — it is part of the same
+                    right-hand cluster that pushed the header past its
+                    `container` clamp in the 768–1023 band. */}
+                <span className="hidden lg:flex">
                   <ReceiptsToggle />
                 </span>
-                {/* Mobile hamburger — visible below md.
+                {/* Mobile hamburger — visible below lg (was below md;
+                    Sprint C Task C6 / ROADMAP #65 widened the hamburger's
+                    range to cover 768–1023, see the nav comment above).
                     NOT `relative`: the panel MobileNav renders is
                     `absolute left-0 top-14 w-full`, and a positioned wrapper
                     here becomes its containing block. This span is 32px wide,
@@ -168,7 +190,7 @@ export default function RootLayout({
                     was on every page. Without `relative` the panel positions
                     against the sticky <header>, which is what `top-14`
                     (below the 56px bar) and `w-full` were written for. */}
-                <span className="flex md:hidden">
+                <span className="flex lg:hidden">
                   <MobileNav />
                 </span>
               </div>

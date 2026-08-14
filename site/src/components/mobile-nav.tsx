@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * MobileNav — collapsible hamburger menu for viewports below md breakpoint.
+ * MobileNav — collapsible hamburger menu for viewports below lg breakpoint
+ * (widened from md in Sprint C Task C6 / ROADMAP #65 — see layout.tsx).
  *
  * Renders:
  *   - A hamburger button (☰) that opens a full-width disclosure panel
