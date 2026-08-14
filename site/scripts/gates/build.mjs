@@ -88,6 +88,11 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "244,825 / 27,797" },
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "209,273 / 24,156" },
   { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "85,650 / 12,122" },
+  // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
+  // two <Cite> figures each). Same ~8% headroom convention as the other
+  // section indexes above (/district/, /companies/families/) rather than a
+  // round-number guess.
+  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "176,349 / 44,761" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -403,6 +408,8 @@ export async function runBuildGate() {
     { path: path.join("downloads", "index.html"), label: "/downloads/" },
     { path: path.join("methodology", "index.html"), label: "/methodology/" },
     { path: path.join("glossary", "index.html"), label: "/glossary/" },
+    // Sprint C Task C3 (ROADMAP #62) — the /agency/ index.
+    { path: path.join("agency", "index.html"), label: "/agency/" },
     { path: path.join("about", "index.html"), label: "/about/" },
   ];
   for (const { path: rel, label } of corePages) {
@@ -467,17 +474,19 @@ export async function runBuildGate() {
     } catch {
       // sidecars not generated — no filing URLs expected
     }
-    // Expected: static(11) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(11) = /, /programs/, /companies/, /companies/families/, /data/,
-    //              /flow/, /downloads/, /methodology/, /glossary/, /coverage/,
-    //              /about/
+    // Expected: static(12) + feed(1) + district pages + filing pages + programs + companies + agencies
+    // static(12) = /, /programs/, /companies/, /companies/families/, /data/,
+    //              /flow/, /downloads/, /methodology/, /glossary/, /agency/,
+    //              /coverage/, /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
     //  §P1-3 — the curated rename/acquisition table; /coverage/ in Sprint 3
     //  Task 6 — the roadmap page; /glossary/ in Sprint C Task C1 — ROADMAP
-    //  #60, term definitions.)
+    //  #60, term definitions; /agency/ in Sprint C Task C3 — ROADMAP #62,
+    //  the /agency/{org}/ index, counted separately from the ${agencyCount}
+    //  dynamic /agency/{org}/ pages below.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 11;
+    const STATIC_SITEMAP_PAGES = 12;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {

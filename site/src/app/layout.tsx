@@ -244,6 +244,19 @@ export default function RootLayout({
                 <Link href="/glossary/" className="hover:text-foreground transition-colors">
                   Glossary
                 </Link>
+                {/* Sprint C Task C3 (ROADMAP #62) — the /agency/{org}/ pages
+                    (23 of them, linked from every program page) had no
+                    index and nothing in nav or footer pointed at one, so
+                    trimming the URL to /agency/ 404'd. FOOTER, not nav: C6
+                    (just above, in the header) moved the desktop nav switch
+                    from `md:` to `lg:` because nine links already overflowed
+                    the 768–1023px band at `md`; a tenth nav item was not
+                    worth re-measuring that fix against when this footer,
+                    which already carries eight entries, was the lower-risk
+                    place for a ninth. */}
+                <Link href="/agency/" className="hover:text-foreground transition-colors">
+                  Agencies
+                </Link>
                 {/* §Coverage — what the site covers, what it does not, and the
                     dated target for each. Chrome-level so it is reachable from
                     every page (gate 13 pins the page type's reachability). */}

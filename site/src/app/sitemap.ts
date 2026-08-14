@@ -48,6 +48,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Sprint C Task C1 (ROADMAP #60) — term definitions for what /methodology/
     // and every basis chip assume the reader already knows.
     { url: `${base}/glossary/`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // Sprint C Task C3 (ROADMAP #62) — the /agency/{org}/ index. Those 23
+    // pages existed and were linked FROM program pages, but nothing indexed
+    // them — trimming the URL to /agency/ 404'd. Same priority band as the
+    // other section indexes below (/companies/, /district/).
+    { url: `${base}/agency/`, lastModified: now, changeFrequency: "monthly", priority: 0.75 },
     // §Coverage: what the site covers, the blocker per feature, and a dated
     // target. Changes with the corpus, so it is crawled on the same cadence.
     { url: `${base}/coverage/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
