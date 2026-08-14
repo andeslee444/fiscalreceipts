@@ -95,7 +95,25 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 128_000, maxGzip: 34_500, measured: "114,369 / 31,412" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 92_000, maxGzip: 16_500, measured: "85,920 / 15,360" },
+  //
+  // Re-baselined 2026-08-13 (Sprint C). This page had drifted to 16,491 of its
+  // 16,500 gzip ceiling — NINE bytes of headroom — through ordinary prose growth
+  // across prior sprints, without anyone noticing it was that close. Sprint C's
+  // sitewide footer link to the new /glossary/ costs ~22 gzip bytes on every
+  // page and tipped it to 16,513 (+13).
+  //
+  // The link is not optional: a glossary a reader cannot find is not shipped,
+  // and the alternative — trimming /coverage/'s prose to buy back 13 bytes —
+  // would cut disclosure to satisfy a budget, which is the wrong direction on
+  // the page whose job is stating what the corpus does and does not cover.
+  // Verified irreducible: a plain <a> costs the same as next/link, because the
+  // layout's Server Component tree is duplicated into the RSC flight payload
+  // regardless of element type.
+  //
+  // Both ceilings re-derived at the SAME proportional headroom the previous
+  // pair carried (raw ×1.0708, gzip ×1.0742), so the budget still catches
+  // unintended growth from here rather than being merely widened.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "89,948 / 16,513" },
   // Templated classes — the heaviest built instance of each.
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,925,805 / 126,967 (/agency/F/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,094,513 / 139,890 (/program/0601102A/)" },
