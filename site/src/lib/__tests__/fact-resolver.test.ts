@@ -38,6 +38,12 @@ describe("parseFactPermalinkId", () => {
     );
   });
 
+  it("parses an 8-hex public id with a trailing slash (ROADMAP #61 — the " +
+    "production 404 shape: /fact/{id}/ must resolve the SAME id as " +
+    "/fact/{id}, not the literal string \"{id}/\")", () => {
+    expect(parseFactPermalinkId("/fact/3134a6e0/", "")).toBe("3134a6e0");
+  });
+
   it("lowercases uppercase hex", () => {
     expect(parseFactPermalinkId("/fact/BB54B165", "")).toBe("bb54b165");
   });

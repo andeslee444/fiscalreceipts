@@ -7108,3 +7108,191 @@ SUITE COUNT UNCHANGED — one more leg ((m5)) on gate 3's existing mobile
 sub-leg set, folded into gate 3's own errors/notes exactly as (m4)
 already is. Still 24 gates (`grep -c "gateResults.push"
 site/scripts/verify.mjs` -> 24).
+
+================================================================================
+ROADMAP #61 — /fact/{id}/ 404s ON THE TRAILING SLASH (2026-08-13)
+================================================================================
+
+STEP 1, done first per the task brief's own warning (seven prior prescribed
+snippets in this plan family were defective, always "symptom observed
+correctly, cause inferred rather than traced"): read and printed the actual
+rule before assuming anything.
+
+  $ cat site/public/vercel.json
+  { "rewrites": [{ "source": "/fact/:id", "destination": "/fact/" }] }
+
+The obvious guess — "Vercel's :id param just doesn't allow a trailing
+slash, full stop" — turned out to be only half right, and checking it
+directly caught the other half. Compiled that EXACT source string with the
+open-source path-to-regexp library Vercel's routing is documented to use
+(node_modules/msw's path-to-regexp@6.3.0, present in this repo):
+
+  pathToRegexp("/fact/:id") -> /^\/fact(?:\/([^\/#\?]+?))[\/#\?]?$/i
+  .exec("/fact/3134a6e0")   -> matches, id="3134a6e0"
+  .exec("/fact/3134a6e0/")  -> ALSO matches, id="3134a6e0"
+
+The library's own DEFAULT compile of this exact pattern tolerates a
+trailing slash. If the investigation had stopped at "compile the pattern
+and check," it would have concluded the rule already covers both forms and
+looked for the bug elsewhere — exactly the shape of failure the brief
+warned about. Instead, verified against the ONLY authority that matters —
+Vercel's live edge, via a plain GET (no deploy needed, the bug is already
+in production):
+
+  $ curl -sD - -o /dev/null https://fiscalreceipts.com/fact/3134a6e0
+  HTTP/2 200
+  content-disposition: inline; filename="fact"        <- rewritten page served
+
+  $ curl -sD - -o /dev/null https://fiscalreceipts.com/fact/3134a6e0/
+  HTTP/2 404
+  content-disposition: inline; filename="404.html"     <- Vercel's OWN static
+                                                            404, not the fact
+                                                            page under a bad id
+
+The slashed request's content-disposition names Vercel's literal 404.html,
+not "fact" — proving the rewrite never fired for that request at all; it
+isn't that the rewrite fired and then resolved nothing (which is what a
+[[fact-not-found]] page would look like), it's that Vercel's actual routing
+engine matches the `/fact/:id` source MORE STRICTLY than the open-source
+library's own default compile does. Root cause is therefore: Vercel's edge
+does not extend the `:id` segment matcher to tolerate a trailing slash, and
+because this is a static export deployed as raw files under a hand-written
+vercel.json (not a live Next.js server), next.config.ts's own
+`trailingSlash: true` never runs at request time to normalize the URL
+first — nothing stands between the raw request and this rewrite rule.
+
+FIX — two literal rewrite rules (site/public/vercel.json), not one clever
+pattern. Considered writing `/fact/:id/?` or similar to express "optional
+trailing slash" in one rule, but the task explicitly says to escalate
+rather than guess at Vercel's rewrite syntax when unsure of a second rule's
+shape — and a second literal, unambiguous rule needs no such guess:
+
+  "rewrites": [
+    { "source": "/fact/:id",  "destination": "/fact/" },
+    { "source": "/fact/:id/", "destination": "/fact/" }
+  ]
+
+RESOLVER — checked, NOT changed. src/lib/fact-resolver.ts's
+FACT_PATH_RE is `/\/fact\/([0-9a-fA-F]{8,16})\/?$/` — the trailing `\/?`
+already tolerates a slash and was already covered by an existing vitest
+case (16-hex form, src/lib/__tests__/fact-resolver.test.ts:35-39). Verified
+directly (node, same regex, before touching anything):
+
+  parseFactPermalinkId("/fact/3134a6e0",  "") -> "3134a6e0"
+  parseFactPermalinkId("/fact/3134a6e0/", "") -> "3134a6e0"   (already OK)
+  parseFactPermalinkId("/fact/", "?id=3134a6e0/") -> null      (correctly
+    rejected, not silently resolved as a "3134a6e0/" not-found page — the
+    exact failure mode the task brief warned turns a 404 into a worse,
+    silently-wrong "fact not found")
+
+So the "easy to miss" second half the brief flagged was already done by a
+prior engineer who anticipated the slash but never paired it with the
+vercel.json fix. Added one more explicit unit case
+(fact-resolver.test.ts) pinning the EXACT production id
+(/fact/3134a6e0/ -> "3134a6e0") for direct traceability to this bug, since
+the existing case only exercised the 16-hex form.
+
+GATE LEG — extended gate 1 (site/scripts/gates/build.mjs), NOT gate 13
+(linkgraph.mjs). Reasoning: gate 1 already owns a dedicated
+"Fact-permalink route" block asserting out/vercel.json's rewrite shape
+(the exact `{"source": "/fact/:id", ...}` check); this is the same kind of
+assertion on the same file, so it belongs beside it, not in link-graph
+integrity checking (which walks hrefs actually emitted on pages — and
+every internal /fact/{id} link this codebase emits is already unslashed,
+grepped across src/: footnote.ts, cite.tsx, panel.tsx, feed-model.mjs,
+fact-resolver.tsx's own "Inputs" links — so there is no internal href for
+linkgraph to check in the first place; this bug only bites EXTERNAL
+citations that get slash-normalized after publication).
+
+LETTER: (f1) — checked for collisions first
+(`grep -n "^ \* (f" scripts/gates/build.mjs`): none: build.mjs had no
+lettered legs at all before this change. (Cross-file precedent: "(b2)" is
+already independently used in both render-static.mjs and basis.mjs, and
+"(b1)"/"(b2)" in basis.mjs — confirming letters are scoped per FILE, not
+global, per this repo's own existing convention; "(f1)" is a fresh,
+unambiguous choice within build.mjs specifically.)
+
+HONESTY OF THE TEST — option (a) taken, deliberately, not option (b).
+Checked (b) first rather than assuming: does scripts/serve-static.mjs (the
+server every other live gate drives) reproduce Vercel's rewrite semantics?
+Read its source — it implements ONLY its own filesystem trailing-slash
+fallback ($uri -> $uri/index.html -> $uri.html -> 404.html) and never
+reads vercel.json or applies any rewrite. Confirmed empirically, not just
+by reading:
+
+  $ node -e 'import("./scripts/serve-static.mjs").then(async ({startServer}) => {
+      const {url, close} = await startServer(4173);
+      for (const p of ["/fact/3134a6e0","/fact/3134a6e0/","/fact/","/fact"])
+        console.log(p, "->", (await fetch(url+p)).status);
+      await close();
+    });'
+  /fact/3134a6e0  -> 404
+  /fact/3134a6e0/ -> 404
+  /fact/          -> 200
+  /fact           -> 200
+
+The local server 404s on BOTH the currently-WORKING unslashed form and the
+broken slashed form alike — it cannot distinguish "rewrite present" from
+"rewrite absent" for either one, because it never sees vercel.json at all.
+A gate driven through this server would therefore pass or fail for reasons
+having nothing to do with the actual defect — exactly the "test that
+appears to prove more than it does" the task brief named as the specific
+defect class three sprints have been removing. Went with (a) instead: a
+static assertion that out/vercel.json's rewrites array carries the literal
+`{"source": "/fact/:id/", "destination": "/fact/"}` rule. This proves the
+CONFIG SHIPS the second rule — it does NOT prove Vercel's edge honors it
+post-deploy (nothing in this repo can prove that; the curl evidence above
+is the only behavioural evidence that exists, and re-checking production
+the same way after deploy is the only way to close that gap). The leg's
+own comment in build.mjs states this limitation inline, not just here.
+
+PROOF-CAN-FAIL (verbatim). Reverted public/vercel.json to the single-rule,
+pre-fix form, rebuilt, ran gate 1 directly (no server needed —
+runBuildGate() reads only out/):
+
+  $ cat public/vercel.json
+  { "rewrites": [{ "source": "/fact/:id", "destination": "/fact/" }] }
+  $ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
+  ... build succeeds
+  $ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com node -e '
+      import("./scripts/gates/build.mjs").then(async ({runBuildGate}) => {
+        const r = await runBuildGate();
+        console.log("PASS:", r.pass);
+        for (const e of r.errors) console.log(e);
+      });'
+  PASS: false
+  fact permalinks (f1): out/vercel.json lacks the {"source": "/fact/:id/", "destination": "/fact/"} rewrite — /fact/{id}/ (trailing slash) will 404 on deploy (ROADMAP #61)
+
+PASS (verbatim), after restoring the two-rule vercel.json and rebuilding:
+
+  $ cat public/vercel.json
+  {
+    "rewrites": [
+      { "source": "/fact/:id", "destination": "/fact/" },
+      { "source": "/fact/:id/", "destination": "/fact/" }
+    ]
+  }
+  $ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build
+  ... build succeeds
+  $ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com node -e '
+      import("./scripts/gates/build.mjs").then(async ({runBuildGate}) => {
+        const r = await runBuildGate();
+        console.log("PASS:", r.pass);
+        for (const n of r.notes) if (n.includes("fact permalink")) console.log(n);
+      });'
+  PASS: true
+  fact permalinks: /fact/:id rewrite present in out/vercel.json ✓
+  fact permalinks (f1): /fact/:id/ (trailing-slash) rewrite present in out/vercel.json ✓
+  fact permalinks: out/fact/index.html present ✓
+
+FILES CHANGED: site/public/vercel.json (second literal rewrite rule);
+site/scripts/gates/build.mjs (leg (f1): the trailing-slash rewrite
+assertion, wired inline into the existing fact-permalink block; top
+docstring index updated); site/src/lib/__tests__/fact-resolver.test.ts
+(one new case pinning the exact production id with a trailing slash —
+resolver code itself unchanged, already correct).
+
+SUITE COUNT UNCHANGED — one more leg ((f1)) folded into gate 1's existing
+fact-permalink block, same shape (m4)/(m5) already established for gate 3.
+Still 24 gates (`grep -c "gateResults.push" site/scripts/verify.mjs` ->
+24).

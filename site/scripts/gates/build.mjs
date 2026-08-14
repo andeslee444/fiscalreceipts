@@ -22,6 +22,11 @@
  * - fact-permalink route (PM Sprint 1 Task 5, §P0-4): out/vercel.json exists
  *   AND carries the `/fact/:id` → `/fact/` rewrite AND out/fact/index.html
  *   exists — the deploy can never ship footnote permalinks that 404
+ * - (f1) fact-permalink trailing slash (ROADMAP #61, Sprint C Task C2):
+ *   out/vercel.json ALSO carries the `/fact/:id/` → `/fact/` rewrite — the
+ *   unslashed form alone left /fact/{id}/ 404ing, the one form external
+ *   citations (CMSes, link-checkers) normalize onto. Config-shape only; see
+ *   the leg's own comment for what it does and does not prove
  * - page-weight budget (PM Sprint 3 §P2-1): per-page raw AND gzip ceilings
  *   over the singleton pages and the heaviest instance of each templated
  *   class — see PAGE_WEIGHT_BUDGET below for why it is per-page and not a
@@ -579,6 +584,7 @@ export async function runBuildGate() {
   // into out/ — so both artifacts must be in out/ or the permalinks 404.
   {
     const vercelJsonPath = path.join(outDir, "vercel.json");
+    let vercelConfig = null;
     if (!fileExists(vercelJsonPath)) {
       errors.push(
         "fact permalinks: out/vercel.json missing — /fact/{id} URLs will 404 on deploy " +
@@ -587,7 +593,7 @@ export async function runBuildGate() {
     } else {
       let rewriteOk = false;
       try {
-        const vercelConfig = readJson(vercelJsonPath);
+        vercelConfig = readJson(vercelJsonPath);
         rewriteOk = (vercelConfig.rewrites ?? []).some(
           (r) => r.source === "/fact/:id" && r.destination === "/fact/"
         );
@@ -600,6 +606,54 @@ export async function runBuildGate() {
         );
       } else {
         notes.push("fact permalinks: /fact/:id rewrite present in out/vercel.json ✓");
+      }
+
+      // (f1) ROADMAP #61: /fact/{id}/ (trailing slash) 404ed in production
+      // — verified live 2026-08-13: unslashed 200s, slashed 404s, even
+      // though every OTHER route on the site canonically ends in a slash
+      // (next.config.ts trailingSlash:true) and CMSes/link-checkers
+      // normalize trailing slashes onto URLs routinely. Root cause,
+      // confirmed against live Vercel routing rather than assumed: a curl
+      // of the slashed URL returned Vercel's literal 404.html
+      // (content-disposition: filename="404.html"), not the rewritten fact
+      // page (content-disposition: filename="fact") — proving the
+      // `/fact/:id` rewrite never fires for a slash-terminated request on
+      // Vercel's edge, even though the open-source path-to-regexp@6
+      // library's OWN default compile of that same source string DOES
+      // match a trailing slash (checked locally against
+      // node_modules/msw's path-to-regexp@6.3.0) — Vercel's actual
+      // matching is stricter than the library's default. The fix is a
+      // second, explicit literal rule for the slashed form.
+      //
+      // WHAT THIS LEG PROVES: only that out/vercel.json's rewrite array
+      // carries that second rule (config shape) — NOT that Vercel's edge
+      // honors it post-deploy. Nothing in this repo can prove the live
+      // routing behaviour: scripts/serve-static.mjs (the server every
+      // other local gate drives) never reads vercel.json and implements
+      // only its own filesystem trailing-slash fallback
+      // ($uri → $uri/index.html → $uri.html → 404.html) — per its own
+      // docstring it doesn't apply Vercel rewrites at all, so it 404s on
+      // BOTH /fact/{id} and /fact/{id}/ alike (there is no
+      // out/fact/{id}/index.html for either) and cannot distinguish
+      // "rewrite present" from "rewrite absent" for either form. A gate
+      // built on that server would pass for the wrong reason. The live
+      // curl above is the only behavioural evidence there is; re-check
+      // production the same way after deploy.
+      if (vercelConfig) {
+        const slashedRewriteOk = (vercelConfig.rewrites ?? []).some(
+          (r) => r.source === "/fact/:id/" && r.destination === "/fact/"
+        );
+        if (!slashedRewriteOk) {
+          errors.push(
+            'fact permalinks (f1): out/vercel.json lacks the {"source": "/fact/:id/", ' +
+              '"destination": "/fact/"} rewrite — /fact/{id}/ (trailing slash) will 404 ' +
+              "on deploy (ROADMAP #61)"
+          );
+        } else {
+          notes.push(
+            "fact permalinks (f1): /fact/:id/ (trailing-slash) rewrite present in out/vercel.json ✓"
+          );
+        }
       }
     }
     if (!fileExists(path.join(outDir, "fact", "index.html"))) {
