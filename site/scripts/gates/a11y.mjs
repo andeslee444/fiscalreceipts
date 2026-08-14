@@ -27,6 +27,29 @@
  *       does not push the document sideways at 390px when opened;
  *   (n) scope-disclosure and caution notes are visually distinguishable on
  *       the composited colours a reader actually sees.
+ *
+ * (d) DARK MODE (Sprint C Task C7, ROADMAP #66). Every other leg above opens
+ *     its browser context with the default (light) colorScheme, so a dark
+ *     palette could ship with a contrast regression and every existing check
+ *     would still pass — the harness would simply never look. This leg opens
+ *     a SEPARATE context with `colorScheme: 'dark'` (Playwright honours
+ *     prefers-color-scheme through this, forcing the media query this
+ *     sprint's globals.css change is keyed on) and re-runs, under that forced
+ *     scheme:
+ *       - axe wcag2a/wcag2aa/wcag21a/wcag21aa on home + the sample program
+ *         page (same tag set as the light-mode runs above — color-contrast
+ *         is one of axe's rules, so a token pair that fails AA in dark mode
+ *         surfaces here even though nothing about axe itself is dark-aware);
+ *       - the SAME auditCitationAffordance() probe the light-mode P1-1 legs
+ *         use (same ≥3:1 underline / ≥12px chip thresholds) — proving the
+ *         citation affordance, not just body text, survives the palette
+ *         swap, since that is the one piece of UI this site's whole value
+ *         proposition rides on.
+ *     WHAT THIS DOES NOT PROVE: only Chromium's dark rendering (Playwright's
+ *     colorScheme forces the CSS media feature; it does not exercise a real
+ *     OS-level dark switch, and other engines are untested). It also only
+ *     samples the same two pages the light-mode checks already sample — a
+ *     token pair used exclusively on some other page is not covered here.
  */
 
 import fs from "fs";
@@ -212,6 +235,9 @@ export async function runA11yGate(baseUrl) {
 
     // ── P2-3 chart legs + P2-6 note registers (Sprint 3 Task 4) ─────────────
     await runChartLegs(context, baseUrl, errors, notes);
+
+    // ── (d) dark mode: forced colorScheme, re-run axe + P1-1 probes ─────────
+    await runDarkModeLeg(browser, baseUrl, samplePbl, errors, notes);
   } finally {
     await context.close();
     await browser.close();
@@ -438,5 +464,101 @@ async function runAffordanceChecks(context, baseUrl, samplePbl, errors, notes) {
     } finally {
       await page.close();
     }
+  }
+}
+
+/**
+ * Leg (d) — dark mode (Sprint C Task C7, ROADMAP #66). See the module
+ * docstring for what this proves and what it does not. A SEPARATE context
+ * (not the shared `context` the rest of this gate uses) because
+ * colorScheme is a context-creation option in Playwright, not something a
+ * page can be toggled into afterward.
+ */
+async function runDarkModeLeg(browser, baseUrl, samplePbl, errors, notes) {
+  const MIN_RATIO = 3;
+  const MIN_FONT_PX = 12;
+
+  const context = await browser.newContext({
+    javaScriptEnabled: true,
+    colorScheme: "dark",
+  });
+  try {
+    const pages = [
+      { label: "home (dark)", url: `${baseUrl}/` },
+      { label: `/program/${samplePbl}/ (dark)`, url: `${baseUrl}/program/${samplePbl}/` },
+    ];
+
+    for (const { label, url } of pages) {
+      const page = await context.newPage();
+      try {
+        await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+
+        // Confirm the forced scheme actually took — a silently-ignored
+        // colorScheme option would make every check below vacuously pass
+        // against the LIGHT palette, proving nothing.
+        const matchesDark = await page.evaluate(
+          () => window.matchMedia("(prefers-color-scheme: dark)").matches,
+        );
+        if (!matchesDark) {
+          errors.push(
+            `a11y (d) ${label}: window.matchMedia('(prefers-color-scheme: dark)') is false with a forced dark context — the leg cannot prove anything`,
+          );
+          continue;
+        }
+
+        const results = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        const critical = results.violations.filter((v) => v.impact === "critical");
+        const serious = results.violations.filter((v) => v.impact === "serious");
+        const total = critical.length + serious.length;
+        if (total > 0) {
+          errors.push(
+            `a11y (d) ${label}: ${critical.length} critical + ${serious.length} serious violations under forced dark mode:`,
+          );
+          for (const v of [...critical, ...serious].slice(0, 5)) {
+            errors.push(`  [${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} node(s))`);
+          }
+        } else {
+          notes.push(`a11y (d) ${label}: 0 critical/serious under forced dark mode ✓`);
+        }
+
+        // Same P1-1 probe the light-mode legs run — the citation underline
+        // and provenance chips are the one piece of UI this site's whole
+        // value proposition depends on, so dark mode gets the same bar.
+        const audit = await page.evaluate(auditCitationAffordance);
+        if (audit.underline.length > 0) {
+          const bad = audit.underline.filter((u) => u.ratio < MIN_RATIO);
+          const min = Math.min(...audit.underline.map((u) => u.ratio));
+          if (bad.length > 0) {
+            errors.push(
+              `a11y (d) ${label}: ${bad.length}/${audit.underline.length} citation underlines below ${MIN_RATIO}:1 in dark mode (worst ${min.toFixed(2)}:1, color ${bad[0].color})`,
+            );
+          } else {
+            notes.push(
+              `a11y (d) ${label}: ${audit.underline.length} citation underlines sampled, min ${min.toFixed(2)}:1 in dark mode (≥${MIN_RATIO}:1) ✓`,
+            );
+          }
+        }
+        if (audit.chips.length > 0) {
+          const small = audit.chips.filter((c) => c.fontSize < MIN_FONT_PX);
+          if (small.length > 0) {
+            errors.push(
+              `a11y (d) ${label}: ${small.length}/${audit.chips.length} provenance chips below ${MIN_FONT_PX}px in dark mode`,
+            );
+          } else {
+            notes.push(
+              `a11y (d) ${label}: ${audit.chips.length} provenance chips all ≥${MIN_FONT_PX}px in dark mode ✓`,
+            );
+          }
+        }
+      } catch (e) {
+        errors.push(`a11y (d) ${label}: ${e.message}`);
+      } finally {
+        await page.close();
+      }
+    }
+  } finally {
+    await context.close();
   }
 }

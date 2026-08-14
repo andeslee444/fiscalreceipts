@@ -7296,3 +7296,153 @@ SUITE COUNT UNCHANGED — one more leg ((f1)) folded into gate 1's existing
 fact-permalink block, same shape (m4)/(m5) already established for gate 3.
 Still 24 gates (`grep -c "gateResults.push" site/scripts/verify.mjs` ->
 24).
+
+=== C7 gate 6 (a11y) leg (d) — dark-mode contrast, proof-can-fail ===
+
+ROADMAP #66 (no dark mode). globals.css redefines the existing custom
+properties under @media (prefers-color-scheme: dark) rather than a second
+token vocabulary (the plan's explicit instruction). Every OTHER leg in gate
+6 opens its Playwright context with the default light colorScheme, so a
+dark-mode contrast regression would ship with every existing check still
+green — the harness would simply never look. Leg (d) opens a SEPARATE
+context with colorScheme: 'dark' and re-runs axe (same wcag2a/wcag2aa/
+wcag21a/wcag21aa tag set as the light-mode runs) plus the P1-1 citation-
+affordance probe (underline contrast, chip size) on home and the sample
+program page, under that forced scheme.
+
+LETTER: checked for collisions first (`grep -n "(a)\|(a2)\|(b)\|(c)\|(c1)\|
+(c2)\|(n)\|(n1)" scripts/gates/a11y.mjs` before writing) — a, a2, b, c, c1,
+c2, n, n1 are taken; (d) is free (letters are scoped per file, per this
+repo's own convention — see the (f1) entry above).
+
+HONESTY OF THE TEST. Before trusting colorScheme: 'dark' to do anything,
+the leg asserts `window.matchMedia('(prefers-color-scheme: dark)').matches`
+is true on the forced page BEFORE running axe or the P1-1 probe — a
+silently-ignored option would make every check below vacuously pass
+against the untouched LIGHT palette, proving nothing. What this leg does
+NOT prove: only Chromium's dark rendering (Playwright's colorScheme forces
+the CSS media feature, not a real OS-level switch, and no other engine is
+exercised), and only the two pages it samples (home + one program page) —
+a token pairing used exclusively elsewhere is not covered by this leg
+specifically, though the STATIC half (dark-mode-contrast.test.ts) checks
+every redefined token pair's arithmetic independent of which page uses it.
+
+THE LEG FOUND A REAL DEFECT ON ITS FIRST RUN — not a planted one. This is
+the actual PROOF-CAN-FAIL: no defect had to be manufactured because the
+palette's first draft had a genuine bug the leg caught immediately.
+
+--- PROOF-CAN-FAIL (verbatim, first full `npm run verify` after adding the
+    dark palette + the leg, BEFORE the fix below) ---
+
+  --- gate 6 a11y ---
+  gate 6 a11y: a11y home: 0 critical/serious (0 minor) ✓; a11y program with
+  panel open: 0 critical/serious (0 minor) ✓; a11y company page: 0
+  critical/serious (0 minor) ✓; ERRORS: a11y (d) home (dark): 0 critical +
+  1 serious violations under forced dark mode: |   [serious]
+  link-in-text-block: Ensure links are distinguished from surrounding text
+  in a way that does not rely on color (1 node(s)) → FAIL
+    ✗ a11y (d) home (dark): 0 critical + 1 serious violations under forced
+      dark mode:
+    ✗   [serious] link-in-text-block: Ensure links are distinguished from
+        surrounding text in a way that does not rely on color (1 node(s))
+
+Node-level detail, captured with a throwaway axe debug script (never
+committed) pointed at the built /  under colorScheme: 'dark':
+
+  RULE: link-in-text-block serious
+    target: [".hover\\:underline.text-foreground[href=\"/program/0601101E/\"]"]
+    html: <a class="text-foreground hover:underline" href="/program/0601101E/">Defense Research Sciences award concentration HHI=8662 (2020)</a>
+    failureSummary: Fix any of the following:
+    The link has insufficient color contrast of 2.47:1 with the surrounding text. (Minimum contrast is 3:1, link text: #fafafa, surrounding text: #a1a1a1)
+    The link has no styling (such as underline) to distinguish it from the surrounding text
+
+ROOT CAUSE, traced rather than assumed. #fafafa is --foreground (oklch
+0.985 0 0); #a1a1a1 was --muted-foreground's first draft (oklch 0.708 0 0)
+— both comfortably cleared their OWN text-on-background pairings (7.66:1
+vs --background, 6.94:1 vs --card — the pairings dark-mode-contrast.test.ts
+already checked), but the GAP between the two of them, which is what this
+specific axe rule measures for an inline link with no rest-state
+decoration, was only 2.48:1. Light mode does not have this problem for the
+identical markup: --foreground sits near-BLACK there (oklch 0.145), so its
+gap to --muted-foreground (oklch 0.5) is much larger. A straight
+"lightness-inverted" pick for dark --muted-foreground reproduced every
+pairing my own pre-check covered and missed the one it didn't check:
+foreground-vs-muted-foreground. This is a real, pre-existing site pattern
+(`text-foreground hover:underline`, no rest-state cue) used in six places
+(grepped: src/app/page.tsx, src/app/companies/families/page.tsx,
+src/components/years-matrix.tsx, src/components/receipt-moment.tsx,
+src/components/companies-table.tsx, src/components/citation-panel/
+breakdown-table.tsx) — light mode's larger gap happened to carry all six;
+dark mode's first draft did not.
+
+FIX — darkened --muted-foreground from oklch(0.708 0 0) to oklch(0.645 0 0)
+(globals.css). Re-verified with the same pure-math technique
+dark-mode-contrast.test.ts uses, before touching the file:
+
+  L=0.640 vsFG=3.222 vsBG=5.88 vsCard=5.33 vsMuted=4.494  (still < 4.5 on vsMuted)
+  L=0.645 vsFG=3.159 vsBG=6.00 vsCard=5.43 vsMuted=4.583  (chosen — clears 3:1 AND 4.5:1 with margin)
+  L=0.650 vsFG=3.098 vsBG=6.12 vsCard=5.54 vsMuted=4.673
+  L=0.660 vsFG=2.980 (< 3, fails again)
+
+0.645 is the point that clears BOTH constraints (>=3:1 vs --foreground,
+>=4.5:1 vs --muted) with real margin rather than sitting on the boundary.
+A NEW pairing (--foreground vs --muted-foreground, >=3:1) was added to
+dark-mode-contrast.test.ts's non-text-contrast describe block so this
+exact regression is caught by the fast unit test next time, not only by
+the slow live gate. The one flagged link (src/app/page.tsx's
+feed-headline <Link>) was left as `text-foreground hover:underline` —
+the color gap alone now clears WCAG's 3:1, which is what the axe rule
+requires (contrast OR non-color styling, not both); adding underline
+there too would be a separate, unscoped visual-design change to a
+pattern used in five other places this task did not otherwise touch.
+
+A separate, smaller pre-existing pattern was ALSO surfaced and fixed:
+src/app/page.tsx's agency-name card link used `group-hover:underline`
+(no cue at rest at all, not even color intent — it happened to clear
+axe in light mode via --primary's dark-mode-independent contrast against
+its neighbours). Brought in line with the site's own dotted-at-rest/
+solid-on-hover convention (the same treatment every other inline Link in
+that file already uses) rather than left as a second, differently-shaped
+exception.
+
+--- PASS (verbatim), same leg, after the --muted-foreground fix + the
+    page.tsx agency-link fix, fresh build ---
+
+  PASS: true
+  note: a11y home: 0 critical/serious (0 minor) ✓
+  note: a11y program with panel open: 0 critical/serious (0 minor) ✓
+  note: a11y company page: 0 critical/serious (0 minor) ✓
+  note: a11y /data/: 0 critical/serious (0 minor) ✓
+  note: a11y /flow/ with chart rendered: 0 critical/serious (0 minor) ✓
+  note: a11y search palette open: 0 critical/serious (0 minor) ✓
+  note: P1-1 underline (/program/000042/): 15 sampled, min 4.96:1 (≥3:1) ✓
+  note: P1-1 hover (/program/000042/): dotted→solid on hover ✓
+  note: P1-1 chip sizes (/program/000042/): 10 provenance elements all ≥12px ✓
+  note: P1-1 default (/program/000042/): 5 fact-id chips visible on fresh visit ✓
+  note: P1-1 underline (/years/): 15 sampled, min 4.84:1 (≥3:1) ✓
+  note: P1-1 chip sizes (/years/): 3 provenance elements all ≥12px ✓
+  note: P2-3 charts (/program/0601101E/): 3 chart(s) named + described + table-backed — trajectory-spark(3r/3$), decade-trajectory(3r/29$), follow-the-dollar(6r/6$) ✓
+  note: P2-3 mobile (/program/0601101E/): 0 table(s) opened by keyboard at 390px, 0px page overflow ✓
+  note: P2-3 charts (/flow/): 2 chart(s) named + described + table-backed — flow-budget-river(55r/55$), flow-spend-river(40r/40$) ✓
+  note: P2-3 mobile (/flow/): 2 table(s) opened by keyboard at 390px, 0px page overflow ✓
+  note: P2-6 registers: 2 scope (border warmth ≤ -24) vs 1 caution (≥ 109), backgrounds ≥ 11 apart ✓
+  note: a11y (d) home (dark): 0 critical/serious under forced dark mode ✓
+  note: a11y (d) home (dark): 15 citation underlines sampled, min 7.87:1 in dark mode (≥3:1) ✓
+  note: a11y (d) home (dark): 2 provenance chips all ≥12px in dark mode ✓
+  note: a11y (d) /program/000042/ (dark): 0 critical/serious under forced dark mode ✓
+  note: a11y (d) /program/000042/ (dark): 15 citation underlines sampled, min 7.87:1 in dark mode (≥3:1) ✓
+  note: a11y (d) /program/000042/ (dark): 10 provenance chips all ≥12px in dark mode ✓
+
+FILES CHANGED (C7): site/src/app/globals.css (dark @media block, all
+redefined tokens including the --muted-foreground fix); site/src/app/
+layout.tsx (viewport export, <meta name="color-scheme" content="light
+dark">); site/scripts/gates/a11y.mjs (leg (d), docstring index updated);
+site/src/__tests__/dark-mode-contrast.test.ts (new — static contrast
+assertions for every redefined pair, pure oklch math, no browser);
+site/src/app/page.tsx (two link-contrast fixes surfaced by the leg, see
+above — NOT otherwise part of this task's file list, kept because the
+gate found them, not invented).
+
+SUITE COUNT UNCHANGED — one more leg ((d)) folded into gate 6's existing
+a11y block. Still 24 gates (`grep -c "gateResults.push"
+site/scripts/verify.mjs` -> 24).

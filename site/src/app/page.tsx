@@ -421,10 +421,21 @@ export default function HomePage() {
                   className="group flex flex-col rounded-lg border border-border bg-card p-4 hover:bg-muted/60 hover:border-primary/50 transition-colors interactive-raise"
                 >
                   {/* §P1-E badge sweep: label humanized, href keeps the
-                      raw org code (the agency page's identity). */}
+                      raw org code (the agency page's identity).
+                      Sprint C Task C7 (ROADMAP #66): this was the one Link
+                      on the site relying on color ALONE at rest
+                      (group-hover:underline gave it no non-color cue until
+                      the card was hovered) — harmless in light mode by
+                      accident of contrast, but axe's link-in-text-block
+                      rule (WCAG 1.4.1) failed it under the new dark
+                      palette, where --primary sits close in luminance to
+                      the surrounding text. Fixed to the SAME
+                      dotted-at-rest/solid-on-hover convention every other
+                      inline link on this page already uses, which is
+                      correct in both schemes rather than tuned to one. */}
                   <Link
                     href={`/agency/${agency.org}/`}
-                    className="font-bold text-sm text-primary group-hover:underline"
+                    className="font-bold text-sm text-primary underline decoration-dotted underline-offset-2 group-hover:decoration-solid"
                     title={`Organization code ${agency.org}`}
                   >
                     {serviceOrgName(agency.org)}

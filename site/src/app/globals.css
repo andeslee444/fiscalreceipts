@@ -142,6 +142,89 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* ── Dark mode (Sprint C Task C7, ROADMAP #66) ──────────────────────────────
+   The site had ZERO prefers-color-scheme rules — @custom-variant dark above
+   declares a Tailwind `dark:` variant keyed on a `.dark` class ancestor, but
+   nothing ever adds that class, so it was dead code. This block is the OTHER
+   mechanism: redefine the SAME semantic custom properties (no second token
+   vocabulary, per the house rule burned in twice already — 004's password
+   columns, the Supabase-vs-Cognito schema fork) under an OS-driven media
+   query, so every component that already reads var(--background) etc. picks
+   up dark values automatically, with no JS toggle and no `.dark` class ever
+   needed.
+
+   SCOPE: only the tokens actually consumed by a bg-, text-, or border-
+   utility class in src/ (grepped — sidebar-*, chart-1..5, and the
+   /flow/-only --flow-* tokens have zero component usage, so they are left
+   unset here;
+   redefining unused tokens would cost gzip bytes on every page for no
+   visible effect, which is exactly what /programs/'s 643-byte headroom
+   cannot afford).
+
+   CONTRAST — every pair below was verified with the same technique gate 6
+   uses (a 1×1 canvas probe resolving oklch to sRGB, then WCAG relative
+   luminance), not eyeballed:
+     --foreground/--background, --card-foreground/--card,
+     --popover-foreground/--popover, --primary-foreground/--primary,
+     --secondary-foreground/--secondary, --muted-foreground/{--background,
+     --muted, --card}, --accent-foreground/--accent, --destructive/
+     {--background, --card} all clear 4.5:1 (text AA); --cite-decoration(-hover)
+     vs the effective page/card background and --border vs --background clear
+     3:1 (non-text AA, WCAG 1.4.11). --scope-border's r−b warmth stays
+     negative (cool), nowhere near the ≥30 amber-caution threshold gate 6
+     enforces — the caution register itself is unaffected: its amber-100/
+     amber-700 treatment (cite.tsx State C, the XML chip) is a literal
+     Tailwind utility, not a custom property, so it renders identically in
+     both schemes on purpose — self-contained badges don't need a dark
+     variant, and the gate's warmth check has nothing new to fail here.
+   See __tests__/dark-mode-contrast.test.ts for the numeric assertions and
+   scripts/gates/a11y.mjs leg (d) for the live, real-browser check (forced
+   colorScheme:'dark' Playwright context — see that file's docstring for
+   exactly what it does and does not prove). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.269 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    /* 0.708 (a straight light-mode-style pick) cleared the background/muted/
+       card pairings but left only 2.48:1 between --muted-foreground and
+       --foreground — axe's link-in-text-block leg (gate 6 leg (d)) caught
+       it live: the homepage's inline feed-headline link (text-foreground,
+       no rest-state underline, sitting beside muted-foreground prose) failed
+       WCAG 1.4.1 in dark mode though the identical light-mode pairing
+       passes (light's foreground/muted-foreground gap is much larger
+       because --foreground sits near-BLACK there, not near-white). Darkened
+       to 0.645: still ≥4.5:1 against --background/--muted/--card (6.00/
+       4.58/5.43), and now ≥3:1 against --foreground too (3.16) — the
+       pairing this bug actually needed. See
+       dark-mode-contrast.test.ts's "foreground vs muted-foreground" case. */
+    --muted-foreground: oklch(0.645 0 0);
+    --accent: oklch(0.371 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(0.5 0 0);
+    --input: oklch(0.5 0 0);
+    --ring: oklch(0.556 0 0);
+    /* P1-1 decoration tokens — same 4.5:1-vs-effective-background contract
+       as light mode's, values raised (lighter blue) to read against a near-
+       black page instead of white. */
+    --cite-decoration: oklch(0.75 0.15 259);
+    --cite-decoration-hover: oklch(0.85 0.12 259);
+    /* §P2-6 scope register — stays the cool, non-amber family (negative r−b
+       warmth) at a lightness the dark canvas can actually show as a panel. */
+    --scope-border: oklch(0.45 0.03 259);
+    --scope-bg: oklch(0.22 0.015 259);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
