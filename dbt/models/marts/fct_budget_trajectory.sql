@@ -1,4 +1,4 @@
--- fct_budget_trajectory: per (pe_bli, organization): fy2024 actuals, fy2025 total,
+-- fct_budget_trajectory: per (pe_bli, organization, account): fy2024 actuals, fy2025 total,
 -- fy2026 total (sum amount_thousands per amount_type), absolute + pct change columns.
 --
 -- Detail rows only (title IS NOT NULL). stg_budget_lines carries BOTH detail
@@ -10,51 +10,58 @@
 -- recur if rollups appear in a future load. No (pe_bli, organization) is
 -- rollup-only, so the filter drops no rows.
 --
--- #56 account disambiguation (BINDING). Grain stays (pe_bli, organization) —
--- every existing consumer depends on it (export_site.py's traj_index /
--- traj_orgs_by_pe / _trajectory_citation_key; fct_program_trajectory's
--- component sum; the agency fy2024 aggregation) and this fix does not touch
--- it. But 10 pe_bli values are legitimately shared by two DIFFERENT real
--- appropriation accounts within PB2026 (#56 — e.g. '3010' is BOTH LPD
--- Flight II's Shipbuilding & Conversion account, $2.6B FY2026, AND
--- Shipboard Tactical Communications' Other Procurement account, $20.9M).
--- The old `sum(amount_thousands) group by pe_bli, organization, amount_type`
--- summed straight across both accounts, fusing two unrelated programs into
--- one row: 3010's fy2026_total was $2,620,900K, neither program's real
--- figure (measured on the shipped PB2026 warehouse, 2026-08-08).
+-- E1 (Sprint E, ROADMAP #67) — re-grain, replacing B'1's #56 pick-one rule.
 --
--- Fixed by picking exactly ONE account per (pe_bli, organization) — never
--- summing across accounts — but ONLY when a genuine SAME-SLOT collision
--- exists (>1 account reporting under the SAME amount_type at once, e.g.
--- both OPN and SCN report a fy_2026_total for '3010'). This is deliberately
--- a per-(pe_bli, organization) pick, not a per-slot one: an earlier version
--- of this fix picked independently per amount_type and produced a
--- Frankenstein row for pe_bli '0145' (no dim_programs anchor to break the
--- tie) — FY2024 actuals from the Ammunition account (larger that slot) but
--- FY2026 total from the Aircraft account (larger that slot), splicing two
--- different programs' numbers into one row, which is worse than the
--- original sum. The slot_collision gate keeps that stable pick scoped to
--- ONLY the (pe_bli, organization) pairs that actually have a same-slot
--- collision: 1045/COLUMBIA Class Submarine (one program whose account was
--- renamed BETWEEN the fiscal years its own PB2026 book reports — FY2024
--- actuals under the retired 1612N, FY2025 on under 1611N, never both under
--- the same amount_type) never trips it, so its rows pass through
--- unmodified regardless of which account "wins" the tiebreak ranking.
+-- #56's history: 10 pe_bli values are legitimately shared by two DIFFERENT
+-- real appropriation accounts within PB2026 (e.g. '3010' is BOTH LPD Flight
+-- II's Shipbuilding & Conversion account, $2.6B FY2026, AND Shipboard
+-- Tactical Communications' Other Procurement account, $20.9M). The
+-- pre-#56 code summed straight across both accounts, fusing two unrelated
+-- programs into one row: 3010's fy2026_total was $2,620,900K, neither
+-- program's real figure. #56/B'1 fixed the FUSION by pick-one — exactly
+-- ONE account per (pe_bli, organization), never summing — which was
+-- correct for correctness but wrong for completeness: the account NOT
+-- picked dropped off every consumer that reads this mart (10 programs,
+-- $5.35B, catalogued in programs_excluded.json).
 --
--- Preference for the stable pick is the account dim_programs ALSO resolved
--- to for this pe_bli — so this row's money always matches the SAME account
--- as the page's own title (dim_programs.sql carries its own #56 fix) —
--- tiebreaking on the larger total amount (summed across this account's own
--- slots), account ascending, when dim_programs has no row or its account
--- isn't a candidate here. The account NOT picked is never silently dropped
--- from the site: its own figures are already correctly per-row cited in
--- budget_lines (account_title per row) and export_site.py surfaces them as
--- the page's own "shares this budget line" disclosure (#56) — this mart is
--- deliberately not the place that does that, since widening its grain to
--- (pe_bli, organization, account) would fan out every consumer above
--- (traj_index / traj_orgs_by_pe / fct_program_trajectory's component sum /
--- the agency fy2024 aggregation) into believing a component org gained a
--- sibling.
+-- E1 removes the pick-one rule for genuine collisions and lets BOTH
+-- accounts publish their own row — this mart's grain becomes
+-- (pe_bli, organization, account). This is deliberately NOT a blanket
+-- "always grain on account": only pe_bli/organization pairs with a GENUINE
+-- same-slot collision split; everything else (99%+ of rows) collapses back
+-- to exactly one row, byte-for-byte identical to the pre-E1 output, via the
+-- SAME stable-preference logic #56 already used to pick a winner (now used
+-- only to pick the COLLAPSED label, never to drop the loser's money).
+--
+-- 1045/COLUMBIA Class Submarine remains the precedent for collapse: one
+-- program whose account was RENAMED BETWEEN the fiscal years its own
+-- PB2026 book reports (FY2024 actuals under the retired 1612N, FY2025 on
+-- under 1611N), never both under the same amount_type slot at once — its
+-- slot_collision_3.has_collision_3 is FALSE, so every one of its slots
+-- relabels to the one stably-preferred account and it stays ONE row,
+-- values unchanged.
+--
+-- Collision anchor — DISCLOSED SUBSTITUTION (re-verify before trusting
+-- "10 collisions" from assert_program_key_unique.sql's own shipped
+-- comment): that count is right for "ever collided", but of those 10, TWO
+-- (1350, 2101/Tomahawk) collide ONLY at fy_2024_actuals/fy_2025_enacted —
+-- by fy_2026_total exactly one account reports any money; the other side
+-- wound down to nothing before this edition. The Sprint E plan explicitly
+-- scopes Tomahawk OUT ("no_detail, not key_collision... different defect,
+-- do not fold it in") for this exact shape, and the plan's own $5.35B
+-- headline reproduces exactly when the collision anchor is fy_2026_total
+-- specifically (verified: summing the 8 fy_2026_total-anchored keys'
+-- previously-dropped money equals $5.35B to the dollar). So
+-- slot_collision_2026 below is scoped to fy_2026_total, not the 3-slot
+-- union — 1350 and 2101 therefore still collapse (pre-E1 behavior, unchanged) and
+-- are NOT part of this sprint's split. If a future edition resurrects
+-- their dormant side with real fy_2026_total money, this same rule picks
+-- it up automatically.
+--
+-- 9999999999 is the intentional classified sentinel spanning 12 accounts by
+-- design — excluded BY NAME below (never by a count threshold, which would
+-- also mask a real collision) and always collapses to its pre-E1 stable
+-- pick, values unchanged.
 with per_slot as (
     select
         pe_bli,
@@ -67,11 +74,33 @@ with per_slot as (
       and title is not null
     group by pe_bli, organization, amount_type, account
 ),
-slot_collision as (
-    -- true iff ANY single amount_type slot for this (pe_bli, organization)
-    -- has >1 distinct account reporting — a same-moment collision, as
-    -- opposed to 1045's never-simultaneous account change.
-    select pe_bli, organization, bool_or(n_accounts > 1) as has_collision
+slot_collision_2026 as (
+    -- true iff, AT fy_2026_total specifically, >1 distinct account reports
+    -- for this (pe_bli, organization) — see the model-level comment for why
+    -- fy_2026_total (not the 3-slot union) is the right anchor, and why
+    -- 9999999999 is excluded by name here rather than relying on the
+    -- has_collision=false branch to neutralise it (a 12-account sentinel
+    -- must never even be a candidate for the split path).
+    select pe_bli, organization, count(distinct account) > 1 as has_collision_2026
+    from per_slot
+    where amount_type = 'fy_2026_total' and pe_bli <> '9999999999'
+    group by pe_bli, organization
+),
+slot_collision_3 as (
+    -- the PRE-E1 (B'1/#56) definition: true iff ANY of the 3 checked
+    -- amount_types has >1 distinct account reporting simultaneously — not
+    -- only fy_2026_total. This is what governs HOW a non-split pe_bli
+    -- collapses, below: 1045 never trips this (its two accounts are never
+    -- simultaneous, so every slot passes through unmodified and a stable
+    -- relabel is safe); 1350/2101/9999999999 DO trip this (they collide at
+    -- fy_2024_actuals/fy_2025_total even though not at fy_2026_total) and
+    -- must therefore be FILTERED to the one stably-preferred account's own
+    -- rows — never relabelled-then-summed, which would silently sum two
+    -- different accounts' money at the same slot (the exact #56 fusion bug,
+    -- reintroduced by a naive relabel for any pe_bli with a real historical
+    -- overlap). This reproduces #56/B'1's pick-one output byte-for-byte for
+    -- every pe_bli this sprint does not split.
+    select pe_bli, organization, bool_or(n_accounts > 1) as has_collision_3
     from (
         select pe_bli, organization, amount_type, count(distinct account) as n_accounts
         from per_slot
@@ -97,38 +126,82 @@ account_rank as (
                 tot.account asc
         ) as rn
     from account_totals tot
-    left join {{ ref('dim_programs') }} dp on dp.pe_bli = tot.pe_bli
+    left join {{ ref('dim_programs') }} dp
+        on dp.pe_bli = tot.pe_bli and dp.account = tot.account
+        -- E1: matched on (pe_bli, account) now that dim_programs can carry
+        -- more than one row per pe_bli — matching by account too keeps this
+        -- preference scoped to the SAME account dim_programs resolved,
+        -- instead of fanning across every dim_programs row sharing the key.
+),
+stable_pick as (
+    select pe_bli, organization, account
+    from account_rank
+    where rn = 1
 ),
 budget as (
-    select ps.pe_bli, ps.organization, ps.amount_type, ps.amount_thousands
+    -- Three cases, checked in priority order (see slot_collision_3's
+    -- comment for why a 4th case — "collides somewhere, but not at
+    -- fy_2026_total" — needs FILTERING rather than relabelling):
+    --   1. genuine fy_2026_total collision (8 keys): every account's own
+    --      slot survives AS-IS, unrelabelled — this IS the split.
+    --   2. collides elsewhere but not at fy_2026_total (1350, 2101,
+    --      9999999999): keep ONLY the stably-preferred account's own rows
+    --      (WHERE ps.account = sp.account) — discards the other account's
+    --      rows entirely, exactly #56/B'1's pre-E1 pick-one output.
+    --   3. no collision anywhere (1045 and the ~1,729 ordinary
+    --      single-account pe_blis): every slot passes through, relabelled
+    --      to ONE stable account — safe because no slot ever has >1 row,
+    --      so relabel-then-sum never sums two different accounts together.
+    select
+        ps.pe_bli,
+        ps.organization,
+        ps.amount_type,
+        ps.amount_thousands,
+        case
+            when coalesce(s26.has_collision_2026, false) then ps.account
+            when coalesce(s3.has_collision_3, false) then ps.account
+            else coalesce(sp.account, ps.account)
+        end as account
     from per_slot ps
-    join slot_collision sc
-        on sc.pe_bli = ps.pe_bli and sc.organization = ps.organization
-    left join account_rank ar
-        on ar.pe_bli = ps.pe_bli and ar.organization = ps.organization
-        and ar.account = ps.account
-    where not sc.has_collision  -- no collision anywhere for this PE/org: keep every account's own slot as-is
-       or ar.rn = 1             -- genuine collision: keep only the stably-preferred account, across ALL its slots
+    left join slot_collision_2026 s26
+        on s26.pe_bli = ps.pe_bli and s26.organization = ps.organization
+    left join slot_collision_3 s3
+        on s3.pe_bli = ps.pe_bli and s3.organization = ps.organization
+    left join stable_pick sp
+        on sp.pe_bli = ps.pe_bli and sp.organization = ps.organization
+    where coalesce(s26.has_collision_2026, false)
+       or not coalesce(s3.has_collision_3, false)
+       or ps.account = sp.account
+),
+account_titles as (
+    select account, max(account_title) as account_title
+    from {{ ref('stg_budget_lines') }}
+    where account is not null
+    group by account
 ),
 pivoted as (
     select
         pe_bli,
         organization,
+        account,
         sum(case when amount_type = 'fy_2024_actuals' then amount_thousands end) as fy2024_actuals,
         sum(case when amount_type = 'fy_2025_total'   then amount_thousands end) as fy2025_total,
         sum(case when amount_type = 'fy_2026_total'   then amount_thousands end) as fy2026_total
     from budget
-    group by pe_bli, organization
+    group by pe_bli, organization, account
 )
 select
-    pe_bli,
-    organization,
-    fy2024_actuals,
-    fy2025_total,
-    fy2026_total,
-    (fy2026_total - fy2025_total) as fy2526_change,
+    p.pe_bli,
+    p.organization,
+    p.account,
+    atl.account_title,
+    p.fy2024_actuals,
+    p.fy2025_total,
+    p.fy2026_total,
+    (p.fy2026_total - p.fy2025_total) as fy2526_change,
     case
-        when fy2025_total is null or fy2025_total = 0 then null
-        else round(100.0 * (fy2026_total - fy2025_total) / fy2025_total, 2)
+        when p.fy2025_total is null or p.fy2025_total = 0 then null
+        else round(100.0 * (p.fy2026_total - p.fy2025_total) / p.fy2025_total, 2)
     end as fy2526_pct_change
-from pivoted
+from pivoted p
+left join account_titles atl on atl.account = p.account

@@ -15,28 +15,34 @@ models:
       - name: recipient_uei
         data_tests: [unique, not_null]
   - name: fct_budget_trajectory
-    description: "COMPONENT-grain budget trajectory. Grain: (pe_bli, organization) — one row per program element PER ORGANISATION that funds it, which for the three BLI codes shared across organisations is a part of the program, not the program. Anything published under a program's name must read fct_program_trajectory (ROADMAP backlog #37). #56: 10 pe_bli values are legitimately shared by two DIFFERENT real appropriation accounts within PB2026 (a coincidental key collision, not a multi-org program) — this mart picks exactly ONE account per (pe_bli, organization) for those instead of summing across accounts (see the model's own #56 comment for the full rule); the account NOT picked is surfaced separately by export_site.py's co-located-account disclosure, never silently dropped. assert_program_key_unique guards it."
+    description: "COMPONENT-grain budget trajectory. Grain: (pe_bli, organization, account) — one row per program element PER ORGANISATION PER ACCOUNT that funds it, which for the three BLI codes shared across organisations (and, since E1/#67, for the 8 pe_bli values genuinely shared by two different appropriation accounts) is a component of the program, not the whole program. Anything published under a program's name must read fct_program_trajectory (ROADMAP backlog #37). E1 (Sprint E, ROADMAP #67) replaced B'1's #56 pick-one rule: 8 pe_bli values are legitimately shared by two DIFFERENT real appropriation accounts within PB2026 (a coincidental key collision, not a multi-org program) — this mart now publishes BOTH accounts as separate rows instead of picking one (see the model's own E1 comment for the full rule, including the disclosed fy_2026_total collision-anchor substitution and why 1350/2101/Tomahawk and 9999999999 still collapse). assert_program_key_unique and assert_trajectory_grain_unique guard it."
     columns:
       - name: pe_bli
         data_tests: [not_null]
-  - name: fct_program_trajectory
-    description: "PROGRAM-grain budget trajectory (ROADMAP backlog #37). Grain: pe_bli — every component organisation summed, which is what `programs.json` and every /program/{pe_bli}/ surface publish. Change columns are recomputed from the summed endpoints, never summed themselves. assert_program_trajectory_component_sum pins every metric to the sum of its component rows."
-    columns:
-      - name: pe_bli
-        data_tests: [unique, not_null]
-        description: "Program element / budget line identifier. Unique — one trajectory per program."
-      - name: n_org_components
-        description: "How many (pe_bli, organization) rows this program's figures were summed from. 1 for 1,738 of 1,741 programs; >1 only for BLI codes shared across organisations."
-  - name: dim_programs
-    description: "PB2026-edition program dimension (R-2/P-40 detail universe). Grain: one row per pe_bli. fy2024_actual_millions is the PriorYear root-row sum over DISTINCT detail tuples (pe_bli, project_number, scenario, amount, xml_path) — dual-volume J-books embed the same XML in 2+ documents and the raw per-row sum double-counts (PM-review Sprint 1: 47 Army PEs at 2×; assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin guard it). #56: title is joined from stg_budget_lines scoped to the SAME account this row's own fy2024_actual_millions amount-matches — 10 pe_bli values are shared by two different real appropriation accounts, and an unconstrained join picked up either account's title regardless of which one this row's money describes."
-    columns:
-      - name: pe_bli
-        data_tests: [unique, not_null]
-        description: "Program element / budget line identifier. Unique — one program row per pe_bli."
       - name: account
-        description: "#56: the appropriation account (e.g. '1810N') this row's title and fy2024_actual_millions were amount-matched to in stg_budget_lines. NULL when fy2024_actual_millions is null or no stg_budget_lines row matches to float tolerance (falls back to the unconstrained title join — not one of the 10 known #56 collision keys)."
+        description: "E1 (#67): the appropriation account this row's money belongs to. For a genuine collision (8 keys), each account gets its own row; otherwise every slot collapses to the one stably-preferred account (dim_programs' own resolved account, else the largest total) — same tiebreak #56 already used, now only for the collapsed label, never to drop a component's money."
       - name: account_title
-        description: "#56: human-readable name of `account` (e.g. 'Other Procurement, Navy')."
+        description: "E1 (#67): human-readable name of `account` (e.g. 'Other Procurement, Navy')."
+  - name: fct_program_trajectory
+    description: "PROGRAM-grain budget trajectory (ROADMAP backlog #37). Grain: (pe_bli, account) — every component organisation summed WITHIN an account, which is what `programs.json` and every /program/{pe_bli}/ surface publish. E1 (Sprint E, ROADMAP #67): widened from bare pe_bli — summing across accounts would re-fuse a genuine collision into one row, the #56 fusion bug one layer up. Change columns are recomputed from the summed endpoints, never summed themselves. assert_program_trajectory_component_sum pins every metric to the sum of its component rows."
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+        description: "Program element / budget line identifier. NOT unique alone since E1 (#67) — a genuine account collision (8 keys) publishes two program rows under the same pe_bli, one per account. See assert_program_trajectory_grain_unique (unique on (pe_bli, account))."
+      - name: account
+        description: "E1 (#67): the appropriation account this program row belongs to. Constant within the group by construction."
+      - name: n_org_components
+        description: "How many (pe_bli, organization) rows this program's figures were summed from. 1 for most programs; >1 for BLI codes shared across organisations within the same account."
+  - name: dim_programs
+    description: "PB2026-edition program dimension (R-2/P-40 detail universe). Grain: (pe_bli, account) since E1 (Sprint E, ROADMAP #67) — one row per pe_bli for the ~1,729 pe_bli values with a single account, TWO rows (one per account) for the 8 genuine collisions this sprint fixed. fy2024_actual_millions is the PriorYear root-row sum over DISTINCT detail tuples (pe_bli, project_number, scenario, amount, xml_path) — dual-volume J-books embed the same XML in 2+ documents and the raw per-row sum double-counts (PM-review Sprint 1: 47 Army PEs at 2×; assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin guard it). #56/E1: title is joined from stg_budget_lines scoped to the SAME account this row's own fy2024_actual_millions amount-matches when real R-2/P-40 detail exists; the second row of a genuine collision (NULL fy2024_actual_millions/project_count=0/fully_reconciled=NULL) is detail-less by construction — no R-2/P-40 exhibit exists for that account under this pe_bli — with a real, workbook-sourced title (never invented)."
+    columns:
+      - name: pe_bli
+        data_tests: [not_null]
+        description: "Program element / budget line identifier. NOT unique alone since E1 (#67) — a genuine account collision (8 keys) publishes two program rows under the same pe_bli, one per account. See assert_program_key_unique (unique on (pe_bli, account))."
+      - name: account
+        description: "#56/E1: the appropriation account (e.g. '1810N') this row's title and fy2024_actual_millions were amount-matched to in stg_budget_lines (or, for a synthesized second row, the account itself — see the model's own E1 comment). NULL when fy2024_actual_millions is null or no stg_budget_lines row matches to float tolerance (falls back to the unconstrained title join)."
+      - name: account_title
+        description: "#56/E1: human-readable name of `account` (e.g. 'Other Procurement, Navy')."
   - name: dim_pe_titles
     description: "Canonical display title per pe_bli, resolved from titled detail rows in fct_budget_lines. Deterministic rule: largest fy_2024_actuals detail row's title; no-fy24/tie fallback is the alphabetically-first title. Single source for program-title resolution (feed exporter consumes this); covers every trajectory pe_bli, unlike dim_programs (R-2/P-40 only)."
     columns:

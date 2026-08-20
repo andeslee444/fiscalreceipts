@@ -60,10 +60,16 @@ filings as (
     where _rn = 1
 ),
 programs as (
+    -- E1 (Sprint E, ROADMAP #67): dim_programs is no longer unique on
+    -- pe_bli alone (a genuine account collision, 8 keys, now publishes two
+    -- rows). Deduped to (at most) one row per pe_bli here so the join below
+    -- can't fan a filing's mention row out into two — per-account lobbying
+    -- attribution is a separate, not-yet-built feature (E3/owner call).
     select
         pe_bli,
-        title as program_title
+        min(title) as program_title
     from {{ ref('dim_programs') }}
+    group by pe_bli
 )
 select
     m.filing_uuid,

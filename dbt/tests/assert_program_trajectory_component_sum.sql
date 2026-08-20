@@ -1,11 +1,19 @@
 -- ROADMAP backlog #37: a program's trajectory must EQUAL THE SUM of its
--- component (pe_bli, organization) rows — never one component of it.
+-- component (pe_bli, organization) rows within the SAME account — never one
+-- component of it, and never summed across a different, coincidentally
+-- same-keyed account (that would be the #56 fusion bug one layer up — see
+-- fct_program_trajectory.sql's E1 comment).
 --
 -- This is the assertion the shipped defect would have failed. `programs.json`
 -- published fct_budget_trajectory at (pe_bli, dim_programs.org): the declared
 -- org's slice, under the program's name. Re-point fct_program_trajectory at a
 -- pick instead of a sum — arg_max by fy2026_total, the first org, a join to
 -- dim_programs.org, anything — and BLI 30 / 20 / 500 fail here immediately.
+--
+-- E1 (Sprint E, ROADMAP #67): grouped by (pe_bli, account) instead of pe_bli
+-- alone, matching fct_program_trajectory's widened grain — a component sum
+-- across accounts would silently re-fuse a genuine collision (8 keys this
+-- sprint) into one row, exactly what this test exists to catch.
 --
 -- Every metric is checked, in both directions:
 --   * a program present on one side only is a failure (a missing rollup row
@@ -20,17 +28,19 @@
 with components as (
     select
         pe_bli,
+        account,
         count(*) as n_org_components,
         sum(fy2024_actuals) as fy2024_actuals,
         sum(fy2025_total)   as fy2025_total,
         sum(fy2026_total)   as fy2026_total
     from {{ ref('fct_budget_trajectory') }}
-    group by pe_bli
+    group by pe_bli, account
 ),
 
 expected as (
     select
         pe_bli,
+        account,
         n_org_components,
         fy2024_actuals,
         fy2025_total,
@@ -45,7 +55,8 @@ expected as (
 
 joined as (
     select
-        coalesce(p.pe_bli, e.pe_bli) as pe_bli,
+        coalesce(p.pe_bli, e.pe_bli)     as pe_bli,
+        coalesce(p.account, e.account)   as account,
         p.pe_bli is null             as missing_from_program_mart,
         e.pe_bli is null             as missing_from_components,
         p.n_org_components           as got_n_components,
@@ -61,7 +72,7 @@ joined as (
         p.fy2526_pct_change          as got_pct,
         e.fy2526_pct_change          as want_pct
     from {{ ref('fct_program_trajectory') }} p
-    full outer join expected e on e.pe_bli = p.pe_bli
+    full outer join expected e on e.pe_bli = p.pe_bli and e.account is not distinct from p.account
 )
 
 select *

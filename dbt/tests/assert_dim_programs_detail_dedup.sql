@@ -10,6 +10,20 @@
 -- set (the 5E binding: "dedupe by distinct tuple or prefer exactly one
 -- document"). Any drift between the mart column and this recompute is a
 -- regression to the raw sum (or a new aggregation bug) — fail loudly.
+--
+-- E1 (Sprint E, ROADMAP #67): dim_programs may now carry a SECOND,
+-- synthesized row for a genuine account collision (8 keys) — that row has
+-- NO R-2/P-40 detail behind it by construction (fy2024_actual_millions is
+-- NULL; see the model's own E1 comment) and so has nothing to dedup-check
+-- against `dedup`, which is keyed by pe_bli alone and knows nothing about
+-- accounts. Scoped to `d.fy2024_actual_millions is not null` so only the
+-- detail-carrying row of a collision is compared — the synthesized sibling
+-- is correctly exempt, not silently passed: a synthesized row that
+-- WRONGLY carried a non-null fy2024_actual_millions would still fail
+-- elsewhere (it would fail to be NULL, which nothing here checks, but
+-- dim_programs.sql's own `synth` CTE has no code path that could populate
+-- it), and this test still catches any drift on the one row per pe_bli
+-- that legitimately claims real detail.
 with dedup as (
     select
         pe_bli,
@@ -30,5 +44,8 @@ select
     x.expected_fy2024 as dedup_recompute
 from {{ ref('dim_programs') }} d
 join dedup x using (pe_bli)
-where abs(coalesce(d.fy2024_actual_millions, 0) - coalesce(x.expected_fy2024, 0)) > 0.0005
-   or (d.fy2024_actual_millions is null) != (x.expected_fy2024 is null)
+where d.fy2024_actual_millions is not null
+  and (
+    abs(coalesce(d.fy2024_actual_millions, 0) - coalesce(x.expected_fy2024, 0)) > 0.0005
+    or (d.fy2024_actual_millions is null) != (x.expected_fy2024 is null)
+  )

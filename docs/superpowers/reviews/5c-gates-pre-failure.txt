@@ -7624,3 +7624,112 @@ existing basis-leg-g block, under the SAME letter g already occupies (not
 a new top-level letter — collisions checked against a-i before writing,
 per this file's own established convention). Still 24 gates (`grep -c
 "gateResults.push" site/scripts/verify.mjs` -> 24).
+
+================================================================================
+2026-08-20 — Sprint E, Task E1: re-grain program identity on (account, pe_bli)
+================================================================================
+
+STEP 3 (per docs/superpowers/plans/2026-08-14-sprint-e-key-split.md, Task E1):
+tighten dbt/tests/assert_program_key_unique.sql from "no key spans two
+accounts within an edition" (the #56/B'1 assertion) to "the program grain is
+unique on (account, pe_bli)" (fiscal_year collapses out — see the test's own
+disclosed-substitution comment: neither dim_programs nor fct_budget_trajectory
+carries an explicit fiscal_year/edition column; both are PB2026-fenced by
+construction). Run it against the CURRENT (pre-re-grain) build and watch it
+fail — expected failure mode per the task brief: "or need the new models to
+exist".
+
+  $ uv run dbt test --project-dir dbt --profiles-dir dbt --select assert_program_key_unique
+
+--- FAIL (verbatim), tightened test run against the pre-E1 dim_programs /
+    fct_budget_trajectory (fct_budget_trajectory has no `account` column
+    yet — B'1 never exposed it, only used it internally for the pick-one
+    tiebreak) ---
+
+  1 of 1 START test assert_program_key_unique .................................... [RUN]
+  1 of 1 ERROR assert_program_key_unique ......................................... [ERROR in 0.03s]
+
+  Failure in test assert_program_key_unique (tests/assert_program_key_unique.sql)
+    Runtime Error in test assert_program_key_unique (tests/assert_program_key_unique.sql)
+  Binder Error: Referenced column "account" not found in FROM clause!
+  Candidate bindings: "organization"
+
+  LINE 57:     where pe_bli <> '9999999999' and account is not null
+                                                ^
+
+  Done. PASS=0 WARN=0 ERROR=1 SKIP=0 NO-OP=0 TOTAL=1
+
+This is the anticipated failure shape exactly: the tightened test names a
+column (`account` on fct_budget_trajectory) that only exists after the E1
+re-grain, so it fails to compile against the pre-fix build rather than
+returning offending rows. dim_programs already carried `account` (B'1), so
+the binder error surfaces on fct_budget_trajectory's absence of it first —
+both sides of the test would have failed the same way had DuckDB evaluated
+them in the other order.
+
+DISCLOSED PREMISE SUBSTITUTIONS (Step 1, scope re-derivation — required by
+the task brief: "verify every premise... disclose any substitution in the
+code comment, the proof-can-fail record, AND the commit message"):
+
+1. The plan's "Verified scope" table lists 8 colliding keys (0145, 2210,
+   2292, 3010, 3050, 3215, 3302, 4217). Measured directly against the
+   shipped PB2026 warehouse (2026-08-20) using assert_program_key_unique's
+   OWN pre-E1 collision definition (>1 distinct account_title at the SAME
+   amount_type, checked across fy_2024_actuals/fy_2025_total/fy_2026_total,
+   excluding 9999999999), that definition actually returns TEN keys, not
+   eight — the pre-E1 test's own shipped comment already lists all ten:
+   "0145, 1350, 2101, 2210, 2292, 3010, 3050, 3215, 3302, 4217". The two
+   extra (1350, 2101/Tomahawk) collide ONLY at fy_2024_actuals/
+   fy_2025_enacted; by fy_2026_total exactly one account reports any money
+   — the other side wound down to nothing before this edition. The plan
+   itself explicitly scopes Tomahawk OUT for this exact shape ("no_detail,
+   not key_collision... different defect, do not fold it in") but does not
+   mention 1350 at all — an omission, not a considered exclusion, but the
+   SAME reasoning applies to it by the identical data shape. Re-deriving
+   the collision anchor as "both accounts report at fy_2026_total
+   specifically" (rather than the union of all three amount_types)
+   independently reproduces the plan's stated 8 keys exactly, AND its
+   $5.35B headline to the dollar (verified: summing the 8 keys' previously
+   -dropped fy_2026_total money = $5,349,069 thousand). The plan's 8-key/
+   $5.35B numbers WIN — this substitution just makes the anchor a derived
+   SQL condition (scoped to fy_2026_total) rather than a hand-typed
+   allowlist, so a future edition's data can widen or narrow the set on
+   its own instead of silently going stale.
+
+2. The plan's File Structure table lists only dim_programs.sql and
+   fct_budget_trajectory.sql for E1. Re-deriving the consumer list (Step 2,
+   full list in the commit message / final report) found that
+   fct_program_trajectory.sql — NOT in the plan's file list — sums
+   fct_budget_trajectory across ALL of a pe_bli's rows unconditionally
+   (`group by pe_bli`). Once fct_budget_trajectory publishes both accounts
+   of a genuine collision as separate rows, fct_program_trajectory would
+   silently RE-SUM them back into one row — reproducing the exact #56
+   fusion bug one layer up (LPD Flight II + Shipboard Tactical
+   Communications = $2.62B under one name again), and defeating the entire
+   point of the split. This is dbt-layer, not exporter — squarely inside
+   E1's mandate — so fct_program_trajectory.sql and its two guard tests
+   (assert_program_trajectory_grain_unique.sql,
+   assert_program_trajectory_component_sum.sql) were re-graded to
+   (pe_bli, account) as part of this task rather than left for E3.
+
+Both substitutions are also recorded in the affected models' own doc
+comments and in the E1 commit message.
+
+--- PASS (verbatim), same test, after dim_programs.sql and
+    fct_budget_trajectory.sql were re-graded on (account, pe_bli) /
+    (pe_bli, organization, account) ---
+
+  $ uv run dbt test --project-dir dbt --profiles-dir dbt --select assert_program_key_unique
+
+  1 of 1 START test assert_program_key_unique .................................... [RUN]
+  1 of 1 PASS assert_program_key_unique .......................................... [PASS in 0.09s]
+
+  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=1
+
+FULL BUILD (dim_programs+ fct_budget_trajectory+, includes the re-graded
+fct_program_trajectory + fct_budget_to_awards/fct_program_lobbying
+fan-out-guard fixes and all their guard tests):
+
+  $ uv run dbt build --project-dir dbt --profiles-dir dbt --select dim_programs+ fct_budget_trajectory+
+
+  Done. PASS=35 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=35
