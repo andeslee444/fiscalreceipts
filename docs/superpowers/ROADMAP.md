@@ -1346,6 +1346,29 @@ gate family that makes the class visible.
 > needed confirming (they were exactly right, the first prescribed table this
 > whole effort that needed no correction).
 
+> **✅ #54 CLOSED 2026-08-14.** The entry was filed too gently. It said the
+> combined FY25→FY26 percentage "renders unlabelled" on `/years/`, `/feed/` and
+> the explorer. Measured: **31 of 99 `yoy_swing` feed cards** are for PEs
+> carrying reconciliation money, **27 of those differ by more than 20
+> percentage points** from the discretionary basis, and at least four asserted a
+> direction the like-for-like basis reverses —
+> `1203154SF` "increased 3053%" against **−99.2%** discretionary,
+> `0603342D8Z` "increased 231%" against **−100.0%**,
+> `0604028N` "increased 168%" against **−90.8%**,
+> `0603183D8Z` "increased 1043%" against **−10.4%**.
+> Not an unlabelled figure: a true, correctly-cited number carrying a
+> directionally false claim, the same species four sprints removed elsewhere.
+>
+> `/feed/` cards now carry the split beneath the unchanged headline, reusing
+> `Fy26SplitNote` verbatim so both surfaces say it identically. `/years/` gained
+> a column-level legend shown only while `%Δ` is visible. The explorer's
+> "Biggest movers" query now surfaces `discretionary_pct_change` and
+> `has_reconciliation` alongside the combined rate — and an incidental
+> pre-existing bug was found in the same SELECT: it referenced a column `org`
+> that does not exist on `fct_budget_trajectory` (it is `organization`), so that
+> canned query could never have run. Gate 23 leg (g) widened to (g4a/g4b),
+> non-vacuous at ≥20 of the 31 qualifying cards.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
