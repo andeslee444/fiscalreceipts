@@ -6955,6 +6955,11 @@ def _write_all_sidecars(
         # P0-5: the feed's superlative claims carry the corpus scope
         # qualifier (same dynamic string as the hero).
         corpus_scope_qualifier=_corpus_qualifier,
+        # backlog #54: already in scope in this function (a parameter of
+        # _write_all_sidecars, computed once in the main export pass at
+        # "4b4" and threaded here unchanged) — see _emit_feed_sidecar's
+        # doc-comment for what it does with it.
+        fy26_split_by_pe=fy26_split_by_pe,
     )
     n_files += 1
 
@@ -7700,6 +7705,7 @@ def _emit_feed_sidecar(
     cited_fact_ids: set,
     page_pe_blis: set | None = None,
     corpus_scope_qualifier: str | None = None,
+    fy26_split_by_pe: dict | None = None,
 ) -> None:
     """Emit json/feed.json from fct_feed_events (Task 4).
 
@@ -7723,8 +7729,21 @@ def _emit_feed_sidecar(
     lesson — 3 top-100 rva PEs have no page).
 
     junk pe_bli filter: pe_bli='9999999999' excluded upstream in fct_feed_events SQL.
+
+    backlog #54: `fy26_split_by_pe` is the SAME per-PE split index the main
+    export pass builds once (_build_fy26_split_index, threaded from the
+    caller — see the "4b4" comment near where it is built) and already
+    passes to program_details sidecars. #50 shipped its disclosure
+    (Fy26SplitNote) on /program/*/ only; here it rides on every yoy_swing
+    card whose PE has has_reconciliation True, so the combined FY25→FY26
+    percentage this card headlines can never stand alone next to a
+    discretionary-only rate that reverses its direction. Optional/None
+    because this function has callers that never had a split to thread
+    (defensive default only — the live pipeline always passes it).
     """
     import json as _json
+
+    fy26_split_by_pe = fy26_split_by_pe or {}
 
     try:
         feed_rows = con.execute(
@@ -7804,6 +7823,19 @@ def _emit_feed_sidecar(
         #   kind='single' — the event has ONE dollar magnitude (an award
         #                   total); we say so rather than invent an endpoint.
         magnitude: dict | None = None
+        # backlog #54: the FY2026 discretionary/reconciliation split
+        # (backlog #50), attached ONLY to yoy_swing cards whose PE actually
+        # carries reconciliation money. #50 shipped the split's disclosure on
+        # /program/*/ only (Fy26SplitNote); this is the SAME split object
+        # (fy26_split_by_pe, already computed once in the main export pass —
+        # see _build_fy26_split_index) threaded onto the feed card so the
+        # combined pct_change headline ("+3052.9%" for Long Range Kill
+        # Chains) never stands alone next to a discretionary-only rate that
+        # reverses its direction (measured: 31 of 99 yoy_swing cards carry
+        # reconciliation money, 27 of those differ from the discretionary
+        # rate by >20 percentage points). Never fabricated — None unless the
+        # PE has a real fy_2026_reconciliation_request row.
+        card_fy26_split: dict | None = None
         if event_type == "yoy_swing":
             direction = "increased" if (pct_change or 0) >= 0 else "decreased"
             pct_str = f"{abs(pct_change or 0):.0f}%"
@@ -7852,6 +7884,10 @@ def _emit_feed_sidecar(
                 ),
                 "pct_change": float(pct_change) if pct_change is not None else None,
             }
+            if pe_bli:
+                _split = fy26_split_by_pe.get(pe_bli)
+                if _split and _split.get("has_reconciliation"):
+                    card_fy26_split = _split
 
         elif event_type == "zeroed_fy2026":
             # headline_value is the FY25 money; comparison_value is the FY2026
@@ -8024,6 +8060,11 @@ def _emit_feed_sidecar(
             **figure_basis,
             # §P1-8 dollar magnitude — see the `magnitude` comment above.
             "magnitude": magnitude,
+            # backlog #54 — see `card_fy26_split` comment above. None for
+            # every card except a yoy_swing whose PE carries reconciliation
+            # money; the site renders <Fy26SplitNote> (the SAME component
+            # /program/*/ uses) when this is set.
+            "fy26_split": card_fy26_split,
             # Resolved program title (null for family_key-based cards and
             # unresolvable pe_blis). The headline already leads with this
             # title — the field exists so the site can key on it without

@@ -7446,3 +7446,181 @@ gate found them, not invented).
 SUITE COUNT UNCHANGED — one more leg ((d)) folded into gate 6's existing
 a11y block. Still 24 gates (`grep -c "gateResults.push"
 site/scripts/verify.mjs` -> 24).
+
+================================================================================
+ROADMAP #54 — #50'S RECONCILIATION LABEL STOPS AT THE PROGRAM PAGE (2026-08-19)
+================================================================================
+
+STEP 1, done first per the task brief's own warning (nine prior prescribed
+snippets in this plan family were defective, always "symptom observed
+correctly, cause inferred rather than traced"): reproduced the distortion
+table against the shipped warehouse before writing any code — queried
+fct_budget_lines' fy_2025_enacted / fy_2026_disc_request /
+fy_2026_reconciliation_request amount_types via DuckDB, joined to
+data/site/json/feed.json's 99 yoy_swing cards.
+
+MEASURED (2026-08-19), matches the task brief's own table exactly, to the
+decimal, on every row it named:
+
+  pe             card headline says      discretionary-only
+  1203154SF      increased 3053%              -99.2%
+  0603183D8Z     increased 1043%              -10.4%
+  0603342D8Z     increased  231%             -100.0%
+  0604028N       increased  168%              -90.8%
+  0604756N       increased  479%             +143.2%
+  0604133D8Z     increased  993%             +728.8%
+
+31 of 99 yoy_swing cards carry reconciliation money; 27 of those 31 differ
+from the discretionary-only rate by more than 20 percentage points — both
+counts match the brief exactly. No premise substitution needed here; the
+brief's own numbers held up under independent reproduction.
+
+DESIGN CHOICE (Step 2). Kept the combined headline text UNCHANGED (it is
+true and is the site's established percentage-of-record) and attached the
+split disclosure BENEATH it, on the card, exactly mirroring what #50
+shipped on /program/*/ — the same choice A'4 made, extended rather than
+reinvented. Reused <Fy26SplitNote> VERBATIM (exported it from
+program-figures.tsx rather than writing a second copy) so the wording, the
+[data-fy26-recon-chip] chip and the [data-fy26-disc-pct-change] marker are
+byte-identical between /program/*/ and /feed/ — a reader who has seen the
+disclosure once recognizes it the second time, and gate 23 leg g's existing
+selectors work unmodified on the new surface.
+
+THE THREADING PATH (traced, not assumed, per the task's explicit
+instruction to check whether fy26_split_by_pe reaches _emit_feed_sidecar
+before assuming a restructure was needed). It does, cleanly:
+_build_fy26_split_index runs at export_site.py:1443 and its result
+(fy26_split_by_pe) is already a parameter of _write_all_sidecars (:5150),
+which is the function whose body calls _emit_feed_sidecar (:6947) — so
+fy26_split_by_pe was ALREADY in lexical scope at the call site, needing
+only a new keyword parameter and one line at the call, not a restructure.
+_emit_feed_sidecar attaches the SAME split dict already used to render
+program_details/{pe}.json (no new computation, no new citation minting)
+to a card's `fy26_split` field exactly when the card is a yoy_swing event
+and its PE's split has has_reconciliation True.
+
+/years/ (Step 3): a column-level <p data-testid="fy26-pct-legend"> inside
+the existing "How to read this grid" collapsible, shown only while the %Δ
+column itself is visible (visibleCols.includes(PCT_KEY)) — a single
+disclosure of the caveat rather than repeating the same sentence on up to
+462 rows, which the task's own framing ("a column-level annotation ... is
+a column-level disclosure is likely right") anticipated.
+
+explorer.tsx (Step 4): the "Biggest movers" canned query now JOINS
+budget_lines.parquet (registered alongside fct_budget_trajectory.parquet
+regardless of which dataset tab is selected — verified via
+site/src/app/data/page.tsx's registerDatasets(db, assetBase,
+datasets.map(d => d.name)), not assumed) to compute
+discretionary_pct_change and has_reconciliation ALONGSIDE the existing
+combined_pct_change, rather than only relabelling the ambiguity — tested
+against the real parquets with the local duckdb Python binding before
+committing (same numbers as the Step 1 table: 1203154SF 3052.9 / -99.2,
+0603183D8Z 1043.3 / -10.4, 0604133D8Z 992.9 / 728.8). INCIDENTAL FIND while
+rewriting this exact query: the PRE-EXISTING "Biggest movers" query
+selected a column named `org`, but fct_budget_trajectory.parquet's column
+is `organization` — the query would have failed to run at all before this
+change (Binder Error: Referenced column "org" not found). Fixed in the
+same edit since it is the identical SELECT list being rewritten; not
+otherwise part of this task's brief.
+
+STEP 5 — gate 23 leg (g) widened past /program/*/. New sub-leg g4 (g4a
+chip presence, g4b non-vacuity, threshold 20) in
+site/scripts/gates/basis.mjs, called separately from runBasisGate as
+runFeedFy26SplitLeg(errors, notes) right after the existing
+runFy26SplitLeg(pages, errors, notes) call. LETTER: g4 sits under the
+SAME letter g/g1/g2/g3 already occupy (not a new top-level letter) — the
+task's own framing ("widen leg (g)") and the file's collision-check
+convention both point to extending, not colliding with h/i which are
+already taken. Ground truth is feed.json's own `fy26_split` field (not a
+program_details sidecar — a yoy_swing event's pe_bli need not have a
+program page at all), matched to its /feed/ card via the headline's
+data-xml-path="site:feed/yoy_swing/{pe_bli}" attribute, scoped to the
+enclosing [data-feed-card] wrapper.
+
+--- PROOF-CAN-FAIL (verbatim, `run-basis-gate.mjs` standalone invocation
+    of runBasisGate() against a built /feed/ page whose feed.json PREDATES
+    the Step 2 fix — the leg's g4 code was already present; only the data
+    threading was reverted by using the stale, pre-fix data/site/json/
+    (dated 2026-08-12), which naturally carries no fy26_split field on any
+    card) ---
+
+  PASS: false
+  ...
+  note: leg g1: every program page with fy26_split.recon_share > 0 renders a [data-fy26-recon-chip] ✓
+  note: leg g2: every rendered combined FY25→FY26 change on a reconciliation-affected program is accompanied by the discretionary rate ✓
+  note: leg g3: 200 FY2026 figures resolved with recon_share > 0 — non-vacuous ✓
+  ...
+  --- errors ---
+  ERROR: leg g4b is VACUOUS: only 0 qualifying /feed/ yoy_swing card(s) resolved (need ≥ 20; feed.json carries 0 qualifying cards total) — the sidecar field or the card-matching selector is not matching the built page
+
+Note g1-g3 (the pre-existing /program/*/ leg, untouched by this task) PASS
+unaffected in the same run — this is not a suite-wide regression, it is
+g4 correctly catching that /feed/ did not yet carry the disclosure it now
+must. 0 < 20 fails HONESTLY (the ground truth itself was absent) rather
+than vacuously passing on an empty qualifying set — which is exactly what
+g4b's non-vacuity check exists to catch.
+
+--- PASS (verbatim), same leg, same build pipeline, after
+    `uv run python -m govbudget export-site` regenerated feed.json with
+    the Step 2 fy26_split_by_pe threading and `npm run build` rebuilt
+    out/feed/index.html from it ---
+
+  PASS: true
+  ...
+  note: leg g1: every program page with fy26_split.recon_share > 0 renders a [data-fy26-recon-chip] ✓
+  note: leg g2: every rendered combined FY25→FY26 change on a reconciliation-affected program is accompanied by the discretionary rate ✓
+  note: leg g3: 200 FY2026 figures resolved with recon_share > 0 — non-vacuous ✓
+  note: leg g4a: every qualifying /feed/ yoy_swing card renders the [data-fy26-recon-chip] disclosure ✓
+  note: leg g4b: 31 /feed/ yoy_swing cards resolved with reconciliation money — non-vacuous ✓
+  ...
+  --- errors ---
+  (none)
+
+31 matches the Step 1 reproduction exactly (31 of 99 yoy_swing cards carry
+reconciliation money).
+
+STEP 6 — full verification, all green:
+  uv run pytest -q                         -> 1575 passed
+  npx vitest run                           -> 1007 passed (60 files)
+  npx tsc --noEmit                         -> clean
+  npx eslint .                             -> 0 errors, 18 pre-existing
+                                               warnings (none in touched files)
+  NEXT_PUBLIC_SITE_URL=... npm run verify  -> 24/24 gates PASS
+
+PAGE WEIGHT (site/scripts/gates/build.mjs checkPageWeight(), zlib level 9 —
+the SAME measurement the gate itself uses; NOT a naive shell `gzip -c`,
+which reports larger numbers at a different compression level and is not
+the authority here). errors: [] on the post-fix build — nothing breached
+its ceiling.
+
+  page          before (comment baseline)   after this task        ceiling (gzip)
+  /feed/        1,424,350 / 71,767           1,503,022 / 76,838     92,000  (15,162 left)
+  /years/       31,277 / 6,345               31,765 / 6,399          9,000  (2,601 left)
+  /programs/    2,659,239 / 277,357          2,659,365 / 277,391   278,000    (609 left)
+  /             1,247,670 / 79,370           1,250,310 / 79,473     84,000  (4,527 left)
+
+/programs/ and / were NOT touched by this task's code (no edit to
+programs/page.tsx, page.tsx, or their data sources) — their few-dozen-byte
+drift is ordinary corpus refresh from re-running export-site (citation
+counts, dataset totals threaded through shared chrome), not a regression
+this task introduced. /feed/'s +5,071 gzip bytes is the 31
+[data-fy26-recon-chip] + caption blocks, well inside its ceiling. /years/'s
++54 gzip bytes is the one new column-level legend paragraph.
+
+FILES CHANGED: src/govbudget/export_site.py (_emit_feed_sidecar gains
+fy26_split_by_pe param + card_fy26_split computation + fy26_split card
+key; call site threads the already-in-scope fy26_split_by_pe); tests/
+test_feed_fy26_split.py (new); site/src/lib/data.ts (FeedCard.fy26_split);
+site/src/components/program-figures.tsx (export Fy26SplitNote);
+site/src/app/feed/page.tsx (import + render Fy26SplitNote on qualifying
+yoy_swing cards); site/src/components/years-matrix.tsx (%Δ column-level
+legend paragraph); site/src/components/explorer.tsx (Biggest movers query
+rewritten with the disc/reconciliation join + the incidental org/
+organization fix); site/scripts/gates/basis.mjs (leg g4a/g4b + docstring
+index updates, both the top-of-file index and the leg-g section header).
+
+SUITE COUNT UNCHANGED — one more sub-leg (g4) folded into gate 23's
+existing basis-leg-g block, under the SAME letter g already occupies (not
+a new top-level letter — collisions checked against a-i before writing,
+per this file's own established convention). Still 24 gates (`grep -c
+"gateResults.push" site/scripts/verify.mjs` -> 24).

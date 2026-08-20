@@ -148,6 +148,13 @@
  *      like-for-like rate is never optional once the combined one is shown.
  *   g3 NON-VACUITY — fewer than 100 resolved (recon_share > 0) pages FAILS.
  *
+ *   g4 (#54) WIDENS g PAST /program/*\/ TO /feed/: a yoy_swing feed card
+ *      whose PE has fy26_split.has_reconciliation (read from feed.json
+ *      itself, not a program_details sidecar — a feed event's pe_bli need
+ *      not have a page) must ALSO render [data-fy26-recon-chip] (g4a).
+ *      Fewer than 20 resolved qualifying cards FAILS as vacuous (g4b; the
+ *      live corpus carries 31). See runFeedFy26SplitLeg below.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
@@ -1047,6 +1054,9 @@ export async function runBasisGate() {
   // ── Leg (g) — FY2026 discretionary/reconciliation split (#50) ─────────────
   runFy26SplitLeg(pages, errors, notes);
 
+  // ── Leg (g4) — same split, widened past /program/*\/ to /feed/ (#54) ──────
+  runFeedFy26SplitLeg(errors, notes);
+
   // ── Leg (h) — account-collision fused rows (#56) ───────────────────────────
   runAccountCollisionLeg(pages, errors, notes);
 
@@ -1550,6 +1560,14 @@ function runExhibitAgreementLeg(pages, errors, notes) {
 //      FAILS: the sidecar field or the chip selector silently matching
 //      nothing is exactly the failure mode a number↔citation-only gate suite
 //      let ship past it in the first place.
+//
+// #54 WIDENED this leg past /program/*\/: g1-g3 below scan program pages
+// only, which is exactly the scope gap #54 was filed to close (a yoy_swing
+// /feed/ card headlines the SAME combined percentage, unlabelled). See
+// runFeedFy26SplitLeg (g4a/g4b) below, called separately from runBasisGate
+// — kept as its own function rather than folded into this one because its
+// ground truth (feed.json) and its page (out/feed/index.html) are both
+// singular, unlike the per-page loop g1-g3 run.
 const FY26_SPLIT_MIN_RESOLVED = 100;
 
 function runFy26SplitLeg(pages, errors, notes) {
@@ -1648,6 +1666,138 @@ function runFy26SplitLeg(pages, errors, notes) {
     notes.push(
       `leg g3: ${resolved} FY2026 figures resolved with recon_share > 0 — ` +
         `non-vacuous ✓`,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (g4) — WIDENED PAST /program/*\/ TO /feed/ (#54)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// g1-g3 above enforce #50's disclosure on /program/*\/ only. #54 named the
+// gap left open by that scoping: the SAME combined FY25→FY26 percentage a
+// yoy_swing feed card headlines — Long Range Kill Chains' own +3052.9% is
+// the #1 /feed/ card — still rendered there unlabelled, even once its own
+// program page explained the split. This leg widens leg (g) past
+// /program/*\/ to /feed/, exactly as the ROADMAP entry instructs ("the fix
+// is to widen leg (g) past /program/*\/ once those surfaces carry the
+// split") — a new sub-leg under the SAME letter, not a new one (checked for
+// collisions: g/g1/g2/g3 are the only occupants of this space).
+//
+// Ground truth is data/site/json/feed.json itself, not program_details
+// sidecars — a yoy_swing event can reference a pe_bli with NO program page
+// at all (fct_budget_trajectory covers more pe_blis than dim_programs), so
+// the sidecar is not guaranteed to exist for every qualifying card. feed.json
+// cards.*.fy26_split, threaded by _emit_feed_sidecar (#54, from the SAME
+// fy26_split_by_pe index g1-g3 already trust), is authoritative for what
+// SHOULD render. A qualifying card is a yoy_swing event whose
+// fy26_split.has_reconciliation is true.
+//
+//   g4a CHIP PRESENCE — every qualifying card's [data-feed-card] wrapper
+//       (matched via its headline's data-xml-path="site:feed/yoy_swing/
+//       {pe_bli}", which carries the raw pe_bli regardless of any
+//       title-swap the display layer does) must render a
+//       [data-fy26-recon-chip] — the SAME marker g1 requires on
+//       /program/*\/, from the SAME <Fy26SplitNote> component (exported
+//       from program-figures.tsx and imported into feed/page.tsx rather
+//       than re-implemented, so the wording cannot drift).
+//   g4b NON-VACUITY — fewer than FEED_FY26_SPLIT_MIN_RESOLVED (20; the live
+//       corpus carries 31 measured 2026-08-19) qualifying cards actually
+//       located on the built /feed/ page FAILS — the same "field or
+//       selector silently matches nothing" failure mode g3 guards against,
+//       applied to this surface. This is what proves the leg fails on the
+//       pre-fix build: before _emit_feed_sidecar threads fy26_split,
+//       feed.json's cards carry no such field, qualifying is empty, and 0
+//       < 20 fails honestly rather than vacuously passing.
+const FEED_FY26_SPLIT_MIN_RESOLVED = 20;
+
+function runFeedFy26SplitLeg(errors, notes) {
+  const feedJsonPath = path.join(repoRoot, "data", "site", "json", "feed.json");
+  const feedHtmlPath = path.join(outDir, "feed", "index.html");
+
+  if (!fs.existsSync(feedJsonPath)) {
+    errors.push(
+      `leg g4: ${path.relative(repoRoot, feedJsonPath)} not found — export the site first`,
+    );
+    return;
+  }
+  if (!fs.existsSync(feedHtmlPath)) {
+    errors.push("leg g4: out/feed/index.html not found — build the site first");
+    return;
+  }
+
+  let feedJson;
+  try {
+    feedJson = JSON.parse(fs.readFileSync(feedJsonPath, "utf8"));
+  } catch (e) {
+    errors.push(`leg g4: feed.json failed to parse (${e.message})`);
+    return;
+  }
+
+  const qualifying = (feedJson.cards || []).filter(
+    (c) =>
+      c.event_type === "yoy_swing" && c.pe_bli && c.fy26_split?.has_reconciliation,
+  );
+
+  let root;
+  try {
+    root = parse(fs.readFileSync(feedHtmlPath, "utf8"), { comment: false });
+  } catch (e) {
+    errors.push(`leg g4: out/feed/index.html failed to parse (${e.message})`);
+    return;
+  }
+
+  const cardEls = root.querySelectorAll("[data-feed-card]");
+  let resolved = 0;
+  const missing = [];
+
+  for (const card of qualifying) {
+    const headlineSel = `[data-xml-path="site:feed/yoy_swing/${card.pe_bli}"]`;
+    const cardEl = cardEls.find((el) => el.querySelector(headlineSel));
+    if (!cardEl) {
+      missing.push(
+        `${card.pe_bli}: feed.json carries a qualifying yoy_swing card but no ` +
+          `/feed/ [data-feed-card] matches its headline's data-xml-path`,
+      );
+      continue;
+    }
+    resolved++;
+    if (!cardEl.querySelector("[data-fy26-recon-chip]")) {
+      missing.push(
+        `${card.pe_bli}: feed.json fy26_split.recon_share = ` +
+          `${(card.fy26_split.recon_share * 100).toFixed(1)}% but its /feed/ ` +
+          `card renders no [data-fy26-recon-chip]`,
+      );
+    }
+  }
+
+  if (missing.length > 0) {
+    errors.push(
+      `leg g4 /feed/ fy26-split disclosure: ${missing.length} yoy_swing card(s) ` +
+        `whose PE carries reconciliation money render no disclosure on /feed/ ` +
+        `(first ${MAX_LISTED}):`,
+    );
+    for (const m of missing.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (missing.length > MAX_LISTED)
+      errors.push(`  ... and ${missing.length - MAX_LISTED} more`);
+  } else if (resolved > 0) {
+    notes.push(
+      `leg g4a: every qualifying /feed/ yoy_swing card renders the ` +
+        `[data-fy26-recon-chip] disclosure ✓`,
+    );
+  }
+
+  if (resolved < FEED_FY26_SPLIT_MIN_RESOLVED) {
+    errors.push(
+      `leg g4b is VACUOUS: only ${resolved} qualifying /feed/ yoy_swing card(s) ` +
+        `resolved (need ≥ ${FEED_FY26_SPLIT_MIN_RESOLVED}; feed.json carries ` +
+        `${qualifying.length} qualifying cards total) — the sidecar field or ` +
+        `the card-matching selector is not matching the built page`,
+    );
+  } else {
+    notes.push(
+      `leg g4b: ${resolved} /feed/ yoy_swing cards resolved with reconciliation ` +
+        `money — non-vacuous ✓`,
     );
   }
 }

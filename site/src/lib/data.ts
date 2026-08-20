@@ -1484,6 +1484,18 @@ export interface FeedCard {
    * the change each open their own receipt.
    */
   magnitude: FeedMagnitude | null;
+  /**
+   * backlog #54 — the SAME Fy26Split shape /program/*\/ sidecars carry
+   * (backlog #50), set on a yoy_swing card exactly when its PE has a real
+   * fy_2026_reconciliation_request row (has_reconciliation true). Non-null
+   * means the combined pct_change this card headlines is not a like-for-like
+   * rate — the site renders <Fy26SplitNote> (imported from
+   * program-figures.tsx, the SAME component and vocabulary /program/*\/
+   * uses) to state the discretionary-only rate beside it. Null for every
+   * other event type and for a yoy_swing card whose PE carries no
+   * reconciliation money. Optional for pre-#54 sidecars.
+   */
+  fy26_split?: Fy26Split | null;
 }
 
 export interface FeedMagnitudePoint {

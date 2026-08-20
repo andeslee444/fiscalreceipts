@@ -897,6 +897,30 @@ export function YearsMatrix() {
         </p>
       )}
 
+      {/* backlog #54: %Δ is computed on FY2026's COMBINED figure
+          (discretionary request + one-time reconciliation money) versus
+          FY2025 enacted — the same fold #50 disclosed per-program on
+          /program/*\/ (Fy26SplitNote) but left unlabelled here, where it is
+          a single column shared across every row rather than one figure on
+          one page. A per-cell chip would repeat the same sentence up to 462
+          times; the column-level note here states the caveat once, where a
+          reader meets the %Δ header, and points at the program page for the
+          like-for-like rate on any row that needs it. Shown only while the
+          %Δ column itself is visible. */}
+      {visibleCols.includes(PCT_KEY) && (
+        <p
+          data-testid="fy26-pct-legend"
+          className="text-xs leading-5 text-muted-foreground"
+        >
+          <span className="font-mono text-foreground">%Δ</span> is computed on
+          FY2026&apos;s combined figure (discretionary request + one-time
+          reconciliation money) vs. FY2025 enacted. Where a program carries
+          reconciliation funding, this combined rate can differ sharply — even
+          reverse in direction — from its discretionary-only, like-for-like
+          change; open the program page for the split.
+        </p>
+      )}
+
       {/* ── Honesty-marker legend (visual-judge M2 finding) ── */}
       <CiteLegend />
 

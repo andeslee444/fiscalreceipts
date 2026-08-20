@@ -65,14 +65,51 @@ LIMIT 50
           `),
         },
         {
-          label: `Biggest movers ${TRAJECTORY_FY_LABEL}`,
+          // backlog #54: fct_budget_trajectory's fy2026_total (and the
+          // fy2526_pct_change built from it) is disc + one-time
+          // reconciliation money folded together with no seam — the same
+          // fold #50 disclosed on /program/*\/. combined_pct_change alone
+          // reads "Long Range Kill Chains +3053%"; its own discretionary
+          // basis is -99.2%. This query joins budget_lines.parquet (also
+          // registered — every shipped parquet is, regardless of which tab
+          // is selected) to compute the like-for-like discretionary-only
+          // rate ALONGSIDE the combined one, rather than leaving the reader
+          // to intuit the caveat from a label. has_reconciliation flags
+          // which rows the two columns can disagree on. (Also fixes a
+          // pre-existing bug: the prior query selected "org", but
+          // fct_budget_trajectory's column is "organization" — it would
+          // have failed to run at all.)
+          label: `Biggest movers ${TRAJECTORY_FY_LABEL} — combined vs. discretionary-only`,
           sql: t(`
-SELECT pe_bli, org,
-       fy2526_change,
-       ROUND(fy2526_pct_change, 1) AS pct_change
-FROM 'fct_budget_trajectory.parquet'
-WHERE fy2526_change IS NOT NULL
-ORDER BY ABS(fy2526_change) DESC
+-- fy2026_total folds FY2026's discretionary request together with
+-- one-time congressional reconciliation money; combined_pct_change is not
+-- a rate you can extrapolate for a program where has_reconciliation is
+-- true. discretionary_pct_change (vs. FY2025 enacted) is the like-for-like
+-- comparison. See /methodology/ §3 and any /program/{pe_bli}/ page for the
+-- full split.
+WITH fy26_split AS (
+  SELECT
+    pe_bli,
+    SUM(amount_thousands) FILTER (
+      WHERE amount_type = 'fy_2025_enacted') AS fy25_enacted,
+    SUM(amount_thousands) FILTER (
+      WHERE amount_type = 'fy_2026_disc_request') AS fy26_disc,
+    SUM(amount_thousands) FILTER (
+      WHERE amount_type = 'fy_2026_reconciliation_request') AS fy26_recon
+  FROM 'budget_lines.parquet'
+  GROUP BY pe_bli
+)
+SELECT
+  t.pe_bli, t.organization,
+  t.fy2526_change,
+  ROUND(t.fy2526_pct_change, 1) AS combined_pct_change,
+  ROUND(100 * (s.fy26_disc - s.fy25_enacted)
+        / NULLIF(s.fy25_enacted, 0), 1) AS discretionary_pct_change,
+  COALESCE(s.fy26_recon, 0) > 0 AS has_reconciliation
+FROM 'fct_budget_trajectory.parquet' t
+LEFT JOIN fy26_split s ON s.pe_bli = t.pe_bli
+WHERE t.fy2526_change IS NOT NULL
+ORDER BY ABS(t.fy2526_change) DESC
 LIMIT 50
           `),
         },

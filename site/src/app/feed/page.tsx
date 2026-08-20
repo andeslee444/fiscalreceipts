@@ -14,6 +14,7 @@ import { Cite } from "@/components/cite";
 import { Reveal } from "@/components/reveal";
 import { FeedMagnitudeLine } from "@/components/feed-magnitude";
 import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
+import { Fy26SplitNote } from "@/components/program-figures";
 import { feedPageAlternates, feedLinks, eventTypeFeedPaths } from "@/lib/feeds";
 import { WHOLE_FEED_RSS, WHOLE_FEED_ATOM } from "@/lib/feed-model.mjs";
 import type { FeedCard } from "@/lib/data";
@@ -248,6 +249,19 @@ function FeedCardItem({
             Kept OUTSIDE the [data-source-text] headline — computed figures
             may not nest inside source text (render-static leg a0). */}
         <FeedMagnitudeLine card={card} />
+        {/* backlog #54: this card's pct_change headline is computed on the
+            COMBINED FY2026 figure (discretionary + one-time reconciliation
+            money) — the same defect #50 fixed on /program/*\/, unfixed here
+            until now. Renders the identical <Fy26SplitNote> /program/*\/
+            uses (same component, same [data-fy26-recon-chip]/
+            [data-fy26-disc-pct-change] markers gate 23 leg g now also reads
+            off this page) rather than a second, differently-worded
+            disclosure. Null for every card except a yoy_swing whose PE
+            carries reconciliation money — the combined headline is never
+            deleted, only accompanied. */}
+        {card.fy26_split?.has_reconciliation && (
+          <Fy26SplitNote split={card.fy26_split} />
+        )}
         {card.pe_bli && (
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">

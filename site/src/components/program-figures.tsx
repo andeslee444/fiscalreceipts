@@ -85,8 +85,14 @@ export function reconKeySet(summary: ProgramSummary | null): Set<string> {
  * true total); this note is what turns "+3052.9%" from an unlabelled claim
  * into a labelled one — the raw change card is untouched, still rendered by
  * the sibling "change" SummaryCardCell.
+ *
+ * Exported (backlog #54) — /feed/'s FeedCardItem renders this SAME component
+ * beside a yoy_swing card whose PE carries reconciliation money, so the
+ * disclosure's wording and [data-fy26-recon-chip]/[data-fy26-disc-pct-change]
+ * markers stay identical on both surfaces rather than growing a second,
+ * differently-worded copy.
  */
-function Fy26SplitNote({ split }: { split: Fy26Split }) {
+export function Fy26SplitNote({ split }: { split: Fy26Split }) {
   if (!split.reconciliation) return null; // has_reconciliation implies this is set; defensive
   const sharePct = (split.recon_share * 100).toFixed(1);
   return (
