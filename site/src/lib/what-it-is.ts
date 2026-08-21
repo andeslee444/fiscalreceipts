@@ -38,9 +38,18 @@
 import type { DossierClaim, DossierFile } from "@/lib/dossier";
 import { serviceOrgName } from "@/lib/program-tier";
 
-/** Plain-language label for exhibit_family values (answer-strip copy). */
-export function answerFamilyPlain(family: string): string {
-  switch (family.toLowerCase()) {
+/**
+ * Plain-language label for exhibit_family values (answer-strip copy).
+ *
+ * Sprint E, Task E3 (ROADMAP #67): `family` can be null now — one of the 8
+ * appropriation-account collisions' SYNTHETIC accounts (dbt/models/marts/
+ * dim_programs.sql's `synth` branch, e.g. LPD Flight II) has no R-2/P-40
+ * exhibit behind it at all, so dim_programs.exhibit_family is genuinely
+ * NULL for it — the same "no classifiable workbook lines" shape the
+ * rollup tier's "budget" token already names, not a new case.
+ */
+export function answerFamilyPlain(family: string | null): string {
+  switch ((family ?? "budget").toLowerCase()) {
     case "rdte":
       return "research & development";
     case "procurement":
@@ -53,7 +62,7 @@ export function answerFamilyPlain(family: string): string {
     case "budget":
       return "budget"; // rollup tier with no classifiable workbook lines
     default:
-      return family.toUpperCase();
+      return family!.toUpperCase();
   }
 }
 
@@ -161,7 +170,7 @@ export interface FieldCardInput {
   title: string;
   /** Raw org code (humanized here — never rendered raw). */
   org: string;
-  exhibitFamily: string;
+  exhibitFamily: string | null;
   /** Workbook budget lines (account title source). */
   budgetLines: readonly AccountSource[];
   /** Distinct J-book project rows on this page (0 when the line has none). */
@@ -201,7 +210,7 @@ export interface RollupCardInput {
   title: string;
   /** Already-humanized org (rollupProgramRow humanizes service codes). */
   org: string;
-  exhibitFamily: string;
+  exhibitFamily: string | null;
   /** Service code from the sidecar (drives the tail wording). */
   serviceOrg: string;
   /** isIngestedServiceOrg(serviceOrg) — injected so this module stays pure. */

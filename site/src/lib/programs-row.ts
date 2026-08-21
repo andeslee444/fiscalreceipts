@@ -43,6 +43,15 @@ import type { ProgramDecadeCells, ProgramRow } from "@/lib/data";
 export interface ProgramsTableRow {
   /** PE/BLI code — also the row key, the alias key and the link target. */
   pe: string;
+  /**
+   * Sprint E, Task E3 (ROADMAP #67) — the page-route slug, present ONLY for
+   * one of the 8 genuine appropriation-account collisions (where it differs
+   * from `pe`; omitted entirely for the other ~1,735 rows, never a
+   * redundant per-row copy of `pe`). Use `s ?? pe` for the row key,
+   * data-entity, and href — omitting this would link every split-key row to
+   * the bare disambiguation stub instead of its own page.
+   */
+  s?: string;
   /** Raw workbook org token ("F"); the human name is derived for display. */
   org: string;
   title: string;
@@ -131,6 +140,7 @@ export function toProgramsTableRow(
 ): ProgramsTableRow {
   const base: ProgramsTableRow = {
     pe: p.pe_bli,
+    ...(p.slug !== p.pe_bli ? { s: p.slug } : {}),
     org: p.org,
     title: p.title,
     fy24: cells?.fy24?.v ?? null,

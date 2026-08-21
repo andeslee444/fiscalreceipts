@@ -275,7 +275,19 @@ export async function runBuildGate() {
       errors.push(`program sidecar unreadable: ${f}`);
     }
   }
-  const sitemapProgramCount = programCount - zeroContentCount;
+  // Sprint E, Task E3 (ROADMAP #67): the 8 genuine appropriation-account
+  // collisions each get a bare-pe_bli disambiguation STUB page in addition
+  // to their program_details sidecars — a stub carries no sidecar of its
+  // own (program-skeleton.mjs's gate 21 would otherwise demand the full
+  // 13-section skeleton from a page that isn't a program at all), so it is
+  // invisible to programCount above. Derived from programs.json's own
+  // pe_bli duplicates — never hand-counted — so a future re-key changes
+  // this automatically.
+  const pesSeen = new Map();
+  for (const p of programs) pesSeen.set(p.pe_bli, (pesSeen.get(p.pe_bli) ?? 0) + 1);
+  const stubCount = [...pesSeen.values()].filter((n) => n > 1).length;
+
+  const sitemapProgramCount = programCount - zeroContentCount + stubCount;
 
   const companyCount = entities.length;
   const agencyCount = agencies.length;
@@ -383,12 +395,17 @@ export async function runBuildGate() {
     const builtPblis = fs.readdirSync(programOut).filter((d) => {
       return fs.statSync(path.join(programOut, d)).isDirectory();
     });
-    if (builtPblis.length !== programCount) {
+    // Sprint E, Task E3: + stubCount — the 8 split-key bare-pe_bli
+    // disambiguation pages are real, built out/program/{pe_bli}/ directories
+    // with no program_details sidecar (see stubCount's own comment above).
+    const expectedProgramPages = programCount + stubCount;
+    if (builtPblis.length !== expectedProgramPages) {
       errors.push(
-        `program pages: found ${builtPblis.length}, expected ${programCount}`
+        `program pages: found ${builtPblis.length}, expected ${expectedProgramPages} ` +
+          `(${programCount} sidecar-backed + ${stubCount} split-key stubs)`
       );
     } else {
-      notes.push(`program pages: ${builtPblis.length} ✓`);
+      notes.push(`program pages: ${builtPblis.length} ✓ (incl. ${stubCount} split-key stubs)`);
     }
   }
 

@@ -63,8 +63,19 @@ def main() -> int:
 
     programs = json.loads(PROGRAMS_JSON.read_text(encoding="utf-8"))
     index_pe_blis = {p["pe_bli"] for p in programs}
-    index_fy26_by_pe = {
-        p["pe_bli"]: (p.get("trajectory") or {}).get("fy2026_total") or 0.0
+    # Task E3 (Sprint E, ROADMAP #67): index_fy26_by_pe used to be a
+    # {pe_bli: fy2026_total} dict comprehension — for the 8 genuine
+    # appropriation-account collisions, programs.json now carries TWO
+    # entries sharing one pe_bli (E1's re-grain + this task's split pages),
+    # so that comprehension silently kept only whichever entry iterated
+    # last and this script would then wrongly flag the OTHER title as
+    # undisclosed even though it is now a real, published page. Indexing by
+    # (pe_bli, title) instead — titles are always sourced from budget_lines
+    # (dim_programs.sql's matched/synth branches both read b.title), so
+    # they match fct_budget_lines' own title exactly and this key is
+    # unambiguous for every program, split or not.
+    index_fy26_by_pair = {
+        (p["pe_bli"], p["title"]): (p.get("trajectory") or {}).get("fy2026_total") or 0.0
         for p in programs
     }
 
@@ -88,7 +99,15 @@ def main() -> int:
         by_pe[pe][title] = float(amt)
 
     undisclosed: list[dict] = []
-    resolved_known_keys: set[str] = set()
+    # Task E3 (Sprint E, ROADMAP #67): a KNOWN #56 key is "resolved" when
+    # EVERY title under it is accounted for — either disclosed (the pre-E3
+    # shape, still true for the 2 keys that stayed merged: 1350, 2101) OR
+    # published as its own (pe_bli, title) index entry (the NEW shape for
+    # the 8 genuine collisions this sprint splits — both titles now have
+    # their own real page, so neither needs disclosing at all). The old
+    # definition ("resolved iff the excluded side is disclosed") went stale
+    # the moment a key stopped having an excluded side.
+    accounted_titles: dict[str, set[str]] = defaultdict(set)
 
     for pe, by_title in by_pe.items():
         if pe not in index_pe_blis:
@@ -101,20 +120,26 @@ def main() -> int:
                         "why": "pe_bli has no program page and this title is"
                                " not in programs_excluded.json",
                     })
-                elif pe in KNOWN_COLLISION_KEYS:
-                    resolved_known_keys.add(pe)
+                else:
+                    accounted_titles[pe].add(title)
             continue
 
         if len(by_title) < 2:
+            accounted_titles[pe].update(by_title)
             continue  # single title under this pe_bli: it IS the index entry
 
-        # (b) pe_bli present, but does it cover EVERY title's money? The
-        # title whose OWN sum matches what the index counts for this pe_bli
-        # is the represented program; every other title must be disclosed.
-        index_amt = index_fy26_by_pe.get(pe, 0.0)
+        # (b) pe_bli present, but does it cover EVERY title's money? A title
+        # is covered when its OWN (pe_bli, title) pair is itself a published
+        # index entry (Task E3: programs.json can now carry TWO entries
+        # sharing this pe_bli, one per real account — each is checked on its
+        # own exact title, never a single pe_bli-level total that could only
+        # ever match one of them) — OR, same as case (a), explicitly
+        # disclosed.
         for title, amt in by_title.items():
-            if abs(amt - index_amt) < TOL:
-                continue  # this title IS what the index counts here
+            index_amt = index_fy26_by_pair.get((pe, title))
+            if index_amt is not None and abs(amt - index_amt) < TOL:
+                accounted_titles[pe].add(title)
+                continue  # this exact (pe_bli, title) IS a published page
             if (pe, title) not in disclosed_pairs:
                 undisclosed.append({
                     "pe_bli": pe, "title": title, "amount_thousands": amt,
@@ -123,8 +148,13 @@ def main() -> int:
                            f" title's own money ({amt}), and this title is"
                            " not in programs_excluded.json",
                 })
-            elif pe in KNOWN_COLLISION_KEYS:
-                resolved_known_keys.add(pe)
+            else:
+                accounted_titles[pe].add(title)
+
+    resolved_known_keys = {
+        pe for pe in KNOWN_COLLISION_KEYS
+        if pe in by_pe and accounted_titles.get(pe, set()) == set(by_pe[pe])
+    }
 
     print(json.dumps({
         "n_universe_pairs": sum(len(t) for t in by_pe.values()),

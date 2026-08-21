@@ -337,7 +337,16 @@ export interface ProgramHHI {
 
 export interface ProgramRow {
   award_count: number;
-  exhibit_family: string;
+  /**
+   * Sprint E, Task E3 (ROADMAP #67): null for the SYNTHETIC side of one of
+   * the 8 appropriation-account collisions (e.g. LPD Flight II) — that
+   * account has no R-2/P-40 exhibit behind it at all (dbt/models/marts/
+   * dim_programs.sql's `synth` branch), so there is no exhibit to name.
+   * Every consumer already treats "budget"/unknown as the honest fallback
+   * label (rollup-tier programs produce it too) — see answerFamilyPlain /
+   * exhibitFamilyLabel.
+   */
+  exhibit_family: string | null;
   fully_reconciled: boolean;
   fy2024_actual_millions: number | null;
   fy2024_fact_id: string | null;
@@ -361,6 +370,19 @@ export interface ProgramRow {
    */
   fy2026_disc_toa_usd_thousands?: number | null;
   fy2026_reconciliation_toa_usd_thousands?: number | null;
+  /**
+   * Sprint E, Task E3 (ROADMAP #67) — the URL-contract identity. `slug` is
+   * the page's route/filename: identical to `pe_bli` for every ordinary
+   * program, "{pe_bli}-{ACCOUNT_CODE}" for the 8 genuine appropriation-
+   * account collisions (dbt/models/marts/dim_programs.sql's account_match).
+   * `account` / `account_title` are non-null on exactly those same 16 rows
+   * — two dim_programs rows now legitimately share one `pe_bli`, and this
+   * is how a caller tells them apart. Always use `slug` for hrefs; `pe_bli`
+   * remains the display code and the bare-key stub-page identity.
+   */
+  slug: string;
+  account: string | null;
+  account_title: string | null;
 }
 
 let _programs: ProgramRow[] | null = null;
@@ -373,9 +395,48 @@ export function getPrograms(): ProgramRow[] {
   return _programs;
 }
 
+/**
+ * Keyed by SLUG (Sprint E, Task E3 — ROADMAP #67), not pe_bli: identical to
+ * pe_bli for every ordinary program, but the 8 genuine appropriation-account
+ * collisions each carry TWO programs.json rows sharing one pe_bli — keying
+ * by pe_bli would silently collapse them (whichever iterated last wins),
+ * exactly the #56 fusion failure this sprint removes. `[peBli]`'s dynamic
+ * route param IS the slug for a real program page (see generateStaticParams
+ * / getProgramPeBlis, which enumerate program_details sidecar basenames —
+ * also filed by slug).
+ */
 export function getProgramMap(): Map<string, ProgramRow> {
   const programs = getPrograms();
-  return new Map(programs.map((p) => [p.pe_bli, p]));
+  return new Map(programs.map((p) => [p.slug, p]));
+}
+
+let _splitProgramKeys: string[] | null = null;
+
+/**
+ * Bare pe_bli values with MORE than one programs.json row — the 8 genuine
+ * appropriation-account collisions (Sprint E, Task E3). The bare
+ * `/program/{pe_bli}/` URL for each of these is a disambiguation STUB
+ * listing both real (slug-addressed) pages, never a program page itself —
+ * it carries no program_details sidecar (see the stub branch in
+ * app/program/[peBli]/page.tsx and program-skeleton.mjs's exclusion of it).
+ */
+export function getSplitProgramKeys(): string[] {
+  if (_splitProgramKeys) return _splitProgramKeys;
+  const counts = new Map<string, number>();
+  for (const p of getPrograms()) {
+    counts.set(p.pe_bli, (counts.get(p.pe_bli) ?? 0) + 1);
+  }
+  _splitProgramKeys = [...counts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([pe]) => pe)
+    .sort();
+  return _splitProgramKeys;
+}
+
+/** Every programs.json row sharing this bare pe_bli — the stub page's own
+ *  listing. Empty for a pe_bli that isn't a split key. */
+export function getProgramsByBareKey(peBli: string): ProgramRow[] {
+  return getPrograms().filter((p) => p.pe_bli === peBli);
 }
 
 // ── program_details/{pe_bli}.json ────────────────────────────────────────────
@@ -744,7 +805,28 @@ export function getDetailGradeCount(): number {
   if (_detailGradeCount !== null) return _detailGradeCount;
   const dir = join(jsonDir(), "program_details");
   if (!existsSync(dir)) return (_detailGradeCount = 0);
+
+  // Sprint E, Task E3 (ROADMAP #67): the cross-check below used to assert
+  // declared (dim_programs row count) === count (sidecars with detail) —
+  // true pre-E1, when dim_programs WAS "every pe_bli with stg_budget_details
+  // presence" by construction (this function's own doc comment above states
+  // that premise). E1's re-grain deliberately added a SYNTHETIC dim_programs
+  // row for the non-detail side of each of the 8 appropriation-account
+  // collisions (dbt/models/marts/dim_programs.sql's `synth` branch — "there
+  // is no R-2/P-40 exhibit behind these rows"), so dim_programs' row count
+  // now legitimately exceeds the detail-grade sidecar count by exactly the
+  // number of those synthetic rows. slugsWithNoDetailExpected identifies
+  // them independently (account !== null on the programs.json row — real
+  // only for the 16 split-key rows, half of which are synthetic by design)
+  // so the assertion can allow exactly that gap instead of forbidding it.
+  const slugsWithAccount = new Set(
+    getPrograms()
+      .filter((p) => p.account !== null)
+      .map((p) => p.slug),
+  );
+
   let count = 0;
+  let expectedNoDetailGap = 0;
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
     let raw: string;
     try {
@@ -752,11 +834,22 @@ export function getDetailGradeCount(): number {
     } catch {
       continue;
     }
-    // An empty details array serializes as `"details":[]` — cheap reject.
-    if (!raw.includes('"details"') || raw.includes('"details":[]')) continue;
+    // An empty details array serializes as `"details": []` — cheap reject
+    // (both the compact and space-after-colon forms, since json.dumps'
+    // default separators include one).
+    if (!raw.includes('"details"') || /"details":\s*\[\]/.test(raw)) {
+      if (slugsWithAccount.has(f.slice(0, -".json".length))) {
+        expectedNoDetailGap++;
+      }
+      continue;
+    }
     try {
       const details = (JSON.parse(raw) as { details?: unknown[] }).details;
-      if (Array.isArray(details) && details.length > 0) count++;
+      if (Array.isArray(details) && details.length > 0) {
+        count++;
+      } else if (slugsWithAccount.has(f.slice(0, -".json".length))) {
+        expectedNoDetailGap++;
+      }
     } catch {
       // skip malformed files
     }
@@ -765,11 +858,13 @@ export function getDetailGradeCount(): number {
   const declared = getDatasetManifest().datasets.find(
     (d) => d.name === "dim_programs",
   )?.row_count;
-  if (declared !== undefined && declared !== count) {
+  if (declared !== undefined && declared !== count + expectedNoDetailGap) {
     throw new Error(
       `[govbudget/data] dim_programs.parquet declares ${declared} rows but ` +
-        `${count} program_details sidecars carry detail rows. The detail-grade ` +
-        `tier is defined by the J-book detail rows themselves, so these must ` +
+        `${count} program_details sidecars carry detail rows and only ` +
+        `${expectedNoDetailGap} of the remainder are accounted for by a ` +
+        `known split-key synthetic (no-detail) row. The detail-grade tier ` +
+        `is defined by the J-book detail rows themselves, so these must ` +
         `agree — re-run "uv run python -m govbudget export-site".`,
     );
   }
@@ -794,11 +889,19 @@ let _peLinkIndex: PeLinkIndex | null = null;
  * "PE X, Project Y" prose references can carry a real #project-Y anchor —
  * only when the target actually has that project row.
  */
+/**
+ * `has` also recognizes the 8 split-key STUBS (Sprint E, Task E3) — a bare
+ * pe_bli mention that cannot know which account it means still resolves to
+ * a real, honest page (the disambiguation stub), so linking it is correct.
+ * `projects` stays scoped to sidecar-backed pages only: a stub carries no
+ * program_details sidecar and therefore no project rows of its own.
+ */
 export function getPeLinkIndex(): PeLinkIndex {
   if (_peLinkIndex) return _peLinkIndex;
   const peSet = new Set(getProgramPeBlis());
+  const stubSet = new Set(getSplitProgramKeys());
   _peLinkIndex = {
-    has: (pe: string) => peSet.has(pe),
+    has: (pe: string) => peSet.has(pe) || stubSet.has(pe),
     projects: (pe: string) => {
       if (!peSet.has(pe)) return EMPTY_SET;
       const cached = _peProjects.get(pe);
@@ -2217,7 +2320,14 @@ export function getProgramDecadeCells(): Map<string, ProgramDecadeCells> {
   if (_programDecadeCells) return _programDecadeCells;
   const payload = readJson<{
     decade_columns?: { key: string; fy: number; kind: string; edition: number }[];
-    orgs?: { programs?: { pe_bli: string; cells?: Record<string, DecadeCell | null> }[] }[];
+    orgs?: {
+      programs?: {
+        pe_bli: string;
+        /** Sprint E, Task E3 — present only for a split-key program row. */
+        slug?: string;
+        cells?: Record<string, DecadeCell | null>;
+      }[];
+    }[];
   }>("years_matrix.json");
 
   const cols = payload.decade_columns ?? [];
@@ -2237,10 +2347,16 @@ export function getProgramDecadeCells(): Map<string, ProgramDecadeCells> {
     );
   }
 
+  // Sprint E, Task E3 (ROADMAP #67): keyed by SLUG, not bare pe_bli — one of
+  // the 8 appropriation-account collisions carries TWO years_matrix.json
+  // program entries sharing one pe_bli (each with its own "slug" field,
+  // emitted only when it differs from pe_bli), and a bare-pe_bli Map would
+  // silently collapse them (whichever entry iterated last wins), showing
+  // one program's FY24/FY26 decade cells on BOTH /programs/ rows.
   const out = new Map<string, ProgramDecadeCells>();
   for (const org of payload.orgs ?? []) {
     for (const p of org.programs ?? []) {
-      out.set(p.pe_bli, {
+      out.set(p.slug ?? p.pe_bli, {
         fy24: p.cells?.[actualsKey] ?? null,
         fy26: p.cells?.[requestKey] ?? null,
       });

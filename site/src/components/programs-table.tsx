@@ -478,14 +478,18 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
           <tbody className="divide-y divide-border">
             {filtered.map((p) => (
               <tr
-                key={p.pe}
+                key={p.s ?? p.pe}
                 role="row"
                 className="pgm-row"
                 data-sort-value={sortValue(p)}
                 // The row's subject, in gate 23's grouping vocabulary — leg e
                 // joins this to /program/{entity}/ to check that the index and
                 // the page it links to state one value under one label.
-                data-entity={p.pe}
+                // Sprint E, Task E3: `s` (present only for the 8 split keys)
+                // is the specific program's own slug — the bare `pe` would
+                // join to the disambiguation stub instead, which has none of
+                // this row's own figures to check.
+                data-entity={p.s ?? p.pe}
               >
                 <td className="pgm-cell-pe">{p.pe}</td>
                 {/* §P1-E: the human service name, not the raw workbook token. */}
@@ -494,7 +498,7 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 </td>
                 <td role="cell" className="pgm-cell-title">
                   <Link
-                    href={`/program/${p.pe}/`}
+                    href={`/program/${p.s ?? p.pe}/`}
                     className="font-medium hover:underline text-foreground"
                     data-program-name
                   >

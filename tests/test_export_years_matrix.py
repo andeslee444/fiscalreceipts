@@ -81,22 +81,25 @@ D_DEC_15A = fact_id_derived("decade", "0601101E|2017", "fy_2015_actuals")
 
 
 def _decade_grains() -> list[tuple]:
+    """8-tuples since Sprint E, ROADMAP #67 (Task E3) — the trailing
+    `account` is None for every row here; none of these fixture pe_blis is
+    one of the 8 genuine appropriation-account collisions."""
     return [
         # FY2020 actuals from PB2022 (edition-authoritative rule: PB(N+2))
         ("0601101E", 2020, 2022, "actuals", 150000.0, W_DEC_20A,
-         "fy_2020_actuals"),
+         "fy_2020_actuals", None),
         # FY2015 actuals from PB2017 — multi-source grain → derived decade fid
         ("0601101E", 2015, 2017, "actuals", 90000.0, D_DEC_15A,
-         "fy_2015_actuals"),
+         "fy_2015_actuals", None),
         # FY2025 enacted from PB2026 CurrentYear
         ("0601101E", 2025, 2026, "enacted", 200000.0, W_DEC_25E,
-         "fy_2025_enacted"),
+         "fy_2025_enacted", None),
         # FY2026 request from PB2026 BudgetYearOne — reuses the workbook fid
         ("0601101E", 2026, 2026, "request", 400000.0, W_DARPA_26,
-         "fy_2026_total"),
+         "fy_2026_total", None),
         # UNCITED grain — the cell must be honestly absent
         ("0303140K", 2020, 2022, "actuals", 30000.0, UNCITED_DEC,
-         "fy_2020_actuals"),
+         "fy_2020_actuals", None),
     ]
 
 
@@ -124,11 +127,15 @@ def _make_duckdb_with_trajectory(tmp_path: Path) -> Path:
 
 
 def _all_prog_rows() -> list[tuple]:
-    """(pe_bli, org, exhibit_family, title, project_count, fy2024m, fully_reconciled)."""
+    """(pe_bli, org, exhibit_family, title, project_count, fy2024m,
+    fully_reconciled, account, account_title) — the last two (Sprint E,
+    ROADMAP #67 / Task E3) are None for every ordinary, non-split program;
+    none of these three fixture rows is one of the 8 genuine
+    appropriation-account collisions."""
     return [
-        ("0601101E", "DARPA", "rdte", "DARPA Research", 1, 100.0, True),
-        ("0602303A", "A", "rdte", "Army Research Lab", 0, None, False),
-        ("0303140K", "CYBERCOM", "rdte", "Cyber Ops", 0, 30.0, False),
+        ("0601101E", "DARPA", "rdte", "DARPA Research", 1, 100.0, True, None, None),
+        ("0602303A", "A", "rdte", "Army Research Lab", 0, None, False, None, None),
+        ("0303140K", "CYBERCOM", "rdte", "Cyber Ops", 0, 30.0, False, None, None),
     ]
 
 
@@ -618,7 +625,7 @@ class TestDecadeColumns:
         — the exporter must fail loudly, never emit an ambiguous column."""
         bad = _decade_grains() + [
             ("0602303A", 2020, 2023, "actuals", 1.0, W_ARMY_24,
-             "fy_2020_actuals"),
+             "fy_2020_actuals", None),
         ]
         with pytest.raises(ValueError, match="edition"):
             _emit(tmp_path, decade_grains=bad)

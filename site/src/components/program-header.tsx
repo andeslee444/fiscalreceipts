@@ -37,9 +37,17 @@ interface ProgramHeaderProps {
   tier?: "full" | "rollup";
 }
 
-/** Human-friendly label for exhibit_family values. */
-function exhibitFamilyLabel(family: string): string {
-  switch (family.toLowerCase()) {
+/**
+ * Human-friendly label for exhibit_family values.
+ *
+ * Sprint E, Task E3 (ROADMAP #67): null is now a real case — one of the 8
+ * appropriation-account collisions' SYNTHETIC accounts (e.g. LPD Flight II)
+ * has no R-2/P-40 exhibit behind it at all (dbt/models/marts/dim_programs.sql's
+ * `synth` branch casts exhibit_family NULL), the same "no classifiable
+ * workbook lines" shape the rollup tier already names "Budget."
+ */
+function exhibitFamilyLabel(family: string | null): string {
+  switch ((family ?? "budget").toLowerCase()) {
     case "rdte":
       return "RDT&E";
     case "procurement":
@@ -49,8 +57,10 @@ function exhibitFamilyLabel(family: string): string {
       return "O&M";
     case "milpers":
       return "MILPERS";
+    case "budget":
+      return "Budget";
     default:
-      return family.toUpperCase();
+      return family!.toUpperCase();
   }
 }
 

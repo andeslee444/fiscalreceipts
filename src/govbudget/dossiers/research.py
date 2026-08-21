@@ -104,26 +104,63 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
     Programs with no trajectory row (or NULL fy2026_total) are excluded —
     a naive top-50 over fct_budget_trajectory alone would pick service lines
     without program pages.
+
+    Task E3 (Sprint E, ROADMAP #67; ROADMAP #68 candidate root cause): the
+    join used to be keyed by (pe_bli, workbook_org(org)) alone. E1's
+    dim_programs re-grain gave 8 pe_bli values a SECOND dim_programs row
+    (same org — both accounts are Navy 'N' — different account), so
+    `traj`'s dict comprehension collapsed each pair's two
+    fct_budget_trajectory rows onto one dict entry, and BOTH dim_programs
+    rows for that pe_bli then read whichever total happened to win the
+    comprehension's iteration order — the exact non-determinism ROADMAP #68
+    observed. Both dim_programs and fct_budget_trajectory carry a real
+    `account` column since E1 (never NULL), so joining on it too resolves
+    each row to its own, correct total deterministically; every non-split
+    pe_bli has exactly one account value regardless, so this is a byte-for-
+    byte no-op for the ~1,740 programs outside the 8 split keys.
     """
     import duckdb
 
     from govbudget.jbooks.orgs import workbook_org
 
+    def _query_with_account_fallback(sql_with, sql_without, account_index):
+        # Task E3: a dim_programs/fct_budget_trajectory schema predating
+        # E1's account column (an older test fixture) — fall back to the
+        # pre-E3 query and pad None. A schema without the column cannot
+        # carry real split-key data, so None is exactly correct there.
+        try:
+            return con.execute(sql_with).fetchall()
+        except Exception:
+            out = []
+            for r in con.execute(sql_without).fetchall():
+                r = list(r)
+                r.insert(account_index, None)
+                out.append(tuple(r))
+            return out
+
     con = duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        progs = con.execute("select pe_bli, title, org from dim_programs").fetchall()
+        progs = _query_with_account_fallback(
+            "select pe_bli, title, org, account from dim_programs",
+            "select pe_bli, title, org from dim_programs",
+            account_index=3,
+        )
         traj = {
-            (r[0], r[1]): r[2]
-            for r in con.execute(
-                "select pe_bli, organization, fy2026_total from fct_budget_trajectory"
-            ).fetchall()
+            (r[0], r[1], r[2]): r[3]
+            for r in _query_with_account_fallback(
+                "select pe_bli, organization, account, fy2026_total"
+                " from fct_budget_trajectory",
+                "select pe_bli, organization, fy2026_total"
+                " from fct_budget_trajectory",
+                account_index=2,
+            )
         }
     finally:
         con.close()
 
     rows: list[tuple[str, str, str, float]] = []
-    for pe_bli, title, org in progs:
-        total = traj.get((pe_bli, workbook_org(org)))
+    for pe_bli, title, org, account in progs:
+        total = traj.get((pe_bli, workbook_org(org), account))
         if total is None:
             continue
         rows.append((pe_bli, title, org, float(total)))

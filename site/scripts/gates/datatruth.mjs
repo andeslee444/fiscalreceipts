@@ -320,8 +320,26 @@ export async function runDataTruthGate() {
   // artifacts, one number, and a FAIL if they diverge.
   let expectedPages = null;
   let expectedDetail = null;
+  let expectedNoDetailGap = 0;
   const pdDir = path.join(jsonDir, "program_details");
   if (fs.existsSync(pdDir)) {
+    // Sprint E, Task E3 (ROADMAP #67): dim_programs' row count can now
+    // legitimately exceed the detail-grade sidecar count — E1's re-grain
+    // added a SYNTHETIC (no-detail) dim_programs row for the non-detail
+    // side of each of the 8 appropriation-account collisions (dbt/models/
+    // marts/dim_programs.sql's `synth` branch: "there is no R-2/P-40
+    // exhibit behind these rows"). programs.json's `account` field is
+    // non-null on exactly those 16 split rows, so a sidecar with no detail
+    // whose slug carries an account is an EXPECTED gap member, not a
+    // divergence.
+    const programsPath = path.join(jsonDir, "programs.json");
+    const slugsWithAccount = new Set(
+      fs.existsSync(programsPath)
+        ? JSON.parse(fs.readFileSync(programsPath, "utf8"))
+            .filter((p) => p.account !== null && p.account !== undefined)
+            .map((p) => p.slug)
+        : [],
+    );
     const files = fs.readdirSync(pdDir).filter((f) => f.endsWith(".json"));
     expectedPages = files.length;
     let withDetail = 0;
@@ -332,10 +350,18 @@ export async function runDataTruthGate() {
       } catch {
         continue;
       }
-      if (!raw.includes('"details"') || raw.includes('"details":[]')) continue;
+      const slug = f.slice(0, -".json".length);
+      if (!raw.includes('"details"') || /"details":\s*\[\]/.test(raw)) {
+        if (slugsWithAccount.has(slug)) expectedNoDetailGap++;
+        continue;
+      }
       try {
         const d = JSON.parse(raw).details;
-        if (Array.isArray(d) && d.length > 0) withDetail++;
+        if (Array.isArray(d) && d.length > 0) {
+          withDetail++;
+        } else if (slugsWithAccount.has(slug)) {
+          expectedNoDetailGap++;
+        }
       } catch {
         // skip malformed
       }
@@ -348,7 +374,8 @@ export async function runDataTruthGate() {
     );
   } else {
     // Cross-check against the parquet inventory /data/ renders. Two shipped
-    // artifacts that both claim to describe the detail-grade tier must agree.
+    // artifacts that both claim to describe the detail-grade tier must agree
+    // — modulo the known, independently-derived split-key synthetic gap.
     const dsPath = path.join(jsonDir, "datasets.json");
     let declared;
     if (fs.existsSync(dsPath)) {
@@ -356,16 +383,18 @@ export async function runDataTruthGate() {
         (d) => d.name === "dim_programs",
       )?.row_count;
     }
-    if (declared !== undefined && declared !== expectedDetail) {
+    if (declared !== undefined && declared !== expectedDetail + expectedNoDetailGap) {
       errors.push(
-        `leg d: ${expectedDetail} sidecars carry J-book detail rows but ` +
-          `datasets.json publishes dim_programs at ${declared} rows — /data/ and the ` +
-          `corpus statement would describe the same tier two different ways`,
+        `leg d: ${expectedDetail} sidecars carry J-book detail rows and only ` +
+          `${expectedNoDetailGap} of the remainder are accounted for by a known ` +
+          `split-key synthetic (no-detail) row, but datasets.json publishes ` +
+          `dim_programs at ${declared} rows — /data/ and the corpus statement ` +
+          `would describe the same tier two different ways`,
       );
     }
     notes.push(
       `leg d: corpus recompute — ${expectedPages} program pages, ${expectedDetail} detail-grade ` +
-        `(dim_programs parquet: ${declared ?? "n/a"}) ✓`,
+        `+ ${expectedNoDetailGap} split-key synthetic (dim_programs parquet: ${declared ?? "n/a"}) ✓`,
     );
   }
 

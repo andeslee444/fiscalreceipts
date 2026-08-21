@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { SITE_URL } from "@/lib/site";
 import { isZeroContentDetails } from "@/lib/program-tier";
+import { getSplitProgramKeys } from "@/lib/data";
 import type { ProgramDetails } from "@/lib/data";
 
 export const dynamic = "force-static";
@@ -80,6 +81,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
       }));
   } catch {
     // sidecars not yet generated — sitemap will be incomplete
+  }
+
+  // Sprint E, Task E3 (ROADMAP #67): the 8 split-key bare-pe_bli
+  // disambiguation stubs — real, indexable pages (see the stub branch in
+  // app/program/[peBli]/page.tsx) that carry no program_details sidecar, so
+  // the directory scan above never sees them. A slightly lower priority:
+  // real content, but thinner than a program page.
+  for (const peBli of getSplitProgramKeys()) {
+    programPages.push({
+      url: `${base}/program/${peBli}/`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    });
   }
 
   // ── Dynamic company pages ─────────────────────────────────────────────────

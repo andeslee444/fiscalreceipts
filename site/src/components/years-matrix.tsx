@@ -71,6 +71,14 @@ export interface YearsProject {
 
 export interface YearsProgram {
   pe_bli: string;
+  /**
+   * Sprint E, Task E3 (ROADMAP #67) — present ONLY for one of the 8
+   * appropriation-account collisions' two rows (where it differs from
+   * pe_bli). Use `slug ?? pe_bli` for React keys, expand-state tracking,
+   * and hrefs — the bare pe_bli is shared by both of a split key's rows and
+   * would otherwise silently conflate them (duplicate key, wrong link).
+   */
+  slug?: string;
   title: string;
   /** Keyed by amount_type + delta columns. */
   cells: Record<string, YearsCell | undefined>;
@@ -1095,11 +1103,13 @@ export function YearsMatrix() {
               ? // Flat mode — global sort order (org grouping suspended).
                 visibleEntries.map((entry) => (
                   <ProgramRows
-                    key={entry.program.pe_bli}
+                    key={entry.program.slug ?? entry.program.pe_bli}
                     entry={entry}
                     columns={visibleCols}
                     decadeMeta={decadeMeta}
-                    expanded={expandedPrograms.has(entry.program.pe_bli)}
+                    expanded={expandedPrograms.has(
+                      entry.program.slug ?? entry.program.pe_bli,
+                    )}
                     onToggle={toggleProgram}
                     showOrg
                   />
@@ -1150,12 +1160,12 @@ export function YearsMatrix() {
                       {!collapsed &&
                         orgEntries.map((entry) => (
                           <ProgramRows
-                            key={entry.program.pe_bli}
+                            key={entry.program.slug ?? entry.program.pe_bli}
                             entry={entry}
                             columns={visibleCols}
                             decadeMeta={decadeMeta}
                             expanded={expandedPrograms.has(
-                              entry.program.pe_bli,
+                              entry.program.slug ?? entry.program.pe_bli,
                             )}
                             onToggle={toggleProgram}
                           />
@@ -1223,7 +1233,7 @@ function ProgramRows({
               <button
                 type="button"
                 data-expand
-                onClick={() => onToggle(program.pe_bli)}
+                onClick={() => onToggle(program.slug ?? program.pe_bli)}
                 aria-expanded={expanded}
                 aria-label={`${expanded ? "Collapse" : "Expand"} ${program.title} projects`}
                 className="shrink-0 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -1246,7 +1256,7 @@ function ProgramRows({
             <span className="min-w-0">
               <span className="flex items-center gap-1">
                 <Link
-                  href={`/program/${program.pe_bli}/`}
+                  href={`/program/${program.slug ?? program.pe_bli}/`}
                   className="block min-w-0 flex-1 truncate text-foreground hover:underline"
                   title={program.title}
                 >
@@ -1262,7 +1272,7 @@ function ProgramRows({
                   // family members are not necessarily adjacent, so there is no
                   // connector line between rows.
                   <Link
-                    href={`/program/${program.pe_bli}/`}
+                    href={`/program/${program.slug ?? program.pe_bli}/`}
                     // Decorative signpost to the SAME destination the title
                     // link already reaches — not its own keyboard tab stop
                     // (avoids a redundant adjacent tab stop per family row).

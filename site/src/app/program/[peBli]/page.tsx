@@ -15,6 +15,8 @@ import {
   getSnapshotMeta,
   getSiteMeta,
   collectCitationsWithInputs,
+  getSplitProgramKeys,
+  getProgramsByBareKey,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
 import type {
@@ -85,9 +87,19 @@ export const dynamicParams = false;
  * after the Phase 5G Army/AF/SF archive round) — the ~1,741 full-tier
  * programs from programs.json plus the ~254 remaining rollup-tier sidecars
  * (R-1/P-1 figures + trajectory only, no matching R-2/P-40 J-book detail).
+ *
+ * Sprint E, Task E3 (ROADMAP #67): PLUS the 8 split-key STUB params — bare
+ * pe_bli values with more than one programs.json row (a genuine
+ * appropriation-account collision). A stub carries no program_details
+ * sidecar of its own (see the stub branch below and program-skeleton.mjs's
+ * exclusion of it), so it is not in getProgramPeBlis()'s directory listing —
+ * union it in explicitly or its bare URL (a live 200 today for 6 of the 8
+ * keys) would 404.
  */
 export function generateStaticParams(): { peBli: string }[] {
-  return getProgramPeBlis().map((peBli) => ({ peBli }));
+  return [...getProgramPeBlis(), ...getSplitProgramKeys()].map((peBli) => ({
+    peBli,
+  }));
 }
 
 /** Resolve the page's ProgramRow: full tier from programs.json, rollup tier
@@ -108,6 +120,129 @@ function resolveProgram(
   );
 }
 
+// ── Sprint E, Task E3 — the disambiguation stub ──────────────────────────────
+//
+// The URL contract (docs/superpowers/plans/2026-08-14-sprint-e-key-split.md):
+// a bare pe_bli identifies exactly one program UNLESS dim_programs carries
+// more than one row for it (8 genuine appropriation-account collisions), in
+// which case the bare URL is this disambiguation stub and each account gets
+// its own page at "{pe_bli}-{ACCOUNT_CODE}/" (ProgramRow.slug). Every one of
+// the 6 URLs that resolved before this sprint still resolves — as a stub
+// instead of a program page, which is the honest outcome once a key
+// genuinely names two different programs.
+//
+// A collision key can share a display title across BOTH accounts (2292
+// Naval Strike Missile — one weapon, two services' own funding lines, not
+// one program whose account moved between editions like 1045 COLUMBIA) —
+// stubDisplayTitle disambiguates by appending the account_title whenever a
+// sibling shares the exact title, so the stub (and the linked pages' own
+// headers) never show two identical, indistinguishable entries.
+function stubDisplayTitle(program: ProgramRow, siblings: ProgramRow[]): string {
+  const collides = siblings.some(
+    (s) => s.slug !== program.slug && s.title === program.title,
+  );
+  return collides && program.account_title
+    ? `${program.title} — ${program.account_title}`
+    : program.title;
+}
+
+function stubMetadata(peBli: string): Metadata {
+  const programs = getProgramsByBareKey(peBli);
+  const title = `Budget line ${peBli} — multiple programs`;
+  const description =
+    `Budget line ${peBli} is used by ${programs.length} separate programs ` +
+    `under different appropriation accounts: ` +
+    `${programs.map((p) => stubDisplayTitle(p, programs)).join(" and ")}. ` +
+    `Choose one below for its own figures, citations, and history.`;
+  const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    // Thin disambiguation content — indexable so a reader searching the
+    // bare code still finds it, but never mistaken for a program page.
+    openGraph: { title, description, url: canonicalUrl, siteName: SITE_NAME },
+  };
+}
+
+function StubPage({ peBli }: { peBli: string }) {
+  const programs = getProgramsByBareKey(peBli);
+  // gate 2 render-static (a0): every dollar figure on the built page must
+  // sit inside a [data-amount] element — a plain formatAmount() string does
+  // not. Each program's own FY2026 total is already a cited fact
+  // (trajectory_fact_ids.fy2026_total); collect them so the panel can
+  // resolve the chip. chip={false} avoids nesting an interactive citation
+  // button inside the row's own <Link> (axe: no nested-interactive).
+  const pageFactIds = programs
+    .map((p) => p.trajectory_fact_ids?.fy2026_total)
+    .filter((fid): fid is string => Boolean(fid));
+  const citationsSlice = collectCitationsWithInputs(pageFactIds);
+  return (
+    <CitationPanelProvider citations={citationsSlice}>
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Programs", href: "/programs/" },
+            { label: `Budget line ${peBli}` },
+          ]}
+        />
+        <h1 className="text-2xl font-semibold mb-2 text-foreground">
+          Budget line {peBli}
+        </h1>
+        <p className="mb-6 text-muted-foreground leading-7">
+          This numeric budget line code is used by{" "}
+          <strong>{programs.length} separate programs</strong>, each funded
+          from a different appropriation account. They coincidentally share
+          this code; their money is never combined. Choose one:
+        </p>
+        <ul className="space-y-3">
+          {programs.map((p) => (
+            <li key={p.slug}>
+              <Link
+                href={`/program/${p.slug}/`}
+                className="block rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/60 transition-colors"
+              >
+                <div className="font-medium text-foreground">
+                  {stubDisplayTitle(p, programs)}
+                </div>
+                <div className="mt-0.5 text-sm text-muted-foreground">
+                  {p.account_title ?? serviceOrgName(p.org)}
+                  {p.trajectory?.fy2026_total != null && (
+                    <>
+                      {" · "}
+                      <Cite
+                        value={p.trajectory.fy2026_total}
+                        units="USD thousands"
+                        dataset="fct_program_trajectory"
+                        factId={p.trajectory_fact_ids?.fy2026_total ?? null}
+                        basis="toa"
+                        fy={2026}
+                        measure="request"
+                        // gate 23 leg a2: without an explicit entity, the
+                        // gate's attribute-path grouping falls back to the
+                        // PAGE's own PE (this bare, ambiguous pe_bli) for
+                        // every [data-amount] on it — which would group
+                        // BOTH programs' different FY2026 figures under one
+                        // (entity, fy, measure) label and flag a false
+                        // collision. Each program's own slug is its real,
+                        // distinct entity.
+                        entity={p.slug}
+                        chip={false}
+                      />{" "}
+                      requested for FY2026
+                    </>
+                  )}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </CitationPanelProvider>
+  );
+}
+
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -119,8 +254,23 @@ export async function generateMetadata({
   if (!getPeLinkIndex().has(peBli)) {
     return { title: "Program Not Found" };
   }
+  if (getSplitProgramKeys().includes(peBli)) {
+    return stubMetadata(peBli);
+  }
   const details = getProgramDetails(peBli);
-  const { program, tier } = resolveProgram(peBli, details);
+  const { program: resolvedProgram, tier } = resolveProgram(peBli, details);
+  // Sprint E, Task E3: disambiguate a title that collides with a sibling
+  // under the same bare pe_bli (2292 Naval Strike Missile — two funding
+  // lines, one weapon; see stubDisplayTitle's doc comment). A no-op for
+  // every non-split program (siblings = [itself], no collision) — every
+  // downstream `program.title` read on this page inherits the fix for free.
+  const program: ProgramRow = {
+    ...resolvedProgram,
+    title: stubDisplayTitle(
+      resolvedProgram,
+      getProgramsByBareKey(resolvedProgram.pe_bli),
+    ),
+  };
 
   // ── §P2-5: the description is WRITTEN, and it is on the canonical basis ──
   //
@@ -207,8 +357,23 @@ export default async function ProgramPage({
   const { peBli } = await params;
 
   if (!getPeLinkIndex().has(peBli)) notFound();
+  if (getSplitProgramKeys().includes(peBli)) {
+    return <StubPage peBli={peBli} />;
+  }
   const details = getProgramDetails(peBli);
-  const { program, tier } = resolveProgram(peBli, details);
+  const { program: resolvedProgram, tier } = resolveProgram(peBli, details);
+  // Sprint E, Task E3: disambiguate a title that collides with a sibling
+  // under the same bare pe_bli (2292 Naval Strike Missile — two funding
+  // lines, one weapon; see stubDisplayTitle's doc comment). A no-op for
+  // every non-split program (siblings = [itself], no collision) — every
+  // downstream `program.title` read on this page inherits the fix for free.
+  const program: ProgramRow = {
+    ...resolvedProgram,
+    title: stubDisplayTitle(
+      resolvedProgram,
+      getProgramsByBareKey(resolvedProgram.pe_bli),
+    ),
+  };
   const peIndex = getPeLinkIndex();
 
   // Build set of linkable family_keys (entities_top).

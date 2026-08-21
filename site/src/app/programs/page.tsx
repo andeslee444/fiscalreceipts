@@ -43,8 +43,12 @@ export default function ProgramsPage() {
   // because it is the same FACT, so a chip here opens the same receipt as the
   // chip on the page this row links to (see toProgramsTableRow).
   const cells = getProgramDecadeCells();
+  // Sprint E, Task E3: look up by slug (identity for every non-split
+  // program) — a bare pe_bli lookup would hand BOTH of a split key's rows
+  // the same decade cells, which is exactly the #56 fusion shape this
+  // sprint removes, reintroduced one surface later.
   const sorted = [...programs]
-    .map((p) => toProgramsTableRow(p, cells.get(p.pe_bli)))
+    .map((p) => toProgramsTableRow(p, cells.get(p.slug)))
     .sort((a, b) => (b.fy26 ?? -Infinity) - (a.fy26 ?? -Infinity));
 
   // Distinct orgs sorted alphabetically

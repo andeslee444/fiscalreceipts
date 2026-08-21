@@ -42,6 +42,9 @@ const PROGRAM: ProgramRow = {
   title: "F-35",
   trajectory: null,
   trajectory_fact_ids: null,
+  slug: "ATA000",
+  account: null,
+  account_title: null,
 };
 
 function card(overrides: Partial<SummaryCard>): SummaryCard {

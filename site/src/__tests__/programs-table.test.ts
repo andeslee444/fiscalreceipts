@@ -20,6 +20,7 @@ import { aliasChipText } from "@/lib/aliases";
 function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
   return {
     pe_bli: "ATA000",
+    slug: (over.pe_bli as string | undefined) ?? "ATA000",
     title: "F-35",
     org: "F",
     exhibit_family: "procurement",
@@ -35,6 +36,8 @@ function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
     trajectory_fact_ids: null,
     fy2026_disc_toa_usd_thousands: null,
     fy2026_reconciliation_toa_usd_thousands: null,
+    account: null,
+    account_title: null,
     ...over,
   };
 }

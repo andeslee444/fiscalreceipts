@@ -96,6 +96,9 @@ const PROGRAM: ProgramRow = {
   title: "Joint Hypersonics Transition Office",
   trajectory: null,
   trajectory_fact_ids: null,
+  slug: "0603183D8Z",
+  account: null,
+  account_title: null,
 };
 
 describe("ProgramHeader hero wiring", () => {

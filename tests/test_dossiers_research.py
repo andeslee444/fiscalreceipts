@@ -59,14 +59,19 @@ CATEGORY_ENUM = {"drones", "hypersonics", "space", "shipbuilding", "cyber", "def
 def fixture_duckdb(tmp_path):
     db = tmp_path / "fixture.duckdb"
     con = duckdb.connect(str(db))
+    # account/account_title (Sprint E, ROADMAP #67 — E1's dim_programs/
+    # fct_budget_trajectory re-grain): every row carries a real account
+    # value now, so top50()'s account-qualified join has something to match
+    # on even for these ordinary (non-split) fixture rows.
     con.execute("create table dim_programs (pe_bli varchar, org varchar,"
                 " exhibit_family varchar, project_count bigint,"
                 " fy2024_actual_millions double, fully_reconciled boolean,"
-                " title varchar)")
+                " title varchar, account varchar)")
     con.execute("create table fct_budget_trajectory (pe_bli varchar,"
                 " organization varchar, fy2024_actuals double,"
                 " fy2025_total double, fy2026_total double,"
-                " fy2526_change double, fy2526_pct_change double)")
+                " fy2526_change double, fy2526_pct_change double,"
+                " account varchar)")
     rows = [
         # (pe_bli, doc org, title, workbook org, fy2026)
         ("0601101E", "DARPA", "Defense Research Sciences", "DARPA", 100.0),
@@ -77,14 +82,15 @@ def fixture_duckdb(tmp_path):
         ("0699NOPE", "OSD", "Orphan Program", None, None),
     ]
     for pe, org, title, wb, total in rows:
-        con.execute("insert into dim_programs values (?,?,?,?,?,?,?)",
-                    [pe, org, "rdte", 1, 1.0, True, title])
+        account = f"ACCT-{pe}"
+        con.execute("insert into dim_programs values (?,?,?,?,?,?,?,?)",
+                    [pe, org, "rdte", 1, 1.0, True, title, account])
         if wb is not None:
-            con.execute("insert into fct_budget_trajectory values (?,?,?,?,?,?,?)",
-                        [pe, wb, 1.0, 1.0, total, 0.0, 0.0])
+            con.execute("insert into fct_budget_trajectory values (?,?,?,?,?,?,?,?)",
+                        [pe, wb, 1.0, 1.0, total, 0.0, 0.0, account])
     # trajectory-only service line (not in dim_programs) -> never selected
     con.execute("insert into fct_budget_trajectory values"
-                " ('2013','N',0,0,99999999,0,0)")
+                " ('2013','N',0,0,99999999,0,0,'ACCT-2013')")
     con.close()
     return db
 
