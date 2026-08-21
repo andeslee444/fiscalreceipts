@@ -3595,16 +3595,48 @@ def _build_decade_citation_rows(
             built_at,
         ))
 
-    # Task E3 (Sprint E, ROADMAP #67): decade_grains is now the FULL 8-tuple
-    # working list unchanged — no collapse to one "primary" account. E2's
+    # Task E3 (Sprint E, ROADMAP #67): decade_grains is the FULL 8-tuple
+    # working list — no collapse to one "primary" account. E2's
     # _resolve_decade_grains_primary_account existed only because every
     # downstream consumer still assumed one row per (pe_bli, fy, edition,
-    # kind); this task is what gives each of the 8 split keys' two accounts
-    # its OWN page, so each downstream reader (decade_series_by_pe,
-    # _build_summary_blocks' decade_slot, _emit_years_matrix's decade
-    # columns) now keys on account too instead of the collapse deciding it
-    # by dict-iteration order.
-    decade_grains = decade_grains_full
+    # kind); E3 gives each of the split keys' two accounts its OWN page, so
+    # each downstream reader (decade_series_by_pe, _build_summary_blocks'
+    # decade_slot, _emit_years_matrix's decade columns) keys on account too
+    # instead of a collapse deciding it by dict-iteration order.
+    #
+    # E2.1 CORRECTION (2026-08-21): fct_decade_series' own collision anchor
+    # widened from fy_2026_total-only (8 keys, == dim_programs.split_pe_blis
+    # exactly) to any-amount_type (10 keys — also 1350, 2101; see that
+    # model's own header comment). The two sets are no longer identical:
+    # 1350/2101 have zero dim_programs rows (Tomahawk's "no_detail" shape —
+    # no R-2/P-40 detail on either side, so no page was ever split for
+    # them), yet their decade_grains rows now carry a real, non-NULL
+    # account. Every downstream reader above assumes "account is real" <=>
+    # "this pe_bli has its own split page" (ident.split_pe_blis) — for a
+    # pe_bli where that assumption breaks, _gkey-style normalization either
+    # silently overwrites one account's figure with the other's (a dict
+    # keyed by the collapsed (pe_bli, None) slot) or appends both as
+    # duplicate points under one bare-pe_bli key — both are exactly the
+    # "arbitrary/duplicated, not fused" failure shape flagged when this
+    # collapse step was first written, just triggered a different way.
+    # There is no page-level account attribution to render these two
+    # accounts under (no split page exists), so the correct, honest
+    # behavior is the same one B'1 originally chose: no decade point for
+    # this pe_bli at all, rather than guessing. Filtered out here (the ONE
+    # place every decade-grain consumer reads from) rather than taught to
+    # each of the three consumers separately.
+    try:
+        _ident_con = _duckdb.connect(str(duckdb_path), read_only=True)
+        try:
+            _decade_ident = _fetch_program_identity(_ident_con)
+        finally:
+            _ident_con.close()
+    except Exception:
+        _decade_ident = _ProgramIdentity([])
+    decade_grains = [
+        g for g in decade_grains_full
+        if g[7] is None or g[0] in _decade_ident.split_pe_blis
+    ]
 
     print(
         f"decade: {len(decade_grains)} grains for {len(pes & {g[0] for g in decade_grains})}"

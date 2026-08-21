@@ -414,3 +414,31 @@ class TestSearchAliasesCsv:
                 continue
             _, pe, xml_path = ref.split(":", 2)
             assert (pe, xml_path) in known, f"{r['term']}: {ref} unresolved"
+
+
+class TestTop50AccountJoin:
+    """E3.1 regression (2026-08-21).
+
+    E3 re-keyed top50()'s dim_programs -> fct_budget_trajectory lookup on
+    account to resolve Sprint E's split keys deterministically, on the stated
+    premise that "both carry a real account column since E1 (never NULL)".
+    dim_programs' account is NULL for 199 of 1,749 rows — every rollup-tier
+    program with no J-book detail row to carry one — while the trajectory's
+    is NULL for 0 of 1,988. The lookup missed all 199 and `continue`d past
+    them, producing a top-50 of DoD programs containing no F-35, no B-21 and
+    no F-15EX. Nothing failed loudly; the list was simply wrong.
+    """
+
+    @pytest.mark.skipif(not LIVE_DUCKDB.exists(), reason="live duckdb not present")
+    def test_flagship_programs_are_not_silently_dropped(self):
+        ids = {r[0] for r in top50(LIVE_DUCKDB)}
+        # If the account join regresses, these are the first to vanish: each
+        # is a rollup-tier row whose dim_programs.account is NULL.
+        for pe_bli, name in (("ATA000", "F-35"), ("B02100", "B-21"), ("F015EX", "F-15EX")):
+            assert pe_bli in ids, f"{name} ({pe_bli}) dropped out of the dossier top-50"
+
+    @pytest.mark.skipif(not LIVE_DUCKDB.exists(), reason="live duckdb not present")
+    def test_a_null_account_program_still_resolves_its_total(self):
+        """The fallback must produce a real total, not merely include the row."""
+        rows = {r[0]: r[3] for r in top50(LIVE_DUCKDB)}
+        assert rows.get("ATA000", 0) > 0

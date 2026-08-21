@@ -5,17 +5,19 @@
 -- ('3010' rendering LPD Flight II's $2.6B under Shipboard Tactical
 -- Communications' title, the defect this sprint exists to close).
 --
--- After E2, every row where this mart has attributed a specific account
--- (account IS NOT NULL — the 8 genuine PB2026 collisions) must aggregate
--- exactly ONE account's detail rows for its slot: n_source_rows > 1 there
--- would mean two accounts are STILL being summed under one attributed
--- account label, i.e. the leak has not actually closed, just been
--- relabelled. Rows where account IS NULL are the deliberately
--- out-of-scope collapse case (ordinary single-account pe_bli, plus the
--- disclosed non-8-key multi-account pe_bli this sprint does not split —
--- see fct_decade_series.sql's own header comment) and may still
--- legitimately carry n_source_rows > 1; this assertion does not touch
--- them.
+-- After E2 (widened E2.1, 2026-08-21 — the fy_2026_total-only anchor
+-- undercounted 1350/2101, caught by gate 23 leg h2), every row where this
+-- mart has attributed a specific account (account IS NOT NULL — the 10
+-- genuine PB2026 collisions) must aggregate exactly ONE account's detail
+-- rows for its slot: n_source_rows > 1 there would mean two accounts are
+-- STILL being summed under one attributed account label, i.e. the leak
+-- has not actually closed, just been relabelled. Rows where account IS
+-- NULL are the deliberately out-of-scope collapse case (ordinary
+-- single-account pe_bli, 1045/COLUMBIA which correctly never collides at
+-- one amount_type, plus two disclosed non-program placeholder keys this
+-- sprint does not split — see fct_decade_series.sql's own header comment)
+-- and may still legitimately carry n_source_rows > 1; this assertion does
+-- not touch them.
 select pe_bli, account, fy, edition_year, amount_type, n_source_rows
 from {{ ref('fct_decade_series') }}
 where account is not null

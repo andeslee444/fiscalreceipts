@@ -58,64 +58,75 @@
 -- (pe_bli, edition_year, amount_type) join keys + n_source_rows so the
 -- exporter can mint derived sum facts with per-row breakdown inputs.
 --
--- E2 (Sprint E, ROADMAP #67) — account-aware grain for the 8 PB2026 genuine
--- collisions. Pre-E2 this mart grouped `detail` by (pe_bli, edition_year,
--- scenario) alone, so a pe_bli coincidentally shared by two DIFFERENT real
--- appropriation accounts (#56 — e.g. '3010' is BOTH LPD Flight II's
--- Shipbuilding & Conversion account, $2.6B FY2026, AND Shipboard Tactical
--- Communications' Other Procurement account, $20.9M) summed straight across
--- both, fusing two unrelated programs into one point — exactly the #56
--- defect dim_programs.sql/fct_budget_trajectory.sql fixed at the E1 grain,
--- one layer up. B'1 could not fix it here: this mart spans all ten PB
--- editions, and its own estimate assumed there was "no dim_programs-
--- equivalent anchor for older editions" to split on — so it excluded the
--- 8 keys from the exporter entirely instead (an honest gap in place of a
--- fusion). Measured 2026-08-14/2026-08-20: the colliding keys do not exist
--- before PB2024 (era procurement keys are namespaced '{account}-{org}-L{n}',
--- so a bare numeric key is absent by construction), so the "no anchor"
--- problem does not apply to the 3 editions (2024-2026) where these keys DO
--- appear — PB2026's dim_programs collision anchor is a perfectly good anchor
--- for all of them.
+-- E2 (Sprint E, ROADMAP #67) — account-aware grain for genuine PB2026
+-- account collisions. Pre-E2 this mart grouped `detail` by (pe_bli,
+-- edition_year, scenario) alone, so a pe_bli coincidentally shared by two
+-- DIFFERENT real appropriation accounts (#56 — e.g. '3010' is BOTH LPD
+-- Flight II's Shipbuilding & Conversion account, $2.6B FY2026, AND
+-- Shipboard Tactical Communications' Other Procurement account, $20.9M)
+-- summed straight across both, fusing two unrelated programs into one
+-- point — exactly the #56 defect dim_programs.sql/fct_budget_trajectory.sql
+-- fixed at the E1 grain, one layer up. B'1 could not fix it here: this
+-- mart spans all ten PB editions, and its own estimate assumed there was
+-- "no dim_programs-equivalent anchor for older editions" to split on — so
+-- it excluded the colliding keys from the exporter entirely instead (an
+-- honest gap in place of a fusion). Measured 2026-08-14/2026-08-20: the
+-- colliding keys do not exist before PB2024 (era procurement keys are
+-- namespaced '{account}-{org}-L{n}', so a bare numeric key is absent by
+-- construction), so the "no anchor" problem does not apply to the 3
+-- editions (2024-2026) where these keys DO appear — PB2026's dim_programs
+-- collision anchor is a perfectly good anchor for all of them.
 --
--- collision_pes below is the SAME genuine-collision definition E1 used
--- (dim_programs.sql/fct_budget_trajectory.sql's collision_slots/
--- collision_pes and slot_collision_2026): >1 distinct account reporting at
--- fiscal_year=2026, amount_type='fy_2026_total', title not null, excluding
--- the 9999999999 classified sentinel. Independently re-derived here (this
--- mart reads stg_budget_lines directly and is not downstream of dim_programs
--- in the dbt DAG — the same reason dim_programs.sql gives for re-deriving
--- fct_budget_trajectory's own split key) — re-running it against
--- stg_budget_lines directly reproduces the plan's 8 keys exactly (0145,
--- 2210, 2292, 3010, 3050, 3215, 3302, 4217), never a hardcoded list, so a
--- future edition's data can only WIDEN or narrow the split as its own
--- fy_2026_total facts change.
+-- collision_pes below: >1 distinct account reporting at the SAME
+-- amount_type, checked across EVERY amount_type PB2026's own workbook
+-- carries (title not null, excluding the 9999999999 classified sentinel).
 --
--- Scope discipline (measured 2026-08-20 against the shipped warehouse,
--- BEFORE writing this grouping): grouping `detail` by (pe_bli, edition_year,
--- scenario, account) UNCONDITIONALLY — i.e. "generally," not "for these
--- keys only" — changes rows for 5 OTHER pe_bli beyond the 8 (1045/COLUMBIA,
--- 1350, 2101/Tomahawk, '000999', 'FY2024CR'), none of which are in this
--- sprint's scope: 1045 is the plan's OWN precedent for the merged reading
--- (its account rename is between fiscal years within ONE PB2026 book, not a
--- same-moment collision, at this mart's OWN edition-relative amount_type
--- slugs); 1350/2101 are Tomahawk's "no_detail, different defect, do not
--- fold it in" shape one layer up (both accounts report historically, but by
--- fy_2026_total only one does); '000999' and 'FY2024CR' are non-program
--- placeholder/reserve keys, not appropriation-account collisions at all.
--- The split below is therefore gated on `cp.pe_bli is not null`
--- (collision_pes membership), not on raw multi-account presence — every one
--- of those 5 keys keeps collapsing to a single, unattributed (account IS
--- NULL) cross-account sum, byte-for-byte the pre-E2 output, exactly as
--- Task E2 requires ("adding account to the grain changes rows outside the
--- 8 keys" is the documented stop condition this scoping avoids).
+-- E2.1 CORRECTION (2026-08-21, gate 23 leg h2 caught this in the wild on
+-- '1350'/'2101' after E3 shipped page splits): the FIRST cut of this
+-- anchor (2026-08-20) checked ONLY fy_2026_total, on the premise
+-- ("Tomahawk... different defect, do not fold it in") that a key colliding
+-- at historical amount_types but not at fy_2026_total had no CURRENT
+-- money to split and could be left collapsed. That premise conflated two
+-- separate questions: "does this key need a PAGE split" (no — 1350/2101
+-- have no dim_programs row at all, so E3 correctly never split their
+-- pages) and "does this key's DECADE SERIES still fuse two accounts into
+-- one point" (yes — 1350 and 2101 both collide at ten historical
+-- amount_types: fy_2022_actuals, fy_2023_actuals,
+-- fy_2023_less_supplementals_enacted, fy_2023_supplementals_enacted,
+-- fy_2023_total_enacted, fy_2024_actuals,
+-- fy_2024_pb_request_with_cr_adjustments, fy_2024_request, fy_2025_enacted,
+-- fy_2025_request — the identical #56 fusion, just not at fy_2026_total).
+-- The anchor now checks every amount_type PB2026 carries, independently
+-- re-derived (this mart reads stg_budget_lines directly and is not
+-- downstream of dim_programs in the dbt DAG) — this reproduces exactly 10
+-- keys: 0145, 1350, 2101, 2210, 2292, 3010, 3050, 3215, 3302, 4217 (the
+-- original 8 plus 1350/2101) — the SAME 10 keys assert_program_key_unique
+-- .sql's own pre-E1 comment already listed as "the pre-E1 (>1 distinct
+-- account_title at the SAME amount_type, checked across fy_2024_actuals /
+-- fy_2025_total / fy_2026_total)" definition, now generalized from those 3
+-- slots to every slot PB2026 carries. Never a hardcoded list, so a future
+-- edition's data can only widen or narrow the split as its own facts
+-- change.
 --
--- account is NULL for every row of every OTHER pe_bli too (the ~1,700+
--- ordinary single-account keys) — not because they are ambiguous, but
--- because populating it there would require a second, independent
+-- 1045/COLUMBIA remains correctly UNSPLIT under this wider anchor,
+-- verified directly (2026-08-21): it has ZERO amount_types with >1
+-- distinct account at fiscal_year=2026 — its account rename happens
+-- BETWEEN amount_types (FY2024 actuals under the retired 1612N, FY2025
+-- onward under 1611N), never two accounts at the SAME amount_type
+-- simultaneously, which is the genuine distinction the plan's own
+-- precedent language was reaching for. 9999999999 remains excluded BY
+-- NAME (never by a count threshold, which would also mask a real
+-- collision) regardless of its own 12-account spread.
+--
+-- account is NULL for every row of every OTHER pe_bli (the ~1,700+
+-- ordinary single-account keys, plus '000999'/'FY2024CR', two non-program
+-- placeholder/reserve keys that collide but are not appropriation-account
+-- identities at all) — not because they are ambiguous, but because
+-- populating it there would require a second, independent
 -- account-attribution mechanism (parallel to collision_pes) with no
 -- payoff this sprint needs; NULL simply means "this mart does not attempt
 -- to attribute this row's account," never "this row spans >1 account
--- honestly" for the 8 keys, where account is always populated.
+-- honestly" for the 10 keys, where account is always populated.
 
 {{ config(materialized='table') }}
 
@@ -150,23 +161,28 @@ detail as (
       and b.pe_bli <> '9999999999'
 ),
 
--- E1's exact fy_2026_total-anchored collision anchor, independently
--- re-derived (see the model-level comment above for why this mart cannot
--- `ref('dim_programs')` and must not hardcode the 8 keys).
+-- Collision anchor (E2.1 correction, 2026-08-21 — see the model-level
+-- comment above): >1 distinct account reporting at the SAME amount_type,
+-- checked across EVERY amount_type PB2026's own workbook carries (not
+-- only fy_2026_total). Independently re-derived (this mart reads
+-- stg_budget_lines directly and is not downstream of dim_programs in the
+-- dbt DAG).
 collision_slots as (
-    select pe_bli, account
+    select pe_bli, amount_type, account
     from {{ ref('stg_budget_lines') }}
     where fiscal_year = 2026
-      and amount_type = 'fy_2026_total'
       and title is not null
       and pe_bli <> '9999999999'
-    group by pe_bli, account
+    group by pe_bli, amount_type, account
 ),
 collision_pes as (
-    select pe_bli
-    from collision_slots
-    group by pe_bli
-    having count(distinct account) > 1
+    select distinct pe_bli
+    from (
+        select pe_bli
+        from collision_slots
+        group by pe_bli, amount_type
+        having count(distinct account) > 1
+    )
 ),
 
 editions as (
@@ -217,7 +233,7 @@ detail_sums as (
         c.priority,
         c.fy_offset,
         c.amount_type,
-        -- E2 split key: real account for the 8 collision_pes keys (every
+        -- E2 split key: real account for the 10 collision_pes keys (every
         -- one of their rows, colliding or not — a non-colliding slot has
         -- exactly one account present, so this is a no-op split there);
         -- NULL for every other pe_bli, collapsing them to the SAME

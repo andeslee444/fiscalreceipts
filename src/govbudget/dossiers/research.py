@@ -118,6 +118,19 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
     each row to its own, correct total deterministically; every non-split
     pe_bli has exactly one account value regardless, so this is a byte-for-
     byte no-op for the ~1,740 programs outside the 8 split keys.
+
+    E3.1 CORRECTION (2026-08-21). The paragraph above claimed dim_programs'
+    account is "never NULL". It is NULL for 199 of 1,749 rows — every
+    rollup-tier program that has no J-book detail row to carry an account —
+    while fct_budget_trajectory's is NULL for 0 of 1,988. Keying the lookup
+    on account alone therefore missed all 199 and `continue`d past them,
+    silently dropping F-35 (ATA000), B-21 (B02100) and F-15EX (F015EX) out
+    of the dossier top-50 — a top-50 of DoD programs with no F-35 in it.
+    The account is now used only to DISAMBIGUATE: an exact (pe_bli, org,
+    account) hit wins, and a NULL account falls back to (pe_bli, org) when
+    that resolves to exactly one trajectory row. A split key always carries
+    a non-NULL account on both sides, so the fallback can never re-introduce
+    the non-determinism this join was fixed to remove.
     """
     import duckdb
 
@@ -158,10 +171,25 @@ def top50(duckdb_path: str | Path, *, limit: int = 50) -> list[tuple[str, str, s
     finally:
         con.close()
 
+    # (pe_bli, org) -> [totals] — the fallback index for the 199 rollup-tier
+    # rows whose dim_programs account is NULL. Only consulted when the exact
+    # account-qualified lookup misses AND the account is NULL, and only
+    # trusted when it resolves to exactly one row.
+    by_pe_org: dict[tuple[str, str], list[float]] = {}
+    for (t_pe, t_org, _t_acct), t_total in traj.items():
+        by_pe_org.setdefault((t_pe, t_org), []).append(t_total)
+
     rows: list[tuple[str, str, str, float]] = []
+    dropped: list[str] = []
     for pe_bli, title, org, account in progs:
-        total = traj.get((pe_bli, workbook_org(org), account))
+        wo = workbook_org(org)
+        total = traj.get((pe_bli, wo, account))
+        if total is None and account is None:
+            candidates = by_pe_org.get((pe_bli, wo), [])
+            if len(candidates) == 1:
+                total = candidates[0]
         if total is None:
+            dropped.append(pe_bli)
             continue
         rows.append((pe_bli, title, org, float(total)))
     rows.sort(key=lambda r: -r[3])

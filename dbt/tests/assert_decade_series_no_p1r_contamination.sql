@@ -12,27 +12,30 @@
 -- P-1R sibling are now published — but their AMOUNT must always be the
 -- P-1R-free detail sum this test recomputes.
 --
--- E2 (Sprint E, #67): this recompute must honor the SAME account split the
--- mart applies. Grouping by (pe_bli, edition_year, amount_type) alone would
--- recompute the pre-E2 FUSED two-account total for the 8 genuine
--- collisions, and every one of their now-correct per-account rows would
--- look like contamination. collision_pes is the identical fy_2026_total
--- anchor fct_decade_series.sql itself uses (re-derived, not ref'd — this
--- test independently checks the mart "from staging").
+-- E2 (Sprint E, #67), widened E2.1 (2026-08-21): this recompute must
+-- honor the SAME account split the mart applies. Grouping by (pe_bli,
+-- edition_year, amount_type) alone would recompute the pre-E2 FUSED
+-- two-account total for the 10 genuine collisions, and every one of their
+-- now-correct per-account rows would look like contamination.
+-- collision_pes is the identical any-amount_type anchor fct_decade_series
+-- .sql itself uses (re-derived, not ref'd — this test independently
+-- checks the mart "from staging").
 with collision_slots as (
-    select pe_bli, account
+    select pe_bli, amount_type, account
     from {{ ref('stg_budget_lines') }}
     where fiscal_year = 2026
-      and amount_type = 'fy_2026_total'
       and title is not null
       and pe_bli <> '9999999999'
-    group by pe_bli, account
+    group by pe_bli, amount_type, account
 ),
 collision_pes as (
-    select pe_bli
-    from collision_slots
-    group by pe_bli
-    having count(distinct account) > 1
+    select distinct pe_bli
+    from (
+        select pe_bli
+        from collision_slots
+        group by pe_bli, amount_type
+        having count(distinct account) > 1
+    )
 ),
 honest as (
     select
