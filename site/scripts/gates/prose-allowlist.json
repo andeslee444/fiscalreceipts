@@ -1,97 +1,159 @@
 [
   {
     "pattern": "$50M",
-    "pages": ["/methodology/", "/feed/"],
+    "pages": [
+      "/methodology/",
+      "/feed/"
+    ],
     "reason": "Feed selection THRESHOLD, not a figure: 'programs where FY2025 total is >= $50M'. A parameter of the method, stated on the page that documents the method and echoed in the feed section description."
   },
   {
     "pattern": "$5M",
-    "pages": ["/methodology/", "/feed/"],
-    "reason": "HHI supplier-concentration FLOOR in matched obligations — a parameter of the method, same as $50M."
+    "pages": [
+      "/methodology/",
+      "/feed/"
+    ],
+    "reason": "HHI supplier-concentration FLOOR in matched obligations \u2014 a parameter of the method, same as $50M."
   },
   {
     "pattern": "$1M",
-    "pages": ["/methodology/", "/feed/"],
-    "reason": "New-entrant award THRESHOLD ('first award year ... obligations exceed $1M') — a parameter of the method."
+    "pages": [
+      "/methodology/",
+      "/feed/"
+    ],
+    "reason": "New-entrant award THRESHOLD ('first award year ... obligations exceed $1M') \u2014 a parameter of the method."
   },
   {
     "pattern": "$0.001M",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "Arithmetic TOLERANCE for the two per-figure J-book checks (+/-$0.001M). A tolerance, not a sum."
   },
   {
     "pattern": "$186",
-    "pages": ["/methodology/"],
-    "reason": "'$186 billion in improper payments in FY2025' — an OUTSIDE body's published figure quoted to explain why the corpus exists. Not ours to cite from our own facts."
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "'$186 billion in improper payments in FY2025' \u2014 an OUTSIDE body's published figure quoted to explain why the corpus exists. Not ours to cite from our own facts."
   },
   {
     "pattern": "$7.07B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "Worked example in the write-up of the 87-card zeroed-FY2026 defect: the real FY2025 money those cards hid. Retrospective narrative about a fixed bug, not a live figure the reader checks."
   },
   {
     "pattern": "$4.92B",
-    "pages": ["/methodology/"],
-    "reason": "Worked example in the same write-up — the FY2026 request the cards mislabelled as a zeroing."
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "Worked example in the same write-up \u2014 the FY2026 request the cards mislabelled as a zeroing."
   },
   {
     "pattern": "$4.15B",
-    "pages": ["/methodology/"],
-    "reason": "Worked example in the same write-up — the FY2025 figure the request rose from."
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "Worked example in the same write-up \u2014 the FY2025 figure the request rose from."
   },
   {
     "pattern": "$0",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "The literal zero inside the quoted feed-card template ('zeroed out in FY2026 (had $0 in FY25)') the write-up is dissecting."
   },
   {
     "pattern": "$8.01B",
-    "pages": ["/methodology/"],
-    "reason": "2026-08-08 corrections table, WAS column: the withdrawn district total. A superseded value cannot carry a citation — the facts behind it were withdrawn — and a correction has to be able to state what it is correcting. Same class as the $7.07B defect-writeup entry above."
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "2026-08-08 corrections table, WAS column: the withdrawn district total. A superseded value cannot carry a citation \u2014 the facts behind it were withdrawn \u2014 and a correction has to be able to state what it is correcting. Same class as the $7.07B defect-writeup entry above."
   },
   {
     "pattern": "$5.58B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table, NOW column: the award-distinct district total. Live on /district/ where it is cited; here it is the other half of a before/after pair and would read as a dangling number alone."
   },
   {
     "pattern": "$1.05B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table: Alaska's withdrawn published total, quoted to show the five-fold duplicate concretely. Superseded, so uncitable."
   },
   {
     "pattern": "$209.3M",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table: the single real Alaska award the $1.05B was five copies of. Cited on /district/AK-00/; here it is narrative explaining the arithmetic of a fixed defect."
   },
   {
     "pattern": "$228.5B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table, NOW column: the /programs/ dollar denominator. Cited on /programs/ itself via programs_coverage; restated here as the replacement for the withdrawn row counter."
   },
   {
     "pattern": "$385.3B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table: the FY2026 request universe the index is denominated against. Cited on /programs/; the pair is meaningless split apart."
   },
   {
     "pattern": "$89.01B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table: the one-time reconciliation share of the FY2026 request, explaining why program pages gained a discretionary/reconciliation split."
   },
   {
     "pattern": "$385.27B",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table: the FY2026 request total the $89.01B is a share of, at the precision the reconciliation arithmetic needs."
   },
   {
     "pattern": "$2.62B",
-    "pages": ["/methodology/"],
-    "reason": "2026-08-08 corrections table (#56), WAS column: the figure /program/3010/ published while two unrelated programs were fused under one key. Withdrawn, so uncitable — the same rule as the $8.01B district entry above."
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "2026-08-08 corrections table (#56), WAS column: the figure /program/3010/ published while two unrelated programs were fused under one key. Withdrawn, so uncitable \u2014 the same rule as the $8.01B district entry above."
   },
   {
     "pattern": "$20.9M",
-    "pages": ["/methodology/"],
+    "pages": [
+      "/methodology/"
+    ],
     "reason": "2026-08-08 corrections table (#56): the true size of Shipboard Tactical Communications, quoted to show how far the fused figure overstated it. Cited on its own program page; here it is the other half of a before/after pair."
+  },
+  {
+    "pattern": "$5.35B",
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "2026-08-21 corrections table: the total the key split restored to the index. A sum over 10 programs that were absent at the time it describes; it has no single fact to cite, and /programs/ carries the live cited figure."
+  },
+  {
+    "pattern": "$2.60B",
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "2026-08-21 corrections table: LPD Flight II's FY2026 request, named to make the split concrete. Cited on /program/3010-SCN/; here it is narrative about a fixed defect."
+  },
+  {
+    "pattern": "$1.96B",
+    "pages": [
+      "/methodology/"
+    ],
+    "reason": "2026-08-21 corrections table: Medium Landing Ship's FY2026 request, the second named example. Cited on /program/3050-SCN/."
   }
 ]
