@@ -52,6 +52,17 @@
 -- below for the same reason it is part of fct_decade_series' own grain:
 -- a genuine collision's two accounts are two different programs' diffs,
 -- not two rows of one diff.
+--
+-- ROADMAP #45 (2026-08-21): fct_decade_series also carries `organization`,
+-- non-NULL for the 3 genuine ORG collisions ('20', '30', '500' — up to 4
+-- organizations for '30' across editions where DODEA still reports). Same
+-- fusion hazard, same fix: both self-joins additionally match `t.organization
+-- is not distinct from f.organization`, and organization joins the grain
+-- alongside account. account and organization are never both non-NULL for
+-- the same pe_bli (verified mutually exclusive), so this is a pure AND —
+-- it never over-constrains an account-collision row (whose organization is
+-- always NULL on both sides) or an org-collision row (whose account is
+-- always NULL on both sides).
 
 {{ config(materialized='table') }}
 
@@ -74,6 +85,7 @@ request_vs_request as (
     select
         f.pe_bli,
         f.account,
+        f.organization,
         f.edition_year as from_edition,
         t.edition_year as to_edition,
         'request_vs_request' as diff_kind,
@@ -90,6 +102,7 @@ request_vs_request as (
     join requests t
       on t.pe_bli = f.pe_bli
      and t.account is not distinct from f.account
+     and t.organization is not distinct from f.organization
      and t.edition_year = f.edition_year + 1
 ),
 
@@ -97,6 +110,7 @@ request_vs_actuals as (
     select
         f.pe_bli,
         f.account,
+        f.organization,
         f.edition_year as from_edition,
         t.edition_year as to_edition,
         'request_vs_actuals' as diff_kind,
@@ -113,6 +127,7 @@ request_vs_actuals as (
     join actuals t
       on t.pe_bli = f.pe_bli
      and t.account is not distinct from f.account
+     and t.organization is not distinct from f.organization
      and t.edition_year = f.edition_year + 2
      -- same fiscal year on both sides: f.fy = from_edition = N,
      -- t.fy = to_edition - 2 = N (belt for the year-shift rule)

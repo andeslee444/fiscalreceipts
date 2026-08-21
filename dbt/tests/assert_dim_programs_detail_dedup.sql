@@ -24,26 +24,56 @@
 -- dim_programs.sql's own `synth` CTE has no code path that could populate
 -- it), and this test still catches any drift on the one row per pe_bli
 -- that legitimately claims real detail.
-with dedup as (
+--
+-- ROADMAP #45 (2026-08-21): `dedup` grouped by pe_bli ALONE, which fuses
+-- '20'/'30'/'500's now-un-fused per-organization detail back together —
+-- dim_programs.sql's own `details` CTE dedupes per (pe_bli, org) for these
+-- 3 keys (see that model's header), so a bare pe_bli recompute here no
+-- longer agrees with the mart's real, correctly-un-fused per-org values.
+-- org_collision_pes below is the identical anchor dim_programs.sql uses.
+-- The join condition `x.org is null or x.org = d.org` preserves the
+-- original `using (pe_bli)` behavior for every non-collision pe_bli (x.org
+-- is NULL there, matching regardless of d.org's real fused value) while
+-- requiring an exact org match for the 3 collision keys.
+with org_collision_pes as (
+    select pe_bli
+    from (
+        select pe_bli, organization
+        from {{ ref('stg_budget_lines') }}
+        where fiscal_year = 2026
+          and amount_type = 'fy_2026_total'
+          and title is not null
+          and pe_bli <> '9999999999'
+        group by pe_bli, organization
+    )
+    group by pe_bli
+    having count(distinct organization) > 1
+),
+dedup as (
     select
-        pe_bli,
-        sum(amount_millions)
-            filter (where scenario = 'PriorYear' and project_number is null)
+        dd.pe_bli,
+        case when ocp.pe_bli is not null then dd.org end as org,
+        sum(dd.amount_millions)
+            filter (where dd.scenario = 'PriorYear' and dd.project_number is null)
             as expected_fy2024
     from (
         select distinct
-            pe_bli, project_number, scenario, amount_millions, xml_path
+            pe_bli, project_number, scenario, amount_millions, xml_path, org
         from {{ ref('stg_budget_details') }}
         where fiscal_year = 2026
-    )
-    group by pe_bli
+    ) dd
+    left join org_collision_pes ocp on ocp.pe_bli = dd.pe_bli
+    group by dd.pe_bli, case when ocp.pe_bli is not null then dd.org end
 )
 select
     d.pe_bli,
+    d.org,
     d.fy2024_actual_millions as mart_value,
     x.expected_fy2024 as dedup_recompute
 from {{ ref('dim_programs') }} d
-join dedup x using (pe_bli)
+join dedup x
+    on x.pe_bli = d.pe_bli
+   and (x.org is null or x.org = d.org)
 where d.fy2024_actual_millions is not null
   and (
     abs(coalesce(d.fy2024_actual_millions, 0) - coalesce(x.expected_fy2024, 0)) > 0.0005

@@ -20,6 +20,12 @@
 -- collision_pes is the identical any-amount_type anchor fct_decade_series
 -- .sql itself uses (re-derived, not ref'd — this test independently
 -- checks the mart "from staging").
+--
+-- ROADMAP #45 (2026-08-21): the identical widening for organization —
+-- org_collision_pes mirrors fct_decade_series.sql's own org_collision_pes
+-- anchor, and the final join matches on organization too, so '20'/'30'/
+-- '500's now-correct per-organization rows recompute against their OWN
+-- organization's detail sum rather than the pre-#45 fused total.
 with collision_slots as (
     select pe_bli, amount_type, account
     from {{ ref('stg_budget_lines') }}
@@ -37,26 +43,47 @@ collision_pes as (
         having count(distinct account) > 1
     )
 ),
+org_collision_slots as (
+    select pe_bli, amount_type, organization
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and title is not null
+      and pe_bli <> '9999999999'
+    group by pe_bli, amount_type, organization
+),
+org_collision_pes as (
+    select distinct pe_bli
+    from (
+        select pe_bli
+        from org_collision_slots
+        group by pe_bli, amount_type
+        having count(distinct organization) > 1
+    )
+),
 honest as (
     select
         b.pe_bli,
         b.fiscal_year as edition_year,
         b.amount_type,
         case when cp.pe_bli is not null then b.account end as account,
+        case when ocp.pe_bli is not null then b.organization end as organization,
         sum(b.amount_thousands) as detail_sum
     from {{ ref('stg_budget_lines') }} b
     left join collision_pes cp
       on cp.pe_bli = b.pe_bli
+    left join org_collision_pes ocp
+      on ocp.pe_bli = b.pe_bli
     where b.exhibit in ('R-1', 'P-1')
       and b.source_document_id is not null
       and b.pe_bli <> '9999999999'
-    group by 1, 2, 3, 4
+    group by 1, 2, 3, 4, 5
 )
 select
     m.pe_bli,
     m.edition_year,
     m.amount_type,
     m.account,
+    m.organization,
     m.amount,
     h.detail_sum
 from {{ ref('fct_decade_series') }} m
@@ -65,5 +92,6 @@ left join honest h
  and h.edition_year = m.edition_year
  and h.amount_type = m.amount_type
  and h.account is not distinct from m.account
+ and h.organization is not distinct from m.organization
 where h.detail_sum is null
    or abs(m.amount - h.detail_sum) > 0.5

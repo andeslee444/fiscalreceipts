@@ -127,6 +127,30 @@
 -- payoff this sprint needs; NULL simply means "this mart does not attempt
 -- to attribute this row's account," never "this row spans >1 account
 -- honestly" for the 10 keys, where account is always populated.
+--
+-- ROADMAP #45 (2026-08-21) adds `organization`, the parallel split key for
+-- the ORG shape of the same defect class: three BLI codes ('20', '30',
+-- '500') are shared by different organizations within the SAME account
+-- ('0300D' Procurement, Defense-Wide) across every PB2026 amount_type, so
+-- the account-only collision_pes above never sees them (account never
+-- varies for these keys). org_collision_pes below is collision_pes'
+-- organization mirror: >1 distinct ORGANIZATION reporting at the SAME
+-- amount_type, checked across every amount_type PB2026 carries — verified
+-- (2026-08-21) to reproduce exactly {'20', '30', '500'}, independently of
+-- dim_programs (this mart is not downstream of it). Unlike dim_programs.sql
+-- (which excludes '30's 4th organization, DODEA, from the PAGE split
+-- because it has no fy_2026_total money — the Tomahawk-shaped precedent),
+-- this mart's wide any-amount_type anchor is exactly what E2.1 already
+-- established is correct for a MULTI-EDITION series: DODEA's historical
+-- FY2024/FY2025 money under '30' gets its own `organization`-attributed
+-- row here rather than being fused into OSD's, DTRA's, or DMACT's — a
+-- program with no current page can still have an honest historical series.
+-- organization is NULL for every other pe_bli, including the 10 genuine
+-- account-collision keys (verified mutually exclusive: no pe_bli collides
+-- on both dimensions in the shipped PB2026 warehouse) and every ordinary
+-- single-account/single-organization key — unchanged, byte-for-byte.
+-- Part of the grain: (pe_bli, account, organization, fy, edition_year) is
+-- now the uniqueness key (assert_decade_series_grain_unique.sql).
 
 {{ config(materialized='table') }}
 
@@ -137,7 +161,8 @@ with lake as (
         fiscal_year as edition_year,
         amount_type,
         amount_thousands,
-        account
+        account,
+        organization
     from {{ ref('stg_budget_lines') }}
 ),
 
@@ -147,6 +172,7 @@ detail as (
         b.fiscal_year as edition_year,
         b.amount_type,
         b.account,
+        b.organization,
         b.amount_thousands,
         substr(sha256(
             d.sha256 || '|' || b.exhibit || '|' || cast(b.fiscal_year as varchar)
@@ -182,6 +208,26 @@ collision_pes as (
         from collision_slots
         group by pe_bli, amount_type
         having count(distinct account) > 1
+    )
+),
+
+-- ROADMAP #45 organization collision anchor — collision_pes' mirror on
+-- organization instead of account (see the model-level comment above).
+org_collision_slots as (
+    select pe_bli, amount_type, organization
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and title is not null
+      and pe_bli <> '9999999999'
+    group by pe_bli, amount_type, organization
+),
+org_collision_pes as (
+    select distinct pe_bli
+    from (
+        select pe_bli
+        from org_collision_slots
+        group by pe_bli, amount_type
+        having count(distinct organization) > 1
     )
 ),
 
@@ -239,6 +285,11 @@ detail_sums as (
         -- NULL for every other pe_bli, collapsing them to the SAME
         -- cross-account sum this mart has always produced (unchanged).
         case when cp.pe_bli is not null then d.account end as account,
+        -- ROADMAP #45 split key: real organization for the 3
+        -- org_collision_pes keys (mutually exclusive with cp above — see
+        -- the model-level comment); NULL for every other pe_bli, including
+        -- the 10 account-collision keys.
+        case when ocp.pe_bli is not null then d.organization end as organization,
         sum(d.amount_thousands) as amount,
         count(*) as n_source_rows,
         case when count(*) = 1 then min(d.row_fact_id) end as source_fact_id
@@ -248,6 +299,8 @@ detail_sums as (
      and c.amount_type = d.amount_type
     left join collision_pes cp
       on cp.pe_bli = d.pe_bli
+    left join org_collision_pes ocp
+      on ocp.pe_bli = d.pe_bli
     group by all
 ),
 
@@ -256,14 +309,15 @@ chosen as (
         select
             *,
             row_number() over (
-                -- account in the partition: each account of a genuine
-                -- collision picks its OWN top-priority candidate slug
-                -- independently. Without this, row_number() would rank
-                -- both accounts' rows together and could arbitrarily
-                -- discard one account's only row as a tie-broken rn=2
-                -- (DuckDB does not guarantee priority ties resolve by
-                -- account) — this pins the fix.
-                partition by pe_bli, account, edition_year, scenario
+                -- account/organization in the partition: each side of a
+                -- genuine collision (account OR organization, whichever
+                -- axis this pe_bli actually splits on) picks its OWN
+                -- top-priority candidate slug independently. Without this,
+                -- row_number() would rank every side's rows together and
+                -- could arbitrarily discard one side's only row as a
+                -- tie-broken rn=2 (DuckDB does not guarantee priority ties
+                -- resolve by account/organization) — this pins the fix.
+                partition by pe_bli, account, organization, edition_year, scenario
                 order by priority
             ) as rn
         from detail_sums
@@ -286,6 +340,7 @@ lake_sums as (
         l.edition_year,
         c.scenario,
         case when cp.pe_bli is not null then l.account end as account,
+        case when ocp.pe_bli is not null then l.organization end as organization,
         sum(l.amount_thousands) as lake_amount
     from lake l
     join candidates c
@@ -293,9 +348,12 @@ lake_sums as (
      and c.amount_type = l.amount_type
     left join collision_pes cp
       on cp.pe_bli = l.pe_bli
+    left join org_collision_pes ocp
+      on ocp.pe_bli = l.pe_bli
     where l.exhibit <> 'P-1R'
     group by l.pe_bli, l.edition_year, c.scenario, c.amount_type,
-             case when cp.pe_bli is not null then l.account end
+             case when cp.pe_bli is not null then l.account end,
+             case when ocp.pe_bli is not null then l.organization end
 )
 
 select
@@ -312,6 +370,7 @@ select
     ch.scenario,
     ch.amount_type,
     ch.account,
+    ch.organization,
     ch.n_source_rows,
     ch.source_fact_id
 from chosen ch
@@ -322,5 +381,6 @@ where exists (
       and ls.edition_year = ch.edition_year
       and ls.scenario = ch.scenario
       and ls.account is not distinct from ch.account
+      and ls.organization is not distinct from ch.organization
       and abs(ls.lake_amount - ch.amount) <= 0.5
 )

@@ -18,7 +18,15 @@
 -- sprint does not split — see fct_decade_series.sql's own header comment)
 -- and may still legitimately carry n_source_rows > 1; this assertion does
 -- not touch them.
-select pe_bli, account, fy, edition_year, amount_type, n_source_rows
+--
+-- ROADMAP #45 (2026-08-21): the identical check for the organization split
+-- key — every row where this mart has attributed a specific organization
+-- (organization IS NOT NULL — the 3 genuine ROADMAP #45 collisions, '20',
+-- '30', '500') must aggregate exactly ONE organization's detail rows for
+-- its slot. account and organization are never both non-NULL on the same
+-- row (verified mutually exclusive), so the two `where` clauses below
+-- never overlap.
+select pe_bli, account, organization, fy, edition_year, amount_type, n_source_rows
 from {{ ref('fct_decade_series') }}
-where account is not null
+where (account is not null or organization is not null)
   and n_source_rows > 1

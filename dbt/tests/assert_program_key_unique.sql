@@ -8,12 +8,34 @@
 -- fct_budget_trajectory. What's forbidden is a DUPLICATE (account, pe_bli)
 -- pair, which would mean the same program-account was counted twice.
 --
+-- ROADMAP #45 (2026-08-21) widened dim_programs_dupes's grain again, to
+-- (account, pe_bli, org): three BLI codes ('20', '30', '500') are shared by
+-- DIFFERENT organizations within the SAME account ('0300D' Procurement,
+-- Defense-Wide) — the account axis alone cannot tell DCSA's "Major
+-- Equipment" apart from DTRA's "Vehicles" under pe_bli '20', both real,
+-- both now their own dim_programs row. Verified this genuinely widens the
+-- grain rather than masking anything: re-run at the OLD (account, pe_bli)
+-- grain against the post-#45 warehouse (2026-08-21) FAILS with exactly 3
+-- results — ('30', '0300D', 3), ('500', '0300D', 2), ('20', '0300D', 2) —
+-- recorded here as the proof this tightening was load-bearing, not
+-- cosmetic:
+--   Failure in test assert_program_key_unique (pre-#45 grain)
+--     Got 3 results, configured to fail if != 0
+--     ('dim_programs', '30', '0300D', None, 3)
+--     ('dim_programs', '500', '0300D', None, 2)
+--     ('dim_programs', '20', '0300D', None, 2)
+-- fct_budget_trajectory_dupes already checked (account, pe_bli,
+-- organization) — its grain has included organization since it was first
+-- introduced (this mart's own grain has always been the COMPONENT, one row
+-- per organization funding a program), so it required no change here; only
+-- dim_programs (the PROGRAM/page-identity grain, org-blind until #45) did.
+--
 -- fiscal_year: the prescribed grain was "(account, pe_bli, fiscal_year)".
 -- DISCLOSED SUBSTITUTION — neither mart carries an explicit fiscal_year/
 -- edition column; both are PB2026-edition-fenced by construction (see each
 -- model's own doc comment) so every row already IS fiscal_year=2026, and
--- "(account, pe_bli, fiscal_year)" collapses to "(account, pe_bli)" today.
--- If a future edition-aware program grain (5E-style, see
+-- "(account, pe_bli, fiscal_year)" collapses to "(account, pe_bli, org)"
+-- today. If a future edition-aware program grain (5E-style, see
 -- fct_decade_series) is added to either mart, this test's target should
 -- gain the same column and the check should widen to match it.
 --
@@ -30,15 +52,16 @@
 -- '3010' rendered LPD Flight II's $2.6B Shipbuilding & Conversion
 -- reconciliation funding under Shipboard Tactical Communications' $20.9M
 -- Other Procurement title). That defect is now structurally impossible to
--- reintroduce here: a duplicate (account, pe_bli) row would mean the SAME
--- account was double-counted, not that two accounts were summed together
--- (dim_programs.sql and fct_budget_trajectory.sql no longer have a
--- code path that sums across accounts for a genuine collision at all).
+-- reintroduce here: a duplicate (account, pe_bli, org) row would mean the
+-- SAME account-organization was double-counted, not that two
+-- accounts/organizations were summed together (dim_programs.sql and
+-- fct_budget_trajectory.sql no longer have a code path that sums across a
+-- genuine collision, on EITHER axis, at all).
 with dim_programs_dupes as (
-    select account, pe_bli, count(*) as n
+    select account, pe_bli, org, count(*) as n
     from {{ ref('dim_programs') }}
     where pe_bli <> '9999999999' and account is not null
-    group by account, pe_bli
+    group by account, pe_bli, org
     having count(*) > 1
 ),
 fct_budget_trajectory_dupes as (
@@ -48,7 +71,7 @@ fct_budget_trajectory_dupes as (
     group by account, pe_bli, organization
     having count(*) > 1
 )
-select 'dim_programs' as mart, pe_bli, account, cast(null as varchar) as organization, n
+select 'dim_programs' as mart, pe_bli, account, org as organization, n
 from dim_programs_dupes
 union all
 select 'fct_budget_trajectory' as mart, pe_bli, account, organization, n

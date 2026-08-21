@@ -43,35 +43,78 @@
 -- fct_budget_trajectory (constant within a (pe_bli, account) group by
 -- construction — the group-by key IS the constant).
 --
+-- ROADMAP #45 CORRECTION (2026-08-21): the "genuinely-shared multi-org
+-- programs" premise above — BLI 30/20/500 as ONE program whose
+-- organizations are legitimate funding components — does not survive
+-- inspection against the titles each organization's own line actually
+-- carries: BLI 500 is DLA "Major Equipment" ($79,251K) AND, separately,
+-- DHRA "Personnel Administration" ($3,797K) — a weapons-procurement line
+-- and a personnel-administration line are not two components of one
+-- program. This model's own header example already shows the tell: E1
+-- would have failed loudly the moment a genuine account collision summed
+-- two different accounts' money under one title (the #56 defect); this
+-- model was doing the SAME thing one dimension over — summing two
+-- different ORGANIZATIONS' money under one (whichever dim_programs
+-- happened to pick) title — and nothing here could fail loudly because no
+-- assertion checked title agreement across organizations, only across
+-- accounts. dim_programs.sql (ROADMAP #45) now gives each of these
+-- organizations its own row, exactly like a genuine account collision; this
+-- mart follows suit by NOT summing across organization for the 3 verified
+-- org_collision_pes keys (independently re-derived below, matching
+-- dim_programs.sql's own fy_2026_total anchor) — each organization's row
+-- passes through with n_org_components=1, its own real figures, never
+-- another organization's. Every other pe_bli (including the 8 account-
+-- collision keys, and the ~1,700+ ordinary single-account/single-
+-- organization keys) is completely unaffected: organization is NULL for
+-- all of them, collapsing the group-by to (pe_bli, account) exactly as
+-- before this correction.
+--
 -- The change columns are recomputed from the SUMMED endpoints, never summed
 -- themselves: summing per-org deltas would silently publish a total for
 -- programs where one component has an FY2025 figure and another does not.
 --
 -- Guarded by assert_program_trajectory_component_sum.sql (every metric equals
--- the sum of its component rows — the assertion that fails the moment this is
--- reimplemented as a pick rather than a sum) and
+-- the sum of its component rows, EXCLUDING the 3 org_collision_pes keys
+-- since ROADMAP #45 — see that test's own updated comment) and
 -- assert_program_trajectory_grain_unique.sql.
 --
 -- NOT a shipped parquet: the org grain is the one readers query (an agency's
 -- share is an agency-grain question), and a second public "trajectory" table
--- differing on 3 of 1,741 rows would be a fresh footgun. This is the site's
--- program-grain projection, materialised where it can be asserted.
+-- differing on a handful of 1,753 rows would be a fresh footgun. This is the
+-- site's program-grain projection, materialised where it can be asserted.
 
-with components as (
+with org_collision_pes as (
+    select pe_bli
+    from (
+        select pe_bli, organization
+        from {{ ref('stg_budget_lines') }}
+        where fiscal_year = 2026
+          and amount_type = 'fy_2026_total'
+          and title is not null
+          and pe_bli <> '9999999999'
+        group by pe_bli, organization
+    )
+    group by pe_bli
+    having count(distinct organization) > 1
+),
+components as (
     select
-        pe_bli,
-        account,
-        max(account_title) as account_title,
+        t.pe_bli,
+        t.account,
+        case when ocp.pe_bli is not null then t.organization end as organization,
+        max(t.account_title) as account_title,
         count(*) as n_org_components,
-        sum(fy2024_actuals) as fy2024_actuals,
-        sum(fy2025_total)   as fy2025_total,
-        sum(fy2026_total)   as fy2026_total
-    from {{ ref('fct_budget_trajectory') }}
-    group by pe_bli, account
+        sum(t.fy2024_actuals) as fy2024_actuals,
+        sum(t.fy2025_total)   as fy2025_total,
+        sum(t.fy2026_total)   as fy2026_total
+    from {{ ref('fct_budget_trajectory') }} t
+    left join org_collision_pes ocp on ocp.pe_bli = t.pe_bli
+    group by t.pe_bli, t.account, case when ocp.pe_bli is not null then t.organization end
 )
 select
     pe_bli,
     account,
+    organization,
     account_title,
     n_org_components,
     fy2024_actuals,

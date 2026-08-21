@@ -96,6 +96,56 @@
 -- already-shipped honesty contract in export_site.py's
 -- _trajectory_only_feed_programs (backlog #17): a numbers-only page is
 -- honest degradation, not a fabricated narrative.
+--
+-- ROADMAP #45 (the ORG shape of the shared-key defect, filed alongside #56
+-- and closed after it): three BLI codes — '20', '30', '500' — are shared by
+-- genuinely different programs from DIFFERENT ORGANIZATIONS within the SAME
+-- appropriation account ('0300D' Procurement, Defense-Wide), so #56's
+-- account-keyed collision detection (collision_slots/collision_pes below)
+-- never saw them: account never varies for these three keys, only
+-- organization does. Verified against the shipped PB2026 warehouse
+-- (2026-08-21): '20' is DCSA "Major Equipment" ($2,230K) and DTRA
+-- "Vehicles" ($911K); '30' is OSD "Major Equipment, OSD" ($212,900K), DTRA
+-- "Other Major Equipment" ($12,023K), and DMACT "Major Equipment"
+-- ($7,258K); '500' is DLA "Major Equipment" ($79,251K) and DHRA "Personnel
+-- Administration" ($3,797K) — titles that name unrelated equipment/
+-- personnel categories, not one program's organizational components. Before
+-- this fix, `details` (below) grouped stg_budget_details by pe_bli ALONE,
+-- fusing every organization's PriorYear actuals into one
+-- fy2024_actual_millions and letting `matched`'s title join fan across every
+-- organization's stg_budget_lines rows (max() picking whichever title sorts
+-- last) — the identical #56 fusion shape, one dimension over: pe_bli 500
+-- rendered org='DLA' (from the fused stg_budget_details org) titled
+-- "Personnel Administration" (DHRA's own line, alphabetically last),
+-- attributing DHRA's money to a page identified by DLA's organization.
+-- programs_excluded.json already carried all 7 of these org-lines under
+-- reason='key_collision' — independent confirmation from the site's own
+-- coverage recompute that NONE of them was honestly represented pre-fix.
+--
+-- A 4th organization, DODEA, also shares '30' in stg_budget_details/
+-- stg_budget_lines historically (FY2024/FY2025 money, title "Automation/
+-- Educational Support & Logistics") but reports NO fy_2026_total row at
+-- all — the identical "wound down before this edition" shape as 1350/2101
+-- (Tomahawk) on the account axis. org_collision_slots below is anchored to
+-- fy_2026_total for exactly the same reason collision_slots already is
+-- (see the model-level comment above): a page-less, money-less 4th row
+-- would add nothing today. DODEA is therefore excluded from the per-org
+-- split by construction (its (pe_bli, org) pair is absent from
+-- org_collision_slots) — its historical money is never given a
+-- dim_programs row, matching the Tomahawk precedent exactly. It is NOT
+-- dropped from the corpus, though: fct_decade_series.sql's own org
+-- collision anchor is intentionally wider (every amount_type, not only
+-- fy_2026_total — mirroring that mart's E2.1 account correction) so
+-- DODEA's historical series is preserved under its own organization there
+-- instead of being fused into OSD's, DTRA's, or DMACT's.
+--
+-- org_collision_slots / org_collision_pes are independently re-derived
+-- (never a hardcoded key list) using the SAME fy_2026_total anchor
+-- collision_slots/collision_pes already use, substituting organization for
+-- account. Verified mutually exclusive with the 8 account-collision keys
+-- (no pe_bli collides on both dimensions in the shipped PB2026 warehouse) —
+-- the two split mechanisms below are therefore independent and never layer
+-- on the same pe_bli.
 with details_dedup as (
     select
         pe_bli,
@@ -110,32 +160,90 @@ with details_dedup as (
     where fiscal_year = 2026
     group by pe_bli, project_number, scenario, amount_millions, xml_path
 ),
-details as (
-    select
-        pe_bli,
-        max(org) as org,
-        max(exhibit_family) as exhibit_family,
-        count(distinct project_number) as project_count,
-        sum(amount_millions) filter (where scenario = 'PriorYear' and project_number is null)
-            as fy2024_actual_millions,
-        bool_and(reconciled) as fully_reconciled
-    from details_dedup
+-- ROADMAP #45: the fy_2026_total-anchored organization-collision set, same
+-- shape as collision_slots/collision_pes below but on organization instead
+-- of account. Defined here (ahead of `details`) because `details` needs it
+-- to decide whether to keep stg_budget_details grouped by pe_bli alone
+-- (every ordinary program, and DODEA's excluded '30' rows) or split it by
+-- organization (the 3 genuine collisions' real, currently-reporting sides).
+org_collision_slots as (
+    select pe_bli, organization
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and amount_type = 'fy_2026_total'
+      and title is not null
+      and pe_bli <> '9999999999'
+    group by pe_bli, organization
+),
+org_collision_pes as (
+    select pe_bli
+    from org_collision_slots
     group by pe_bli
+    having count(distinct organization) > 1
+),
+details as (
+    -- ROADMAP #45: grouped by (pe_bli, org) instead of pe_bli alone
+    -- whenever this pe_bli is a genuine organization collision AND this
+    -- row's own org is one of the currently-reporting sides
+    -- (org_collision_slots) — max(dd.org) then simply returns that one real
+    -- value per group instead of collapsing across organizations. Every
+    -- other pe_bli (ocp.pe_bli is null) groups by pe_bli alone, byte-for-
+    -- byte the pre-#45 behavior. DODEA's '30' rows (ocp matches but ocs
+    -- does not — no fy_2026_total money) are filtered out of `details`
+    -- entirely by the where clause below, exactly like Tomahawk's dormant
+    -- side never enters `collision_slots`/`collision_pes` for the account
+    -- axis: a page-less, money-less 4th row would add nothing today, and
+    -- its historical money is preserved in fct_decade_series instead (see
+    -- the model-level comment above).
+    select
+        dd.pe_bli,
+        max(dd.org) as org,
+        max(dd.exhibit_family) as exhibit_family,
+        count(distinct dd.project_number) as project_count,
+        sum(dd.amount_millions) filter (where dd.scenario = 'PriorYear' and dd.project_number is null)
+            as fy2024_actual_millions,
+        bool_and(dd.reconciled) as fully_reconciled
+    from details_dedup dd
+    left join org_collision_pes ocp on ocp.pe_bli = dd.pe_bli
+    left join org_collision_slots ocs
+        on ocs.pe_bli = dd.pe_bli and ocs.organization = dd.org
+    where ocp.pe_bli is null or ocs.pe_bli is not null
+    group by dd.pe_bli, ocs.organization
 ),
 account_match as (
+    -- ROADMAP #45: partitioned by (pe_bli, org) instead of pe_bli alone, and
+    -- the amount-tolerance join is additionally scoped to THIS row's own
+    -- organization for the 3 org-collision pe_bli values — without it, each
+    -- org's own fy2024_actual_millions (now un-fused) would still fan out
+    -- across every organization's stg_budget_lines rows at this pe_bli
+    -- (they all share account '0300D'), and coincidentally-close amounts
+    -- across organizations could cross-match. Scoped narrowly to the 3
+    -- verified keys (org_collision_pes), never applied universally — the
+    -- two sources' org vocabularies are not asserted to agree everywhere
+    -- (see the model-level comment: "account_match ties the two sources by
+    -- AMOUNT, not by a shared key neither source carries").
     select
         d.pe_bli,
+        d.org,
         b.account,
         b.account_title,
-        row_number() over (partition by d.pe_bli order by b.account) as rn
+        row_number() over (partition by d.pe_bli, d.org order by b.account) as rn
     from details d
+    left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
     join {{ ref('stg_budget_lines') }} b
         on b.pe_bli = d.pe_bli and b.fiscal_year = 2026
         and b.amount_type = 'fy_2024_actuals'
         and abs(b.amount_thousands / 1000.0 - d.fy2024_actual_millions) < 0.0005
+        and (ocp.pe_bli is null or b.organization = d.org)
     where d.fy2024_actual_millions is not null
 ),
 matched as (
+    -- ROADMAP #45: am joined by (pe_bli, org) instead of pe_bli alone (a
+    -- no-op for every non-split pe_bli, where org is constant within the
+    -- group), and the title join additionally scoped to this row's own org
+    -- for the 3 org-collision keys — without it, `max(b.title)` would fan
+    -- across every organization's line-item titles sharing account '0300D'
+    -- and pick whichever sorts last, exactly the pre-fix defect.
     select
         d.pe_bli,
         d.org,
@@ -147,10 +255,13 @@ matched as (
         am.account_title,
         max(b.title) as title
     from details d
-    left join account_match am on am.pe_bli = d.pe_bli and am.rn = 1
+    left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
+    left join account_match am
+        on am.pe_bli = d.pe_bli and am.org is not distinct from d.org and am.rn = 1
     left join {{ ref('stg_budget_lines') }} b
         on b.pe_bli = d.pe_bli and b.fiscal_year = 2026
         and (am.account is null or b.account = am.account)
+        and (ocp.pe_bli is null or b.organization = d.org)
     group by 1, 2, 3, 4, 5, 6, 7, 8
 ),
 -- E1 split key: per (pe_bli, amount_type) distinct-account count, fenced to

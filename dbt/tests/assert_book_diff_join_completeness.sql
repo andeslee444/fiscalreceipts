@@ -10,12 +10,17 @@
 -- (pe_bli, edition, kind) — matching whichever one happens to equal
 -- s.value and silently accepting a coincidental match instead of proving
 -- the diff actually came from ITS OWN account's series row.
+--
+-- ROADMAP #45 (2026-08-21): the join is additionally scoped by organization
+-- (same `is not distinct from` reasoning) for the identical failure mode on
+-- the organization axis ('20', '30', '500').
 with sides as (
-    select pe_bli, account, from_edition as edition_year, 'request' as kind,
+    select pe_bli, account, organization, from_edition as edition_year,
+           'request' as kind,
            from_value as value, diff_kind, from_edition, to_edition
     from {{ ref('fct_book_diff') }}
     union all
-    select pe_bli, account, to_edition,
+    select pe_bli, account, organization, to_edition,
            case diff_kind when 'request_vs_request' then 'request'
                           else 'actuals' end,
            to_value, diff_kind, from_edition, to_edition
@@ -26,6 +31,7 @@ from sides s
 left join {{ ref('fct_decade_series') }} d
   on d.pe_bli = s.pe_bli
  and d.account is not distinct from s.account
+ and d.organization is not distinct from s.organization
  and d.edition_year = s.edition_year
  and d.amount_type_kind = s.kind
 where d.pe_bli is null

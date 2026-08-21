@@ -1424,6 +1424,51 @@ gate family that makes the class visible.
 > `HCMC00`/`JSE000` on title variants. This sprint keyed on (account, pe_bli);
 > closing those needs org in the grain too.
 
+> **✅ #45 CLOSED 2026-08-21 (the ORGANIZATION shape of the same defect).**
+> `20` (DCSA "Major Equipment" $2,230K / DTRA "Vehicles" $911K), `30` (OSD
+> "Major Equipment, OSD" $212,900K / DTRA "Other Major Equipment" $12,023K /
+> DMACT "Major Equipment" $7,258K), and `500` (DLA "Major Equipment" $79,251K
+> / DHRA "Personnel Administration" $3,797K) share a BLI code across
+> organizations within ONE account ('0300D' Procurement, Defense-Wide) —
+> account can't disambiguate them, so the slug keys on organization instead:
+> `{pe_bli}-{ORGANIZATION}` ('20-DCSA', '30-OSD', ...), reusing `_ProgramIdentity`'s
+> dispatch-on-whichever-axis-differs design (`is_account_split`/`is_org_split`/
+> `split_key()`) rather than inventing a parallel mechanism. dim_programs
+> 1,749 → **1,753**; key-collision exclusions 11 → **4** (only `HCMC00`/
+> `JSE000`'s title-variant shape remains, correctly out of scope). 24/24
+> gates; gate 23 leg (h) extended to a composite (account_title,
+> organization) key rather than a new letter — it now catches EITHER shape.
+>
+> **A 4th organization, DODEA, shares `30` historically** (FY2024/FY2025
+> money, wound down before FY2026 — the identical shape to 1350/2101/
+> Tomahawk on the account axis) — excluded from the page split by the same
+> "no current money, no page" rule, but kept in `fct_decade_series`'s wider
+> any-amount_type anchor so its historical series isn't silently fused into
+> another organization's.
+>
+> **The most consequential finding wasn't in the file list.** `fct_program_
+> trajectory` (backlog #37, PREDATING this sprint) explicitly SUMMED these
+> same 3 keys' organizations into one "program" total, on the premise that
+> they were legitimate multi-org components of one program. They aren't —
+> DLA "Major Equipment" and DHRA "Personnel Administration" sharing `500`
+> is the identical coincidental-BLI-reuse shape #56 already fixed for
+> accounts, just summed instead of dropped. `programs_excluded.json`
+> independently corroborated this pre-existing: all 7 org-lines were ALREADY
+> listed there with reason `key_collision`, meaning the site's own coverage
+> recompute had already determined none of them was honestly represented —
+> including the "winning" side #37 was crediting a whole program's money to.
+> Un-summed it (organization now threaded through `fct_program_trajectory`,
+> both component-sum dbt tests, and every downstream citation-key builder
+> that assumed "this pe_bli's only plurality is account"). Also found:
+> `fct_book_diff`'s cross-edition self-join, three separate `traj_index`/
+> `traj_orgs`-style caches keyed by `(pe, account)` alone (self-healing where
+> `org` was already part of the same tuple, genuinely broken — silent
+> collision, not a crash — where it wasn't), `_build_slug_by_pe`'s top50-style
+> ranking join, and a stale-file gap: `program_details/` has no dossier-style
+> prune, so `20.json`/`30.json`/`500.json` (real, fused pages before this fix)
+> would ship forever once split, since nothing else in the pipeline reads them
+> again to notice they're wrong.
+
 > **#55 remainder — RTX/Boeing aliases: NOT engineering work. Investigated
 > 2026-08-21 and deliberately not done.** RTX's page still matches generic
 > aviation lines (Aviation Safety Technologies, Aircraft Engine Component

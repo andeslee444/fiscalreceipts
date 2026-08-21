@@ -1883,14 +1883,26 @@ function runAccountCollisionLeg(pages, errors, notes) {
     resolved++;
 
     const budgetLines = Array.isArray(sidecar.budget_lines) ? sidecar.budget_lines : [];
-    // amount_type → account_title → summed amount_thousands
+    // amount_type → "account_title||organization" → summed amount_thousands.
+    //
+    // ROADMAP #45: the composite key (not account_title alone) is what
+    // extends this leg to organization collisions ('20'/'30'/'500') without
+    // a new letter. The 8 Sprint E keys collide on account_title with a
+    // constant organization; the 3 ROADMAP #45 keys collide on organization
+    // with a constant account_title — either way, >1 distinct composite key
+    // within one amount_type IS a fused slot, and the same recompute below
+    // (h1: a card must equal exactly ONE composite's own contribution) and
+    // dataset check (h2) apply unchanged to both shapes. A hypothetical key
+    // colliding on BOTH dimensions at once would also be caught (>1 distinct
+    // composite), though none exists in the shipped PB2026 warehouse.
     const perSlot = new Map();
     for (const bl of budgetLines) {
       if (!bl || bl.account_title == null || bl.amount_type == null) continue;
       if (typeof bl.amount_thousands !== "number") continue;
       if (!perSlot.has(bl.amount_type)) perSlot.set(bl.amount_type, new Map());
       const m = perSlot.get(bl.amount_type);
-      m.set(bl.account_title, (m.get(bl.account_title) || 0) + bl.amount_thousands);
+      const compositeKey = `${bl.account_title}||${bl.organization ?? ""}`;
+      m.set(compositeKey, (m.get(compositeKey) || 0) + bl.amount_thousands);
     }
     const collisionSlots = new Set(
       [...perSlot.entries()].filter(([, m]) => m.size > 1).map(([at]) => at),
@@ -1902,13 +1914,14 @@ function runAccountCollisionLeg(pages, errors, notes) {
       const amountType = CARD_KEY_TO_AMOUNT_TYPE[card.key];
       if (!amountType || !collisionSlots.has(amountType)) continue;
 
-      // h2 — a card on a colliding slot may never cite the non-account-
-      // scoped mart, no matter what value it holds.
+      // h2 — a card on a colliding slot may never cite the non-scoped
+      // mart, no matter what value it holds.
       if (card.dataset === "fct_decade_series") {
         fusedSourceDataset.push(
           `/program/${pe}/: summary card "${card.key}" cites dataset ` +
             `"fct_decade_series" on a page whose own budget_lines span >1 ` +
-            `account_title for ${amountType} (${[...perSlot.get(amountType).keys()].join(" | ")})`,
+            `account_title/organization for ${amountType}` +
+            ` (${[...perSlot.get(amountType).keys()].join(" | ")})`,
         );
         continue;
       }
@@ -1924,11 +1937,11 @@ function runAccountCollisionLeg(pages, errors, notes) {
       );
       if (!matchesOne) {
         const breakdown = [...perAccount.entries()]
-          .map(([acct, v]) => `${acct}=${v}`)
+          .map(([compositeKey, v]) => `${compositeKey.replace("||", " / ")}=${v}`)
           .join(", ");
         fusedCardMismatches.push(
           `/program/${pe}/: summary card "${card.key}" = ${card.value} ` +
-            `(dataset ${card.dataset}) matches NEITHER account's own ` +
+            `(dataset ${card.dataset}) matches NEITHER account/org's own ` +
             `${amountType} figure (${breakdown}) — looks like a cross-account sum`,
         );
       }

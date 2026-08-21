@@ -215,72 +215,193 @@ def _build_account_slug_map(account_titles) -> dict[str, str]:
 
 
 class _ProgramIdentity:
-    """The account-aware program-page identity map (Task E3).
+    """The account/organization-aware program-page identity map (Task E3;
+    widened ROADMAP #45).
 
-    Built once per export from dim_programs (every (pe_bli, account, title,
-    account_title, has_detail) row). `has_detail` is exhibit_family IS NOT
-    NULL — dim_programs.sql's own discriminator for "this specific account
-    owns the R-2/P-40 J-book detail rows filed under this pe_bli" (verified
-    empirically 2026-08-21: every one of the 8 split keys has AT MOST ONE
-    account with has_detail=True; details/narratives sourced from
-    stg_budget_details belong ENTIRELY to that account, never the sibling).
+    Built once per export from dim_programs (every (pe_bli, account, org,
+    title, account_title, has_detail) row). `has_detail` is exhibit_family
+    IS NOT NULL — dim_programs.sql's own discriminator for "this specific
+    row owns the R-2/P-40 J-book detail rows filed under this pe_bli"
+    (verified empirically 2026-08-21: every one of the 8 account-collision
+    keys has AT MOST ONE account with has_detail=True; details/narratives
+    sourced from stg_budget_details belong ENTIRELY to that account, never
+    the sibling).
 
     split_pe_blis: pe_bli values with >1 dim_programs row — exactly the keys
-    that need a composite slug and a disambiguation stub.
+    that need a composite slug and a disambiguation stub. Two independent
+    shapes share this one set (verified mutually exclusive — no pe_bli
+    collides on both dimensions in the shipped PB2026 warehouse): 8 keys
+    split by ACCOUNT (Sprint E, ROADMAP #67 — same organization, different
+    appropriation account) and 3 keys split by ORGANIZATION (ROADMAP #45 —
+    same account, different organization: '20' DCSA/DTRA, '30'
+    OSD/DTRA/DMACT, '500' DLA/DHRA). `slug()`/`has_own_detail()` dispatch on
+    whichever dimension actually differs among a pe_bli's own rows, so a
+    future key colliding on BOTH would still resolve (both codes threaded
+    into the slug) rather than silently collapsing.
     """
 
-    def __init__(self, rows: list[tuple[str, str, str, bool]]):
-        # rows: (pe_bli, account, account_title, has_detail)
-        by_pe: dict[str, list[tuple[str, str, bool]]] = {}
-        for pe_bli, account, account_title, has_detail in rows:
-            by_pe.setdefault(pe_bli, []).append((account, account_title, has_detail))
+    def __init__(self, rows: list[tuple[str, str, str, str, bool]]):
+        # rows: (pe_bli, account, account_title, organization, has_detail)
+        by_pe: dict[str, list[tuple[str, str, str, bool]]] = {}
+        for pe_bli, account, account_title, organization, has_detail in rows:
+            by_pe.setdefault(pe_bli, []).append(
+                (account, account_title, organization, has_detail)
+            )
         self._by_pe = by_pe
         self.split_pe_blis = {pe for pe, accts in by_pe.items() if len(accts) > 1}
         all_titles = {
             account_title
             for accts in by_pe.values()
-            for _account, account_title, _hd in accts
+            for _account, account_title, _org, _hd in accts
             if len(accts) > 1
         }
         self._slug_by_title = _build_account_slug_map(all_titles)
-        # matched_account_by_pe: for a split pe_bli, the ONE account (if any)
-        # whose has_detail is True — the account entitled to this pe_bli's
-        # J-book detail/narrative rows. Absent when both sides (or neither)
-        # have detail (E1: 0145 and 2292 have zero J-book detail on EITHER
-        # side — both split pages are honestly rollup-tier there).
+        # matched_account_by_pe: for an ACCOUNT-split pe_bli, the ONE
+        # account (if any) whose has_detail is True — the account entitled
+        # to this pe_bli's J-book detail/narrative rows. Absent when both
+        # sides (or neither) have detail (E1: 0145 and 2292 have zero
+        # J-book detail on EITHER side — both split pages are honestly
+        # rollup-tier there). Only ever consulted for pe_blis whose rows
+        # differ by account (see has_own_detail) — an ORGANIZATION-split
+        # pe_bli's rows all share one account, so `detail_accounts` below
+        # would collect duplicate copies of that same account and
+        # correctly never populate an entry (len != 1), which is exactly
+        # right: ROADMAP #45's per-organization rows are never synthetic
+        # placeholders the way an account-collision's losing side can be
+        # (dim_programs.sql has no synth-equivalent branch for organization
+        # — every organization sharing a key has genuine stg_budget_details
+        # rows of its own), so has_own_detail resolves them per-row instead.
         self.matched_account_by_pe: dict[str, str] = {}
         for pe, accts in by_pe.items():
             if len(accts) <= 1:
                 continue
-            detail_accounts = [a for a, _t, hd in accts if hd]
+            detail_accounts = [a for a, _t, _o, hd in accts if hd]
             if len(detail_accounts) == 1:
                 self.matched_account_by_pe[pe] = detail_accounts[0]
 
-    def accounts(self, pe_bli: str) -> list[tuple[str, str, bool]]:
+    def accounts(self, pe_bli: str) -> list[tuple[str, str, str, bool]]:
         return self._by_pe.get(pe_bli, [])
 
     def is_split(self, pe_bli: str) -> bool:
         return pe_bli in self.split_pe_blis
 
-    def slug(self, pe_bli: str, account: str | None, account_title: str | None) -> str:
-        """The page slug for (pe_bli, account). Identity when not a split
-        key; "{pe_bli}-{ACCOUNT_CODE}" when it is."""
+    def is_account_split(self, pe_bli: str) -> bool:
+        """True iff this is a split key whose rows differ by ACCOUNT (the 8
+        Sprint E, ROADMAP #67 keys). False for organization-split keys and
+        non-split pe_blis. Callers that key a lookup by (pe_bli, account)
+        use this to decide whether `account` is the real discriminator for
+        THIS pe_bli — see is_org_split for its mirror."""
+        if pe_bli not in self.split_pe_blis:
+            return False
+        rows = self._by_pe.get(pe_bli, [])
+        return len({a for a, _t, _o, _hd in rows}) > 1
+
+    def is_org_split(self, pe_bli: str) -> bool:
+        """True iff this is a split key whose rows differ by ORGANIZATION
+        only (the 3 ROADMAP #45 keys: '20', '30', '500'). Mutually exclusive
+        with is_account_split — verified no pe_bli collides on both
+        dimensions in the shipped PB2026 warehouse."""
+        return pe_bli in self.split_pe_blis and not self.is_account_split(pe_bli)
+
+    def split_key(
+        self, pe_bli: str, account: str | None, organization: str | None = None,
+    ) -> tuple[str, str | None, str | None]:
+        """The canonical (pe_bli, account, organization) dict/grouping key
+        for a row's identity, normalized so every consumer that groups by
+        "this program's own slot" agrees on ONE key shape.
+
+        Non-split pe_blis always collapse to (pe_bli, None, None) — the
+        pre-E3 key, byte-for-byte. A split pe_bli's key carries a real value
+        on whichever axis actually distinguishes its rows (account for the
+        8 Sprint E keys, organization for the 3 ROADMAP #45 keys) and None
+        on the other — this is the SAME dispatch `slug()`/`has_own_detail()`
+        use, factored out because several callers (summary-block indexes,
+        years_matrix indexes, decade-grain lookups) independently needed
+        the identical "which axis, and normalize the other to None" logic
+        and had begun reimplementing it ad hoc, account-only, which is
+        exactly the shape of bug this whole task exists to close: an
+        org-collision key's two rows sharing the SAME real account
+        (fct_budget_trajectory always populates it) would silently collapse
+        onto one dict entry unless organization is threaded through too.
+        """
+        if pe_bli not in self.split_pe_blis:
+            return (pe_bli, None, None)
+        if self.is_account_split(pe_bli):
+            return (pe_bli, account, None)
+        return (pe_bli, None, organization)
+
+    def slug(
+        self,
+        pe_bli: str,
+        account: str | None,
+        account_title: str | None,
+        organization: str | None = None,
+    ) -> str:
+        """The page slug for (pe_bli, account, organization). Identity when
+        not a split key. For a split key, dispatches on whichever dimension
+        actually differs among this pe_bli's own dim_programs rows:
+        "{pe_bli}-{ACCOUNT_CODE}" when account varies (the 8 Sprint E
+        keys), "{pe_bli}-{ORGANIZATION}" when only organization does (the 3
+        ROADMAP #45 keys — organization values are already short, unique
+        workbook codes like 'DCSA'/'DTRA', so no derivation is needed the
+        way a human-language account_title requires one). A pe_bli
+        colliding on BOTH (none exist today — verified) gets both codes
+        threaded in, "{pe_bli}-{ACCOUNT_CODE}-{ORGANIZATION}", so it still
+        resolves instead of silently colliding; a split key where NEITHER
+        dimension actually differs among its own rows is a data integrity
+        bug and raises rather than guessing.
+        """
         if pe_bli not in self.split_pe_blis:
             return pe_bli
-        if account_title is None:
+        rows = self._by_pe.get(pe_bli, [])
+        distinct_accounts = {a for a, _t, _o, _hd in rows}
+        distinct_orgs = {o for _a, _t, o, _hd in rows}
+        parts: list[str] = []
+        if len(distinct_accounts) > 1:
+            if account_title is None:
+                raise ValueError(
+                    f"_ProgramIdentity.slug: {pe_bli!r} is an account-split"
+                    " key but no account_title was supplied — cannot derive"
+                    " a composite slug"
+                )
+            parts.append(self._slug_by_title[account_title])
+        if len(distinct_orgs) > 1:
+            if organization is None:
+                raise ValueError(
+                    f"_ProgramIdentity.slug: {pe_bli!r} is an organization-"
+                    "split key but no organization was supplied — cannot"
+                    " derive a composite slug"
+                )
+            parts.append(organization)
+        if not parts:
             raise ValueError(
-                f"_ProgramIdentity.slug: {pe_bli!r} is a split key but no"
-                " account_title was supplied — cannot derive a composite slug"
+                f"_ProgramIdentity.slug: {pe_bli!r} is a split key but"
+                " neither account nor organization actually differs among"
+                " its own dim_programs rows — cannot derive a disambiguating"
+                " slug"
             )
-        return f"{pe_bli}-{self._slug_by_title[account_title]}"
+        return f"{pe_bli}-{'-'.join(parts)}"
 
-    def has_own_detail(self, pe_bli: str, account: str | None) -> bool:
-        """True iff THIS (pe_bli, account) owns the pe_bli's J-book detail
-        rows (details_by_pe / narratives). Non-split pe_blis always own
-        whatever is under their bare key (unchanged pre-E3 behavior)."""
+    def has_own_detail(
+        self, pe_bli: str, account: str | None, organization: str | None = None,
+    ) -> bool:
+        """True iff THIS (pe_bli, account, organization) owns the pe_bli's
+        J-book detail rows (details_by_pe / narratives). Non-split pe_blis
+        always own whatever is under their bare key (unchanged pre-E3
+        behavior). Account-split keys resolve via matched_account_by_pe
+        (unchanged E3 behavior: exactly one side, if any, owns detail).
+        Organization-split keys (ROADMAP #45) resolve per-row instead —
+        every organization sharing one of these 3 keys has its own genuine
+        detail rows (no synthetic/detail-less side exists on this axis)."""
         if pe_bli not in self.split_pe_blis:
             return True
-        return self.matched_account_by_pe.get(pe_bli) == account
+        rows = self._by_pe.get(pe_bli, [])
+        if len({a for a, _t, _o, _hd in rows}) > 1:
+            return self.matched_account_by_pe.get(pe_bli) == account
+        for _a, _t, o, hd in rows:
+            if o == organization:
+                return hd
+        return False
 
 
 def _query_with_account_fallback(
@@ -316,18 +437,20 @@ def _query_with_account_fallback(
 
 
 def _fetch_program_identity(con) -> _ProgramIdentity:
-    """Read dim_programs once for the (pe_bli, account) identity map.
+    """Read dim_programs once for the (pe_bli, account, organization)
+    identity map.
 
     Degrades to an empty identity (no split keys — every pe_bli byte-for-
     byte pre-E3) when dim_programs is absent or lacks the account/
-    account_title columns — the same defensive shape every other mart
+    account_title/org columns — the same defensive shape every other mart
     reader in this module uses (e.g. _program_trajectory_index), so a
     minimal test fixture database that never needed dim_programs for its
     own narrow assertion is not newly forced to define one.
     """
     try:
         rows = con.execute(
-            "select pe_bli, account, account_title, exhibit_family is not null"
+            "select pe_bli, account, account_title, org,"
+            " exhibit_family is not null"
             " from dim_programs"
         ).fetchall()
     except Exception:
@@ -2217,75 +2340,108 @@ def _program_trajectory_index(con) -> dict:
     }
 
 
-def _program_trajectory_index_by_account(con) -> dict[tuple[str, str], dict]:
-    """(pe_bli, account) → the PROGRAM's trajectory metrics — the
-    account-precise counterpart to _program_trajectory_index (Task E3).
+def _program_trajectory_index_by_account(
+    con,
+) -> dict[tuple[str, str | None, str | None], dict]:
+    """(pe_bli, account, organization) → the PROGRAM's trajectory metrics —
+    the account/organization-precise counterpart to
+    _program_trajectory_index (Task E3; widened ROADMAP #45).
 
     Every fct_program_trajectory row carries a real account since E1's
     re-grain (never NULL), so this index is total and unambiguous —
-    including for the 8 split keys, where it correctly returns two distinct
-    rows instead of collapsing them.
+    including for the 8 account-split keys, where it correctly returns two
+    distinct rows instead of collapsing them. `organization` is additionally
+    real for the 3 ROADMAP #45 org-split keys ('20'/'30'/'500' — where
+    account alone does NOT distinguish rows, since it is the same real
+    account for every organization sharing the key); NULL for every other
+    row, including the 8 account-split keys'.
     """
-    rows = _query_with_account_fallback(
-        con,
-        "select pe_bli, account, n_org_components, fy2024_actuals,"
-        " fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change"
-        " from fct_program_trajectory",
-        "select pe_bli, n_org_components, fy2024_actuals,"
-        " fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change"
-        " from fct_program_trajectory",
-        account_index=1,
-    )
+    try:
+        rows = con.execute(
+            "select pe_bli, account, organization, n_org_components,"
+            " fy2024_actuals, fy2025_total, fy2026_total, fy2526_change,"
+            " fy2526_pct_change"
+            " from fct_program_trajectory"
+        ).fetchall()
+    except Exception:
+        # organization column absent (a pre-#45 test fixture) — fall back
+        # through the existing account-only tiering and pad organization
+        # None, the same "schema without the column cannot carry real
+        # split-key data" contract used throughout this module.
+        base = _query_with_account_fallback(
+            con,
+            "select pe_bli, account, n_org_components, fy2024_actuals,"
+            " fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory",
+            "select pe_bli, n_org_components, fy2024_actuals,"
+            " fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory",
+            account_index=1,
+        )
+        rows = [(r[0], r[1], None, *r[2:]) for r in base]
     return {
-        (r[0], r[1]): {
-            "n_org_components": r[2],
-            "fy2024_actuals": r[3],
-            "fy2025_total": r[4],
-            "fy2026_total": r[5],
-            "fy2526_change": r[6],
-            "fy2526_pct_change": r[7],
+        (r[0], r[1], r[2]): {
+            "n_org_components": r[3],
+            "fy2024_actuals": r[4],
+            "fy2025_total": r[5],
+            "fy2026_total": r[6],
+            "fy2526_change": r[7],
+            "fy2526_pct_change": r[8],
         }
         for r in rows
     }
 
 
 def _group_trajectory_by_pe(
-    by_account: dict[tuple[str, str], dict],
-) -> dict[str, list[tuple[str, dict]]]:
+    by_account: dict[tuple[str, str | None, str | None], dict],
+) -> dict[str, list[tuple[str | None, str | None, dict]]]:
     """Group _program_trajectory_index_by_account's rows by bare pe_bli, for
-    building an O(1) per-(pe, account) resolver (see _resolve_program_
-    trajectory)."""
-    out: dict[str, list[tuple[str, dict]]] = {}
-    for (pe, account), metrics in by_account.items():
-        out.setdefault(pe, []).append((account, metrics))
+    building an O(1) per-(pe, account, organization) resolver (see
+    _resolve_program_trajectory)."""
+    out: dict[str, list[tuple[str | None, str | None, dict]]] = {}
+    for (pe, account, organization), metrics in by_account.items():
+        out.setdefault(pe, []).append((account, organization, metrics))
     return out
 
 
 def _resolve_program_trajectory(
-    grouped: dict[str, list[tuple[str, dict]]],
+    grouped: dict[str, list[tuple[str | None, str | None, dict]]],
     pe_bli: str,
     account: str | None,
+    organization: str | None = None,
 ) -> dict | None:
     """Resolve ONE program's trajectory metrics precisely.
 
-    account supplied: exact (pe_bli, account) match or None (that specific
-    account genuinely has no trajectory row — honest absence).
-    account=None (the ~1,740 non-split callers): the pe's sole row when
-    unambiguous; a split pe_bli asked about without an account hint returns
-    None rather than guessing which account's figures to show — the same
-    "never pick arbitrarily" discipline _resolve_decade_grains_primary_
-    account documented and this task removes in favor of.
+    account supplied (the 8 account-split keys): exact (pe_bli, account)
+    match, ignoring organization — or None (that specific account genuinely
+    has no trajectory row — honest absence).
+    organization supplied instead (the 3 ROADMAP #45 org-split keys):
+    exact (pe_bli, organization) match, ignoring account — fct_program_
+    trajectory's account is real-but-constant across every organization
+    sharing one of these 3 keys, so account can never be the caller's
+    discriminator for them.
+    Neither supplied (the ~1,740 non-split callers): the pe's sole row when
+    unambiguous; a split pe_bli asked about with no hint on its own
+    discriminating axis returns None rather than guessing which side's
+    figures to show — the same "never pick arbitrarily" discipline
+    _resolve_decade_grains_primary_account documented and Task E3 removed
+    in favor of.
     """
     entries = grouped.get(pe_bli)
     if not entries:
         return None
     if account is not None:
-        for a, metrics in entries:
+        for a, _o, metrics in entries:
             if a == account:
                 return metrics
         return None
+    if organization is not None:
+        for _a, o, metrics in entries:
+            if o == organization:
+                return metrics
+        return None
     if len(entries) == 1:
-        return entries[0][1]
+        return entries[0][2]
     return None
 
 
@@ -2473,14 +2629,27 @@ def _build_derived_citation_rows(
 
         for pe_bli, org, account, fy24, fy25, fy26, chg in traj_rows:
             translated_org = _workbook_org(org)
-            # Task E3: for the 8 split keys, two rows now share (pe_bli, org)
-            # — qualify the key by account so each mints its OWN fact_id
-            # instead of both colliding on one (and the second processed
-            # silently overwriting the first's recorded_value). Every other
-            # pe_bli reproduces the pre-E3 '{pe_bli}|{org}' key exactly.
+            # Task E3: for the 8 account-split keys, two rows now share
+            # (pe_bli, org) — qualify the key by account so each mints its
+            # OWN fact_id instead of both colliding on one (and the second
+            # processed silently overwriting the first's recorded_value).
+            # Every other pe_bli reproduces the pre-E3 '{pe_bli}|{org}' key
+            # exactly.
+            #
+            # ROADMAP #45: gated on is_account_split, NOT bare split_pe_blis
+            # membership — the 3 org-split keys ('20'/'30'/'500') already
+            # get a unique key from `org` alone (each is its own real
+            # organization here, unlike the 8 account-split keys' shared
+            # single org), and account is real-but-CONSTANT across every
+            # organization sharing one of these 3 keys, so appending it
+            # would be harmless-but-pointless at best — the actual
+            # requirement is that this key matches _trajectory_citation_key
+            # /_trajectory_fact_ids' OWN derivation byte-for-byte (both now
+            # skip the account suffix for an org-split key), or the fact_id
+            # this loop mints would never resolve as cited there.
             key_str = (
                 f"{pe_bli}|{org}|{account}"
-                if pe_bli in ident.split_pe_blis else f"{pe_bli}|{org}"
+                if ident.is_account_split(pe_bli) else f"{pe_bli}|{org}"
             )
 
             # For each plain metric, collect inputs
@@ -2842,15 +3011,20 @@ def _build_derived_citation_rows(
         traj_fy26: dict[tuple, float] = {}
         for t_pe, t_org, t_account, _t24, _t25, t_fy26, _tchg in traj_rows:
             if t_fy26 is not None:
-                key_account = t_account if t_pe in ident.split_pe_blis else None
+                key_account = t_account if ident.is_account_split(t_pe) else None
                 traj_fy26[(t_pe, t_org, key_account)] = t_fy26
 
         org_fy26_total: dict[str, float] = {}
         org_fy26_inputs: dict[str, list[str]] = {}
         for pe_bli, org, _fy24_m, account in prog_rows_d:
             translated = _workbook_org(org)
-            is_split = pe_bli in ident.split_pe_blis
-            key_account = account if is_split else None
+            # ROADMAP #45: gated on is_account_split, not bare split_pe_blis
+            # membership — see the "Trajectory figures" loop's own key_str
+            # fix above for why: an org-split key's fact_id was minted
+            # WITHOUT an account suffix (org alone is already unique there),
+            # so referencing it here with one appended would point at a
+            # fact_id that was never minted.
+            key_account = account if ident.is_account_split(pe_bli) else None
             fy26_val = traj_fy26.get((pe_bli, translated, key_account))
             if fy26_val is None:
                 continue
@@ -2858,9 +3032,7 @@ def _build_derived_citation_rows(
             org_fy26_inputs.setdefault(org, []).append(
                 fact_id_derived(
                     "trajectory",
-                    _trajectory_citation_key(
-                        pe_bli, [translated], account if is_split else None,
-                    ),
+                    _trajectory_citation_key(pe_bli, [translated], key_account),
                     "fy2026_total",
                 )
             )
@@ -3327,11 +3499,16 @@ def _build_decade_citation_rows(
                          metric=diff_kind, formula '… - …' with inputs
                          [to_fid, from_fid] → rule-4b recompute).
       decade_grains    — (pe_bli, fy, edition_year, amount_type_kind,
-                         amount_thousands, fid, amount_type) per in-scope
-                         grain; fid is the grain's citable identity (workbook
-                         fact for single-source, derived decade sum
-                         otherwise); amount_type is the grain's chosen slug
-                         (consumers derive slug-accurate `measure` from it).
+                         amount_thousands, fid, amount_type, account,
+                         organization) per in-scope grain; fid is the
+                         grain's citable identity (workbook fact for
+                         single-source, derived decade sum otherwise);
+                         amount_type is the grain's chosen slug (consumers
+                         derive slug-accurate `measure` from it). account is
+                         real only for the 8 Sprint E account-collision
+                         keys; organization is real only for the 3 ROADMAP
+                         #45 organization-collision keys ('20'/'30'/'500')
+                         — the two are never both non-NULL on the same row.
       decade_side_meta — fid → (label, pe_bli) for _emit_breakdowns
                          difference-row labels ('PB2024 FY2022 actuals').
 
@@ -3360,21 +3537,47 @@ def _build_decade_citation_rows(
         try:
             series = con.execute(
                 "select pe_bli, fy, edition_year, amount_type_kind, amount,"
-                " amount_type, n_source_rows, source_fact_id, account"
+                " amount_type, n_source_rows, source_fact_id, account,"
+                " organization"
                 " from fct_decade_series"
             ).fetchall()
         except _duckdb.CatalogException:
             print("decade: fct_decade_series not in warehouse — decade tier skipped")
             return empty
+        except _duckdb.BinderException:
+            # ROADMAP #45: the table exists but predates the `organization`
+            # column (an older test fixture) — fall back and pad None, the
+            # same "schema without the column cannot carry real split-key
+            # data" contract _query_with_account_fallback already uses for
+            # `account`.
+            series = [
+                (*r, None)
+                for r in con.execute(
+                    "select pe_bli, fy, edition_year, amount_type_kind,"
+                    " amount, amount_type, n_source_rows, source_fact_id,"
+                    " account from fct_decade_series"
+                ).fetchall()
+            ]
         try:
             diffs = con.execute(
                 "select pe_bli, from_edition, to_edition, diff_kind,"
                 " from_fy, to_fy, from_value, to_value, delta,"
-                " from_amount_type, to_amount_type, account"
+                " from_amount_type, to_amount_type, account, organization"
                 " from fct_book_diff"
             ).fetchall()
         except _duckdb.CatalogException:
             diffs = []
+        except _duckdb.BinderException:
+            # organization column missing (older fixture) — pad None.
+            diffs = [
+                (*r, None)
+                for r in con.execute(
+                    "select pe_bli, from_edition, to_edition, diff_kind,"
+                    " from_fy, to_fy, from_value, to_value, delta,"
+                    " from_amount_type, to_amount_type, account"
+                    " from fct_book_diff"
+                ).fetchall()
+            ]
     finally:
         con.close()
 
@@ -3442,7 +3645,7 @@ def _build_decade_citation_rows(
     n_wb_dedup = 0
     n_derived_sum = 0
 
-    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid, account in series:
+    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid, account, series_org in series:
         if pe_bli not in pes:
             continue
         candidate_rows = src_by_key.get((pe_bli, edition, at), [])
@@ -3451,17 +3654,28 @@ def _build_decade_citation_rows(
         # from pre-E2), so the account filter is applied here rather than
         # baked into the dict key, which lets every other pe_bli (account
         # IS NULL) fall through unfiltered, byte-for-byte as before.
-        key_rows = (
-            [r for r in candidate_rows if r[2] == account]
-            if account is not None else candidate_rows
-        )
+        #
+        # ROADMAP #45: the identical scoping by organization (r[4] — the raw
+        # source row's own organization) for the 3 org-collision keys.
+        # series_org (NOT `organization` — that name is the inner loop's raw
+        # per-row value below; reusing it here would be the exact
+        # account/row_account shadowing bug the comment two lines down
+        # documents, just on the organization axis) is non-NULL only for
+        # '20'/'30'/'500'. account and series_org are never both non-NULL
+        # for the same series row (verified mutually exclusive), so applying
+        # both filters unconditionally is a pure AND, never over-constrains.
+        key_rows = candidate_rows
+        if account is not None:
+            key_rows = [r for r in key_rows if r[2] == account]
+        if series_org is not None:
+            key_rows = [r for r in key_rows if r[4] == series_org]
         if len(key_rows) != n_src:
             raise ValueError(
                 f"decade: grain ({pe_bli}, PB{edition}, {at}, account="
-                f"{account!r}) has {len(key_rows)} lake source rows but"
-                f" fct_decade_series says n_source_rows={n_src} — mart/lake"
-                " drift; refusing to mint (rebuild the marts against the"
-                " current lake)"
+                f"{account!r}, organization={series_org!r}) has"
+                f" {len(key_rows)} lake source rows but fct_decade_series"
+                f" says n_source_rows={n_src} — mart/lake drift; refusing to"
+                " mint (rebuild the marts against the current lake)"
             )
 
         input_fids: list[str] = []
@@ -3549,35 +3763,38 @@ def _build_decade_citation_rows(
                     built_at,
                 ))
 
-        # E2: account is part of the lookup key — grain_fid_by_key must
-        # resolve to THIS account's own fid, not whichever account's row
-        # happened to be processed last for this (pe_bli, edition, at).
-        grain_fid_by_key[(pe_bli, account, edition, at)] = grain_fid
-        # 7-tuple (+account internally): the trailing amount_type is the
-        # grain's CHOSEN slug — consumers derive the point's `measure` from
-        # it (slug-accurate: a CurrentYear grain built from fy_2025_total is
-        # measure 'total', matching the P-1 table row it must agree with;
-        # one built from fy_2025_enacted is 'enacted').
+        # E2/#45: account/organization are part of the lookup key —
+        # grain_fid_by_key must resolve to THIS account's (or organization's)
+        # own fid, not whichever row happened to be processed last for this
+        # (pe_bli, edition, at).
+        grain_fid_by_key[(pe_bli, account, series_org, edition, at)] = grain_fid
+        # 9-tuple (+account/organization internally): the trailing
+        # amount_type is the grain's CHOSEN slug — consumers derive the
+        # point's `measure` from it (slug-accurate: a CurrentYear grain
+        # built from fy_2025_total is measure 'total', matching the P-1
+        # table row it must agree with; one built from fy_2025_enacted is
+        # 'enacted').
         decade_grains_full.append(
             (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid,
-             at, account)
+             at, account, series_org)
         )
         decade_side_meta[grain_fid] = (f"PB{edition} FY{fy} {kind}", pe_bli)
 
     # ---- book-diff derived facts -------------------------------------------
     n_diffs = 0
     for (pe_bli, from_ed, to_ed, diff_kind, from_fy, to_fy,
-         _from_val, _to_val, delta, from_at, to_at, account) in diffs:
+         _from_val, _to_val, delta, from_at, to_at, account,
+         diff_org) in diffs:
         if pe_bli not in pes or delta is None:
             continue
-        from_fid = grain_fid_by_key.get((pe_bli, account, from_ed, from_at))
-        to_fid = grain_fid_by_key.get((pe_bli, account, to_ed, to_at))
+        from_fid = grain_fid_by_key.get((pe_bli, account, diff_org, from_ed, from_at))
+        to_fid = grain_fid_by_key.get((pe_bli, account, diff_org, to_ed, to_at))
         if from_fid is None or to_fid is None:
             raise ValueError(
                 f"decade: fct_book_diff row ({pe_bli}, account={account!r},"
-                f" PB{from_ed}→PB{to_ed}, {diff_kind}) references a side"
-                " grain missing from fct_decade_series — join completeness"
-                " violated"
+                f" organization={diff_org!r}, PB{from_ed}→PB{to_ed},"
+                f" {diff_kind}) references a side grain missing from"
+                " fct_decade_series — join completeness violated"
             )
         # E2: account folded into the diff identity when the mart resolved
         # one (the 8 genuine collisions) — without this, both accounts'
@@ -3588,10 +3805,16 @@ def _build_decade_citation_rows(
         # (different) delta. NULL for every other pe_bli reproduces the
         # pre-E2 identity string exactly (see the book_diff fid consumers
         # in tests/ that pin the un-suffixed form for non-split PEs).
-        diff_key = (
-            f"{pe_bli}|{account}|{from_ed}|{to_ed}" if account is not None
-            else f"{pe_bli}|{from_ed}|{to_ed}"
-        )
+        #
+        # ROADMAP #45: the identical fold for organization (the 3 ORG
+        # collisions) — account and diff_org are never both non-NULL for
+        # the same row (verified mutually exclusive).
+        if account is not None:
+            diff_key = f"{pe_bli}|{account}|{from_ed}|{to_ed}"
+        elif diff_org is not None:
+            diff_key = f"{pe_bli}|{diff_org}|{from_ed}|{to_ed}"
+        else:
+            diff_key = f"{pe_bli}|{from_ed}|{to_ed}"
         diff_fid = fact_id_derived("book_diff", diff_key, diff_kind)
         if diff_fid in minted_fids:
             continue
@@ -3637,6 +3860,17 @@ def _build_decade_citation_rows(
     # this pe_bli at all, rather than guessing. Filtered out here (the ONE
     # place every decade-grain consumer reads from) rather than taught to
     # each of the three consumers separately.
+    # ROADMAP #45 addendum to the E2.1 correction above: an ANALOGOUS but
+    # finer-grained gap exists on the organization axis. '30' DOES have a
+    # real page split (OSD/DTRA/DMACT), so `g[0] in _decade_ident.
+    # split_pe_blis` is true for EVERY organization sharing that key —
+    # including DODEA, whose historical-only rows fct_decade_series' own
+    # wider any-amount_type anchor deliberately keeps (see that model's
+    # header) even though dim_programs never gives DODEA a page (no
+    # fy_2026_total money — the Tomahawk-shaped precedent, scoped per
+    # ORGANIZATION rather than per pe_bli this time). A pe_bli-level
+    # membership check cannot see that asymmetry; per-organization
+    # existence in dim_programs' own rows can.
     try:
         _ident_con = _duckdb.connect(str(duckdb_path), read_only=True)
         try:
@@ -3645,10 +3879,18 @@ def _build_decade_citation_rows(
             _ident_con.close()
     except Exception:
         _decade_ident = _ProgramIdentity([])
-    decade_grains = [
-        g for g in decade_grains_full
-        if g[7] is None or g[0] in _decade_ident.split_pe_blis
-    ]
+
+    def _decade_grain_has_page(g: tuple) -> bool:
+        g_account, g_org = g[7], g[8]
+        if g_account is None and g_org is None:
+            return True
+        if g_account is not None:
+            return g[0] in _decade_ident.split_pe_blis
+        return any(
+            o == g_org for _a, _t, o, _hd in _decade_ident.accounts(g[0])
+        )
+
+    decade_grains = [g for g in decade_grains_full if _decade_grain_has_page(g)]
 
     print(
         f"decade: {len(decade_grains)} grains for {len(pes & {g[0] for g in decade_grains})}"
@@ -3799,14 +4041,14 @@ def _build_fy26_split_index(
 
     grouped: dict[str, dict[str, list[tuple[str, float]]]] = defaultdict(dict)
     for row in bl_rows:
-        (fid, pe_bli, account, account_title, amount_type, amount_thousands) = (
-            row[0], row[8], row[3], row[4], row[10], row[11]
+        (fid, pe_bli, account, account_title, organization, amount_type, amount_thousands) = (
+            row[0], row[8], row[3], row[4], row[5], row[10], row[11]
         )
         key = _FY26_SPLIT_KEYS.get(amount_type)
         if key is None or amount_thousands is None:
             continue
         group_key = (
-            ident.slug(pe_bli, account, account_title)
+            ident.slug(pe_bli, account, account_title, organization)
             if ident is not None and ident.is_split(pe_bli)
             else pe_bli
         )
@@ -3930,33 +4172,39 @@ def _build_summary_blocks(
     account_title_by_pe_account: dict[tuple[str, str], str] = {
         (pe, account): title
         for pe in ident.split_pe_blis
-        for account, title, _hd in ident.accounts(pe)
+        for account, title, _org, _hd in ident.accounts(pe)
     }
 
-    def _gkey(pe_bli: str, account: str | None) -> tuple[str, str | None]:
-        return (pe_bli, account) if pe_bli in ident.split_pe_blis else (pe_bli, None)
+    def _gkey(
+        pe_bli: str, account: str | None, organization: str | None = None,
+    ) -> tuple[str, str | None, str | None]:
+        return ident.split_key(pe_bli, account, organization)
 
-    def _gslug(gkey: tuple[str, str | None]) -> str:
-        pe_bli, account = gkey
+    def _gslug(gkey: tuple[str, str | None, str | None]) -> str:
+        pe_bli, account, organization = gkey
         if pe_bli not in ident.split_pe_blis:
             return pe_bli
-        return ident.slug(pe_bli, account, account_title_by_pe_account.get(gkey))
+        return ident.slug(
+            pe_bli, account, account_title_by_pe_account.get((pe_bli, account)),
+            organization,
+        )
 
     # ---- source indexes ----------------------------------------------------
-    # decade: (pe, account) → {kind: (value, fid, measure, cell_token)} for
-    # the PB2026 edition. cell_token is the kind-qualified gate-23 token the
-    # decade GRID cell renders (recon v2 pairs toa candidates by rendered
-    # token). decade_grains is the FULL 8-tuple working list since E3 (see
-    # _build_decade_citation_rows) — account is real only for the 8 split
-    # keys, so _gkey normalizes it to None for everyone else.
+    # decade: (pe, account, org) → {kind: (value, fid, measure, cell_token)}
+    # for the PB2026 edition. cell_token is the kind-qualified gate-23 token
+    # the decade GRID cell renders (recon v2 pairs toa candidates by
+    # rendered token). decade_grains is the FULL 9-tuple working list since
+    # E3/#45 (see _build_decade_citation_rows) — account is real only for
+    # the 8 account-split keys, organization only for the 3 org-split keys,
+    # so _gkey (ident.split_key) normalizes whichever doesn't apply to None.
     decade_slot: dict[tuple, dict] = {}
-    for d_pe, _d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account in (
+    for d_pe, _d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account, d_org in (
         decade_grains or []
     ):
         if d_edition != ed or d_fid is None or d_amount is None:
             continue
         _, measure = _amount_type_meta(d_at, d_edition)
-        decade_slot.setdefault(_gkey(d_pe, d_account), {})[d_kind] = (
+        decade_slot.setdefault(_gkey(d_pe, d_account, d_org), {})[d_kind] = (
             d_amount, d_fid, measure or d_kind,
             _decade_measure_token(d_kind, measure),
         )
@@ -3982,51 +4230,73 @@ def _build_summary_blocks(
         " from fct_budget_trajectory",
         account_index=2,
     )
-    prog_traj_rows = _query_with_account_fallback(
-        con,
-        "select pe_bli, account, fy2024_actuals, fy2025_total,"
-        " fy2026_total, fy2526_change, fy2526_pct_change"
-        " from fct_program_trajectory",
-        "select pe_bli, fy2024_actuals, fy2025_total,"
-        " fy2026_total, fy2526_change, fy2526_pct_change"
-        " from fct_program_trajectory",
-        account_index=1,
-    )
+    try:
+        prog_traj_rows = con.execute(
+            "select pe_bli, account, organization, fy2024_actuals,"
+            " fy2025_total, fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory"
+        ).fetchall()
+    except Exception:
+        # organization column absent (a pre-#45 test fixture) — fall back
+        # through the existing account-only tiering and pad organization
+        # None.
+        _base_ptr = _query_with_account_fallback(
+            con,
+            "select pe_bli, account, fy2024_actuals, fy2025_total,"
+            " fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory",
+            "select pe_bli, fy2024_actuals, fy2025_total,"
+            " fy2026_total, fy2526_change, fy2526_pct_change"
+            " from fct_program_trajectory",
+            account_index=1,
+        )
+        prog_traj_rows = [(r[0], r[1], None, *r[2:]) for r in _base_ptr]
     con.close()
     # E2 (Sprint E, ROADMAP #67): the #56-era collision_pes exclusion that
     # used to live here is gone. fct_decade_series is account-aware (E2),
     # and decade_slot above is now keyed per account (E3) instead of ever
     # holding a fused figure — nothing left to exclude.
+    #
+    # ROADMAP #45: _gkey (ident.split_key) now takes both account AND org —
+    # for the 3 org-split keys this correctly separates each organization's
+    # own traj_rows row into its OWN gkey (t_account is real-but-constant
+    # for all of them, so the OLD 2-arg _gkey(t_pe, t_account) would have
+    # collapsed them onto one slot and traj_orgs[gkey] would list every
+    # organization sharing the key instead of the one this specific slot is
+    # about — exactly the bug _trajectory_fact_ids' own doc comment
+    # describes for the pe-wide traj_orgs_by_pe in the OTHER builder
+    # function).
     traj_orgs: dict[tuple, list[str]] = {}
     for t_pe, t_org, t_account, *_rest in traj_rows:
-        traj_orgs.setdefault(_gkey(t_pe, t_account), []).append(t_org)
+        traj_orgs.setdefault(_gkey(t_pe, t_account, t_org), []).append(t_org)
     for _k in traj_orgs:
         traj_orgs[_k] = sorted(set(traj_orgs[_k]))
     # (pe, fy24, fy25, fy26, change, pct) — same positions the slot code reads
     # from index 2 onward, minus the org column it no longer needs.
     traj_program: dict[tuple, tuple] = {
-        _gkey(r[0], r[1]): (r[0], *r[2:]) for r in prog_traj_rows
+        _gkey(r[0], r[1], r[2]): (r[0], *r[3:]) for r in prog_traj_rows
     }
 
-    # budget_lines: (pe, account, amount_type) → [(fid, amount)] (titled AND
-    # rollup rows both render on the P-1 table; slot fallback 3 requires
-    # exactly one). (pe, account, fy, measure) → [(fid, amount)] — recon v2's
-    # toa-side fallback and the honest-absence check both need measure-grain
-    # row counts. account is each ROW's own (bl_rows col 3) normalized
-    # through _gkey — real only for the 8 split keys, so a split key's two
-    # accounts' workbook rows never share one slot.
+    # budget_lines: (pe, account, org, amount_type) → [(fid, amount)] (titled
+    # AND rollup rows both render on the P-1 table; slot fallback 3 requires
+    # exactly one). (pe, account, org, fy, measure) → [(fid, amount)] — recon
+    # v2's toa-side fallback and the honest-absence check both need
+    # measure-grain row counts. account/org are each ROW's own (bl_rows cols
+    # 3/5) normalized through _gkey — real only on whichever axis this
+    # pe_bli actually splits on, so a split key's components' workbook rows
+    # never share one slot.
     bl_by_key: dict[tuple, list] = {}
     bl_by_measure: dict[tuple, list] = {}
     bl_fys: dict[tuple, set] = {}
     for r in bl_rows:
-        gkey = _gkey(r[8], r[3])
+        gkey = _gkey(r[8], r[3], r[5])
         bl_by_key.setdefault((*gkey, r[10]), []).append((r[0], r[11]))
         b_fy, b_measure = _amount_type_meta(r[10], ed)
         if b_fy is not None and b_measure is not None:
             bl_by_measure.setdefault((*gkey, b_fy, b_measure), []).append((r[0], r[11]))
             bl_fys.setdefault(gkey, set()).add(b_fy)
 
-    # detail roots: (pe, account) → {scenario: {"v", "fid", "xml_path",
+    # detail roots: (pe, account, org) → {scenario: {"v", "fid", "xml_path",
     # "resolution"}} — deduped by DISTINCT amount (the dual-volume rule:
     # identical amounts under 2+ documents/paths are ONE display value; the
     # first document in sha order supplies the citing fid — Task 3 aligned
@@ -4034,21 +4304,28 @@ def _build_summary_blocks(
     # a SINGLE honest zero root, not an ambiguity). >1 DISTINCT amount →
     # ambiguous → slot skipped (never sum project rows onto one member's
     # fact). stg_budget_details carries NO account column (dim_programs.sql's
-    # own #56 comment) — for a split key, EVERY detail row belongs entirely
-    # to the one account dim_programs' account_match resolved (has_own_
-    # detail), never the sibling (verified 2026-08-21: LPD Flight II and
-    # Medium Landing Ship, among others, have zero stg_budget_details rows
-    # at all) — _gkey via matched_account_by_pe attributes it there and
+    # own #56 comment) — for an ACCOUNT-split key, EVERY detail row belongs
+    # entirely to the one account dim_programs' account_match resolved
+    # (has_own_detail), never the sibling (verified 2026-08-21: LPD Flight
+    # II and Medium Landing Ship, among others, have zero stg_budget_details
+    # rows at all) — _gkey via matched_account_by_pe attributes it there and
     # nowhere else, so the sibling's page never inherits detail it doesn't
-    # own.
+    # own. An ORG-split key (ROADMAP #45) is different: stg_budget_details
+    # DOES carry an org column, and every organization sharing one of the 3
+    # keys has genuine detail rows of its own (no synthetic side exists on
+    # this axis) — d_org (the row's OWN org, from jbook_documents) is the
+    # correct per-row attribution instead of a single matched pick.
     detail_root: dict[tuple, dict] = {}
     _root_seen: dict[tuple, set] = {}
-    det_fys: dict[tuple, set] = {}  # (pe, account) → fiscal years with ANY detail row
+    det_fys: dict[tuple, set] = {}  # (pe, account, org) → fiscal years with ANY detail row
     for (fid, pe_bli, project_number, _pt, scenario, amount_millions,
-         _units, xml_path, _org, _ef, fiscal_year, _sha, resolution) in detail_rows:
+         _units, xml_path, d_org, _ef, fiscal_year, _sha, resolution) in detail_rows:
         if fiscal_year != ed:
             continue
-        gkey = _gkey(pe_bli, ident.matched_account_by_pe.get(pe_bli))
+        gkey = (
+            _gkey(pe_bli, None, d_org) if ident.is_org_split(pe_bli)
+            else _gkey(pe_bli, ident.matched_account_by_pe.get(pe_bli))
+        )
         if amount_millions is not None:
             d_fy, _d_m = _scenario_meta(scenario, ed)
             if d_fy is not None:
@@ -4080,7 +4357,7 @@ def _build_summary_blocks(
         set(decade_slot)
         | set(traj_program)
         | set(detail_root)
-        | {_gkey(r[8], r[3]) for r in bl_rows}
+        | {_gkey(r[8], r[3], r[5]) for r in bl_rows}
     )
 
     _TRAJ_METRIC_BY_SLOT = {
@@ -4100,7 +4377,7 @@ def _build_summary_blocks(
     union_cit_rows: list[tuple] = []
 
     for gkey in sorted(universe):
-        pe, gaccount = gkey
+        pe, gaccount, _gorg = gkey
         pe_slug = _gslug(gkey)
         # traj_program's value is reconstructed to (pe_bli, fy24, fy25, fy26,
         # chg, pct) — the exact pre-E3 prog_traj_rows row shape — so every
@@ -5814,7 +6091,7 @@ def _write_all_sidecars(
     # OWN decade series/sparkline instead of one page's or an arbitrary
     # pick (E2's own disclosed "not this task's to make" boundary).
     decade_series_by_pe: dict[str, dict] = {}
-    for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account in (
+    for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account, d_org in (
         decade_grains or []
     ):
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
@@ -5830,6 +6107,13 @@ def _write_all_sidecars(
         # showing. There is no honest slug to give it, so it gets no decade
         # series — the same gap B'1 chose for all ten keys, now narrowed to
         # only those that genuinely have nowhere to go.
+        #
+        # ROADMAP #45: the analogous organization-axis gap (DODEA's
+        # historical-only '30' rows) is already filtered out of the
+        # `decade_grains` this function receives — see
+        # _build_decade_citation_rows' _decade_grain_has_page (per-
+        # organization, not merely per-pe_bli, existence check) — so d_org
+        # reaching here always names a real page when non-NULL.
         if d_account is not None and d_pe not in ident.split_pe_blis:
             continue
         _, d_measure = _amount_type_meta(d_at, d_edition)
@@ -5837,9 +6121,10 @@ def _write_all_sidecars(
             ident.slug(
                 d_pe, d_account,
                 next(
-                    (t for a, t, _hd in ident.accounts(d_pe) if a == d_account),
+                    (t for a, t, _o, _hd in ident.accounts(d_pe) if a == d_account),
                     None,
                 ),
+                d_org,
             )
             if d_pe in ident.split_pe_blis else d_pe
         )
@@ -6051,7 +6336,15 @@ def _write_all_sidecars(
             "fy2526_change": r[6],
             "fy2526_pct_change": r[7],
         }
-        key_account = account if pe_bli in ident.split_pe_blis else None
+        # ROADMAP #45: gated on is_account_split, not bare split_pe_blis
+        # membership. For an org-split key, `account` is real-but-constant
+        # ('0300D' for all of '20'/'30'/'500's organizations) — keeping it
+        # here would mean the fallback 2-tuple traj_index[(pe, org)] below
+        # never populates for them, and any consumer that (correctly) looks
+        # up account=None for these keys (there is no account concept to
+        # give it) would silently miss. `org` already disambiguates every
+        # org-split lookup on its own.
+        key_account = account if ident.is_account_split(pe_bli) else None
         traj_index[(pe_bli, org, key_account)] = metrics
         if key_account is None:
             traj_index[(pe_bli, org)] = metrics
@@ -6300,7 +6593,10 @@ def _write_all_sidecars(
     # ------------------------------------------------------------------ #
 
     def _trajectory_fact_ids(
-        pe_bli: str, traj: dict | None, account: str | None = None,
+        pe_bli: str,
+        traj: dict | None,
+        account: str | None = None,
+        organization: str | None = None,
     ) -> dict | None:
         """Derived trajectory fact_ids for a PROGRAM (backlog #37).
 
@@ -6320,12 +6616,27 @@ def _write_all_sidecars(
         split keys so its key matches the account-qualified fact_id
         _build_derived_citation_rows minted for it — omitted for every
         other pe_bli, reproducing the pre-E3 key exactly.
+
+        `organization` (ROADMAP #45): pass the program's own organization
+        for one of the 3 org-split keys instead. traj_orgs_by_pe.get(pe_bli)
+        (the pe-wide distinct-org set) is WRONG for these — it deliberately
+        collects every organization sharing the key ('20' → ['DCSA',
+        'DTRA']), which _trajectory_citation_key would then read as "2
+        components, use the bare pe_bli key" and both org-split program
+        pages would collide on the SAME fact_id. Passing `organization`
+        overrides that with the singleton this SPECIFIC program actually
+        is, matching the single-component key
+        _build_derived_citation_rows' own trajectory loop already mints
+        (that loop's key is qualified by `org`, which is already unique
+        per organization — see its own key_str construction).
         """
         if traj is None:
             return None
-        key_str = _trajectory_citation_key(
-            pe_bli, traj_orgs_by_pe.get(pe_bli), account,
+        component_orgs = (
+            [organization] if organization is not None
+            else traj_orgs_by_pe.get(pe_bli)
         )
+        key_str = _trajectory_citation_key(pe_bli, component_orgs, account)
         out: dict[str, str | None] = {}
         for metric in ("fy2024_actuals", "fy2025_total", "fy2026_total"):
             fid = fact_id_derived("trajectory", key_str, metric)
@@ -6354,8 +6665,8 @@ def _write_all_sidecars(
         # row and is_split is False, so slug == pe_bli and every value
         # below is computed exactly as before this task.
         is_split = pe_bli in ident.split_pe_blis
-        slug = ident.slug(pe_bli, account, account_title) if is_split else pe_bli
-        owns_detail = ident.has_own_detail(pe_bli, account)
+        slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
+        owns_detail = ident.has_own_detail(pe_bli, account, org)
 
         # backlog #37: the PROGRAM's trajectory, not the declared org's slice.
         # `org` still declares which agency page lists this row and is still
@@ -6365,8 +6676,12 @@ def _write_all_sidecars(
         # Task E3: resolved precisely by (pe_bli, account) for a split key —
         # prog_traj_index's bare pe_bli lookup would otherwise return
         # whichever account fct_program_trajectory happened to return last.
+        # ROADMAP #45: resolved by organization instead for the 3 org-split
+        # keys, where account alone never distinguishes rows.
         traj = _resolve_program_trajectory(
-            prog_traj_by_pe, pe_bli, account if is_split else None,
+            prog_traj_by_pe, pe_bli,
+            account if ident.is_account_split(pe_bli) else None,
+            org if ident.is_org_split(pe_bli) else None,
         )
         # backlog #50: the raw disc/reconciliation dollars for the /programs/
         # CSV export. Pulled from the split's OWN side objects (None exactly
@@ -6428,7 +6743,9 @@ def _write_all_sidecars(
             "title": title,
             "trajectory": traj,
             "trajectory_fact_ids": _trajectory_fact_ids(
-                pe_bli, traj, account if is_split else None,
+                pe_bli, traj,
+                account if ident.is_account_split(pe_bli) else None,
+                org if ident.is_org_split(pe_bli) else None,
             ),
             "fy2026_disc_toa_usd_thousands": (
                 _fy26_split["disc"]["v"] if _fy26_split and _fy26_split["disc"] else None
@@ -6867,33 +7184,56 @@ def _write_all_sidecars(
     # other pe_bli has exactly one row and this loop is byte-for-byte
     # unchanged for it: is_split is False, slug == pe_bli, and every
     # lookup below takes its original unfiltered branch.
+    # ROADMAP #45: program_details/ has no dossier-style stale-file prune
+    # (unlike json/dossiers/, which explicitly deletes any file not written
+    # this run — see the pruned/_written_names logic above). Before this
+    # sprint that gap was silent because a pe_bli's slug never changed
+    # shape between runs; splitting '20'/'30'/'500' onto composite slugs
+    # means the OLD bare {pe_bli}.json (written back when these were
+    # ordinary, unsplit pages) is no longer produced by either loop below —
+    # and, left on disk, it would keep serving fused cross-organization
+    # budget_lines content forever (exactly the #56 shape this task exists
+    # to close) since nothing else in the pipeline ever looks at it again.
+    # _written_det_names tracks every filename EITHER loop below writes;
+    # anything already in det_dir that is not in that set afterward is
+    # removed.
+    _written_det_names: set[str] = set()
     for r in all_prog_rows:
-        pe_bli, account, account_title = r[0], r[7], r[8]
+        pe_bli, org, account, account_title = r[0], r[1], r[7], r[8]
         is_split = pe_bli in ident.split_pe_blis
-        slug = ident.slug(pe_bli, account, account_title) if is_split else pe_bli
+        slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # has_own_detail: for a split key, R-2/P-40 project detail
         # (details_by_pe / narratives) belongs ENTIRELY to at most one
         # account (dim_programs.sql's account_match — verified 2026-08-21,
         # zero exceptions in the shipped warehouse); the other account's
         # page must never inherit it via the shared bare-pe_bli lookup.
-        owns_detail = ident.has_own_detail(pe_bli, account)
+        owns_detail = ident.has_own_detail(pe_bli, account, org)
+        # ROADMAP #45: an ORG-split key's siblings all share one
+        # account_title (the account itself never varies for '20'/'30'/
+        # '500' — that is the whole premise of the split), so filtering by
+        # account_title here would let BOTH organizations' budget_lines rows
+        # through onto EVERY sidecar — reintroducing the #56 fusion shape
+        # gate 23 leg (h) exists to catch, just relocated into the sidecar
+        # this task's own leg (h) org extension reads. Filter by
+        # organization instead for these 3 keys.
+        own_bl = bl_by_pe.get(pe_bli, [])
+        if is_split:
+            if ident.is_org_split(pe_bli):
+                own_bl = [bl for bl in own_bl if bl.get("organization") == org]
+            else:
+                own_bl = [bl for bl in own_bl if bl.get("account_title") == account_title]
         obj = {
             "awards": awards_by_pe.get(pe_bli, []),
-            "budget_lines": (
-                bl_by_pe.get(pe_bli, [])
-                if not is_split
-                else [
-                    bl for bl in bl_by_pe.get(pe_bli, [])
-                    if bl.get("account_title") == account_title
-                ]
-            ),
+            "budget_lines": own_bl,
             "details": details_by_pe.get(pe_bli, []) if owns_detail else [],
             "mentions": _build_mentions(
                 mentions_by_pe.get(pe_bli, []),
                 top200_family_keys,
             ),
             "narratives": (
-                _narratives_with_links(pe_bli, account if is_split else None)
+                _narratives_with_links(
+                    pe_bli, account if ident.is_account_split(pe_bli) else None,
+                )
                 if owns_detail else []
             ),
             "summary": _summary_block(pe_bli, slug),
@@ -6913,6 +7253,7 @@ def _write_all_sidecars(
         if slug in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[slug]
         _write_json(det_dir / f"{slug}.json", obj)
+        _written_det_names.add(f"{slug}.json")
         n_files += 1
 
     # -- Rollup-tier sidecars (Phase 5F §2a) ---------------------------- #
@@ -6994,7 +7335,18 @@ def _write_all_sidecars(
         if pe_bli in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[pe_bli]
         _write_json(det_dir / f"{pe_bli}.json", obj)
+        _written_det_names.add(f"{pe_bli}.json")
         n_files += 1
+    _det_pruned = []
+    for _stale_det in sorted(det_dir.glob("*.json")):
+        if _stale_det.name not in _written_det_names:
+            _stale_det.unlink()
+            _det_pruned.append(_stale_det.stem)
+    if _det_pruned:
+        print(
+            f"program_details: pruned {len(_det_pruned)} stale sidecar(s):"
+            f" {', '.join(_det_pruned)}"
+        )
     if rollup_pes:
         print(
             f"program_details: +{len(rollup_pes)} rollup-tier sidecars"
@@ -7281,13 +7633,19 @@ def _write_all_sidecars(
         # page shows. Closing it means giving dim_programs a per-org grain,
         # which is a dimension change, not an aggregate fix — ROADMAP #45.
         translated = _workbook_org(org)
-        # Task E3: traj_index only carries a BARE (pe, org) key for non-split
-        # pe_blis now — a split key's two accounts collided on that key
-        # (same org, different account), so this lookup must ask for the
-        # row's OWN account or it silently finds nothing for either side,
-        # undercounting the org's FY2026 total by the full amount of these
-        # 8 keys' money instead of correctly crediting both programs.
-        key_account = account if pe_bli in ident.split_pe_blis else None
+        # Task E3: traj_index only carries a BARE (pe, org) key for non-
+        # account-split pe_blis now — an account-split key's two accounts
+        # collided on that key (same org, different account), so this
+        # lookup must ask for the row's OWN account or it silently finds
+        # nothing for either side, undercounting the org's FY2026 total by
+        # the full amount of these 8 keys' money instead of correctly
+        # crediting both programs. ROADMAP #45: gated on is_account_split,
+        # not bare split_pe_blis membership — an org-split key's account is
+        # real-but-constant across every organization sharing the key, and
+        # traj_index's construction (see its own comment) stores None for
+        # these 3 keys' key_account slot precisely so `org` alone (already
+        # part of this same lookup tuple) is the discriminator.
+        key_account = account if ident.is_account_split(pe_bli) else None
         traj = traj_index.get((pe_bli, translated, key_account))
         if traj and traj["fy2026_total"] is not None:
             org_fy2026_thousands[org] = (
@@ -7408,13 +7766,16 @@ def _write_all_sidecars(
         (pe_bli, org, exhibit_family, title, project_count,
          fy2024_actual_millions, fully_reconciled, account, account_title) = r
         is_split = pe_bli in ident.split_pe_blis
-        slug = ident.slug(pe_bli, account, account_title) if is_split else pe_bli
+        slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # The PROGRAM's total (backlog #37) — search ranks and labels a
         # program by its own size, not by its declared org's share of it.
         # Task E3: account-precise for the 8 split keys (prog_traj_index's
-        # bare pe_bli lookup is ambiguous there).
+        # bare pe_bli lookup is ambiguous there). ROADMAP #45: organization-
+        # precise for the 3 org-split keys instead.
         traj = _resolve_program_trajectory(
-            prog_traj_by_pe, pe_bli, account if is_split else None,
+            prog_traj_by_pe, pe_bli,
+            account if ident.is_account_split(pe_bli) else None,
+            org if ident.is_org_split(pe_bli) else None,
         )
         # dollars: fy2026_total (already thousands) ?? fy2024_actual_millions * 1000
         dollars = None
@@ -7427,14 +7788,24 @@ def _write_all_sidecars(
         # reader sees two distinct, distinguishable results — "id" and
         # "url" use the SLUG so the doc's own identity and its link both
         # resolve to this specific program, never the bare disambiguation
-        # stub or a duplicate id colliding with its sibling.
+        # stub or a duplicate id colliding with its sibling. ROADMAP #45:
+        # an org-split key's siblings share one account_title, so the
+        # sibling-title check (and its disambiguator) uses whichever axis
+        # actually varies for this pe_bli.
         doc_title = title
         if is_split:
-            sibling_titles = {
-                t for a, t, _hd in ident.accounts(pe_bli) if a != account
-            }
-            if title in sibling_titles:
-                doc_title = f"{title} — {account_title}"
+            if ident.is_account_split(pe_bli):
+                sibling_titles = {
+                    t for a, t, _o, _hd in ident.accounts(pe_bli) if a != account
+                }
+                disambiguator = account_title
+            else:
+                sibling_titles = {
+                    t for _a, t, o, _hd in ident.accounts(pe_bli) if o != org
+                }
+                disambiguator = org
+            if title in sibling_titles and disambiguator:
+                doc_title = f"{title} — {disambiguator}"
         search_docs.append({
             "dollars": dollars,
             "id": f"p:{slug}",
@@ -9549,6 +9920,16 @@ def _build_slug_by_pe(duckdb_path) -> dict[str, str]:
     inert for ~1,741 programs. A split key that will not resolve is simply
     absent, so the sidecar keeps its bare name and lands on the disambiguation
     stub — visible, rather than silently attributed to the wrong half.
+
+    ROADMAP #45: the join is additionally scoped by organization
+    (`t.organization = d.org`) — for the 3 org-split keys, `d.account` is
+    the SAME real value on every one of a pe_bli's dim_programs rows (that
+    IS the split), so an account-only join fanned the single winning
+    fct_budget_trajectory row out across every organization sharing the
+    key, and ident.slug() then raised (correctly — it cannot derive a
+    composite slug without knowing WHICH organization the caller means).
+    Organization always agrees trivially for the 8 account-split keys
+    (both accounts share one real org), so this is a no-op widening there.
     """
     out: dict[str, str] = {}
     if duckdb_path is None:
@@ -9559,20 +9940,21 @@ def _build_slug_by_pe(duckdb_path) -> dict[str, str]:
 
         con = _dd.connect(str(duckdb_path), read_only=True)
         ident = _fetch_program_identity(con)
-        for pe, acct, acct_title in con.execute(
-            "select d.pe_bli, d.account, d.account_title"
+        for pe, acct, acct_title, org in con.execute(
+            "select d.pe_bli, d.account, d.account_title, d.org"
             " from dim_programs d"
             " join ("
-            "   select pe_bli, account,"
+            "   select pe_bli, account, organization,"
             "          row_number() over ("
             "            partition by pe_bli order by fy2026_total desc nulls last"
             "          ) rn"
             "   from fct_budget_trajectory"
             " ) t on t.pe_bli = d.pe_bli"
             "   and (t.account = d.account or (t.account is null and d.account is null))"
+            "   and (t.organization = d.org or t.organization is null or d.org is null)"
             " where t.rn = 1"
         ).fetchall():
-            out[pe] = ident.slug(pe, acct, acct_title)
+            out[pe] = ident.slug(pe, acct, acct_title, org)
     except Exception as exc:  # pragma: no cover — warehouse-shape guard
         print(f"export-site: slug map unavailable ({exc}) — sidecars keyed by bare pe_bli")
     finally:
@@ -9817,10 +10199,19 @@ def _emit_years_matrix(
             proj["title"] = project_title
         proj["scenarios"][scenario] = (fid, amount_millions, xml_path)
 
-    # ---- decade cells: (pe, account) → {column_key: cell}; column key → meta
+    # ---- decade cells: (pe, account, org) → {column_key: cell}; column key
+    # → meta. Unlike traj_index/bl_cells (whose keys already carry
+    # translated_org as a leading component, so an org-collision key's
+    # rows never actually share a dict slot regardless of what _acct_key
+    # resolves to), this index was keyed by (pe, account) ALONE — a genuine
+    # bug ROADMAP #45 surfaces: d_account is always NULL for an org-split
+    # key's grains (the discriminator is d_org instead), so every
+    # organization sharing '20'/'30'/'500' collapsed onto the SAME
+    # (pe_bli, None) slot here, one silently overwriting another's decade
+    # cells. key_org (populated only for is_org_split pe_blis) fixes it.
     decade_cells_by_pe: dict[tuple, dict] = defaultdict(dict)
     decade_col_meta: dict[str, dict] = {}
-    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid, _d_at, d_account in (
+    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid, _d_at, d_account, d_org in (
         decade_grains or []
     ):
         key = _decade_column_key(d_fy, d_kind)
@@ -9836,7 +10227,8 @@ def _emit_years_matrix(
             )
         # honesty: only cited grains become cells (missing renders '–')
         if d_fid is not None and d_fid in cited_fact_ids and d_amount is not None:
-            decade_cells_by_pe[(pe_bli, _acct_key(pe_bli, d_account))][key] = {
+            key_org = d_org if ident.is_org_split(pe_bli) else None
+            decade_cells_by_pe[(pe_bli, _acct_key(pe_bli, d_account), key_org)][key] = {
                 "v": d_amount, "fid": d_fid,
             }
 
@@ -9844,6 +10236,7 @@ def _emit_years_matrix(
         pe_bli: str, translated_org: str, account: str | None = None,
     ) -> dict:
         key_account = _acct_key(pe_bli, account)
+        key_org = translated_org if ident.is_org_split(pe_bli) else None
         traj = traj_index.get((pe_bli, translated_org, key_account))
         # Task E3: the trajectory-derived fact_id must match the key
         # _build_derived_citation_rows minted it under (account-qualified
@@ -9884,7 +10277,7 @@ def _emit_years_matrix(
 
         # decade columns (keys 'fy{fy}{a|e|r}' — disjoint from amount_type
         # slugs and Δ keys by format)
-        cells.update(decade_cells_by_pe.get((pe_bli, key_account), {}))
+        cells.update(decade_cells_by_pe.get((pe_bli, key_account, key_org), {}))
         return cells
 
     def _project_rows(pe_bli: str, owns_detail: bool = True) -> list[dict]:
@@ -9938,15 +10331,22 @@ def _emit_years_matrix(
             by_org[org], key=lambda t: (t[0], t[1]),
         ):
             is_split = pe_bli in ident.split_pe_blis
-            slug = ident.slug(pe_bli, account, account_title) if is_split else pe_bli
-            owns_detail = ident.has_own_detail(pe_bli, account)
+            slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
+            owns_detail = ident.has_own_detail(pe_bli, account, org)
             display_title = title
             if is_split:
-                sibling_titles = {
-                    t for a, t, _hd in ident.accounts(pe_bli) if a != account
-                }
-                if title in sibling_titles:
-                    display_title = f"{title} — {account_title}"
+                if ident.is_account_split(pe_bli):
+                    sibling_titles = {
+                        t for a, t, _o, _hd in ident.accounts(pe_bli) if a != account
+                    }
+                    disambiguator = account_title
+                else:
+                    sibling_titles = {
+                        t for _a, t, o, _hd in ident.accounts(pe_bli) if o != org
+                    }
+                    disambiguator = org
+                if title in sibling_titles and disambiguator:
+                    display_title = f"{title} — {disambiguator}"
             prog = {
                 "pe_bli": pe_bli,
                 "title": display_title,

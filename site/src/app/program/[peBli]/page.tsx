@@ -120,38 +120,55 @@ function resolveProgram(
   );
 }
 
-// ── Sprint E, Task E3 — the disambiguation stub ──────────────────────────────
+// ── Sprint E, Task E3 (widened ROADMAP #45) — the disambiguation stub ───────
 //
 // The URL contract (docs/superpowers/plans/2026-08-14-sprint-e-key-split.md):
 // a bare pe_bli identifies exactly one program UNLESS dim_programs carries
-// more than one row for it (8 genuine appropriation-account collisions), in
-// which case the bare URL is this disambiguation stub and each account gets
-// its own page at "{pe_bli}-{ACCOUNT_CODE}/" (ProgramRow.slug). Every one of
-// the 6 URLs that resolved before this sprint still resolves — as a stub
-// instead of a program page, which is the honest outcome once a key
-// genuinely names two different programs.
-//
-// A collision key can share a display title across BOTH accounts (2292
+// more than one row for it, in which case the bare URL is this
+// disambiguation stub and each sibling gets its own page at
+// "{pe_bli}-{CODE}/" (ProgramRow.slug). Two independent shapes share this
+// stub: 8 keys collide on APPROPRIATION ACCOUNT (Sprint E) — same
+// organization, different account — and 3 collide on ORGANIZATION instead
+// (ROADMAP #45, '20'/'30'/'500') — same account, different organization. No
+// key collides on both. stubDimension below reads which axis actually
+// varies among a bare key's siblings so every reader-facing string
+// (metadata, intro prose, per-row subtitle, the title-collision fallback)
+// names the real reason these programs share a code, instead of always
+// blaming "appropriation account" even when the account is identical.
+function stubDimension(programs: ProgramRow[]): "account" | "organization" {
+  const distinctAccounts = new Set(programs.map((p) => p.account).filter(Boolean));
+  return distinctAccounts.size > 1 ? "account" : "organization";
+}
+
+// A collision key can share a display title across BOTH siblings (2292
 // Naval Strike Missile — one weapon, two services' own funding lines, not
 // one program whose account moved between editions like 1045 COLUMBIA) —
-// stubDisplayTitle disambiguates by appending the account_title whenever a
-// sibling shares the exact title, so the stub (and the linked pages' own
-// headers) never show two identical, indistinguishable entries.
+// stubDisplayTitle disambiguates by appending whichever axis actually
+// varies (account_title, or the organization when that is the real
+// discriminator) whenever a sibling shares the exact title, so the stub
+// (and the linked pages' own headers) never show two identical,
+// indistinguishable entries.
 function stubDisplayTitle(program: ProgramRow, siblings: ProgramRow[]): string {
   const collides = siblings.some(
     (s) => s.slug !== program.slug && s.title === program.title,
   );
-  return collides && program.account_title
-    ? `${program.title} — ${program.account_title}`
-    : program.title;
+  if (!collides) return program.title;
+  const disambiguator =
+    stubDimension(siblings) === "account"
+      ? program.account_title
+      : serviceOrgName(program.org);
+  return disambiguator ? `${program.title} — ${disambiguator}` : program.title;
 }
 
 function stubMetadata(peBli: string): Metadata {
   const programs = getProgramsByBareKey(peBli);
+  const dimension = stubDimension(programs);
   const title = `Budget line ${peBli} — multiple programs`;
   const description =
     `Budget line ${peBli} is used by ${programs.length} separate programs ` +
-    `under different appropriation accounts: ` +
+    (dimension === "account"
+      ? `under different appropriation accounts: `
+      : `run by different organizations: `) +
     `${programs.map((p) => stubDisplayTitle(p, programs)).join(" and ")}. ` +
     `Choose one below for its own figures, citations, and history.`;
   const canonicalUrl = `${SITE_URL}/program/${peBli}/`;
@@ -167,6 +184,7 @@ function stubMetadata(peBli: string): Metadata {
 
 function StubPage({ peBli }: { peBli: string }) {
   const programs = getProgramsByBareKey(peBli);
+  const dimension = stubDimension(programs);
   // gate 2 render-static (a0): every dollar figure on the built page must
   // sit inside a [data-amount] element — a plain formatAmount() string does
   // not. Each program's own FY2026 total is already a cited fact
@@ -193,8 +211,11 @@ function StubPage({ peBli }: { peBli: string }) {
         <p className="mb-6 text-muted-foreground leading-7">
           This numeric budget line code is used by{" "}
           <strong>{programs.length} separate programs</strong>, each funded
-          from a different appropriation account. They coincidentally share
-          this code; their money is never combined. Choose one:
+          {dimension === "account"
+            ? " from a different appropriation account"
+            : " by a different organization within the same appropriation account"}
+          . They coincidentally share this code; their money is never
+          combined. Choose one:
         </p>
         <ul className="space-y-3">
           {programs.map((p) => (
@@ -207,7 +228,9 @@ function StubPage({ peBli }: { peBli: string }) {
                   {stubDisplayTitle(p, programs)}
                 </div>
                 <div className="mt-0.5 text-sm text-muted-foreground">
-                  {p.account_title ?? serviceOrgName(p.org)}
+                  {dimension === "account"
+                    ? (p.account_title ?? serviceOrgName(p.org))
+                    : serviceOrgName(p.org)}
                   {p.trajectory?.fy2026_total != null && (
                     <>
                       {" · "}
