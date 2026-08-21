@@ -52,6 +52,9 @@ import { runDataTruthGate } from "./gates/datatruth.mjs";
 
 const PORT = 4173;
 
+/** Notes that must surface regardless of their position in the list. */
+const WARNING_NOTE_RE = /at or above|near-ceiling|\bWARN\b/i;
+
 function printGate(n, name, result) {
   const status = result.pass ? "PASS" : "FAIL";
   const details =
@@ -60,6 +63,17 @@ function printGate(n, name, result) {
       ? `; ERRORS: ${result.errors.slice(0, 5).join(" | ")}`
       : "");
   console.log(`gate ${n} ${name}: ${details} → ${status}`);
+  // A WARNING note is printed wherever it sits in the list. notes.slice(0, 3)
+  // above is a summary, and gate 1's page-weight warning lands well past
+  // position 3 — so the near-ceiling alarm added 2026-08-14 was being
+  // generated on every run and shown on none of them. A warning nobody sees
+  // is not a warning; /coverage/ reached NINE bytes of headroom precisely
+  // because nothing surfaced the drift.
+  for (const note of result.notes) {
+    if (WARNING_NOTE_RE.test(note) && !details.includes(note)) {
+      console.log(`  ⚠ ${note}`);
+    }
+  }
   if (result.errors.length > 0) {
     for (const e of result.errors) {
       console.log(`  ✗ ${e}`);
