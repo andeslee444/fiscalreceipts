@@ -1369,6 +1369,20 @@ gate family that makes the class visible.
 > canned query could never have run. Gate 23 leg (g) widened to (g4a/g4b),
 > non-vacuous at ≥20 of the 31 qualifying cards.
 
+- **#68** `test_covers_live_top50_exactly` is intermittently red in full-suite
+  runs. Observed 2026-08-21: FAILED once, then PASSED twice, on an unchanged
+  working tree, and PASSES in isolation. Two agents diagnosed it confidently and
+  differently — E1 called it "a stale DuckDB lock from my own verification
+  script", E2 called it "a pre-existing E1 gap (dossier top-50 CSV not
+  regenerated)". **Neither is established.** Holding a concurrent read-only
+  DuckDB connection open does NOT reproduce it, so the lock theory is not
+  supported either. The test compares `top50(LIVE_DUCKDB)` against the committed
+  `data-seeds/program_categories.csv`; `top50()` keys by `pe_bli`, which after
+  Sprint E's `(account, pe_bli)` re-grain can have two rows per key, so a
+  collision-overwrite is the plausible mechanism — but plausible is exactly what
+  the other two diagnoses were. Reproduce it before fixing it. Filed rather than
+  guessed at a third time.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
