@@ -1424,6 +1424,27 @@ gate family that makes the class visible.
 > `HCMC00`/`JSE000` on title variants. This sprint keyed on (account, pe_bli);
 > closing those needs org in the grain too.
 
+> **#55 remainder — RTX/Boeing aliases: NOT engineering work. Investigated
+> 2026-08-21 and deliberately not done.** RTX's page still matches generic
+> aviation lines (Aviation Safety Technologies, Aircraft Engine Component
+> Improvement) rather than Patriot or Standard Missile; Boeing matches none of
+> F/A-18, KC-46, Apache or P-8. The obvious fix — seed aliases for the
+> flagships — does not survive contact with the corpus. Of 31 candidate terms:
+> **Patriot** matches 2 PEs, **AMRAAM** 3, **Tomahawk** 2, **F/A-18** 2,
+> **KC-46** 2, **Apache** 2, **Hellfire** 3, **ESSM** 8, **RAM** 89. A filing
+> that says "Patriot" does not say WHICH Patriot line, and picking one would
+> be a false attribution — precisely the defect #52 removed.
+>
+> The six that match exactly one PE are no better on inspection: **Sentinel**
+> resolves to "Sentinel Mods", which is plausibly the radar rather than the
+> LGM-35A ICBM; **Harpoon** to "Harpoon Support Equipment", not the missile;
+> **Stinger** to "Stinger Mods". A title match is not a correct alias.
+>
+> This needs someone who knows the programs to author the mappings — which is
+> what "curated" in `program_aliases.csv` means. Filed as owner work, not
+> deferred engineering. The loader works (#55's actual bug, fixed); the seed
+> is the gap.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
