@@ -1128,6 +1128,19 @@ export default function MethodologyPage() {
                   , not silently dropped.
                 </td>
               </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">Programs sharing a key, split apart</td>
+                <td className="py-2 pr-4">absent</td>
+                <td className="py-2 pr-4">own page</td>
+                <td className="py-2">
+                  Separating the fused keys in August left the smaller half on
+                  the page and the larger half nowhere — $5.35B of real
+                  programs named only in an excluded list. Each appropriation
+                  account now has its own page: <em>LPD Flight II</em> ($2.60B)
+                  and <em>Medium Landing Ship</em> ($1.96B) among them. The
+                  index covers 59.4% of the FY2026 request, up from 58.0%.
+                </td>
+              </tr>
               <tr>
                 <td className="py-2 pr-4">Concentration (HHI) wording</td>
                 <td className="py-2 pr-4">&ldquo;near-monopoly&rdquo;</td>

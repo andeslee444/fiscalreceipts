@@ -1383,6 +1383,47 @@ gate family that makes the class visible.
   the other two diagnoses were. Reproduce it before fixing it. Filed rather than
   guessed at a third time.
 
+> **✅ #67 CLOSED 2026-08-21 (Sprint E — the key split).** Each (account,
+> pe_bli) pair now has its own page. **10 programs worth $5.35B** that were
+> correct-but-absent are on the site — `/program/3010-SCN/` renders LPD Flight
+> II at $2,600,000K, `/program/3050-SCN/` Medium Landing Ship at $1,963,941K —
+> and all six previously-live bare URLs resolve as disambiguation stubs.
+> `/programs/` coverage 58.0% → **59.4%**; key-collision exclusions 17 → 11.
+> dim_programs 1,739 → 1,749; program URLs 2,009. Gate 23 leg (h), written by
+> B′1 to catch the fusion, now proves the split: no page aggregates figures
+> from more than one account.
+>
+> **The 5–9 day estimate this was sold on rested on a premise that failed.**
+> B′1 priced it as "dominated by fct_decade_series (2–4 days, high
+> uncertainty)" because the collision "is not confined to PB2026" and there is
+> "no dim_programs-equivalent anchor for older editions". The keys do not exist
+> before PB2024 at all — era editions namespace Navy procurement as
+> `1810N-NAVY-L1`, so a bare numeric key is absent by construction. Three
+> editions, all anchored.
+>
+> **Four defects were introduced during the sprint and caught before shipping,
+> every one the same shape — a layer that keyed by `pe_bli` because, before the
+> split, `pe_bli` WAS the identity:**
+> `fct_program_trajectory` would have re-summed the halves (E1);
+> `top50()` keyed on an account that is NULL for 199 of 1,749 dim_programs
+> rows, silently dropping the F-35, B-21 and F-15EX out of the dossier top-50
+> (E3); the dossier and category sidecars were keyed by `pe_bli` while the page
+> looks up by slug; and the decade index re-fused 1350/2101 under a bare key
+> after the mart had just un-fused them.
+>
+> **Two scope errors were mine.** The plan said Tomahawk was "a different
+> defect" — true of the page split, false of the decade fusion, which is
+> identical (E2.1 corrects it). And I slug-keyed the dossier sidecars without
+> updating their contents, so `parseDossier` rejected `3010-SCN.json` for
+> saying `pe_bli: "3010"` and took the whole build down. That check was right;
+> the file now carries an explicit `slug` and self-describes its page.
+>
+> **Still open, and a finding rather than a rounding error:** 11 key-collision
+> exclusions remain, $0.75B. They are a DIFFERENT shape — `20`, `30`, `500`
+> collide on ORGANIZATION, not account (the drawdown plan's **#45**), and
+> `HCMC00`/`JSE000` on title variants. This sprint keyed on (account, pe_bli);
+> closing those needs org in the grain too.
+
 ## Remaining launch items
 
 - **GitHub repo push** ✅ DONE 2026-07-02 — user-authorized; standalone history
