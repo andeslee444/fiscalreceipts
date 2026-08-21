@@ -57,6 +57,65 @@
 -- validated against the typed site export). Multi-source grains carry the
 -- (pe_bli, edition_year, amount_type) join keys + n_source_rows so the
 -- exporter can mint derived sum facts with per-row breakdown inputs.
+--
+-- E2 (Sprint E, ROADMAP #67) — account-aware grain for the 8 PB2026 genuine
+-- collisions. Pre-E2 this mart grouped `detail` by (pe_bli, edition_year,
+-- scenario) alone, so a pe_bli coincidentally shared by two DIFFERENT real
+-- appropriation accounts (#56 — e.g. '3010' is BOTH LPD Flight II's
+-- Shipbuilding & Conversion account, $2.6B FY2026, AND Shipboard Tactical
+-- Communications' Other Procurement account, $20.9M) summed straight across
+-- both, fusing two unrelated programs into one point — exactly the #56
+-- defect dim_programs.sql/fct_budget_trajectory.sql fixed at the E1 grain,
+-- one layer up. B'1 could not fix it here: this mart spans all ten PB
+-- editions, and its own estimate assumed there was "no dim_programs-
+-- equivalent anchor for older editions" to split on — so it excluded the
+-- 8 keys from the exporter entirely instead (an honest gap in place of a
+-- fusion). Measured 2026-08-14/2026-08-20: the colliding keys do not exist
+-- before PB2024 (era procurement keys are namespaced '{account}-{org}-L{n}',
+-- so a bare numeric key is absent by construction), so the "no anchor"
+-- problem does not apply to the 3 editions (2024-2026) where these keys DO
+-- appear — PB2026's dim_programs collision anchor is a perfectly good anchor
+-- for all of them.
+--
+-- collision_pes below is the SAME genuine-collision definition E1 used
+-- (dim_programs.sql/fct_budget_trajectory.sql's collision_slots/
+-- collision_pes and slot_collision_2026): >1 distinct account reporting at
+-- fiscal_year=2026, amount_type='fy_2026_total', title not null, excluding
+-- the 9999999999 classified sentinel. Independently re-derived here (this
+-- mart reads stg_budget_lines directly and is not downstream of dim_programs
+-- in the dbt DAG — the same reason dim_programs.sql gives for re-deriving
+-- fct_budget_trajectory's own split key) — re-running it against
+-- stg_budget_lines directly reproduces the plan's 8 keys exactly (0145,
+-- 2210, 2292, 3010, 3050, 3215, 3302, 4217), never a hardcoded list, so a
+-- future edition's data can only WIDEN or narrow the split as its own
+-- fy_2026_total facts change.
+--
+-- Scope discipline (measured 2026-08-20 against the shipped warehouse,
+-- BEFORE writing this grouping): grouping `detail` by (pe_bli, edition_year,
+-- scenario, account) UNCONDITIONALLY — i.e. "generally," not "for these
+-- keys only" — changes rows for 5 OTHER pe_bli beyond the 8 (1045/COLUMBIA,
+-- 1350, 2101/Tomahawk, '000999', 'FY2024CR'), none of which are in this
+-- sprint's scope: 1045 is the plan's OWN precedent for the merged reading
+-- (its account rename is between fiscal years within ONE PB2026 book, not a
+-- same-moment collision, at this mart's OWN edition-relative amount_type
+-- slugs); 1350/2101 are Tomahawk's "no_detail, different defect, do not
+-- fold it in" shape one layer up (both accounts report historically, but by
+-- fy_2026_total only one does); '000999' and 'FY2024CR' are non-program
+-- placeholder/reserve keys, not appropriation-account collisions at all.
+-- The split below is therefore gated on `cp.pe_bli is not null`
+-- (collision_pes membership), not on raw multi-account presence — every one
+-- of those 5 keys keeps collapsing to a single, unattributed (account IS
+-- NULL) cross-account sum, byte-for-byte the pre-E2 output, exactly as
+-- Task E2 requires ("adding account to the grain changes rows outside the
+-- 8 keys" is the documented stop condition this scoping avoids).
+--
+-- account is NULL for every row of every OTHER pe_bli too (the ~1,700+
+-- ordinary single-account keys) — not because they are ambiguous, but
+-- because populating it there would require a second, independent
+-- account-attribution mechanism (parallel to collision_pes) with no
+-- payoff this sprint needs; NULL simply means "this mart does not attempt
+-- to attribute this row's account," never "this row spans >1 account
+-- honestly" for the 8 keys, where account is always populated.
 
 {{ config(materialized='table') }}
 
@@ -66,7 +125,8 @@ with lake as (
         pe_bli,
         fiscal_year as edition_year,
         amount_type,
-        amount_thousands
+        amount_thousands,
+        account
     from {{ ref('stg_budget_lines') }}
 ),
 
@@ -75,6 +135,7 @@ detail as (
         b.pe_bli,
         b.fiscal_year as edition_year,
         b.amount_type,
+        b.account,
         b.amount_thousands,
         substr(sha256(
             d.sha256 || '|' || b.exhibit || '|' || cast(b.fiscal_year as varchar)
@@ -87,6 +148,25 @@ detail as (
     where b.exhibit in ('R-1', 'P-1')
       and b.source_document_id is not null
       and b.pe_bli <> '9999999999'
+),
+
+-- E1's exact fy_2026_total-anchored collision anchor, independently
+-- re-derived (see the model-level comment above for why this mart cannot
+-- `ref('dim_programs')` and must not hardcode the 8 keys).
+collision_slots as (
+    select pe_bli, account
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and amount_type = 'fy_2026_total'
+      and title is not null
+      and pe_bli <> '9999999999'
+    group by pe_bli, account
+),
+collision_pes as (
+    select pe_bli
+    from collision_slots
+    group by pe_bli
+    having count(distinct account) > 1
 ),
 
 editions as (
@@ -137,6 +217,12 @@ detail_sums as (
         c.priority,
         c.fy_offset,
         c.amount_type,
+        -- E2 split key: real account for the 8 collision_pes keys (every
+        -- one of their rows, colliding or not — a non-colliding slot has
+        -- exactly one account present, so this is a no-op split there);
+        -- NULL for every other pe_bli, collapsing them to the SAME
+        -- cross-account sum this mart has always produced (unchanged).
+        case when cp.pe_bli is not null then d.account end as account,
         sum(d.amount_thousands) as amount,
         count(*) as n_source_rows,
         case when count(*) = 1 then min(d.row_fact_id) end as source_fact_id
@@ -144,6 +230,8 @@ detail_sums as (
     join candidates c
       on c.edition_year = d.edition_year
      and c.amount_type = d.amount_type
+    left join collision_pes cp
+      on cp.pe_bli = d.pe_bli
     group by all
 ),
 
@@ -152,7 +240,14 @@ chosen as (
         select
             *,
             row_number() over (
-                partition by pe_bli, edition_year, scenario
+                -- account in the partition: each account of a genuine
+                -- collision picks its OWN top-priority candidate slug
+                -- independently. Without this, row_number() would rank
+                -- both accounts' rows together and could arbitrarily
+                -- discard one account's only row as a tie-broken rn=2
+                -- (DuckDB does not guarantee priority ties resolve by
+                -- account) — this pins the fix.
+                partition by pe_bli, account, edition_year, scenario
                 order by priority
             ) as rn
         from detail_sums
@@ -164,18 +259,27 @@ chosen as (
 -- recomputes (no title filter, all rows EXCEPT the P-1R exhibit — the
 -- reserve-component subset of P-1 whose modern rows share the P-1 slugs;
 -- verify_phase5e._lake_candidate_match applies the same exclusion).
+-- account mirrors detail_sums' own split key exactly (collision_pes
+-- membership, not raw account presence) so a genuine collision's
+-- per-account amount is verified against that SAME account's own lake
+-- total, never the two-account fused total that account would no longer
+-- equal.
 lake_sums as (
     select
         l.pe_bli,
         l.edition_year,
         c.scenario,
+        case when cp.pe_bli is not null then l.account end as account,
         sum(l.amount_thousands) as lake_amount
     from lake l
     join candidates c
       on c.edition_year = l.edition_year
      and c.amount_type = l.amount_type
+    left join collision_pes cp
+      on cp.pe_bli = l.pe_bli
     where l.exhibit <> 'P-1R'
-    group by l.pe_bli, l.edition_year, c.scenario, c.amount_type
+    group by l.pe_bli, l.edition_year, c.scenario, c.amount_type,
+             case when cp.pe_bli is not null then l.account end
 )
 
 select
@@ -191,6 +295,7 @@ select
     ch.amount as amount_thousands,
     ch.scenario,
     ch.amount_type,
+    ch.account,
     ch.n_source_rows,
     ch.source_fact_id
 from chosen ch
@@ -200,5 +305,6 @@ where exists (
     where ls.pe_bli = ch.pe_bli
       and ls.edition_year = ch.edition_year
       and ls.scenario = ch.scenario
+      and ls.account is not distinct from ch.account
       and abs(ls.lake_amount - ch.amount) <= 0.5
 )

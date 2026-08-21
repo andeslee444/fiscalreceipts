@@ -248,7 +248,7 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
         "create table fct_decade_series (pe_bli varchar, fy integer,"
         " edition_year integer, amount_type_kind varchar, amount double,"
         " amount_thousands double, scenario varchar, amount_type varchar,"
-        " n_source_rows integer, source_fact_id varchar)"
+        " n_source_rows integer, source_fact_id varchar, account varchar)"
     )
     for fy, kind, at, scenario in [
         (2024, "actuals", "fy_2024_actuals", "PriorYear"),
@@ -257,8 +257,8 @@ def _make_duckdb(db_path: Path, sha: str) -> None:
     ]:
         amt = WB[at]
         con.execute(
-            "insert into fct_decade_series values (?,?,?,?,?,?,?,?,?,?)",
-            (PE, fy, 2026, kind, amt, amt, scenario, at, 1, _wb_fid(sha, at)),
+            "insert into fct_decade_series values (?,?,?,?,?,?,?,?,?,?,?)",
+            (PE, fy, 2026, kind, amt, amt, scenario, at, 1, _wb_fid(sha, at), None),
         )
 
     # Feed mart: one yoy_swing card (basis threading assertion).

@@ -7733,3 +7733,268 @@ fan-out-guard fixes and all their guard tests):
   $ uv run dbt build --project-dir dbt --profiles-dir dbt --select dim_programs+ fct_budget_trajectory+
 
   Done. PASS=35 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=35
+
+================================================================================
+2026-08-21 — Sprint E, Task E2: make fct_decade_series account-aware
+================================================================================
+
+STEP 1 — re-derive the edition table (required before touching anything;
+ten of the previous ten plan-family premises checked this way had failed).
+Queried the shipped warehouse directly:
+
+  8 keys: 0145 2210 2292 3010 3050 3215 3302 4217 — 9 fct_decade_series rows
+  each, editions 2024-2026 only (stg_budget_lines has ZERO rows for any of
+  these bare keys at fiscal_year < 2024 — era editions namespace Navy
+  procurement as '{account}-{org}-L{n}', so a bare numeric key is absent by
+  construction, confirming the plan's premise). max(n_source_rows) = 2 for
+  the fused keys, confirmed. MATCHES the plan and the coordinator's
+  confirmed ground state exactly — no substitution needed on this leg.
+
+  Re-deriving E1's OWN fy_2026_total-anchored collision definition directly
+  from stg_budget_lines (not through dim_programs, since fct_decade_series
+  cannot ref it) reproduces the identical 8 keys — verified before writing
+  any SQL:
+
+    collision_pes (fy_2026_total anchor): ['0145','2210','2292','3010',
+    '3050','3215','3302','4217'] — matches expected 8 keys exactly: True
+
+DISCLOSED SCOPE FINDING (found before writing the fix, changes the design):
+grouping fct_decade_series' `detail` CTE by (pe_bli, edition_year, scenario,
+account) UNCONDITIONALLY — "generally," not "for these keys only" — was
+measured to change rows for 5 OTHER pe_bli beyond the 8: '1045' (COLUMBIA,
+the plan's own precedent for the MERGED reading), '1350' and '2101'
+(Tomahawk's "no_detail, different defect, do not fold it in" shape one
+layer up — both accounts report historically but by fy_2026_total only one
+does), and two non-program placeholder/reserve keys ('000999', 'FY2024CR').
+None of these are in Sprint E's scope. Decision: scope the split to
+collision_pes membership (the SAME 8-key anchor, not raw multi-account
+presence) so account is populated ONLY for the 8 genuine collisions;
+every other pe_bli collapses to account=NULL, byte-for-byte the pre-E2
+cross-account sum — this is the "for these keys only" branch of the task's
+explicit either/or, chosen because "generally" provably changes rows
+outside the 8 keys, which the task names as a stop condition.
+
+STEP 2 — add account to the grain, proof-can-fail on the new assertion.
+
+New test dbt/tests/assert_decade_series_account_resolved.sql: for rows
+where account IS NOT NULL, n_source_rows must equal 1 (the leak's
+signature — it was 2 for these rows pre-fix). Widened
+assert_decade_series_grain_unique.sql from (pe_bli, fy, edition_year) to
+(pe_bli, account, fy, edition_year). Also had to widen
+assert_decade_series_no_p1r_contamination.sql's independent "from staging"
+recompute the same way (its own honest-sum join fused both accounts
+without this).
+
+Ran all three against the temporarily-reverted PRE-E2 model (git
+show HEAD:.../fct_decade_series.sql), matching E1's own proof-can-fail
+pattern (a column-name binder error, since account did not exist yet):
+
+  $ uv run dbt build --project-dir dbt --profiles-dir dbt --select fct_decade_series assert_decade_series_account_resolved
+
+--- FAIL (verbatim), all three tests run against the pre-E2 model ---
+
+  Failure in test assert_decade_series_no_p1r_contamination (tests/assert_decade_series_no_p1r_contamination.sql)
+    Runtime Error in test assert_decade_series_no_p1r_contamination (tests/assert_decade_series_no_p1r_contamination.sql)
+  Binder Error: Table "m" does not have a column named "account"
+
+  Candidate bindings: : "amount", "amount_thousands", "amount_type", "amount_type_kind"
+
+  LINE 74:  and h.account is not distinct from m.account
+                                               ^
+
+    compiled code at target/compiled/govbudget/tests/assert_decade_series_no_p1r_contamination.sql
+
+  Failure in test assert_decade_series_grain_unique (tests/assert_decade_series_grain_unique.sql)
+    Runtime Error in test assert_decade_series_grain_unique (tests/assert_decade_series_grain_unique.sql)
+  Binder Error: Referenced column "account" not found in FROM clause!
+  Candidate bindings: "amount", "amount_type", "amount_thousands", "amount_type_kind", "n_source_rows"
+
+  LINE 23: select pe_bli, account, fy, edition_year, count(*)
+                          ^
+
+    compiled code at target/compiled/govbudget/tests/assert_decade_series_grain_unique.sql
+
+  Failure in test assert_decade_series_account_resolved (tests/assert_decade_series_account_resolved.sql)
+    Runtime Error in test assert_decade_series_account_resolved (tests/assert_decade_series_account_resolved.sql)
+  Binder Error: Referenced column "account" not found in FROM clause!
+  Candidate bindings: "amount", "amount_type", "amount_thousands", "amount_type_kind", "n_source_rows"
+
+  LINE 31: where account is not null
+                 ^
+
+    compiled code at target/compiled/govbudget/tests/assert_decade_series_account_resolved.sql
+
+  Done. PASS=14 WARN=0 ERROR=3 SKIP=1 NO-OP=0 TOTAL=18
+
+--- PASS (verbatim), same three tests, model restored to the E2 fix ---
+
+  3 of 18 PASS assert_decade_series_account_resolved ............................. [PASS in 0.03s]
+  4 of 18 PASS assert_decade_series_grain_unique ................................. [PASS in 0.03s]
+  5 of 18 PASS assert_decade_series_no_p1r_contamination ......................... [PASS in 0.06s]
+
+  18 of 18 FAIL 78 assert_book_diff_join_completeness ............................ [FAIL 78 in 0.01s]
+
+  Done. PASS=17 WARN=0 ERROR=1 SKIP=0 NO-OP=0 TOTAL=18
+
+The 78-row assert_book_diff_join_completeness FAIL above is the SECOND
+proof-can-fail this task produced, unprompted by the plan's own task list
+but required by "enumerate every consumer" (E1's own precedent — it found
+fct_program_trajectory as an undocumented consumer the same way).
+fct_book_diff.sql self-joins fct_decade_series on pe_bli alone
+(`t.pe_bli = f.pe_bli and t.edition_year = f.edition_year + 1`); once a
+genuine collision's request/actuals rows legitimately span two accounts,
+this join fans out (2 accounts x 2 accounts = up to 4 rows instead of 2),
+which assert_book_diff_grain_unique / assert_book_diff_join_completeness
+correctly caught. Fixed by adding `account` to fct_book_diff.sql (both
+self-joins now match `is not distinct from` on account — NOT `=`, since
+account is NULL for the ~1,700+ ordinary pe_bli and `=` drops every
+NULL=NULL pair) and widening its two guard tests the same way
+fct_decade_series' were widened.
+
+--- PASS (verbatim) after the fct_book_diff.sql fix ---
+
+  112 of 134 PASS assert_book_diff_grain_unique .................................. [PASS in 0.15s]
+  113 of 134 PASS assert_book_diff_join_completeness ............................. [PASS in 0.29s]
+
+FULL BUILD (every model, every test — nothing scoped out, to catch any
+OTHER undocumented consumer beyond fct_book_diff.sql):
+
+  $ uv run dbt build --project-dir dbt --profiles-dir dbt
+
+  Done. PASS=133 WARN=1 ERROR=0 SKIP=0 NO-OP=0 TOTAL=134
+
+(The one WARN is warn_subaward_amount_exceeds_50b, pre-existing and
+unrelated — a >$50B subaward size sanity warning, not a decade-series or
+book-diff test.)
+
+STEP 3 — the exporter's OWN "enumerate every consumer" pass found a THIRD
+blast-radius surface the plan did not name: _build_decade_citation_rows
+(export_site.py) mints fact_ids and internal lookup dicts (src_by_key,
+grain_fid_by_key) keyed by (pe_bli, edition, amount_type) — without
+account, a genuine collision's two rows collide in these dicts. Fixed by
+threading account through both keys and the decade_grains working list
+(now an internal 8-tuple), and by folding account into the book_diff
+derived-fact identity string (conditionally — NULL pe_bli reproduce the
+pre-E2 un-suffixed identity exactly, so no existing book_diff fid changes
+for any of the ~1,700+ ordinary pe_bli — verified: every test in tests/
+that pins a specific book_diff fid for a non-split PE still computes the
+identical value).
+
+BUG CAUGHT MID-FIX (disclosed, not swept under the rug): the first version
+of this fix reused the name `account` for the RAW per-source-row account
+inside the same loop that also holds the outer series-row's `account`
+attribute — Python has no block scoping, so the inner loop silently
+overwrote the outer variable, corrupting grain_fid_by_key's keys for every
+pe_bli that had at least one source row (i.e. nearly all of them). Caught
+by tests/jbooks/test_export_site_pg.py raising "join completeness
+violated" for an ORDINARY (non-collision) PE after adding `account` to its
+fixture DDL — traced with a throwaway debug print of grain_fid_by_key's
+actual keys, which showed a real account string ('0400') where None was
+expected. Fixed by renaming the inner variable to `row_account`. Full
+targeted rerun after the fix: 57 passed (tests/jbooks/test_export_basis.py
++ tests/jbooks/test_export_site_pg.py).
+
+Removed both named exporter workarounds ("Both sites" per the task brief):
+_decade_collision_pes in the sidecar function (fed years_matrix.json +
+decade_series_by_pe) and the `None if pe in collision_pes else ...` guard
+in _build_summary_blocks (two call sites: the summary-card decade slot and
+the reconciliation-payload toa_side). Both are now unconditional reads of
+decade_grains, because decade_grains itself is pre-resolved to at most one
+row per (pe_bli, fy, edition, kind) by a new function,
+_resolve_decade_grains_primary_account — see the commit message and
+export_site.py's own docstring for why an interim "keep one account,
+deterministically" step is necessary until Task E3 gives each account its
+own page (prefers the dim_programs row with real R-2/P-40 detail — the
+account today's live page already shows for all 6 of the 8 keys with a
+page today; falls back to the larger-total account, tie-broken by account
+code, for 0145 and 2292, where neither account has a page today).
+
+FULL PYTEST:
+
+  $ uv run pytest -q
+
+  1574 passed, 1 pre-existing failure (unrelated) in 75.64s
+
+  tests/test_dossiers_research.py::TestProgramCategoriesCsv::
+  test_covers_live_top50_exactly FAILED — compares the LIVE warehouse's
+  dossier top-50 selection (dim_programs + fct_budget_trajectory, E1
+  models untouched by this task) against a committed CSV seed
+  (data-seeds/program_categories.csv) that was not regenerated after E1's
+  re-grain added 10 new large-dollar programs (LPD Flight II $2.6B, Medium
+  Landing Ship $1.96B — large enough to plausibly enter a top-50 list).
+  Confirmed via `git diff --stat` that this task touched NEITHER
+  dim_programs.sql, fct_budget_trajectory.sql, NOR
+  data-seeds/program_categories.csv — this is a pre-existing E1 gap
+  surfaced by rebuilding the warehouse, not something E2 introduced.
+  Regenerating the dossier CSV is a content/API-cost decision outside E2's
+  (or this session's) mandate.
+
+VERIFY-LINEAGE:
+
+  $ uv run python -m govbudget verify-lineage
+
+  leg a stated-cite: checked=29 passed=29 failures=0 -> PASS
+  leg b family-integrity: recomputed_pes=51 persisted_pes=51 failures=0 -> PASS
+  leg c one-to-one-sum: families_checked=22 cyclic_fallbacks=0 dangling_terminals=1 failures=0 -> PASS
+  leg d funding-point-value: files_scanned=1993 points_checked=524 failures=0 -> PASS
+  leg e lake-binding: lineage_rows_db=32 lineage_rows_lake=32 family_pes_db=51 family_pes_lake=51 failures=0 -> PASS
+  leg f no-retraction: checked=29 passed=29 failures=0 -> PASS
+  verify-lineage: PASS
+
+EXPORT-SITE (run once, per the task brief's conditional permission, to
+verify the workaround removal end-to-end — NOT followed by a site build):
+
+  $ uv run python -m govbudget export-site
+
+Completed without crashing. Confirmed directly against the generated
+data/site/json/years_matrix.json:
+
+  - All 8 collision keys now carry real decade cells (fy2022a..fy2026r)
+    where before they had none at all (the honest gap B'1 left).
+  - Balanced panel (Sprint C #64, "programs with a figure in every one of
+    the 12 default columns"): 524 programs, ZERO of the 8 collision keys
+    among them — PREDICTED before running (these keys only ever have 3
+    editions' worth of columns; the panel requires all 12, including 7
+    era-only actuals columns FY2015A-FY2021A that are structurally absent
+    for these keys by construction) and CONFIRMED by direct computation
+    over the real payload. Panel size does not move.
+
+TWO PRE-EXISTING FINDINGS DISCLOSED, NOT FIXED (both traced to E1, neither
+touched by this task's diff — confirmed via `git diff --stat` showing zero
+changes to dim_programs.sql, fct_budget_trajectory.sql, or
+_build_derived_citation_rows):
+
+  1. export-site printed 14 "breakdowns: SKIP <fid> — sum of 2 inputs =
+     <fused total> != recorded_value <correct single-account value>"
+     lines matching the 8 collision keys' own numbers exactly (e.g. '3010'
+     fy2026: sum=2,620,900 != recorded=20,900). Root-caused to
+     _build_derived_citation_rows (untouched by this task — confirmed via
+     diff hunks), which mints trajectory-metric fact_ids keyed
+     '{pe_bli}|{organization}' — NOT by account — and fct_budget_trajectory
+     (E1) gives BOTH accounts of every one of the 8 keys the SAME
+     organization ('N', confirmed by direct query), so the two accounts'
+     rows collide on this fid, and the #56-era input-matching filter
+     (`abs(a - value) < 0.0005`) does not always find an exact single-row
+     match, leaving the full unfiltered (both-account) input list. This
+     function's own code comment already documents an earlier instance of
+     this exact pattern as pre-existing and dated 2026-08-11 (10 days
+     before this sprint started) — "SKIP, don't crash," a soft
+     degradation that drops a breakdown.json decomposition, never a wrong
+     headline number. Out of E2's scope (a third function, driven by
+     fct_budget_trajectory not fct_decade_series); directly relevant to
+     E3, which will need an account-aware key for this same reason.
+
+  2. years_matrix.json's per-program cell builder (_program_cells) keys
+     ALL cells (both the ordinary amount_type columns and now, via this
+     task's fix, the decade columns) by bare pe_bli — dim_programs (E1) now
+     emits TWO title rows per collision pe_bli (e.g. "F/A-18E/F (Fighter)
+     Hornet" and "General Purpose Bombs" for '0145'), and both rows render
+     byte-identical cells, including the decade ones this task newly
+     populates. Confirmed this is not new: the ORDINARY (non-decade)
+     fy_2024_actuals/fy_2026_total cells already showed the identical
+     duplication before this task touched anything (E1-caused). Squarely
+     Task E3's remit (page/row identity for split pe_bli), not E2's.
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. `git diff --stat -- site/` is empty — this task touched no frontend
+file, so the 24-gate suite was never at risk.

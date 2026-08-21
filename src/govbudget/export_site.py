@@ -3005,7 +3005,7 @@ def _build_decade_citation_rows(
         try:
             series = con.execute(
                 "select pe_bli, fy, edition_year, amount_type_kind, amount,"
-                " amount_type, n_source_rows, source_fact_id"
+                " amount_type, n_source_rows, source_fact_id, account"
                 " from fct_decade_series"
             ).fetchall()
         except _duckdb.CatalogException:
@@ -3015,7 +3015,7 @@ def _build_decade_citation_rows(
             diffs = con.execute(
                 "select pe_bli, from_edition, to_edition, diff_kind,"
                 " from_fy, to_fy, from_value, to_value, delta,"
-                " from_amount_type, to_amount_type"
+                " from_amount_type, to_amount_type, account"
                 " from fct_book_diff"
             ).fetchall()
         except _duckdb.CatalogException:
@@ -3070,7 +3070,15 @@ def _build_decade_citation_rows(
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
     decade_bl_rows: list[tuple] = []
     decade_cit_rows: list[tuple] = []
-    decade_grains: list[tuple] = []
+    # 8-tuple working list (decade_grains 7-tuple + account) — E2 (Sprint E,
+    # ROADMAP #67). account is non-NULL only for the 8 genuine PB2026
+    # collisions (fct_decade_series' own E2 column); resolved down to the
+    # existing 7-tuple decade_grains contract at the end of this function
+    # (_resolve_decade_grains_primary_account) so every downstream consumer
+    # (years_matrix, the summary-card decade slot, the sparkline) is
+    # untouched by this sprint — E3 is what turns "one account kept" into
+    # "both accounts get their own page."
+    decade_grains_full: list[tuple] = []
     decade_side_meta: dict[str, tuple] = {}
     grain_fid_by_key: dict[tuple, str] = {}
     minted_fids: set[str] = set(existing_fids)
@@ -3079,22 +3087,41 @@ def _build_decade_citation_rows(
     n_wb_dedup = 0
     n_derived_sum = 0
 
-    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid in series:
+    for pe_bli, fy, edition, kind, amount, at, n_src, src_fid, account in series:
         if pe_bli not in pes:
             continue
-        key_rows = src_by_key.get((pe_bli, edition, at), [])
+        candidate_rows = src_by_key.get((pe_bli, edition, at), [])
+        # E2: a genuine collision's row is scoped to its OWN real account —
+        # src_by_key is keyed (pe_bli, edition, amount_type) only (unchanged
+        # from pre-E2), so the account filter is applied here rather than
+        # baked into the dict key, which lets every other pe_bli (account
+        # IS NULL) fall through unfiltered, byte-for-byte as before.
+        key_rows = (
+            [r for r in candidate_rows if r[2] == account]
+            if account is not None else candidate_rows
+        )
         if len(key_rows) != n_src:
             raise ValueError(
-                f"decade: grain ({pe_bli}, PB{edition}, {at}) has"
-                f" {len(key_rows)} lake source rows but fct_decade_series"
-                f" says n_source_rows={n_src} — mart/lake drift; refusing"
-                " to mint (rebuild the marts against the current lake)"
+                f"decade: grain ({pe_bli}, PB{edition}, {at}, account="
+                f"{account!r}) has {len(key_rows)} lake source rows but"
+                f" fct_decade_series says n_source_rows={n_src} — mart/lake"
+                " drift; refusing to mint (rebuild the marts against the"
+                " current lake)"
             )
 
         input_fids: list[str] = []
         # deterministic breakdown order: largest row first, fid tiebreak
         for r in sorted(key_rows, key=lambda r: (-(r[10] or 0.0), r[11])):
-            (exhibit, ed_year, account, account_title, organization,
+            # row_account (NOT `account`): this is the RAW source row's own
+            # account, always populated (every stg_budget_lines row carries
+            # one). `account` is the outer series-row's E2 attribution
+            # (None except for the 8 genuine collisions) — reusing the same
+            # name here would shadow it for the rest of this pe_bli's outer
+            # loop iteration and silently corrupt grain_fid_by_key's keys
+            # (caught 2026-08-21: book-diff lookups for ordinary pe_bli
+            # started missing because `account` had been overwritten from
+            # None to a real value by this inner loop).
+            (exhibit, ed_year, row_account, account_title, organization,
              budget_activity, ba_title, _pe, title, _at, amount_thousands,
              sha256, source_sheet, source_cells, source_url,
              downloaded_at) = r
@@ -3104,12 +3131,12 @@ def _build_decade_citation_rows(
                     f" ({pe_bli}, PB{edition}, {at}) — unmintable input"
                 )
             w_fid = fact_id_workbook(
-                sha256, exhibit, ed_year, account, organization,
+                sha256, exhibit, ed_year, row_account, organization,
                 budget_activity, pe_bli, at,
             )
             input_fids.append(w_fid)
             decade_bl_rows.append((
-                w_fid, exhibit, int(ed_year), account, account_title,
+                w_fid, exhibit, int(ed_year), row_account, account_title,
                 organization, budget_activity, ba_title, pe_bli, title, at,
                 float(amount_thousands), "USD thousands", sha256,
                 source_sheet, source_cells,
@@ -3167,34 +3194,50 @@ def _build_decade_citation_rows(
                     built_at,
                 ))
 
-        grain_fid_by_key[(pe_bli, edition, at)] = grain_fid
-        # 7-tuple: the trailing amount_type is the grain's CHOSEN slug —
-        # consumers derive the point's `measure` from it (slug-accurate:
-        # a CurrentYear grain built from fy_2025_total is measure 'total',
-        # matching the P-1 table row it must agree with; one built from
-        # fy_2025_enacted is 'enacted').
-        decade_grains.append(
-            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid, at)
+        # E2: account is part of the lookup key — grain_fid_by_key must
+        # resolve to THIS account's own fid, not whichever account's row
+        # happened to be processed last for this (pe_bli, edition, at).
+        grain_fid_by_key[(pe_bli, account, edition, at)] = grain_fid
+        # 7-tuple (+account internally): the trailing amount_type is the
+        # grain's CHOSEN slug — consumers derive the point's `measure` from
+        # it (slug-accurate: a CurrentYear grain built from fy_2025_total is
+        # measure 'total', matching the P-1 table row it must agree with;
+        # one built from fy_2025_enacted is 'enacted').
+        decade_grains_full.append(
+            (pe_bli, int(fy), int(edition), kind, float(amount), grain_fid,
+             at, account)
         )
         decade_side_meta[grain_fid] = (f"PB{edition} FY{fy} {kind}", pe_bli)
 
     # ---- book-diff derived facts -------------------------------------------
     n_diffs = 0
     for (pe_bli, from_ed, to_ed, diff_kind, from_fy, to_fy,
-         _from_val, _to_val, delta, from_at, to_at) in diffs:
+         _from_val, _to_val, delta, from_at, to_at, account) in diffs:
         if pe_bli not in pes or delta is None:
             continue
-        from_fid = grain_fid_by_key.get((pe_bli, from_ed, from_at))
-        to_fid = grain_fid_by_key.get((pe_bli, to_ed, to_at))
+        from_fid = grain_fid_by_key.get((pe_bli, account, from_ed, from_at))
+        to_fid = grain_fid_by_key.get((pe_bli, account, to_ed, to_at))
         if from_fid is None or to_fid is None:
             raise ValueError(
-                f"decade: fct_book_diff row ({pe_bli}, PB{from_ed}→PB{to_ed},"
-                f" {diff_kind}) references a side grain missing from"
-                " fct_decade_series — join completeness violated"
+                f"decade: fct_book_diff row ({pe_bli}, account={account!r},"
+                f" PB{from_ed}→PB{to_ed}, {diff_kind}) references a side"
+                " grain missing from fct_decade_series — join completeness"
+                " violated"
             )
-        diff_fid = fact_id_derived(
-            "book_diff", f"{pe_bli}|{from_ed}|{to_ed}", diff_kind,
+        # E2: account folded into the diff identity when the mart resolved
+        # one (the 8 genuine collisions) — without this, both accounts'
+        # diff rows for the same (pe_bli, from_ed, to_ed, diff_kind) would
+        # derive the IDENTICAL fid (fact_id_derived ignores account), and
+        # the second one processed would be silently treated as an
+        # already-minted duplicate of the first, discarding its own
+        # (different) delta. NULL for every other pe_bli reproduces the
+        # pre-E2 identity string exactly (see the book_diff fid consumers
+        # in tests/ that pin the un-suffixed form for non-split PEs).
+        diff_key = (
+            f"{pe_bli}|{account}|{from_ed}|{to_ed}" if account is not None
+            else f"{pe_bli}|{from_ed}|{to_ed}"
         )
+        diff_fid = fact_id_derived("book_diff", diff_key, diff_kind)
         if diff_fid in minted_fids:
             continue
         minted_fids.add(diff_fid)
@@ -3209,6 +3252,10 @@ def _build_decade_citation_rows(
             built_at,
         ))
 
+    decade_grains = _resolve_decade_grains_primary_account(
+        duckdb_path, decade_grains_full,
+    )
+
     print(
         f"decade: {len(decade_grains)} grains for {len(pes & {g[0] for g in decade_grains})}"
         f" in-scope PEs → {len(decade_bl_rows)} source rows"
@@ -3216,6 +3263,97 @@ def _build_decade_citation_rows(
         f" {n_derived_sum} derived decade sums, {n_diffs} book-diff facts"
     )
     return decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta
+
+
+def _resolve_decade_grains_primary_account(
+    duckdb_path, rows: list[tuple],
+) -> list[tuple]:
+    """Collapse E2's account-aware decade grains back to the pre-E2
+    7-tuple contract every existing consumer (years_matrix, the
+    summary-card decade slot, the per-program sparkline) still expects.
+
+    rows: (pe_bli, fy, edition_year, kind, amount, fid, amount_type,
+    account) 8-tuples fresh from fct_decade_series (E2, Sprint E, ROADMAP
+    #67). account is non-NULL only for the 8 genuine PB2026 collisions —
+    every OTHER pe_bli already has exactly one row per (fy, edition, kind)
+    and passes through untouched.
+
+    For the 8 collisions, a colliding slot now legitimately carries TWO
+    rows (one per real account) where pre-E2 there was one (fused) row.
+    Every downstream consumer this function feeds still assumes one row
+    per (pe_bli, fy, edition, kind) — that assumption is not this
+    function's to break: giving each account its own PAGE is Task E3's
+    "URL contract" decision (composite slugs vs. an incumbent-keeps-the-
+    bare-URL rule), not a Python dict-iteration accident. Until E3 lands,
+    this keeps exactly ONE account's rows per pe_bli, chosen the SAME way
+    the rest of this exporter already picks "the" account for a pe_bli
+    with a page today: prefer the dim_programs row that has real R-2/P-40
+    detail (fy2024_actual_millions IS NOT NULL) — verified 2026-08-20 that
+    all 6 of the 8 keys with a live page today resolve this way (their
+    OTHER account is a detail-less "numbers-only" row, e.g. LPD Flight
+    II). Falling back to the larger-total account (ties broken by account
+    code) only matters for 0145 and 2292, where NEITHER account has a
+    page today, so there is no existing identity to protect.
+
+    Without this step, removing B'1's exporter-level exclusion would trade
+    one bug (an honest gap) for two others: a crash (two accounts sharing
+    one dict key in the summary-card/years-matrix builders) or, worse, a
+    silent, build-order-dependent flip between which account's numbers a
+    page shows — the same #56 fusion failure mode in a new shape.
+    """
+    from collections import defaultdict
+
+    by_pe_account: dict[str, dict] = defaultdict(dict)
+    for row in rows:
+        pe_bli, account = row[0], row[7]
+        by_pe_account[pe_bli].setdefault(account, []).append(row)
+
+    ambiguous = {
+        pe: accounts for pe, accounts in by_pe_account.items()
+        if len([a for a in accounts if a is not None]) > 1
+    }
+
+    primary_by_pe: dict[str, str] = {}
+    if ambiguous:
+        import duckdb as _duckdb
+
+        con = _duckdb.connect(str(duckdb_path), read_only=True)
+        try:
+            placeholders = ",".join("?" for _ in ambiguous)
+            has_detail: dict[str, list[str]] = defaultdict(list)
+            for pe, acct, fy24 in con.execute(
+                "select pe_bli, account, fy2024_actual_millions"
+                f" from dim_programs where pe_bli in ({placeholders})",
+                list(ambiguous),
+            ).fetchall():
+                if fy24 is not None:
+                    has_detail[pe].append(acct)
+        finally:
+            con.close()
+        for pe, accounts in ambiguous.items():
+            candidates = [a for a in accounts if a is not None]
+            detail_accounts = [a for a in has_detail.get(pe, []) if a in candidates]
+            if len(detail_accounts) == 1:
+                primary_by_pe[pe] = detail_accounts[0]
+            else:
+                totals = {
+                    a: sum(r[4] for r in accounts[a]) for a in candidates
+                }
+                primary_by_pe[pe] = sorted(
+                    candidates, key=lambda a: (-totals[a], a)
+                )[0]
+
+    out: list[tuple] = []
+    for row in rows:
+        pe_bli, account = row[0], row[7]
+        if (
+            account is not None
+            and pe_bli in primary_by_pe
+            and account != primary_by_pe[pe_bli]
+        ):
+            continue  # secondary account of a genuine collision — E3's job
+        out.append(row[:7])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -3492,38 +3630,18 @@ def _build_summary_blocks(
         ).fetchall()
     except _duckdb.CatalogException:
         prog_traj_rows = []
-    # #56 collision PEs: pe_bli values coincidentally shared by two
-    # DIFFERENT real appropriation accounts within one amount_type slot
-    # (same grain as dbt/tests/assert_program_key_unique.sql — kept in
-    # sync deliberately; see that file's comment for why fiscal_year alone
-    # is the wrong grain and 1045/COLUMBIA must not appear here). This
-    # mart's own fct_budget_trajectory row is now correctly account-scoped
-    # (fct_budget_trajectory.sql's #56 fix), but fct_decade_series (a
-    # separate Phase 5E model, not re-keyed by this ticket — its blast
-    # radius spans all ten PB editions) still silently sums across both
-    # accounts, and decade_slot normally wins summary-card priority 1 over
-    # trajectory's priority 2. Excluding these PEs from decade_slot below
-    # forces the union onto the now-correct trajectory tier instead.
-    try:
-        collision_pes: set[str] = {
-            r[0] for r in con.execute(
-                "select pe_bli"
-                " from (select pe_bli, amount_type,"
-                "       count(distinct account_title) as n"
-                "       from fct_budget_lines"
-                "       where account_title is not null"
-                "         and pe_bli <> '9999999999'"
-                "         and fiscal_year = 2026"
-                "         and amount_type in"
-                "             ('fy_2024_actuals', 'fy_2025_total', 'fy_2026_total')"
-                "       group by pe_bli, amount_type)"
-                " where n > 1"
-            ).fetchall()
-        }
-    except _duckdb.CatalogException:
-        collision_pes = set()
     finally:
         con.close()
+    # E2 (Sprint E, ROADMAP #67): the #56-era collision_pes exclusion that
+    # used to live here is gone. It existed because fct_decade_series
+    # summed a genuine collision's two accounts into one fused figure, and
+    # decade_slot (built from decade_grains, below) would otherwise have
+    # re-served that fused number ahead of the now-correct, account-scoped
+    # fct_budget_trajectory tier. fct_decade_series is account-aware now
+    # (E2) and decade_grains has already been resolved to at most one row
+    # per (pe_bli, fy, edition, kind) by _resolve_decade_grains_primary_
+    # account before it ever reaches this function — decade_slot below can
+    # never hold a fused figure, so there is nothing left to exclude.
     traj_orgs: dict[str, list[str]] = {}
     for row in traj_rows:
         traj_orgs.setdefault(row[0], []).append(row[1])
@@ -3616,14 +3734,10 @@ def _build_summary_blocks(
         slot_cards: dict[str, dict] = {}
 
         for key, default_fy, default_measure in _SUMMARY_SLOTS:
-            # 1. decade grain — skipped for #56 collision PEs: fct_decade_
-            # series is not account-scoped (see collision_pes comment above)
-            # and would re-serve the fused figure this union exists to
-            # avoid. Falls through to slot 2, which IS account-scoped.
-            grain = (
-                None if pe in collision_pes
-                else decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
-            )
+            # 1. decade grain (E2: account-aware, resolved to at most one
+            # row per (pe_bli, fy, edition, kind) upstream — see
+            # _resolve_decade_grains_primary_account).
+            grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
             if grain is not None:
                 v, fid, measure, _token = grain
                 slot_cards[key] = _card(
@@ -3753,13 +3867,10 @@ def _build_summary_blocks(
                     "dataset": card["dataset"],
                 }
             else:
-                # decade grid cell rendering exactly (fy, measure)… skipped
-                # for #56 collision PEs, same reason as the summary-card
-                # union above: fct_decade_series is not account-scoped.
-                grain = (
-                    None if pe in collision_pes
-                    else decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
-                )
+                # decade grid cell rendering exactly (fy, measure) — E2:
+                # account-aware and pre-resolved, same as the summary-card
+                # union above.
+                grain = decade_slot.get(pe, {}).get(_DECADE_KIND_BY_SLOT[key])
                 if grain is not None and grain[3] == measure:
                     toa_side = {
                         "v": grain[0], "units": "USD thousands",
@@ -5252,50 +5363,18 @@ def _write_all_sidecars(
     # Only these are safe to emit as data-fact-id (gate 2 Cite state A contract).
     _cited_fact_ids: set[str] = {row[0] for row in citation_rows}
 
-    # #56: pe_bli values coincidentally shared by two DIFFERENT real
-    # appropriation accounts within one amount_type slot. fct_decade_series
-    # (below) is a SEPARATE Phase 5E model spanning all ten PB editions —
-    # re-keying it is out of this ticket's blast radius (dim_programs.sql /
-    # fct_budget_trajectory.sql carry the #56 fix; fct_decade_series does
-    # not) — and it is NOT confined to the PB2026 edition: pe_bli '3010'
-    # shows n_source_rows=2 (a same-moment account collision, not a
-    # legitimate multi-org sum) in the PB2024 and PB2025 editions too, not
-    # just PB2026 (verified against the shipped warehouse, 2026-08-11). A
-    # decade sparkline point this mart still fuses would contradict the
-    # page's own #56-corrected headline card sitting right above it — gate
-    # 23 leg a2 (PM-review Sprint 1's pre-existing "one label, one basis"
-    # collision check) catches exactly this. Excluded here at the SOURCE
-    # (decade_series_by_pe is also what _emit_lineage threads into family
-    # funding-line points, so filtering upstream keeps both surfaces honest)
-    # rather than picking which points are safe per edition — an honest gap
-    # ("no year-over-year trajectory row for this line") is better than a
-    # sparkline that might still fuse two programs on SOME of its ten points.
-    try:
-        _decade_collision_pes: set[str] = {
-            r[0] for r in con.execute(
-                "select pe_bli"
-                " from (select pe_bli, amount_type,"
-                "       count(distinct account_title) as n"
-                "       from fct_budget_lines"
-                "       where account_title is not null"
-                "         and pe_bli <> '9999999999'"
-                "         and fiscal_year = 2026"
-                "         and amount_type in"
-                "             ('fy_2024_actuals', 'fy_2025_total', 'fy_2026_total')"
-                "       group by pe_bli, amount_type)"
-                " where n > 1"
-            ).fetchall()
-        }
-    except Exception:
-        _decade_collision_pes = set()
-    # Filtered once, used everywhere decade_grains feeds a rendered surface
-    # within this function — the per-program sidecar loop directly below AND
-    # years_matrix.json (#17 below, the /years/ grid), which reads
-    # decade_grains independently of decade_series_by_pe and would otherwise
-    # still publish the fused figure in its own cells.
-    decade_grains = [
-        g for g in (decade_grains or []) if g[0] not in _decade_collision_pes
-    ]
+    # E2 (Sprint E, ROADMAP #67): the #56-era _decade_collision_pes
+    # exclusion that used to live here is gone. fct_decade_series is
+    # account-aware now (2026-08-20) — it no longer sums a genuine
+    # collision's two accounts into one fused row — and decade_grains
+    # (the parameter this function receives) has already been resolved to
+    # at most one row per (pe_bli, fy, edition, kind) by
+    # _resolve_decade_grains_primary_account before it reaches here, so
+    # there is nothing left to exclude. This closes the honest gap the old
+    # exclusion left behind (the 8 collision keys' sparklines and /years/
+    # cells were entirely absent; they now render their resolved account's
+    # correct, non-fused figures) without reintroducing the fusion.
+    decade_grains = list(decade_grains or [])
 
     # Decade series index (Phase 5E): pe_bli → {amount_type_kind: [entry…]}.
     # Entries are {fy, v, fid, edition, basis, measure} sorted by fy; absent
@@ -5306,7 +5385,10 @@ def _write_all_sidecars(
     # decade_grains 7-tuple comment), never blindly from the series kind.
     decade_series_by_pe: dict[str, dict] = {}
     for d_pe, d_fy, d_edition, d_kind, d_amount, d_fid, d_at in (decade_grains or []):
-        # (#56 collision pes are already filtered out of decade_grains above)
+        # (E2: decade_grains already carries at most one row per
+        # (pe_bli, fy, edition, kind) — see _resolve_decade_grains_primary_
+        # account — so there is no fused/duplicate point to guard against
+        # here.)
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
             continue
         _, d_measure = _amount_type_meta(d_at, d_edition)

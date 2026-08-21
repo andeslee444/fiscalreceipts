@@ -35,6 +35,23 @@
 -- joins (pe_bli, edition, amount_type) back to its typed budget_lines rows
 -- to mint the two side facts and the derived diff fact with breakdown
 -- inputs (_verify_derived difference-formula contract).
+--
+-- E2 (Sprint E, ROADMAP #67): fct_decade_series now carries an `account`
+-- column, non-NULL for the 8 genuine PB2026 collisions (see that model's
+-- header). Both self-joins below matched on pe_bli alone; once a pe_bli's
+-- request/actuals rows can legitimately span two accounts in one edition,
+-- an account-blind join fans out — f and t each contributing up to 2 rows
+-- per edition, so the join produces up to 4 combinations per (pe_bli,
+-- from_edition, to_edition, diff_kind) instead of at most 2 (one per
+-- account, matched to ITSELF across editions), 2 of the 4 being
+-- cross-account nonsense (account A's "from" paired with account B's
+-- "to"). `is not distinct from` (not `=`) so the ~1,700+ ordinary
+-- single-account pe_bli, whose account is NULL on both sides, still match
+-- (a plain `=` would drop every NULL=NULL pair and silently empty this
+-- mart for everything except the 8 keys). account is part of the grain
+-- below for the same reason it is part of fct_decade_series' own grain:
+-- a genuine collision's two accounts are two different programs' diffs,
+-- not two rows of one diff.
 
 {{ config(materialized='table') }}
 
@@ -56,6 +73,7 @@ actuals as (
 request_vs_request as (
     select
         f.pe_bli,
+        f.account,
         f.edition_year as from_edition,
         t.edition_year as to_edition,
         'request_vs_request' as diff_kind,
@@ -71,12 +89,14 @@ request_vs_request as (
     from requests f
     join requests t
       on t.pe_bli = f.pe_bli
+     and t.account is not distinct from f.account
      and t.edition_year = f.edition_year + 1
 ),
 
 request_vs_actuals as (
     select
         f.pe_bli,
+        f.account,
         f.edition_year as from_edition,
         t.edition_year as to_edition,
         'request_vs_actuals' as diff_kind,
@@ -92,6 +112,7 @@ request_vs_actuals as (
     from requests f
     join actuals t
       on t.pe_bli = f.pe_bli
+     and t.account is not distinct from f.account
      and t.edition_year = f.edition_year + 2
      -- same fiscal year on both sides: f.fy = from_edition = N,
      -- t.fy = to_edition - 2 = N (belt for the year-shift rule)

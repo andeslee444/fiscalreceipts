@@ -1609,16 +1609,16 @@ def _seed_decade_fixture(db_path: Path) -> dict:
         " pe_bli varchar, fy integer, edition_year integer,"
         " amount_type_kind varchar, amount double, amount_thousands double,"
         " scenario varchar, amount_type varchar, n_source_rows bigint,"
-        " source_fact_id varchar)"
+        " source_fact_id varchar, account varchar)"
     )
     con.execute(
         "insert into fct_decade_series values "
         f"('0601101E', 2022, 2022, 'request', 90000.0, 90000.0,"
-        f" 'BudgetYearOne', 'fy_2022_total', 1, '{w_req}'),"
+        f" 'BudgetYearOne', 'fy_2022_total', 1, '{w_req}', NULL),"
         f"('0601101E', 2022, 2024, 'actuals', 100000.0, 100000.0,"
-        f" 'PriorYear', 'fy_2022_actuals', 1, '{w_act}'),"
+        f" 'PriorYear', 'fy_2022_actuals', 1, '{w_act}', NULL),"
         f"('0601101E', 2024, 2024, 'request', 200000.0, 200000.0,"
-        f" 'BudgetYearOne', 'fy_2024_total', 2, NULL)"
+        f" 'BudgetYearOne', 'fy_2024_total', 2, NULL, NULL)"
     )
     con.execute(
         "create table fct_book_diff ("
@@ -1626,13 +1626,14 @@ def _seed_decade_fixture(db_path: Path) -> dict:
         " diff_kind varchar, from_fy integer, to_fy integer,"
         " from_value double, to_value double, delta double,"
         " from_amount_type varchar, to_amount_type varchar,"
-        " from_source_fact_id varchar, to_source_fact_id varchar)"
+        " from_source_fact_id varchar, to_source_fact_id varchar,"
+        " account varchar)"
     )
     con.execute(
         "insert into fct_book_diff values "
         f"('0601101E', 2022, 2024, 'request_vs_actuals', 2022, 2022,"
         f" 90000.0, 100000.0, 10000.0, 'fy_2022_total', 'fy_2022_actuals',"
-        f" '{w_req}', '{w_act}')"
+        f" '{w_req}', '{w_act}', NULL)"
     )
     con.close()
     return {"w_req": w_req, "w_act": w_act, "d_sum": d_sum, "d_diff": d_diff,
