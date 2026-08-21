@@ -101,6 +101,7 @@ def _run_real_gate(site_json_dir: Path, repo_root: Path) -> dict:
         top50_list,
         dim_programs_pe=dim_pe,
         built_site_dir=built_site_dir,
+        duckdb_path=config.DUCKDB_PATH,
     )
 
 

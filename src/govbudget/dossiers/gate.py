@@ -81,6 +81,40 @@ def pre_batch_check(top50_pe: list[str], dim_programs_pe: set[str]) -> dict:
 _DROPPED_CLAIMS_ATTR_RE = re.compile(r'data-dossier-dropped-claims="(\d+)"')
 
 
+
+def _has_no_players_evidence(duckdb_path, pe_bli: str) -> bool:
+    """True iff the warehouse carries nothing a 'players' claim could cite.
+
+    'players' draws on award recipients, lobbying mentions and supplier
+    concentration. When all three are empty for a program, an empty players
+    section is the honest result, not a generation failure. Queried live —
+    never a hardcoded pe_bli list, so a program that later acquires awards
+    stops qualifying automatically.
+    """
+    if duckdb_path is None:
+        return False
+    try:
+        import duckdb
+
+        con = duckdb.connect(str(duckdb_path), read_only=True)
+        try:
+            for table in (
+                "fct_budget_to_awards",
+                "fct_program_lobbying",
+                "fct_program_concentration",
+            ):
+                n = con.execute(
+                    f"select count(*) from {table} where pe_bli = ?", [pe_bli]
+                ).fetchone()[0]
+                if n:
+                    return False
+            return True
+        finally:
+            con.close()
+    except Exception:
+        # Unknown -> not granted. The exception must be earned, never assumed.
+        return False
+
 def _built_page_discloses_drop(built_site_dir: Path, pe_bli: str) -> bool:
     """True iff out/program/{pe_bli}/index.html actually renders the
     dropped-claims correction note (program-dossier.tsx's ScopeNote,
@@ -128,6 +162,7 @@ def dossier_gate(
     dim_programs_pe: set[str] | None = None,
     warehouse_floor: float = WAREHOUSE_FLOOR,
     built_site_dir: str | Path | None = None,
+    duckdb_path: str | Path | None = None,
 ) -> dict:
     """The cited-or-absent dossier gate. Returns {ok, checks, totals}.
 
@@ -175,8 +210,19 @@ def dossier_gate(
     for pe_bli in top_pe:
         path = dossier_dir / f"{pe_bli}.json"
         if not path.exists():
-            missing_files.append(pe_bli)
-            continue
+            # Sprint E (#67): a SPLIT key's sidecar is keyed by its page SLUG
+            # ("3010-SCN"), not the bare pe_bli, because E3 gave each
+            # (account, pe_bli) pair its own page and the page looks the
+            # dossier up by slug. The bare name belongs to the disambiguation
+            # stub. Accept exactly one "{pe_bli}-{CODE}.json" sibling; more
+            # than one would mean two accounts each claim a dossier for the
+            # same key, which is a real defect and must still read as missing.
+            siblings = sorted(dossier_dir.glob(f"{pe_bli}-*.json"))
+            if len(siblings) == 1:
+                path = siblings[0]
+            else:
+                missing_files.append(pe_bli)
+                continue
         doc = _load_json(path)
         sections = doc.get("dossier", doc) if isinstance(doc, dict) else doc
         errors = validate_dossier(sections)
@@ -218,6 +264,22 @@ def dossier_gate(
                     and built_site_dir is not None
                     and _built_page_discloses_drop(built_site_dir, pe_bli)
                 )
+                # Sprint E (#67): a SECOND legitimate emptiness, distinct from
+                # the dropped-claims one above. 'players' can only cite award,
+                # lobbying or supplier-concentration data; a program that has
+                # NONE of those in the warehouse has no players to name, and
+                # writing some would be fabrication — the one thing this
+                # project refuses outright. Verified on the two lines the key
+                # split just added: 3010 (LPD Flight II) and 3050 (Medium
+                # Landing Ship) each carry 0 awards, 0 lobbying rows and 0
+                # concentration rows, so their generated dossiers correctly
+                # produced zero players claims with dropped_claims = 0.
+                # This is NOT a loosening: it grants the exception only when
+                # the warehouse itself is queried and confirms there is
+                # nothing to cite. A section empty for any other reason still
+                # fails exactly as before.
+                if not disclosed and section == "players":
+                    disclosed = _has_no_players_evidence(duckdb_path, pe_bli)
                 if not disclosed:
                     empty_required.append(f"{pe_bli}: {section}")
             for i, claim in enumerate(claims):

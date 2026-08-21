@@ -1910,6 +1910,48 @@ def export_site(
             print(f"export-site: program_categories.csv unreadable ({exc}) —"
                   " emitting every archived dossier")
 
+        # Sprint E (#67): pe_bli -> page slug for the dossier sidecars.
+        # A dossier archive is keyed "dossier-{pe_bli}" with no account, so
+        # for a SPLIT key its subject is whichever half dossiers/research.py's
+        # top50() selected — the larger FY2026 total, the same rule applied
+        # here. Non-split keys map to themselves, so this is inert for ~1,741
+        # programs. Built from the live warehouse rather than assumed, and a
+        # split key we cannot resolve is left as its bare pe_bli (the sidecar
+        # then lands on the disambiguation stub, which is visible, rather
+        # than being silently attributed to the wrong half).
+        # A FRESH read-only connection: `con` is already closed by the time
+        # this block runs (the first cut used it and the guard below reported
+        # "Connection already closed!", falling back to bare pe_bli — visibly,
+        # which is why the bug took minutes rather than shipping silently).
+        # Same pattern the decade-identity lookup already uses.
+        import duckdb as _duckdb_slug
+
+        _slug_by_pe: dict[str, str] = {}
+        _slug_con = None
+        try:
+            _slug_con = _duckdb_slug.connect(str(duckdb_path), read_only=True)
+            _ident = _fetch_program_identity(_slug_con)
+            for _pe, _acct, _acct_title in _slug_con.execute(
+                "select d.pe_bli, d.account, d.account_title"
+                " from dim_programs d"
+                " join ("
+                "   select pe_bli, account,"
+                "          row_number() over ("
+                "            partition by pe_bli order by fy2026_total desc nulls last"
+                "          ) rn"
+                "   from fct_budget_trajectory"
+                " ) t on t.pe_bli = d.pe_bli"
+                "   and (t.account = d.account or (t.account is null and d.account is null))"
+                " where t.rn = 1"
+            ).fetchall():
+                _slug_by_pe[_pe] = _ident.slug(_pe, _acct, _acct_title)
+        except Exception as exc:  # pragma: no cover — warehouse-shape guard
+            print(f"export-site: dossier slug map unavailable ({exc}) —"
+                  " sidecars keyed by bare pe_bli")
+        finally:
+            if _slug_con is not None:
+                _slug_con.close()
+
         dossier_summary = _emit_dossier_sidecars(
             json_dir=out_dir / "json",
             dossiers_raw_dir=dossiers_raw_dir,
@@ -1917,6 +1959,7 @@ def export_site(
             snapshot_urls=snapshot_urls,
             fact_id_to_recorded_value=fact_id_to_recorded_value,
             top_set=_dossier_top_set,
+            slug_by_pe=_slug_by_pe,
         )
 
     # -----------------------------------------------------------------------
@@ -4375,6 +4418,7 @@ def _emit_dossier_sidecars(
     snapshot_urls: set[str],
     fact_id_to_recorded_value: dict[str, str] | None = None,
     top_set: set[str] | None = None,
+    slug_by_pe: dict[str, str] | None = None,
 ) -> dict:
     """Rebuild out_dir/json/dossiers/{pe_bli}.json from the committed,
     already-paid LLM batch archives in dossiers_raw_dir. No network call, no
@@ -4433,6 +4477,13 @@ def _emit_dossier_sidecars(
     dropped_by_pe: dict[str, int] = {}
     skipped: list[str] = []
     retired: list[str] = []
+    # Every sidecar this run writes. Anything else in out_dir is stale by
+    # definition — the set is rebuilt from the raw archives on every
+    # export. `dossiers collect` writes bare-pe_bli sidecars directly, so
+    # after Sprint E's slug keying a collected 3010.json would otherwise
+    # linger beside the correct 3010-SCN.json and render on the
+    # disambiguation stub.
+    _written_names: set[str] = set()
 
     # #56 FALLOUT, third failure mode: a program can LEAVE the top-50 set.
     # De-fusing the collided keys dropped 3010 and 3050 out of the top-50 by
@@ -4467,7 +4518,7 @@ def _emit_dossier_sidecars(
             # program simply is not in the top-50 any more. Stale sidecars
             # from a previous export are removed so the set cannot drift.
             retired.append(pe_bli)
-            (out_dir / f"{pe_bli}.json").unlink(missing_ok=True)
+            (out_dir / f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json").unlink(missing_ok=True)
             continue
 
         message = raw.get("message")
@@ -4531,7 +4582,18 @@ def _emit_dossier_sidecars(
             dropped_by_pe[pe_bli] = dropped_here
 
         model = message.get("model", "unknown") if isinstance(message, dict) else "unknown"
-        (out_dir / f"{pe_bli}.json").write_text(
+        # Sprint E (#67): keyed by SLUG, not bare pe_bli. E3 gave each
+        # (account, pe_bli) pair its own page and its own slug, and the page
+        # calls getDossier(peBli) with that SLUG. A sidecar written as
+        # "3010.json" would land on /program/3010/ — which E3 made a
+        # disambiguation stub — while LPD Flight II's own page looked for
+        # "3010-SCN.json" and found nothing. Keying by pe_bli instead would
+        # be worse: BOTH split pages would render the same dossier, putting
+        # LPD Flight II's research on Shipboard Tactical Communications'
+        # page, which is the #56 fusion shape one layer up. slug == pe_bli
+        # for every non-split program, so this is a no-op for ~1,741 of them.
+        _written_names.add(f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json")
+        (out_dir / f"{(slug_by_pe or {}).get(pe_bli, pe_bli)}.json").write_text(
             json.dumps(
                 {
                     "pe_bli": pe_bli,
@@ -4584,12 +4646,21 @@ def _emit_dossier_sidecars(
             print(f"  {s}")
     print(f"dossiers: {written} sidecar(s) written -> {out_dir}")
 
+    pruned: list[str] = []
+    for _stale in sorted(out_dir.glob("*.json")):
+        if _stale.name not in _written_names:
+            _stale.unlink()
+            pruned.append(_stale.stem)
+    if pruned:
+        print(f"dossiers: pruned {len(pruned)} stale sidecar(s): {', '.join(pruned)}")
+
     return {
         "written": written,
         "total_dropped": total_dropped,
         "dropped_by_pe": dropped_by_pe,
         "skipped": skipped,
         "retired": retired,
+        "pruned": pruned,
     }
 
 

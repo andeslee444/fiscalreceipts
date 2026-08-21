@@ -1,16 +1,16 @@
 {
- "batch_id": "msgbatch_01LmP2YgLwytPMgN16QPiN5n",
+ "batch_id": "msgbatch_01WQnmidjcuQrZ5eRgDnV22H",
  "model": "claude-opus-4-8",
- "submitted_at": "2026-08-11T13:30:27.657749+00:00",
+ "submitted_at": "2026-08-21T14:18:33.482642+00:00",
  "request_count": 2,
- "estimated_usd": 0.4598,
+ "estimated_usd": 0.4077,
  "pe_blis": [
-  "0603882C",
-  "0603891C"
+  "3010",
+  "3050"
  ],
  "bundle_tokens": {
-  "0603882C": 17289,
-  "0603891C": 4392
+  "3010": 436,
+  "3050": 421
  },
  "trim_stages": {}
 }

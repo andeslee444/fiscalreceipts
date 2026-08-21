@@ -1487,6 +1487,7 @@ def cmd_dossiers(args) -> None:
             config.ROOT / "data-seeds" / "program_categories.csv",
             programs,
             dim_programs_pe=dim_pe,
+            duckdb_path=config.DUCKDB_PATH,
         )
         print_gate(res)
         sys.exit(0 if res["ok"] else 1)
