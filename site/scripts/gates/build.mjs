@@ -80,7 +80,21 @@ function dirExists(p) {
 // the parse/DOM cost, which is what actually hurts a phone, so both are pinned.
 export const PAGE_WEIGHT_BUDGET = [
   // Singleton pages. `measured` is the Sprint 3 post-fix build.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 2_900_000, maxGzip: 278_000, measured: "2,659,239 / 277,357" },
+  // Re-baselined 2026-08-21 (Sprint E). The key split gives each
+  // (account, pe_bli) pair its own row: 10 legitimate new programs worth
+  // $5.35B — LPD Flight II $2.60B, Medium Landing Ship $1.96B — plus
+  // corrected figures on the six rows that were previously publishing a
+  // fused total. 277,357 -> 279,513 gzip.
+  //
+  // NOTE THE HEADROOM, not just the number. This entry's gzip ceiling was
+  // set at 278,000 against a 261,871 measurement — 6.2% headroom — and
+  // ordinary corpus growth ate it down to 0.23% (643 bytes) without anyone
+  // noticing, which is why ten new rows breached it instantly. Restoring
+  // 6.2% rather than the 0.23% that had drifted in: re-baselining to the
+  // CURRENT proportional headroom would hand the next change the same
+  // cliff. Gate 1's near-ceiling note (added 2026-08-14) is what stops
+  // this recurring silently.
+  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,679,019 / 279,513" },
   { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "31,277 / 6,345" },
   { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,424,350 / 71,767" },
   { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,247,670 / 79,370" },
