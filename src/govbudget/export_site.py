@@ -1919,38 +1919,7 @@ def export_site(
         # split key we cannot resolve is left as its bare pe_bli (the sidecar
         # then lands on the disambiguation stub, which is visible, rather
         # than being silently attributed to the wrong half).
-        # A FRESH read-only connection: `con` is already closed by the time
-        # this block runs (the first cut used it and the guard below reported
-        # "Connection already closed!", falling back to bare pe_bli — visibly,
-        # which is why the bug took minutes rather than shipping silently).
-        # Same pattern the decade-identity lookup already uses.
-        import duckdb as _duckdb_slug
-
-        _slug_by_pe: dict[str, str] = {}
-        _slug_con = None
-        try:
-            _slug_con = _duckdb_slug.connect(str(duckdb_path), read_only=True)
-            _ident = _fetch_program_identity(_slug_con)
-            for _pe, _acct, _acct_title in _slug_con.execute(
-                "select d.pe_bli, d.account, d.account_title"
-                " from dim_programs d"
-                " join ("
-                "   select pe_bli, account,"
-                "          row_number() over ("
-                "            partition by pe_bli order by fy2026_total desc nulls last"
-                "          ) rn"
-                "   from fct_budget_trajectory"
-                " ) t on t.pe_bli = d.pe_bli"
-                "   and (t.account = d.account or (t.account is null and d.account is null))"
-                " where t.rn = 1"
-            ).fetchall():
-                _slug_by_pe[_pe] = _ident.slug(_pe, _acct, _acct_title)
-        except Exception as exc:  # pragma: no cover — warehouse-shape guard
-            print(f"export-site: dossier slug map unavailable ({exc}) —"
-                  " sidecars keyed by bare pe_bli")
-        finally:
-            if _slug_con is not None:
-                _slug_con.close()
+        _slug_by_pe = _build_slug_by_pe(duckdb_path)
 
         dossier_summary = _emit_dossier_sidecars(
             json_dir=out_dir / "json",
@@ -4624,6 +4593,14 @@ def _emit_dossier_sidecars(
                     # this to render an accurate Correction note instead of
                     # a hardcoded #52-only explanation.
                     "dropped_reasons": dropped_reasons_here,
+                    # Sprint E (#67): the PAGE this dossier belongs to.
+                    # pe_bli keeps meaning the program key; slug is the
+                    # page identity, and they differ for a split key
+                    # ("3010" vs "3010-SCN"). parseDossier checks the file
+                    # self-describes the page it is loaded for — renaming
+                    # the file alone left pe_bli disagreeing with its own
+                    # filename, and the loader rightly refused to render it.
+                    "slug": (slug_by_pe or {}).get(pe_bli, pe_bli),
                 },
                 ensure_ascii=False,
                 indent=1,
@@ -5841,6 +5818,19 @@ def _write_all_sidecars(
         decade_grains or []
     ):
         if d_fid is None or d_fid not in _cited_fact_ids or d_amount is None:
+            continue
+        # E2.1/E3.2 (2026-08-21): a key can be account-split in the DECADE
+        # series without being page-split. 1350 and 2101 collide only at
+        # historical amount_types, so E2.1 correctly gave their decade rows an
+        # account — but neither has a dim_programs row, so neither is in
+        # ident.split_pe_blis and neither has two pages. Falling through to
+        # the bare pe_bli would drop BOTH accounts' grains into one list under
+        # one key, reassembling at the index exactly the fusion the mart just
+        # removed, and on a rollup page that cannot say which account it is
+        # showing. There is no honest slug to give it, so it gets no decade
+        # series — the same gap B'1 chose for all ten keys, now narrowed to
+        # only those that genuinely have nowhere to go.
+        if d_account is not None and d_pe not in ident.split_pe_blis:
             continue
         _, d_measure = _amount_type_meta(d_at, d_edition)
         d_slug = (
@@ -7796,7 +7786,9 @@ def _write_all_sidecars(
     # ------------------------------------------------------------------ #
     # 16. categories.json (Task 8a — top-50 hero categories)              #
     # ------------------------------------------------------------------ #
-    _emit_categories_sidecar(json_dir=json_dir)
+    _emit_categories_sidecar(
+        json_dir=json_dir, slug_by_pe=_build_slug_by_pe(duckdb_path)
+    )
     n_files += 1
 
     # ------------------------------------------------------------------ #
@@ -9544,7 +9536,52 @@ def _emit_gao_overlays_sidecar(
     })
 
 
-def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = None) -> None:
+
+def _build_slug_by_pe(duckdb_path) -> dict[str, str]:
+    """pe_bli -> page slug, for sidecars that are authored per pe_bli but
+    rendered per page.
+
+    A dossier archive and the category seed are both keyed by bare pe_bli.
+    Sprint E (#67) gave each (account, pe_bli) pair its own page and slug, and
+    the page looks both up with that SLUG. For a SPLIT key the subject is
+    whichever half dossiers/research.py's top50() selects — the larger FY2026
+    total, the rule applied here. Non-split keys map to themselves, so this is
+    inert for ~1,741 programs. A split key that will not resolve is simply
+    absent, so the sidecar keeps its bare name and lands on the disambiguation
+    stub — visible, rather than silently attributed to the wrong half.
+    """
+    out: dict[str, str] = {}
+    if duckdb_path is None:
+        return out
+    con = None
+    try:
+        import duckdb as _dd
+
+        con = _dd.connect(str(duckdb_path), read_only=True)
+        ident = _fetch_program_identity(con)
+        for pe, acct, acct_title in con.execute(
+            "select d.pe_bli, d.account, d.account_title"
+            " from dim_programs d"
+            " join ("
+            "   select pe_bli, account,"
+            "          row_number() over ("
+            "            partition by pe_bli order by fy2026_total desc nulls last"
+            "          ) rn"
+            "   from fct_budget_trajectory"
+            " ) t on t.pe_bli = d.pe_bli"
+            "   and (t.account = d.account or (t.account is null and d.account is null))"
+            " where t.rn = 1"
+        ).fetchall():
+            out[pe] = ident.slug(pe, acct, acct_title)
+    except Exception as exc:  # pragma: no cover — warehouse-shape guard
+        print(f"export-site: slug map unavailable ({exc}) — sidecars keyed by bare pe_bli")
+    finally:
+        if con is not None:
+            con.close()
+    return out
+
+def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = None,
+                             slug_by_pe: dict[str, str] | None = None) -> None:
     """Emit json/categories.json (Task 8a — category hero animations).
 
     A flat {pe_bli: category} mapping copied from the committed taxonomy seed
@@ -9575,7 +9612,14 @@ def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = No
                 pe_bli = (row.get("pe_bli") or "").strip()
                 category = (row.get("category") or "").strip()
                 if pe_bli and category in CATEGORY_ENUM:
-                    mapping[pe_bli] = category
+                    # Sprint E (#67): keyed by page SLUG, like the dossier
+                    # sidecars. The seed is authored per pe_bli, but a split
+                    # key's hero lives on /program/{pe_bli}-{CODE}/ and the
+                    # page reads getCategories()[peBli] with that slug. A
+                    # bare "3010" entry left LPD Flight II's page with no
+                    # CategoryHero at all (gate 12). Identity for every
+                    # non-split program.
+                    mapping[(slug_by_pe or {}).get(pe_bli, pe_bli)] = category
 
     _write_json(json_dir / "categories.json", mapping)
 

@@ -118,8 +118,22 @@ export function parseDossier(raw: unknown, peBli: string): DossierFile {
     fail(peBli, "file is not a JSON object");
   }
   const doc = raw as Record<string, unknown>;
-  if (typeof doc.pe_bli !== "string" || doc.pe_bli !== peBli) {
-    fail(peBli, `pe_bli mismatch (file says ${JSON.stringify(doc.pe_bli)})`);
+  // Sprint E (#67): a dossier is loaded by PAGE identity. For a split key the
+  // page is a slug ("3010-SCN") while pe_bli stays the program key ("3010"),
+  // so the file carries an explicit `slug` and must self-describe the page it
+  // is being rendered on. Falls back to pe_bli for every non-split program,
+  // where the two are identical. This is not a loosening: a file with neither
+  // field matching the requested key is still refused, and a file whose slug
+  // names a DIFFERENT page is refused where a bare prefix check would have
+  // let it through.
+  const declaredPage =
+    typeof doc.slug === "string" && doc.slug.length > 0 ? doc.slug : doc.pe_bli;
+  if (typeof doc.pe_bli !== "string" || declaredPage !== peBli) {
+    fail(
+      peBli,
+      `identity mismatch (file says pe_bli=${JSON.stringify(doc.pe_bli)},` +
+        ` slug=${JSON.stringify(doc.slug ?? null)})`,
+    );
   }
   if (typeof doc.dossier !== "object" || doc.dossier === null) {
     fail(peBli, "missing wrapped 'dossier' object");
