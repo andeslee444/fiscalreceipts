@@ -8148,3 +8148,65 @@ rule (restore proportional headroom, do not re-baseline to the drift), the
 ceilings move to 136,500 / 36,900 — ~6% headroom against the new
 measurement. The correction row was NOT written short to fit a budget, and
 no other budget entry was touched.
+
+================================================================================
+GATE 1 (build) — page-weight ANNOTATION-DRIFT leg. 2026-08-25.
+================================================================================
+
+WHY IT EXISTS. Every PAGE_WEIGHT_BUDGET entry carries a `measured` string.
+It is the only page-weight fact a human reads WITHOUT running a build, and
+it feeds the ceiling-breach error message ("measured at X when the ceiling
+was set"). Nothing has ever checked it against a measurement.
+
+It has now gone stale twice. 2026-08-14: /programs/ recorded 261,871 while
+shipping 277,357, so the file promised 6% headroom where there was 0.2%.
+The near-ceiling NOTE was added that day and explicitly scoped to "stop
+them rotting again unnoticed" -- and structurally cannot, because it
+reports the LIVE percentage and never compares it to what is written down.
+
+2026-08-24 it misinformed a real decision: /methodology/'s entry was read
+off the file, reported to the owner as having 637 bytes of gzip headroom,
+and the true figure was 6. The near-ceiling warning had been correct the
+whole time; the annotation was not.
+
+PROOF IT CAN FAIL. The 2026-08-24 page state no longer exists (that entry
+was re-baselined to 136,500 / 36,900), so the defect's exact shape --
+637 bytes of RECORDED headroom against 6 real -- was reproduced against
+the current page by setting maxGzip 34,839 and measured "128,196 / 34,202":
+
+  errors: 1
+    page weight: /methodology/'s recorded measurement overstates its
+    headroom - the entry says 34,202 gzip (637 bytes left) but the page
+    weighs 34,833 (6 left, 106.2x less than recorded). Re-measure the
+    entry - do NOT raise the ceiling to match [methodology/index.html]
+
+AFTER restoring the true entry:
+
+  errors: 0
+    note: page weight: 11 page(s) at or above 90% of the gzip ceiling
+    note: page weight: 15 page budgets within ceiling
+
+THRESHOLD, AND WHY IT IS LOOSE. Fires only on OVERSTATED headroom, and only
+past 2x. Understating is harmless. Small drift is ordinary data movement,
+and erroring on it would fail on growth rather than on weight -- which this
+file's own header rules out. Checked against every drift actually present
+pre-refresh: /feed/ was stale by 5,044 gzip bytes and correctly does NOT
+fire (20,233 recorded vs 15,189 real headroom -- a reader is not misled
+about a page with 15KB of room). Only the /methodology/ shape trips it.
+
+NON-VACUITY: 15 entries carry an annotation; all 15 are compared.
+
+A MISTAKE MADE WHILE FIXING THIS, RECORDED BECAUSE IT IS THE SAME DEFECT.
+The refresh in ed704b7 recomputed the four `dir:` entries with the WRONG
+selection rule -- gzip-heaviest, where resolveBudgetTarget picks the
+RAW-heaviest and gzips only that one. Three agreed by luck. /filing/*/ did
+not: it was rewritten to 301,676 / 26,526 (a page the gate never measures)
+and the commit message claimed that page "has been sitting at the cliff"
+with 974 bytes left. False. The gate's real target is 317,502 / 21,836 --
+79.4% of ceiling, and the ORIGINAL annotation (317,376 / 21,784) was
+accurate. Corrected in the following commit. The near-ceiling count is
+11, not the 12 that error produced.
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. This is a leg inside gate 1's existing checkPageWeight(), beside the
+ceiling checks and the near-ceiling note. No 25th gate.

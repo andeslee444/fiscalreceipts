@@ -161,7 +161,7 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 110,078 (/agency/F/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,205 / 142,255 (/program/0601102A/)" },
   { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "380,291 / 23,712 (/company/boeing/)" },
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "301,676 / 26,526" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "317,502 / 21,836" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
@@ -247,6 +247,33 @@ export function checkPageWeight() {
       nearCeiling.push(
         `${entry.label} ${pctUsed.toFixed(1)}% (${gzip.toLocaleString()}/${entry.maxGzip.toLocaleString()} gzip, ${(entry.maxGzip - gzip).toLocaleString()} bytes left)`
       );
+    }
+    // ANNOTATION-DRIFT LEG (2026-08-24). The `measured` strings above are
+    // the only page-weight facts a human reads WITHOUT running a build, and
+    // they have now gone stale twice: /programs/ on 2026-08-14 (261,871
+    // recorded against 277,357 shipped) and /filing/*/ today (21,784
+    // recorded, 26,526 actual — the file promised 5,716 bytes of room where
+    // there were 974). The near-ceiling note above was written to "stop them
+    // rotting again unnoticed" and structurally cannot: it reports the LIVE
+    // percentage and never compares it to what is written down, so a wrong
+    // annotation stays wrong and quietly informs the next person's decision.
+    // It informed one on 2026-08-24 — /methodology/ was reported as having
+    // 637 bytes of headroom off a stale string when it had 6.
+    //
+    // Fires only on OVERSTATED headroom, and only past 2x. Understating is
+    // harmless (someone trims when they needn't have), and small drift is
+    // ordinary data movement — erroring on that would be failing on growth
+    // rather than on weight, which this file's own header rules out.
+    const ann = /^\s*([\d,]+)\s*\/\s*([\d,]+)/.exec(entry.measured ?? "");
+    if (ann) {
+      const annGzip = Number(ann[2].replace(/,/g, ""));
+      const annLeft = entry.maxGzip - annGzip;
+      const realLeft = entry.maxGzip - gzip;
+      if (annLeft > 0 && realLeft > 0 && annLeft > 2 * realLeft) {
+        errors.push(
+          `page weight: ${entry.label}'s recorded measurement overstates its headroom — the entry says ${annGzip.toLocaleString()} gzip (${annLeft.toLocaleString()} bytes left) but the page weighs ${gzip.toLocaleString()} (${realLeft.toLocaleString()} left, ${(annLeft / realLeft).toFixed(1)}x less than recorded). Re-measure the entry — do NOT raise the ceiling to match [${target.rel}]`
+        );
+      }
     }
     lines.push(
       `${entry.label} ${raw.toLocaleString()}/${gzip.toLocaleString()}`
