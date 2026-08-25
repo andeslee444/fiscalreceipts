@@ -92,9 +92,22 @@ def fact_id_usaspending(surface: str, key: str, metric: str) -> str:
 def fact_id_lda_filing(filing_uuid: str, role: str) -> str:
     """Canonical identity for a filing-level LDA citation (income or expenses).
 
-    sha256 of 'lda_filing|{filing_uuid}|{role}', hexdigest[:16].
+    sha256 of 'lda_filing_amount|{filing_uuid}|{role}', hexdigest[:16].
     role: 'income' | 'expenses'
     This is distinct from fact_id_lda (which is for program-mention citations).
+
+    The amount is NOT an input. 'lda_filing_amount' is a namespace label, not
+    a value — identity is (filing_uuid, role) alone, so a re-pull that revises
+    a filing's dollar figure changes the recorded_value and leaves the fact_id,
+    and every citation resolving through it, intact.
+
+    Spelling this out because the opposite was believed: ROADMAP #19 deferred
+    the LDA re-pull for months on the premise that "fact identity includes
+    amount, so it can orphan the 50 static dossier claims" — read off this
+    literal, never off the signature. It cannot: the amount is absent here,
+    and exactly 1 of the 432 distinct fact_ids across all 50 dossiers is an
+    lda_filing at all (verified 2026-08-24). The docstring above ALSO
+    disagreed with the code until then, naming a third string ('lda_filing|').
     """
     return hashlib.sha256(f"lda_filing_amount|{filing_uuid}|{role}".encode()).hexdigest()[:16]
 
