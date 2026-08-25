@@ -135,7 +135,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Restoring ~6% headroom against the new measurement (the /programs/
   // Sprint E rule: re-baselining to the CURRENT proportional headroom hands
   // the next change the same cliff), not a round-number guess.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "128,653 / 34,761" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "128,833 / 34,832" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
