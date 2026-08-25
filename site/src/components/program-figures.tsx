@@ -145,6 +145,57 @@ export function Fy26SplitNote({ split }: { split: Fy26Split }) {
   );
 }
 
+/**
+ * Fy26LinesNote (ROADMAP #69) — names the budget lines a page's FY2026
+ * headline is made of, on the pages where the page's own title cannot.
+ *
+ * A BLI code can carry money in several budget activities. Almost always
+ * every activity's line is titled the same (F-15EX files in BA-01, BA-05 and
+ * BA-07, all "F-15EX"), the page's one title names all of it, and the
+ * exporter emits no `lines` at all. Twice in PB2026 the Air Force labelled
+ * the BA-07 sub-line differently, and the page ended up publishing the
+ * combined total under one line's name: /program/HCMC00/ showed $383,072K
+ * titled "HC/MC-130 Post Prod", which is the $17,986K half. The total is the
+ * program's real FY2026 request and stays the headline — what was missing is
+ * the seam, so this renders it: each constituent line, its budget activity,
+ * and its own cited figure. Same disclosure register as Fy26SplitNote above.
+ */
+export function Fy26LinesNote({ split }: { split?: Fy26Split | null }) {
+  const lines = split?.lines;
+  if (!lines || lines.length < 2) return null;
+  return (
+    <ScopeNote label={null} className="mt-2 text-left">
+      <p data-fy26-lines="" className="text-xs leading-relaxed text-muted-foreground">
+        This budget-line code covers {lines.length} lines in this account:{" "}
+        {lines.map((line, i) => (
+          <span key={`${line.title}|${line.budget_activity ?? ""}`}>
+            {i > 0 && (i === lines.length - 1 ? " and " : "; ")}
+            {line.title}
+            {line.budget_activity && ` (BA ${line.budget_activity}`}
+            {line.budget_activity && line.budget_activity_title
+              ? `, ${line.budget_activity_title.toLowerCase()})`
+              : line.budget_activity && ")"}
+            {" "}
+            <Cite
+              value={line.v}
+              units={line.units}
+              dataset={line.dataset}
+              factId={line.fid}
+              basis={line.basis}
+              fy={line.fy}
+              measure={line.measure}
+              edition={line.edition}
+              entity={line.entity}
+              chip={false}
+            />
+          </span>
+        ))}
+        . The figure above is their total.
+      </p>
+    </ScopeNote>
+  );
+}
+
 function SummaryCardCell({
   card,
   reconKeys,
@@ -216,6 +267,7 @@ function SummaryCardCell({
       {card.key === "fy2026" && fy26Split?.has_reconciliation && (
         <Fy26SplitNote split={fy26Split} />
       )}
+      {card.key === "fy2026" && <Fy26LinesNote split={fy26Split} />}
     </div>
   );
 }

@@ -7998,3 +7998,99 @@ _build_derived_citation_rows):
 GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
 -> 24. `git diff --stat -- site/` is empty — this task touched no frontend
 file, so the 24-gate suite was never at risk.
+
+================================================================================
+2026-08-24 — ROADMAP #69: gate 23 leg (h5) + leg (h4)'s converse
+================================================================================
+
+STEP 1 — trace before designing (the eleventh prescribed premise to fail
+this way; the brief itself asked for the check).
+
+The brief framed this as "#45/#56/#67's defect species on a THIRD axis:
+title", and asked for either a title-keyed page split or a relabelled
+aggregate page. Queried the shipped warehouse before writing anything:
+
+  $ uv run python -c "... fct_budget_lines where pe_bli in ('HCMC00','JSE000') ..."
+
+  HCMC00  F  BA05  Modification of inservice aircraft       HC/MC-130 Modifications  365,086
+  HCMC00  F  BA07  Aircraft support equipment and facilities HC/MC-130 Post Prod       17,986
+  JSE000  F  BA01  Combat aircraft                          Joint Simulation Environment          17,985
+  JSE000  F  BA07  Aircraft support equipment and facilities Joint Simulation Environment PPS      28,524
+
+The axis is BUDGET ACTIVITY, not title. Widening the query to the whole
+PB2026 corpus — keys whose fy_2026_total money spans >1 budget activity
+within one (account, organization):
+
+  13 keys. ELEVEN carry an IDENTICAL title in every activity:
+    F015EX   BA01 2,480,818 + BA05 286,700 + BA07 246,876   all "F-15EX"
+    KC046A   BA02 2,799,633 + BA05  19,344                  all "KC-46A MDAP"
+    B05200   BA05   223,827 + BA07     111                  all "B-52"
+    C01700, F01500, 0207701F, 0604011D8Z, 0604283F, 0604776F, 1203154SF, 1206616SF
+  TWO do not: HCMC00 and JSE000.
+
+The site already publishes the eleven as sums, and that is correct — it is
+the program's FY2026 procurement. /program/B05200/ publishes disc_k
+223,938 = 223,827 + 111; /program/F015EX/ publishes 3,014,394 = the three
+BA lines. The $383,072K on HCMC00 is the SAME construction and is TRUE.
+The brief's "ONE line's NAME and TWO lines' MONEY" is right about the name
+and wrong about the money.
+
+Two further checks killed the title axis outright:
+
+  (1) In PB2024 and PB2025, HCMC00's BA-07 line is titled "HC/MC-130
+      Modifications" — IDENTICAL to its BA-05 sibling (P-1 2025 BA07
+      fy_2025_request 18,604; P-1 2024 BA07 fy_2023_total_enacted 20,000).
+      Only PB2026 relabels it "Post Prod". A title-keyed identity flips
+      with an edition's labelling and cannot carry the earlier money.
+
+  (2) programs_excluded.json's `key_collision` flag — cited in #45's close
+      as independent corroboration that these lines were "correctly out of
+      scope" — is computed FROM the title difference (export_site.py:
+      `if len(_by_title) < 2: continue`). It is circular. B05200 and
+      F015EX, structurally identical, appear nowhere in that file.
+
+CAUSE: dim_programs.sql's `matched` CTE resolved the page title with
+`max(b.title)` — a lexical pick. 'P' > 'M', so "HC/MC-130 Post Prod" named
+a page whose money is 95.3% "HC/MC-130 Modifications". This is the same
+max() the model's own #56 comment already documents on the account axis.
+
+STEP 2 — proof-can-fail. Wrote gate 23's new leg (h5) and leg (h4)'s
+converse FIRST, and ran the gate against the SHIPPED (pre-fix) artifacts —
+data/site/json/ and site/out/ as built 2026-08-21 at c984d9c.
+
+  $ cd site && node --input-type=module -e "
+      import('./scripts/gates/basis.mjs').then(async (m) => {
+        const r = await m.runBasisGate();
+        console.log('PASS =', r.pass);
+        console.log('--- errors (' + r.errors.length + ') ---');
+        for (const e of r.errors) console.log(e);
+      });"
+
+--- FAIL (verbatim, pre-fix artifacts) ---
+
+PASS = false
+--- errors (10) ---
+leg h4 false exclusion: 4 line(s) named in programs_excluded.json as absent from the index are in fact published by it (first 10):
+  JSE000 "Joint Simulation Environment" ($17,985K) — programs_excluded.json says this line is absent from the index, but pe_bli='JSE000''s published page(s) already total 46509.0 — every dollar of its 46509.0 FY2026 universe, this line included
+  JSE000 "Joint Simulation Environment Post Production Support" ($28,524K) — programs_excluded.json says this line is absent from the index, but pe_bli='JSE000''s published page(s) already total 46509.0 — every dollar of its 46509.0 FY2026 universe, this line included
+  HCMC00 "HC/MC-130 Modifications" ($365,086K) — programs_excluded.json says this line is absent from the index, but pe_bli='HCMC00''s published page(s) already total 383072.0 — every dollar of its 383072.0 FY2026 universe, this line included
+  HCMC00 "HC/MC-130 Post Prod" ($17,986K) — programs_excluded.json says this line is absent from the index, but pe_bli='HCMC00''s published page(s) already total 383072.0 — every dollar of its 383072.0 FY2026 universe, this line included
+leg h5a title-coverage disclosure: 2 program page(s) aggregate >1 budget-line title without a complete, cited fy26_split.lines disclosure (first 10):
+  /program/HCMC00/: FY2026 money spans 2 budget-line titles ("HC/MC-130 Modifications"=365086, "HC/MC-130 Post Prod"=17986) summing to 383072, but the sidecar carries no fy26_split.lines disclosure — the page publishes the sum under one line's name
+  /program/JSE000/: FY2026 money spans 2 budget-line titles ("Joint Simulation Environment"=17985, "Joint Simulation Environment Post Production Support"=28524) summing to 46509, but the sidecar carries no fy26_split.lines disclosure — the page publishes the sum under one line's name
+leg h5b minority-titled page: 1 program page(s) are named after a budget line that is not their largest (first 10):
+  /program/HCMC00/: page title "HC/MC-130 Post Prod" (17986) is NOT the largest of its 2 FY2026 budget-line titles — "HC/MC-130 Modifications" is (365086) — yet the page publishes 383072
+
+Note what this run also proves: legs a/b/c/d/e/f/g/h1-h4 all still PASS on
+the same corpus (the 10 error lines above are the ONLY errors), so the new
+leg is not a corpus-wide false positive — it fires on 2 of 2,016 pages, the
+2 the trace identified, and on 4 of 196 exclusion rows.
+
+Both known #69 keys were exercised (no "leg h5 is VACUOUS" error), so the
+non-vacuity guard was live on the failing run, not only on the passing one.
+
+STEP 3 — the fix (money-anchored title + fy26_split.lines disclosure +
+the coverage-exclusion correction), then the same command re-run against
+the rebuilt artifacts.
+
+--- PASS (verbatim, post-fix) — appended below after the post-commit build.

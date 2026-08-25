@@ -4040,18 +4040,43 @@ def _build_fy26_split_index(
             _con.close()
 
     grouped: dict[str, dict[str, list[tuple[str, float]]]] = defaultdict(dict)
+    # ROADMAP #69 — the page's FY2026 total, broken out per constituent
+    # BUDGET LINE: slug -> (display_title, budget_activity) ->
+    # (budget_activity_title, [(fact_id, amount_thousands), ...]).
+    # Keyed off fy_2026_total (the figure the headline card renders), not the
+    # disc/reconciliation slugs above, because the disclosure has to add up to
+    # what the page actually shows.
+    lines_grouped: dict[str, dict[tuple, tuple[str, list]]] = defaultdict(dict)
     for row in bl_rows:
-        (fid, pe_bli, account, account_title, organization, amount_type, amount_thousands) = (
-            row[0], row[8], row[3], row[4], row[5], row[10], row[11]
+        (fid, pe_bli, account, account_title, organization,
+         budget_activity, budget_activity_title, line_title,
+         amount_type, amount_thousands) = (
+            row[0], row[8], row[3], row[4], row[5],
+            row[6], row[7], row[9], row[10], row[11]
         )
-        key = _FY26_SPLIT_KEYS.get(amount_type)
-        if key is None or amount_thousands is None:
-            continue
         group_key = (
             ident.slug(pe_bli, account, account_title, organization)
             if ident is not None and ident.is_split(pe_bli)
             else pe_bli
         )
+        if amount_type == "fy_2026_total" and amount_thousands is not None:
+            # apply_title_override, not the raw workbook string: the sidecar's
+            # own budget_lines rows are corrected the same way (_corrected_title),
+            # and gate 23 leg h5a matches these titles against those.
+            _lt = apply_title_override(pe_bli, line_title) or ""
+            # (title, BA, org, account, pe) — every field the component
+            # `entity` below is built from is part of the key, so a group's
+            # rows always share one scope and the entity is never a guess.
+            _lk = (
+                _lt, budget_activity or "", organization, account, pe_bli,
+            )
+            _slot = lines_grouped[group_key].setdefault(
+                _lk, (budget_activity_title, []),
+            )
+            _slot[1].append((fid, float(amount_thousands)))
+        key = _FY26_SPLIT_KEYS.get(amount_type)
+        if key is None or amount_thousands is None:
+            continue
         grouped[group_key].setdefault(key, []).append((fid, float(amount_thousands)))
 
     split_by_pe: dict[str, dict] = {}
@@ -4081,6 +4106,71 @@ def _build_fy26_split_index(
             "basis": _BASIS_TOA, "fy": 2026, "measure": measure, "edition": 2026,
         }
 
+    def _lines(group_key: str) -> list[dict] | None:
+        """The page's FY2026 total broken out per constituent budget line
+        (ROADMAP #69) — or None when there is nothing to disclose.
+
+        Emitted ONLY when this page's own fy_2026_total rows carry MORE THAN
+        ONE distinct line title. That is the case where the page's single
+        title cannot name all of its money: HCMC00 publishes $383,072K made
+        of "HC/MC-130 Modifications" (BA-05, $365,086K) and "HC/MC-130 Post
+        Prod" (BA-07, $17,986K); JSE000 publishes $46,509K made of "Joint
+        Simulation Environment" (BA-01) and "…Post Production Support"
+        (BA-07). Eleven other PB2026 keys spread FY2026 money across several
+        budget activities under an IDENTICAL title (F-15EX in BA-01/05/07) —
+        their one title already names every dollar, so they get nothing here
+        rather than a note restating the same words three times.
+
+        Same citation rule as _side above and _build_decade_citation_rows: a
+        constituent backed by exactly one workbook row reuses that row's OWN
+        fact_id; one spanning >1 row mints a derived SUM fact. Never a
+        member's fact standing in for a total (#51's defect).
+        """
+        by_line = lines_grouped.get(group_key)
+        if not by_line:
+            return None
+        if len({k[0] for k in by_line}) < 2:
+            return None
+        out: list[dict] = []
+        for (title, ba, org, acct, pe), (ba_title, hits) in by_line.items():
+            total = sum(v for _, v in hits)
+            if len(hits) == 1:
+                fid = hits[0][0]
+            else:
+                fid = fact_id_derived(
+                    "fy26_line", f"{group_key}|{title}|{ba}", "fy_2026_total",
+                )
+                cit_rows.append(_null_derived_row(
+                    fid, "derived", "USD thousands",
+                    f"sum(budget_lines.amount_thousands) where pe_bli="
+                    f"'{group_key}' and title='{title}' and budget_activity="
+                    f"'{ba}' and amount_type='fy_2026_total'",
+                    json.dumps([f for f, _ in hits]),
+                    f"{total:.3f}",
+                    built_at,
+                ))
+            out.append({
+                "title": title,
+                "budget_activity": ba or None,
+                "budget_activity_title": ba_title,
+                # Gate 23 leg a2 groups rendered figures by (data-entity,
+                # fy, measure). Without an entity these figures would land
+                # in the page-level group beside the FY2026 headline card
+                # they are components OF, and three different values under
+                # one label is exactly what that leg exists to reject. The
+                # scope string is the exporter's own component-entity
+                # convention, byte-identical to the one bl_by_pe stamps on
+                # these very rows in the line-items table below, so the note
+                # and the table agree instead of colliding.
+                "entity": f"{pe}/{org}/{acct}/{ba}/fy_2026_total",
+                "v": round(total, 3), "units": "USD thousands", "fid": fid,
+                "public_id": fid[:8], "dataset": "budget_lines",
+                "basis": _BASIS_TOA, "fy": 2026, "measure": "request",
+                "edition": 2026,
+            })
+        out.sort(key=lambda e: (-e["v"], e["title"]))
+        return out
+
     for group_key in grouped:
         disc_side = _side(group_key, "disc", "fy_2026_disc_request", "disc-request")
         recon_side = _side(
@@ -4098,6 +4188,7 @@ def _build_fy26_split_index(
         )
         split["disc"] = disc_side
         split["reconciliation"] = recon_side
+        split["lines"] = _lines(group_key)
         split_by_pe[group_key] = split
 
     return split_by_pe, cit_rows
@@ -6809,9 +6900,16 @@ def _write_all_sidecars(
     # #56 requires grouping a pe_bli's OWN rows by title, not just its bare
     # key — see the exclusion computation below.
     _bl_fy26_by_pe: dict[str, list[tuple[str, float, str]]] = defaultdict(list)
+    # ROADMAP #69: pe_bli -> the distinct (account, organization) slots its
+    # FY2026 money sits in. One slot means one program page owns all of it
+    # (whatever its lines are titled); more than one means the key really is
+    # shared by programs that need separate pages (#56/#67's account axis,
+    # #45's organization axis) and a losing side really can be absent.
+    _bl_fy26_slots_by_pe: dict[str, set[tuple]] = defaultdict(set)
     for _bl in bl_rows:
         if _bl[10] == "fy_2026_total":  # amount_type
             _bl_fy26_by_pe[_bl[8]].append((_bl[0], _bl[11], _bl[9]))  # (fact_id, amount_thousands, title)
+            _bl_fy26_slots_by_pe[_bl[8]].add((_bl[3], _bl[5]))  # (account, organization)
     _universe_fy26_thousands = sum(
         amt for rows in _bl_fy26_by_pe.values() for _, amt, _title in rows
     )
@@ -6878,6 +6976,28 @@ def _write_all_sidecars(
                 continue
             if len(_by_title) < 2:
                 continue  # one title under this pe_bli: it IS the index entry
+            # ROADMAP #69: >1 title is NOT by itself evidence that a program
+            # is missing. A key whose FY2026 money sits in exactly ONE
+            # (account, organization) slot is one program, and its several
+            # titles are its budget-activity sub-lines — HCMC00's "HC/MC-130
+            # Modifications" (BA-05) and "HC/MC-130 Post Prod" (BA-07), the
+            # same shape as F-15EX's three identically-titled activity lines.
+            # When the index already publishes every dollar under that key,
+            # nothing is absent from it, and the loop below would otherwise
+            # declare BOTH titles "absent from the index because their pe_bli
+            # is already a different program's page" — $429,581K of money that
+            # is, in the very same build, the two pages' own published totals.
+            # A key with >1 slot never takes this path: there a side genuinely
+            # can lose, and disclosing it is the whole point of #56's list.
+            if len(_bl_fy26_slots_by_pe.get(_pe, ())) == 1:
+                _pe_universe = sum(
+                    a for _rows in _by_title.values() for _, a in _rows
+                )
+                _pe_index = sum(
+                    v for (_p, _t), v in _index_fy26_by_pair.items() if _p == _pe
+                )
+                if abs(_pe_universe - _pe_index) < 0.5:
+                    continue
             for _title, _title_rows in _by_title.items():
                 _title_amt = sum(a for _, a in _title_rows)
                 _index_amt = _index_fy26_by_pair.get((_pe, _title))

@@ -512,6 +512,11 @@ export default async function ProgramPage({
   if (fy26Split) {
     if (fy26Split.disc?.fid) pageFactIds.push(fy26Split.disc.fid);
     if (fy26Split.reconciliation?.fid) pageFactIds.push(fy26Split.reconciliation.fid);
+    // ROADMAP #69: same requirement for the per-budget-line constituents
+    // Fy26LinesNote renders beside that card on the two pages that have them.
+    for (const line of fy26Split.lines ?? []) {
+      if (line.fid) pageFactIds.push(line.fid);
+    }
   }
 
   // Narratives (Phase 5F §2b/§2c): per-paragraph jbook_narrative fact chips

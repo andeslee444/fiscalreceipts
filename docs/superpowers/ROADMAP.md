@@ -1751,6 +1751,85 @@ rather than silently rewritten, per this file's supersede-not-delete rule.
   to the same identity, which widens rather than removes the collision surface
   this entry suspects.
 
+> **✅ #69 CLOSED 2026-08-24 (the BUDGET-ACTIVITY shape — and the one that
+> was NOT a key collision).** Filed as "two budget-line keys carry two
+> distinct titles each, the same defect species as #45/#56/#67 on a third
+> axis: title." **The symptom was real and the species was wrong**, and
+> tracing it before designing the fix is what changed the answer.
+>
+> `HCMC00` published $383,072K under the title **"HC/MC-130 Post Prod"** —
+> which is the **$17,986K** half of it. `JSE000` published $46,509K titled
+> "Joint Simulation Environment Post Production Support" — the $28,524K
+> line. The framing said each page carries "ONE line's NAME and TWO lines'
+> MONEY". The name half is exactly right. **The money half is not: the sums
+> are correct.** The two lines under each key differ by BUDGET ACTIVITY, not
+> by program. HCMC00 is BA-05 "Modification of inservice aircraft"
+> ($365,086K) plus BA-07 "Aircraft support equipment and facilities"
+> ($17,986K); JSE000 is BA-01 "Combat aircraft" plus the same BA-07. Thirteen
+> PB2026 keys span >1 budget activity inside one (account, organization), and
+> **eleven of them carry an identical title in every activity** — F-15EX in
+> BA-01/05/07 ($2,480,818K + $286,700K + $246,876K = the $3,014,394K the site
+> already publishes), B-52, C-17A, F-15, KC-46A, and six RDT&E PEs. The site
+> has always summed those, correctly: that sum IS the program's FY2026
+> procurement. HCMC00 and JSE000 differ from their eleven siblings in exactly
+> one respect — the Air Force gave the BA-07 sub-line its own label.
+>
+> **Two independent checks killed the title axis.** (1) In the PB2024 and
+> PB2025 editions the very same HCMC00 BA-07 line is titled "HC/MC-130
+> Modifications", identical to its BA-05 sibling — so a title-keyed identity
+> would make the program one page in two editions and two pages in the third,
+> and could not attribute the earlier editions' BA-07 money to either. (2)
+> `programs_excluded.json`'s `key_collision` flag, cited in #45's close as
+> corroboration that these lines were "correctly out of scope", is **computed
+> from the title difference itself** (`len(_by_title) < 2: continue`), so it
+> was never independent evidence — and B-52/F-15EX, structurally identical,
+> appear nowhere in that file.
+>
+> **The cause is one line of SQL.** `dim_programs.sql`'s `matched` CTE
+> resolved the page title with `max(b.title)` — a LEXICAL pick over whatever
+> titles the slot carries. 'P' sorts after 'M', so "Post Prod" won HCMC00.
+> The same `max()` the model's own #56 comment already describes ("purely by
+> max()'s lexical accident; nothing pinned the title to the money"), one
+> dimension over. Replaced with a money-anchored pick (largest fy_2026_total
+> line, title-ascending tiebreak — general, no key list): **1 of 1,753 titles
+> moves**, HCMC00 "HC/MC-130 Post Prod" → "HC/MC-130 Modifications".
+>
+> **The fix is disclosure, not separation** — splitting on title would
+> fragment one program on an axis eleven siblings share. Program pages whose
+> FY2026 lines carry >1 title now ship `fy26_split.lines`: every constituent
+> line, its budget activity, and its own workbook fact_id, rendered as
+> `Fy26LinesNote` beneath the headline (2 pages today). **No published dollar
+> figure changed.**
+>
+> **A second, louder falsehood surfaced while tracing.** All four of these
+> lines were listed in `programs_excluded.json` as "absent from the index
+> because their pe_bli is already a different program's page" — $429,581K,
+> which is **exactly** HCMC00's $383,072K plus JSE000's $46,509K, i.e. the two
+> pages' own published totals. The site was publishing that money and
+> declaring it absent, in the same build. `key_collision` exclusions 4 → **0**;
+> `programs_excluded.json` 196 → 192 rows; citations 110,960 → **110,959** (the
+> retired `key_collision_subtotal` derived fact). Coverage is unmoved at
+> **59.4%** — the index total never contained the error.
+>
+> **One regression caught in the same change.** The only link to
+> `programs_excluded.json` anywhere on the site lived INSIDE
+> `{coverage.key_collision_count > 0 && …}`. Taking the count to zero would
+> have silently unlinked the completeness manifest for the remaining 192
+> excluded lines — the exact artifact gate 23 leg (h4) checks. The link is now
+> unconditional.
+>
+> **Gate 23 leg (h) gained h5, and (h4) gained its converse — still 24
+> gates.** h5a: a page whose own fy_2026_total lines carry >1 title must ship
+> a complete, cited `fy26_split.lines` summing to the page total. h5b: a page's
+> title must be the LARGEST of its constituents — no page named after a
+> minority of its own money. h4's new leg asserts the converse of what it
+> already proved: nothing declared absent from the index may in fact be
+> published by it. Both fail verbatim against the pre-fix artifact
+> (`docs/superpowers/reviews/5c-gates-pre-failure.txt`).
+>
+> **Filed as #69, not #68 as the brief numbered it** — #68 above is the open
+> `test_covers_live_top50_exactly` flake, still open and untouched here.
+
 > **✅ #67 CLOSED 2026-08-21 (Sprint E — the key split).** Each (account,
 > pe_bli) pair now has its own page. **10 programs worth $5.35B** that were
 > correct-but-absent are on the site — `/program/3010-SCN/` renders LPD Flight

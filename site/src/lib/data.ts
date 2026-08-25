@@ -688,6 +688,33 @@ export interface Fy26SplitSide {
  * row of that kind (disc_k/recon_k then read 0 — a real, not fabricated,
  * zero) — never render a Cite for a null side.
  */
+/**
+ * One constituent budget line of a page's FY2026 total (ROADMAP #69).
+ *
+ * A program's BLI code can carry money in more than one budget activity —
+ * F-15EX files in BA-01 (Combat aircraft), BA-05 (Modification of inservice
+ * aircraft) and BA-07 (Aircraft support equipment and facilities). Usually
+ * every activity's line carries the SAME title, so the page's one title
+ * names all of it. Twice in PB2026 it does not: HCMC00's BA-07 line is
+ * titled "HC/MC-130 Post Prod" while its BA-05 line is "HC/MC-130
+ * Modifications", and JSE000's are "Joint Simulation Environment" and
+ * "…Post Production Support". `lines` is present exactly on those pages,
+ * so the headline says which lines it is made of instead of publishing the
+ * total under one line's name. Same cited shape as Fy26SplitSide.
+ */
+export interface Fy26SplitLine extends Fy26SplitSide {
+  title: string;
+  budget_activity: string | null;
+  budget_activity_title: string | null;
+  /**
+   * Gate-23 grouping scope ('{pe}/{org}/{acct}/{ba}/fy_2026_total') — the
+   * same component entity the page's line-items table stamps on these very
+   * rows, so the note and the table agree under one label instead of
+   * colliding with the headline card they are components of.
+   */
+  entity: string;
+}
+
 export interface Fy26Split {
   disc_k: number;
   recon_k: number;
@@ -697,6 +724,13 @@ export interface Fy26Split {
   has_reconciliation: boolean;
   disc: Fy26SplitSide | null;
   reconciliation: Fy26SplitSide | null;
+  /**
+   * (#69) The page's FY2026 total per constituent budget line, largest
+   * first. Null/absent whenever the page's lines all share one title —
+   * the overwhelming majority — never an all-one-entry list restating the
+   * headline.
+   */
+  lines?: Fy26SplitLine[] | null;
 }
 
 export interface ProgramDetails {

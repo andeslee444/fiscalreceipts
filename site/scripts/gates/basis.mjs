@@ -1988,6 +1988,213 @@ function runAccountCollisionLeg(pages, errors, notes) {
   }
 
   runCoverageDisclosureLeg(errors, notes);
+  runTitleCoverageLeg(pages, errors, notes);
+}
+
+// #69 leg h5 — A PAGE MAY NOT BE NAMED AFTER A MINORITY OF ITS OWN MONEY
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// h1-h4 above catch a page whose money spans >1 ACCOUNT (#56/#67) or >1
+// ORGANIZATION (#45). They are structurally blind to a third axis: ONE
+// (account, organization) slot whose FY2026 money spans >1 distinct
+// BUDGET-LINE TITLE. h1's per-slot recompute keys on
+// `account_title||organization`, which is CONSTANT across such a page, so
+// its collisionSlots set is empty and every check below it is skipped.
+//
+// This is not the same defect as #45/#56/#67 and must not be fixed the same
+// way. Thirteen PB2026 keys carry FY2026 money in >1 budget activity within
+// one (account, organization) — F-15EX in BA01/BA05/BA07, B-52 and C-17A and
+// F-15 and KC-46A in two each, six RDT&E PEs likewise. Eleven of the
+// thirteen carry the IDENTICAL title in every activity, so the page's single
+// title honestly names all of its money and summing the activities is the
+// program's real total. Two do not, because the Air Force gave the BA-07
+// sub-line its own label: HCMC00 published $383,072K under the title of its
+// $17,986K "HC/MC-130 Post Prod" sub-line, and JSE000 $46,509K under its
+// $28,524K one. Splitting those two pages would fragment one program on an
+// axis the other eleven share, and would not even be expressible before
+// PB2026 (both HCMC00 lines are titled "HC/MC-130 Modifications" in the
+// PB2024 and PB2025 editions — the title only diverged when the label
+// changed). So the contract is disclosure, not separation:
+//
+//   h5a DISCLOSED — a page whose own fy_2026_total budget_lines carry >1
+//      distinct title must ship fy26_split.lines naming EVERY one of those
+//      titles, each with its own fact_id, and the disclosed amounts must sum
+//      to the page's own FY2026 total. Silence is the shipped defect.
+//   h5b NOT MINORITY-TITLED — the page's own title (programs.json, produced
+//      by dim_programs) must be the LARGEST of its constituents. A $383M
+//      page titled after its $18M sub-line is a true number carrying a false
+//      name, the species of defect Sprint 3 found three of.
+//
+// Reads the sidecar's per-row `title` (already threaded onto every
+// budget_lines row since #56) against programs.json's page title — two
+// independently produced artifacts (fct_budget_lines vs dim_programs), so a
+// mismatch is a real disagreement, not the exporter agreeing with itself.
+const KNOWN_MULTI_TITLE_KEYS_H5 = ["HCMC00", "JSE000"];
+const H5_TOL = 0.5; // USD thousands — float accumulation only
+
+function runTitleCoverageLeg(pages, errors, notes) {
+  const programsPath = path.join(
+    repoRoot, "data", "site", "json", "programs.json",
+  );
+  const titleBySlug = new Map();
+  if (fs.existsSync(programsPath)) {
+    try {
+      for (const p of JSON.parse(fs.readFileSync(programsPath, "utf8"))) {
+        titleBySlug.set(p.slug ?? p.pe_bli, p.title);
+      }
+    } catch {
+      // falls through to the empty-map guard below
+    }
+  }
+  if (titleBySlug.size === 0) {
+    errors.push(
+      "leg h5: programs.json is missing, unreadable or empty — the page " +
+        "titles this leg checks against their own money cannot be resolved",
+    );
+    return;
+  }
+
+  const undisclosed = [];
+  const minorityTitled = [];
+  const checkedKnown = new Set();
+  let multiTitlePages = 0;
+
+  for (const { pe } of pages) {
+    const sidecarPath = path.join(
+      repoRoot, "data", "site", "json", "program_details", `${pe}.json`,
+    );
+    if (!fs.existsSync(sidecarPath)) continue;
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(sidecarPath, "utf8"));
+    } catch {
+      continue;
+    }
+
+    const perTitle = new Map();
+    for (const bl of Array.isArray(sidecar.budget_lines) ? sidecar.budget_lines : []) {
+      if (!bl || bl.amount_type !== "fy_2026_total") continue;
+      if (typeof bl.amount_thousands !== "number") continue;
+      const t = bl.title ?? "";
+      perTitle.set(t, (perTitle.get(t) || 0) + bl.amount_thousands);
+    }
+    if (perTitle.size < 2) continue;
+    multiTitlePages++;
+    if (KNOWN_MULTI_TITLE_KEYS_H5.includes(pe)) checkedKnown.add(pe);
+
+    const pageTotal = [...perTitle.values()].reduce((a, b) => a + b, 0);
+    const breakdown = [...perTitle.entries()]
+      .map(([t, v]) => `"${t}"=${v}`)
+      .join(", ");
+
+    // h5a — the constituents must be disclosed, completely and cited.
+    const lines = sidecar.fy26_split?.lines;
+    if (!Array.isArray(lines) || lines.length === 0) {
+      undisclosed.push(
+        `/program/${pe}/: FY2026 money spans ${perTitle.size} budget-line ` +
+          `titles (${breakdown}) summing to ${pageTotal}, but the sidecar ` +
+          `carries no fy26_split.lines disclosure — the page publishes the ` +
+          `sum under one line's name`,
+      );
+    } else {
+      const named = new Set(lines.map((l) => l?.title ?? ""));
+      const missing = [...perTitle.keys()].filter((t) => !named.has(t));
+      if (missing.length > 0) {
+        undisclosed.push(
+          `/program/${pe}/: fy26_split.lines omits ${missing.length} of the ` +
+            `page's own FY2026 titles (${missing.map((t) => `"${t}"`).join(", ")})`,
+        );
+      }
+      const uncited = lines.filter(
+        (l) => !l || typeof l.fid !== "string" || l.fid.length === 0,
+      );
+      if (uncited.length > 0) {
+        undisclosed.push(
+          `/program/${pe}/: ${uncited.length} of ${lines.length} ` +
+            `fy26_split.lines entries carry no fact_id — an uncited receipt`,
+        );
+      }
+      const disclosedTotal = lines.reduce(
+        (a, l) => a + (typeof l?.v === "number" ? l.v : NaN), 0,
+      );
+      if (!(Math.abs(disclosedTotal - pageTotal) < H5_TOL)) {
+        undisclosed.push(
+          `/program/${pe}/: fy26_split.lines sums to ${disclosedTotal} but ` +
+            `the page's own FY2026 budget_lines sum to ${pageTotal} ` +
+            `(${breakdown})`,
+        );
+      }
+    }
+
+    // h5b — the page's name must be its largest constituent.
+    const pageTitle = titleBySlug.get(pe);
+    if (pageTitle != null) {
+      let best = null;
+      let bestV = -Infinity;
+      for (const [t, v] of [...perTitle.entries()].sort((a, b) =>
+        a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0,
+      )) {
+        if (v > bestV) {
+          bestV = v;
+          best = t;
+        }
+      }
+      if (pageTitle !== best) {
+        minorityTitled.push(
+          `/program/${pe}/: page title "${pageTitle}" ` +
+            `(${perTitle.get(pageTitle) ?? 0}) is NOT the largest of its ` +
+            `${perTitle.size} FY2026 budget-line titles — "${best}" is ` +
+            `(${bestV}) — yet the page publishes ${pageTotal}`,
+        );
+      }
+    }
+  }
+
+  if (undisclosed.length > 0) {
+    errors.push(
+      `leg h5a title-coverage disclosure: ${undisclosed.length} program ` +
+        `page(s) aggregate >1 budget-line title without a complete, cited ` +
+        `fy26_split.lines disclosure (first ${MAX_LISTED}):`,
+    );
+    for (const m of undisclosed.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (undisclosed.length > MAX_LISTED)
+      errors.push(`  ... and ${undisclosed.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg h5a: all ${multiTitlePages} multi-title program page(s) disclose ` +
+        `every constituent budget line, cited, summing to the page total ✓`,
+    );
+  }
+
+  if (minorityTitled.length > 0) {
+    errors.push(
+      `leg h5b minority-titled page: ${minorityTitled.length} program page(s) ` +
+        `are named after a budget line that is not their largest (first ` +
+        `${MAX_LISTED}):`,
+    );
+    for (const m of minorityTitled.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (minorityTitled.length > MAX_LISTED)
+      errors.push(`  ... and ${minorityTitled.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg h5b: no program page is named after a minority of its own money ✓`,
+    );
+  }
+
+  const missingKnown = KNOWN_MULTI_TITLE_KEYS_H5.filter((k) => !checkedKnown.has(k));
+  if (missingKnown.length > 0) {
+    errors.push(
+      `leg h5 is VACUOUS on the known #69 set: ${missingKnown.length}/` +
+        `${KNOWN_MULTI_TITLE_KEYS_H5.length} known multi-title key(s) were ` +
+        `never exercised: ${missingKnown.join(", ")} — the check is not ` +
+        `reaching the case it exists to catch`,
+    );
+  } else {
+    notes.push(
+      `leg h5: non-vacuous — ${multiTitlePages} multi-title page(s) checked, ` +
+        `including all ${KNOWN_MULTI_TITLE_KEYS_H5.length} known #69 keys ✓`,
+    );
+  }
 }
 
 // #56 leg h4 — the disclosure must be COMPLETE, not just "currently
@@ -2063,6 +2270,29 @@ function runCoverageDisclosureLeg(errors, notes) {
       `leg h4: every program with FY2026 money absent from programs.json is ` +
         `named in programs_excluded.json (${truth.n_disclosed} disclosed, ` +
         `${truth.n_universe_pairs} universe pairs checked) ✓`,
+    );
+  }
+
+  // ROADMAP #69 — the converse of `undisclosed`, on the same recompute:
+  // nothing declared absent from the index may in fact be published by it.
+  const falselyDisclosed = truth.falsely_disclosed || [];
+  if (falselyDisclosed.length > 0) {
+    errors.push(
+      `leg h4 false exclusion: ${falselyDisclosed.length} line(s) named in ` +
+        `programs_excluded.json as absent from the index are in fact ` +
+        `published by it (first ${MAX_LISTED}):`,
+    );
+    for (const u of falselyDisclosed.slice(0, MAX_LISTED)) {
+      errors.push(
+        `  ${u.pe_bli} "${u.title}" ($${Math.round(u.amount_thousands).toLocaleString()}K) — ${u.why}`,
+      );
+    }
+    if (falselyDisclosed.length > MAX_LISTED)
+      errors.push(`  ... and ${falselyDisclosed.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg h4: nothing disclosed as absent from the index is in fact ` +
+        `published by it ✓`,
     );
   }
 

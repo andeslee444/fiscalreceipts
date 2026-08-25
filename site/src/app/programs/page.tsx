@@ -166,7 +166,18 @@ export default function ProgramsPage() {
                 no_detail ones — so the collision category would be
                 described here but never exemplified, and a reader would
                 have no way to learn how much it accounts for. The count
-                and total come from programs_coverage, never a literal. */}
+                and total come from programs_coverage, never a literal.
+
+                ROADMAP #69: the link to the full manifest is NOT inside
+                this conditional any more. It used to be, and when #69 took
+                the collision count to zero — correctly: those four lines
+                were being published and disclosed as absent at the same
+                time — the site's only pointer to programs_excluded.json
+                went with it, silently unlinking the completeness manifest
+                for every remaining excluded line. The manifest is the thing
+                gate 23 leg (h4) checks for completeness; it has to be
+                reachable whether or not a collision happens to exist this
+                edition. */}
             {coverage.key_collision_count > 0 && (
               <>
                 {" "}
@@ -179,17 +190,18 @@ export default function ProgramsPage() {
                     dataset="budget_lines"
                     factId={coverage.key_collision_fact_id}
                   />
-                  ; they are listed in full in{" "}
-                  <a
-                    href="/json/programs_excluded.json"
-                    className="underline hover:text-foreground"
-                  >
-                    programs_excluded.json
-                  </a>
                   .
                 </span>
               </>
-            )}
+            )}{" "}
+            Every absent line is named in{" "}
+            <a
+              href="/json/programs_excluded.json"
+              className="underline hover:text-foreground"
+            >
+              programs_excluded.json
+            </a>
+            .
           </p>
         </ScopeNote>
       </div>

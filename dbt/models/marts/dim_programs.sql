@@ -175,6 +175,62 @@ org_collision_slots as (
       and pe_bli <> '9999999999'
     group by pe_bli, organization
 ),
+-- ROADMAP #69 — the title a page is NAMED by must be the line its money is
+-- mostly made of. `matched`/`synth` below both resolved `title` with
+-- max(b.title): a LEXICAL pick among however many line-item titles this
+-- (pe_bli, account, organization) slot carries. That is harmless for the
+-- ~1,751 slots whose lines all share one title, and for the eleven PB2026
+-- keys whose FY2026 money spans several BUDGET ACTIVITIES under an
+-- identical title (F-15EX files in BA-01 "Combat aircraft", BA-05
+-- "Modification of inservice aircraft" and BA-07 "Aircraft support
+-- equipment and facilities", all titled "F-15EX" — one program, three
+-- sub-lines, and summing them IS its FY2026 procurement). It is not
+-- harmless for the two keys whose sub-line labels differ:
+--   HCMC00 — "HC/MC-130 Modifications" (BA-05, $365,086K) and "HC/MC-130
+--     Post Prod" (BA-07, $17,986K). max() sorts 'P' after 'M', so the page
+--     carrying $383,072K was named after its $17,986K sub-line.
+--   JSE000 — "Joint Simulation Environment" (BA-01, $17,985K) and "Joint
+--     Simulation Environment Post Production Support" (BA-07, $28,524K).
+--     max() picked the longer string, which here happens to be the larger
+--     line — the same accident, landing right by luck.
+-- These are NOT two programs colliding on a key (#45/#56/#67's shape, where
+-- the titles name unrelated things — DLA "Major Equipment" vs DHRA
+-- "Personnel Administration"). They are one program's sub-lines: same
+-- account, same organization, same BLI code, same aircraft, and in the
+-- PB2024 and PB2025 editions the very same HCMC00 BA-07 line is titled
+-- "HC/MC-130 Modifications" too — identical to its BA-05 sibling. Only the
+-- PB2026 label changed. A title-keyed page split would therefore make the
+-- program's identity flip with a relabelling and would have no way to
+-- attribute the earlier editions' BA-07 money, so the fix is to name the
+-- page correctly and disclose the constituents (export_site.py's
+-- fy26_split.lines), not to fragment it.
+--
+-- Deterministic by construction: largest FY2026 money first, title
+-- ascending as the tiebreak — never row order, never a hardcoded key list.
+-- A slot with no fy_2026_total row at all is absent here and both call
+-- sites fall back to max(b.title), byte-for-byte the pre-#69 behavior.
+line_fy26_by_title as (
+    select pe_bli, account, organization, title,
+           sum(amount_thousands) as fy26_k
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and amount_type = 'fy_2026_total'
+      and title is not null
+      and pe_bli <> '9999999999'
+    group by pe_bli, account, organization, title
+),
+dominant_title as (
+    select pe_bli, account, organization, title
+    from (
+        select pe_bli, account, organization, title,
+               row_number() over (
+                   partition by pe_bli, account, organization
+                   order by fy26_k desc, title asc
+               ) as rn
+        from line_fy26_by_title
+    )
+    where rn = 1
+),
 org_collision_pes as (
     select pe_bli
     from org_collision_slots
@@ -244,6 +300,12 @@ matched as (
     -- for the 3 org-collision keys — without it, `max(b.title)` would fan
     -- across every organization's line-item titles sharing account '0300D'
     -- and pick whichever sorts last, exactly the pre-fix defect.
+    --
+    -- ROADMAP #69: dt (dominant_title) is joined on exactly the same
+    -- predicates as b, so it always names a line this very slot carries.
+    -- coalesce falls back to max(b.title) only when the slot has no
+    -- fy_2026_total row for dominant_title to rank (a historical-money-only
+    -- program) — unchanged behavior there.
     select
         d.pe_bli,
         d.org,
@@ -253,7 +315,7 @@ matched as (
         d.fully_reconciled,
         am.account,
         am.account_title,
-        max(b.title) as title
+        coalesce(max(dt.title), max(b.title)) as title
     from details d
     left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
     left join account_match am
@@ -262,6 +324,10 @@ matched as (
         on b.pe_bli = d.pe_bli and b.fiscal_year = 2026
         and (am.account is null or b.account = am.account)
         and (ocp.pe_bli is null or b.organization = d.org)
+    left join dominant_title dt
+        on dt.pe_bli = d.pe_bli
+        and (am.account is null or dt.account = am.account)
+        and (ocp.pe_bli is null or dt.organization = d.org)
     group by 1, 2, 3, 4, 5, 6, 7, 8
 ),
 -- E1 split key: per (pe_bli, amount_type) distinct-account count, fenced to
@@ -301,13 +367,23 @@ synth as (
         cast(null as boolean) as fully_reconciled,
         sc.account,
         sc.account_title,
-        max(b.title) as title
+        -- ROADMAP #69: same money-anchored pick as `matched` above. No
+        -- account-collision key carries two line titles within one account
+        -- today, so this changes nothing in the shipped PB2026 warehouse —
+        -- it is here so a future key that collides on account AND spans
+        -- several budget activities does not silently revert to the lexical
+        -- max() this fix exists to remove.
+        coalesce(max(dt.title), max(b.title)) as title
     from synth_candidates sc
     left join {{ ref('stg_budget_lines') }} b
         on b.pe_bli = sc.pe_bli and b.account = sc.account
         and b.fiscal_year = 2026 and b.title is not null
+    left join dominant_title dt
+        on dt.pe_bli = sc.pe_bli and dt.account = sc.account
     group by sc.pe_bli, sc.account, sc.account_title
-    having max(b.title) is not null  -- honesty contract: no title, no row
+    -- honesty contract: no title, no row (either source supplying one is
+    -- enough; coalesce above picks dt first)
+    having coalesce(max(dt.title), max(b.title)) is not null
 )
 select pe_bli, org, exhibit_family, project_count, fy2024_actual_millions,
        fully_reconciled, account, account_title, title

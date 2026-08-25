@@ -4,7 +4,7 @@ Fiscal Receipts is a spending-intelligence platform for U.S. federal defense bud
 Every program element, award, and lobbying figure is citation-backed: J-book PDF
 page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
 The site covers 1,755 DoD R&D and procurement program elements across 24 agencies,
-200 top contractor families, and 110,960 source citations from FY2017 onward.
+200 top contractor families, and 110,959 source citations from FY2017 onward.
 
 ## Core routes
 

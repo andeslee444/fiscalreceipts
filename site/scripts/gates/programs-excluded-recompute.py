@@ -26,6 +26,12 @@ Output:
   "undisclosed": [                     # THE FAILURE LIST — must be empty
     {"pe_bli", "title", "amount_thousands", "why"}
   ],
+  "falsely_disclosed": [               # ROADMAP #69 — the CONVERSE list,
+                                       # also must be empty: money declared
+                                       # absent from the index that is in fact
+                                       # published by the index
+    {"pe_bli", "title", "amount_thousands", "why"}
+  ],
   "resolved_known_keys": [...],        # of the 10 #56 keys, which this
                                         # recompute independently confirmed
                                         # ARE correctly disclosed
@@ -91,12 +97,28 @@ def main() -> int:
             "   and pe_bli <> '9999999999'"
             " group by pe_bli, title"
         ).fetchall()
+        # ROADMAP #69: the (account, organization) slot count per key — the
+        # discriminator between "this key spans two REAL programs" (>1 slot;
+        # #56/#67's account axis and #45's organization axis, where one side
+        # genuinely loses and must be disclosed) and "this key is one program
+        # whose money spans several budget activities" (exactly 1 slot, where
+        # every title belongs to the same page and disclosing any of them as
+        # absent is false). Read here, not inferred from the artifacts.
+        slot_rows = con.execute(
+            "select pe_bli, count(distinct coalesce(account, '~')"
+            "   || '|' || coalesce(organization, '~')) as n_slots"
+            " from fct_budget_lines"
+            " where amount_type = 'fy_2026_total' and title is not null"
+            "   and pe_bli <> '9999999999'"
+            " group by pe_bli"
+        ).fetchall()
     finally:
         con.close()
 
     by_pe: dict[str, dict[str, float]] = defaultdict(dict)
     for pe, title, amt in rows:
         by_pe[pe][title] = float(amt)
+    slots_by_pe: dict[str, int] = {pe: int(n) for pe, n in slot_rows}
 
     undisclosed: list[dict] = []
     # Task E3 (Sprint E, ROADMAP #67): a KNOWN #56 key is "resolved" when
@@ -128,6 +150,22 @@ def main() -> int:
             accounted_titles[pe].update(by_title)
             continue  # single title under this pe_bli: it IS the index entry
 
+        # ROADMAP #69: a key with exactly ONE (account, organization) slot is
+        # ONE program; its several titles are budget-activity sub-lines of it
+        # (F-15EX carries one title in BA01/BA05/BA07; HCMC00 carries two,
+        # only because the Air Force relabelled its BA-07 line "Post Prod").
+        # When the index total already equals every one of those titles' money
+        # summed, nothing under this key is absent from the index and nothing
+        # under it may be disclosed as absent — see falsely_disclosed below.
+        if slots_by_pe.get(pe, 1) == 1:
+            pe_universe = sum(by_title.values())
+            pe_index = sum(
+                v for (p, _t), v in index_fy26_by_pair.items() if p == pe
+            )
+            if abs(pe_universe - pe_index) < TOL:
+                accounted_titles[pe].update(by_title)
+                continue
+
         # (b) pe_bli present, but does it cover EVERY title's money? A title
         # is covered when its OWN (pe_bli, title) pair is itself a published
         # index entry (Task E3: programs.json can now carry TWO entries
@@ -151,6 +189,36 @@ def main() -> int:
             else:
                 accounted_titles[pe].add(title)
 
+    # ROADMAP #69 — the CONVERSE of `undisclosed`, and the check nobody had:
+    # is anything DECLARED absent from the index actually IN it? The shipped
+    # defect answered yes for $429,581K — HCMC00's and JSE000's every FY2026
+    # line was listed in programs_excluded.json with reason 'key_collision'
+    # ("absent from the index because their pe_bli is already a different
+    # program's page") while those exact dollars were simultaneously the two
+    # pages' own published FY2026 totals. Both statements cannot be true, and
+    # nothing checked the second one.
+    falsely_disclosed: list[dict] = []
+    for pe, by_title in by_pe.items():
+        if pe not in index_pe_blis:
+            continue
+        if slots_by_pe.get(pe, 1) != 1:
+            continue  # a genuine account/organization collision: a side really
+            # can be absent, and disclosing it is correct
+        pe_universe = sum(by_title.values())
+        pe_index = sum(v for (p, _t), v in index_fy26_by_pair.items() if p == pe)
+        if abs(pe_universe - pe_index) >= TOL:
+            continue  # money really is missing under this key
+        for title, amt in by_title.items():
+            if (pe, title) in disclosed_pairs:
+                falsely_disclosed.append({
+                    "pe_bli": pe, "title": title, "amount_thousands": amt,
+                    "why": f"programs_excluded.json says this line is absent"
+                           f" from the index, but pe_bli={pe!r}'s published"
+                           f" page(s) already total {pe_index} — every dollar"
+                           f" of its {pe_universe} FY2026 universe, this line"
+                           " included",
+                })
+
     resolved_known_keys = {
         pe for pe in KNOWN_COLLISION_KEYS
         if pe in by_pe and accounted_titles.get(pe, set()) == set(by_pe[pe])
@@ -161,6 +229,7 @@ def main() -> int:
         "n_index_pe_blis": len(index_pe_blis),
         "n_disclosed": len(disclosed_pairs),
         "undisclosed": undisclosed,
+        "falsely_disclosed": falsely_disclosed,
         "resolved_known_keys": sorted(resolved_known_keys),
     }, sort_keys=True))
     return 0

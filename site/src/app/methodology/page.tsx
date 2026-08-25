@@ -1141,6 +1141,26 @@ export default function MethodologyPage() {
                   index covers 59.4% of the FY2026 request, up from 58.0%.
                 </td>
               </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4">Program page named for a sub-line</td>
+                <td className="py-2 pr-4">smallest line</td>
+                <td className="py-2 pr-4">largest line, rest itemised</td>
+                <td className="py-2">
+                  One budget-line code can carry money in several budget
+                  activities. Where those lines share a name the page name
+                  covers them all; twice it did not, and the page took the
+                  name of a sub-line instead of the line most of its money is
+                  in. <em>HC/MC-130 Post Prod</em> named a page that is mostly{" "}
+                  <em>HC/MC-130 Modifications</em>. Both pages now carry their
+                  largest line&apos;s name and list every line beneath the
+                  figure. Those same lines were also listed on{" "}
+                  <Link href="/programs/" className="underline hover:text-foreground">
+                    Programs
+                  </Link>{" "}
+                  as absent from the index while the index was publishing
+                  them; that claim is withdrawn.
+                </td>
+              </tr>
               <tr>
                 <td className="py-2 pr-4">Concentration (HHI) wording</td>
                 <td className="py-2 pr-4">&ldquo;near-monopoly&rdquo;</td>
