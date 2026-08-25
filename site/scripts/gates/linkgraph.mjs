@@ -222,7 +222,26 @@ export async function runLinkgraphGate() {
   // the file itself. Fragments/queries are stripped first, so #anchors on
   // existing pages are allowed; pure same-page "#..." anchors never enter the
   // loop (they don't start with "/").
-  for (const pageUrl of ["/", "/feed/", "/district/"]) {
+  // WIDENED 2026-08-25. This list was ["/", "/feed/", "/district/"] and the
+  // logic below was already correct — it simply never looked at /programs/,
+  // which had been shipping a link to /json/programs_excluded.json that 404s.
+  // That file is built into data/site/json/ but was never added to
+  // prepare-assets.mjs's copy list, so it never reached public/json/. The
+  // completeness manifest — the artifact whose whole job is accounting for
+  // what the index omits — was the one file a reader could not open, and the
+  // prose above the link says "listed in full in programs_excluded.json".
+  //
+  // Every SINGLETON hub page is now scanned. Templated detail pages
+  // (/program/*, /company/*, /filing/*) stay out: there are ~2,000 of them,
+  // leg (f) already samples them, and the dead-link risk there is a shared
+  // template, not a hand-written href. These pages are where hand-written
+  // hrefs actually live.
+  for (const pageUrl of [
+    "/", "/feed/", "/district/", "/programs/", "/companies/",
+    "/companies/families/", "/filings/", "/data/", "/coverage/",
+    "/methodology/", "/flow/", "/agency/", "/years/", "/downloads/",
+    "/glossary/", "/about/",
+  ]) {
     const pagePath = htmlPathFor(pageUrl);
     if (!fs.existsSync(pagePath)) {
       errors.push(`dead-link scan: ${pageUrl} not built (${pagePath} missing)`);
@@ -237,6 +256,16 @@ export async function runLinkgraphGate() {
       internal++;
       const target = href.split("#")[0].split("?")[0];
       if (target === "") continue; // fragment/query on the page itself
+      // /assets/* is RESOLVED AT RUNTIME, not built into out/. asset-config.tsx
+      // ships DEFAULT_ASSET_BASE="/assets" as the SSR fallback and swaps it for
+      // public/config.json's assetBaseUrl (https://assets.fiscalreceipts.com)
+      // on hydration, so the static snapshot legitimately carries hrefs that no
+      // local file backs. Verified 2026-08-25: /assets/data/dim_programs.parquet
+      // 404s same-origin and returns 200 at the asset host. Skipping these is
+      // not a weakening — gate 15 "degraded" owns this contract, HEAD-probing
+      // the bundle and rendering data-degraded="downloads" when it is absent.
+      // Without this, widening the scan below flags all 15 /downloads/ cards.
+      if (target.startsWith("/assets/")) continue;
       const isFile = /\.[a-z0-9]+$/i.test(target);
       const resolved = isFile
         ? path.join(outDir, ...target.split("/").filter(Boolean))

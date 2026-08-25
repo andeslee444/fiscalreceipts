@@ -8210,3 +8210,53 @@ accurate. Corrected in the following commit. The near-ceiling count is
 GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
 -> 24. This is a leg inside gate 1's existing checkPageWeight(), beside the
 ceiling checks and the near-ceiling note. No 25th gate.
+
+================================================================================
+GATE 13 (linkgraph) leg (d) — widened to every singleton hub page. 2026-08-25.
+================================================================================
+
+FOUND IN PRODUCTION, minutes after the #69 deploy. /programs/ tells the reader
+"they are listed in full in programs_excluded.json" and links to
+/json/programs_excluded.json. That URL 404s, live:
+
+  curl -o /dev/null -w '%{http_code}' https://fiscalreceipts.com/json/programs_excluded.json
+  -> 404
+
+The file is BUILT (data/site/json/programs_excluded.json, 192 rows) but was
+never added to prepare-assets.mjs's copy list, so it never reached
+public/json/ and never shipped. The completeness manifest -- the artifact
+whose entire job is accounting for what the index leaves out -- was the one
+file a reader could not open.
+
+Not introduced by #69. It was equally broken before, behind a
+`key_collision_count > 0` guard that happened to be true. #69 zeroed that
+count and made the link unconditional, which is what exposed it.
+
+WHY NO GATE CAUGHT IT. Leg (d)'s logic was already correct and already
+checked exactly this property -- "every internal href^='/' must resolve to an
+existing out/ path". It ran on THREE pages: /, /feed/, /district/.
+/programs/ was never in the sample. The leg now scans all 16 singleton hub
+pages. Templated detail pages stay out (~2,000 of them; their hrefs come from
+a shared template, not hand-written, and leg (f) already samples them).
+
+PROOF IT CAN FAIL -- run against out/ as deployed:
+
+  dead-link errors: 2
+    dead links on /programs/: 1 internal href(s) resolve to no built page
+      (1 unique target(s); first: /json/programs_excluded.json)
+      dead link on /programs/: /json/programs_excluded.json
+
+A FALSE POSITIVE CAUGHT BEFORE SHIPPING, recorded because the fix is a
+carve-out and carve-outs are where gates go soft. The first widened run
+reported SEVENTEEN dead links: the real one plus all 15 /downloads/ parquet
+cards. Those are NOT dead. download-cards.tsx is a client component using
+useAssetUrl(); asset-config.tsx ships DEFAULT_ASSET_BASE="/assets" as the SSR
+fallback and swaps it for public/config.json's assetBaseUrl on hydration.
+Verified both directions: /assets/data/dim_programs.parquet 404s same-origin
+and returns 200 at https://assets.fiscalreceipts.com/data/dim_programs.parquet.
+The leg skips /assets/* for that reason. This is not a weakening -- gate 15
+"degraded" owns that contract, HEAD-probing the bundle and rendering
+data-degraded="downloads" when it is missing. /downloads/ STAYS in the scan,
+so any non-asset dead link there is still caught.
+
+GATE COUNT: unchanged -> 24. This widens an existing leg of gate 13.

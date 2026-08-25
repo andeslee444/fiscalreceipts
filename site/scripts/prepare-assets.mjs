@@ -192,6 +192,24 @@ copyFile(
 );
 console.log("✓  flow_chart.json → public/json/");
 
+// ── 5f. Copy the exclusions manifest (ROADMAP #49/#56/#69) ──────────────────
+// /programs/ tells the reader, in prose, that the lines absent from the index
+// "are listed in full in programs_excluded.json" and links to
+// /json/programs_excluded.json. That link has been shipping a 404: the file
+// is built into data/site/json/ but was never added to this copy list, so it
+// never reached public/json/. The completeness manifest — the artifact whose
+// entire job is accounting for what the index leaves out — was the one file
+// a reader could not open.
+//
+// Found live 2026-08-25, immediately after the #69 deploy made the link
+// unconditional. It was equally broken before, just behind a
+// `key_collision_count > 0` guard that happened to be true.
+copyFile(
+  path.join(jsonDir, "programs_excluded.json"),
+  path.join(jsonDestDir, "programs_excluded.json")
+);
+console.log("✓  programs_excluded.json → public/json/");
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
