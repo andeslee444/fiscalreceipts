@@ -1827,8 +1827,23 @@ rather than silently rewritten, per this file's supersede-not-delete rule.
 > published by it. Both fail verbatim against the pre-fix artifact
 > (`docs/superpowers/reviews/5c-gates-pre-failure.txt`).
 >
+> **Two things found on /methodology/ while shipping the correction row.**
+> The page had drifted to **SIX bytes** of gzip headroom (127,800 / 34,494
+> against 128,000 / 34,500) BEFORE this row — the identical cliff /coverage/
+> hit at nine bytes and /programs/ at 643, and the near-ceiling note has been
+> reporting it at 99.9% without anyone re-baselining. Ceilings raised to
+> 136,500 / 36,900 (~6% headroom, the /programs/ Sprint E rule), stated
+> rather than quietly nudged; the correction was not written short to fit a
+> budget. And the corrections section was headed "Corrections issued
+> 2026-08-08" while already carrying 2026-08-21 rows — now "2026-08-08
+> onward", with the intro saying later corrections are appended to the same
+> table.
+>
 > **Filed as #69, not #68 as the brief numbered it** — #68 above is the open
 > `test_covers_live_top50_exactly` flake, still open and untouched here.
+>
+> 24/24 gates, `pytest` 1,577 passed, vitest 1,007 passed / 60 files, `tsc`
+> clean. No published dollar figure moved.
 
 > **✅ #67 CLOSED 2026-08-21 (Sprint E — the key split).** Each (account,
 > pe_bli) pair now has its own page. **10 programs worth $5.35B** that were

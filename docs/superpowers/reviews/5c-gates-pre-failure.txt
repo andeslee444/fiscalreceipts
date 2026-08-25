@@ -8093,4 +8093,58 @@ STEP 3 — the fix (money-anchored title + fy26_split.lines disclosure +
 the coverage-exclusion correction), then the same command re-run against
 the rebuilt artifacts.
 
---- PASS (verbatim, post-fix) — appended below after the post-commit build.
+--- PASS (verbatim, post-fix) ---
+
+PASS = true
+--- errors (0) ---
+--- h4/h5 notes ---
+leg h4: every program with FY2026 money absent from programs.json is named in programs_excluded.json (192 disclosed, 1684 universe pairs checked) ✓
+leg h4: nothing disclosed as absent from the index is in fact published by it ✓
+leg h4: non-vacuous — all 10 known #56 collision keys independently confirmed correctly disclosed ✓
+leg h5a: all 2 multi-title program page(s) disclose every constituent budget line, cited, summing to the page total ✓
+leg h5b: no program page is named after a minority of its own money ✓
+leg h5: non-vacuous — 2 multi-title page(s) checked, including all 2 known #69 keys ✓
+
+Both legs stayed NON-VACUOUS across the fix: the same 2 pages and the same
+10 #56 keys are exercised before and after. h5a flips from "no disclosure"
+to "complete, cited, sums"; h5b flips from "1 minority-titled page" to none;
+h4's converse flips from 4 false exclusions to none. Nothing was made to
+pass by narrowing what is checked.
+
+FULL SUITE (built at 5e21ec1, run with NEXT_PUBLIC_SITE_URL set):
+
+  $ cd site && NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com node scripts/verify.mjs
+
+  gate 1 build: PASS          gate 13 linkgraph: PASS
+  gate 2 render-static: PASS  gate 14 coverage: PASS
+  gate 3 render-live: PASS    gate 15 degraded: PASS
+  gate 4 clickthrough: PASS   gate 16 answerfold: PASS
+  gate 5 search: PASS         gate 17 motion: PASS
+  gate 6 a11y: PASS           gate 18 receiptmoment: PASS
+  gate 7 perf: PASS           gate 19 personas: PASS
+  gate 8 feed: PASS           gate 20 yearsmatrix: PASS
+  gate 9 district: PASS       gate 21 program-skeleton: PASS
+  gate 10 filing: PASS        gate 22 flowdown: PASS
+  gate 11 og: PASS            gate 23 basis: PASS
+  gate 12 animation: PASS     gate 24 datatruth: PASS
+
+  overall: PASS   (EXIT=0)
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. h5 is a sub-leg of gate 23's leg (h), alongside the existing h1-h4;
+h4's converse is an assertion added to the leg that already owns the
+exclusion disclosure. No 25th gate.
+
+PAGE WEIGHT — ceiling raised, said out loud. /methodology/ was measured at
+127,800 raw / 34,494 gzip WITHOUT this task's corrections row: SIX bytes
+under its 34,500 ceiling. The brief's stated headroom (637 bytes) was from
+an older measurement; ordinary content drift had eaten it to 0.017% and the
+near-ceiling note has been reporting the page at 99.9% since. With the row:
+128,653 / 34,761 — over BOTH ceilings. Per this file's own 2026-08-08
+/methodology/ entry ("the page is heavier because it now documents six
+corrections — that is this page's job, and trimming the disclosure to fit a
+budget would be the wrong trade") and the /programs/ Sprint E re-baseline
+rule (restore proportional headroom, do not re-baseline to the drift), the
+ceilings move to 136,500 / 36,900 — ~6% headroom against the new
+measurement. The correction row was NOT written short to fit a budget, and
+no other budget entry was touched.

@@ -1027,14 +1027,15 @@ export default function MethodologyPage() {
         </p>
 
         <h3 className="text-base font-semibold mt-6 mb-2">
-          Corrections issued 2026-08-08
+          Corrections issued 2026-08-08 onward
         </h3>
         <p className="text-muted-foreground leading-7">
           An independent review found six published figures that were correctly
           cited but wrongly labelled — each number matched its source, while the
           sentence around it claimed something the source did not support. Four
           of the corrections make a published figure <em>smaller</em>. We publish
-          the smaller true number rather than the larger false one.
+          the smaller true number rather than the larger false one. Corrections
+          issued since are appended to the same table, newest last.
         </p>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm tabular-nums">

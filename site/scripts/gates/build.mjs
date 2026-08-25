@@ -116,7 +116,26 @@ export const PAGE_WEIGHT_BUDGET = [
   // budget would be the wrong trade. Ceilings carry the SAME proportional
   // headroom the previous pair did (raw ×1.1215, gzip ×1.0986), so the budget
   // still catches unintended growth from here.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 128_000, maxGzip: 34_500, measured: "125,112 / 33,863" },
+  //
+  // Re-baselined 2026-08-24 (ROADMAP #69) — CEILING RAISED, STATED PLAINLY.
+  // The 2026-08-08 pair above was set against 125,112 / 33,863. By this
+  // build the page had drifted to 127,800 / 34,494 WITHOUT the #69 row:
+  // SIX bytes of gzip headroom (0.017%), the identical cliff /coverage/ hit
+  // at nine bytes and /programs/ at 643. The near-ceiling note added
+  // 2026-08-14 is doing its job — this page has been reported at 99.9% —
+  // but a note is not a re-baseline, and any addition at all now fails.
+  //
+  // #69's seventh corrections row costs 853 raw / 267 gzip. The 2026-08-08
+  // entry's own rule applies unchanged: "The page is heavier because it now
+  // documents six corrections — that is this page's job, and trimming the
+  // disclosure to fit a budget would be the wrong trade." It documents
+  // seven now. So the row stays and the ceiling moves, rather than the
+  // correction being written short enough to fit.
+  //
+  // Restoring ~6% headroom against the new measurement (the /programs/
+  // Sprint E rule: re-baselining to the CURRENT proportional headroom hands
+  // the next change the same cliff), not a round-number guess.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "128,653 / 34,761" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
