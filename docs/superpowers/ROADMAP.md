@@ -389,6 +389,23 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
+*Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
+ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
+naming the sprint and/or commit that closed it and when, so an item's state is
+readable without cross-referencing a 3,000-character sprint-table cell at the
+top of this file. Two older conventions remain in place and were left
+untouched: strikethrough + `**DONE <date>:**` inside the entry body (#2, #3,
+#5, #6, #11, #12, #16, #17, #18, #20, #21, #23, #24, #25), and a leading `✅
+**DONE/FIXED <date>**` (#27, #31, #33, #35, #37, #38, #39, #41, #44, #55).
+Roughly a dozen entries carried neither and were closed only in sprint-table
+prose or a blockquote — #34, #36, #45, #47–#53 and #54 all read as open bugs
+until this sweep. Statuses were derived from evidence — commit messages, the
+sprint rows, and the code or built artifact at HEAD — never from an entry's own
+wording; where the two disagreed, the marker says so. Nothing above a
+`**Status:**` line was edited: the defect descriptions are the historical
+record and stay as written. Grep: `grep -n '\*\*Status: '
+docs/superpowers/ROADMAP.md`.
+
 1. **Alias backlog (5B-2/3 content):** 9 top-50 families unmatched to LDA clients
    (Booz Allen Holding, ADS Tactical, Northrop Innovation Systems, Vertex, Fluor
    Marine Propulsion, MacAndrews & Forbes, Shell E&P, Bell-Boeing JPO*, Domestic
@@ -402,6 +419,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    check). The match_gate5a raise to 0.85 lands with that re-pull (a premature
    raise was reverted in final-stage verification — see findings). Remaining 6
    families verified as having zero 2024–2026 filings (genuinely unmatchable).
+
+   **Status: PARTIAL** — swept 2026-08-24. The curation half is done and
+   recorded by `2efab28` (2026-07-02); activation is still blocked on #19's
+   live LDA re-pull, which has never run. Verified at HEAD:
+   `src/govbudget/verify_phase5a.py:62` is still `_MATCH_THRESHOLD = 0.80` —
+   the raise to 0.85 lands with the re-pull — and no commit in the history
+   references drawdown Task D1 (#1 + #19 as one unit).
 2. **Citation tiers deferred from 5B-1:** ~~USAspending (reproducible query
    permalink), state checkbook (SoQL URL), derived metrics (formula + input
    citations). Owner: 5B-2 (usaspending/state), 5B-3 (derived). The manifest's
@@ -411,6 +435,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    fct_budget_to_awards, dim_lobbyists received citations (district dollars are
    clickable citations); the ledger gate is now armed at empty (any future
    uncited dataset fails loudly).
+
+   **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+   (2026-07-02), which is the commit carrying the strikethrough + "DONE
+   2026-07-02" above.
 3. **Page-resolution disambiguation:** ~~prefer detail-exhibit pages over summary
    pages via "Exhibit R-2"/"P-40" header anchoring → shrink ambiguous_first 73%.~~
    **DONE 2026-07-02:** exhibit-aware tie-breaking (source exhibit header, then
@@ -420,13 +448,26 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    the raw pre-tie-break count (auditable, no fabricated certainty). Rebuild
    determinism verified: delete-ambiguous + rebuild reproduced 4,419/4,419 keys
    byte-identically.
+
+   **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+   (2026-07-02).
 4. **Historical J-book backfill (PB2025/PB2024)** → enables book-diff "what
    changed this cycle" (5B-3 feature 6). Schema already supports.
    *Update 2026-07-02:* PB2025 feasibility spike complete — GO recommendation
    (docs/superpowers/plans/2026-07-02-pb2025-backfill-feasibility.md).
+
+   **Status: CLOSED** — swept 2026-08-24. Drawdown Sprint A, Task A1; `c7293e5`
+   (2026-08-12). Superseded rather than built: `fct_budget_lines` carries all
+   ten editions PB2017–PB2026 from Phase 5E, where this entry asked only for
+   PB2025/PB2024. Closure prose is the `#4, #13, #26` blockquote near the end
+   of this section — note it dates itself 2026-08-08, four days before the
+   commit that recorded it.
 5. **$39T CPI SATCOM subaward outlier** — ~~staging-layer sanity guard
    (max-plausible-amount flag, quarantine table).~~ **DONE 2026-07-02:**
    staging quarantines subaward outliers with `is_amount_suspect` flag.
+
+   **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+   (2026-07-02).
 6. **Site-mart gaps found in 5B-1 recon:** ~~no per-family obligations-by-year
    mart (company page time series), no feed/event mart~~, dim_geography lacks
    fiscal_year/pe_bli breakdown (district drill-down) — build in 5B-2/5B-3 as
@@ -439,14 +480,46 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    `[pop_state, pop_district, transaction_count, total_obligation]` — no
    `fiscal_year`, no `pe_bli`. The district fiscal_year/pe_bli breakdown this
    entry asked for has not been built.
+
+   **Status: PARTIAL — and the entry stays OPEN** — swept 2026-08-24. The two
+   mart sub-items are done
+   (`dbt/models/marts/fct_family_obligations_by_year.sql` and
+   `fct_feed_events.sql`, both present at HEAD). The third clause is still
+   true: `dbt/models/marts/dim_geography.sql` selects exactly `pop_state,
+   pop_district, count(*), sum(obligation)` — no `fiscal_year`, no `pe_bli`.
+   Confirmed OPEN by `c7293e5` (2026-08-12), whose blockquote below says
+   closing it "would be the false-completion this ledger keeps catching
+   elsewhere".
 7. **FEC → CongressionalAddDetail chain** (money in → marks → money out) —
    post-5B; the J-book XML already carries the add elements.
+
+   **Status: OPEN** — swept 2026-08-24. Never scoped: named out of scope at the
+   top of `docs/superpowers/plans/2026-08-07-backlog-drawdown.md`, and no
+   commit in the history references it. Verified at HEAD: no FEC or
+   `CongressionalAdd` code under `src/govbudget/` or `dbt/models/`.
 8. **Refresh automation:** monthly USAspending, quarterly LDA, annual J-book,
    biennial GAO; cron on Mac Mini + `govbudget refresh` orchestrator + drift
    alarms (golden fixtures break = schema drift detected). Post-launch.
+
+   **Status: OPEN** — swept 2026-08-24. Never scoped (out of scope in the
+   drawdown plan; no commit references it). Verified at HEAD: the only
+   `refresh` subcommand is `evals refresh` (`src/govbudget/cli.py:2092`); there
+   is no `govbudget refresh` orchestrator and no cron under `scripts/`.
 9. **Resolution-memory for review queue** (re-flagged items remember triage).
+
+   **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.
+   Verified at HEAD: `review_queue` (`migrations/001_phase1_schema.sql:84`)
+   does carry `status` / `resolution` / `resolved_at`, but `_tally`
+   (`src/govbudget/jbooks/reconcile.py:257`) inserts a fresh row for each new
+   `check_id` and never reads a prior triage — a re-flagged item does not
+   remember.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
+
+    **Status: OPEN** — swept 2026-08-24. Never scoped; no commit references it.
+    Verified at HEAD: `src/govbudget/entities.py:6` still reads that
+    probabilistic matching (Splink) is "deliberately deferred until a gate
+    fails".
 11. **Type oversight parquets properly:** ~~improper_payments and related oversight
     tables are all-VARCHAR from CSV ingestion, forcing CAST everywhere and inviting
     lexicographic-sort bugs (root cause of several 5B-4 SEMANTIC failures). Migrate
@@ -455,11 +528,18 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     high_risk.mapped BOOLEAN); parquets retyped in place value-identically
     (fct_improper_exposure checksum unchanged); dbt try_casts dropped; schema card
     updated (trap note replaced — legacy CASTs are harmless no-ops).
+
+    **Status: CLOSED** — swept 2026-08-24. `9931d7c` (2026-07-02), recorded by
+    `2efab28` the same day.
 12. **Build gate for stale/failed `site/out`:** ~~verify gates should detect that
     the SSG output is absent or from a failed build before running npm verify gates
     — currently a broken build silently causes gate false-passes against stale HTML.~~
     **DONE 2026-07-02:** gate 1 build-staleness check — postbuild marker file +
     mtime guard against data/site inputs.
+
+    **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+    (2026-07-02). Verified at HEAD: gate 1 still carries the build-staleness
+    check.
 13. **Mistral OCR (Document AI) as fallback extractor** for scanned/legacy J-book
     PDFs — current pipeline is XML-first and doesn't need it; revisit if pre-2015
     books (scan-only) enter scope.
@@ -470,19 +550,37 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     `verify_phase4.py`). Use the anchored form instead:
     `grep -rniE "\bocr\b|mistral|document.?ai" src/govbudget/ | grep -v test` —
     verified genuinely clean (0 hits) on 2026-08-07.
+
+    **Status: CLOSED** — swept 2026-08-24. Drawdown Sprint A, Task A1;
+    `c7293e5` (2026-08-12) — closed as moot, not built. The anchored grep in
+    the correction above returns 0 at HEAD. The `#4, #13, #26` blockquote near
+    the end of this section dates the closure 2026-08-08, four days before that
+    commit.
 14. **Feed title enrichment in dim_programs/exporter proper (5C):** 136 trajectory-only
     PEs currently have titles resolved at feed-export only; they need program pages and
     dim_programs entries so they appear in search and the sitemap.
     *Update 2026-07-02:* pages/search/sitemap half completed by backlog #17 (exporter
     synthesis from dim_pe_titles); dim_programs entries proper still require R-2/P-40
     detail ingestion and remain out of scope by design.
+
+    **Status: PARTIAL** — swept 2026-08-24. The page/search/sitemap half was
+    closed by #17 (`2efab28`, 2026-07-02, per the update above). The
+    `dim_programs`-entries half is out of scope by design pending R-2/P-40
+    detail ingestion, and no later commit changes that.
 15. **District choropleth + entity-graph viz (5C deferred):** interactive map of
     district spend distribution and force-directed entity graph; deferred pending
     D3/Mapbox integration decision.
+
+    **Status: OPEN** — swept 2026-08-24. Never scoped: named out of scope in
+    the drawdown plan; no commit references it. Verified at HEAD: no choropleth
+    or Mapbox code anywhere under `site/src`.
 16. **"Why?" link phrasing consistency (5C):** ~~several detail pages mix "How is this
     calculated?" / "Source" / "Why?" for the same action — standardize to one phrase.~~
     **DONE 2026-07-02:** standardized to the explicit `why <topic>? →` convention
     across detail pages.
+
+    **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+    (2026-07-02).
 17. **Program pages for trajectory-only PEs (5C):** ~~136 PEs have feed events but no
     program page; they produce dead links in the feed until pages are generated.~~
     **DONE 2026-07-02:** exporter synthesizes dim_programs-shaped rows for feed PEs
@@ -497,6 +595,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     as plain text in the program header, never a dead link. This also completes the
     page-generation half of backlog #14 (dim_programs entries themselves still
     require R-2/P-40 detail by design).
+
+    **Status: CLOSED** — swept 2026-08-24. Fleet round; recorded by `2efab28`
+    (2026-07-02).
 18. **llms.txt / sitemap origin gate:** ~~a build without NEXT_PUBLIC_SITE_URL bakes
     the placeholder origin into tracked/deployed artifacts (caught once in a fleet
     straggler, 2026-07-02). Add a verify leg: production artifacts must not contain
@@ -509,6 +610,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     sitemap-origin leg alone would false-pass a placeholder build verified
     without the env, since its fallback is the same placeholder).
     Pre-failure proof in reviews/5c-gates-pre-failure.txt.
+
+    **Status: CLOSED** — swept 2026-08-24. `0cf30e5`, recorded by `746287f`
+    (fix round A2, 2026-07-03).
 19. **LDA re-pull to activate curated aliases (from backlog #1):** **PARTIAL
     (2026-07-04).** ✅ The first-query-wins attribution bug is FIXED + committed
     (7bb1582): best-match-tier resolution (exact_family > curated_alias >
@@ -524,6 +628,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     path, run this as ONE unit after the cap resets: pull → ripple → dossier
     gate → (regenerate any orphaned dossiers) → measure live match rate → raise
     gate to 0.85 + boundary tests 43/50 only if the measured rate supports it.
+
+    **Status: PARTIAL** — swept 2026-08-24, and the entry's own "PARTIAL
+    (2026-07-04)" still holds. The attribution half is fixed (`7bb1582`,
+    recorded `599371b`, 2026-07-04). The deferred half — live `influence pull`
+    → ripple → dossier gate → match-gate raise — has never run: drawdown Task
+    D1 was written for it and no commit references that task. Verified at HEAD:
+    `_MATCH_THRESHOLD = 0.80` (`src/govbudget/verify_phase5a.py:62`), and
+    `data-seeds/client_aliases.csv` has not changed since 2026-07-02.
 20. **Render-level sankey label bbox gate leg (5H judge hardening):** ~~the
     exporter TDD bbox test proves the *precomputed* layout is collision-free,
     but if the site font or node metrics ever drift from the exporter's
@@ -540,6 +652,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     advances, GUTTER_MAX 250→270) + re-export. Pre-failure (CSS font
     injection, 166 errors) + live-catch record in
     reviews/5c-gates-pre-failure.txt.
+
+    **Status: CLOSED** — swept 2026-08-24. `9671f42`, recorded by `746287f`
+    (fix round A2, 2026-07-03).
 21. **favicon.ico 404:** ~~browsers request /favicon.ico by default; the site
     ships only the Next.js app-dir icon. Add a favicon.ico to site/public/
     (or a redirect) — found as the sole console error during 5H live
@@ -553,6 +668,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     BreakdownOverlay, reset on close; 4 new vitest cases); evidence-pack
     print + reduced-motion capture requirement documented in
     reviews/EVIDENCE-CONVENTIONS.md.
+
+    **Status: CLOSED** — swept 2026-08-24. `5d06e2a`, recorded by `746287f`
+    (fix round A2, 2026-07-03). Verified at HEAD: `site/public/favicon.ico`
+    exists.
 22. ~~**Confirm eval robustness fixes post API-cap reset:** run `verify-phase5`
     once the Anthropic cap resets — the table-equivalence groups, temperature-0
     determinism, SQL-determinism rules, and transient-error retries need one
@@ -567,6 +686,12 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     the stale expected was re-baselined (sanctioned mechanical fix). Still open
     as a nicety: the runner scores a transport ERROR as "correct" on
     REFUSE-expected questions — worth a distinct ERROR outcome someday (backlog).
+
+    **Status: CLOSED** — swept 2026-08-24. `aa3c5ae` (2026-07-05). The "still
+    open as a nicety" clause at the end of this entry — a distinct ERROR
+    outcome for REFUSE-expected questions — was later addressed by `c97c9e8`
+    ("an agent crash is not a correct refusal", 2026-08-12), which was never
+    filed as its own number.
 23. **Decade-parquet ↔ lake integrity leg** (Task 6 review): ~~a dedicated gate
     recomputing budget_lines_decade.parquet from the lake would close the
     residual artifact-tamper window for both parquets symmetrically.~~
@@ -578,12 +703,18 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     Postgres export, anchored by verify-phase5b1 — see gate docstring).
     Proof-can-fail recorded in reviews/5c-gates-pre-failure.txt; exhaustive
     off-gate sweep: all 32,233 grains recompute, 0 failures.
+
+    **Status: CLOSED** — swept 2026-08-24. `2460b6d`, recorded by `f74df36`
+    (fix round A1, 2026-07-03).
 24. **fid_to_bl_amount overlap equality assertion** (Task 6 review): ~~5,257
     fids exist in both budget_lines and decade parquets; assert amount
     equality so a divergent decade copy can't hide behind setdefault.~~
     **DONE 2026-07-03:** _load_fid_to_bl_amount now Decimal-compares every
     overlapping fid; any divergence FAILs verify-phase5b1 gate 1 with the
     offending fids listed (first 10). Live run: 5,257 overlap, 0 divergent.
+
+    **Status: CLOSED** — swept 2026-08-24. `07a5925`, recorded by `f74df36`
+    (fix round A1, 2026-07-03).
 25. **PB2024 P-1R title backfill** ~~(582 title-NULL rows; P-1 was fixed in the
     Task 5 improvements round; P-1R out of scope there).~~
     **DONE 2026-07-03:** the P-1R sheet uses the same 'Program
@@ -593,9 +724,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     lake re-exported. Honest residual: PB2025 (450) and PB2026 (403) P-1R
     rows are also title-NULL for the same historical reason — reload those
     two documents with the same pattern if P-1R titles ever render.
+
+    **Status: CLOSED** — swept 2026-08-24. `6c7cb3a`, recorded by `f74df36`
+    (fix round A1, 2026-07-03). The PB2025/PB2026 P-1R residual named in the
+    last sentence is still outstanding and was never given its own number.
 26. **Dead-PE 0605230F request_vs_request minting** if a feed claim ever
     covers request-vs-request swings (currently scoped to request-vs-actuals
     precisely because those are 100% minted).
+
+    **Status: CLOSED** — swept 2026-08-24. Drawdown Sprint A, Task A1;
+    `c7293e5` (2026-08-12), closed as contingent-not-applicable — the feed has
+    no `request_vs_request` event type for the fact to serve. The blockquote
+    near the end of this section dates it 2026-08-08, four days before that
+    commit.
 27. ✅ **DONE 2026-08-06 — R2 sync folded into the deploy loop + a live-asset
     check that runs itself.** The deploy drill (rebuild → Vercel `--prod`)
     never re-synced `data/site/pdfs → R2`, so PDF citations for every
@@ -619,6 +760,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     vacuous at best and green-on-last-deploy's-assets at worst. It is step 4 of
     `deploy.sh`, exits non-zero, and is runnable standalone to audit what is
     live. Proof-can-fail recorded (a real 404 for an absent sha).
+
+    **Status: CLOSED** — swept 2026-08-24. `712485d` (2026-08-06), matching the
+    in-entry marker. Verified at HEAD: `scripts/launch/deploy.sh` and
+    `scripts/launch/verify_live_assets.mjs` both exist.
 28. **Agency PEs with ingested decade detail but no FY2026 page (coverage
     enhancement, NOT a bug — surfaced by the 2026-07-05 audit).** A large set of
     program elements carry FY2017–2025 J-book/workbook detail in the warehouse
@@ -632,6 +777,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     explicit "no FY2026 request" note), gated for citation-completeness like the
     other tiers. Deferred — verify the exact eligible set and its editorial
     value before building.
+
+    **Status: OPEN** — swept 2026-08-24. Deferred by the entry itself and
+    assigned to drawdown Task D5 ("decide before building"), which never
+    executed; no commit in the history references #28.
 29. **Program-lineage Phase 2 (coverage + depth, from 5I).** The Phase-1 lineage
     layer is small-but-bulletproof (25 stated + 3 inferred edges) because regex
     over narratives is high-precision/low-recall and stated edges are FY2026-fenced
@@ -649,6 +798,13 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     partial-transfer chain truncation so the funding line is always explainable;
     and `_load_lineage_for_export`'s `fiscal_year or 0` coercion should skip/log an
     unparseable fy rather than emit a fy:0 edge (both unreachable in Phase 1).
+
+    **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task D3; never
+    executed. Verified at HEAD: `src/govbudget/lineage/extract.py:5` still says
+    prose transfers without an adjacent PE code "are left for the Inferred tier
+    / Phase-2 LLM". The stated-edge count has moved since this entry was
+    written (25 → 31 in the 5I review, then 31 → 29 by #53's retraction fix)
+    but the Phase-2 scope is untouched.
 30. **Program-level GAO ingestion (from PM Sprint 2 §P1-10).** The Oversight
     section on a program page currently shows only the DEPARTMENT-level GAO
     designation (`DOD — 5 high-risk areas`), now correctly labelled
@@ -664,6 +820,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     gave up, and cite each to its report page. Until that lands, the honest
     statement on the page is exactly what it now says: no program-specific GAO
     finding for this line is in the ingested data.
+
+    **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task D4; never
+    executed. Verified at HEAD: no GAO program-level mart under
+    `dbt/models/marts/`, so the honest statement described in the last sentence
+    is still the one the page makes.
 
 31. ✅ **DONE 2026-08-04 (PM Sprint 3 Task 1) — a gate now exercises a mobile
     viewport.** The defect class: three mobile blockers — `/companies/` rendering its
@@ -688,6 +849,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     Sprint 1 fact-id chip re-widened it past the Sprint 2 State-column fix); fixed by
     hiding the Programs column below `sm` with the count moved under the district
     code. Evidence: `docs/superpowers/reviews/5c-gates-pre-failure.txt`.
+
+    **Status: CLOSED** — swept 2026-08-24. `03806e6` (2026-08-04), matching the
+    in-entry marker. Verified at HEAD: `site/scripts/gates/mobile.mjs` exists
+    and has since grown legs (m3), (m4) and (m5) for #40 and #65.
 
 32. **Program-element lineage across a taxonomy renumber (from PM Sprint 3 Task 1b).**
     Task 1b withdrew 87 false "zeroed out in FY2026" feed cards, but the investigation
@@ -727,6 +892,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     at all (that gap is backlog #28/D5 territory, not this task's). A floor of 190 can
     never pass against a 165-page eligible set. **The verified floor is 165.**
 
+    **Status: OPEN — both halves** — swept 2026-08-24. The small, independently
+    shippable half (#32a, the "does not appear in the FY2026 request" page
+    note) was written up as drawdown Task B2 and never shipped: no such string
+    exists anywhere under `site/src` at HEAD, so the verified floor of 165 in
+    the correction above has never been used. The `pe_remap` edge type (#32b,
+    drawdown Task D2) is also unbuilt. No commit after `7e94882` (2026-08-04,
+    which filed this entry) references #32.
+
 33. ✅ **DONE 2026-08-05 (PM Sprint 3 Task 5b) — a derived parquet older than its
     inputs understated the headline figure on 201 pages by 73%.**
     `data/parquet/entities/entity_xwalk.parquet` was built 2026-06-10 20:19; the
@@ -762,6 +935,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     Centene new to the top 200 on FY2020–21 awards the stale window could not see.
     Evidence: `docs/superpowers/reviews/5c-gates-pre-failure.txt`.
 
+    **Status: CLOSED** — swept 2026-08-24. `8011f57` (2026-08-05), matching the
+    in-entry marker. Verified at HEAD: the gate 23 leg (d) script
+    `entitytotals-recompute.py` exists.
+
 34. **Eval q022's instruction contradicts its own ground truth (found by PM Sprint 3
     Task 5b; NOT fixed there, deliberately).** q022 asks for the MDA HHI and vendor-family
     count and instructs: *"Report both values as integers, exactly as the SQL returns them
@@ -776,6 +953,15 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     separately: the intent is "do not add or drop decimal places", so say that rather than
     "as integers", keep the `e.g. 2068, not 2068.0` example, and re-run the live eval to
     record the corrected score.
+
+    **Status: CLOSED** — swept 2026-08-24. **This entry carried no closure
+    marker of any kind before this sweep, and read as open.** Drawdown Sprint
+    A, Task A4; `c7293e5` (2026-08-12). Verified at HEAD:
+    `evals/phase5_questions.yaml` q022 now reads "Report both values exactly as
+    the SQL returns them — do not add or drop decimal places (e.g. 2068, not
+    2068.0; 2118.5, not 2118)", with `expected_answer` (2118.5, 3319),
+    `answer_sql` and `tolerance` untouched — exactly the separation this entry
+    asked for.
 
 35. ✅ **FIXED 2026-08-05 (Sprint 3 round 3).** The detail-grade tier is now
     defined by the J-book DETAIL ROWS: `getDetailGradeCount()` counts the
@@ -815,6 +1001,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     suite checks rendered counts against the parquet but never the parquet
     against the corpus claim.
 
+    **Status: CLOSED** — swept 2026-08-24. `f73b637` (2026-08-05), matching the
+    in-entry marker. The figures in it have since moved and the mechanism was
+    rebuilt: Sprint E (#67) and Sprint F (#45) took `dim_programs` 1,739 →
+    1,749 → 1,753, and `getDetailGradeCount` (`site/src/lib/data.ts:804`) no
+    longer asserts sidecar-count === dim_programs row count, because E1's
+    re-grain deliberately adds synthetic rows with no R-2/P-40 exhibit behind
+    them.
+
 36. **The eval gate's 100% citation-resolution bar is flaky against a
     nondeterministic agent (found by PM Sprint 3 verification).** `verify-phase5`
     FAILED on its first run of the sprint — accuracy 47/48 (threshold 44, fine),
@@ -832,6 +1026,16 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     answer scored correct but whose SQL was a literal echo (bounded, e.g. 2
     attempts, and record that it was retried), or make the gate report
     best-of-N with the per-attempt detail persisted. Do NOT lower the threshold.
+
+    **Status: CLOSED** — swept 2026-08-24. **This entry carried no closure
+    marker of any kind before this sweep, and read as open.** Drawdown Sprint
+    A, Task A5; `71fab68` (2026-08-12). Verified at HEAD:
+    `resolve_citation_with_retry` at `src/govbudget/verify_phase5.py:526`,
+    bounded at `max_attempts=2`, firing only when the answer already scored
+    correct and the failure is exactly the empty-`touched_tables` case, with
+    `citation_retry_count` and `citation_retried` persisted to the run
+    artifact. The instruction "Do NOT lower the threshold" was honoured — both
+    the 100% citation bar and the 44/48 accuracy bar are unchanged.
 
 37. ✅ **FIXED 2026-08-07 AT SOURCE — the grain is the PE, and the warehouse
     now owns the rollup.** `programs.json` held one row per PE with one `org`,
@@ -877,6 +1081,19 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     component grain (summing program totals there would credit OSD with
     DMACT's, DTRA's and DoDEA's money). See #45 for its coverage gap.
 
+    **Status: CLOSED — but its remedy was partly SUPERSEDED** — swept
+    2026-08-24. `03eab80`, recorded by `79ebc2f` (2026-08-07), matching the
+    in-entry marker: the defect (three shared BLI codes publishing a component
+    as the whole) is fixed and `fct_program_trajectory` exists. What did not
+    hold is the fix's premise. Sprint F (#45, `630bb0b`, 2026-08-21) found that
+    BLI 20/30/500's organizations are NOT components of one program — DLA
+    "Major Equipment" and DHRA "Personnel Administration" merely reuse the code
+    `500` — and un-summed them: `dbt/models/marts/fct_program_trajectory.sql`
+    at HEAD explicitly does not sum across organization for those three keys.
+    Read the last paragraph of this entry with that in mind: the agency FY2026
+    coverage gap it hands to #45 was closed by splitting the keys, not by
+    leaving them summed.
+
 38. ✅ **DONE 2026-08-06 — the escape hatch WAS conflating two exemptions, and
     the split is the fix.** `/methodology/` wrapped its entire
     `<div class="container">` in `data-source-text="methodology"`, so the
@@ -917,6 +1134,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     three these sweeps would have caught). Proof-can-fail recorded for all four
     arms.
 
+    **Status: CLOSED** — swept 2026-08-24. `712485d` (2026-08-06), matching the
+    in-entry marker. Verified at HEAD:
+    `site/scripts/gates/source-text-kinds.mjs` exists.
+
 39. ✅ **FIXED 2026-08-13 — a published, enumerated titles-override table,
     applied at every point the exporter emits a program title.**
     `Joint Hypersonic Technology Development &Transition` (PE 0603183D8Z) was
@@ -947,6 +1168,9 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     site-wide (confirmed on the built HTML) — this was never a display-time
     regex.
 
+    **Status: CLOSED** — swept 2026-08-24. `30dee83` (2026-08-13), matching the
+    in-entry marker. Verified at HEAD: `data-seeds/title_overrides.csv` exists.
+
 40. **The mobile navigation drawer shipped as a 32px sliver on every page —
     and no gate could see it (found by round-3 visual judging, FIXED
     2026-08-05).** The panel is `absolute left-0 top-14 w-full`, written to
@@ -964,6 +1188,11 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     clipped by its own box, no document widening — with proof-can-fail
     recorded. Any future affordance that only exists in an interaction state
     needs its own leg; "the page looks fine on load" is not coverage.
+
+    **Status: CLOSED** — swept 2026-08-24. `7fb62fa` (2026-08-05), matching the
+    "FIXED 2026-08-05" in this entry's own headline. Verified at HEAD: leg (m4)
+    is present in `site/scripts/gates/mobile.mjs`, so the interaction-state
+    coverage this entry's LESSON demanded actually shipped.
 
 41. **The decade trajectory chart drew a cited figure as visually zero on all
     1,741 program pages (found by round-3 visual judging, FIXED 2026-08-05).**
@@ -986,6 +1215,10 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
     units, `#9ca3af`→`#6b7280`. `axisLabelYears` is exported and unit-tested,
     including "no two labels closer than the pitch" across every span 4–16
     years.
+
+    **Status: CLOSED** — swept 2026-08-24. Chart fix `2a8d56a` (2026-08-05);
+    x-axis remnant `b7bc916` (2026-08-07). Verified at HEAD: `axisLabelYears`
+    is exported from `site/src`.
 
 ## PM-review Sprint 3 — round-3 visual judging
 
@@ -1065,6 +1298,13 @@ chart baseline (#41).
     route, not a fix-round edit, and it wants a gate leg that measures rendered
     characters-per-line so it cannot drift back.
 
+    **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task C1 (#42 +
+    #43 together); never executed, and no commit after `b87acbf` (2026-08-07,
+    which filed it) references #42. Measured at HEAD: `grep -rho
+    'max-w-[a-z0-9]*' site/src/app --include=page.tsx | sort -u` still returns
+    ten distinct values (`2xl 3xl 4xl 5xl 6xl 7xl full md sm xl`), so no single
+    spine has been imposed and the reading measure is still uncapped.
+
 43. **Fact-ID chips are ON by default and outweigh the figures they annotate
     (found by round-3 visual judging, panel 2 — NOT fixed, needs an owner
     decision).** All three judges on the second panel reported the same thing:
@@ -1078,6 +1318,15 @@ chart baseline (#41).
     quieter than its figure (smaller, lower contrast, no fill); reveal on
     hover/focus; or default OFF with the dotted underline carrying the signal.
     Whichever, the figure should be the loudest thing in its own cell.
+
+    **Status: OPEN — awaiting the owner decision this entry asks for** — swept
+    2026-08-24. Assigned to drawdown Task C0 ("the Fact-ID default is the
+    owner's call"); no decision is recorded anywhere in this file or the
+    history. Verified at HEAD: `site/src/components/receipts-toggle.tsx:51` is
+    still `useState(true)` and
+    `site/src/__tests__/receipts-default.test.tsx:114` still asserts the toggle
+    is "pressed by default" — the PM Sprint 1 §P1-1 decision stands, unreversed
+    and unmodified.
 
 44. ✅ **FIXED 2026-08-07 — every feed headline figure now clicks through to
     its source.** `data-source-text="headline"` earned the currency-scan
@@ -1110,6 +1359,10 @@ chart baseline (#41).
     `/feed/` renders exactly as many headline prose cites as the sidecar
     declares. Suite stays 24 gates.
 
+    **Status: CLOSED** — swept 2026-08-24. `03eab80` (2026-08-07), matching the
+    in-entry marker. Verified at HEAD: `src/govbudget/export_site.py` emits
+    `headline_segments`.
+
 45. **The agency FY2026 sum's coverage gap (enumerated by #37, deliberately
     not closed there).** `agencies.json`'s `fy2026_total_thousands` is the
     COMPONENT grain by design — an agency total is an agency-grain question,
@@ -1125,12 +1378,49 @@ chart baseline (#41).
     which agency page lists a shared BLI. Written down at the call site in
     `export_site.py` in the meantime.
 
+    **Status: CLOSED** — swept 2026-08-24. **This entry carried no in-entry
+    marker before this sweep; its closure was recorded only in a blockquote
+    roughly 110 lines below it.** Sprint F; `630bb0b` (2026-08-21). The fix was
+    not the dimension change this entry priced — the slug keys on organization
+    (`{pe_bli}-{ORGANIZATION}`) instead: `dim_programs` 1,749 → 1,753,
+    key-collision exclusions 11 → 4. Verified at HEAD: `is_org_split` is
+    present under `src/govbudget/`.
+
+46. **[NO ENTRY WAS EVER FILED. Ledger-gap note added 2026-08-24 — this is a
+    reconstruction, not a contemporaneous record.]** The number was allocated by
+    the backlog-drawdown plan
+    (`docs/superpowers/plans/2026-08-07-backlog-drawdown.md`, Task A2:
+    "`CURRENCY_RE` cannot see trillions (new entry — file as #46)", whose own
+    file list says "Modify: `docs/superpowers/ROADMAP.md` (add #46, closed in the
+    same commit)"). The work shipped; the ROADMAP edit did not, so the numbering
+    has skipped 46 ever since. Per `c7293e5` (2026-08-12): the sweep was not
+    blind to trillions — it fired but truncated the token ("$1.2T" reported as
+    "$1.2"); the real breakage was `prose-allowlist.mjs:90` rejecting a `$T`
+    entry as an illegal pattern, so a legitimate trillions figure could never be
+    allowlisted. Both regexes gained `T`, pinned together by a test.
+
+    **Status: CLOSED** — swept 2026-08-24. `c7293e5` (2026-08-12), drawdown
+    Sprint A Task A2. Verified at HEAD:
+    `site/scripts/gates/__tests__/currency-re.test.mjs` exists. The defect
+    description above was reconstructed on 2026-08-24 from the plan and the
+    commit message — no one wrote it down here at the time.
+
 **#47–#53 (filed 2026-08-07, an independent multi-persona review): a true,
 correctly-cited figure wearing a false label.** Every one of the six passes
 every existing gate, because those gates check number↔citation and nothing
 checks claim↔citation. Sprint A′ (`docs/superpowers/plans/
 2026-08-07-sprint-a-prime-claim-citation.md`) closes all six and adds the
 gate family that makes the class visible.
+
+*Correction 2026-08-24 (found by the status sweep; the paragraph above and the
+blockquote below are left as written).* **"Six" is wrong — #47 through #53
+inclusive is SEVEN entries**, and all seven were filed by `0abc8c3` in one
+commit, and all seven were fixed: `7f0d42a` (#47), `2d95516` (#48), `376a061` +
+`a387077` (#49), `2201d6e` + `756620b` (#50), `7bebd7b` (#51), `9070d11` (#52),
+`99439bd` (#53). The sprint's own process note two paragraphs down says "Every
+one of the **seven** tasks", so the count is inconsistent inside this same
+block. No entry was dropped or double-counted; only the word is wrong. Recorded
+rather than silently rewritten, per this file's supersede-not-delete rule.
 
 > **✅ ALL SIX CLOSED 2026-08-08** on branch `sprint-a-prime-claim-citation`
 > (20 commits, HEAD `b41ddaa`). Verified at final HEAD: **24/24 gates PASS**,
@@ -1177,10 +1467,24 @@ gate family that makes the class visible.
     and every program page say request. The source workbook has no FY2026
     enacted column.
 
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure was recorded only in the `#47–#53` blockquote above. Sprint
+    A′; `7f0d42a` (2026-08-07), with gate 2 leg (t) added so the vocabulary
+    cannot drift back. Verified at HEAD: `site/src/app/page.tsx:308` reads
+    "between FY2025 enacted and the FY2026 request" — both labels true. (The
+    line number in this entry is now stale; the text moved.)
+
 48. **The basis chip says "P-1 TOA" on R-1 lines.** `site/src/lib/basis.ts:12`
     hardcodes one label; `programs.json.exhibit_family` is rdte=1077 /
     procurement=664, so 1,077 of 1,741 (62%) are mislabelled. The correct
     value already ships.
+
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `2d95516` (2026-08-07). Verified at HEAD: `site/src/lib/basis.ts` sets
+    `BASIS_LABEL.toa` to the honest both-exhibits form `"P-1/R-1 TOA"`, with
+    `basisChipForExhibit` resolving rdte → "R-1 TOA" and procurement → "P-1
+    TOA" wherever the call site can prove the row's exhibit.
 
 49. **`/programs/` publishes a row counter over a 59.3%-complete dollar
     universe.** Columns sum to $228.46B against the site's own $385.3B
@@ -1189,11 +1493,25 @@ gate family that makes the class visible.
     ("not covered by the R-1/P-1 rollups") is false — COLUMBIA is a P-1 line
     and its own page says so.
 
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `376a061` (2026-08-07) plus `a387077` (2026-08-08). Verified at HEAD:
+    `export_site.py` emits enumerated exclusions with a `key_collision` reason
+    and a quantified subtotal. The coverage figure has moved on since — 58.0% →
+    59.4% via #67, and the exclusion count 17 → 11 → 4 via #67 and #45.
+
 50. **One-time reconciliation money is folded into every FY2026 "Request"
     figure.** `fy_2026_total` $385.27B = disc $296.26B + reconciliation
     $89.01B. Against `fy_2025_enacted` $321.88B the headline basis reads
     +19.7% and the discretionary basis reads −8.0%. Long Range Kill Chains
     headlines +3052.9% on $1,916k of discretionary.
+
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `2201d6e` plus `756620b` (2026-08-08), gate 23 leg (g). Verified at HEAD:
+    `Fy26SplitNote` is rendered from `site/src/components/program-figures.tsx`.
+    Scope was `/program/*` only until #54 widened it to `/feed/`, `/years/` and
+    the explorer.
 
 51. **District totals add one award once per matched program element.**
     `fct_district_programs` joins on `award_id_piid` only, never `pe_bli`,
@@ -1201,16 +1519,40 @@ gate family that makes the class visible.
     award-distinct = 43.6% inflation ($2.432B). AK-00 publishes $1.05B from
     one $209.3M award (5.0×).
 
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `7bebd7b` (2026-08-08), with gate 9 leg (e) and
+    `assert_district_totals_no_double_count`. Verified at HEAD:
+    `dbt/models/marts/fct_district_programs.sql:20` now joins on `select
+    distinct award_piid, pe_bli, ...`. Published figure fell $8.01B → $5.58B,
+    labelled as a correction.
+
 52. **"Program elements named in lobbying filings" are single-common-word
     matches.** `mentions.py` emits a row on ONE title token ≥5 chars; the
     `GENERIC_WORDS` stoplist misses BASED, SERVICES (it lists singular
     SERVICE), ACQUISITION, ACTIVITIES, CHEMICAL. Aggregates (34,538
     sitewide) carry no caveat.
 
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `9070d11` (2026-08-08). Verified at HEAD:
+    `src/govbudget/influence/mentions.py` now emits three evidence tiers
+    (`pe_literal`, `alias`, `multi_token` requiring ≥2 distinct non-generic
+    tokens) and `GENERIC_WORDS` (line 80) includes ACQUISITION, ACTIVITIES,
+    BASED and CHEMICAL. Published aggregate fell 34,538 → 10,447; #55's
+    alias-loader fix later took it to 10,560.
+
 53. **A "Stated · cited" lineage edge is built from a sentence that
     retracts it.** `/program/1203154SF/` asserts realigned → 1203609SF from
     "was erroneously transferred"; both edges share one page-level
     `fact_id` `10a4acbaa3270c74`.
+
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in the `#47–#53` blockquote above. Sprint A′;
+    `99439bd` (2026-08-08). Verified at HEAD: `no_retraction_leg` at
+    `src/govbudget/verify_lineage.py:780` is `verify-lineage` leg (f), and
+    `src/govbudget/lineage/extract.py:154` implements the self-retraction test.
+    Stated edges fell 31 → 29.
 
 54. **#50's reconciliation label stops at the program page.** Sprint A′ split
     discretionary from one-time reconciliation money and labelled it on
@@ -1221,6 +1563,14 @@ gate family that makes the class visible.
     Deliberately scoped out of A′4 rather than expanded mid-task; filed so #50
     is not read as fully closed. The fix is to widen leg (g) past `/program/*`
     once those surfaces carry the split.
+
+    **Status: CLOSED** — swept 2026-08-24. No in-entry marker before this
+    sweep; closure recorded in a blockquote below. `cb7db2d`, recorded by
+    `de3e65c` (both 2026-08-19) — that blockquote dates it 2026-08-14, five
+    days before the commits that did the work. Verified at HEAD:
+    `Fy26SplitNote` is imported by `site/src/app/feed/page.tsx` and
+    `site/src/components/years-matrix.tsx`, so the split now reaches the three
+    surfaces this entry named.
 
 55. **`/company/lockheed-martin/` is honest but still incomplete.** #52 cut
     Lockheed's mention rows 1,296 → 366 by removing single-common-word matches,
@@ -1250,6 +1600,16 @@ gate family that makes the class visible.
     program now appears on its own page, which was this entry's whole point.
     Equivalent aliases for RTX's and Boeing's flagship lines are the same
     shape of work and are NOT done — re-file if they matter.
+
+    **Status: CLOSED (core) with a named, deliberately-not-done remainder** —
+    swept 2026-08-24. The loader bug and the F-35/JSF seed entries are
+    `9aa3a80` and `c7293e5`, both 2026-08-12 — this entry's "Correction
+    2026-08-08" and "CLOSED 2026-08-08" are both four days early. Verified at
+    HEAD: `F-35` is present in `dbt/seeds/program_aliases.csv`. The RTX/Boeing
+    remainder was investigated on 2026-08-21 (`548e1d9`) and ruled owner
+    curation work rather than engineering — see the last blockquote in this
+    section; the loader (this entry's actual bug) is fixed, the seed is the
+    gap.
 
 > **✅ #56–#59 CLOSED 2026-08-08** on branch `sprint-b-prime-remaining-review`.
 > **#56** six fused pages de-fused (3010 $2.62B → $20.9M and five more), dbt
@@ -1382,6 +1742,14 @@ gate family that makes the class visible.
   collision-overwrite is the plausible mechanism — but plausible is exactly what
   the other two diagnoses were. Reproduce it before fixing it. Filed rather than
   guessed at a third time.
+
+  **Status: OPEN — and deliberately undiagnosed** — swept 2026-08-24. Filed by
+  `b34d469` (2026-08-21); no commit since claims a fix, and the entry's own
+  instruction ("Reproduce it before fixing it") has not been carried out. The
+  `(account, pe_bli)` re-grain it names as the plausible mechanism is Sprint E
+  (`a8cc403`, 2026-08-20); Sprint F (`630bb0b`, 2026-08-21) added organization
+  to the same identity, which widens rather than removes the collision surface
+  this entry suspects.
 
 > **✅ #67 CLOSED 2026-08-21 (Sprint E — the key split).** Each (account,
 > pe_bli) pair now has its own page. **10 programs worth $5.35B** that were
