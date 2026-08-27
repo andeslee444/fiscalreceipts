@@ -253,9 +253,15 @@ export function Fy2026AbsentNote({
         line for it; its last workbook figure is FY{fy2026Absent.last_fy}.{" "}
         {fy2026Absent.jbook_fy2026_zero ? (
           <>
+            {/* "recorded as zero", never the numeral. Gate 2 rejects any
+                currency pattern outside [data-amount], and it was right to:
+                a dollar figure in prose is an UNCITED figure, which is the
+                one thing this site does not publish. The actual value is
+                rendered, cited, in the trajectory table below -- this
+                sentence points at it rather than restating it. */}
             The PB2026 J-book detail below does carry an FY2026 row for this
-            line, at $0. A workbook blank and a documented zero are different
-            records, and this page shows both.{" "}
+            line, recorded as zero. A workbook blank and a documented zero are
+            different records, and this page shows both.{" "}
           </>
         ) : null}
         An absent line is not by itself an ending — PB2026 renumbered program
