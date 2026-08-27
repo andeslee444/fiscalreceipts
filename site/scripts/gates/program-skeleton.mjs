@@ -1176,8 +1176,9 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
           say(
             badService,
             `program-skeleton(h4): /program/${slug}/ (org ${pageOrg}) renders ` +
-              `a ${service} GAO assessment of "${program}" — a ${service} ` +
-              `program assessment cannot be about a line in another service's book`,
+              `${/^[aeiou]/i.test(service) ? "an" : "a"} ${service} GAO ` +
+              `assessment of "${program}" — that service's program assessment ` +
+              `cannot be about a line in another service's book`,
           );
         }
       }

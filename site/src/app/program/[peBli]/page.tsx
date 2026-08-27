@@ -946,11 +946,18 @@ export default async function ProgramPage({
             )}
           </div>
         ) : (
+          // 246 pages reach this branch — the rollup tier, whose synthesized
+          // row carries a service NAME where getGaoOverlayForOrg expects an
+          // org CODE, plus one DHA line whose org is not in the overlay map.
+          // They were the only program pages that never made #30's statement
+          // at all, which is a worse silence than the note it replaces, so
+          // the statement is made here too.
           <SectionEmpty title="Oversight">
             No GAO high-risk areas or improper-payment overlays map to{" "}
             {serviceOrgName(program.org)} in the ingested GAO data — absence of
             an overlay is not a clean bill of health, only absence from those
-            two lists.
+            two lists. No program-specific GAO finding for this line is in the
+            ingested data.
           </SectionEmpty>
         )}
       </ProgramSection>
