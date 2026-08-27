@@ -239,15 +239,39 @@ export function Fy2026AbsentNote({
         data-fy2026-absent=""
         className="text-xs leading-relaxed text-muted-foreground"
       >
+        {/* Every clause here is conditioned on something the PAGE shows,
+            because the first version was false on 179 of 319 pages: it
+            claimed "no FY2026 request" over cited FY2026 money, called a
+            documented $0 an absence, and denied a successor the page named
+            with a citation. The headline is now scoped to the workbook —
+            the one record that IS blank — and each further claim renders
+            only where it holds. */}
         <strong className="text-foreground">
-          No FY2026 request for this program element.
+          No FY2026 R-1/P-1 request line for this program element.
         </strong>{" "}
-        The FY2026 President&apos;s Budget R-1/P-1 request workbook carries no
-        FY2026 line for it; its last figure in this edition is FY
-        {fy2026Absent.last_fy}. An absent line is not by itself an ending —
-        PB2026 renumbered program elements at scale across the services, so
-        this work may continue under a different number. This page names no
-        successor, because no ingested budget document states one.
+        The FY2026 President&apos;s Budget request workbook carries no FY2026
+        line for it; its last workbook figure is FY{fy2026Absent.last_fy}.{" "}
+        {fy2026Absent.jbook_fy2026_zero ? (
+          <>
+            The PB2026 J-book detail below does carry an FY2026 row for this
+            line, at $0. A workbook blank and a documented zero are different
+            records, and this page shows both.{" "}
+          </>
+        ) : null}
+        An absent line is not by itself an ending — PB2026 renumbered program
+        elements at scale across the services and defense agencies, so this
+        work may continue under a different number.{" "}
+        {fy2026Absent.has_successor ? (
+          <>
+            Where this line&apos;s funding went is recorded under Program
+            Lineage below.
+          </>
+        ) : (
+          <>
+            No ingested budget document in this corpus states a successor for
+            this line.
+          </>
+        )}
       </p>
     </ScopeNote>
   );

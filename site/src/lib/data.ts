@@ -742,12 +742,26 @@ export interface Fy26Split {
  * scale). Absent everywhere else. `last_fy` is the latest year the workbook
  * still funds the line, and the year the note names.
  *
- * Deliberately carries no successor: the corpus cannot prove one, and naming
- * a guess would be a fabricated citation. Successor edges are #32(b), folded
- * into backlog #29.
+ * Deliberately carries no successor OF ITS OWN: the corpus cannot prove one
+ * from workbook rows, and naming a guess would be a fabricated citation.
+ * Successor EDGES are #32(b), folded into backlog #29 — but where the
+ * lineage rail already publishes a cited successor, `has_successor` says so,
+ * because the note used to deny one on five pages that named it three
+ * inches below (837170 → 0207279F, quoted verbatim from the J-book).
+ *
+ * `jbook_fy2026_zero` marks the 173 pages whose J-book detail carries an
+ * FY2026 row at exactly $0. A workbook blank and a documented zero are
+ * different records; conflating them is the error that produced the 87
+ * withdrawn "zeroed out in FY2026" feed cards.
+ *
+ * Pages whose J-book detail shows POSITIVE FY2026 money never get this
+ * payload at all — the exporter returns None, so the note cannot render
+ * over a figure that contradicts it.
  */
 export interface Fy2026Absent {
   last_fy: number;
+  jbook_fy2026_zero: boolean;
+  has_successor: boolean;
 }
 
 export interface ProgramDetails {

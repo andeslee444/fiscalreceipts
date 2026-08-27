@@ -8949,3 +8949,69 @@ before parquet in the exporter. After the run completed, 1,585 passed / 0
 failed. Recorded because a parity failure naming brand-new PEs is exactly the
 shape of a real defect, and the reason it was not one is the timestamps, not
 a hunch.
+
+================================================================================
+GATE 21 leg (g) — WIDENED after review found the note false on 179/319 pages.
+2026-08-27.
+================================================================================
+
+WHAT WAS WRONG. #32(a) shipped a note on 319 program pages. Two independent
+reviews (different briefs, no contact) found the SAME two criticals:
+
+ 1. Three pages -- 0603669D8Z / 0602669D8Z / 0604669D8Z, Microelectronics
+    Commons -- rendered a bold "No FY2026 request for this program element"
+    directly above their own R-2/P-40 table showing an FY26 Request column of
+    $260.7M / $79.7M / $59.6M, each a cited jbook_details fact pointing at
+    DTE_CHIPS_PB_2026.pdf#page=40. The exporter ALREADY KNEW: those pages
+    carry absence_reason "no-rollup", whose definition at export_site.py:4600
+    warns that claiming non-publication is "a LIE when the page's line-item
+    tables DO show rows for this fiscal year".
+
+ 2. Five pages -- 837170, 0602201F, 0604113A, 0603216F, 0605216A -- asserted
+    "This page names no successor, because no ingested budget document states
+    one" while rendering a "Successors (funding flowed out)" rail, confidence
+    "stated", quoting the document verbatim. 837170's rail quotes "The FY 2026
+    efforts in this Program Element (PE) were transferred to PE 0207279F".
+    Both halves of that sentence were false there.
+
+ 3. 173 pages carry an FY2026 J-book row at exactly $0.000 (resolution
+    "zero_amount") while the note said "its last figure in this edition is
+    FY2025". A workbook blank and a documented zero are DIFFERENT RECORDS.
+    fct_feed_events.sql:60-70 and /methodology/#feed-zeroed_fy2026 state that
+    rule -- using 0601101E as the worked example -- and 0601101E was one of
+    the contradicting pages.
+
+WHY THE GATE COULD NOT CATCH ANY OF IT. recomputeFy2026Absent() was a genuine
+independent reimplementation of the EXPORTER'S predicate -- and the exporter's
+predicate read only budget_lines. Two implementations of one wrong scope
+agreeing is not corroboration. The contradicting figures live in d.details,
+which the gate never opened, and the successor rail lives outside the note
+element, which check 6 never left.
+
+PROOF IT CAN FAIL -- widened leg run against out/ as built pre-fix:
+
+  program-skeleton(g): /program/0602669D8Z/ renders the "no FY2026 request"
+    note but its PB2026 J-book detail publishes FY2026 money on this page
+    (largest single row $79.7M) - the note is a false claim about this page's money
+  program-skeleton(g): /program/0603669D8Z/ ... (largest single row $260.7M) ...
+  program-skeleton(g): /program/0604669D8Z/ ... (largest single row $59.6M) ...
+
+A SECOND ERROR CAUGHT INSIDE THE FIX, recorded because it is the same species
+one layer down. The first cut of that message read "its PB2026 workbook DOES
+carry an FY2026 row" for every stray -- false for the case that actually
+shipped, since these pages' workbook IS blank and their J-book detail is what
+carries the money. An error message that misexplains its own finding sends the
+next reader to the wrong file. The second cut then SUMMED every positive
+FY2026 detail row and reported $1042.9M where the page's largest FY26 Request
+figure is $260.7M: the detail carries the same money under BudgetYearOne and
+BudgetYearOneBase and at both project and rollup grain. An inflated number
+inside the diagnostic built to catch inflated claims. Now reports the largest
+single row, which cannot double-count.
+
+POPULATION 319 -> 316. NOT a relaxation. MIN_FY2026_ABSENT_PAGES tracks the
+true population and the three Microelectronics Commons pages were removed from
+it because they publish positive cited FY2026 money and must never carry an
+absence note. Floor equals population, so any drop still fails.
+last_fy split moves 160/159 -> 157/159.
+
+GATE COUNT: unchanged -> 24. Leg (g) is a leg of gate 21.

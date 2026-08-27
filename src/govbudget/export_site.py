@@ -4014,7 +4014,11 @@ def _summary_absence_block() -> dict:
 # would be a fabricated citation, the defect species #53 and #69 closed. Gate
 # 21 leg (g) pins the note's wording, recomputes this predicate independently,
 # and fails if the note ever names another program element.
-def _fy2026_absent_block(budget_lines: list[dict]) -> dict | None:
+def _fy2026_absent_block(
+    budget_lines: list[dict],
+    details: list[dict] | None = None,
+    lineage: dict | None = None,
+) -> dict | None:
     """`fy2026_absent` sidecar payload, or None when the page is not one.
 
     Reads the sidecar's OWN PB2026 workbook rows — already scoped to the
@@ -4036,7 +4040,49 @@ def _fy2026_absent_block(budget_lines: list[dict]) -> dict | None:
     ]
     if not funded:
         return None
-    return {"last_fy": max(funded)}
+
+    # The workbook being blank is NOT the same as this page publishing
+    # nothing for FY2026, and the first version of this block conflated
+    # them. Two independent reviews found the note false on 179 of the 319
+    # pages it rendered on. Both extra inputs exist to stop that.
+    #
+    # (1) POSITIVE J-book money => no note at all. /program/0603669D8Z/ and
+    # its two Microelectronics Commons siblings render an FY26 Request of
+    # $260.7M / $79.7M / $59.6M in their own R-2/P-40 tables, each a cited
+    # jbook_details fact, under a bold "No FY2026 request". The exporter
+    # already knew: those pages carry absence_reason "no-rollup", whose own
+    # definition below warns that claiming non-publication is "a LIE when
+    # the page's line-item tables DO show rows for this fiscal year".
+    fy26_details = [d for d in (details or []) if d.get("fy") == 2026]
+    if any((d.get("amount_millions") or 0) > 0 for d in fy26_details):
+        return None
+
+    # (2) A DOCUMENTED ZERO is a record, not a silence. 173 pages carry
+    # FY2026 J-book rows at exactly $0.000 (resolution "zero_amount" --
+    # <r2:BudgetYearOne>0.000</r2:BudgetYearOne> is verbatim in the PB2026
+    # XML). Saying "its last figure in this edition is FY2025" on a page
+    # whose own card, sparkline and trajectory row all show FY26 $0 is the
+    # 87-feed-card error wearing different words: promoting one basis's
+    # silence into a claim about the whole record. fct_feed_events.sql and
+    # /methodology/#feed-zeroed_fy2026 state the rule -- "DoD distinguishes
+    # blank from zero inside a single file" -- using 0601101E as the worked
+    # example, which was one of the pages contradicting it.
+    jbook_zero = bool(fy26_details)
+
+    # (3) The successor denial was falsifiable BY THE PAGE ITSELF. Five
+    # pages render a "Successors (funding flowed out)" rail, confidence
+    # "stated", quoting the document verbatim -- 837170's rail quotes "The
+    # FY 2026 efforts in this Program Element (PE) were transferred to PE
+    # 0207279F" -- directly below a sentence saying no ingested budget
+    # document states one. Both halves were false there.
+    rail = (lineage or {}).get("rail") or {}
+    has_successor = bool(rail.get("successors"))
+
+    return {
+        "last_fy": max(funded),
+        "jbook_fy2026_zero": jbook_zero,
+        "has_successor": has_successor,
+    }
 
 
 # amount_type slug → the fy26_split side key it feeds (backlog #50).
@@ -7435,7 +7481,9 @@ def _write_all_sidecars(
         if slug in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[slug]
         # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
-        _fy26_absent = _fy2026_absent_block(own_bl)
+        _fy26_absent = _fy2026_absent_block(
+            own_bl, obj.get("details"), obj.get("lineage")
+        )
         if _fy26_absent is not None:
             obj["fy2026_absent"] = _fy26_absent
             _n_fy2026_absent += 1
@@ -7522,7 +7570,9 @@ def _write_all_sidecars(
         if pe_bli in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[pe_bli]
         # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
-        _fy26_absent = _fy2026_absent_block(obj["budget_lines"])
+        _fy26_absent = _fy2026_absent_block(
+            obj["budget_lines"], obj.get("details"), obj.get("lineage")
+        )
         if _fy26_absent is not None:
             obj["fy2026_absent"] = _fy26_absent
             _n_fy2026_absent += 1

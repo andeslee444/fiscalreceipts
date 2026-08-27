@@ -549,7 +549,12 @@ function runWhatItIsLeg({ errors, notes }) {
  *  PB2026 and counted per page, FY2025-only is 159 and FY2024-or-FY2025 — the
  *  entry's own definition, the one that reproduces its per-service figures —
  *  is 319. */
-const MIN_FY2026_ABSENT_PAGES = 319;
+// 319 -> 316 on 2026-08-27. NOT a relaxation: three pages
+// (0603669D8Z, 0602669D8Z, 0604669D8Z -- Microelectronics Commons) were
+// removed from the population because they publish POSITIVE cited FY2026
+// money and must never carry an absence note. The floor tracks the true
+// population; lowering it here is the fix landing, not the bar moving.
+const MIN_FY2026_ABSENT_PAGES = 316;
 
 /** The stable hook the page must carry. */
 const FY2026_ABSENT_ATTR = "data-fy2026-absent";
@@ -593,7 +598,32 @@ function recomputeFy2026Absent(d) {
     )
     .map((r) => r.fy);
   if (prior.length === 0) return null;
-  return { last_fy: Math.max(...prior) };
+
+  // WIDENED 2026-08-27 after two independent reviews found the note false
+  // on 179 of the 319 pages it rendered on. This function previously read
+  // ONLY budget_lines -- the same workbook-only predicate the exporter
+  // used -- so it mirrored the exporter's blind spot instead of checking
+  // it. Two implementations of one wrong scope agreeing is not
+  // corroboration, and that is exactly why leg (g) passed on every page
+  // the reviewers flagged.
+  //
+  // The page's OWN J-book detail rows are the record the note was
+  // contradicting, so they are now part of the predicate.
+  const fy26Details = (d.details ?? []).filter((r) => r.fy === 2026);
+  // Positive J-book money => the page publishes an FY2026 request, so no
+  // note may render. /program/0603669D8Z/ and its two Microelectronics
+  // Commons siblings rendered "No FY2026 request" over cited FY26 Request
+  // figures of $260.7M / $79.7M / $59.6M.
+  if (fy26Details.some((r) => Number(r.amount_millions) > 0)) return null;
+  return {
+    last_fy: Math.max(...prior),
+    // A documented $0 is a record, not a silence. 173 pages carry an
+    // FY2026 J-book row at exactly 0.000.
+    jbook_fy2026_zero: fy26Details.length > 0,
+    // 5 pages render a cited "Successors (funding flowed out)" rail while
+    // the note denied any document named one.
+    has_successor: Boolean(d.lineage?.rail?.successors?.length),
+  };
 }
 
 function runFy2026AbsentLeg({ errors, notes, sidecars }) {
@@ -646,7 +676,7 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
   let stray = 0;
   let badNotes = 0;
   const lastFyCounts = new Map();
-  for (const [slug] of sidecars) {
+  for (const [slug, d] of sidecars) {
     const p = pageHtmlPath(slug);
     if (!fs.existsSync(p)) {
       if (expected.has(slug)) {
@@ -663,10 +693,29 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
       if (marked) {
         stray++;
         if (stray <= 5) {
+          // Name WHICH record contradicts the note. The original message
+          // said "its PB2026 workbook DOES carry an FY2026 row" for every
+          // stray, which is itself false for the case that actually
+          // shipped: the Microelectronics Commons pages' workbook is
+          // blank; their J-BOOK DETAIL carries the money. An error message
+          // that misexplains its own finding sends the next reader to the
+          // wrong file.
+          // LARGEST single row, never a sum: the detail carries the same
+          // money under several scenarios (BudgetYearOne and
+          // BudgetYearOneBase) and at both project and rollup grain, so
+          // adding them double-counts. A first cut of this message summed
+          // them and reported $1042.9M where the page's largest FY26
+          // Request figure is $260.7M -- an inflated number inside the
+          // very diagnostic that exists to catch inflated claims.
+          const fy26Pos = (d.details ?? [])
+            .filter((r) => r.fy === 2026 && Number(r.amount_millions) > 0)
+            .reduce((a, r) => Math.max(a, Number(r.amount_millions)), 0);
+          const why = fy26Pos > 0
+            ? `its PB2026 J-book detail publishes FY2026 money on this page (largest single row $${fy26Pos.toFixed(1)}M)`
+            : `its PB2026 workbook DOES carry an FY2026 row`;
           errors.push(
             `program-skeleton(g): /program/${slug}/ renders the "no FY2026 request" note ` +
-              `but its PB2026 workbook DOES carry an FY2026 row — the note is a false ` +
-              `claim about this page's money`,
+              `but ${why} — the note is a false claim about this page's money`,
           );
         }
       }
