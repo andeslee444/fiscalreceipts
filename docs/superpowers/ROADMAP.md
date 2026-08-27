@@ -629,7 +629,23 @@ docs/superpowers/ROADMAP.md`.
     gate → (regenerate any orphaned dossiers) → measure live match rate → raise
     gate to 0.85 + boundary tests 43/50 only if the measured rate supports it.
 
-    **Status: PARTIAL** — swept 2026-08-24, and the entry's own "PARTIAL
+    **Status: PARTIAL — pull half CLOSED 2026-08-27, threshold half still open.**
+    The re-pull ran and the premise this entry deferred on was FALSE: `fact_id_lda_filing`
+    hashes `(filing_uuid, role)` only — the amount is not an input — and exactly 1 of the
+    432 distinct dossier fact_ids is an `lda_filing` at all. Cost was under $1, not the
+    ~$28.60 recorded (13× over; list price with the Batch discount omitted).
+    **The pull was also silently broken:** `lda.senate.gov` now 301-redirects to
+    `lda.gov`, httpx does not follow redirects, so every request failed into a warning
+    handler and the corpus had been stale since 2026-07-03. Fixed in `7d03475`, which
+    also added the empty-pull guard that did not exist — the parquet write was
+    unconditional, so a pull that fetched nothing would have overwritten a 4,394-filing
+    corpus with an empty one and returned normally. That is what backlog #8 was about to
+    schedule. Corpus after: filings 4,394→5,392, activities 9,999→12,402, lobbyists
+    14,422→18,118, mentions 10,650→12,448 across 453 programs; `dbt build` PASS=133
+    ERROR=0. Still open: raising `verify_phase5a.py:62 _MATCH_THRESHOLD` from 0.80 to
+    0.85 — deliberately NOT done, because the measurement to justify it has not been
+    taken and raising a threshold the data does not support fails on honest input.
+    *(Original marker below.)* **Status: PARTIAL** — swept 2026-08-24, and the entry's own "PARTIAL
     (2026-07-04)" still holds. The attribution half is fixed (`7bb1582`,
     recorded `599371b`, 2026-07-04). The deferred half — live `influence pull`
     → ripple → dossier gate → match-gate raise — has never run: drawdown Task
@@ -1367,7 +1383,7 @@ chart baseline (#41).
     hover/focus; or default OFF with the dotted underline carrying the signal.
     Whichever, the figure should be the loudest thing in its own cell.
 
-    **Status: OPEN — awaiting the owner decision this entry asks for** — swept
+    **Status: CLOSED 2026-08-27** — the owner decided: chips stay ON, visual weight comes down. Availability (a reader can see every figure is cited) and hierarchy (the chip must not out-shout the number) were never in conflict; turning chips off would have traded a real trust property for a styling problem styling can fix. Shipped `3e87e67`/`2fbe833`/`9289bf2`: weight 700→400, chroma 210→0, opaque blue fill removed, and a dark-mode variant where none existed. `receipts-toggle.tsx:51` untouched. Gate 6 leg (e) re-asserts the pinned floors on the same elements (underline 4.96:1, dark 7.87:1, ≥12px) so "quieter" can never mean "dimmer than AA". The panel's row-rhythm complaint was measured and found FALSE — one pixel, still alternating; that is program-title wrapping, recorded rather than counted as fixed. **[ORIGINAL MARKER, for the record: OPEN — awaiting the owner decision this entry asks for.]** — swept
     2026-08-24. Assigned to drawdown Task C0 ("the Fact-ID default is the
     owner's call"); no decision is recorded anywhere in this file or the
     history. Verified at HEAD: `site/src/components/receipts-toggle.tsx:51` is
