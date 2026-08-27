@@ -547,6 +547,16 @@ async function checkChipHierarchy(page, label, errors, notes, required) {
       `P1-1 hierarchy (${label}): ${audit.unpaired} fact-id chip(s) precede every [data-amount] on the page — a chip that annotates no figure`,
     );
   }
+  // chipCount > 0 with nothing paired means every chip on the page annotates
+  // no figure. The unpaired error above has already fired; say so in this
+  // leg's own vocabulary and stop, rather than running the per-pair checks
+  // over an empty sample (which would read as a pass).
+  if (audit.rows.length === 0) {
+    errors.push(
+      `P1-1 hierarchy (${label}): ${audit.chipCount} fact-id chip(s) but 0 chip/figure pairs — nothing to compare, check is vacuous`,
+    );
+    return;
+  }
 
   const fmt = (r) =>
     `chip ${r.chip.fontSize}px/w${r.chip.weight}/${r.chip.contrast.toFixed(2)}:1/chroma ${Math.round(r.chip.chroma)}/bg ${r.chip.bg.join(",")} vs figure "${r.figure.text}" ${r.figure.fontSize}px/w${r.figure.weight}/${r.figure.contrast.toFixed(2)}:1/chroma ${Math.round(r.figure.chroma)}/bg ${r.figure.bg.join(",")}`;
