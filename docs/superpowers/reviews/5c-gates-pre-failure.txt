@@ -9219,3 +9219,189 @@ updated to the built value; the section was cut by roughly a third first,
 which bought 191 gzip bytes and is recorded here so the next person does not
 repeat the experiment. /program/*/ heaviest re-measured too:
 1,108,205/142,255 -> 1,108,222/142,045.
+
+================================================================================
+ROADMAP #29(b) — MULTI-EDITION LINEAGE CITATIONS (2026-08-27)
+verify-lineage legs (g) artifact-cite and (h) no-supersession
+================================================================================
+
+WHAT THE ENTRY SAID, AND WHAT WAS ACTUALLY THERE. #29(b) is written as
+"multi-edition citations so the 28 pre-2026 stated edges ... can ship with
+resolving cites", which reads like a citation-formatting change. The premise
+handed down with the task -- that the pre-2026 narratives are not in the
+warehouse and must be re-ingested from XML -- did NOT reproduce. Postgres
+detail_narratives already holds all ten editions: 1,833 / 1,936 / 2,879 /
+2,242 / 2,320 / 2,381 / 3,573 / 2,402 / 2,177 rows for PB2017..PB2025 beside
+PB2026's 58,314. What holds only FY2026 is jbook_narratives.parquet, because
+export_site FENCES it there. No ingestion was needed; the fence was the whole
+problem.
+
+THE 28 REPRODUCED EXACTLY, and then shrank for a reason the entry does not
+mention. Running the current extractor over all ten editions mints 57 stated
+edges, 29 of them FY2026 -- so 28 pre-2026, the entry's own number, on an
+extractor that has changed twice since it was written. But those 28 collapse
+to 20 distinct identity pairs:
+
+  * 7 are one link narrated by several editions. PB2020 prints "In 2020, QRF
+    funding ... will be transferred to PE 0603699D8Z"; PB2021 prints "In FY
+    2020, QRF funds transferred to PE 0603699D8Z". One FY2020 transfer, two
+    books. An edge's fiscal_year is the EDITION that asserts the link, not the
+    year money moved, so keying dedup on it shipped the same move twice.
+  * 1 is one link wearing two relation labels: 0605140D8Z -> 0604294D8Z is
+    "realigned" by one PB2018 sentence and "renamed" by another.
+
+So 20 ship, not 28, and the report says 20. Dedup grain moved to (from, to)
+with the corpus ordered latest-edition-first -- a strict tightening: no live
+pair had ever carried two relations (checked before the change), so it is a
+no-op on the 29 already shipped.
+
+SUPERSESSION: 0 REFUSED, AND THE SCAN THAT SAYS SO. Reading ten editions makes
+"true in PB2021, reversed by PB2024" possible for the first time. Every one of
+the 20 was scanned for two affirmative contradictions in a strictly LATER
+edition -- the mirror link stated, or a clause naming both endpoints with one
+of extract.py's own NEGATION_CUES. None fired. Deliberately NOT a rule: "PE X
+still has money after the transfer year", which contradicts nothing about a
+partial or project-scoped transfer and would manufacture the exact
+false-claim-on-a-true-citation defect this tier exists to prevent. Absence of
+a later mention is not contradiction either.
+
+BEFORE -> AFTER, measured on the live warehouse:
+  stated edges     29 -> 49      families          22 -> 32
+  family PEs       51 -> 80      citations    113,920 -> 113,939 (+19)
+  edges with a page anchor  13/29 -> 32/49
+  narrative rows added to jbook_narratives.parquet: 19 (PB2017 5, PB2018 5,
+    PB2019 1, PB2021 1, PB2022 2, PB2023 1, PB2024 2, PB2025 2). 20 edges cite
+    19 narratives because one PB2017 OSD paragraph backs two edges.
+  Of the 20 new edges, 16 render on a program page; 4 have no program page at
+    either endpoint and are reported as NOTEs, not counted as rendered.
+
+--------------------------------------------------------------------------------
+LEG (g) artifact-cite -- FAIL FIRST, on live data, not an injection
+--------------------------------------------------------------------------------
+
+The broken artifact was the REAL one: the warehouse rebuilt with all ten
+editions while data/site/ still held the previous build. That is precisely the
+failure the PB2026 fence existed to prevent -- a stated edge whose <Cite>
+resolves to nothing -- and it is the failure no warehouse-side check can see.
+Leg (a) passed all 49 in the same run, because every row IS honest; only the
+artifact shows the dead citation.
+
+  leg a stated-cite: checked=49 passed=49 failures=0 → PASS
+  leg g artifact-cite: checked=49 rendered=24 unrendered=9 failures=44 → FAIL
+    FAIL 0602716E->0602702E (renamed): evidence_fact_id 18ba7b0481978508 is
+      absent from the built cite-shard 18.json — the site would render a
+      citation marker that resolves to nothing
+    FAIL 0602716E->0602702E (renamed): /program/0602716E/ ships no rail entry
+      for 0602702E citing 18ba7b0481978508 (rail has [])
+    FAIL 1206893C->1206895C (renamed): evidence_fact_id 1b890d8311f19277 is
+      absent from the built cite-shard 1b.json — the site would render a
+      citation marker that resolves to nothing
+    FAIL 0303150K->0303171K (realigned): evidence_fact_id e748bfb77e726b29 is
+      absent from the built cite-shard e7.json — the site would render a
+      citation marker that resolves to nothing
+    FAIL 0603766E->0602702E (renamed): /program/0603766E/ ships no rail entry
+      for 0602702E citing 08bf512e277b8593 (rail has [])
+  verify-lineage: FAIL   (exit 1)
+
+A DEFECT IN THE LEG ITSELF, FOUND BY THAT RUN. The first cut reported
+unrendered=25, and its NOTE for 0602716E->0602702E read "neither endpoint has
+a program page, so it renders nowhere" -- three lines above a FAIL naming
+/program/0602716E/. Both endpoints have pages; the rail was empty. The message
+would have sent the next reader hunting for files that are right there. The
+bucket now means only what it says (no sidecar for EITHER endpoint), the
+has-a-page-but-no-entry case is a FAIL and nothing else, and unrendered fell
+25 -> 9. Pinned by
+test_leg_g_does_not_call_a_page_that_exists_missing.
+
+--------------------------------------------------------------------------------
+LEG (h) no-supersession -- FAIL FIRST, by injection
+--------------------------------------------------------------------------------
+
+The live corpus contains no supersession, so the break was made: a mirror
+stated edge 1206895C -> 1206893C at FY2026 inserted into program_lineage
+against the real 1206893C -> 1206895C the PB2025 MDA book states.
+
+  leg a stated-cite: checked=50 passed=49 failures=1 → FAIL
+    FAIL 1206895C->1206893C (realigned): evidence_fact_id deadbeefdeadbeef
+      re-derives to no narrative
+  leg h no-supersession: checked=50 passed=49 failures=1 → FAIL
+    FAIL 1206893C->1206895C (renamed): a later edition (FY2026) states the
+      mirror link 1206895C->1206893C; the direction is contested
+  verify-lineage: FAIL   (exit 1)
+
+Leg (a) also fired, on the injected row's fake fact_id -- expected, and it is
+the injected row it names. Leg (h) names the OTHER one: the edge that gets
+taken back, which is the one that must not ship. The injected row was deleted
+and program_lineage rebuilt (49/3/32/52, identical to before the injection)
+before the PASS below.
+
+--------------------------------------------------------------------------------
+PASS, after export-site rebuilt the artifact. Verbatim, same runner:
+--------------------------------------------------------------------------------
+
+  leg a stated-cite: checked=49 passed=49 failures=0 → PASS
+  leg b family-integrity: recomputed_pes=80 persisted_pes=80 failures=0 → PASS
+  leg c one-to-one-sum: families_checked=32 cyclic_fallbacks=0
+    dangling_terminals=1 failures=0 → PASS
+  leg d funding-point-value: files_scanned=2005 points_checked=692 failures=0 → PASS
+  leg e lake-binding: lineage_rows_db=52 lineage_rows_lake=52 family_pes_db=80
+    family_pes_lake=80 failures=0 → PASS
+  leg f no-retraction: checked=49 passed=49 failures=0 → PASS
+  leg g artifact-cite: checked=49 rendered=40 unrendered=9 failures=0 → PASS
+  leg h no-supersession: checked=49 passed=49 failures=0 → PASS
+  verify-lineage: PASS   (exit 0)
+
+NON-VACUITY, structural in both legs and not a pinned literal. Leg (g)'s
+population IS the shipped stated-edge set read from program_lineage; zero
+stated edges is a FAIL, and so is a build where no edge reaches any page --
+so an export that quietly stopped emitting rails cannot pass by having nothing
+to check. Leg (h) fails on zero stated edges for the same reason. Neither leg
+knows the number 49.
+
+ONE RULE SET, NOT THREE. Leg (h) imports extract.py's superseded_reason -- the
+same function lineage/load.py applies at build time -- exactly as leg (f)
+imports _window_is_negated. A leg that re-derives the rule can only agree with
+itself; a leg that re-applies it catches the TABLE being wrong, which is what
+a drift check is for. Leg (g) takes the opposite and complementary stance: it
+shares NO code with the exporter and reads the two files a browser fetches,
+because the failure it hunts is the exporter's own output going stale.
+
+WHAT LEG (g) DOES NOT REQUIRE, and why. Not a page number. Narrative
+provenance is best-effort and 16 of the 29 edges that shipped before this
+change cite the document rather than a page; requiring a page would fail
+honest, already-shipped rows. It requires sha256 AND official_url -- a source
+a reader can open. 19 of the 20 new edges did get a real page anchor, from
+`govbudget jbooks narrative-provenance --lineage-evidence` (43 identity keys
+scoped out of ~18k pre-PB2026 narratives, 19 rows inserted); the one exception
+cites its document.
+
+GATE COUNT: unchanged -> 24. verify-lineage is its own CLI, not an npm gate.
+
+PAGE WEIGHT, re-measured rather than re-ceilinged. Not one ceiling moved. The
+lineage layer's growth (29 -> 49 edges, 22 -> 32 families) lands on /programs/
+(+2,896 gzip, family glyphs for ten more families) and /data/ (+98 gzip, the
+jbook_narratives row count and its scope sentence). /program/*/ heaviest did
+not move at all -- 0601102A carries no new rail.
+
+The /data/ scope sentence was written twice. The first version cost ~170 gzip
+bytes and left 277 of the page's 446; it was cut to "Fenced to the PB2026
+edition, plus the PB2017-PB2025 narratives a program-lineage edge cites --
+citation targets only, never a program page's own prose", which says the same
+thing and leaves 348. Recorded here so the next person does not re-run the
+experiment: /data/ is at 97.4% of its ceiling and one more dataset card will
+break it.
+
+All fifteen `measured` strings were refreshed off this build, as the file's own
+2026-08-14 refresh did. Six were already stale from work that never touched
+them -- /, /agency/, /agency/*/, /company/*/, /filing/*/, /companies/families/
+-- and two of those had drifted the wrong way by more than this change did
+(/ +2,181, /agency/ +1,972). The drift leg tolerated all of them (none past
+2x overstated headroom) and gate 1 passed before and after, so nothing here
+was hiding a failure; the annotations were simply older than the build.
+/company/*/ and /filing/*/ also changed WHICH page is heaviest, so their
+parenthetical page names were corrected too.
+
+  /programs/            2,679,496 / 282,201   (95.0% of gzip ceiling)
+  /data/                   92,468 /  13,152   (97.4%)
+  /methodology/           132,816 /  36,175   (98.0%)
+  /program/*/ heaviest  1,108,222 / 142,041   (94.1%, /program/0601102A/)

@@ -995,9 +995,8 @@ _DATASET_SCOPES: dict[str, str] = {
         "One row per J-book narrative text block — mission, description,"
         " justification, or accomplishment/planned-program — with its XML"
         " element path and source-PDF SHA-256. Fenced to the PB2026 edition,"
-        " plus the earlier-edition (PB2017–PB2025) narratives that a program"
-        " lineage edge cites; those carry citations but are never rendered as"
-        " a program page's own narrative text."
+        " plus the PB2017–PB2025 narratives a program-lineage edge cites —"
+        " citation targets only, never a program page's own prose."
     ),
     "fct_budget_trajectory": (
         "One row per (program element × organization) with FY2024 actuals,"
@@ -1550,15 +1549,22 @@ def export_site(
                 f" lineage-evidence narrative(s) (citation targets only)"
             )
         if _wanted:
-            # A stated edge cites a narrative that no longer exists in
-            # detail_narratives. _emit_lineage would raise later anyway; say
-            # so HERE, where the cause is (a stale program_lineage lake vs a
-            # re-ingested corpus), not three thousand lines downstream.
+            # A stated edge cites a narrative this export cannot stage.
+            # _emit_lineage would raise later anyway; say so HERE, where the
+            # cause is. The message describes exactly what was searched — the
+            # PB2026 rows already staged above, plus every non-superseded
+            # narrative in the other editions — because "matches no narrative
+            # anywhere", the first wording, would send the reader hunting in
+            # the wrong place when the true cause is a SUPERSEDED narrative
+            # still cited by a stale lake.
             raise ValueError(
-                f"lineage: {len(_wanted)} stated-edge evidence fact_id(s) match no"
-                f" narrative in ANY edition — the program_lineage lake is stale"
-                f" against detail_narratives; re-run `govbudget lineage build`"
-                f" then `govbudget jbooks export-facts`. First:"
+                f"lineage: {len(_wanted)} stated-edge evidence fact_id(s) are"
+                f" neither among the PB{DISPLAY_NARRATIVE_FY} narratives this"
+                f" export staged nor any non-superseded narrative in another"
+                f" edition — program_lineage.parquet in the lake is out of step"
+                f" with detail_narratives (a re-ingested corpus, or a"
+                f" superseded narrative still cited); re-run `govbudget lineage"
+                f" build` then `govbudget jbooks export-facts`. First:"
                 f" {sorted(_wanted)[:5]}"
             )
 
