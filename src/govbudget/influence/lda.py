@@ -49,7 +49,11 @@ import httpx
 
 from govbudget.entities import normalize_name
 
-LDA_BASE = "https://lda.senate.gov/api/v1"
+# Moved 2026-08-27. lda.senate.gov now 301-redirects to lda.gov, and httpx
+# does NOT follow redirects by default, so every request raised and the pull
+# fetched nothing. Verified: the old host returns 301 with a Location of
+# lda.gov; the new host returns 200 with live data.
+LDA_BASE = "https://lda.gov/api/v1"
 _FILINGS_URL = f"{LDA_BASE}/filings/"
 
 # Polite floor: 5 s between requests = 12/min, well under 14/min cap.
@@ -704,12 +708,34 @@ def pull_top_families(
         with httpx.Client(
             headers={"User-Agent": "GovBudget-Research/1.0 (academic; contact: research@govbudget.dev)"},
             timeout=60,
+            # Belt and braces alongside the LDA_BASE move: if the host moves
+            # again, follow it rather than silently fetching nothing.
+            follow_redirects=True,
         ) as real_client:
             all_filings, all_activities, all_lobbyists = _pull_families_with_client(
                 real_client, families, years,
                 duckdb_path=duckdb_path,
                 aliases_csv=_aliases_csv,
             )
+
+    # EMPTY-PULL GUARD (2026-08-27). There was none, and the write below is
+    # unconditional: a pull that fetched nothing would have overwritten a
+    # 4,394-filing corpus with an empty parquet and returned normally. That
+    # nearly happened today -- lda.senate.gov began 301-redirecting to
+    # lda.gov, httpx does not follow redirects by default, and every request
+    # raised into the per-family WARNING handler. The corpus survived only
+    # because the run did not reach this point.
+    #
+    # A refresh that quietly produces nothing is worse than one that fails:
+    # backlog #8 would have run this on a schedule and reported success
+    # forever. Fail loudly instead.
+    if not all_filings:
+        raise RuntimeError(
+            "LDA pull fetched 0 filings — refusing to overwrite the existing "
+            "corpus with an empty one. Every request failed. Check whether the "
+            f"API host moved again (currently {LDA_BASE}); as of 2026-08-27 "
+            "lda.senate.gov 301-redirects to lda.gov."
+        )
 
     # Write lda_filings.parquet
     filings_path = out_dir / "lda_filings.parquet"
