@@ -267,17 +267,29 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
       <ProgramFigures
         program={PROGRAM}
         summary={SUMMARY}
-        fy2026Absent={{ last_fy: 2025 }}
+        fy2026Absent={{
+          last_fy: 2025,
+          jbook_fy2026_zero: false,
+          has_successor: false,
+        }}
       />,
     );
     const note = container.querySelector("[data-fy2026-absent]");
     expect(note).not.toBeNull();
     const text = note!.textContent!.replace(/\s+/g, " ").trim();
 
-    expect(text).toContain("No FY2026 request for this program element.");
-    expect(text).toContain("its last figure in this edition is FY2025");
+    expect(text).toContain(
+      "No FY2026 R-1/P-1 request line for this program element.",
+    );
+    expect(text).toContain("its last workbook figure is FY2025");
     expect(text).toContain("PB2026 renumbered program elements at scale");
-    expect(text).toContain("This page names no successor");
+    expect(text).toContain(
+      "No ingested budget document in this corpus states a successor for this line.",
+    );
+    // A dollar figure in prose is an UNCITED figure. Gate 2 rejects any
+    // currency pattern outside [data-amount], and the first cut of this
+    // note shipped a literal "$0" on 50 pages.
+    expect(text).not.toMatch(/\$\d/);
 
     // Absence in one edition is not an ending. These are the words the 87
     // withdrawn "zeroed out in FY2026" feed cards used.
@@ -294,13 +306,17 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
       <ProgramFigures
         program={PROGRAM}
         summary={SUMMARY}
-        fy2026Absent={{ last_fy: 2024 }}
+        fy2026Absent={{
+          last_fy: 2024,
+          jbook_fy2026_zero: false,
+          has_successor: false,
+        }}
       />,
     );
     const text = container
       .querySelector("[data-fy2026-absent]")!
       .textContent!.replace(/\s+/g, " ");
-    expect(text).toContain("its last figure in this edition is FY2024");
+    expect(text).toContain("its last workbook figure is FY2024");
     expect(text).not.toContain("FY2025");
   });
 });

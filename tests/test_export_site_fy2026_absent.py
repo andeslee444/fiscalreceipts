@@ -33,12 +33,20 @@ def _bl(fy, amount, amount_type=None):
 
 def test_no_fy2026_row_with_fy2025_money_is_flagged():
     rows = [_bl(2024, 280494.0, "fy_2024_actuals"), _bl(2025, 293145.0, "fy_2025_enacted")]
-    assert _fy2026_absent_block(rows) == {"last_fy": 2025}
+    assert _fy2026_absent_block(rows) == {
+        "last_fy": 2025,
+        "jbook_fy2026_zero": False,
+        "has_successor": False,
+    }
 
 
 def test_last_fy_is_the_latest_funded_year_not_the_first():
     rows = [_bl(2024, 1000.0), _bl(2025, 0.0)]
-    assert _fy2026_absent_block(rows) == {"last_fy": 2024}
+    assert _fy2026_absent_block(rows) == {
+        "last_fy": 2024,
+        "jbook_fy2026_zero": False,
+        "has_successor": False,
+    }
 
 
 def test_any_fy2026_row_disqualifies_even_a_zero_one():
@@ -70,3 +78,68 @@ def test_older_history_alone_is_not_flagged():
 
 def test_empty_sidecar_is_not_flagged():
     assert _fy2026_absent_block([]) is None
+
+
+# --- The three defect classes two reviews found in the shipped note. ---
+# Each of these would have PASSED before 2026-08-27, because the predicate
+# read only budget_lines and never opened the page's own J-book detail or
+# its lineage rail.
+
+
+def _det(fy, amount, **kw):
+    d = {"fy": fy, "amount_millions": amount, "measure": "request"}
+    d.update(kw)
+    return d
+
+
+def test_positive_jbook_fy2026_money_suppresses_the_note_entirely():
+    """The Microelectronics Commons defect.
+
+    /program/0603669D8Z/ rendered a bold "No FY2026 request for this program
+    element" directly above its own R-2/P-40 table showing an FY26 Request of
+    $260.7M, a cited jbook_details fact. The workbook is blank; the J-book is
+    not. A page that publishes FY2026 money may never carry an absence note.
+    """
+    rows = [_bl(2024, 280494.0, "fy_2024_actuals")]
+    assert _fy2026_absent_block(rows, [_det(2026, 260.731)]) is None
+
+
+def test_documented_fy2026_zero_is_disclosed_not_hidden():
+    """A workbook blank and a documented zero are different records.
+
+    173 pages carry an FY2026 J-book row at exactly 0.000 -- verbatim
+    <r2:BudgetYearOne>0.000</r2:BudgetYearOne> in the PB2026 XML. Reporting
+    only the workbook blank is the error that produced the 87 withdrawn
+    "zeroed out in FY2026" feed cards, whose rule fct_feed_events.sql states
+    using 0601101E as the worked example -- one of the pages that was
+    contradicting it.
+    """
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    got = _fy2026_absent_block(rows, [_det(2026, 0.0, resolution="zero_amount")])
+    assert got["jbook_fy2026_zero"] is True
+    assert got["last_fy"] == 2025
+
+
+def test_a_cited_successor_rail_is_reported_not_denied():
+    """The note used to say "no ingested budget document states one" on five
+    pages whose lineage rail quoted the document verbatim -- 837170's rail
+    quotes "The FY 2026 efforts in this Program Element (PE) were transferred
+    to PE 0207279F". Both halves of that sentence were false there.
+    """
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    lineage = {"rail": {"successors": [{"pe_bli": "0207279F", "confidence": "stated"}]}}
+    assert _fy2026_absent_block(rows, [], lineage)["has_successor"] is True
+
+
+def test_an_empty_rail_is_not_a_successor():
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    for lineage in ({}, {"rail": {}}, {"rail": {"successors": []}}):
+        assert _fy2026_absent_block(rows, [], lineage)["has_successor"] is False
+
+
+def test_details_and_lineage_are_optional():
+    """Both call sites pass them, but the rollup-tier sidecar may carry
+    neither. Absent inputs must not silently become a positive claim."""
+    rows = [_bl(2025, 293145.0, "fy_2025_enacted")]
+    got = _fy2026_absent_block(rows)
+    assert got["jbook_fy2026_zero"] is False and got["has_successor"] is False
