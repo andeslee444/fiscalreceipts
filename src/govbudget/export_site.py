@@ -8401,6 +8401,14 @@ def _write_all_sidecars(
     n_files += 1
 
     # ------------------------------------------------------------------ #
+    # 15b. gao_program_findings.json (ROADMAP #30 — the PROGRAM tier)     #
+    # ------------------------------------------------------------------ #
+    _emit_gao_program_findings_sidecar(
+        json_dir=json_dir, duckdb_path=duckdb_path
+    )
+    n_files += 1
+
+    # ------------------------------------------------------------------ #
     # 16. categories.json (Task 8a — top-50 hero categories)              #
     # ------------------------------------------------------------------ #
     _emit_categories_sidecar(
@@ -10152,6 +10160,137 @@ def _emit_gao_overlays_sidecar(
         "agency_code_by_org": agency_code_by_org,
     })
 
+
+
+def _emit_gao_program_findings_sidecar(*, json_dir: Path, duckdb_path) -> None:
+    """Emit json/gao_program_findings.json — the PROGRAM tier (ROADMAP #30).
+
+    The department tier (``gao_overlays.json``) says "DOD has 5 high-risk
+    areas" and is deliberately de-emphasized on a program page because it is
+    not about that program.  This sidecar carries the tier that IS: GAO's own
+    per-program assessments from the Weapon Systems Annual Assessment, and
+    the program-specific GAO reports that volume cites.
+
+    Shape:
+      {source: {...}, by_slug: {slug: {assessments: [...], reports: [...]}}}
+
+    **This function performs no matching.**  Which budget line each GAO item
+    belongs to is read from ``data-seeds/gao_program_xwalk.csv``, one row per
+    human verdict, and only ``verdict == "y"`` rows are emitted.  A crosswalk
+    nobody ratified does not exist as far as the site is concerned — the
+    failure mode being designed against is a GAO finding rendered against the
+    wrong weapons program, which is a defamation-shaped error rather than a
+    formatting one.
+    """
+    import duckdb as _duckdb
+
+    from govbudget.config import ROOT as _REPO_ROOT
+    from govbudget.oversight.gao_xwalk import load_ratified
+
+    payload = {"source": None, "by_slug": {}, "stats": None}
+    pq = _stage_parquet_path(
+        duckdb_path, "oversight", "gao_program_assessments.parquet"
+    )
+    seed = _REPO_ROOT / "data-seeds" / "gao_program_xwalk.csv"
+    if pq is None or not seed.exists():
+        _write_json(json_dir / "gao_program_findings.json", payload)
+        return
+
+    try:
+        cur = _duckdb.sql(f"select * from read_parquet('{pq}')")
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception:
+        _write_json(json_dir / "gao_program_findings.json", payload)
+        return
+
+    ratified = load_ratified(seed)
+    # (product_number, gao_program) -> [slug, …] for verdict == "y" only
+    slugs_for: dict[tuple, list] = {}
+    for (product, program, slug), row in sorted(ratified.items()):
+        if row["verdict"] != "y":
+            continue
+        slugs_for.setdefault((product, program), []).append(slug)
+
+    editions = {
+        r["source_product"]: {
+            "product_number": r["source_product"],
+            "pdf_url": r["source_pdf_url"],
+        }
+        for r in rows
+    }
+    for r in rows:
+        if r["kind"] == "assessment" and r["product_number"] in editions:
+            editions[r["product_number"]].update({
+                "report_title": r["report_title"],
+                "report_url": r["report_url"],
+                "released": r["released"],
+            })
+    payload["source"] = sorted(
+        editions.values(), key=lambda e: e["product_number"]
+    )
+
+    by_slug: dict[str, dict] = {}
+    for r in sorted(rows, key=lambda r: (r["product_number"], r["program_name"])):
+        key = (
+            r["product_number"],
+            r["common_name"] if r["kind"] == "assessment" else r["program_name"],
+        )
+        for slug in slugs_for.get(key, []):
+            bucket = by_slug.setdefault(slug, {"assessments": [], "reports": []})
+            if r["kind"] == "assessment":
+                bucket["assessments"].append({
+                    "assessment_type": r["assessment_type"],
+                    "common_name": r["common_name"],
+                    "description": r["description"],
+                    "gao_program": r["program_name"],
+                    "pdf_page": int(r["pdf_page"] or 0),
+                    "pdf_url": r["source_pdf_url"],
+                    "product_number": r["product_number"],
+                    "released": r["released"],
+                    "report_page": int(r["report_page"] or 0),
+                    "report_title": r["report_title"],
+                    "report_url": r["report_url"],
+                    "service": r["service"],
+                })
+            else:
+                bucket["reports"].append({
+                    "gao_program": r["program_name"],
+                    "product_number": r["product_number"],
+                    "released": r["released"],
+                    "report_title": r["report_title"],
+                    "report_url": r["report_url"],
+                })
+    for bucket in by_slug.values():
+        bucket["reports"].sort(key=lambda x: x["released"], reverse=True)
+    payload["by_slug"] = by_slug
+
+    n_items = sum(
+        len(b["assessments"]) + len(b["reports"]) for b in by_slug.values()
+    )
+    accepted = sum(1 for r in ratified.values() if r["verdict"] == "y")
+    rejected = sum(1 for r in ratified.values() if r["verdict"] == "n")
+    payload["stats"] = {
+        "adjudicated": accepted + rejected,
+        "accepted": accepted,
+        "assessments_ingested": sum(
+            1 for r in rows if r["kind"] == "assessment"
+        ),
+        "pages_with_findings": len(by_slug),
+        "precision_pct": round(
+            100.0 * accepted / (accepted + rejected), 1
+        ) if (accepted + rejected) else 0.0,
+        "rejected": rejected,
+        "related_ingested": sum(
+            1 for r in rows if r["kind"] == "related_product"
+        ),
+        "rendered_items": n_items,
+    }
+    print(
+        f"gao_program_findings: {len(by_slug)} program page(s) carry "
+        f"{n_items} ratified GAO item(s)"
+    )
+    _write_json(json_dir / "gao_program_findings.json", payload)
 
 
 def _build_slug_by_pe(duckdb_path) -> dict[str, str]:

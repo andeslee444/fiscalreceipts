@@ -941,6 +941,66 @@ def cmd_oversight(args) -> None:
                 client, agency_map_csv=agency_map_csv, out_path=out_path
             )
         print(f"oversight high-risk: wrote {out}")
+    elif args.action == "gao-programs":
+        from govbudget.oversight.gao_programs import (
+            USER_AGENT,
+            build_gao_program_assessments,
+        )
+
+        out_path = (
+            config.PARQUET_DIR / "oversight" / "gao_program_assessments.parquet"
+        )
+        # One GET per edition, to a static PDF asset. gao.gov/robots.txt
+        # disallows /search and /reports-testimonies; neither is touched.
+        with httpx.Client(
+            headers={"User-Agent": USER_AGENT}, timeout=180
+        ) as client:
+            out = build_gao_program_assessments(
+                client,
+                raw_dir=config.RAW_DIR / "gao",
+                out_path=out_path,
+            )
+        print(f"oversight gao-programs: wrote {out}")
+    elif args.action == "gao-xwalk":
+        import json as _json
+
+        from govbudget.oversight.gao_xwalk import (
+            generate_candidates,
+            load_ratified,
+            measure,
+        )
+
+        import duckdb as _duckdb
+
+        pq = config.PARQUET_DIR / "oversight" / "gao_program_assessments.parquet"
+        cur = _duckdb.connect().execute(
+            f"select * from read_parquet('{pq}')"
+        )
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        programs = _json.loads(
+            (config.ROOT / "data" / "site" / "json" / "programs.json")
+            .read_text()
+        )
+        cands = generate_candidates(rows, programs)
+        seed = config.ROOT / "data-seeds" / "gao_program_xwalk.csv"
+        ratified = load_ratified(seed)
+        rep = measure(cands, ratified)
+        print(
+            f"gao-xwalk: {len(cands)} candidate(s); "
+            f"{rep.adjudicated} adjudicated -> {rep.accepted} accepted, "
+            f"{rep.rejected} rejected; matcher precision "
+            f"{rep.precision * 100:.1f}%"
+        )
+        for c in rep.unadjudicated:
+            print(
+                f"  UNADJUDICATED  {c.product_number} {c.gao_program} -> "
+                f"{c.slug} ({c.corpus_title})"
+            )
+        for k in rep.stale:
+            print(f"  STALE (ratified but no longer proposed)  {k}")
+        if rep.unadjudicated or rep.stale:
+            sys.exit(1)
 
 
 def cmd_verify_phase3(args) -> None:
@@ -1983,7 +2043,10 @@ def main(argv=None) -> None:
     v2.set_defaults(func=cmd_verify_phase2)
 
     ov = sub.add_parser("oversight", help="phase 3 oversight ingestion pipeline")
-    ov.add_argument("action", choices=["scrape-pa", "high-risk"])
+    ov.add_argument(
+        "action",
+        choices=["scrape-pa", "high-risk", "gao-programs", "gao-xwalk"],
+    )
     ov.set_defaults(func=cmd_oversight)
 
     v3 = sub.add_parser("verify-phase3", help="phase 3 acceptance gates")

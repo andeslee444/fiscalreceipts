@@ -1,0 +1,64 @@
+product_number,gao_program,slug,verdict,org,corpus_title,matched_on,curator_notes
+GAO-22-104530,KC-46 Tanker,0401221F,y,F,KC-46A Tanker Squadrons,KC-46,"Narrative names ""PE 0401221F, KC-46A Tanker Squadrons"" as the KC-46A recapitalisation line."
+GAO-22-104530,KC-46 Tanker,KC046A,y,F,KC-46A MDAP,KC-46,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,0207142F,y,F,F-35 Squadrons,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,0604840F,y,F,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,0604840M,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,0604840N,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,ATA000,y,F,F-35,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-22-105128,F-35 Joint Strike Fighter,F03500,y,F,F-35 Modifications,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,0207142F,y,F,F-35 Squadrons,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,0604840F,y,F,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,0604840M,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,0604840N,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,ATA000,y,F,F-35,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-23-106047,F-35 Joint Strike Fighter,F03500,y,F,F-35 Modifications,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106639,F-22 Aircraft,0207138F,y,F,F-22A Squadrons,F-22,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106639,F-22 Aircraft,F02200,y,F,F-22A,F-22,F-22A procurement line; the report is about the F-22 fleet.
+GAO-24-106909,F-35 Joint Strike Fighter,0207142F,y,F,F-35 Squadrons,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106909,F-35 Joint Strike Fighter,0604840F,y,F,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106909,F-35 Joint Strike Fighter,0604840M,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106909,F-35 Joint Strike Fighter,0604840N,y,N,F-35 C2D2,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106909,F-35 Joint Strike Fighter,ATA000,y,F,F-35,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-24-106909,F-35 Joint Strike Fighter,F03500,y,F,F-35 Modifications,F-35,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,AMDR,0604522N,y,N,Air and Missile Defense Radar (AMDR) System,AMDR,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,CPS,0605518N,y,N,CONVENTIONAL PROMPT STRIKE (CPS),CPS,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,CPS,5353,y,N,CPS Support Equipment,CPS,"Navy OPN line; its own narrative opens ""Conventional Prompt Strike (CPS) capability"", so CPS here is the program GAO assessed and not another expansion."
+GAO-25-107569,CVN 78,0604112N,y,N,Gerald R. Ford Class Nuclear Aircraft Carrier (CVN 78 - 80),CVN 78,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,DDG 1000,0204202N,y,N,Destroyers Guided Missile (DDG-1000),DDG 1000,Zumwalt/DDG-1000 RDT&E line.
+GAO-25-107569,DDG 1000,0947,y,N,DDG 1000 Class Support Equipment,DDG 1000,"Support-equipment line for the DDG 1000 class GAO assessed; narrative opens ""DDG 1000, a multi-mission surface combatant""."
+GAO-25-107569,F-15 EPAWSS,0207171F,y,F,F-15 EPAWSS,F-15 EPAWSS,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,F-15EX,0207146F,y,F,F-15EX,F-15EX,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,F-15EX,F015EX,y,F,F-15EX,F-15EX,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,FLRAA,0605241A,y,A,Future Long Range Assault Aircraft Development,Future Long Range Assault Aircraft,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,GPS IIIF,1203269SF,y,F,GPS III Follow-On (GPS IIIF),GPS IIIF,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,HACM,0604183F,y,F,Hypersonics Prototyping - Hypersonic Attack Cruise Missile (HACM),HACM,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,HADES,9697A12400,y,A,"HADES PLATFORM, PAYLOADS/PED, AND INTEGRATION",HADES,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,IRST,0604014N,y,N,F/A -18 Infrared Search and Track (IRST),IRST,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,ITEP,0607139A,y,A,Improved Turbine Engine Program,Improved Turbine Engine Program,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,KC-46A,0401221F,y,F,KC-46A Tanker Squadrons,KC-46A,"Narrative names ""PE 0401221F, KC-46A Tanker Squadrons"" as the KC-46A recapitalisation line."
+GAO-25-107569,KC-46A,KC046A,y,F,KC-46A MDAP,KC-46A,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,LRHW,2611C72100,y,A,LONG-RANGE HYPERSONIC WEAPON,Long Range Hypersonic Weapon System,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,LRSO,0604932F,y,F,Long Range Standoff Weapon,Long Range Standoff,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,LSM,3050-SCN,y,N,Medium Landing Ship,Medium Landing Ship,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,LUSV,0603178N,y,N,Large Unmanned Surface Vehicles (LUSV),LUSV,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,M10 Booker,7181G80820,y,A,M10 BOOKER,M10 Booker,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,MH-139A,0102110F,y,F,MH-139A,MH-139A,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,MH-139A,H01061,y,F,MH-139A Mod,MH-139A,"Modification procurement for the same aircraft GAO assessed; the rendered note says GAO assessed the PROGRAM, not this line."
+GAO-25-107569,MH-139A,H0106O,y,F,MH-139A,MH-139A,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,MQ-4C Triton,0305220N,y,N,MQ-4C Triton,MQ-4C Triton,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,MQ-4C Triton,0305421N,y,N,MQ-4C Triton Modernization,MQ-4C Triton,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,MRC,0605235A,y,A,Strategic Mid-Range Capability,Mid-Range Capability,"Title says ""Strategic Mid-Range Capability""; narrative names ""The Mid-Range Capability (MRC) Weapon System""."
+GAO-25-107569,MRC,9214C81200,y,A,MID-RANGE CAPABILITY (MRC),MRC,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,NSSL,1206853SF,y,F,National Security Space Launch Program (SPACE) - EMD,National Security Space Launch,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,NSSL,NSSL00,y,F,National Security Space Launch,National Security Space Launch,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,Next Gen OPIR GEO,1206443SF,y,F,Next-Gen OPIR -- GEO,Next Gen OPIR GEO,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,Next Gen OPIR Polar,1206444SF,y,F,Next-Gen OPIR -- Polar,Next Gen OPIR Polar,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,PrSM,0605231A,y,A,Precision Strike Missile (PrSM),PrSM,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,PrSM,8540C29600,y,A,PRECISION STRIKE MISSILE (PRSM),PrSM,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,SDB II,SDB000,n,F,Small Diameter Bomb,Small Diameter Bomb Increment II,"REJECTED. GAO assessed Small Diameter Bomb Increment II (GBU-53/B StormBreaker); SDB000's own J-book narrative opens ""GBU-39/B: Small Diameter Bomb Increment I (SDB I)"". Different weapon. The correct line, SDB002 ""SMALL DIAMETER BOMB II"", is not proposed by either rule (its title omits ""Increment""), so SDB II ships no crosswalk at all rather than a wrong one."
+GAO-25-107569,SSC,0605220N,y,N,Ship to Shore Connector (SSC),SSC,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,T-7A,APT000,y,F,Advanced Pilot Training T-7A,T-7A,"Narrative opens ""The Advanced Pilot Training (APT)/ T-7A Red Hawk program"", matching GAO's ""formerly the Advanced Pilot Training program""."
+GAO-25-107569,T-AO 205,0605327N,y,N,T-AO 205 Class,T-AO 205,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,VC-25B,0401319F,y,F,VC-25B,VC-25B,Corpus title and J-book narrative both name the program GAO assessed.
+GAO-25-107569,WSF,1206422SF,y,F,Weather System Follow-on,Weather System Follow-On,Corpus title and J-book narrative both name the program GAO assessed.

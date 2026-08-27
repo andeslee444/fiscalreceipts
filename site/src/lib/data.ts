@@ -1944,6 +1944,91 @@ export function getGaoOverlayForOrg(
   return { agencyCode, overlay };
 }
 
+// ── gao_program_findings.json (ROADMAP #30 — the PROGRAM tier) ───────────────
+
+export interface GaoAssessment {
+  assessment_type: string;
+  common_name: string;
+  description: string;
+  gao_program: string;
+  pdf_page: number;
+  pdf_url: string;
+  product_number: string;
+  released: string;
+  report_page: number;
+  report_title: string;
+  report_url: string;
+  service: string;
+}
+
+export interface GaoRelatedReport {
+  gao_program: string;
+  product_number: string;
+  released: string;
+  report_title: string;
+  report_url: string;
+}
+
+export interface GaoProgramFindings {
+  assessments: GaoAssessment[];
+  reports: GaoRelatedReport[];
+}
+
+export interface GaoCrosswalkStats {
+  accepted: number;
+  adjudicated: number;
+  assessments_ingested: number;
+  pages_with_findings: number;
+  precision_pct: number;
+  rejected: number;
+  related_ingested: number;
+  rendered_items: number;
+}
+
+interface GaoProgramFindingsFile {
+  source: { product_number: string; report_url: string }[] | null;
+  by_slug: Record<string, GaoProgramFindings>;
+  stats: GaoCrosswalkStats | null;
+}
+
+let _gaoProgramFindings: GaoProgramFindingsFile | null | undefined;
+
+function gaoProgramFindingsFile(): GaoProgramFindingsFile | null {
+  if (_gaoProgramFindings === undefined) {
+    getSiteMeta();
+    try {
+      _gaoProgramFindings = readJson<GaoProgramFindingsFile>(
+        "gao_program_findings.json",
+      );
+    } catch {
+      _gaoProgramFindings = null;
+    }
+  }
+  return _gaoProgramFindings;
+}
+
+/** Crosswalk precision measurement, for /methodology/. Never a literal. */
+export function getGaoCrosswalkStats(): GaoCrosswalkStats | null {
+  return gaoProgramFindingsFile()?.stats ?? null;
+}
+
+/**
+ * Program-tier GAO work for one page, or null.
+ *
+ * Keyed by page SLUG, never by pe_bli: 23 budget lines share a pe_bli with an
+ * unrelated program in another appropriation account, and attaching a GAO
+ * finding to the wrong weapons program is the failure this whole feature is
+ * designed around.
+ */
+export function getGaoProgramFindings(slug: string): GaoProgramFindings | null {
+  const file = gaoProgramFindingsFile();
+  if (!file) return null;
+  const hit = file.by_slug[slug];
+  if (!hit) return null;
+  if (hit.assessments.length === 0 && hit.reports.length === 0) return null;
+  return hit;
+}
+
 // ── categories.json (Task 8a — top-50 hero categories) ───────────────────────
 
 export type HeroCategory =

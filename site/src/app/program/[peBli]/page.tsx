@@ -10,6 +10,7 @@ import {
   getEntityTopByFamilyKey,
   getAgencies,
   getGaoOverlayForOrg,
+  getGaoProgramFindings,
   getCategories,
   getDossier,
   getSnapshotMeta,
@@ -19,6 +20,7 @@ import {
   getProgramsByBareKey,
   TRAJECTORY_FY_LABEL,
 } from "@/lib/data";
+import { GaoProgramFindingsBlock } from "@/components/gao-program-findings";
 import type {
   CitationsMap,
   JbookPdfCitation,
@@ -542,6 +544,11 @@ export default async function ProgramPage({
   // agency oversight section when the program's org has overlays.
   const gao = getGaoOverlayForOrg(program.org);
 
+  // ROADMAP #30 — the PROGRAM tier of the Oversight section. Read by page
+  // SLUG from a human-ratified crosswalk (data-seeds/gao_program_xwalk.csv);
+  // null on every line nobody ratified, which is most of them.
+  const gaoProgram = getGaoProgramFindings(peBli);
+
   // ── Dossier + category hero (Task 8a — top-50 pages only) ─────────────────
   // getDossier returns null when no dossier file exists (cited-or-absent:
   // zero placeholder text) and THROWS on ungated content (loud build error).
@@ -882,15 +889,26 @@ export default async function ProgramPage({
           no qualifier — reading as a program-specific finding. On the F-35
           that is doubly unfortunate, since real program-level GAO work exists
           and this is not it. It now says what it is, is de-emphasized to a
-          quiet note rather than an amber alert (amber is reserved for
-          program-specific findings, which we do not yet ingest — ROADMAP
-          backlog #30), and keeps its link. */}
+          quiet note rather than an amber alert, and keeps its link.
+          ROADMAP #30 then added the tier that IS about this program —
+          <GaoProgramFindingsBlock>, rendered ABOVE this note and given the
+          emphasis it gave up. On a line with no ratified GAO crosswalk (most
+          of them) the note keeps saying exactly what it said before: no
+          program-specific GAO finding for this line is in the ingested
+          data. */}
       <ProgramSection id="oversight">
-        {gao ? (
+        {gao || gaoProgram ? (
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-2 text-foreground">
               Oversight
             </h2>
+            {gaoProgram && (
+              <GaoProgramFindingsBlock
+                findings={gaoProgram}
+                programTitle={program.title}
+              />
+            )}
+            {gao && (
             <div
               data-gao-scope="department"
               className="rounded-lg border border-border bg-muted/40 px-3 py-2.5"
@@ -910,9 +928,11 @@ export default async function ProgramPage({
                 )}
                 {gao.agencyCode} as a whole. That designation covers the
                 department, not{" "}
-                <span data-program-name>{program.title}</span> — no
-                program-specific GAO finding for this line is in the ingested
-                data.{" "}
+                <span data-program-name>{program.title}</span>.
+                {gaoProgram
+                  ? " GAO's program-level work on this line is above."
+                  : " No program-specific GAO finding for this line is in the" +
+                    " ingested data."}{" "}
                 <Link
                   href={`/agency/${program.org}/#oversight`}
                   className="underline decoration-dotted underline-offset-2 hover:text-foreground"
@@ -923,6 +943,7 @@ export default async function ProgramPage({
                 .
               </p>
             </div>
+            )}
           </div>
         ) : (
           <SectionEmpty title="Oversight">

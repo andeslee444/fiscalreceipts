@@ -23,6 +23,10 @@
  * (g) A program element that PB2026 stopped requesting money for must not
  *     end silently: it carries the [data-fy2026-absent] note, and no other
  *     page does (ROADMAP #32a) — see leg g's own block at the bottom.
+ * (h) A GAO program-level finding renders only where a human ratified the
+ *     crosswalk, quotes GAO verbatim, cites its own report, and sits above
+ *     the department note; every other page states the absence (ROADMAP #30)
+ *     — see leg h's own block at the bottom.
  */
 
 import fs from "fs";
@@ -278,6 +282,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (g) the PB2026 renumber note (ROADMAP #32a) ───────────────────────────
   runFy2026AbsentLeg({ errors, notes, sidecars });
+
+  // ── (h) the GAO program tier (ROADMAP #30) ────────────────────────────────
+  runGaoProgramLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -884,5 +891,360 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
     `leg g: ${withNote}/${expected.size} renumbered-away program page(s) carry the ` +
       `"no FY2026 request" note (${byYear}); ${sidecars.size - expected.size} other ` +
       `page(s) correctly do not ✓`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg h — a GAO finding sits on the program it is about (ROADMAP #30)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The department tier ("DOD — 5 high-risk areas") is not about the program
+// whose page it renders on, says so, and is de-emphasized for it. #30 added
+// the tier that IS: GAO's per-program Weapon Systems Annual Assessment and
+// the program-specific GAO reports that volume cites.
+//
+// The failure this leg exists to catch is not a formatting slip. Attributing
+// a real GAO audit finding to the wrong weapons program is a defamation-
+// shaped error, so the design puts a human verdict on every attribution
+// (data-seeds/gao_program_xwalk.csv) and the exporter does no matching at
+// all. That means this leg cannot "independently reimplement" the exporter's
+// rule — there is no rule to reimplement — and it does not try. It asserts
+// the CONTRACT, against the built artifact:
+//
+//   h1. RATIFIED <-> RENDERED, exactly. Every verdict-"y" row whose page is
+//       built renders its GAO item; every rendered item traces back to a
+//       verdict-"y" row. Nothing reaches a reader that a person did not
+//       ratify, and nothing ratified silently stops rendering.
+//   h2. The quoted assessment is VERBATIM the ingested GAO paragraph, read
+//       from the sidecar, not from the page. A paraphrase would be a new
+//       uncited claim about a weapons program.
+//   h3. Every item's citation resolves to its own GAO product page.
+//   h4. The GAO item's service agrees with the org the PAGE itself links to
+//       (its /agency/{org}/ oversight link). An Air Force assessment on an
+//       Army budget line is the ROADMAP #55 defect — "Sentinel" the ICBM
+//       against "Sentinel Mods" the Army procurement line — and this is the
+//       check that refuses it. It shares a premise with the matcher's
+//       service filter, deliberately: the premise is a fact about the world,
+//       and the two artifacts compared are different ones.
+//   h5. CORROBORATION the matcher never consults: the GAO program's name and
+//       the page's own title must share a DISTINCTIVE word — one appearing
+//       in <= 0.5% of the site's program titles. Measured over the shipped
+//       crosswalk, all 62 items clear it.
+//   h6. The honest denial. Every program page with no ratified item must
+//       still say, verbatim, that no program-specific GAO finding for that
+//       line is in the ingested data — and no page may say both.
+//   h7. The program tier renders ABOVE the department note, which is the
+//       placement #30 asked for and the reason the department note was
+//       allowed to give up its emphasis.
+//
+// Non-vacuity is structural rather than a pinned literal: the leg fails if
+// the ratified set is empty, and the population it checks IS the ratified
+// set, so a shrinking crosswalk cannot quietly stop exercising it.
+
+const GAO_SEED = path.resolve(
+  siteRoot, "..", "data-seeds", "gao_program_xwalk.csv",
+);
+const GAO_DENIAL =
+  "No program-specific GAO finding for this line is in the ingested data.";
+/** A word in <= this share of program titles is "distinctive" for h5. */
+const GAO_RARE_TOKEN_SHARE = 0.005;
+/** GAO service -> the org code its budget lines live under. */
+const GAO_SERVICE_ORGS = {
+  "Air Force": ["F"],
+  "Space Force": ["F"],
+  Army: ["A"],
+  Navy: ["N"],
+  "Marine Corps": ["N"],
+};
+
+function gaoTokens(text) {
+  return String(text ?? "").toLowerCase().match(/[a-z]+|[0-9]+/g) ?? [];
+}
+
+/** Minimal CSV reader for the ratified seed (quoted fields, embedded ""). */
+function readCsvRows(text) {
+  const rows = [];
+  let field = "";
+  let row = [];
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+      } else field += c;
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (c !== "\r") field += c;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const header = rows[0];
+  return rows.slice(1).filter((r) => r.length === header.length).map((r) =>
+    Object.fromEntries(header.map((h, i) => [h, r[i]])),
+  );
+}
+
+function runGaoProgramLeg({ errors, notes, sidecars }) {
+  const sidecarPath = path.join(jsonDir, "gao_program_findings.json");
+  if (!fs.existsSync(GAO_SEED) || !fs.existsSync(sidecarPath)) {
+    errors.push(
+      "program-skeleton(h): missing " +
+        (!fs.existsSync(GAO_SEED)
+          ? "data-seeds/gao_program_xwalk.csv"
+          : "gao_program_findings.json") +
+        " — the program tier cannot be verified",
+    );
+    return;
+  }
+
+  // ── the human record ─────────────────────────────────────────────────────
+  const seedRows = readCsvRows(fs.readFileSync(GAO_SEED, "utf8"));
+  const ratified = new Set();
+  for (const r of seedRows) {
+    const verdict = (r.verdict ?? "").trim();
+    if (verdict !== "y" && verdict !== "n") {
+      errors.push(
+        `program-skeleton(h): seed row ${r.gao_program} -> ${r.slug} carries ` +
+          `verdict "${verdict}" — an unadjudicated crosswalk must not exist`,
+      );
+      continue;
+    }
+    if (verdict === "y") ratified.add(`${r.product_number} ${r.slug}`);
+  }
+  if (ratified.size === 0) {
+    errors.push(
+      "program-skeleton(h): no ratified crosswalk in the seed — the leg would " +
+        "be vacuous. If the crosswalk really is empty the program tier must " +
+        "not render at all; do not weaken this check to pass a build",
+    );
+    return;
+  }
+
+  // ── the ingested GAO text (h2's source of truth — not the page) ──────────
+  const side = readJson(sidecarPath);
+  const quoteFor = new Map();
+  const serviceFor = new Map();
+  for (const bucket of Object.values(side.by_slug ?? {})) {
+    for (const a of bucket.assessments ?? []) {
+      quoteFor.set(`${a.product_number} ${a.gao_program}`, a.description);
+      serviceFor.set(`${a.product_number} ${a.gao_program}`, a.service);
+    }
+  }
+
+  // ── corpus title statistics for h5 ───────────────────────────────────────
+  const programs = readJson(path.join(jsonDir, "programs.json"));
+  const titleBySlug = new Map(programs.map((p) => [p.slug, p.title ?? ""]));
+  const docFreq = new Map();
+  for (const p of programs) {
+    for (const t of new Set(gaoTokens(p.title))) {
+      docFreq.set(t, (docFreq.get(t) ?? 0) + 1);
+    }
+  }
+  const rareLimit = GAO_RARE_TOKEN_SHARE * programs.length;
+
+  // ── one pass over the whole page universe ────────────────────────────────
+  let rendered = 0;
+  let pagesWithBlock = 0;
+  let missingDenial = 0;
+  let bothClaims = 0;
+  const seenPairs = new Set();
+  const unratified = { n: 0 };
+  const badQuote = { n: 0 };
+  const badCite = { n: 0 };
+  const badService = { n: 0 };
+  const badCorroboration = { n: 0 };
+  const say = (bucket, msg) => {
+    bucket.n++;
+    if (bucket.n <= 5) errors.push(msg);
+  };
+
+  for (const slug of sidecars.keys()) {
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) continue;
+    const html = fs.readFileSync(p, "utf8");
+    const hasBlock = html.includes('data-gao-scope="program"');
+    const hasDenial = html.includes(GAO_DENIAL);
+
+    // h6 — the honest denial, on every page with nothing ratified.
+    if (!hasBlock) {
+      if (!hasDenial) {
+        missingDenial++;
+        if (missingDenial <= 5) {
+          errors.push(
+            `program-skeleton(h6): /program/${slug}/ carries no ratified GAO ` +
+              `item and does not say "${GAO_DENIAL}" — the page must state ` +
+              `the absence, not go quiet about it`,
+          );
+        }
+      }
+      continue;
+    }
+    if (hasDenial) {
+      bothClaims++;
+      if (bothClaims <= 5) {
+        errors.push(
+          `program-skeleton(h6): /program/${slug}/ renders GAO program-level ` +
+            `work AND denies that any is ingested — both cannot be true`,
+        );
+      }
+    }
+    pagesWithBlock++;
+
+    const root = parse(html, { comment: false });
+    const block = root.querySelector('[data-gao-scope="program"]');
+    const dept = root.querySelector('[data-gao-scope="department"]');
+
+    // h7 — placement.
+    if (dept) {
+      const order = root
+        .querySelectorAll("[data-gao-scope]")
+        .map((el) => el.getAttribute("data-gao-scope"));
+      if (order.indexOf("program") > order.indexOf("department")) {
+        errors.push(
+          `program-skeleton(h7): /program/${slug}/ renders the department ` +
+            `note ABOVE the program-specific finding — #30 requires the reverse`,
+        );
+      }
+    }
+
+    // The org the PAGE itself claims, from its own agency link (h4).
+    const agencyHref =
+      root
+        .querySelectorAll("a[href]")
+        .map((a) => a.getAttribute("href") ?? "")
+        .find((h) => /^\/agency\/[^/]+\/#oversight$/.test(h)) ?? "";
+    const pageOrg = agencyHref.split("/")[2] ?? "";
+    const pageTitleTokens = new Set(gaoTokens(titleBySlug.get(slug) ?? ""));
+
+    for (const item of block.querySelectorAll("[data-gao-item]")) {
+      const product = item.getAttribute("data-gao-product") ?? "";
+      const program = item.getAttribute("data-gao-program") ?? "";
+      rendered++;
+      const pairKey = `${product} ${slug}`;
+      seenPairs.add(pairKey);
+
+      // h1 — nothing renders that a person did not ratify.
+      if (!ratified.has(pairKey)) {
+        say(
+          unratified,
+          `program-skeleton(h1): /program/${slug}/ renders GAO ${product} ` +
+            `("${program}") but no verdict-"y" row in ` +
+            `data-seeds/gao_program_xwalk.csv ratifies that attribution`,
+        );
+        continue;
+      }
+
+      // h3 — the citation resolves to this product's own GAO page.
+      const cite = item.querySelector("[data-gao-cite]");
+      const want = `https://www.gao.gov/products/${product.toLowerCase()}`;
+      if (!cite || (cite.getAttribute("href") ?? "") !== want) {
+        say(
+          badCite,
+          `program-skeleton(h3): /program/${slug}/ item ${product} cites ` +
+            `"${cite ? cite.getAttribute("href") : "(no link)"}", expected ${want}`,
+        );
+      }
+
+      if (item.getAttribute("data-gao-item") === "assessment") {
+        // h2 — the quote is GAO's paragraph, verbatim.
+        const expectedQuote = quoteFor.get(`${product} ${program}`);
+        const quoteEl = item.querySelector("[data-gao-quote]");
+        const shown = (quoteEl?.text ?? "").replace(/\s+/g, " ").trim();
+        if (!expectedQuote) {
+          say(
+            badQuote,
+            `program-skeleton(h2): /program/${slug}/ quotes GAO on "${program}" ` +
+              `(${product}) but no such assessment is in the ingested data`,
+          );
+        } else if (!shown.includes(expectedQuote.replace(/\s+/g, " ").trim())) {
+          say(
+            badQuote,
+            `program-skeleton(h2): /program/${slug}/ renders a GAO quote that ` +
+              `is not the ingested paragraph verbatim — a paraphrase of an ` +
+              `audit finding is a new uncited claim (shown: "${shown.slice(0, 90)}…")`,
+          );
+        }
+
+        // h4 — services must agree with the page's own org.
+        const service = serviceFor.get(`${product} ${program}`) ?? "";
+        const allowed = GAO_SERVICE_ORGS[service];
+        if (allowed && pageOrg && !allowed.includes(pageOrg)) {
+          say(
+            badService,
+            `program-skeleton(h4): /program/${slug}/ (org ${pageOrg}) renders ` +
+              `a ${service} GAO assessment of "${program}" — a ${service} ` +
+              `program assessment cannot be about a line in another service's book`,
+          );
+        }
+      }
+
+      // h5 — corroboration the matcher never used.
+      const shared = [...new Set(gaoTokens(program))].filter(
+        (t) => pageTitleTokens.has(t) && (docFreq.get(t) ?? 0) <= rareLimit,
+      );
+      if (shared.length === 0) {
+        say(
+          badCorroboration,
+          `program-skeleton(h5): /program/${slug}/ ("${titleBySlug.get(slug)}") ` +
+            `renders GAO work on "${program}" with no distinctive word in ` +
+            `common — the crosswalk is not corroborated by the page's own title`,
+        );
+      }
+    }
+  }
+
+  // h1, the other direction — a ratified row that stopped rendering.
+  let notRendered = 0;
+  for (const key of ratified) {
+    const [product, slug] = key.split(" ");
+    if (!sidecars.has(slug)) continue; // no page exists for this budget line
+    if (!fs.existsSync(pageHtmlPath(slug))) continue;
+    if (seenPairs.has(key)) continue;
+    notRendered++;
+    if (notRendered <= 5) {
+      errors.push(
+        `program-skeleton(h1): GAO ${product} is ratified for /program/${slug}/ ` +
+          `but the built page renders no such item`,
+      );
+    }
+  }
+
+  for (const [bucket, label] of [
+    [unratified, "h1 unratified attribution"],
+    [badQuote, "h2 quote mismatch"],
+    [badCite, "h3 citation mismatch"],
+    [badService, "h4 service mismatch"],
+    [badCorroboration, "h5 uncorroborated crosswalk"],
+  ]) {
+    if (bucket.n > 5) {
+      errors.push(
+        `program-skeleton(${label}): ${bucket.n} occurrence(s) in total ` +
+          `(first 5 listed)`,
+      );
+    }
+  }
+  if (missingDenial > 5) {
+    errors.push(
+      `program-skeleton(h6): ${missingDenial} page(s) with no ratified GAO ` +
+        `item omit the denial sentence in total (first 5 listed)`,
+    );
+  }
+  if (notRendered > 5) {
+    errors.push(
+      `program-skeleton(h1): ${notRendered} ratified crosswalk(s) render ` +
+        `nowhere in total (first 5 listed)`,
+    );
+  }
+
+  notes.push(
+    `leg h: ${rendered} GAO item(s) on ${pagesWithBlock} program page(s), each ` +
+      `traced to a verdict-"y" row of ${ratified.size} in ` +
+      `data-seeds/gao_program_xwalk.csv; ${sidecars.size - pagesWithBlock} ` +
+      `other page(s) state that no program-specific GAO finding for that line ` +
+      `is ingested ✓`,
   );
 }
