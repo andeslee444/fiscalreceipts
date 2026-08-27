@@ -8493,7 +8493,10 @@ Both pages restored; the leg returns errors: 0.
 THE FLOOR, AND WHY IT IS 319 AND NOT THE 165 IN THE ENTRY. ROADMAP #32's
 2026-08-07 correction records a "verified floor" of 165, superseding a
 proposed 190. Both count pe_blis with FY2025 money and no FY2026 row across
-ALL TEN EDITIONS. The note is a claim about ONE edition and renders per PAGE.
+ALL TEN EDITIONS. The 190 reproduces exactly; the 165 does not -- 182 of those
+190 have a /program/ page at HEAD, and the 8 that do not are the known
+route-unsafe Army mis-parses O&M and RDT&E plus 6 others, not 25.
+The note is a claim about ONE edition and renders per PAGE.
 Re-measured on the page grain, fenced to PB2026: FY2025-only is 159, and
 FY2024-or-FY2025 -- the definition the entry's own headline uses, and the only
 one that reproduces its per-service counts -- is 319 (160 last funded FY2024,

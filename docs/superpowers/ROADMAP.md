@@ -897,7 +897,12 @@ docs/superpowers/ROADMAP.md`.
     number is wrong):* **165 is not the floor either, and 190 was never the
     population this note is about.** Both figures count `pe_bli`s with FY2025
     money and no FY2026 row across ALL TEN EDITIONS — but the note is a claim
-    about ONE edition (PB2026) and is rendered per PAGE, not per pe_bli. Fenced
+    about ONE edition (PB2026) and is rendered per PAGE, not per pe_bli. (The
+    190 reproduces exactly; the 165 does not — **182** of those 190 have a
+    `/program/` page at HEAD, and the 8 that do not are the known route-unsafe
+    Army mis-parses `O&M` and `RDT&E` plus 6 others, not 25. So the
+    "other 25 have no page" clause above is also unreproducible. Recorded, not
+    quietly dropped.) Fenced
     to the PB2026 workbook rows each page actually renders, and counted per
     page: FY2025-only is **159**, and FY2024-or-FY2025 — the definition this
     entry's own headline uses, and the only one that reproduces its per-service
