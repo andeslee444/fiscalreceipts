@@ -190,14 +190,41 @@ def _pe_named(pe: str, text: str) -> bool:
 
 
 def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:
-    """narratives: dicts with pe_bli, fiscal_year, fact_id, page, body."""
+    """narratives: dicts with pe_bli, fiscal_year, fact_id, page, body.
+
+    DEDUP GRAIN IS THE IDENTITY PAIR (from_pe_bli, to_pe_bli) — first seen
+    wins (#29(b), 2026-08-27). It was (from, to, fiscal_year, relation) while
+    extraction was fenced to a single edition, where the two are equivalent:
+    fiscal_year was constant, and no live pair ever carried two relations
+    (verified against the shipped table before the change — the
+    `having count(distinct relation) > 1` query returned nothing).
+
+    Multi-edition input breaks that equivalence in two ways, and BOTH are the
+    same fact narrated twice, never two facts:
+
+      * an edge's fiscal_year is the J-BOOK EDITION that asserts the link,
+        NOT the year the money moved. PB2020 says "In 2020, QRF funding …
+        will be transferred to PE 0603699D8Z" and PB2021 says "In FY 2020,
+        QRF funds transferred to PE 0603699D8Z" — one FY2020 transfer, two
+        editions narrating it. Keying on fiscal_year shipped it twice.
+      * one pair can match two relation rules across editions:
+        0605140D8Z → 0604294D8Z is "realigned" from "$84.200M are being
+        transferred from PE 0605140D8Z" and "renamed" from "previously
+        funded in PE 0605140D8Z BA 5 and has been transferred to this BA 4
+        PE". Two labels on one move; the rail would print both.
+
+    CALLER CONTRACT: pass narratives ordered LATEST EDITION FIRST
+    (lineage/load.py's `order by j.fiscal_year desc, …`). First-seen-wins
+    then keeps the most recent edition's telling of each link, which is the
+    one whose wording the current books stand behind.
+    """
     out: list[LineageEdge] = []
-    seen: set[tuple[str, str, int, str]] = set()
+    seen: set[tuple[str, str]] = set()
 
     def mint(n: dict, frm: str, to: str, relation: str, sent: str) -> None:
         if frm == to:
             return
-        key = (frm, to, n["fiscal_year"], relation)
+        key = (frm, to)
         if key in seen:
             return
         seen.add(key)
@@ -249,3 +276,97 @@ def extract_stated_edges(narratives: list[dict]) -> list[LineageEdge]:
                     continue
                 mint(n, this, other, relation, sent)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Supersession (#29(b), 2026-08-27) — a later edition may take an edge back
+# ---------------------------------------------------------------------------
+#
+# Fencing extraction to one edition made this impossible by construction:
+# there was no "later edition" to disagree. Reading PB2017–PB2026 reopens it.
+# An edge asserted in PB2021 and reversed by PB2024 must NOT ship as current
+# fact; the Stated tier means "the books say this", and if the newest book
+# says otherwise, the books do not say this.
+#
+# Two refusal rules, both conservative — they drop the edge, never rewrite it:
+#
+#   (1) REVERSED. Some edition strictly later than the asserting one states
+#       the mirror link (to -> from). Money going back is not the same fact
+#       as money going out, and we cannot tell from prose alone whether the
+#       later statement corrects the earlier one or describes a second,
+#       opposite move. Either way the pair is contested, so neither direction
+#       is a settled "stated" fact.
+#
+#   (2) RETRACTED LATER. Some clause in a strictly-later edition names BOTH
+#       endpoints AND carries one of extract.py's own NEGATION_CUES. This is
+#       #53's rule (a sentence that takes itself back cannot carry the
+#       strongest evidence tier) widened across editions: the retraction of a
+#       PB2018 transfer is often printed in PB2019, not in PB2018.
+#
+# Both re-use the SAME NEGATION_CUES / _pe_named this module already applies
+# at mint time. There is deliberately no third rule inferred from dollar
+# series: "PE X still has money after the transfer year" does NOT contradict a
+# partial or project-scoped transfer, and guessing there would manufacture
+# exactly the false-claim-on-a-true-citation defect this tier exists to avoid.
+#
+# ABSENCE IS NOT CONTRADICTION. A later edition that simply stops mentioning
+# the link supersedes nothing — books drop old context routinely. Only an
+# affirmative later statement refuses an edge.
+
+
+def superseded_reason(
+    edge: LineageEdge,
+    edges: list[LineageEdge],
+    narratives: list[dict],
+) -> str | None:
+    """Why a later edition takes `edge` back, or None if none does.
+
+    `edges` is the minted edge set across every edition (rule 1 reads the
+    mirror pair out of it); `narratives` is the same corpus extraction ran
+    over (rule 2 scans the strictly-later editions' bodies). Returns a
+    human-readable reason so the gate and the loader report the SAME string.
+    """
+    if edge.confidence != "stated":
+        return None
+    frm, to, fy = edge.from_pe_bli, edge.to_pe_bli, edge.fiscal_year
+    for other in edges:
+        if (other.confidence == "stated"
+                and other.from_pe_bli == to and other.to_pe_bli == frm
+                and other.fiscal_year > fy):
+            return (
+                f"a later edition (FY{other.fiscal_year}) states the mirror"
+                f" link {to}->{frm}; the direction is contested"
+            )
+    for n in narratives:
+        if int(n.get("fiscal_year") or 0) <= fy:
+            continue
+        body = n.get("body") or ""
+        if frm not in body or to not in body:
+            continue
+        for sent in _SENT.findall(body):
+            if not (_pe_named(frm, sent) and _pe_named(to, sent)):
+                continue
+            low = sent.lower()
+            for cue in NEGATION_CUES:
+                if cue in low:
+                    return (
+                        f"a later edition (FY{n['fiscal_year']}) retracts it"
+                        f" — {cue!r} in a clause naming both endpoints:"
+                        f" {sent.strip()[:160]!r}"
+                    )
+    return None
+
+
+def drop_superseded(
+    edges: list[LineageEdge], narratives: list[dict]
+) -> tuple[list[LineageEdge], list[tuple[LineageEdge, str]]]:
+    """Split `edges` into (kept, [(dropped_edge, reason), …])."""
+    kept: list[LineageEdge] = []
+    dropped: list[tuple[LineageEdge, str]] = []
+    for e in edges:
+        reason = superseded_reason(e, edges, narratives)
+        if reason is None:
+            kept.append(e)
+        else:
+            dropped.append((e, reason))
+    return kept, dropped

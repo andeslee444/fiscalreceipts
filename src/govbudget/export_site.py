@@ -40,6 +40,11 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 
+# The PB2026 narrative DISPLAY fence, shared with the lineage layer so the
+# exporter, lineage/load.py and verify_lineage.py can never fence differently.
+# (lineage.model imports nothing from this module — no cycle.)
+from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
+
 
 # ---------------------------------------------------------------------------
 # Canonical identity (binding — imported by tests and verify_phase5b1)
@@ -989,7 +994,10 @@ _DATASET_SCOPES: dict[str, str] = {
     "jbook_narratives": (
         "One row per J-book narrative text block — mission, description,"
         " justification, or accomplishment/planned-program — with its XML"
-        " element path and source-PDF SHA-256."
+        " element path and source-PDF SHA-256. Fenced to the PB2026 edition,"
+        " plus the earlier-edition (PB2017–PB2025) narratives that a program"
+        " lineage edge cites; those carry citations but are never rendered as"
+        " a program page's own narrative text."
     ),
     "fct_budget_trajectory": (
         "One row per (program element × organization) with FY2024 actuals,"
@@ -1101,6 +1109,35 @@ def _build_dataset_manifest(
         "datasets": entries,
         "schema_version": 1,
     }
+
+
+def _lineage_evidence_fact_ids(duckdb_path) -> set[str]:
+    """Narrative fact_ids cited by STATED program-lineage edges (any edition).
+
+    Read straight off the staged lake (program_lineage.parquet) — the same
+    file _load_lineage_for_export reads later — so the citation pass and the
+    lineage sidecar can never disagree about which edges exist. Empty set when
+    the lake has no lineage table (fixtures, a pre-lineage checkout).
+
+    Inferred edges are excluded BY DESIGN, not by accident: an inferred edge
+    carries evidence:None and must never acquire a citation.
+    """
+    lin_pq = _stage_parquet_path(duckdb_path, "jbooks", "program_lineage.parquet")
+    if lin_pq is None:
+        return set()
+    import duckdb as _duckdb_ev
+
+    con = _duckdb_ev.connect()
+    try:
+        lin_s = str(lin_pq).replace("'", "''")
+        rows = con.execute(
+            "select distinct evidence_fact_id from read_parquet"
+            f"('{lin_s}') where confidence = 'stated'"
+            " and evidence_fact_id is not null and evidence_fact_id <> ''"
+        ).fetchall()
+    finally:
+        con.close()
+    return {r[0] for r in rows}
 
 
 def _stage_parquet_path(duckdb_path, stage: str, filename: str):
@@ -1358,10 +1395,12 @@ def export_site(
     # of these queries filters fiscal_year = 2026 — never merge editions
     # silently (spec §2 rule 1). The PB2017–PB2025 editions ship through
     # the edition-aware 5E Task 5 marts, which supersede this fence.
-    # The lineage layer shares this fence via the single constant
-    # govbudget.lineage.model.CITED_NARRATIVE_FY (= 2026), imported by
-    # lineage/load.py (stated-edge extraction) and verify_lineage.py (leg a's
-    # narrative index) — keep this filter and that constant in lockstep.
+    # The narrative half of this fence is DISPLAY-only since #29(b): the
+    # constant is govbudget.lineage.model.DISPLAY_NARRATIVE_FY (= 2026), and
+    # §2b′ below deliberately adds earlier-edition narratives that a stated
+    # lineage edge cites — as citation targets, never as page prose (narr_by_pe
+    # re-applies the same constant). Lineage extraction and verify_lineage's
+    # narrative index read ALL editions; they are no longer fenced here.
     with psycopg.connect(dsn) as pg:
         # ---- 2a. jbook_details.parquet ----
         rows_details = pg.execute(
@@ -1455,6 +1494,73 @@ def export_site(
                 fid, pe_bli, pn, kind, title, body, xml_path, org,
                 int(fy) if fy is not None else None, sha,
             ))
+
+        # ---- 2b′. lineage-evidence union (ROADMAP #29(b), 2026-08-27) ----
+        #
+        # THE MULTI-EDITION CITATION LAYER. Phase 5I could only ship stated
+        # lineage edges extracted from PB2026 narratives, because the pass
+        # above is the ONLY source of jbook_narrative citations and it is
+        # fenced to fiscal_year = 2026 — an edge citing a PB2018 sentence had
+        # nothing to resolve to, so 28 genuine edges were dropped. Instead of
+        # relaxing that (an unresolvable citation is worse than no edge), the
+        # narratives a stated edge actually cites are added here, in whatever
+        # edition they live, so their citations resolve like any other.
+        #
+        # POPULATION IS EXACTLY THE CITED SET, not "all editions": the
+        # remaining ~18k pre-2026 narratives stay out. Nothing on the site
+        # points at them, so a citation for them would be weight without a
+        # reader.
+        #
+        # These rows are CITATION TARGETS, NOT PAGE PROSE. The program page's
+        # narrative list (narr_by_pe, later in this file) re-fences to
+        # DISPLAY_NARRATIVE_FY so a PB2019 mission paragraph can never appear
+        # in a list the page presents with PB2026 semantics and no edition
+        # label. Only the <Cite>/citation panel — which names the document and
+        # its edition — ever surfaces them.
+        _lineage_ev_fids = _lineage_evidence_fact_ids(duckdb_path)
+        _have_fids = {r[0] for r in narr_rows_with_fid if r[0]}
+        _wanted = _lineage_ev_fids - _have_fids
+        n_lineage_ev = 0
+        if _wanted:
+            for pe_bli, pn, kind, title, body, xml_path, org, fy, sha in pg.execute(
+                """
+                select n.pe_bli, n.project_number, n.kind, n.title, n.body,
+                       n.xml_path, j.org, j.fiscal_year, j.sha256
+                from detail_narratives n
+                join jbook_documents j on j.id = n.document_id
+                where not n.superseded and j.sha256 is not null
+                  and n.xml_path is not null
+                  and j.fiscal_year <> %s
+                order by j.fiscal_year, j.sha256, n.pe_bli, n.xml_path
+                """,
+                (DISPLAY_NARRATIVE_FY,),
+            ).fetchall():
+                fid = fact_id_narrative(sha, pe_bli, kind, xml_path)
+                if fid not in _wanted:
+                    continue
+                _wanted.discard(fid)   # first match wins; ordering above is total
+                n_lineage_ev += 1
+                narr_rows_with_fid.append((
+                    fid, pe_bli, pn, kind, title, body, xml_path, org,
+                    int(fy) if fy is not None else None, sha,
+                ))
+        if n_lineage_ev:
+            print(
+                f"jbook_narratives.parquet: +{n_lineage_ev} pre-PB{DISPLAY_NARRATIVE_FY}"
+                f" lineage-evidence narrative(s) (citation targets only)"
+            )
+        if _wanted:
+            # A stated edge cites a narrative that no longer exists in
+            # detail_narratives. _emit_lineage would raise later anyway; say
+            # so HERE, where the cause is (a stale program_lineage lake vs a
+            # re-ingested corpus), not three thousand lines downstream.
+            raise ValueError(
+                f"lineage: {len(_wanted)} stated-edge evidence fact_id(s) match no"
+                f" narrative in ANY edition — the program_lineage lake is stale"
+                f" against detail_narratives; re-run `govbudget lineage build`"
+                f" then `govbudget jbooks export-facts`. First:"
+                f" {sorted(_wanted)[:5]}"
+            )
 
         _write_typed_parquet(
             data_dir / "jbook_narratives.parquet",
@@ -5841,11 +5947,12 @@ def _emit_lineage(
       rail.predecessors / rail.successors — one entry per edge touching THIS pe,
         entry.pe = the OTHER PE. resolved = (pe in the page universe). STATED
         edges carry evidence {fact_id,page,sentence}; a stated edge whose
-        fact_id is NOT in cited_fact_ids RAISES (2026-07-28 — with the
-        narrative fence aligned end-to-end via CITED_NARRATIVE_FY this is
-        unreachable, so it fails the export loudly rather than silently
-        shipping an uncited stated edge); INFERRED edges carry evidence: None
-        (the honesty contract — inferred edges are NEVER cited).
+        fact_id is NOT in cited_fact_ids RAISES (2026-07-28 — §2b′'s
+        lineage-evidence union mints a citation for every stated edge's
+        narrative in every edition, so this is unreachable and fails the
+        export loudly rather than silently shipping an uncited stated edge);
+        INFERRED edges carry evidence: None (the honesty contract — inferred
+        edges are NEVER cited).
       family — only when THIS pe is in a family. chain = one_to_one_chain from
         the family ROOT (stated in-degree 0; lexicographically-smallest member
         if the family is cyclic). funding_line (Defect 2, 2026-07-28) emits one
@@ -5874,20 +5981,26 @@ def _emit_lineage(
         if e.confidence == "stated":
             fid = e.evidence_fact_id
             if fid is not None and fid not in cited_fact_ids:
-                # HARD ERROR (2026-07-28): with the narrative fence aligned
-                # end-to-end (CITED_NARRATIVE_FY in lineage/model.py governs
-                # load.py, verify-lineage leg a, AND this file's cite-shard
-                # pass) a stated edge citing an out-of-universe fact is
-                # unreachable — if it happens the pipeline is broken, and the
-                # export must FAIL LOUDLY rather than silently shipping a
-                # stated edge stripped of its citation (the print-and-null
-                # degrade this replaced).
+                # HARD ERROR (2026-07-28): §2b′'s lineage-evidence union mints
+                # a jbook_narrative citation for EVERY stated edge's narrative,
+                # in whatever edition it lives, so a stated edge citing an
+                # out-of-universe fact is unreachable — if it happens the
+                # pipeline is broken, and the export must FAIL LOUDLY rather
+                # than silently ship a stated edge stripped of its citation
+                # (the print-and-null degrade this replaced).
+                #
+                # The message names the real cause (#29(b), 2026-08-27). It
+                # used to blame "the CITED_NARRATIVE_FY fence", which sent the
+                # reader to a constant that no longer gates extraction at all.
                 raise ValueError(
                     f"lineage: stated edge {e.from_pe_bli}->{e.to_pe_bli} cites"
                     f" fact_id {fid} which is not in the cite-shard universe —"
-                    " the CITED_NARRATIVE_FY fence is broken (rebuild lineage"
-                    " against the current narratives); refusing to export a"
-                    " stated edge without a resolvable citation"
+                    " §2b′'s lineage-evidence citation union did not cover it"
+                    " (usually: program_lineage.parquet in the lake is newer or"
+                    " older than the narratives this export read — re-run"
+                    " `govbudget lineage build` then `govbudget jbooks"
+                    " export-facts`); refusing to export a stated edge without"
+                    " a resolvable citation"
                 )
             evidence = {
                 "fact_id": fid,
@@ -6669,12 +6782,23 @@ def _write_all_sidecars(
     # Since narratives come from a separate Postgres query, we read the
     # already-written parquet file.
     # fact_id is included so that dossier bundles can cite narrative rows.
+    #
+    # EDITION FENCE, EXPLICIT (#29(b), 2026-08-27). This list is the narrative
+    # PROSE a program page renders, with PB2026 semantics and no per-paragraph
+    # edition label. It used to inherit the fence implicitly, because the
+    # parquet held only PB2026 rows. The parquet now also carries the handful
+    # of earlier-edition narratives that a stated lineage edge cites (§2b′), so
+    # the fence has to be stated HERE or a PB2019 mission paragraph would
+    # silently join a PB2026 list and read as current. Those rows are reachable
+    # exactly where they are labelled: the citation panel, which names the
+    # document and its edition.
     narr_by_pe: dict[str, list] = defaultdict(list)
     narr_pq = out_dir / "data" / "jbook_narratives.parquet"
     if narr_pq.exists():
         import duckdb as _duckdb2
         narr_rows = _duckdb2.sql(
-            f"select fact_id, pe_bli, kind, title, body, xml_path from read_parquet('{narr_pq}')"
+            "select fact_id, pe_bli, kind, title, body, xml_path from"
+            f" read_parquet('{narr_pq}') where fiscal_year = {DISPLAY_NARRATIVE_FY}"
         ).fetchall()
         for narr_fid, pe_bli, kind, title, body, xml_path in narr_rows:
             entry: dict = {"kind": kind, "title": title, "body": body, "xml_path": xml_path or ""}

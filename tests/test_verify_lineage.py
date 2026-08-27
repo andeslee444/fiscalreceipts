@@ -250,25 +250,34 @@ def test_leg_a_fails_when_edge_endpoints_contradict_both_named_sentence(pg):
     assert any("contradict" in r for _, r in g["failures"])
 
 
-def test_leg_a_fails_when_citation_is_pre2026_narrative(pg):
-    """proof-can-fail (fence alignment, 2026-07-28): the site's cite-shard
-    universe is fenced to CITED_NARRATIVE_FY (= 2026) narratives, so a stated
-    edge citing a PB2025 narrative would ship a silently-dead <Cite>. Leg (a)'s
-    narrative index must apply the SAME fence: a PB2025-narrative-cited edge
-    FAILS ("re-derives to no narrative")."""
+def test_leg_a_accepts_a_pre2026_narrative_citation(pg):
+    """#29(b), 2026-08-27 — this test asserted the OPPOSITE until today.
+
+    Through Phase 5I, leg (a)'s narrative index was fenced to
+    CITED_NARRATIVE_FY, so an edge citing a PB2025 narrative failed with
+    "re-derives to no narrative". That fence was never the real contract; it
+    was a proxy for one, because PB2026 was the only edition export_site
+    minted narrative citations for. export_site now mints a citation for every
+    narrative a stated edge cites in ANY edition, so leg (a) — which asks
+    "does this fact_id re-derive to a real narrative?" — must answer yes here.
+
+    The real contract, "the reader can open this citation", did not go away;
+    it moved to leg (g), which asserts it against the BUILT cite-shards
+    instead of inferring it from an edition number. See
+    test_leg_g_fails_when_the_built_shard_lacks_the_edges_fact_id."""
     fid = seed_narrative(
         pg, sha="fy25", pe_bli="0601101E", kind="mission",
         xml_path="ProgramElement[0]/Narrative[0]",
         body="Funding was realigned to PE 0601102E for the follow-on effort.",
-        fiscal_year=2025,  # a PB2025 narrative — OUTSIDE the cite-shard fence
+        fiscal_year=2025,  # a PB2025 narrative — previously out of bounds
     )
     seed_edge(
         pg, "0601101E", "0601102E", fact_id=fid,
         sentence="Funding was realigned to PE 0601102E for the follow-on effort.",
     )
     g = stated_cite_leg(pg)
-    assert g["ok"] is False
-    assert any("re-derives to no narrative" in r for _, r in g["failures"])
+    assert g["ok"] is True, g["failures"]
+    assert g["checked"] == 1
 
 
 def test_leg_a_passes_when_edge_matches_both_named_pair(pg):
@@ -840,3 +849,225 @@ def test_all_legs_pass_on_clean_mini_warehouse(pg, tmp_path):
     assert a["ok"] and b["ok"] and c["ok"] and d["ok"] and e["ok"] and f["ok"], (
         a, b, c, d, e, f,
     )
+
+
+# ===========================================================================
+# Leg (g) — artifact cite-resolution (#29(b))
+# ===========================================================================
+
+
+def _build_artifact(tmp_path: Path, *, pe: str, other: str, fid: str,
+                    sentence: str, shard_has_fid: bool = True,
+                    shard_official_url: str | None = "https://example.test/d.pdf",
+                    rail_fid: str | None = None,
+                    rail_sentence: str | None = None) -> tuple[Path, Path]:
+    """A minimal BUILT site artifact: one program_details sidecar + shards."""
+    details = tmp_path / "program_details"
+    shards = tmp_path / "cite-shards"
+    details.mkdir(parents=True, exist_ok=True)
+    shards.mkdir(parents=True, exist_ok=True)
+    (details / f"{pe}.json").write_text(json.dumps({
+        "lineage": {"rail": {"successors": [{
+            "pe": other, "confidence": "stated", "relation": "realigned",
+            "evidence": {
+                "fact_id": rail_fid if rail_fid is not None else fid,
+                "page": None,
+                "sentence": rail_sentence if rail_sentence is not None else sentence,
+            },
+        }], "predecessors": []}},
+    }))
+    shard = {}
+    if shard_has_fid:
+        shard[fid] = {
+            "kind": "jbook_narrative",
+            "sha256": "a" * 64,
+            "official_url": shard_official_url,
+            "page_number": None,
+        }
+    (shards / f"{fid[:2]}.json").write_text(json.dumps(shard))
+    return details, shards
+
+
+def test_leg_g_passes_on_a_coherent_artifact(pg, tmp_path):
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="g1", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    details, shards = _build_artifact(tmp_path, pe="0601101E", other="0601102E",
+                                      fid=fid, sentence=sent)
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is True, g["failures"]
+    assert g["checked"] == 1 and g["rendered"] == 1
+
+
+def test_leg_g_fails_when_the_built_shard_lacks_the_edges_fact_id(pg, tmp_path):
+    """proof-can-fail — THE defect the PB2026 fence used to prevent by brute
+    force: a pre-2026 stated edge whose citation resolves to nothing. Leg (a)
+    passes here (the narrative is real); only the artifact shows the dead
+    <Cite>."""
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="g2", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    assert stated_cite_leg(pg)["ok"] is True   # the warehouse row is honest
+    details, shards = _build_artifact(tmp_path, pe="0601101E", other="0601102E",
+                                      fid=fid, sentence=sent, shard_has_fid=False)
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is False
+    assert any("absent from the built cite-shard" in r for _, r in g["failures"])
+
+
+def test_leg_g_fails_when_the_shard_record_names_no_openable_source(pg, tmp_path):
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="g3", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    details, shards = _build_artifact(tmp_path, pe="0601101E", other="0601102E",
+                                      fid=fid, sentence=sent,
+                                      shard_official_url=None)
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is False
+    assert any("names no openable source" in r for _, r in g["failures"])
+
+
+def test_leg_g_fails_when_the_page_ships_a_stale_sentence(pg, tmp_path):
+    """A resolving shard beside a page that quotes an older sentence still
+    misleads the reader — the artifact must match the row it came from."""
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="g4", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    details, shards = _build_artifact(
+        tmp_path, pe="0601101E", other="0601102E", fid=fid, sentence=sent,
+        rail_sentence="An older sentence the warehouse no longer holds.")
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is False
+    assert any("evidence sentence that is" in r for _, r in g["failures"])
+
+
+def test_leg_g_is_not_vacuous_with_zero_stated_edges(pg, tmp_path):
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    details, shards = tmp_path / "program_details", tmp_path / "cite-shards"
+    details.mkdir(); shards.mkdir()
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is False
+    assert "vacuous" in (g.get("reason") or "")
+
+
+# ===========================================================================
+# Leg (h) — supersession (#29(b))
+# ===========================================================================
+
+
+def test_leg_h_passes_when_no_later_edition_disagrees(pg):
+    from govbudget.verify_lineage import no_supersession_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="h1", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    h = no_supersession_leg(pg)
+    assert h["ok"] is True, h["failures"]
+    assert h["checked"] == 1
+
+
+def test_leg_h_fails_when_a_later_edition_states_the_mirror_link(pg):
+    """proof-can-fail: PB2019 says X→Y, PB2024 says Y→X. The direction is
+    contested, so neither is a settled Stated fact."""
+    from govbudget.verify_lineage import no_supersession_leg
+
+    s1 = "Funding was realigned to PE 0601102E for the follow-on effort."
+    f1 = seed_narrative(pg, sha="h2a", pe_bli="0601101E", kind="mission",
+                        xml_path="ProgramElement[0]/Narrative[0]", body=s1,
+                        fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=f1, sentence=s1, fy=2019)
+    s2 = "Funding was realigned to PE 0601101E to restore the original line."
+    f2 = seed_narrative(pg, sha="h2b", pe_bli="0601102E", kind="mission",
+                        xml_path="ProgramElement[0]/Narrative[0]", body=s2,
+                        fiscal_year=2024)
+    seed_edge(pg, "0601102E", "0601101E", fact_id=f2, sentence=s2, fy=2024)
+    h = no_supersession_leg(pg)
+    assert h["ok"] is False
+    assert any("mirror link" in r for _, r in h["failures"])
+
+
+def test_leg_h_fails_when_a_later_edition_retracts_the_transfer(pg):
+    """proof-can-fail: the retraction of a PB2019 transfer is printed in
+    PB2022, which single-edition extraction could never see."""
+    from govbudget.verify_lineage import no_supersession_leg
+
+    s1 = "Funding was realigned to PE 0601102E for the follow-on effort."
+    f1 = seed_narrative(pg, sha="h3a", pe_bli="0601101E", kind="mission",
+                        xml_path="ProgramElement[0]/Narrative[0]", body=s1,
+                        fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=f1, sentence=s1, fy=2019)
+    seed_narrative(
+        pg, sha="h3b", pe_bli="0601102E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]",
+        body=("Funds moved from PE 0601101E to PE 0601102E were transferred"
+              " in error and will be returned."),
+        fiscal_year=2022)
+    h = no_supersession_leg(pg)
+    assert h["ok"] is False
+    assert any("retracts it" in r for _, r in h["failures"])
+
+
+def test_leg_h_ignores_an_earlier_edition_and_mere_silence(pg):
+    """A later edition that simply stops mentioning the link supersedes
+    nothing, and an EARLIER retraction cannot take back a LATER statement."""
+    from govbudget.verify_lineage import no_supersession_leg
+
+    s1 = "Funding was realigned to PE 0601102E for the follow-on effort."
+    f1 = seed_narrative(pg, sha="h4a", pe_bli="0601101E", kind="mission",
+                        xml_path="ProgramElement[0]/Narrative[0]", body=s1,
+                        fiscal_year=2024)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=f1, sentence=s1, fy=2024)
+    seed_narrative(
+        pg, sha="h4b", pe_bli="0601102E", kind="mission",
+        xml_path="ProgramElement[0]/Narrative[0]",
+        body=("An earlier move from PE 0601101E to PE 0601102E was made"
+              " in error."),
+        fiscal_year=2019)                      # EARLIER — cannot supersede
+    seed_narrative(
+        pg, sha="h4c", pe_bli="0601102E", kind="mission",
+        xml_path="ProgramElement[1]/Narrative[0]",
+        body="This program element continues prior-year work.",
+        fiscal_year=2026)                      # later, but says nothing
+    h = no_supersession_leg(pg)
+    assert h["ok"] is True, h["failures"]
+
+
+def test_leg_g_does_not_call_a_page_that_exists_missing(pg, tmp_path):
+    """The message must not misexplain the finding. An edge whose endpoint HAS
+    a sidecar but is absent from its rail is a FAIL about that rail — never a
+    NOTE saying the endpoint has no page, which sends the reader looking for a
+    file that is right there. (Caught on the live pre-failure run.)"""
+    from govbudget.verify_lineage import artifact_cite_leg
+
+    sent = "Funding was realigned to PE 0601102E for the follow-on effort."
+    fid = seed_narrative(pg, sha="g5", pe_bli="0601101E", kind="mission",
+                         xml_path="ProgramElement[0]/Narrative[0]", body=sent,
+                         fiscal_year=2019)
+    seed_edge(pg, "0601101E", "0601102E", fact_id=fid, sentence=sent, fy=2019)
+    # The sidecar exists; its rail cites a DIFFERENT fact.
+    details, shards = _build_artifact(tmp_path, pe="0601101E", other="0601102E",
+                                      fid=fid, sentence=sent,
+                                      rail_fid="00" * 8)
+    g = artifact_cite_leg(pg, details, shards)
+    assert g["ok"] is False
+    assert any("ships no rail entry" in r for _, r in g["failures"])
+    assert g["unrendered"] == []

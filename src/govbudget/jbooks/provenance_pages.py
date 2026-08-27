@@ -472,7 +472,9 @@ def find_narrative_page(pdf_path: Path, *, pe_bli: str, body: str,
             pdf_handle.close()
 
 
-def build_narrative_provenance(dsn: str, *, fiscal_year: int | None = None) -> int:
+def build_narrative_provenance(
+    dsn: str, *, fiscal_year: int | None = None, keys=None
+) -> int:
     """Resolve every non-superseded narrative lacking a narrative provenance row.
 
     Identity is (document_sha256, pe_bli, narrative_kind, xml_path) — the same
@@ -483,6 +485,14 @@ def build_narrative_provenance(dsn: str, *, fiscal_year: int | None = None) -> i
     fiscal_year scopes the run to one PB edition's documents (Phase 5G
     per-service backfill — mirrors build_provenance_pages); None keeps the
     historical whole-corpus behavior.
+
+    keys (#29(b), 2026-08-27) narrows to an explicit set of identity tuples
+    (document_sha256, pe_bli, narrative_kind, xml_path). The multi-edition
+    lineage layer needs a page anchor for a few dozen PB2017–PB2025 narratives
+    — the ones a stated edge cites — out of ~18k in those editions; resolving
+    all of them costs hours of pdfplumber for pages nothing links to. Scoping
+    changes only WHICH rows are attempted, never how one is resolved, so a
+    scoped row is identical to the row a whole-edition run would write.
     """
     import pdfplumber
 
@@ -506,6 +516,10 @@ def build_narrative_provenance(dsn: str, *, fiscal_year: int | None = None) -> i
             """,
             {"fy": fiscal_year},
         ).fetchall()
+        if keys is not None:
+            wanted = {tuple(k) for k in keys}
+            # row is (sha256, file_path, pe_bli, project_number, kind, xml_path, …)
+            rows = [r for r in rows if (r[0], r[2], r[4], r[5]) in wanted]
         for sha, doc_group in groupby(rows, key=lambda r: r[0]):
             narratives = list(doc_group)
             pdf_path = Path(narratives[0][1])

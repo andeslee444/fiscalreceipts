@@ -758,7 +758,37 @@ def cmd_jbooks(args) -> None:
 
         from govbudget.jbooks.provenance_pages import build_narrative_provenance
 
-        n = build_narrative_provenance(config.PG_DSN, fiscal_year=args.fiscal_year)
+        keys = None
+        if getattr(args, "lineage_evidence", False):
+            # #29(b): resolve a page anchor for exactly the narratives a
+            # STATED lineage edge cites, across every PB edition. Re-derives
+            # the identity tuple by hashing each candidate narrative the same
+            # way fact_id_narrative does, then keeping the ones program_lineage
+            # actually points at.
+            from govbudget.export_site import fact_id_narrative
+
+            with psycopg.connect(config.PG_DSN) as _con:
+                wanted = {
+                    r[0] for r in _con.execute(
+                        "select distinct evidence_fact_id from program_lineage"
+                        " where confidence = 'stated' and evidence_fact_id is not null"
+                    ).fetchall()
+                }
+                keys = [
+                    (sha, pe, kind, xml)
+                    for sha, pe, kind, xml in _con.execute(
+                        "select j.sha256, n.pe_bli, n.kind, n.xml_path"
+                        " from detail_narratives n"
+                        " join jbook_documents j on j.id = n.document_id"
+                        " where not n.superseded and n.xml_path is not null"
+                        "   and j.sha256 is not null"
+                    ).fetchall()
+                    if fact_id_narrative(sha, pe, kind, xml) in wanted
+                ]
+            print(f"narrative-provenance: scoped to {len(keys)} lineage-evidence narrative(s)")
+        n = build_narrative_provenance(
+            config.PG_DSN, fiscal_year=args.fiscal_year, keys=keys
+        )
         with psycopg.connect(config.PG_DSN) as _con:
             by_res = dict(_con.execute(
                 "select resolution, count(*) from provenance_pages"
@@ -1757,10 +1787,12 @@ def cmd_verify_phase5e(args) -> None:
 
 def cmd_verify_lineage(args) -> None:
     from govbudget.verify_lineage import (
+        artifact_cite_leg,
         family_integrity_leg,
         funding_point_value_leg,
         lake_binding_leg,
         no_retraction_leg,
+        no_supersession_leg,
         one_to_one_sum_leg,
         stated_cite_leg,
     )
@@ -1869,6 +1901,39 @@ def cmd_verify_lineage(args) -> None:
     for grain, reason in f["failures"][:10]:
         print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gf_ok
+
+    # Leg g: artifact cite-resolution — the reader can open every stated cite
+    g = artifact_cite_leg(
+        config.PG_DSN,
+        config.SITE_DIR / "json" / "program_details",
+        config.SITE_DIR / "json" / "cite-shards",
+    )
+    gg_ok = g["ok"]
+    if g.get("reason"):
+        print(f"leg g artifact-cite: {g['reason']} → FAIL")
+    else:
+        print(
+            f"leg g artifact-cite: checked={g['checked']} rendered={g['rendered']}"
+            f" unrendered={len(g['unrendered'])} failures={len(g['failures'])}"
+            f" → {'PASS' if gg_ok else 'FAIL'}"
+        )
+        for grain in g["unrendered"]:
+            print(f"  NOTE {grain} cites correctly but neither endpoint has a"
+                  f" program page, so it renders nowhere")
+        for grain, reason in g["failures"][:10]:
+            print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gg_ok
+
+    # Leg h: supersession — no shipped edge is taken back by a later edition
+    h = no_supersession_leg(config.PG_DSN)
+    gh_ok = h["ok"]
+    print(
+        f"leg h no-supersession: checked={h['checked']} passed={h['passed']}"
+        f" failures={len(h['failures'])} → {'PASS' if gh_ok else 'FAIL'}"
+    )
+    for grain, reason in h["failures"][:10]:
+        print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gh_ok
 
     print("verify-lineage:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)
@@ -2006,6 +2071,12 @@ def main(argv=None) -> None:
                         f" {config.JBOOK_FY}; provenance-pages and"
                         " narrative-provenance default to all editions"
                         " (unfiltered)")
+    j.add_argument("--lineage-evidence", action="store_true",
+                   dest="lineage_evidence",
+                   help="narrative-provenance: resolve ONLY the narratives a"
+                        " stated program_lineage edge cites (any edition)."
+                        " ~18k pre-PB2026 narratives exist and nothing links"
+                        " to all but a few dozen of them (#29(b))")
     j.add_argument("--service", default=None,
                    choices=["navy", "army", "af", "spaceforce"],
                    help="backfill: automate a service J-book set. navy uses"

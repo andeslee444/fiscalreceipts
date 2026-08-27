@@ -1,4 +1,4 @@
-from govbudget.lineage.extract import extract_stated_edges
+from govbudget.lineage.extract import drop_superseded, extract_stated_edges
 from govbudget.lineage.model import LineageEdge
 
 def test_extracts_transferred_from_as_predecessor_edge():
@@ -121,3 +121,109 @@ def test_single_direction_still_pairs_with_this():
                      "Software, Projects EJ6 and EK9."}]
     edges = extract_stated_edges(narr)
     assert [(e.from_pe_bli, e.to_pe_bli) for e in edges] == [("0605216A", "0604818A")]
+
+
+# ===========================================================================
+# Multi-edition behaviour (#29(b), 2026-08-27)
+# ===========================================================================
+
+
+def _n(pe, fy, fid, body):
+    return {"pe_bli": pe, "fiscal_year": fy, "fact_id": fid, "page": None,
+            "body": body}
+
+
+def test_the_same_link_narrated_by_two_editions_mints_once():
+    """The live shape this collapses: PB2020 "In 2020, QRF funding … will be
+    transferred to PE 0603699D8Z" and PB2021 "In FY 2020, QRF funds
+    transferred to PE 0603699D8Z" are ONE FY2020 transfer. Keying on the
+    edition year shipped the rail two identical entries."""
+    narr = [
+        _n("0603826D8Z", 2021, "f21",
+           "In FY 2020, QRF funds transferred to PE 0603699D8Z Emerging"
+           " Capabilities Technology Development."),
+        _n("0603826D8Z", 2020, "f20",
+           "In 2020, QRF funding to support prototyping will be transferred"
+           " to PE 0603699D8Z Emerging Capabilities Technology Development."),
+    ]
+    edges = extract_stated_edges(narr)
+    assert len(edges) == 1
+    # Latest edition first is the caller contract; the newest telling wins.
+    assert edges[0].fiscal_year == 2021 and edges[0].evidence_fact_id == "f21"
+
+
+def test_one_pair_never_ships_two_relation_labels():
+    """0605140D8Z → 0604294D8Z is 'realigned' by one PB2018 sentence and
+    'renamed' by another. One move, so one rail entry."""
+    narr = [
+        _n("0604294D8Z", 2018, "fa",
+           "FY18 funds in the amount of $84.200M are being transferred from"
+           " PE 0605140D8Z for the Verification and Validation activities."),
+        _n("0604294D8Z", 2018, "fb",
+           "This project was previously funded in PE 0605140D8Z BA 5 and has"
+           " been transferred to this BA 4 PE."),
+    ]
+    edges = extract_stated_edges(narr)
+    pairs = [(e.from_pe_bli, e.to_pe_bli) for e in edges]
+    assert pairs.count(("0605140D8Z", "0604294D8Z")) == 1
+
+
+def test_supersession_drops_a_link_a_later_edition_mirrors():
+    narr = [
+        _n("0601102E", 2024, "f24",
+           "Funding was realigned to PE 0601101E to restore the original line."),
+        _n("0601101E", 2019, "f19",
+           "Funding was realigned to PE 0601102E for the follow-on effort."),
+    ]
+    edges = extract_stated_edges(narr)
+    kept, dropped = drop_superseded(edges, narr)
+    assert {(e.from_pe_bli, e.to_pe_bli) for e, _ in dropped} == {
+        ("0601101E", "0601102E")}
+    assert all("mirror link" in r for _, r in dropped)
+    assert [(e.from_pe_bli, e.to_pe_bli) for e in kept] == [
+        ("0601102E", "0601101E")]
+
+
+def test_supersession_drops_a_link_a_later_edition_retracts():
+    narr = [
+        _n("0601102E", 2022, "f22",
+           "Funds moved from PE 0601101E to PE 0601102E were transferred in"
+           " error and will be returned."),
+        _n("0601101E", 2019, "f19",
+           "Funding was realigned to PE 0601102E for the follow-on effort."),
+    ]
+    edges = extract_stated_edges(narr)
+    kept, dropped = drop_superseded(edges, narr)
+    assert [(e.from_pe_bli, e.to_pe_bli) for e, _ in dropped] == [
+        ("0601101E", "0601102E")]
+    assert kept == []
+
+
+def test_supersession_ignores_silence_and_earlier_retractions():
+    """Absence is not contradiction, and an EARLIER book cannot take back a
+    LATER statement."""
+    narr = [
+        _n("0601102E", 2026, "f26",
+           "This program element continues prior-year work."),
+        _n("0601101E", 2024, "f24",
+           "Funding was realigned to PE 0601102E for the follow-on effort."),
+        _n("0601102E", 2019, "f19",
+           "An earlier move from PE 0601101E to PE 0601102E was made in error."),
+    ]
+    edges = extract_stated_edges(narr)
+    kept, dropped = drop_superseded(edges, narr)
+    assert dropped == []
+    assert [(e.from_pe_bli, e.to_pe_bli) for e in kept] == [
+        ("0601101E", "0601102E")]
+
+
+def test_supersession_never_touches_an_inferred_edge():
+    """Inferred edges carry no citation and are governed by their own tier —
+    a narrative cue must not reach into them."""
+    e = LineageEdge(from_pe_bli="0601101E", to_pe_bli="0601102E",
+                    fiscal_year=2019, relation="matured_ba",
+                    confidence="inferred", inference_basis="ba_maturation")
+    narr = [_n("0601102E", 2022, "f22",
+               "Funds from PE 0601101E to PE 0601102E were transferred in error.")]
+    kept, dropped = drop_superseded([e], narr)
+    assert dropped == [] and kept == [e]

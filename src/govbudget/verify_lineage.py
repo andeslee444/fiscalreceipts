@@ -78,6 +78,24 @@ always-pass.
     protection #53 needs (the actual retraction is caught by the negation
     check above regardless of whether its fact_id happens to be shared).
 
+  Leg (g) — artifact cite-resolution (#29(b), 2026-08-27). Every stated edge's
+    evidence_fact_id must resolve in the BUILT cite-shards (kind
+    'jbook_narrative', naming a source document by sha256 AND official_url),
+    and every endpoint that has a program_details sidecar must ship a rail
+    entry carrying that same fact_id and the same sentence. Leg (a) proves the
+    warehouse row is honest; leg (g) proves the reader can actually open it.
+    Both are needed only since #29(b): while extraction was fenced to the one
+    citable edition, "the citation resolves" was true by construction.
+    Non-vacuous structurally — the population is the shipped stated set, and a
+    build where no edge reaches any page FAILS.
+
+  Leg (h) — supersession (#29(b), 2026-08-27). No stated edge may be one that
+    a LATER J-book edition takes back — the mirror link stated later, or a
+    later clause naming both endpoints with a retraction cue. Re-applies
+    lineage/extract.py's OWN superseded_reason (imported, never restated), so
+    it is a drift check on the persisted table exactly as leg (f) is. Only
+    reachable at all because #29(b) reads ten editions instead of one.
+
 All gate functions take explicit DSNs/paths — never read config. No network.
 Exit code 0 iff all legs pass; nonzero otherwise.
 """
@@ -88,7 +106,7 @@ from pathlib import Path
 
 from govbudget.export_site import fact_id_narrative
 from govbudget.lineage.family import build_families, one_to_one_chain
-from govbudget.lineage.model import CITED_NARRATIVE_FY, LineageEdge
+from govbudget.lineage.model import LineageEdge
 
 # Relations that end a 1:1 line even at degree 1:1 (mirror one_to_one_chain):
 # a labeled split/merge, or a PARTIAL transfer (portion_amount set), can never
@@ -137,12 +155,18 @@ def _load_narrative_index(con) -> dict[str, list[str]]:
     rows ever collide on the derived id. Shared by leg (a) and leg (c) so both
     apply the SAME citation-resolution rule against the SAME narrative universe.
 
-    Fenced to CITED_NARRATIVE_FY (fence alignment, 2026-07-28): the site's
-    cite-shard universe only contains fiscal_year = CITED_NARRATIVE_FY
-    narratives (export_site's citation pass) and lineage/load.py extracts
-    stated edges from the same fence — so the gate's narrative universe must
-    match, or an edge citing a pre-fence narrative would pass leg (a) while
-    shipping a silently-dead <Cite> on the site.
+    UNFENCED across editions (#29(b), 2026-08-27). Through Phase 5I this
+    filtered to fiscal_year = CITED_NARRATIVE_FY, because the site's cite-shard
+    universe held only PB2026 narratives, so indexing more would have let an
+    edge pass leg (a) while shipping a dead <Cite>. export_site now mints a
+    citation for every narrative a stated edge cites in ANY edition, so the
+    index must span the same ten editions — matching lineage/load.py, which
+    extracts from all of them.
+
+    Re-deriving the fact_id here does NOT prove the site can resolve it: that
+    is leg (g)'s job, and it asserts against the BUILT cite-shards rather than
+    against this query. Keeping the two separate is deliberate — an index that
+    both mints the expected id and judges it would agree with itself.
     """
     narratives = con.execute(
         """
@@ -151,9 +175,7 @@ def _load_narrative_index(con) -> dict[str, list[str]]:
           join jbook_documents j on j.id = n.document_id
          where not n.superseded
            and n.xml_path is not null
-           and j.fiscal_year = %s
-        """,
-        (CITED_NARRATIVE_FY,),
+        """
     ).fetchall()
     fid_to_bodies: dict[str, list[str]] = defaultdict(list)
     for sha, pe_bli, kind, xml_path, body in narratives:
@@ -843,5 +865,245 @@ def no_retraction_leg(dsn: str) -> dict:
         "ok": checked > 0 and len(failures) == 0,
         "checked": checked,
         "passed": checked - len(failures),
+        "failures": failures,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Leg (g): artifact cite-resolution — every stated edge's citation resolves in
+# the BUILT site, not merely in the warehouse (#29(b), 2026-08-27)
+# ---------------------------------------------------------------------------
+
+
+def _shard_lookup(cite_shard_dir: Path, fact_id: str) -> dict | None:
+    """The citation record for `fact_id` from the built cite-shards, or None."""
+    shard = cite_shard_dir / f"{fact_id[:2]}.json"
+    if not shard.is_file():
+        return None
+    import json
+
+    try:
+        data = json.loads(shard.read_text())
+    except (OSError, ValueError):
+        return None
+    rec = data.get(fact_id) if isinstance(data, dict) else None
+    return rec if isinstance(rec, dict) else None
+
+
+def artifact_cite_leg(dsn: str, program_details_dir, cite_shard_dir) -> dict:
+    """Every stated edge's citation resolves in the SHIPPED artifact.
+
+    #29(b) removed the PB2026 extraction fence, which is what previously made
+    "a stated edge's <Cite> resolves" true by construction: only one edition
+    was citable, so only that edition could be extracted from. Now ten editions
+    are extractable and a NEW mechanism (export_site §2b′'s lineage-evidence
+    union) is what keeps them citable. A mechanism is not a guarantee, so this
+    leg checks the guarantee.
+
+    WHY IT READS THE ARTIFACT AND NOT THE EXPORTER'S INPUTS. Leg (a) re-derives
+    evidence_fact_id from detail_narratives — a warehouse fact. It cannot see a
+    citation that was never written to a shard, a shard that was not rebuilt, or
+    a rail entry whose fact_id drifted from the row it came from. Those are
+    exactly the ways a citation dies between the warehouse and the reader, and
+    they are invisible to any check that shares the exporter's own idea of what
+    is cited. So the contract is asserted against the two files a reader's
+    browser actually fetches:
+
+      1. CITE-SHARD. data/site/json/cite-shards/{fid[:2]}.json contains the
+         edge's evidence_fact_id, its record's kind is 'jbook_narrative', and
+         the record names a source document a reader can open — a non-empty
+         sha256 AND a non-empty official_url. A record with neither is a dead
+         end wearing a citation's clothes. (A page number is NOT required:
+         narrative provenance is best-effort and 16 of the 29 edges shipped
+         before this change are pageless, citing the document rather than the
+         page. Requiring one here would fail honest, already-shipped rows.)
+      2. RAIL ENTRY. For each endpoint that HAS a program_details sidecar, the
+         sidecar's lineage rail carries this edge with the SAME fact_id and the
+         SAME evidence sentence as the warehouse row. This is what catches a
+         stale artifact: a shard can resolve while the page shipped an older
+         sentence beside it.
+
+    NON-VACUITY is structural, never a pinned literal. The population IS the
+    shipped stated-edge set: zero stated edges is a FAIL, and zero edges
+    actually rendered on a page is a FAIL (an artifact where nothing reaches a
+    reader would otherwise pass every per-edge check trivially). Edges whose
+    endpoints have no program page are counted and reported, not failed —
+    they cite correctly and simply have nowhere to render.
+
+    Returns: ok, checked, rendered, unrendered [pairs], failures [(grain, why)].
+    """
+    import json
+
+    program_details_dir = Path(program_details_dir)
+    cite_shard_dir = Path(cite_shard_dir)
+
+    edges = _load_edges(dsn)
+    stated = [e for e in edges if e.confidence == "stated"]
+    failures: list[tuple[str, str]] = []
+
+    if not stated:
+        return {"ok": False, "checked": 0, "rendered": 0, "unrendered": [],
+                "failures": [], "reason": "no stated edges to check (vacuous)"}
+    if not cite_shard_dir.is_dir():
+        return {"ok": False, "checked": 0, "rendered": 0, "unrendered": [],
+                "failures": [],
+                "reason": f"cite-shard directory missing: {cite_shard_dir}"}
+    if not program_details_dir.is_dir():
+        return {"ok": False, "checked": 0, "rendered": 0, "unrendered": [],
+                "failures": [],
+                "reason": f"program_details directory missing: {program_details_dir}"}
+
+    # Rail entries from the built sidecars, keyed by (self_pe, other_pe).
+    rail_by_pair: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for path in sorted(program_details_dir.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        rail = ((payload or {}).get("lineage") or {}).get("rail") or {}
+        self_pe = path.stem
+        for side in ("predecessors", "successors"):
+            for entry in rail.get(side) or []:
+                if isinstance(entry, dict) and entry.get("pe"):
+                    rail_by_pair[(self_pe, entry["pe"])].append(entry)
+
+    checked = 0
+    rendered = 0
+    unrendered: list[str] = []
+    for e in stated:
+        grain = f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation})"
+        fid = e.evidence_fact_id
+        if not fid:
+            failures.append((grain, "stated edge has no evidence_fact_id"))
+            continue
+        checked += 1
+
+        rec = _shard_lookup(cite_shard_dir, fid)
+        if rec is None:
+            failures.append((
+                grain,
+                f"evidence_fact_id {fid} is absent from the built cite-shard"
+                f" {fid[:2]}.json — the site would render a citation marker that"
+                f" resolves to nothing",
+            ))
+        else:
+            if rec.get("kind") != "jbook_narrative":
+                failures.append((
+                    grain,
+                    f"cite-shard record for {fid} has kind"
+                    f" {rec.get('kind')!r}, not 'jbook_narrative'",
+                ))
+            if not rec.get("sha256") or not rec.get("official_url"):
+                failures.append((
+                    grain,
+                    f"cite-shard record for {fid} names no openable source"
+                    f" (sha256={rec.get('sha256')!r},"
+                    f" official_url={rec.get('official_url')!r})",
+                ))
+
+        seen_on_a_page = False
+        has_a_page = False
+        for self_pe, other_pe in ((e.from_pe_bli, e.to_pe_bli),
+                                  (e.to_pe_bli, e.from_pe_bli)):
+            if not (program_details_dir / f"{self_pe}.json").is_file():
+                continue
+            has_a_page = True
+            entries = rail_by_pair.get((self_pe, other_pe)) or []
+            match = [x for x in entries
+                     if (x.get("evidence") or {}).get("fact_id") == fid]
+            if not match:
+                failures.append((
+                    grain,
+                    f"/program/{self_pe}/ ships no rail entry for {other_pe}"
+                    f" citing {fid} (rail has"
+                    f" {[ (x.get('evidence') or {}).get('fact_id') for x in entries ]})",
+                ))
+                continue
+            seen_on_a_page = True
+            for x in match:
+                shipped = (x.get("evidence") or {}).get("sentence")
+                if shipped != e.evidence_sentence:
+                    failures.append((
+                        grain,
+                        f"/program/{self_pe}/ ships an evidence sentence that is"
+                        f" not the warehouse row's: {str(shipped)[:100]!r}",
+                    ))
+        if seen_on_a_page:
+            rendered += 1
+        elif not has_a_page:
+            # NOT the same thing as "no rail entry found", and the first cut of
+            # this leg conflated them: it reported "neither endpoint has a
+            # program page" for edges that had one and were simply missing from
+            # its rail — sending the reader to look for a page that exists. An
+            # edge lands here ONLY when neither endpoint has a sidecar at all;
+            # the has-a-page-but-no-entry case is already a FAIL above.
+            unrendered.append(grain)
+
+    return {
+        "ok": checked > 0 and rendered > 0 and not failures,
+        "checked": checked,
+        "rendered": rendered,
+        "unrendered": unrendered,
+        "failures": failures,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Leg (h): supersession — no shipped stated edge is taken back by a later
+# edition (#29(b), 2026-08-27)
+# ---------------------------------------------------------------------------
+
+
+def no_supersession_leg(dsn: str) -> dict:
+    """No persisted stated edge is contradicted by a LATER J-book edition.
+
+    Fenced extraction could not raise this question: with one edition in
+    scope there was no later book to disagree. Reading PB2017–PB2026 makes
+    "true in PB2021, reversed by PB2024" a real shape, and shipping such an
+    edge as a current fact would be a lie told with a real citation.
+
+    Imports lineage/extract.py's OWN superseded_reason — the same predicate
+    lineage/load.py applies at build time — rather than restating its rules
+    here. That discipline is not stylistic: a note shipped false on 179 of 319
+    pages in this codebase because the exporter, its gate and its unit test
+    each re-implemented one wrong scope and then agreed with each other. A leg
+    that re-derives the rule cannot catch the rule being wrong; a leg that
+    re-applies it catches the TABLE being wrong, which is what a drift check is
+    for. Leg (f) already works this way for self-retraction.
+
+    Non-vacuity: zero stated edges is a FAIL.
+
+    Returns: ok, checked, passed, failures [(grain, reason)].
+    """
+    import psycopg
+
+    from govbudget.lineage.extract import superseded_reason
+
+    edges = _load_edges(dsn)
+    stated = [e for e in edges if e.confidence == "stated"]
+
+    with psycopg.connect(dsn) as con:
+        narratives = [
+            {"fiscal_year": int(fy), "body": body or ""}
+            for fy, body in con.execute(
+                """
+                select j.fiscal_year, n.body
+                  from detail_narratives n
+                  join jbook_documents j on j.id = n.document_id
+                 where not n.superseded and n.xml_path is not null
+                """
+            ).fetchall()
+        ]
+
+    failures: list[tuple[str, str]] = []
+    for e in stated:
+        reason = superseded_reason(e, stated, narratives)
+        if reason is not None:
+            failures.append((f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation})", reason))
+
+    return {
+        "ok": len(stated) > 0 and not failures,
+        "checked": len(stated),
+        "passed": len(stated) - len(failures),
         "failures": failures,
     }

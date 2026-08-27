@@ -1,15 +1,33 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 
-# The BINDING cite-shard edition fence (single source of truth, 2026-07-28).
-# Only narratives from THIS edition's J-books enter the site's cite-shard
-# universe (export_site's citation pass filters jbook_documents.fiscal_year to
-# this year), so a stated lineage edge may only cite a narrative from this
-# edition — otherwise its <Cite> would silently fail to resolve on the site.
-# Imported by lineage/load.py (stated-edge extraction fence) AND
-# verify_lineage.py (leg (a)'s narrative index) so extractor, site, and gate
-# can never fence to different editions.
-CITED_NARRATIVE_FY = 2026
+# The PB2026 DISPLAY fence for J-book narrative prose (ROADMAP #29(b),
+# 2026-08-27 — formerly CITED_NARRATIVE_FY, the cite-shard fence).
+#
+# History, because the rename changes what this constant governs. Phase 5I
+# fenced BOTH narrative display AND stated-lineage extraction to PB2026,
+# because export_site's citation pass only minted citations for PB2026
+# narratives — so an edge extracted from a PB2021 narrative would ship a
+# <Cite> that resolved to nothing, which is worse than no edge. 28 genuine
+# pre-2026 edges were dropped for that reason.
+#
+# #29(b) fixed the CAUSE instead of keeping the symptom: export_site now
+# ALSO mints a jbook_narrative citation for every narrative that a stated
+# lineage edge cites, in ANY edition PB2017–PB2026 (see export_site.py
+# §2b's lineage-evidence union). So lineage extraction is no longer fenced
+# — lineage/load.py reads all editions, and verify_lineage's narrative index
+# does too.
+#
+# What this constant still governs, and must keep governing:
+#   * jbook_narratives.parquet's DEFAULT population, and
+#   * the narrative PROSE rendered on /program/{pe}/ (export_site's
+#     narr_by_pe).
+# Program pages present narrative text with PB2026 semantics and NO edition
+# label, so mixing a PB2019 mission paragraph into that list would assert
+# stale prose as current. The lineage-evidence rows added to the parquet are
+# citation targets only and are filtered OUT of narr_by_pe by this same
+# constant.
+DISPLAY_NARRATIVE_FY = 2026
 
 @dataclass(frozen=True)
 class LineageEdge:

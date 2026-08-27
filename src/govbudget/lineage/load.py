@@ -4,14 +4,25 @@ Fully derived tables — build_lineage TRUNCATEs and rebuilds program_lineage an
 program_family from scratch each run, so there are never stale rows.
 
 Sources:
-  - Stated edges: detail_narratives (Postgres), fenced to FY2026 narratives. The
-    fence mirrors the BINDING PB2026 cite-shard edition fence in export_site.py:
-    only FY2026 narrative fact_ids enter the site's cite-shard universe, so a
-    stated edge citing a pre-2026 narrative would not resolve. evidence_fact_id
-    is the canonical narrative fact_id (fact_id_narrative) so it resolves in that
-    universe; evidence_page is LEFT-JOINed from provenance_pages. FY2026 J-books
-    narrate historical predecessors, so YoY lineage is still captured — just with
-    resolvable PB2026-edition citations.
+  - Stated edges: detail_narratives (Postgres), ALL editions PB2017–PB2026
+    (#29(b), 2026-08-27). This was fenced to FY2026 through Phase 5I, because
+    only FY2026 narrative fact_ids entered the site's cite-shard universe and a
+    stated edge citing a pre-2026 narrative would have shipped a <Cite> that
+    resolved to nothing. That symptom is now fixed at the cause: export_site
+    mints a jbook_narrative citation for every narrative a stated edge cites,
+    in whichever edition it lives (export_site.py §2b lineage-evidence union),
+    so a PB2018 sentence is as resolvable as a PB2026 one. evidence_fact_id is
+    still the canonical narrative fact_id (fact_id_narrative); evidence_page is
+    LEFT-JOINed from provenance_pages.
+
+    Reading ten editions instead of one introduces two failure modes a single
+    edition cannot have, both handled here and NOT by loosening anything:
+      * the same link narrated by several editions — collapsed by
+        extract_stated_edges' (from, to) dedup grain, latest edition first (see
+        its docstring; the ORDER BY below is that contract);
+      * a link a LATER edition takes back — dropped by drop_superseded, whose
+        two refusal rules are documented in extract.py. verify-lineage leg (h)
+        re-runs the same predicate against the persisted table.
   - Inferred edges: fct_decade_series request rows across ALL editions (DuckDB,
     joined to dim_pe_titles for the title). Each edition's BudgetYearOne request
     is fy == edition_year, so request rows are edition-disjoint on (pe_bli, fy) —
@@ -27,10 +38,10 @@ from __future__ import annotations
 import psycopg
 
 from govbudget.export_site import fact_id_narrative
-from govbudget.lineage.extract import extract_stated_edges
+from govbudget.lineage.extract import drop_superseded, extract_stated_edges
 from govbudget.lineage.family import build_families
 from govbudget.lineage.infer import infer_edges
-from govbudget.lineage.model import CITED_NARRATIVE_FY, LineageEdge
+from govbudget.lineage.model import LineageEdge
 
 _NARRATIVE_SQL = """
 select j.sha256 as sha, n.pe_bli, n.kind, n.xml_path, j.fiscal_year, n.body,
@@ -45,16 +56,16 @@ select j.sha256 as sha, n.pe_bli, n.kind, n.xml_path, j.fiscal_year, n.body,
    and pp.target_kind = 'narrative'
  where not n.superseded
    and n.xml_path is not null
-   -- Fence to CITED_NARRATIVE_FY narratives (parametrized below — the shared
-   -- constant in lineage/model.py): this aligns stated-edge citations with the
-   -- BINDING PB2026 cite-shard edition fence in export_site.py, so every stated
-   -- edge's <Cite> resolves. Pre-fence narratives are not in the cite-shard
-   -- universe, so a stated edge citing one would not resolve on the site
-   -- (violating "no stated edge without a resolvable citation"). Current-fence
-   -- J-books still narrate historical predecessors, so YoY lineage is captured.
-   -- verify_lineage._load_narrative_index applies the SAME constant, so the
-   -- extractor, the site, and the gate can never fence to different editions.
-   and j.fiscal_year = %(cited_narrative_fy)s
+   -- NO edition fence (#29(b)): every PB2017–PB2026 narrative is a candidate
+   -- source. verify_lineage._load_narrative_index reads the SAME unfenced
+   -- universe, so the extractor and the gate can never disagree about which
+   -- editions exist. What keeps the honesty contract is no longer the fence
+   -- but export_site's lineage-evidence citation union: a stated edge may
+   -- only ship if its narrative got a citation, and _emit_lineage HARD-RAISES
+   -- on any stated edge whose fact_id is outside the cite-shard universe.
+   -- fiscal_year DESC is load-bearing, not cosmetic: extract_stated_edges
+   -- dedups on (from, to) first-seen-wins, so this ordering is what makes
+   -- "the most recent edition's telling wins" true.
  order by j.fiscal_year desc, n.pe_bli, n.xml_path
 """
 
@@ -67,11 +78,12 @@ select f.pe_bli, t.title, f.fy, 'request' as kind, f.amount_thousands as amount
 """
 
 
-def _load_stated(dsn: str) -> list[LineageEdge]:
+def _load_stated(dsn: str) -> tuple[list[LineageEdge], list[tuple[LineageEdge, str]]]:
+    """(kept stated edges, [(superseded edge, reason), …])."""
     narratives: list[dict] = []
     with psycopg.connect(dsn) as con:
         for sha, pe_bli, kind, xml_path, fy, body, page in con.execute(
-            _NARRATIVE_SQL, {"cited_narrative_fy": CITED_NARRATIVE_FY}
+            _NARRATIVE_SQL
         ):
             narratives.append({
                 "pe_bli": pe_bli,
@@ -83,7 +95,7 @@ def _load_stated(dsn: str) -> list[LineageEdge]:
                 # regex risk); 50k comfortably exceeds any real transfer section.
                 "body": (body or "")[:50000],
             })
-    return extract_stated_edges(narratives)
+    return drop_superseded(extract_stated_edges(narratives), narratives)
 
 
 def _load_inferred(duckdb_path) -> list[LineageEdge]:
@@ -101,7 +113,7 @@ def _load_inferred(duckdb_path) -> list[LineageEdge]:
 
 
 def build_lineage(dsn: str, duckdb_path) -> dict:
-    stated = _load_stated(dsn)
+    stated, superseded = _load_stated(dsn)
     inferred = _load_inferred(duckdb_path)
 
     # Stated wins: drop any inferred edge whose (from, to) pair already exists stated.
@@ -139,4 +151,11 @@ def build_lineage(dsn: str, duckdb_path) -> dict:
         "inferred": len(kept_inferred),
         "families": len(set(fams.values())),
         "edges": len(edges),
+        # Reported, never silent: a link the corpus asserts and a later
+        # edition takes back is a decision, and the operator should see it.
+        "superseded_dropped": len(superseded),
+        "superseded": [
+            (e.from_pe_bli, e.to_pe_bli, e.fiscal_year, reason)
+            for e, reason in superseded
+        ],
     }
