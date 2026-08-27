@@ -9015,3 +9015,44 @@ absence note. Floor equals population, so any drop still fails.
 last_fy split moves 160/159 -> 157/159.
 
 GATE COUNT: unchanged -> 24. Leg (g) is a leg of gate 21.
+
+--- leg (g) content checks retargeted, 2026-08-27 (same session) ---
+
+The corrected wording tripped the leg's OWN pinned sentences: 948 note-content
+failures across the population, which the leg correctly reported as "one
+component renders all of them, so this is one wording regression, not 948 page
+defects". Retargeted, and NOT relaxed -- the properties pinned are the same or
+stronger:
+
+  "No FY2026 request for this program element."
+    -> "No FY2026 R-1/P-1 request line for this program element."
+       (the old headline was the false claim)
+
+  "its last figure in this edition is FY{n}"
+    -> "its last workbook figure is FY{n}"
+       (the old phrasing claimed the whole EDITION stopped, contradicted on
+       173 pages whose J-book carries an FY2026 row in that same edition)
+
+  "This page names no successor"  -- REMOVED from the unconditional list.
+       Pinning it unconditionally is WHY the note denied a successor on five
+       pages that named one with a citation. It is now checked per page
+       against the page's own lineage rail.
+
+FOUR NEW CHECKS, each conditional on the page's own data:
+  4b  jbook_fy2026_zero => the note must disclose the documented zero, and a
+      page WITHOUT one must not claim it
+  4c  has_successor => the note must point at the rail and must NOT carry the
+      denial; no rail => the denial must be present, not silently omitted
+
+NON-VACUITY, verified in the built HTML rather than asserted:
+  /program/837170/    renders the POINTER, not the denial (cited rail present)
+  /program/0601101E/  renders "recorded as zero" AND the denial (no rail)
+  /program/0603669D8Z/, 0602669D8Z, 0604669D8Z -- grep "data-fy2026-absent"
+      returns 0 on all three: the note cannot render over their cited FY2026 money
+
+ALSO CAUGHT BY GATE 2, and worth recording. The corrected copy first read
+"...carries an FY2026 row for this line, at $0." Gate 2 render-static rejected
+it: 50 currency patterns outside [data-amount]. The gate is right -- a dollar
+figure in prose is an UNCITED figure, the one thing this site does not
+publish. Now reads "recorded as zero" and points at the cited figure in the
+trajectory table instead of restating it.

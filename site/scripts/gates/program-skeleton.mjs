@@ -559,12 +559,30 @@ const MIN_FY2026_ABSENT_PAGES = 316;
 /** The stable hook the page must carry. */
 const FY2026_ABSENT_ATTR = "data-fy2026-absent";
 
-/** Every sentence the note must actually say (whitespace-normalized). */
+/** Every sentence the note must actually say (whitespace-normalized).
+ *
+ * Retargeted 2026-08-27 to the corrected wording. NOT a relaxation -- the
+ * properties pinned are the same or stronger:
+ *
+ *  - the headline now names the record that is actually blank
+ *    ("R-1/P-1 request line"), because the old "No FY2026 request" was
+ *    false on three pages publishing cited FY2026 J-book money;
+ *  - the renumber sentence is unchanged;
+ *  - the successor sentence moved OUT of this list because it is now
+ *    conditional, and is checked per-page below against the lineage rail
+ *    instead. Pinning it unconditionally here is what forced the note to
+ *    deny a successor on five pages that named one with a citation.
+ */
 const FY2026_ABSENT_REQUIRED = [
-  "No FY2026 request for this program element.",
+  "No FY2026 R-1/P-1 request line for this program element.",
   "PB2026 renumbered program elements at scale",
-  "This page names no successor",
 ];
+
+/** The successor clause, which must match the page's own lineage rail. */
+const FY2026_SUCCESSOR_DENIAL =
+  "No ingested budget document in this corpus states a successor for this line.";
+const FY2026_SUCCESSOR_POINTER =
+  "Where this line's funding went is recorded under Program Lineage below.";
 
 /** Words that would turn an absence into a claim the corpus cannot support. */
 const FY2026_ABSENT_FORBIDDEN =
@@ -763,12 +781,51 @@ function runFy2026AbsentLeg({ errors, notes, sidecars }) {
         );
       }
     }
-    const yearFrag = `its last figure in this edition is FY${want.last_fy}`;
+    // "in this edition" -> "workbook figure": the old phrasing claimed the
+    // whole EDITION stopped at that year, contradicted on 173 pages whose
+    // J-book carries an FY2026 row at zero in the same edition.
+    const yearFrag = `its last workbook figure is FY${want.last_fy}`;
     if (!text.includes(yearFrag)) {
       say(
         `program-skeleton(g): /program/${slug}/ note does not say "${yearFrag}" — the ` +
           `note must name the year the workbook actually stops at, not a different one ` +
           `(got "${text.slice(0, 140)}…")`,
+      );
+    }
+    // 4b. the documented zero must be disclosed exactly where it exists.
+    const saysZero = text.includes("recorded as zero");
+    if (want.jbook_fy2026_zero && !saysZero) {
+      say(
+        `program-skeleton(g): /program/${slug}/ has an FY2026 J-book row at zero but the ` +
+          `note does not disclose it — a workbook blank and a documented zero are ` +
+          `different records, and hiding the second is the 87-feed-card error`,
+      );
+    }
+    if (!want.jbook_fy2026_zero && saysZero) {
+      say(
+        `program-skeleton(g): /program/${slug}/ note claims a documented FY2026 zero that ` +
+          `this page's J-book detail does not carry`,
+      );
+    }
+    // 4c. the successor clause must agree with the page's own lineage rail.
+    if (want.has_successor) {
+      if (text.includes(FY2026_SUCCESSOR_DENIAL)) {
+        say(
+          `program-skeleton(g): /program/${slug}/ note denies any document states a ` +
+            `successor, but this page renders a cited successor rail — both halves of ` +
+            `that sentence are false here`,
+        );
+      }
+      if (!text.includes(FY2026_SUCCESSOR_POINTER)) {
+        say(
+          `program-skeleton(g): /program/${slug}/ has a successor rail but the note does ` +
+            `not point the reader at it`,
+        );
+      }
+    } else if (!text.includes(FY2026_SUCCESSOR_DENIAL)) {
+      say(
+        `program-skeleton(g): /program/${slug}/ has no successor rail but the note omits ` +
+          `the denial — the limit must be stated, not left silent`,
       );
     }
 
