@@ -150,6 +150,41 @@ describe("P1-1 §2 — decoration tokens wired into the affordance", () => {
     expect(src).toContain("cite-figure");
   });
 
+  // ROADMAP #43 — the Fact-ID chip is SUBORDINATE to its figure. Gate 6 leg
+  // (e) measures this in a real browser against the real figure; these are
+  // the source-level tripwires for the three axes that leg constrains, so a
+  // regression is caught at `npm test` and not only after a full build.
+  const citeIdChipRule = (() => {
+    const sheet = read("app/globals.css");
+    const i = sheet.indexOf(".cite-id-chip {");
+    if (i === -1) throw new Error(".cite-id-chip rule not found in globals.css");
+    return sheet.slice(i, sheet.indexOf("}", i));
+  })();
+
+  it(".cite-id-chip paints no fill and wears no saturated hue", () => {
+    // The pre-#43 rule was `bg-blue-100 … text-blue-700`: a filled, saturated
+    // badge measured at ink chroma 210 beside an achromatic figure.
+    expect(citeIdChipRule).not.toMatch(/\bbg-(?!muted\b)[a-z]+-\d{2,3}\b/);
+    expect(citeIdChipRule).not.toMatch(/(?<!hover:)\btext-[a-z]+-\d{2,3}\b/);
+    expect(citeIdChipRule).toContain("text-muted-foreground");
+  });
+
+  it(".cite-id-chip never inherits a bold cell's weight", () => {
+    // Without font-normal the chip inherited 700 on /feed/, /programs/,
+    // /district/, home and the program pages.
+    expect(citeIdChipRule).toContain("font-normal");
+  });
+
+  it(".cite-id-chip stays at the 12px provenance floor — subordination is not shrinkage", () => {
+    expect(citeIdChipRule).toContain("text-xs");
+    expect(citeIdChipRule).not.toMatch(/text-\[\d+px\]|text-\[0?\.\d+rem\]/);
+  });
+
+  it(".cite-id-chip keeps a hover lift so the copy affordance stays discoverable", () => {
+    expect(citeIdChipRule).toContain("cursor-copy");
+    expect(citeIdChipRule).toContain("hover:text-foreground");
+  });
+
   it("CiteLegend dotted-underline swatch uses the real decoration token", () => {
     const src = read("components/cite.tsx");
     const legend = src.slice(

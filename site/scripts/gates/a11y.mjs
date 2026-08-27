@@ -50,6 +50,42 @@
  *     OS-level dark switch, and other engines are untested). It also only
  *     samples the same two pages the light-mode checks already sample — a
  *     token pair used exclusively on some other page is not covered here.
+ *
+ * (e) PROVENANCE HIERARCHY (ROADMAP #43, owner decision 2026-08-27). Legs (a)
+ *     and (b) pin FLOORS — the citation underline must clear 3:1, provenance
+ *     chips must clear 12px. Nothing pinned a CEILING, so the Fact-ID chip was
+ *     free to out-shout the figure it annotates, and did: three independent
+ *     judging panels reported the blue monospace hash reading louder than the
+ *     dollar value beside it. The owner kept chips ON (availability is the
+ *     trust property) and asked for the chip to be made subordinate.
+ *
+ *     "Subordinate" is measured against the figure the chip actually
+ *     annotates — the nearest PRECEDING [data-amount] in document order, which
+ *     covers both chip placements (<Cite>'s inline sibling and <CiteChips>'
+ *     detached cluster unit). Per pair, at rest:
+ *       (e-i)   FILL      — the chip may not paint a background its figure does
+ *                           not. A filled badge beside bare text is a UI object
+ *                           beside content, and reads as the louder of the two.
+ *       (e-ii)  CHROMA    — the chip's ink may not be more chromatic than its
+ *                           figure's. A saturated hue on an otherwise
+ *                           achromatic page attracts the eye first regardless
+ *                           of what luminance contrast says.
+ *       (e-iii) CONTRAST  — the chip must read STRICTLY quieter than its figure.
+ *       (e-iv)  SIZE      — the chip may not be larger than its figure.
+ *       (e-v)   WEIGHT    — the chip may not be heavier than its figure, and
+ *                           may never render bold (≤500) at all: the chip
+ *                           inherits font-weight from whatever cell it lands
+ *                           in, so a 700 row made a 700 hash.
+ *
+ *     AND THE FLOORS ARE RE-ASSERTED HERE, on the same measured elements
+ *     (≥12px, ≥4.5:1): subordination must come from hierarchy — relative
+ *     weight, colour role, fill — never from pushing the chip under the
+ *     accessibility bar legs (a)/(b) exist to hold. A future "quieter" chip
+ *     that dims itself out of AA fails this leg, not passes it.
+ *
+ *     Runs in BOTH schemes. Dark is where the pre-fix defect was worst: the
+ *     chip had no dark variant at all, so a blue-100 fill kept painting a lit
+ *     block on a near-black page.
  */
 
 import fs from "fs";
@@ -233,6 +269,9 @@ export async function runA11yGate(baseUrl) {
     // ── P1-1 citation-affordance checks ─────────────────────────────────────
     await runAffordanceChecks(context, baseUrl, samplePbl, errors, notes);
 
+    // ── (e) provenance hierarchy: the chip stays under its figure ───────────
+    await runHierarchyLeg(context, baseUrl, samplePbl, errors, notes);
+
     // ── P2-3 chart legs + P2-6 note registers (Sprint 3 Task 4) ─────────────
     await runChartLegs(context, baseUrl, errors, notes);
 
@@ -365,6 +404,231 @@ function auditCitationAffordance() {
     receiptsChipCount: document.querySelectorAll("[data-receipts-chip]")
       .length,
   };
+}
+
+// ── Leg (e) thresholds ───────────────────────────────────────────────────────
+// FLOORS re-asserted from legs (a)/(b) so "quieter" can never mean "dimmer
+// than accessible". CEILINGS are the new half — see the module docstring.
+const CHIP_MIN_FONT_PX = 12; // same floor leg (b) pins
+const CHIP_MIN_RATIO = 4.5; // WCAG AA for text at this size
+const CHIP_MAX_WEIGHT = 500; // a provenance annotation is never bold
+const CHROMA_SLACK = 8; // sRGB max−min units; sub-perceptual rounding room
+const FILL_SLACK = 2; // per-channel /255 — antialiasing/rounding room
+
+/**
+ * In-page audit: pair every Fact-ID chip with the figure it annotates and
+ * measure both on the axes leg (e) constrains. Runs in the browser so tokens,
+ * inherited weight and composited backgrounds resolve exactly as a reader
+ * sees them. Self-contained by necessity — page.evaluate serializes the
+ * function body, so the colour helpers cannot be shared with
+ * auditCitationAffordance().
+ */
+function auditChipHierarchy() {
+  const probeCanvas = document.createElement("canvas");
+  probeCanvas.width = probeCanvas.height = 1;
+  const probeCtx = probeCanvas.getContext("2d", { willReadFrequently: true });
+  function parseColor(str) {
+    const m = (str || "").match(
+      /rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)(?:[,/ ]+([\d.]+))?\s*\)/,
+    );
+    if (m) {
+      return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    }
+    if (!str || !probeCtx) return null;
+    probeCtx.clearRect(0, 0, 1, 1);
+    probeCtx.fillStyle = "#000";
+    probeCtx.fillStyle = str;
+    probeCtx.fillRect(0, 0, 1, 1);
+    const d = probeCtx.getImageData(0, 0, 1, 1).data;
+    return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
+  }
+  function composite(fg, bg) {
+    const a = fg.a + bg.a * (1 - fg.a);
+    return {
+      r: (fg.r * fg.a + bg.r * bg.a * (1 - fg.a)) / a,
+      g: (fg.g * fg.a + bg.g * bg.a * (1 - fg.a)) / a,
+      b: (fg.b * fg.a + bg.b * bg.a * (1 - fg.a)) / a,
+      a,
+    };
+  }
+  function effectiveBackground(el) {
+    const layers = [];
+    for (let n = el; n; n = n.parentElement) {
+      const c = parseColor(getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) {
+        layers.push(c);
+        if (c.a >= 1) break;
+      }
+    }
+    let bg = { r: 255, g: 255, b: 255, a: 1 };
+    for (let i = layers.length - 1; i >= 0; i--) bg = composite(layers[i], bg);
+    return bg;
+  }
+  function luminance({ r, g, b }) {
+    const f = (c) => {
+      c /= 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  }
+  function ratio(a, b) {
+    const hi = Math.max(a, b);
+    const lo = Math.min(a, b);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  function measure(el) {
+    const cs = getComputedStyle(el);
+    const bg = effectiveBackground(el);
+    let ink = parseColor(cs.color);
+    if (ink && ink.a < 1) ink = composite(ink, bg);
+    return {
+      text: (el.textContent || "").trim().slice(0, 20),
+      fontSize: parseFloat(cs.fontSize),
+      weight: parseInt(cs.fontWeight, 10) || 400,
+      bg: [Math.round(bg.r), Math.round(bg.g), Math.round(bg.b)],
+      contrast: ink ? ratio(luminance(ink), luminance(bg)) : 0,
+      chroma: ink
+        ? Math.max(ink.r, ink.g, ink.b) - Math.min(ink.r, ink.g, ink.b)
+        : 0,
+    };
+  }
+
+  // Document order — the chip is always emitted immediately AFTER the
+  // [data-amount] it annotates, whether as its inline sibling (<Cite>) or
+  // inside <CiteChips>' detached cluster span.
+  const nodes = [
+    ...document.querySelectorAll("[data-amount], [data-receipts-chip]"),
+  ];
+  const pairs = [];
+  let unpaired = 0;
+  let lastFigure = null;
+  for (const n of nodes) {
+    if (n.hasAttribute("data-receipts-chip")) {
+      if (lastFigure) pairs.push([n, lastFigure]);
+      else unpaired++;
+    } else {
+      lastFigure = n;
+    }
+  }
+  // Stride-sample so a long page is covered end to end, not just its header.
+  const stride = Math.max(1, Math.floor(pairs.length / 60));
+  const sampled = pairs.filter((_, i) => i % stride === 0).slice(0, 60);
+
+  return {
+    chipCount: document.querySelectorAll("[data-receipts-chip]").length,
+    paired: pairs.length,
+    unpaired,
+    rows: sampled.map(([chip, figure]) => ({
+      chip: measure(chip),
+      figure: measure(figure),
+    })),
+  };
+}
+
+/**
+ * Leg (e) reporter. `required` pages must find chips to sample — a vacuous
+ * hierarchy check on a page whose chips stopped rendering would silently pass
+ * while the site regressed.
+ */
+async function checkChipHierarchy(page, label, errors, notes, required) {
+  const audit = await page.evaluate(auditChipHierarchy);
+
+  if (audit.chipCount === 0) {
+    if (required) {
+      errors.push(
+        `P1-1 hierarchy (${label}): no [data-receipts-chip] found — check is vacuous, page or selector broken`,
+      );
+    }
+    return;
+  }
+  if (audit.unpaired > 0) {
+    errors.push(
+      `P1-1 hierarchy (${label}): ${audit.unpaired} fact-id chip(s) precede every [data-amount] on the page — a chip that annotates no figure`,
+    );
+  }
+
+  const fmt = (r) =>
+    `chip ${r.chip.fontSize}px/w${r.chip.weight}/${r.chip.contrast.toFixed(2)}:1/chroma ${Math.round(r.chip.chroma)}/bg ${r.chip.bg.join(",")} vs figure "${r.figure.text}" ${r.figure.fontSize}px/w${r.figure.weight}/${r.figure.contrast.toFixed(2)}:1/chroma ${Math.round(r.figure.chroma)}/bg ${r.figure.bg.join(",")}`;
+
+  const checks = [
+    [
+      "e-i fill",
+      (r) =>
+        r.chip.bg.some((c, i) => Math.abs(c - r.figure.bg[i]) > FILL_SLACK),
+      `paints a fill its figure does not`,
+    ],
+    [
+      "e-ii chroma",
+      (r) => r.chip.chroma > r.figure.chroma + CHROMA_SLACK,
+      `is more chromatic than its figure`,
+    ],
+    [
+      "e-iii contrast",
+      (r) => r.chip.contrast >= r.figure.contrast,
+      `does not read strictly quieter than its figure`,
+    ],
+    ["e-iv size", (r) => r.chip.fontSize > r.figure.fontSize, `is larger than its figure`],
+    [
+      "e-v weight",
+      (r) => r.chip.weight > r.figure.weight || r.chip.weight > CHIP_MAX_WEIGHT,
+      `is heavier than its figure or renders bold (>${CHIP_MAX_WEIGHT})`,
+    ],
+    [
+      "e-floor size",
+      (r) => r.chip.fontSize < CHIP_MIN_FONT_PX,
+      `dropped below the ${CHIP_MIN_FONT_PX}px floor leg (b) pins`,
+    ],
+    [
+      "e-floor contrast",
+      (r) => r.chip.contrast < CHIP_MIN_RATIO,
+      `dropped below the ${CHIP_MIN_RATIO}:1 AA floor — subordination must not cost legibility`,
+    ],
+  ];
+
+  let failed = 0;
+  for (const [id, predicate, why] of checks) {
+    const bad = audit.rows.filter(predicate);
+    if (bad.length > 0) {
+      failed++;
+      errors.push(
+        `P1-1 hierarchy ${id} (${label}): ${bad.length}/${audit.rows.length} sampled Fact-ID chip(s) — the chip ${why}. First: ${fmt(bad[0])}`,
+      );
+    }
+  }
+  if (failed === 0) {
+    const worst = audit.rows.reduce((a, b) =>
+      a.figure.contrast - a.chip.contrast < b.figure.contrast - b.chip.contrast
+        ? a
+        : b,
+    );
+    notes.push(
+      `P1-1 hierarchy (${label}): ${audit.rows.length} of ${audit.paired} chip/figure pairs sampled, chip subordinate on every axis (narrowest margin — ${fmt(worst)}) ✓`,
+    );
+  }
+}
+
+/**
+ * Leg (e), light mode. Both pages are REQUIRED: /programs/ is the surface the
+ * judging panels actually scored (3,061 chips, one per money cell) and the
+ * program page is the densest per-figure surface.
+ */
+async function runHierarchyLeg(context, baseUrl, samplePbl, errors, notes) {
+  const pages = [
+    { label: `/program/${samplePbl}/`, url: `${baseUrl}/program/${samplePbl}/` },
+    { label: "/programs/", url: `${baseUrl}/programs/` },
+  ];
+  for (const { label, url } of pages) {
+    const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+      await checkChipHierarchy(page, label, errors, notes, true);
+    } catch (e) {
+      errors.push(`P1-1 hierarchy (${label}): ${e.message}`);
+    } finally {
+      await page.close();
+    }
+  }
 }
 
 async function runAffordanceChecks(context, baseUrl, samplePbl, errors, notes) {
@@ -552,6 +816,18 @@ async function runDarkModeLeg(browser, baseUrl, samplePbl, errors, notes) {
             );
           }
         }
+
+        // Leg (e) under the forced dark scheme. This is where the pre-fix
+        // chip was worst — it carried NO dark variant, so its light-mode
+        // blue-100 fill kept painting a lit block on a near-black page.
+        // Required on the program page (home renders only a couple of chips).
+        await checkChipHierarchy(
+          page,
+          label,
+          errors,
+          notes,
+          label.startsWith("/program/"),
+        );
       } catch (e) {
         errors.push(`a11y (d) ${label}: ${e.message}`);
       } finally {

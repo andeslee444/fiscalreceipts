@@ -8260,3 +8260,128 @@ data-degraded="downloads" when it is missing. /downloads/ STAYS in the scan,
 so any non-asset dead link there is still caught.
 
 GATE COUNT: unchanged -> 24. This widens an existing leg of gate 13.
+
+================================================================================
+GATE 6 (a11y) leg (e) — provenance hierarchy: the Fact-ID chip must stay
+under the figure it annotates. 2026-08-27. (ROADMAP #43, owner decision.)
+================================================================================
+
+WHY IT EXISTS. Legs (a) and (b) pin FLOORS -- the citation underline clears
+3:1, provenance chips clear 12px. Nothing ever pinned a CEILING. So the
+Fact-ID chip was free to out-shout the figure it annotates, and did. All
+three judges on round-3 visual judging panel 2 reported the same thing
+independently: "the blue monospace hash is visually louder than the dollar
+value beside it", and toggling it off "proves the underlying table design is
+much better".
+
+Every gate passed the whole time. 24/24, including gate 6 itself: the chip
+was 12px (over the floor) and 5.60:1 against its own fill (over AA). Both
+legs were asking "is the chip loud ENOUGH". Neither could ask the question
+the panels were actually asking.
+
+THE OWNER DECISION (2026-08-27) is: keep chips ON, reduce their visual
+weight. Availability is a trust property -- a reader must be able to see
+that every figure is cited -- and hierarchy is a styling property. They do
+not conflict, so nothing about the default changes.
+receipts-toggle.tsx's `useState(true)` is untouched, and gate 6's existing
+"P1-1 default" assertion and gate 4's receipts-default leg both still hold.
+
+WHAT WAS MEASURED, BEFORE. Across all 11 chip-bearing surfaces in both
+colour schemes, every figure on the site renders `text-foreground`:
+16.57-19.80:1, chroma 0, 12-48px. The chip rendered:
+
+  ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5
+  font-mono text-xs text-blue-700 align-middle
+
+  ink #1447e6 -> chroma 210 beside an achromatic figure
+  own fill 219,234,254 (opaque) where the figure has none
+  weight INHERITED -- 700 on /feed/ (60/60 sampled), /programs/,
+    /district/, home and the program pages
+  no dark variant at all: the same light-blue block painted itself onto a
+    near-black page, 12px/w700/5.60:1/bg 219,234,254 vs a 17.18:1 figure
+    on bg 23,23,23
+  72.8px wide against a 45-58.7px figure on /programs/; row heights there
+    at 390px were {108: 359, 128: 40, 148: 1} -- the alternating rhythm the
+    panel described
+
+PROOF IT CAN FAIL. The leg was written FIRST and run against out/ exactly
+as it shipped (globals.css unchanged, `.cite-id-chip` still carrying
+bg-blue-100/text-blue-700 in the compiled chunk -- checked before the run).
+Exit 1, twelve errors across four page/scheme combinations:
+
+  gate 6 a11y_gate: ... -> FAIL
+    ✗ P1-1 hierarchy e-i fill (/program/000042/): 5/5 sampled Fact-ID
+      chip(s) — the chip paints a fill its figure does not. First: chip
+      12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$4.00K"
+      14px/w600/19.80:1/chroma 0/bg 255,255,255
+    ✗ P1-1 hierarchy e-ii chroma (/program/000042/): 5/5 sampled Fact-ID
+      chip(s) — the chip is more chromatic than its figure. First: chip
+      12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$4.00K"
+      14px/w600/19.80:1/chroma 0/bg 255,255,255
+    ✗ P1-1 hierarchy e-v weight (/program/000042/): 4/5 sampled Fact-ID
+      chip(s) — the chip is heavier than its figure or renders bold (>500).
+      First: chip 12px/w700/5.60:1/chroma 210/bg 219,234,254 vs figure
+      "$793.0K" 20px/w700/19.80:1/chroma 0/bg 255,255,255
+    ✗ P1-1 hierarchy e-i fill (/programs/): 60/60 sampled Fact-ID chip(s) —
+      the chip paints a fill its figure does not. First: chip
+      12px/w700/5.60:1/chroma 210/bg 219,234,254 vs figure "$228.7B"
+      14px/w700/18.44:1/chroma 0/bg 244,247,252
+    ✗ P1-1 hierarchy e-ii chroma (/programs/): 60/60 sampled Fact-ID
+      chip(s) — the chip is more chromatic than its figure. First: chip
+      12px/w700/5.60:1/chroma 210/bg 219,234,254 vs figure "$228.7B"
+      14px/w700/18.44:1/chroma 0/bg 244,247,252
+    ✗ P1-1 hierarchy e-v weight (/programs/): 1/60 sampled Fact-ID chip(s) —
+      the chip is heavier than its figure or renders bold (>500). First:
+      chip 12px/w700/5.60:1/chroma 210/bg 219,234,254 vs figure "$228.7B"
+      14px/w700/18.44:1/chroma 0/bg 244,247,252
+    ✗ P1-1 hierarchy e-i fill (home (dark)): 2/2 sampled Fact-ID chip(s) —
+      the chip paints a fill its figure does not. First: chip
+      12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$5.25B"
+      12px/w400/17.18:1/chroma 0/bg 23,23,23
+    ✗ P1-1 hierarchy e-ii chroma (home (dark)): 2/2 sampled Fact-ID chip(s)
+      — the chip is more chromatic than its figure. First: chip
+      12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$5.25B"
+      12px/w400/17.18:1/chroma 0/bg 23,23,23
+    ✗ P1-1 hierarchy e-v weight (home (dark)): 1/2 sampled Fact-ID chip(s) —
+      the chip is heavier than its figure or renders bold (>500). First:
+      chip 12px/w700/5.60:1/chroma 210/bg 219,234,254 vs figure "$5.57B"
+      48px/w700/17.18:1/chroma 0/bg 23,23,23
+    ✗ P1-1 hierarchy e-i fill (/program/000042/ (dark)): 5/5 sampled
+      Fact-ID chip(s) — the chip paints a fill its figure does not. First:
+      chip 12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$4.00K"
+      14px/w600/17.18:1/chroma 0/bg 23,23,23
+    ✗ P1-1 hierarchy e-ii chroma (/program/000042/ (dark)): 5/5 sampled
+      Fact-ID chip(s) — the chip is more chromatic than its figure. First:
+      chip 12px/w400/5.60:1/chroma 210/bg 219,234,254 vs figure "$4.00K"
+      14px/w600/17.18:1/chroma 0/bg 23,23,23
+    ✗ P1-1 hierarchy e-v weight (/program/000042/ (dark)): 4/5 sampled
+      Fact-ID chip(s) — the chip is heavier than its figure or renders bold
+      (>500). First: chip 12px/w700/5.60:1/chroma 210/bg 219,234,254 vs
+      figure "$793.0K" 20px/w700/17.18:1/chroma 0/bg 23,23,23
+
+Note e-iii (contrast) and e-iv (size) do NOT fire pre-fix, and that is the
+point of stating all five: the chip was already smaller and already lower in
+luminance contrast than its figure. WCAG contrast simply does not describe
+what the panels saw. What they saw was a saturated fill. The leg names the
+axes that were actually wrong (fill, chroma, inherited weight) and pins the
+two that were already right so they cannot drift.
+
+THE FLOORS ARE PART OF THE LEG, NOT ADJACENT TO IT. e-floor size (≥12px)
+and e-floor contrast (≥4.5:1) run on the SAME measured elements. That is
+deliberate: the cheapest way to make a chip "subordinate" is to dim it into
+illegibility, which would satisfy every ceiling above while destroying the
+property legs (a)/(b) exist to protect. A chip that goes quiet by going
+under AA fails this leg rather than passing it. Neither floor was moved:
+leg (b)'s MIN_FONT_PX is still 12 and leg (a)'s MIN_RATIO is still 3.
+
+NON-VACUITY. Required pages (/program/{sample}/ and /programs/ in light,
+/program/{sample}/ in dark) error if zero chips are found. A chip that
+precedes every [data-amount] on its page -- annotating nothing -- is also an
+error; measured 0 such chips across 11 surfaces x 2 schemes. Sampling is
+strided across the whole document, not the first N, so /programs/' 3,061
+chips are covered end to end rather than header-only.
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. This is a leg inside gate 6's existing runA11yGate(), called once
+from the light-mode pass and once from inside leg (d)'s forced-dark context.
+No 25th gate.

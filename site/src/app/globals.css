@@ -292,8 +292,39 @@
 .cite-figure {
   @apply cursor-pointer underline decoration-dotted decoration-(--cite-decoration) underline-offset-2 hover:decoration-solid hover:decoration-(--cite-decoration-hover) focus-visible:decoration-solid focus-visible:decoration-(--cite-decoration-hover);
 }
+/* The Fact-ID chip — SUBORDINATE to the figure it annotates (ROADMAP #43,
+   owner decision 2026-08-27; gate 6 leg (e) holds this).
+
+   Chips stay ON by default: availability is the trust property, and the site
+   is named Fiscal Receipts. What three judging panels objected to was not
+   that the chip is there, it is that the chip out-shouted the number. It
+   used to render `bg-blue-100 + text-blue-700` — a filled, saturated badge
+   that also INHERITED font-weight from its cell, so a bold row produced a
+   bold hash. Measured on the shipped build: ink chroma 210 beside an
+   achromatic (chroma 0) figure, its own opaque fill (219,234,254) where the
+   figure had none, and weight 700 on /feed/, /programs/, /district/, the
+   home page and the program pages. It also carried NO dark variant, so that
+   light-blue block kept painting itself onto a near-black page.
+
+   The replacement is the id vocabulary this codebase ALREADY uses for the
+   same value in the two places it is not a chip — the citation drawer's
+   `fact #…` line and /fact/{id}'s header both render mono / 12px /
+   muted-foreground / no fill. The chip now matches them instead of
+   inventing a third treatment.
+
+   NOT changed, and deliberately: 12px (`text-xs`) is the FLOOR leg (b)
+   pins — provenance below 12px is banned, so size is not an available axis
+   and the chip must not shrink. --muted-foreground is 5.74:1 on white and
+   ~5.4:1 on the /programs/ row tint, comfortably over AA, and comfortably
+   UNDER the 16.6–19.8:1 every figure on the site renders at. Subordination
+   comes from hierarchy — fill, colour role, weight — never from dimming the
+   chip under the bar legs (a)/(b) exist to hold.
+
+   Hover lifts it to foreground + underline rather than restoring a fill:
+   the same quiet-at-rest / solid-on-interaction language `.cite-figure`
+   already speaks, so the click-to-copy affordance stays discoverable. */
 .cite-id-chip {
-  @apply ml-1 inline-block cursor-copy rounded bg-blue-100 px-1 py-0.5 font-mono text-xs text-blue-700 align-middle;
+  @apply ml-1 inline-block cursor-copy whitespace-nowrap align-middle font-mono text-xs font-normal text-muted-foreground no-underline hover:text-foreground hover:underline hover:underline-offset-2;
 }
 
 /* ── /programs/ index rows (PM Sprint 3 §P2-1) ─────────────────────────────
