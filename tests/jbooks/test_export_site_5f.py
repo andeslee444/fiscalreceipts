@@ -356,7 +356,15 @@ def test_rollup_sidecar_without_trajectory_is_honest(pg_dsn, tmp_path):
 def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
     """Existing (programs.json) sidecars keep their exact pre-5F key set —
     byte-stability of the 462 depends on it. (PM Sprint 1 adds exactly ONE
-    key: the union `summary` block — every full-tier sidecar carries it.)"""
+    key: the union `summary` block — every full-tier sidecar carries it.)
+
+    ROADMAP #32(a) adds `fy2026_absent`, and it is CONDITIONAL: present only
+    where the PB2026 workbook carries FY2024/FY2025 money and no FY2026 row.
+    So the shape assertion is split — the unconditional keys are still pinned
+    exactly, and the conditional one is pinned to its predicate rather than
+    waved through as "an extra key we now allow". This fixture's line is one
+    of the qualifying ones, which is why it appears here at all.
+    """
     doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
     _seed_budget_line(pg_dsn, doc_id, sha)
     _seed_rollup_budget_line(pg_dsn, doc_id)
@@ -365,10 +373,22 @@ def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
 
     full = json.loads(
         (site / "json" / "program_details" / "0601101E.json").read_text())
-    assert set(full.keys()) == {
+    always = {
         "awards", "budget_lines", "details", "mentions", "narratives",
         "summary",
     }
+    assert set(full.keys()) - {"fy2026_absent"} == always
+
+    funded = {
+        bl["fy"] for bl in full["budget_lines"]
+        if (bl.get("amount_thousands") or 0) > 0
+    }
+    qualifies = bool(funded & {2024, 2025}) and not any(
+        bl["fy"] == 2026 for bl in full["budget_lines"]
+    )
+    assert ("fy2026_absent" in full) is qualifies
+    if qualifies:
+        assert full["fy2026_absent"] == {"last_fy": max(funded & {2024, 2025})}
 
 
 # ---------------------------------------------------------------------------

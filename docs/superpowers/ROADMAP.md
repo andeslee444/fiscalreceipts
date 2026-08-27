@@ -892,13 +892,50 @@ docs/superpowers/ROADMAP.md`.
     at all (that gap is backlog #28/D5 territory, not this task's). A floor of 190 can
     never pass against a 165-page eligible set. **The verified floor is 165.**
 
-    **Status: OPEN — both halves** — swept 2026-08-24. The small, independently
-    shippable half (#32a, the "does not appear in the FY2026 request" page
-    note) was written up as drawdown Task B2 and never shipped: no such string
-    exists anywhere under `site/src` at HEAD, so the verified floor of 165 in
-    the correction above has never been used. The `pe_remap` edge type (#32b,
-    drawdown Task D2) is also unbuilt. No commit after `7e94882` (2026-08-04,
-    which filed this entry) references #32.
+    *Correction 2026-08-26 (superseding the 2026-08-07 correction above, which
+    is left standing because the reasoning it records is right and only its
+    number is wrong):* **165 is not the floor either, and 190 was never the
+    population this note is about.** Both figures count `pe_bli`s with FY2025
+    money and no FY2026 row across ALL TEN EDITIONS — but the note is a claim
+    about ONE edition (PB2026) and is rendered per PAGE, not per pe_bli. Fenced
+    to the PB2026 workbook rows each page actually renders, and counted per
+    page: FY2025-only is **159**, and FY2024-or-FY2025 — the definition this
+    entry's own headline uses, and the only one that reproduces its per-service
+    figures — is **319**. That measurement is what the shipped gate uses. The
+    per-service check against this entry's numbers: Air Force 77 (77), Navy 69
+    (69), OSD 18 (18), DARPA 14 (14) — exact; Army **113** against the 115 filed
+    here, the two-line difference being pe_blis with no `/program/` page, which
+    is #28/D5 territory and not this note's. Plus 28 across the smaller
+    components (SOCOM 6, MDA 6, DISA 3, DCSA 3, DTRA 2, DEFW 2, and one each for
+    DCAA, CYBER, TJS, CBDP, DHA, DLA) that the entry never enumerated.
+
+    **Status: PARTIAL — half (a) CLOSED 2026-08-26, half (b) handed to #29.**
+
+    **(a) SHIPPED.** 319 program pages carry the note, gated by **gate 21 leg
+    (g)** (`site/scripts/gates/program-skeleton.mjs`) — no 25th gate; the suite
+    stays at 24. The exporter emits `fy2026_absent: {last_fy}` per sidecar
+    (`export_site.py::_fy2026_absent_block`) and the leg recomputes the same
+    predicate independently from the sidecar's own workbook rows, so a drift
+    between the two implementations fails the build. The leg runs over the
+    WHOLE page universe (2,016 pages, one read pass, no sampling): every page in
+    the population must carry `[data-fy2026-absent]`, **no page outside it may**,
+    the note must say all four of its required sentences with the year matching
+    the recomputed `last_fy`, it must never say zeroed / cancelled / terminated
+    / defunded, and **it must name no other program element** — checked against
+    the page universe itself, which is the mechanical guard on (b) not leaking
+    into (a) as a guess. Proof-can-fail (verbatim FAIL on all 319 + PASS) is in
+    `docs/superpowers/reviews/5c-gates-pre-failure.txt`. Page weight is
+    untouched: the heaviest `/program/` page (`0601102A`, 142,255 gzip against a
+    151,000 ceiling) is still funded in FY2026 and gets no note; the heaviest
+    page that DOES get one is `0602716E` at ~81KB gzip. No ceiling was raised.
+
+    **(b) OPEN, folded into #29.** The `pe_remap` / `restructured_into` edge
+    type is unbuilt. It stays unbuilt deliberately: the corpus cannot prove
+    *Defense Research Sciences* → *Emerging Opportunities*, and a named guess
+    would be a fabricated citation — the defect species #53 and #69 closed. The
+    note therefore states absence and its context and stops there. Successor
+    extraction is lineage Phase 2 (#29(a), LLM extraction, ~$10–20 full /
+    ~$2 pilot — the only real spend left in the backlog).
 
 33. ✅ **DONE 2026-08-05 (PM Sprint 3 Task 5b) — a derived parquet older than its
     inputs understated the headline figure on 201 pages by 73%.**

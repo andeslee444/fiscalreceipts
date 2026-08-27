@@ -20,6 +20,9 @@
  *     <meta name="robots" content~="noindex">; sampled content pages do NOT.
  * (f) WHAT-IT-IS card is not a template stub (PM Sprint 2, §P1-2) — see
  *     leg f's own block at the bottom of this file.
+ * (g) A program element that PB2026 stopped requesting money for must not
+ *     end silently: it carries the [data-fy2026-absent] note, and no other
+ *     page does (ROADMAP #32a) — see leg g's own block at the bottom.
  */
 
 import fs from "fs";
@@ -273,6 +276,9 @@ export async function runProgramSkeletonGate() {
   // ── (f) WHAT-IT-IS card is not a template stub (§P1-2) ────────────────────
   runWhatItIsLeg({ errors, notes });
 
+  // ── (g) the PB2026 renumber note (ROADMAP #32a) ───────────────────────────
+  runFy2026AbsentLeg({ errors, notes, sidecars });
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -485,5 +491,292 @@ function runWhatItIsLeg({ errors, notes }) {
   notes.push(
     `leg f: sampled ${Math.min(6, fullNoDossier.length)} field-sourced + ` +
       `${Math.min(6, rollups.length)} rollup cards ✓`
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg g — a program element PB2026 stopped requesting must not end silently
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The defect (ROADMAP #32a, surfaced by PM Sprint 3 Task 1b). PB2026
+// renumbered program elements at scale. Counting pages whose PB2026 R-1/P-1
+// workbook rows carry FY2024/FY2025 money and NO FY2026 row at all: Army
+// 113, Air Force 77, Navy 69, OSD 18, DARPA 14, and 28 across the smaller
+// components — 319 pages. A reader who followed /program/0601101E/ (Defense
+// Research Sciences) for a decade hit a page whose figures stopped at FY2025
+// and said nothing about why.
+//
+// This is NOT an ingestion gap: data/raw_docs/fy2026/dod/r1_display.xlsx
+// shows the FY2026 cells for those lines genuinely blank, and the new PB2026
+// lines genuinely carry no FY2024/FY2025 history. The parser is right; the
+// MODEL has no way to say "renumbered". Successor edges are #32b (folded
+// into backlog #29) — they do not exist yet, and this leg exists partly to
+// make sure nobody ships a guess at one in the meantime.
+//
+// What this leg pins, on the BUILT artifact, for the WHOLE page universe
+// (2,016 pages — one read pass, no sampling; the negative direction is the
+// half a sample would miss):
+//
+//   1. The exporter's flag agrees with an INDEPENDENT recompute of the
+//      predicate from the sidecar's own workbook rows, on every page, both
+//      directions and including last_fy. Same convention as CANONICAL_SECTIONS
+//      above: a drift between the two implementations is a real failure.
+//   2. Every page in the population renders [data-fy2026-absent].
+//   3. NO page outside it does. A note that appears on a page still funded in
+//      FY2026 is a false claim about that page's money, which is worse than
+//      the silence it was written to fix.
+//   4. The note says all four things it must say, verbatim: that there is no
+//      FY2026 request; where the record actually stops (and that year must
+//      MATCH the recomputed last_fy — the note may not name a year the
+//      workbook does not support); that PB2026 renumbered at scale; and that
+//      the page names no successor.
+//   5. The note never claims the program ended. "zeroed", "cancelled",
+//      "terminated", "defunded" are exactly the words the 87 withdrawn feed
+//      cards used, and absence in one edition supports none of them.
+//   6. The note names no OTHER program element. Naming a successor the corpus
+//      cannot prove would be a fabricated citation — the defect species
+//      ROADMAP #53 and #69 closed. Until #32b ships there is nothing to name,
+//      and this is the check that says so mechanically.
+
+/** Non-vacuity floor: the shipped PB2026 corpus holds exactly 319 such pages
+ *  (measured 2026-08-26; 160 last funded FY2024, 159 FY2025). A drop means
+ *  either the predicate broke or the corpus changed — RE-MEASURE and re-derive
+ *  this number, never lower it to whatever the build produced.
+ *
+ *  Not the "165" in ROADMAP #32's 2026-08-07 correction: that figure counts
+ *  pe_blis with FY2025 money and no FY2026 row across ALL editions, while the
+ *  note is a claim about ONE edition and is rendered per PAGE. Fenced to
+ *  PB2026 and counted per page, FY2025-only is 159 and FY2024-or-FY2025 — the
+ *  entry's own definition, the one that reproduces its per-service figures —
+ *  is 319. */
+const MIN_FY2026_ABSENT_PAGES = 319;
+
+/** The stable hook the page must carry. */
+const FY2026_ABSENT_ATTR = "data-fy2026-absent";
+
+/** Every sentence the note must actually say (whitespace-normalized). */
+const FY2026_ABSENT_REQUIRED = [
+  "No FY2026 request for this program element.",
+  "PB2026 renumbered program elements at scale",
+  "This page names no successor",
+];
+
+/** Words that would turn an absence into a claim the corpus cannot support. */
+const FY2026_ABSENT_FORBIDDEN =
+  /\b(zeroed|defunded|cancell?ed|cancellation|terminat(ed|ion))\b/i;
+
+/** Candidate program-element token in the note's prose. Not a shape guess —
+ *  every match is looked up in the page universe (the sidecar slugs) so
+ *  "FY2026" and "PB2026" are not mistaken for codes and "ATA000", "HCMC00",
+ *  "1203154SF" are not missed. Used ONLY to prove the note names no
+ *  successor. */
+const PE_TOKEN_RE = /\b[A-Z0-9][A-Z0-9]{4,}\b/g;
+
+/**
+ * Independent recompute of the exporter's predicate
+ * (src/govbudget/export_site.py, _fy2026_absent_block).
+ *
+ * Reads the sidecar's `budget_lines` — the PB2026 R-1/P-1 workbook rows this
+ * very page renders in its Budget Line Items table, already scoped to the
+ * page's own account/organization grain for the split keys. So "no FY2026
+ * row" here means exactly what the primary source shows: blank cells on this
+ * line, in this edition.
+ *
+ * Returns {last_fy} or null.
+ */
+function recomputeFy2026Absent(d) {
+  const rows = d.budget_lines ?? [];
+  if (rows.some((r) => r.fy === 2026)) return null;
+  const prior = rows
+    .filter(
+      (r) => (r.fy === 2024 || r.fy === 2025) && Number(r.amount_thousands) > 0,
+    )
+    .map((r) => r.fy);
+  if (prior.length === 0) return null;
+  return { last_fy: Math.max(...prior) };
+}
+
+function runFy2026AbsentLeg({ errors, notes, sidecars }) {
+  // ── 1. exporter flag vs. independent recompute, on every sidecar ─────────
+  const expected = new Map(); // slug -> {last_fy}
+  let flagDrift = 0;
+  for (const [slug, d] of sidecars) {
+    const want = recomputeFy2026Absent(d);
+    const got = d.fy2026_absent ?? null;
+    if (want) expected.set(slug, want);
+    if (Boolean(want) !== Boolean(got)) {
+      flagDrift++;
+      if (flagDrift <= 5) {
+        errors.push(
+          `program-skeleton(g): /program/${slug}/ sidecar fy2026_absent is ` +
+            `${got ? JSON.stringify(got) : "absent"} but the gate's own recompute says ` +
+            `${want ? JSON.stringify(want) : "absent"} — the exporter and the gate disagree ` +
+            `about whether PB2026 still requests money for this line`,
+        );
+      }
+    } else if (want && got && want.last_fy !== got.last_fy) {
+      flagDrift++;
+      if (flagDrift <= 5) {
+        errors.push(
+          `program-skeleton(g): /program/${slug}/ sidecar says last_fy=${got.last_fy}, ` +
+            `recompute says ${want.last_fy}`,
+        );
+      }
+    }
+  }
+  if (flagDrift > 5) {
+    errors.push(
+      `program-skeleton(g): ${flagDrift} sidecars disagree with the recompute in total ` +
+        `(first 5 listed)`,
+    );
+  }
+
+  if (expected.size < MIN_FY2026_ABSENT_PAGES) {
+    errors.push(
+      `program-skeleton(g): only ${expected.size} page(s) match the renumber predicate ` +
+        `(expected >= ${MIN_FY2026_ABSENT_PAGES}) — the leg would be vacuous. Re-measure ` +
+        `the population and re-derive the floor; do not lower it to fit the build`,
+    );
+    return;
+  }
+
+  // ── 2/3/4/5/6. one read pass over the WHOLE page universe ────────────────
+  let withNote = 0;
+  let missing = 0;
+  let stray = 0;
+  let badNotes = 0;
+  const lastFyCounts = new Map();
+  for (const [slug] of sidecars) {
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) {
+      if (expected.has(slug)) {
+        errors.push(`program-skeleton(g): /program/${slug}/ not built`);
+      }
+      continue;
+    }
+    const html = fs.readFileSync(p, "utf8");
+    const marked = html.includes(FY2026_ABSENT_ATTR);
+    const want = expected.get(slug) ?? null;
+
+    if (!want) {
+      // 3. the negative direction.
+      if (marked) {
+        stray++;
+        if (stray <= 5) {
+          errors.push(
+            `program-skeleton(g): /program/${slug}/ renders the "no FY2026 request" note ` +
+              `but its PB2026 workbook DOES carry an FY2026 row — the note is a false ` +
+              `claim about this page's money`,
+          );
+        }
+      }
+      continue;
+    }
+
+    // 2. the positive direction.
+    if (!marked) {
+      missing++;
+      if (missing <= 5) {
+        errors.push(
+          `program-skeleton(g): /program/${slug}/ has PB2026 money through FY${want.last_fy} ` +
+            `and no FY2026 workbook row, but renders no [${FY2026_ABSENT_ATTR}] note — the ` +
+            `page ends silently (ROADMAP #32a)`,
+        );
+      }
+      continue;
+    }
+
+    const root = parse(html, { comment: false });
+    const el = root.querySelector(`[${FY2026_ABSENT_ATTR}]`);
+    if (!el) {
+      errors.push(
+        `program-skeleton(g): /program/${slug}/ mentions ${FY2026_ABSENT_ATTR} but no ` +
+          `element carries it`,
+      );
+      continue;
+    }
+    const text = (el.text ?? "").replace(/\s+/g, " ").trim();
+
+    // The note comes from ONE component, so a wording regression hits all 319
+    // pages at once. Report the first few and count the rest — 1,200 identical
+    // lines would bury the other legs' findings.
+    const say = (msg) => {
+      badNotes++;
+      if (badNotes <= 5) errors.push(msg);
+    };
+
+    // 4. it says all four things.
+    for (const frag of FY2026_ABSENT_REQUIRED) {
+      if (!text.includes(frag)) {
+        say(
+          `program-skeleton(g): /program/${slug}/ note is missing the required sentence ` +
+            `"${frag}" — got "${text.slice(0, 140)}…"`,
+        );
+      }
+    }
+    const yearFrag = `its last figure in this edition is FY${want.last_fy}`;
+    if (!text.includes(yearFrag)) {
+      say(
+        `program-skeleton(g): /program/${slug}/ note does not say "${yearFrag}" — the ` +
+          `note must name the year the workbook actually stops at, not a different one ` +
+          `(got "${text.slice(0, 140)}…")`,
+      );
+    }
+
+    // 5. it never claims an ending.
+    const bad = FY2026_ABSENT_FORBIDDEN.exec(text);
+    if (bad) {
+      say(
+        `program-skeleton(g): /program/${slug}/ note says "${bad[0]}" — absence from one ` +
+          `edition supports no such claim (this is the wording the 87 withdrawn feed ` +
+          `cards used)`,
+      );
+    }
+
+    // 6. it names no other program element. Every candidate token is checked
+    // against the PAGE UNIVERSE itself, so this cannot be fooled by a code
+    // shape nobody anticipated, and cannot fire on "FY2026"/"PB2026".
+    const named = [...new Set(text.match(PE_TOKEN_RE) ?? [])].filter(
+      (c) => c !== slug && sidecars.has(c),
+    );
+    if (named.length > 0) {
+      say(
+        `program-skeleton(g): /program/${slug}/ note names program element(s) ` +
+          `${named.join(", ")} — the corpus cannot prove a successor for a renumbered ` +
+          `line, so the note must not name one (#32b / backlog #29)`,
+      );
+    }
+
+    withNote++;
+    lastFyCounts.set(want.last_fy, (lastFyCounts.get(want.last_fy) ?? 0) + 1);
+  }
+
+  if (missing > 5) {
+    errors.push(
+      `program-skeleton(g): ${missing} page(s) in the renumber population render no note ` +
+        `in total (first 5 listed)`,
+    );
+  }
+  if (stray > 5) {
+    errors.push(
+      `program-skeleton(g): ${stray} page(s) outside the population render the note in ` +
+        `total (first 5 listed)`,
+    );
+  }
+  if (badNotes > 5) {
+    errors.push(
+      `program-skeleton(g): ${badNotes} note-content failure(s) in total across the ` +
+        `population (first 5 listed) — one component renders all of them, so this is ` +
+        `one wording regression, not ${badNotes} page defects`,
+    );
+  }
+  const byYear = [...lastFyCounts.entries()]
+    .sort()
+    .map(([fy, n]) => `${n} last funded FY${fy}`)
+    .join(", ");
+  notes.push(
+    `leg g: ${withNote}/${expected.size} renumbered-away program page(s) carry the ` +
+      `"no FY2026 request" note (${byYear}); ${sidecars.size - expected.size} other ` +
+      `page(s) correctly do not ✓`,
   );
 }

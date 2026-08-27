@@ -733,6 +733,23 @@ export interface Fy26Split {
   lines?: Fy26SplitLine[] | null;
 }
 
+/**
+ * ROADMAP #32(a) — PB2026 requests nothing for this program element.
+ *
+ * Present on the 319 pages whose PB2026 R-1/P-1 workbook rows carry
+ * FY2024/FY2025 money and no FY2026 row at all (Army 113, Air Force 77, Navy
+ * 69, OSD 18, DARPA 14, 28 elsewhere — PB2026 renumbered program elements at
+ * scale). Absent everywhere else. `last_fy` is the latest year the workbook
+ * still funds the line, and the year the note names.
+ *
+ * Deliberately carries no successor: the corpus cannot prove one, and naming
+ * a guess would be a fabricated citation. Successor edges are #32(b), folded
+ * into backlog #29.
+ */
+export interface Fy2026Absent {
+  last_fy: number;
+}
+
 export interface ProgramDetails {
   awards: ProgramAward[];
   budget_lines: ProgramBudgetLine[];
@@ -760,6 +777,11 @@ export interface ProgramDetails {
    * split.
    */
   fy26_split?: Fy26Split;
+  /**
+   * ROADMAP #32(a): PB2026 carries no FY2026 request line for this program
+   * element. Absent means it does — never a fabricated "renumbered" claim.
+   */
+  fy2026_absent?: Fy2026Absent;
   /**
    * Phase 5F rollup-tier fields (Batch A): present ONLY on the rollup
    * sidecars (R-1/P-1 figures + trajectory, no J-book detail) — ~254 after

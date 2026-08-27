@@ -254,6 +254,57 @@ describe("ProgramFigures — FY2026 discretionary/reconciliation split (#50)", (
   });
 });
 
+describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
+  it("renders nothing when the sidecar carries no fy2026_absent flag", () => {
+    const { container } = render(
+      <ProgramFigures program={PROGRAM} summary={SUMMARY_WITH_FY26_TOTAL} />,
+    );
+    expect(container.querySelector("[data-fy2026-absent]")).toBeNull();
+  });
+
+  it("states the absence, its year, and the renumber context — and names no successor", () => {
+    const { container } = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY}
+        fy2026Absent={{ last_fy: 2025 }}
+      />,
+    );
+    const note = container.querySelector("[data-fy2026-absent]");
+    expect(note).not.toBeNull();
+    const text = note!.textContent!.replace(/\s+/g, " ").trim();
+
+    expect(text).toContain("No FY2026 request for this program element.");
+    expect(text).toContain("its last figure in this edition is FY2025");
+    expect(text).toContain("PB2026 renumbered program elements at scale");
+    expect(text).toContain("This page names no successor");
+
+    // Absence in one edition is not an ending. These are the words the 87
+    // withdrawn "zeroed out in FY2026" feed cards used.
+    expect(text).not.toMatch(
+      /\b(zeroed|defunded|cancell?ed|cancellation|terminat(ed|ion))\b/i,
+    );
+
+    // Scope disclosure, not a caution about a number (notes.tsx registers).
+    expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
+  });
+
+  it("names the year the flag carries, not a hardcoded one", () => {
+    const { container } = render(
+      <ProgramFigures
+        program={PROGRAM}
+        summary={SUMMARY}
+        fy2026Absent={{ last_fy: 2024 }}
+      />,
+    );
+    const text = container
+      .querySelector("[data-fy2026-absent]")!
+      .textContent!.replace(/\s+/g, " ");
+    expect(text).toContain("its last figure in this edition is FY2024");
+    expect(text).not.toContain("FY2025");
+  });
+});
+
 describe("ProgramFigures — summary union cards", () => {
   it("renders the union values with basis attributes + chip", () => {
     const { container } = render(

@@ -3991,6 +3991,54 @@ def _summary_absence_block() -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# ROADMAP #32(a) — the PB2026 renumber note
+# ---------------------------------------------------------------------------
+#
+# PB2026 renumbered program elements at scale. 319 program pages carry FY2024
+# and/or FY2025 money in the PB2026 R-1/P-1 workbook and NO FY2026 row at all
+# (Army 113, Air Force 77, Navy 69, OSD 18, DARPA 14, 28 elsewhere) — DARPA
+# retired Defense Research Sciences, Tactical Technology, Sensor Technology,
+# Electronics Technology and 10 more while its FY2026 total ROSE to $4.92B.
+#
+# This is not an ingestion gap. data/raw_docs/fy2026/dod/r1_display.xlsx shows
+# those FY2026 cells genuinely blank; the parser reads the workbook correctly.
+# What the corpus cannot do is SAY so, and the page said nothing at all — a
+# reader who followed a line for a decade hit figures that stopped at FY2025
+# with no explanation.
+#
+# This flag is the honest interim: it tells the page there is no FY2026
+# request and where the record stops. It does NOT model a successor. That is
+# #32(b), folded into backlog #29 (lineage Phase 2) — the corpus cannot prove
+# Defense Research Sciences → Emerging Opportunities, and naming one anyway
+# would be a fabricated citation, the defect species #53 and #69 closed. Gate
+# 21 leg (g) pins the note's wording, recomputes this predicate independently,
+# and fails if the note ever names another program element.
+def _fy2026_absent_block(budget_lines: list[dict]) -> dict | None:
+    """`fy2026_absent` sidecar payload, or None when the page is not one.
+
+    Reads the sidecar's OWN PB2026 workbook rows — already scoped to the
+    page's account/organization grain for the 11 split keys — so "no FY2026
+    row" means exactly what the primary source shows for THIS line in THIS
+    edition, and never a sibling page's blank.
+
+    A page qualifies when it has at least one FY2024/FY2025 workbook row with
+    money on it and no FY2026 row of any amount_type. `last_fy` is the latest
+    of those funded years: the year the note tells the reader the record
+    stops at.
+    """
+    if any(bl.get("fy") == 2026 for bl in budget_lines):
+        return None
+    funded = [
+        bl["fy"]
+        for bl in budget_lines
+        if bl.get("fy") in (2024, 2025) and (bl.get("amount_thousands") or 0) > 0
+    ]
+    if not funded:
+        return None
+    return {"last_fy": max(funded)}
+
+
 # amount_type slug → the fy26_split side key it feeds (backlog #50).
 _FY26_SPLIT_KEYS = {
     "fy_2025_enacted": "fy25_enacted",
@@ -7331,6 +7379,7 @@ def _write_all_sidecars(
     # anything already in det_dir that is not in that set afterward is
     # removed.
     _written_det_names: set[str] = set()
+    _n_fy2026_absent = 0                       # ROADMAP #32(a) blast radius
     for r in all_prog_rows:
         pe_bli, org, account, account_title = r[0], r[1], r[7], r[8]
         is_split = pe_bli in ident.split_pe_blis
@@ -7385,6 +7434,11 @@ def _write_all_sidecars(
             obj["lineage"] = lineage_by_pe[pe_bli]
         if slug in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[slug]
+        # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
+        _fy26_absent = _fy2026_absent_block(own_bl)
+        if _fy26_absent is not None:
+            obj["fy2026_absent"] = _fy26_absent
+            _n_fy2026_absent += 1
         _write_json(det_dir / f"{slug}.json", obj)
         _written_det_names.add(f"{slug}.json")
         n_files += 1
@@ -7467,6 +7521,11 @@ def _write_all_sidecars(
             obj["lineage"] = lineage_by_pe[pe_bli]
         if pe_bli in fy26_split_by_pe:
             obj["fy26_split"] = fy26_split_by_pe[pe_bli]
+        # ROADMAP #32(a): PB2026 requests nothing for this line — say so.
+        _fy26_absent = _fy2026_absent_block(obj["budget_lines"])
+        if _fy26_absent is not None:
+            obj["fy2026_absent"] = _fy26_absent
+            _n_fy2026_absent += 1
         _write_json(det_dir / f"{pe_bli}.json", obj)
         _written_det_names.add(f"{pe_bli}.json")
         n_files += 1
@@ -7485,6 +7544,10 @@ def _write_all_sidecars(
             f"program_details: +{len(rollup_pes)} rollup-tier sidecars"
             f" (total {len(all_prog_rows) + len(rollup_pes)})"
         )
+    print(
+        f"program_details: {_n_fy2026_absent} page(s) flagged fy2026_absent"
+        " (PB2026 workbook carries no FY2026 row — ROADMAP #32a)"
+    )
 
     # ------------------------------------------------------------------ #
     # 4. entities_top.json                                               #

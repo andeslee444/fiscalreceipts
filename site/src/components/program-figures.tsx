@@ -8,6 +8,7 @@ import { normalizeExhibitFamily } from "@/lib/basis";
 import type {
   DecadeSeries,
   Fy26Split,
+  Fy2026Absent,
   ProgramBookDiff,
   ProgramRow,
   ProgramSummary,
@@ -196,6 +197,62 @@ export function Fy26LinesNote({ split }: { split?: Fy26Split | null }) {
   );
 }
 
+/**
+ * Fy2026AbsentNote (ROADMAP #32a) — the page must not just stop.
+ *
+ * PB2026 renumbered program elements at scale: 319 program pages carry
+ * FY2024/FY2025 money in the PB2026 R-1/P-1 workbook and no FY2026 row at
+ * all. DARPA retired *Defense Research Sciences*, *Tactical Technology*,
+ * *Sensor Technology*, *Electronics Technology* and 10 more while its FY2026
+ * total ROSE to $4.92B — 2 of 16 PEs carried through unchanged. Verified
+ * against the primary source (r1_display.xlsx): those FY2026 cells are
+ * genuinely blank. The parser is right; the corpus had no way to SAY so, and
+ * a reader who followed a line for a decade hit figures that stopped at
+ * FY2025 with nothing to explain it.
+ *
+ * Three things this note deliberately does NOT do:
+ *
+ *   1. It does not name a successor. The corpus cannot prove *Defense
+ *      Research Sciences* → *Emerging Opportunities*, and a named guess is a
+ *      fabricated citation — the defect ROADMAP #53 and #69 closed. Successor
+ *      edges are #32(b), folded into backlog #29. Gate 21 leg (g) fails if
+ *      this note ever names another program element.
+ *   2. It does not say zeroed / cancelled / terminated / defunded. Absence
+ *      from one edition supports none of them — that is precisely the claim
+ *      the 87 withdrawn "zeroed out in FY2026" feed cards made.
+ *   3. It does not mint a figure. The only number here is the year the
+ *      workbook stops at, and it comes from the exporter's own recompute of
+ *      the sidecar's rows (`fy2026_absent.last_fy`), never from prose.
+ *
+ * ScopeNote, not CautionNote: this is honest scope disclosure about what the
+ * edition covers, not a warning about a number's reliability (notes.tsx).
+ */
+export function Fy2026AbsentNote({
+  fy2026Absent,
+}: {
+  fy2026Absent?: Fy2026Absent | null;
+}) {
+  if (!fy2026Absent) return null;
+  return (
+    <ScopeNote label={null} className="mt-3">
+      <p
+        data-fy2026-absent=""
+        className="text-xs leading-relaxed text-muted-foreground"
+      >
+        <strong className="text-foreground">
+          No FY2026 request for this program element.
+        </strong>{" "}
+        The FY2026 President&apos;s Budget R-1/P-1 request workbook carries no
+        FY2026 line for it; its last figure in this edition is FY
+        {fy2026Absent.last_fy}. An absent line is not by itself an ending —
+        PB2026 renumbered program elements at scale across the services, so
+        this work may continue under a different number. This page names no
+        successor, because no ingested budget document states one.
+      </p>
+    </ScopeNote>
+  );
+}
+
 function SummaryCardCell({
   card,
   reconKeys,
@@ -278,12 +335,16 @@ interface ProgramFiguresProps {
   /** backlog #50 — from the sidecar's fy26_split field; absent when the
    *  program has no FY2026 disc/reconciliation workbook row. */
   fy26Split?: Fy26Split | null;
+  /** ROADMAP #32a — from the sidecar's fy2026_absent field; absent when the
+   *  PB2026 workbook DOES carry an FY2026 row for this line. */
+  fy2026Absent?: Fy2026Absent | null;
 }
 
 export function ProgramFigures({
   program,
   summary,
   fy26Split = null,
+  fy2026Absent = null,
 }: ProgramFiguresProps) {
   const reconKeys = reconKeySet(summary);
   // §48: every TOA card on this grid is this ONE program's own figure, so
@@ -314,6 +375,11 @@ export function ProgramFigures({
 
       {/* §P0-1: the declared two-basis reconciliation, both receipts */}
       <ReconciliationStrip entries={summary.reconciliation} />
+
+      {/* ROADMAP #32a: PB2026 requests nothing here — say so, and say what
+          that does and does not mean. Sits directly under the cards it
+          explains, above the generic partial-year note. */}
+      <Fy2026AbsentNote fy2026Absent={fy2026Absent} />
 
       {/* FY2026 partial-year scope note — G2 contract
           (data-coverage="fy2026-partial") */}

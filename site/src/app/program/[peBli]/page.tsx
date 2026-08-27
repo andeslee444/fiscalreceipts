@@ -672,7 +672,12 @@ export default async function ProgramPage({
       {/* 2 · Budget figures — the summary UNION cards (§P0-2) + the
           reconciliation strip (§P0-1). */}
       <ProgramSection id="figures">
-        <ProgramFigures program={program} summary={summary} fy26Split={fy26Split} />
+        <ProgramFigures
+          program={program}
+          summary={summary}
+          fy26Split={fy26Split}
+          fy2026Absent={details.fy2026_absent ?? null}
+        />
       </ProgramSection>
 
       {/* 3 · Trajectory — union-card sparkline + Phase 5E decade series */}
