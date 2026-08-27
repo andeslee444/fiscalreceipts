@@ -383,12 +383,28 @@ def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
         bl["fy"] for bl in full["budget_lines"]
         if (bl.get("amount_thousands") or 0) > 0
     }
-    qualifies = bool(funded & {2024, 2025}) and not any(
-        bl["fy"] == 2026 for bl in full["budget_lines"]
+    # Widened 2026-08-27. The old predicate here mirrored the exporter's
+    # workbook-only scope, so this test was green for the whole time the
+    # note was false on 179 of 319 pages. It now asserts the CONTRACT
+    # against the page's own payload instead of reimplementing the rule:
+    # a page that publishes positive FY2026 money may never carry an
+    # absence note, whichever source publishes it.
+    fy26_details = [d for d in full.get("details", []) if d.get("fy") == 2026]
+    qualifies = (
+        bool(funded & {2024, 2025})
+        and not any(bl["fy"] == 2026 for bl in full["budget_lines"])
+        and not any((d.get("amount_millions") or 0) > 0 for d in fy26_details)
     )
     assert ("fy2026_absent" in full) is qualifies
     if qualifies:
-        assert full["fy2026_absent"] == {"last_fy": max(funded & {2024, 2025})}
+        blk = full["fy2026_absent"]
+        assert blk["last_fy"] == max(funded & {2024, 2025})
+        # Both disclosure flags must agree with what this page actually
+        # carries — the note's two conditional clauses render off them.
+        assert blk["jbook_fy2026_zero"] is bool(fy26_details)
+        assert blk["has_successor"] is bool(
+            ((full.get("lineage") or {}).get("rail") or {}).get("successors")
+        )
 
 
 # ---------------------------------------------------------------------------
