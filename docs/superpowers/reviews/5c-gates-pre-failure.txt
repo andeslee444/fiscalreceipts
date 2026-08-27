@@ -8385,3 +8385,177 @@ GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
 -> 24. This is a leg inside gate 6's existing runA11yGate(), called once
 from the light-mode pass and once from inside leg (d)'s forced-dark context.
 No 25th gate.
+
+================================================================================
+GATE 23 (basis) leg (j) — a curated alias must route to the program it names.
+2026-08-27. (ROADMAP #55, Wave 1 Task 2.)
+================================================================================
+
+WHY IT EXISTS. Since #52 a curated alias is the ONLY single word the matcher
+trusts on its own: an `evidence_kind='alias'` row exists because a person
+confirmed the mapping, and for no other reason. That makes
+dbt/seeds/program_aliases.csv the one place in the corpus where one human
+keystroke silently republishes another company's lobbying under a program's
+name.
+
+`JASSM` was seeded to `0603000D8Z` -- *Joint Munitions Advanced Technology*,
+a defence-wide munitions science-and-technology line in OSD that is not
+JASSM -- and put TEN alias-tier filings on that program's page, while
+`0207325F` *Joint Air-to-Surface Standoff Missile (JASSM)*, the program
+element carrying the name in its own title, got three weaker `multi_token`
+rows.
+
+All 24 gates passed the whole time, and correctly: the ten rows are real
+filings, really saying "JASSM", correctly counted, cited to their own
+lda.senate.gov filing_uuid. Every number-to-citation check in the suite was
+satisfied. Only the CLAIM was false. Same species as the three Sprint 3 P0s
+-- a true cited number carrying a false claim -- reached this time through
+the seed file rather than through prose.
+
+WHY THE LEG CANNOT COMPARE THE SEED TO ITSELF. The obvious check --
+"alias-tier rows land on the alias's seeded pe_bli" -- is green on the
+defect: they did. The seed and the mart agreed perfectly; they agreed on
+the wrong program. So the leg needs a SECOND, independent record of what
+each alias is supposed to mean. RATIFIED_ALIASES in basis.mjs is that
+record, transcribed from docs/curation/roadmap-55-flagship-alias-worksheet.csv
+(`pick`) and docs/curation/roadmap-55-ratification.md. Two files must say the
+same thing, and the warehouse and the shipped sidecars must route the
+evidence there.
+
+Transcribed rather than parsed: 20 of the 42 ratified terms resolve to a
+program element that is NOT among the worksheet's substring candidates
+(GBSD matches zero titles anywhere in the corpus), so their answer exists
+only inside `curator_notes` prose as `OFF-WORKSHEET PE: <pe>`. A gate that
+greps English for its own expected values goes green when the prose is
+reworded.
+
+SIX SUB-ASSERTIONS.
+  j1 SEED AGREEMENT   -- the seed maps every ratified alias to exactly its
+                         ratified pe_bli set: no missing row, no extra one.
+  j2 EVIDENCE ROUTING -- every `evidence_kind='alias'` row in
+                         fct_program_lobbying whose matched_term is ratified
+                         sits on a ratified pe_bli.
+  j3 TARGET RESOLVES  -- every ratified pe_bli exists in dim_programs AND
+                         ships out/program/{pe}/index.html. An alias whose
+                         target has no dim_programs row is inert:
+                         `_load_aliases` drops unknown pe_blis without a word.
+  j4 NOTHING UNRATIFIED IS SEEDED -- the reverse direction. A seeded alias
+                         must be ratified or on the owner's pending list.
+                         This is the half that stops the NEXT JASSM being
+                         added, rather than only re-detecting this one.
+  j5 NON-VACUITY      -- the ratified table must be complete (42), and the
+                         warehouse must carry alias-tier rows at all. Not
+                         hypothetical: `_SEED_PATH` used `parents[4]` until
+                         2026-08-08 and resolved above the project root, so
+                         the curated tier matched ZERO rows corpus-wide.
+  j6 EXPORT FIDELITY  -- the routing check re-asked of what the site actually
+                         SHIPS. Added mid-task, for the reason under PROOF (2)
+                         below.
+
+PROOF IT CAN FAIL (1) -- j1 and j2, run against the seed exactly as it
+shipped (13 rows, JASSM -> 0603000D8Z) and the warehouse exactly as it
+stood. `node scripts/gates/basis.mjs`, exit 1:
+
+gate 23 basis: scanning 2016 program pages; leg a1: all 80746 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → FAIL
+  note: leg j3: all 35 ratified alias targets resolve to a shipped page ✓
+  note: leg j4: 13 seeded aliases, every one ratified or on the owner's pending list ✓
+  note: leg j5: 113 alias-tier rows of 10560 mentions warehouse-wide — the curated tier is live ✓
+  ✗ leg j1 seed-agreement: 34 ratified alias(es) the seed does not carry as ratified (first 10):
+  ✗   "Tomahawk" ratified → 0204229N but has no row in the seed
+  ✗   "Standard Missile" ratified → 0604366N but has no row in the seed
+  ✗   "Sidewinder" ratified → M09HAI but has no row in the seed
+  ✗   "Next Generation Jammer" ratified → 0604274N but has no row in the seed
+  ✗   "F/A-18" ratified → 0204136N but has no row in the seed
+  ✗   "Apache" ratified → 0607145A but has no row in the seed
+  ✗   "CH-47" ratified → 6775A05101 but has no row in the seed
+  ✗   "T-7A" ratified → APT000 but has no row in the seed
+  ✗   "E-7" ratified → 0604007F but has no row in the seed
+  ✗   "V-22" ratified → 0604262N but has no row in the seed
+  ✗   ... and 24 more
+  ✗ leg j2 evidence-routing: 1 ratified alias(es) route alias-tier lobbying evidence to an unratified program (first 10):
+  ✗   "JASSM": 10 alias-tier filing row(s) land on 0603000D8Z "Joint Munitions Advanced Technology" — ratified target is 0207325F "Joint Air-to-Surface Standoff Missile (JASSM)"
+
+The "... and 24 more" that MAX_LISTED elides (derived separately, stated here
+so the record is complete): 31 ratified aliases had no seed row at all --
+Tomahawk, Standard Missile, Sidewinder, Next Generation Jammer, F/A-18,
+Apache, CH-47, T-7A, E-7, V-22, B-21, Triton, Hellfire, HIMARS, SM-6,
+StormBreaker, SPY-6, JSOW, AH-64, Chinook, P-8, Poseidon, JDAM, MQ-25,
+Wedgetail, Osprey, GBSD, Global Hawk, E-2D, IBCS, AARGM -- and 3 pointed at
+a program nobody ratified: JASSM (0603000D8Z, ratified 0207325F), Aegis
+(MD09, ratified 0603892C), CV-22 (1000CV2200, ratified 0401318F). 31 + 3 = 34.
+
+PROOF IT CAN FAIL (2) -- j6, and why it exists. After the seed was corrected
+(44 rows), `influence rematch` re-derived the mentions parquet and
+`dbt build` rebuilt the mart, j1-j5 all went green:
+
+  note: leg j1: all 42 ratified aliases seeded as ratified ✓
+  note: leg j2: 177 alias-tier filing row(s) from ratified aliases, all on their ratified program ✓
+
+...while /program/0603000D8Z/'s SHIPPED sidecar still published all ten JASSM
+filings. j1-j5 read the seed and the warehouse; data/site/json is a separate,
+exporter-written artifact that a warehouse fix does not touch. A leg that
+went green there would be gated-green and still wrong on the page -- the same
+shape as the defect it exists to fix. j6 was added at that point and run
+against the stale sidecars. Exit 1:
+
+gate 23 basis: scanning 2016 program pages; leg a1: all 80746 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → FAIL
+  ✗ leg j6 export-fidelity: 1 shipped program sidecar(s) publish a ratified alias on an unratified program — the exporter has not re-run since the seed changed (first 10):
+  ✗   /program/0603000D8Z/ "Joint Munitions Advanced Technology" publishes 10 alias-tier "JASSM" filing row(s); "JASSM" is ratified to 0207325F
+
+PASS -- after `export-site` re-ran. Exit 0:
+
+gate 23 basis: scanning 2016 program pages; leg a1: all 80746 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → PASS
+  note: leg j1: all 42 ratified aliases seeded as ratified ✓
+  note: leg j2: 177 alias-tier filing row(s) from ratified aliases, all on their ratified program ✓
+  note: leg j3: all 35 ratified alias targets resolve to a shipped page ✓
+  note: leg j4: 44 seeded aliases, every one ratified or on the owner's pending list ✓
+  note: leg j5: 194 alias-tier rows of 10599 mentions warehouse-wide — the curated tier is live ✓
+  note: leg j6: 2005 program sidecars scanned, 177 ratified-alias row(s) shipped, every one on its ratified program ✓
+
+JASSM, before and after, from the warehouse:
+
+  0603000D8Z  before: alias 10                after: (no rows at all)
+  0207325F    before: multi_token 3           after: alias 10, multi_token 3
+
+The ten rows did not multiply and did not vanish. They moved, and the tier
+they carry went UP -- they were always alias-tier evidence; they were
+attached to the wrong program.
+
+ONE RATIFIED TERM WAS DELIBERATELY NOT SEEDED. Task 1 resolved `Sentinel` to
+0605238F *Ground Based Strategic Deterrent EMD* and the identification is
+correct -- LGM-35A Sentinel is the renamed GBSD. The ALIAS STRING is not
+safe. The matcher is a case-insensitive word-boundary regex, and the LDA
+corpus holds a third distinct Sentinel:
+
+  ROLLS-ROYCE NORTH AMERICA, 2025, filing 942fee52-be27-4c36-b0fe-db1e27343ef4
+  "Coast Guard Authorization Act of 2025 (H.R. 4275 / S. 524), Department of
+   Homeland Security Appropriations Act, 2026 (H.R. 4213 / no Senate bill
+   number): issues related to additional Sentinel Class Fast Response Cutters
+   and Heritage Class Offshore Patrol Cutters and operations and maintenance
+   funding."
+
+Seeding the string would have attributed a Coast Guard cutter filing to a
+$4.15B Air Force ICBM. One filing matched in the whole corpus, and it is
+false -- a 1-for-1 false-naming rate, the #52 defect through the front door,
+and the same disposition the ratification doc gave `TOW`. `GBSD`, the same
+program's unambiguous name, carries the mapping instead: 9 filings, every one
+an NDAA or appropriations line. The worksheet had already found TWO Sentinels
+(the ICBM and the AN/MPQ-64 air-defence radar behind "Sentinel Mods"); the
+corpus supplies the third. This is stated here rather than quietly dropped
+because 42, not 43, is what RATIFIED_ALIASES holds and what MIN_RATIFIED_ALIASES
+pins.
+
+WHAT WAS NOT SEEDED, ON PURPOSE. The 13 terms roadmap-55-ratification.md
+hands to the owner are in PENDING_RATIFICATION and stay out of the seed --
+except C-130J and MQ-9, which were already seeded and are left EXACTLY as
+they were. Re-pointing C-130J alone would move 17 live alias rows off a
+$236.3M SOCOM page. An unratified alias is worse than no alias: it produces
+a confident wrong answer, which is the defect class this project exists to
+remove. The 16 DROP terms stay out too; RAM's 89 "candidates" are every
+title containing the substring inside the word PROGRAM, and ESSM's 8 are
+inside ASSESSMENT.
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. This is leg (j) inside gate 23's existing runBasisGate(), called once.
+No 25th gate. The letter was checked free against a/b/c/d/e/f/g[1-4]/h[1-5]/i
+before use.

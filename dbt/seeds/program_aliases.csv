@@ -1,14 +1,45 @@
 alias,pe_bli,notes
-JASSM,0603000D8Z,Joint Air-to-Surface Standoff Missile; appears as "JASSM funding" in Lockheed 2025 LDA filings; pe_bli is Joint Munitions Advanced Technology which covers JASSM development
-C-130J,2012C130J,Lockheed C-130J Hercules variant; matches program AC/MC-130J (2012C130J)
-JADC2,0604122D8Z,Joint All-Domain Command and Control; direct title match in dim_programs
-C2BMC,0603896C,Command and Control Battle Management Communications; abbreviation used in LDA filings for the full BMD C2BMC program
-THAAD,MD07,Terminal High Altitude Area Defense; abbreviation used in LDA filings; exact program code in dim_programs
-Aegis,MD09,Aegis Ballistic Missile Defense; short alias used in filings referring to the Aegis BMD family
-Iron Dome,MD83,Israeli cooperative Iron Dome; appears in DoD LDA disclosures for funding appropriations
-GBI,MD08,Ground Based Interceptor; abbreviation for Ground Based Midcourse program (MD08)
-SBX,0603907C,Sea Based X-Band Radar; abbreviation used in congressional lobbying text
-MQ-9,1108MQ9,MQ-9 Reaper unmanned aerial vehicle; short alias for MQ-9 Unmanned Aerial Vehicle program
-CV-22,1000CV2200,CV-22 Osprey tiltrotor; abbreviation for CV-22 Modification program
-F-35,ATA000,Lockheed F-35 Joint Strike Fighter; the program is universally written "F-35" in LDA filings and shares no two distinctive title tokens with "F-35" alone (#55)
-JSF,ATA000,Joint Strike Fighter; the pre-2006 name still used in lobbying text for the same program (ATA000)
+JASSM,0207325F,"Joint Air-to-Surface Standoff Missile; AF RDT&E PE carrying the acronym in its own title. #55 CORRECTION 2026-08-27: pointed at 0603000D8Z ""Joint Munitions Advanced Technology"" (OSD, a defence-wide munitions S&T line that is not JASSM) and put 10 alias-tier filings there"
+C-130J,2012C130J,Lockheed C-130J Hercules variant; matches program AC/MC-130J (2012C130J). #55 AMBIGUOUS — left unchanged pending the owner decision in docs/curation/roadmap-55-ratification.md §2; re-pointing moves 17 live alias rows
+JADC2,0604122D8Z,Joint All-Domain Command and Control; direct title match in dim_programs. #55 ratified unchanged
+C2BMC,0603896C,Command and Control Battle Management Communications; abbreviation used in LDA filings for the full BMD C2BMC program. #55 ratified unchanged
+THAAD,MD07,Terminal High Altitude Area Defense; abbreviation used in LDA filings; exact program code in dim_programs. #55 ratified unchanged
+Aegis,0603892C,"Aegis Ballistic Missile Defense. #55 CORRECTION 2026-08-27: pointed at MD09, identically titled ""Aegis BMD"" but a procurement line with no FY2025 or FY2026 trajectory; 0603892C is the live MDA RDT&E line (FY2026 $994.4M). MD09 produced zero alias rows, so the change is free"
+Iron Dome,MD83,Israeli cooperative Iron Dome; appears in DoD LDA disclosures for funding appropriations. #55 ratified unchanged
+GBI,MD08,Ground Based Interceptor; abbreviation for Ground Based Midcourse program (MD08). #55 ratified unchanged
+SBX,0603907C,Sea Based X-Band Radar; abbreviation used in congressional lobbying text. #55 ratified unchanged
+MQ-9,1108MQ9,MQ-9 Reaper unmanned aerial vehicle; short alias for MQ-9 Unmanned Aerial Vehicle program. #55 AMBIGUOUS — left unchanged pending the owner decision in docs/curation/roadmap-55-ratification.md §2 (Air Force 0205219F vs this SOCOM line)
+CV-22,0401318F,"CV-22 Osprey tiltrotor. #55 CORRECTION 2026-08-27: pointed at 1000CV2200 ""CV-22 Modification""; 0401318F is the only unqualified CV-22 line (the other three are Mods / Modification / Post Production Support). Zero alias rows moved"
+F-35,ATA000,"Lockheed F-35 Joint Strike Fighter; the program is universally written ""F-35"" in LDA filings and shares no two distinctive title tokens with ""F-35"" alone (#55). #55 ratified UNCHANGED — the only unqualified F-35 line; the five siblings are C2D2 / Modifications / Squadrons"
+JSF,ATA000,Joint Strike Fighter; the pre-2006 name still used in lobbying text for the same program (ATA000). #55 ratified unchanged
+Tomahawk,0204229N,"#55 worksheet pick=y. The Navy Tomahawk program element; the only sibling (5253) is ""Tomahawk Support Equipment"", a support-equipment BLI, not the weapon"
+Standard Missile,0604366N,"#55 worksheet pick=y. Sole Standard Missile line in the corpus; ""Improvements"" is this PE's own name, not a modification hanging off a separate base PE"
+SM-6,0604366N,"#55 off-worksheet. SM-6 is a Standard Missile variant and 0604366N is the corpus's only Standard Missile line; no title contains ""SM-6"""
+Sidewinder,M09HAI,"#55 worksheet pick=y. Sole Sidewinder line in the corpus and the missile buy itself (Missile Procurement, AF), not a mods or support-equipment line"
+Next Generation Jammer,0604274N,"#55 worksheet pick=y. Titled ""Next Generation Jammer (NGJ)"" with no increment qualifier; the sibling 0604282N is explicitly ""Increment II"", a named subset"
+F/A-18,0204136N,"#55 worksheet pick=y. ""F/A-18 Squadrons"" is the Navy F/A-18 program element; the only sibling, BLI 0145, is an account-collision key shared with General Purpose Bombs and so cannot be an alias target"
+Apache,0607145A,"#55 worksheet pick=y. Army RDT&E BA-07 Operational Systems Development; the sibling 5757A05111 is a Block IIIA remanufacture buy. WATCH: single common word — zero LDA hits today, re-measure after any re-pull"
+AH-64,0607145A,"#55 off-worksheet. Both AH-64 title candidates are derivative (AH-64 MODS, Block IIIA Reman); the Apache program element is 0607145A, whose title contains no ""AH-64"""
+CH-47,6775A05101,"#55 worksheet pick=y. ""CH-47 Helicopter"" (Aircraft Procurement, Army, BA-01) is the Chinook airframe buy; the sibling 3264AA0252 is a modification line"
+Chinook,6775A05101,"#55 off-worksheet. Fielded name of the CH-47; 0610MH47 is the SOCOM MH-47 variant and 0607137A a product-improvement line. WATCH: single common word — zero LDA hits today"
+T-7A,APT000,"#55 worksheet pick=y. ""Advanced Pilot Training T-7A"" (Aircraft Procurement, AF) is the only line naming the T-7A and is the aircraft buy itself"
+E-7,0604007F,"#55 worksheet pick=y. ""E-7"" (AF RDT&E, FY2026 $199.7M); the identically-titled sibling E00700 is a procurement line whose only trajectory figure is FY2026 $0. WATCH: short token — zero LDA hits today"
+Wedgetail,0604007F,#55 off-worksheet. Wedgetail is the fielded name of the E-7A; 0604007F is the corpus's E-7 program element
+V-22,0604262N,"#55 worksheet pick=y. ""V-22"" (Navy RDT&E) is the only unqualified V-22 line; the other four candidates are all CV-22 variant lines, which the separate CV-22 alias covers"
+Osprey,0604262N,"#55 off-worksheet. Osprey is the fielded name of the V-22. WATCH: single common word — zero LDA hits today"
+B-21,B02100,"#55 worksheet pick=y. ""B-21 Raider"" (Aircraft Procurement, AF, FY2026 $5.551B) is the sole B-21 line and names the aircraft itself"
+Triton,0305220N,"#55 worksheet pick=y. ""MQ-4C Triton"" is the unqualified Triton program element; the sibling 0305421N is explicitly ""Modernization"". Identity decides, not magnitude"
+Hellfire,1338C70000,"#55 worksheet pick=y. ""Hellfire Sys Summary"" (Missile Procurement, Army, BA-02) is the only system-level Hellfire line; the siblings are a launcher BLI and a Predator-specific missile buy"
+HIMARS,6200C02901,"#55 worksheet pick=y. The HIMARS launcher buy; the sibling 6580C67501 is ""HIMARS Modifications"""
+StormBreaker,SDB002,"#55 off-worksheet. StormBreaker is the fielded name of the GBU-53/B Small Diameter Bomb II; SDB002 is the corpus's SDB II line. The unqualified ""Small Diameter Bomb"" term is a different weapon and remains unratified"
+SPY-6,0604522N,"#55 off-worksheet. AN/SPY-6 is the type designation of the Air and Missile Defense Radar; 0604522N is the corpus's sole AMDR line"
+JSOW,0604727N,"#55 off-worksheet. ""Joint Standoff Weapon Systems"" is the literal expansion of JSOW and the corpus's sole JSOW line"
+P-8,0605500N,"#55 off-worksheet. The P-8A Poseidon is funded as the Multi-mission Maritime Aircraft; 0605500N is the unqualified MMA program element (0605504N is ""Increment III"")"
+Poseidon,0605500N,"#55 off-worksheet. Poseidon is the fielded name of the P-8A, funded as the Multi-mission Maritime Aircraft. WATCH: single common word — zero LDA hits today"
+JDAM,353620,"#55 off-worksheet. ""Joint Direct Attack Munition"" (Procurement of Ammunition, AF) is the literal expansion of JDAM and the corpus's sole JDAM line"
+MQ-25,0605414N,"#55 off-worksheet. The MQ-25 Stingray is funded as Unmanned Carrier Aviation; 0605414N is the corpus's sole UCA line"
+GBSD,0605238F,"#55 off-worksheet. GBSD is the pre-2022 name of the LGM-35A Sentinel; 0605238F ""Ground Based Strategic Deterrent EMD"" (AF RDT&E, FY2026 $4.148B) is the program element. The string ""Sentinel"" is deliberately NOT seeded — see the gate 23 leg (j) note in site/scripts/gates/basis.mjs"
+Global Hawk,0305220F,"#55 off-worksheet. Global Hawk is the RQ-4; 0305220F ""RQ-4 UAV"" is the corpus's sole RQ-4 line. It carries no FY2026 request — the program's actual state, not a defect"
+E-2D,0604234N,"#55 off-worksheet. The E-2D is the Advanced Hawkeye; 0604234N is the corpus's sole Hawkeye line"
+IBCS,9280BZ5075,"#55 off-worksheet. IBCS expands to IAMD Battle Command System; 9280BZ5075 is that literal expansion. Its development companion 0605457A is the broader AIAMD program, not IBCS itself"
+AARGM,0205601N,"#55 off-worksheet. AARGM is the Advanced Anti-Radiation Guided Missile; 0205601N ""Anti-Radiation Missile Improvement"" is the corpus's sole anti-radiation missile line"

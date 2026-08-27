@@ -155,10 +155,44 @@
  *      Fewer than 20 resolved qualifying cards FAILS as vacuous (g4b; the
  *      live corpus carries 31). See runFeedFy26SplitLeg below.
  *
+ * LEG (j) — curated alias routing (#55; letter checked free against
+ *   a/b/c/d/e/f/g/h/i above before use):
+ *
+ *   Since #52 a curated alias is the only SINGLE word the matcher trusts on
+ *   its own — `evidence_kind='alias'` rows exist because a person confirmed
+ *   the mapping and for no other reason. `JASSM` was seeded to `0603000D8Z`
+ *   *Joint Munitions Advanced Technology* (OSD) and put ten alias-tier
+ *   filings on that page, while `0207325F` *Joint Air-to-Surface Standoff
+ *   Missile (JASSM)* got three weaker `multi_token` rows. Real filings,
+ *   really saying "JASSM", correctly counted, on the wrong program: every
+ *   number↔citation gate in the suite passed throughout.
+ *
+ *   j1 SEED AGREEMENT — dbt/seeds/program_aliases.csv must map every ratified
+ *      alias to exactly its ratified pe_bli set (RATIFIED_ALIASES, transcribed
+ *      from the #55 curation worksheet — a second, independent record, because
+ *      a seed compared with itself agrees with itself).
+ *   j2 EVIDENCE ROUTING — every `evidence_kind='alias'` row in
+ *      fct_program_lobbying whose matched_term is ratified must sit on a
+ *      ratified pe_bli. The leg that reads RED on JASSM.
+ *   j3 TARGET RESOLVES — every ratified pe_bli exists in dim_programs and
+ *      ships out/program/{pe}/index.html.
+ *   j4 NOTHING UNRATIFIED IS SEEDED — the reverse direction: a seeded alias
+ *      must be ratified or on the owner's pending list.
+ *   j5 NON-VACUITY — the ratified table must be complete, and the warehouse
+ *      must carry alias-tier rows at all.
+ *   j6 EXPORT FIDELITY — the routing check re-asked of the SHIPPED artifact:
+ *      no program_details sidecar may publish a ratified alias's alias-tier
+ *      rows on another program. j1-j5 read the seed and the warehouse; a
+ *      warehouse fix does not rewrite the sidecars, and without j6 the leg
+ *      would go green while the page still carried the defect.
+ *
+ *   Warehouse facts come from scripts/gates/aliasrouting-resolve.py, the same
+ *   spawn-a-helper shape leg (d) uses.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
- * isBasisChipClassName.
+ * isBasisChipClassName, parseCsv.
  */
 
 import fs from "fs";
@@ -1062,6 +1096,9 @@ export async function runBasisGate() {
 
   // ── Leg (i) — agency reconciliation disclosure (#59) ───────────────────────
   runAgencyReconciliationLeg(errors, notes);
+
+  // ── Leg (j) — curated alias routing (#55) ─────────────────────────────────
+  runAliasRoutingLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -2509,6 +2546,460 @@ function runAgencyReconciliationLeg(errors, notes) {
     notes.push(
       `leg i3: ${resolved} agency pages resolved, ${resolvedWithGap} with ≥1 ` +
         `non-reconciling program — non-vacuous ✓`,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (j) — CURATED ALIAS ROUTING (#55; letter checked free against
+// a/b/c/d/e/f/g[1-4]/h[1-5]/i above before use)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Since #52, a curated alias is the ONLY single word the matcher trusts on
+// its own: `evidence_kind='alias'` rows exist because a person confirmed the
+// mapping, and nothing else. That makes the seed the one place in the corpus
+// where one human keystroke silently republishes another company's lobbying
+// under a program's name — a true, cited, correctly-counted number carrying a
+// false claim, which is the defect species this sprint keeps closing.
+//
+// The shipped defect this leg was written against: `JASSM` was seeded to
+// `0603000D8Z` *Joint Munitions Advanced Technology* — a defence-wide
+// munitions science-and-technology line in OSD that is not JASSM — and put
+// TEN alias-tier filings on that program's page, while `0207325F` *Joint
+// Air-to-Surface Standoff Missile (JASSM)*, the program element that carries
+// the name in its own title, got three weaker `multi_token` rows. Every
+// number↔citation gate passed: the ten rows are real filings, really saying
+// "JASSM", correctly counted, on the wrong program.
+//
+// So the check cannot be "does the seed agree with itself" — it did. It has
+// to be "does the seed agree with the RATIFIED record", and the ratified
+// record has to live somewhere the seed is not.
+// RATIFIED_ALIASES below is that record, transcribed from
+// docs/curation/roadmap-55-flagship-alias-worksheet.csv (`pick`) and
+// docs/curation/roadmap-55-ratification.md. Two independent files must say
+// the same thing, and the warehouse must route the evidence there.
+//
+//   j1 SEED AGREEMENT — for every ratified alias, dbt/seeds/program_aliases.csv
+//      must map it to EXACTLY the ratified pe_bli set: no missing row (the
+//      curation did not ship), no extra row (a target nobody ratified).
+//   j2 EVIDENCE ROUTING — every `evidence_kind='alias'` row in
+//      fct_program_lobbying whose matched_term is a ratified alias must sit
+//      on a ratified pe_bli for that alias. This is the leg that reads RED on
+//      JASSM today.
+//   j3 TARGET RESOLVES — every ratified pe_bli must exist in dim_programs AND
+//      ship a program page at out/program/{pe}/index.html. An alias whose
+//      target has no row is inert (`_load_aliases` drops unknown pe_blis
+//      without a word); an alias whose target has no page routes a reader to
+//      a 404. Both are silent, so both are checked.
+//   j4 NOTHING UNRATIFIED IS SEEDED — every alias in the seed must be either
+//      ratified or listed in PENDING_RATIFICATION (the terms the ratification
+//      doc hands to the owner). An unratified alias is worse than no alias:
+//      it produces a confident wrong answer. This is the direction that stops
+//      the next JASSM being added rather than only re-detecting this one.
+//   j5 NON-VACUITY — fewer than MIN_RATIFIED_ALIASES ratified aliases checked,
+//      or zero alias-tier rows observed anywhere in the warehouse, FAILS. A
+//      seed loader that silently returns {} is not hypothetical here: it did
+//      exactly that corpus-wide until 2026-08-08, when `parents[4]` was found
+//      resolving one level above the project root.
+//   j6 EXPORT FIDELITY — the same routing check, re-asked of what the site
+//      actually SHIPS: no data/site/json/program_details/{pe}.json may publish
+//      an `evidence_kind:"alias"` mention whose matched_term is ratified for
+//      some OTHER program. j1-j5 all read the seed and the warehouse; the
+//      sidecars are a separate, exporter-written artifact that a warehouse fix
+//      does not touch. Without j6 this leg would go green the moment the seed
+//      and the mart agreed, while /program/0603000D8Z/ went on publishing ten
+//      JASSM filings to a reader — gated-green and still wrong on the page,
+//      which is the same shape as the defect it is here to fix.
+//
+// Why the ratified table is transcribed rather than parsed out of the
+// worksheet: 20 of the 42 ratified terms resolve to a program element that is
+// NOT one of the worksheet's substring candidates (Sentinel's ICBM has no
+// "Sentinel" in any title; GBSD matches zero titles at all), so their answer
+// lives only in `curator_notes` prose as `OFF-WORKSHEET PE: <pe>`. A gate
+// that greps English prose for its own expected values is a gate that goes
+// green when the prose is reworded. The values are copied here, once, where
+// changing one is an edit to the gate.
+
+/**
+ * The ratified flagship aliases (#55), alias → ratified pe_bli list.
+ *
+ * Sources, per term:
+ *   - `pick == 'y'` in roadmap-55-flagship-alias-worksheet.csv (23 terms), or
+ *   - `pick == 'n'` + `OFF-WORKSHEET PE: <pe>` in the same file's
+ *     curator_notes (20 terms) — the correct program element was simply not
+ *     among the substring candidates, so there was no row to tick.
+ *
+ * 42, not 43: `Sentinel` was ratified to 0605238F (Ground Based Strategic
+ * Deterrent EMD — LGM-35A Sentinel is the renamed GBSD) and is deliberately
+ * NOT seeded. The LDA corpus holds a third distinct Sentinel: Rolls-Royce's
+ * 2025 filing on "additional Sentinel Class Fast Response Cutters" (Coast
+ * Guard Authorization Act of 2025). Seeding the string would have attributed
+ * a Coast Guard cutter filing to a $4.15B Air Force ICBM — one filing
+ * matched, one of them false. `GBSD`, the same program's unambiguous name,
+ * carries the mapping instead (9 filings, all NDAA/appropriations lines).
+ * Same disposition, and same reason, as `TOW` in the ratification doc's §5.
+ *
+ * The 13 terms a human still has to choose are in PENDING_RATIFICATION.
+ */
+const RATIFIED_ALIASES = {
+  // ── worksheet pick == 'y' ──
+  "Tomahawk": ["0204229N"],
+  "Standard Missile": ["0604366N"],
+  "Sidewinder": ["M09HAI"],
+  "Next Generation Jammer": ["0604274N"],
+  "F/A-18": ["0204136N"],
+  "Apache": ["0607145A"],
+  "CH-47": ["6775A05101"],
+  "T-7A": ["APT000"],
+  "E-7": ["0604007F"],
+  "V-22": ["0604262N"],
+  "B-21": ["B02100"],
+  "Triton": ["0305220N"],
+  "Hellfire": ["1338C70000"],
+  "JASSM": ["0207325F"], // corrects the live defect (was 0603000D8Z)
+  "HIMARS": ["6200C02901"],
+  "JADC2": ["0604122D8Z"],
+  "C2BMC": ["0603896C"],
+  "THAAD": ["MD07"],
+  "Aegis": ["0603892C"], // corrects the live seed (was MD09, no FY25/FY26 line)
+  "Iron Dome": ["MD83"],
+  "SBX": ["0603907C"],
+  "CV-22": ["0401318F"], // corrects the live seed (was 1000CV2200, a Mods line)
+  "F-35": ["ATA000"], // ratified UNCHANGED
+  // ── off-worksheet (curator_notes `OFF-WORKSHEET PE:`) ──
+  "SM-6": ["0604366N"],
+  "StormBreaker": ["SDB002"],
+  "SPY-6": ["0604522N"],
+  "JSOW": ["0604727N"],
+  "AH-64": ["0607145A"],
+  "Chinook": ["6775A05101"],
+  "P-8": ["0605500N"],
+  "Poseidon": ["0605500N"],
+  "JDAM": ["353620"],
+  "MQ-25": ["0605414N"],
+  "Wedgetail": ["0604007F"],
+  "Osprey": ["0604262N"],
+  "GBSD": ["0605238F"],
+  "Global Hawk": ["0305220F"],
+  "E-2D": ["0604234N"],
+  "IBCS": ["9280BZ5075"],
+  "AARGM": ["0205601N"],
+  "GBI": ["MD08"], // existing seed, ratified unchanged
+  "JSF": ["ATA000"], // existing seed, ratified unchanged
+};
+
+/**
+ * The 13 terms roadmap-55-ratification.md hands to the owner. Two of them
+ * (C-130J, MQ-9) are seeded already and stay exactly as they are until the
+ * owner rules — re-pointing C-130J alone would move 17 live alias rows off
+ * a $236.3M SOCOM page. j4 allows these strings in the seed and nothing else.
+ */
+const PENDING_RATIFICATION = new Set([
+  "AMRAAM", "Javelin", "KC-46", "B-52", "C-17", "F-15EX", "GMLRS", "LTAMDS",
+  "Small Diameter Bomb", "MQ-9", "C-130J", "Patriot", "PAC-3",
+]);
+
+// 42 ratified terms; the floor is the whole set, because the set IS the
+// curation and a partial transcription is the failure to catch.
+const MIN_RATIFIED_ALIASES = 42;
+
+/** Minimal RFC4180 reader — the seed's `notes` column carries commas and quotes. */
+export function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else quoted = false;
+      } else field += ch;
+      continue;
+    }
+    if (ch === '"') quoted = true;
+    else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      field = "";
+      rows.push(row);
+      row = [];
+    } else field += ch;
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  if (rows.length === 0) return [];
+  const header = rows[0].map((h) => h.trim());
+  return rows
+    .slice(1)
+    .filter((r) => r.some((c) => c.trim() !== ""))
+    .map((r) => Object.fromEntries(header.map((h, i) => [h, (r[i] ?? "").trim()])));
+}
+
+function runAliasRoutingLeg(errors, notes) {
+  const seedPath = path.join(repoRoot, "dbt", "seeds", "program_aliases.csv");
+  if (!fs.existsSync(seedPath)) {
+    errors.push(`leg j: alias seed not found at ${seedPath}`);
+    return;
+  }
+  let seedRows;
+  try {
+    seedRows = parseCsv(fs.readFileSync(seedPath, "utf8"));
+  } catch (e) {
+    errors.push(`leg j: program_aliases.csv failed to parse (${e.message})`);
+    return;
+  }
+
+  /** alias (as written) → Set(pe_bli), keyed case-insensitively like the matcher. */
+  const seeded = new Map();
+  for (const r of seedRows) {
+    const alias = (r.alias || "").trim();
+    const pe = (r.pe_bli || "").trim();
+    if (!alias || !pe) {
+      errors.push(
+        `leg j: program_aliases.csv row with empty alias or pe_bli ` +
+          `(alias="${alias}", pe_bli="${pe}") — _load_aliases drops it silently`,
+      );
+      continue;
+    }
+    const key = alias.toUpperCase();
+    if (!seeded.has(key)) seeded.set(key, { alias, pes: new Set() });
+    seeded.get(key).pes.add(pe);
+  }
+
+  const script = path.join(__dirname, "aliasrouting-resolve.py");
+  if (!fs.existsSync(script)) {
+    errors.push(`leg j: resolve helper missing at ${script}`);
+    return;
+  }
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    errors.push(
+      `leg j: aliasrouting-resolve.py failed (status ${res.status}): ` +
+        `${(res.stderr || res.error?.message || "").slice(0, 400)}`,
+    );
+    return;
+  }
+  let truth;
+  try {
+    truth = JSON.parse(res.stdout);
+  } catch (e) {
+    errors.push(`leg j: resolve helper produced non-JSON output (${e.message})`);
+    return;
+  }
+  if (truth.__error__) {
+    errors.push(`leg j: resolve helper could not run — ${truth.__error__}`);
+    return;
+  }
+
+  const programs = truth.programs || {};
+  const ratifiedKeys = new Map(
+    Object.entries(RATIFIED_ALIASES).map(([a, pes]) => [a.toUpperCase(), { alias: a, pes }]),
+  );
+
+  // ── j1 SEED AGREEMENT ──
+  const j1 = [];
+  for (const [key, { alias, pes }] of ratifiedKeys) {
+    const got = seeded.get(key);
+    if (!got) {
+      j1.push(`"${alias}" ratified → ${pes.join(", ")} but has no row in the seed`);
+      continue;
+    }
+    const want = new Set(pes);
+    const missing = pes.filter((p) => !got.pes.has(p));
+    const extra = [...got.pes].filter((p) => !want.has(p));
+    if (missing.length > 0 || extra.length > 0) {
+      const parts = [];
+      if (missing.length > 0) parts.push(`missing ${missing.join(", ")}`);
+      for (const p of extra) {
+        const t = programs[p];
+        parts.push(`seeded to ${p}${t ? ` "${t}"` : " (not in dim_programs)"}, not ratified`);
+      }
+      j1.push(
+        `"${alias}" ratified → ${pes
+          .map((p) => `${p}${programs[p] ? ` "${programs[p]}"` : ""}`)
+          .join(", ")}: ${parts.join("; ")}`,
+      );
+    }
+  }
+  if (j1.length > 0) {
+    errors.push(
+      `leg j1 seed-agreement: ${j1.length} ratified alias(es) the seed does not ` +
+        `carry as ratified (first ${MAX_LISTED}):`,
+    );
+    for (const f of j1.slice(0, MAX_LISTED)) errors.push(`  ${f}`);
+    if (j1.length > MAX_LISTED) errors.push(`  ... and ${j1.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg j1: all ${ratifiedKeys.size} ratified aliases seeded as ratified ✓`);
+  }
+
+  // ── j2 EVIDENCE ROUTING ──
+  const aliasRows = truth.alias_mentions || [];
+  const j2 = [];
+  let ratifiedRowsSeen = 0;
+  for (const [term, pe, n] of aliasRows) {
+    const key = String(term || "").toUpperCase();
+    const ratified = ratifiedKeys.get(key);
+    if (!ratified) continue; // pending-ratification terms are j4's business
+    if (ratified.pes.includes(pe)) {
+      ratifiedRowsSeen += n;
+      continue;
+    }
+    j2.push(
+      `"${ratified.alias}": ${n} alias-tier filing row(s) land on ${pe} ` +
+        `"${programs[pe] || "(not in dim_programs)"}" — ratified target is ` +
+        ratified.pes
+          .map((p) => `${p} "${programs[p] || "(not in dim_programs)"}"`)
+          .join(", "),
+    );
+  }
+  if (j2.length > 0) {
+    errors.push(
+      `leg j2 evidence-routing: ${j2.length} ratified alias(es) route alias-tier ` +
+        `lobbying evidence to an unratified program (first ${MAX_LISTED}):`,
+    );
+    for (const f of j2.slice(0, MAX_LISTED)) errors.push(`  ${f}`);
+    if (j2.length > MAX_LISTED) errors.push(`  ... and ${j2.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg j2: ${ratifiedRowsSeen} alias-tier filing row(s) from ratified aliases, ` +
+        `all on their ratified program ✓`,
+    );
+  }
+
+  // ── j3 TARGET RESOLVES ──
+  const j3 = [];
+  const ratifiedPes = new Set(Object.values(RATIFIED_ALIASES).flat());
+  for (const pe of [...ratifiedPes].sort()) {
+    if (!(pe in programs)) {
+      j3.push(`${pe}: no row in dim_programs — _load_aliases drops the alias silently`);
+      continue;
+    }
+    const pagePath = path.join(outDir, "program", pe, "index.html");
+    if (!fs.existsSync(pagePath)) {
+      j3.push(`${pe} "${programs[pe]}": no page at out/program/${pe}/index.html`);
+    }
+  }
+  if (j3.length > 0) {
+    errors.push(
+      `leg j3 target-resolves: ${j3.length} ratified alias target(s) a reader ` +
+        `cannot reach (first ${MAX_LISTED}):`,
+    );
+    for (const f of j3.slice(0, MAX_LISTED)) errors.push(`  ${f}`);
+    if (j3.length > MAX_LISTED) errors.push(`  ... and ${j3.length - MAX_LISTED} more`);
+  } else {
+    notes.push(`leg j3: all ${ratifiedPes.size} ratified alias targets resolve to a shipped page ✓`);
+  }
+
+  // ── j4 NOTHING UNRATIFIED IS SEEDED ──
+  const pendingKeys = new Set([...PENDING_RATIFICATION].map((t) => t.toUpperCase()));
+  const j4 = [];
+  for (const [key, { alias, pes }] of seeded) {
+    if (ratifiedKeys.has(key) || pendingKeys.has(key)) continue;
+    j4.push(
+      `"${alias}" → ${[...pes].join(", ")} is seeded but appears in neither the ` +
+        `ratified set nor the owner's pending list`,
+    );
+  }
+  if (j4.length > 0) {
+    errors.push(
+      `leg j4 unratified-seed: ${j4.length} seeded alias(es) nobody ratified ` +
+        `(first ${MAX_LISTED}):`,
+    );
+    for (const f of j4.slice(0, MAX_LISTED)) errors.push(`  ${f}`);
+    if (j4.length > MAX_LISTED) errors.push(`  ... and ${j4.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg j4: ${seeded.size} seeded aliases, every one ratified or on the ` +
+        `owner's pending list ✓`,
+    );
+  }
+
+  // ── j5 NON-VACUITY ──
+  if (ratifiedKeys.size < MIN_RATIFIED_ALIASES) {
+    errors.push(
+      `leg j5 vacuity: RATIFIED_ALIASES holds ${ratifiedKeys.size} terms, below the ` +
+        `${MIN_RATIFIED_ALIASES} the #55 curation ratified — a partial transcription ` +
+        `is the failure this leg exists to catch`,
+    );
+  }
+  if ((truth.alias_mentions_total || 0) === 0) {
+    errors.push(
+      `leg j5 vacuity: the warehouse carries ZERO evidence_kind='alias' rows across ` +
+        `${truth.mentions_total ?? "?"} mentions — the seed loader is inert (this is ` +
+        `what a mis-resolved _SEED_PATH looked like corpus-wide until 2026-08-08), ` +
+        `so j2 proves nothing`,
+    );
+  } else {
+    notes.push(
+      `leg j5: ${truth.alias_mentions_total} alias-tier rows of ${truth.mentions_total} ` +
+        `mentions warehouse-wide — the curated tier is live ✓`,
+    );
+  }
+
+  // ── j6 EXPORT FIDELITY ──
+  const detailsDir = path.join(repoRoot, "data", "site", "json", "program_details");
+  if (!fs.existsSync(detailsDir)) {
+    errors.push(`leg j6: program_details sidecars not found at ${detailsDir}`);
+    return;
+  }
+  const j6 = [];
+  let sidecarsScanned = 0;
+  let sidecarAliasRows = 0;
+  for (const file of fs.readdirSync(detailsDir)) {
+    if (!file.endsWith(".json")) continue;
+    const pe = file.slice(0, -5);
+    let sidecar;
+    try {
+      sidecar = JSON.parse(fs.readFileSync(path.join(detailsDir, file), "utf8"));
+    } catch (e) {
+      errors.push(`leg j6: ${file} failed to parse (${e.message})`);
+      continue;
+    }
+    sidecarsScanned++;
+    const counts = new Map();
+    for (const m of sidecar.mentions || []) {
+      if (m?.evidence_kind !== "alias") continue;
+      const ratified = ratifiedKeys.get(String(m.matched_term || "").toUpperCase());
+      if (!ratified) continue;
+      sidecarAliasRows++;
+      if (ratified.pes.includes(pe)) continue;
+      const key = `${ratified.alias}→${pe}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    for (const [key, n] of counts) {
+      const [alias, badPe] = key.split("→");
+      j6.push(
+        `/program/${badPe}/ "${programs[badPe] || "(not in dim_programs)"}" publishes ` +
+          `${n} alias-tier "${alias}" filing row(s); "${alias}" is ratified to ` +
+          RATIFIED_ALIASES[alias].join(", "),
+      );
+    }
+  }
+  if (j6.length > 0) {
+    errors.push(
+      `leg j6 export-fidelity: ${j6.length} shipped program sidecar(s) publish a ` +
+        `ratified alias on an unratified program — the exporter has not re-run ` +
+        `since the seed changed (first ${MAX_LISTED}):`,
+    );
+    for (const f of j6.slice(0, MAX_LISTED)) errors.push(`  ${f}`);
+    if (j6.length > MAX_LISTED) errors.push(`  ... and ${j6.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg j6: ${sidecarsScanned} program sidecars scanned, ${sidecarAliasRows} ` +
+        `ratified-alias row(s) shipped, every one on its ratified program ✓`,
     );
   }
 }
