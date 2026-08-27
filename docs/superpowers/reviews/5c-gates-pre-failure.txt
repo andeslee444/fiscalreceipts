@@ -8901,3 +8901,51 @@ genuine — Rolls-Royce's "B-52 CERP", the Commercial Engine Replacement
 Program. F-15EX's 10 are Boeing. Patriot matches zero, which is a second
 reason to drop it beyond "no base line exists". No new term reproduces the
 Sentinel failure.
+
+ROUND 2 PASS — after `export-site` re-ran. `node scripts/gates/basis.mjs`,
+exit 0:
+
+gate 23 basis: scanning 2016 program pages; leg a1: all 80746 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → PASS
+  note: leg j1: all 53 ratified aliases seeded as ratified ✓
+  note: leg j2: 240 alias-tier filing row(s) from ratified aliases, all on their ratified program ✓
+  note: leg j3: all 58 ratified alias targets resolve to a shipped page ✓
+  note: leg j4: 53 seeded aliases, every one ratified or on the owner's pending list ✓
+  note: leg j5: 240 alias-tier rows of 10650 mentions warehouse-wide — the curated tier is live ✓
+  note: leg j6: 2005 program sidecars scanned, 240 ratified-alias row(s) shipped, every one on its ratified program ✓
+
+C-130J, before and after, from the warehouse:
+
+  2012C130J   before: alias 17    after: (no alias rows)
+  0401132F    before: (none)      after: alias 17
+
+THE FORK, VISIBLE IN THE OUTPUT. j2's 240 rows include B-52 at 13 on B05200
+AND 13 on 0101113F, and F-15EX at 10 on F015EX AND 10 on 0207146F. That is
+the owner's decision working as intended: one filing naming the program puts
+a row on each half, so neither page is silent about money the other holds.
+It is also why alias-tier rows (240) now exceed the number of alias-matching
+FILINGS — the grain is (filing_uuid, pe_bli), and a two-PE program legitimately
+occupies two of them.
+
+FOUR UNIT TESTS WERE RETARGETED, NOT WEAKENED. tests/influence/test_mentions.py
+used C-130J -> 2012C130J as its worked example for loader mechanics
+(_load_aliases filtering by valid pe_blis, an alias becoming a term, a mention
+matching). The mechanics are the subject; the pair was incidental, and it is
+now a refuted mapping. The fixture moved to the ratified ("0401132F",
+"C-130J Program") and every assertion is textually unchanged. The property
+that made the old fixture useful is preserved exactly: both titles yield ZERO
+usable title tokens ("130J" is 4 characters, "Program" is in GENERIC_WORDS),
+so the curated alias is still the ONLY evidence that can qualify this program
+— which is the point of the tests. Stated here rather than buried in the diff
+because "the test changed" and "the test got easier" must never be the same
+sentence.
+
+ONE FAILURE SEEN AND DISMISSED WITH CAUSE. A mid-run pytest showed
+tests/test_citation_parity.py failing: citations.json 111,049 fact_ids vs
+citations.parquet 110,998. The divergent ids were lda_filing citations on
+0101113F, F015EX and B05200 — the new fork PEs — and the file mtimes were
+00:37:02 (parquet) against 01:09:05 (json). That is a torn read of this
+task's OWN export-site run, caught mid-flight, not a defect: json is written
+before parquet in the exporter. After the run completed, 1,585 passed / 0
+failed. Recorded because a parity failure naming brand-new PEs is exactly the
+shape of a real defect, and the reason it was not one is the timestamps, not
+a hunch.

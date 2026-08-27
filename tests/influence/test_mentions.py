@@ -19,7 +19,14 @@ from govbudget.influence.mentions import (
 # Minimal programs list for tests
 _PROGRAMS = [
     ("0604122D8Z", "JADC2 Development and Experimentation Activities"),
-    ("2012C130J", "AC/MC-130J"),
+    # C-130J -> 0401132F "C-130J Program" is the RATIFIED mapping (#55, owner
+    # 2026-08-27). It was 2012C130J "AC/MC-130J" until then — the SOCOM gunship
+    # and Commando II variants — and all 17 alias-tier filings in the corpus
+    # say "C-130J procurement", the baseline airlifter. Both titles yield ZERO
+    # usable title tokens ("130J" is 4 chars, "Program" is generic), so the
+    # curated alias remains this fixture's ONLY evidence for the program, which
+    # is exactly the property these tests exercise.
+    ("0401132F", "C-130J Program"),
     ("MD09", "Aegis BMD"),
     ("0603183D8Z", "Joint Hypersonic Technology Development &Transition"),
     ("0603000D8Z", "Joint Munitions Advanced Technology"),
@@ -84,11 +91,11 @@ def test_candidate_terms_no_duplicates():
 # ---------------------------------------------------------------------------
 
 def test_load_aliases_returns_known_pe_blis_only():
-    valid = {"0604122D8Z", "2012C130J"}
+    valid = {"0604122D8Z", "0401132F"}
     aliases = _load_aliases(SEED_PATH, valid)
     # JADC2 and C-130J should be present
     assert "0604122D8Z" in aliases
-    assert "2012C130J" in aliases
+    assert "0401132F" in aliases
     # Something not in valid set should not appear
     for pe in aliases:
         assert pe in valid
@@ -101,9 +108,9 @@ def test_load_aliases_jadc2():
 
 
 def test_load_aliases_c130j():
-    valid = {"2012C130J"}
+    valid = {"0401132F"}
     aliases = _load_aliases(SEED_PATH, valid)
-    assert "C-130J" in aliases["2012C130J"]
+    assert "C-130J" in aliases["0401132F"]
 
 
 def test_load_aliases_missing_file(tmp_path):
@@ -133,8 +140,8 @@ def test_build_program_terms_jadc2_has_alias():
 
 def test_build_program_terms_c130j_has_alias():
     terms = build_program_terms(_PROGRAMS, seed_path=SEED_PATH)
-    assert "2012C130J" in terms
-    term_strs = [t for t, _pattern, _kind in terms["2012C130J"]]
+    assert "0401132F" in terms
+    term_strs = [t for t, _pattern, _kind in terms["0401132F"]]
     assert "C-130J" in term_strs
 
 
@@ -196,7 +203,7 @@ def test_find_mentions_jadc2_match():
 
 def test_find_mentions_c130j_match():
     results = find_mentions(_ACTIVITIES_WITH_JADC2, _PROGRAM_TERMS)
-    uuids_with_c130 = [r["filing_uuid"] for r in results if r["pe_bli"] == "2012C130J"]
+    uuids_with_c130 = [r["filing_uuid"] for r in results if r["pe_bli"] == "0401132F"]
     assert "uuid-002" in uuids_with_c130
 
 
