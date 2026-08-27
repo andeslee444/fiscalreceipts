@@ -249,46 +249,40 @@ export default function MethodologyPage() {
             </h3>
             <p>
               GAO&apos;s annual assessment of DOD&apos;s costliest weapon
-              programs (GAO-25-107569, June 2025) publishes a per-program
-              assessment{gaoXwalk ? ` for ${formatCount(gaoXwalk.assessments_ingested)} programs` : ""}, plus a
-              bibliography of the program-specific GAO reports it draws on
-              {gaoXwalk ? ` (${formatCount(gaoXwalk.related_ingested)} of them)` : ""}. Both
-              are ingested from the report PDF itself; the assessment text
-              quoted on a program page is GAO&apos;s own paragraph, unedited.
-              Update cadence: annual.
+              programs (GAO-25-107569, June 2025) carries a per-program
+              assessment{gaoXwalk ? ` for ${formatCount(gaoXwalk.assessments_ingested)} programs` : ""}{" "}
+              and a bibliography of{gaoXwalk ? ` ${formatCount(gaoXwalk.related_ingested)}` : ""}{" "}
+              program-specific GAO reports. Both are ingested from the report
+              PDF; the assessment text quoted on a program page is GAO&apos;s
+              own paragraph, unedited. Update cadence: annual.
             </p>
             <p className="mt-2">
-              Which budget line each GAO item belongs to is the hard part, and
-              a wrong answer here would put a real audit finding against the
-              wrong weapons program. So the crosswalk is not an algorithm the
-              site trusts: a deliberately strict matcher proposes candidates
-              (the GAO program name must appear as a contiguous run of words in
-              the budget line&apos;s title, or the reverse, and the services
-              must agree), and every candidate is then adjudicated by hand
-              against the line&apos;s own justification-book narrative. Only
-              accepted rows ship, and the verdicts live in{" "}
+              Which budget line each item belongs to, done badly, puts a real
+              audit finding against the wrong weapons program. So it is not an
+              algorithm the site trusts: a strict matcher proposes candidates
+              (the GAO name must appear as a contiguous run of words in the
+              line&apos;s title, or the reverse, and the services must agree)
+              and a person adjudicates every one against that line&apos;s own
+              justification-book narrative. Verdicts and reasons live in{" "}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">
                 data-seeds/gao_program_xwalk.csv
-              </code>{" "}
-              with the reason for each.
+              </code>
+              .
             </p>
             {gaoXwalk && (
               <p className="mt-2">
-                On the current build the matcher proposed{" "}
-                {formatCount(gaoXwalk.adjudicated)} candidates;{" "}
-                {formatCount(gaoXwalk.accepted)} were accepted and{" "}
-                {formatCount(gaoXwalk.rejected)} rejected, a matcher precision
-                of {gaoXwalk.precision_pct}%. The rejection is instructive:
-                GAO assessed Small Diameter Bomb Increment II, and the matcher
-                proposed the line whose own narrative opens &ldquo;GBU-39/B:
-                Small Diameter Bomb Increment I&rdquo; — a different weapon.
-                The correct Increment II line is not proposed by either rule,
-                so that program ships no crosswalk at all rather than a wrong
-                one. {formatCount(gaoXwalk.pages_with_findings)} program pages
-                carry {formatCount(gaoXwalk.rendered_items)} GAO items between
-                them; every other program page says, accurately, that no
-                program-specific GAO finding for that line is in the ingested
-                data.
+                This build: {formatCount(gaoXwalk.adjudicated)} candidates,{" "}
+                {formatCount(gaoXwalk.accepted)} accepted,{" "}
+                {formatCount(gaoXwalk.rejected)} rejected — matcher precision{" "}
+                {gaoXwalk.precision_pct}%. The rejection is instructive: GAO
+                assessed Small Diameter Bomb Increment II, and the proposed
+                line&apos;s own narrative opens &ldquo;GBU-39/B: Small Diameter
+                Bomb Increment I&rdquo;. Neither rule reaches the Increment II
+                line, so that program ships no crosswalk rather than a wrong
+                one. {formatCount(gaoXwalk.pages_with_findings)} pages carry{" "}
+                {formatCount(gaoXwalk.rendered_items)} GAO items; every other
+                program page says no program-specific GAO finding for that line
+                is ingested.
               </p>
             )}
           </div>

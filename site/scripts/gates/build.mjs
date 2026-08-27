@@ -135,7 +135,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Restoring ~6% headroom against the new measurement (the /programs/
   // Sprint E rule: re-baselining to the CURRENT proportional headroom hands
   // the next change the same cliff), not a round-number guess.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "128,833 / 34,833" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "132,816 / 36,177" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -159,7 +159,7 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "90,282 / 16,573" },
   // Templated classes — the heaviest built instance of each.
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 110,078 (/agency/F/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,205 / 142,255 (/program/0601102A/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,222 / 142,045 (/program/0601102A/)" },
   { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "380,291 / 23,712 (/company/boeing/)" },
   { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "317,502 / 21,836" },
 ];

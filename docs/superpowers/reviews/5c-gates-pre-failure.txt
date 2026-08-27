@@ -9056,3 +9056,166 @@ it: 50 currency patterns outside [data-amount]. The gate is right -- a dollar
 figure in prose is an UNCITED figure, the one thing this site does not
 publish. Now reads "recorded as zero" and points at the cited figure in the
 trajectory table instead of restating it.
+
+================================================================================
+GATE 21 leg (h) — the GAO program tier must sit on the program it is about.
+ROADMAP #30. 2026-08-27.
+================================================================================
+
+WHAT SHIPPED. The Oversight section carried only the DEPARTMENT designation
+("GAO lists 5 high-risk areas for DOD as a whole"), correctly labelled as not
+specific to the program and de-emphasized for it. #30 adds the tier that IS:
+GAO's per-program Weapon Systems Annual Assessment (GAO-25-107569, 65 of 65
+Appendix I programs parsed) and the 68 program-specific and portfolio reports
+its bibliography lists. 63 candidates were proposed by the matcher, 62 ratified
+by hand, 1 rejected; 48 program pages gained an item, 62 items in total.
+
+WHY THE LEG CANNOT BE AN "INDEPENDENT REIMPLEMENTATION". Leg (g)'s widening
+earlier the same day is the reason: it reimplemented the EXPORTER'S predicate,
+inherited the exporter's wrong scope, and agreed with it on 179 pages where the
+note was false. Here the exporter has no predicate to reimplement -- it does no
+matching at all. Every attribution carries a human verdict in
+data-seeds/gao_program_xwalk.csv and the exporter emits only verdict-"y" rows.
+So leg (h) asserts the CONTRACT against the built artifact instead:
+
+  h1  ratified <-> rendered, exactly, in both directions
+  h2  the quoted assessment is the ingested GAO paragraph verbatim
+  h3  each item's citation resolves to its own GAO product page
+  h4  the item's GAO service agrees with the org the PAGE itself links to
+  h5  the GAO program name and the page's own title share a DISTINCTIVE word
+      (one appearing in <= 0.5% of the site's 1,755 program titles) -- a
+      corroboration the matcher never consults
+  h6  every page with no ratified item still says, verbatim, that no
+      program-specific GAO finding for that line is in the ingested data, and
+      no page says both
+  h7  the program tier renders ABOVE the department note
+
+PROOF IT CAN FAIL. Five defects were injected into the BUILT artifact and the
+seed, one per check, and the leg was run against them:
+
+  1. The Army PrSM assessment block was transplanted onto /program/0207142F/
+     (F-35 Squadrons, org F), replacing that page's own three F-35 report
+     items. Run once with the seed untouched -- proving h1 refuses an
+     UNRATIFIED attribution -- and once with the wrong row ADDED to the seed
+     as verdict "y", proving h4 and h5 catch a wrong crosswalk that a bad
+     ratification would otherwise wave through.
+  2. /program/0604932F/ (LRSO): "long-range, survivable," edited to "long
+     range and survivable," inside GAO's quoted paragraph.
+  3. /program/0401319F/ (VC-25B): the assessment's citation repointed at
+     gao-24-106831.
+  4. /program/000042/: the denial sentence deleted.
+
+RUN 1 -- seed untouched (h1 refuses the unratified attribution):
+
+  FAIL: program-skeleton(h1): /program/0207142F/ renders GAO GAO-25-107569
+    ("Precision Strike Missile (PrSM)") but no verdict-"y" row in
+    data-seeds/gao_program_xwalk.csv ratifies that attribution
+  FAIL: program-skeleton(h2): /program/0604932F/ renders a GAO quote that is
+    not the ingested paragraph verbatim — a paraphrase of an audit finding is
+    a new uncited claim (shown: "“The Air Force is designing the LRSO weapon
+    as a long range and survivable, nuclear-capabl…")
+  FAIL: program-skeleton(h1): GAO GAO-22-105128 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  FAIL: program-skeleton(h1): GAO GAO-23-106047 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  FAIL: program-skeleton(h1): GAO GAO-24-106909 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  gate 21 program-skeleton: FAIL
+
+RUN 2 -- the wrong crosswalk RATIFIED (verdict "y"), so h1 accepts it and the
+evidence checks have to do the work. Verbatim:
+
+  note: leg h: 60 GAO item(s) on 48 program page(s), each traced to a
+    verdict-"y" row of 63 in data-seeds/gao_program_xwalk.csv; 1957 other
+    page(s) state that no program-specific GAO finding for that line is
+    ingested ✓
+  FAIL: program-skeleton(h6): /program/000079/ carries no ratified GAO item
+    and does not say "No program-specific GAO finding for this line is in the
+    ingested data." — the page must state the absence, not go quiet about it
+  FAIL: program-skeleton(h6): /program/0105519N/ ... (same message)
+  FAIL: program-skeleton(h6): /program/013005/ ... (same message)
+  FAIL: program-skeleton(h6): /program/014005/ ... (same message)
+  FAIL: program-skeleton(h6): /program/0147/ ... (same message)
+  FAIL: program-skeleton(h4): /program/0207142F/ (org F) renders a Army GAO
+    assessment of "Precision Strike Missile (PrSM)" — a Army program
+    assessment cannot be about a line in another service's book
+  FAIL: program-skeleton(h5): /program/0207142F/ ("F-35 Squadrons") renders
+    GAO work on "Precision Strike Missile (PrSM)" with no distinctive word in
+    common — the crosswalk is not corroborated by the page's own title
+  FAIL: program-skeleton(h3): /program/0401319F/ item GAO-25-107569 cites
+    "https://www.gao.gov/products/gao-24-106831", expected
+    https://www.gao.gov/products/gao-25-107569
+  FAIL: program-skeleton(h2): /program/0604932F/ renders a GAO quote that is
+    not the ingested paragraph verbatim — a paraphrase of an audit finding is
+    a new uncited claim (shown: "“The Air Force is designing the LRSO weapon
+    as a long range and survivable, nuclear-capabl…")
+  FAIL: program-skeleton(h1): GAO GAO-22-105128 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  FAIL: program-skeleton(h1): GAO GAO-23-106047 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  FAIL: program-skeleton(h1): GAO GAO-24-106909 is ratified for
+    /program/0207142F/ but the built page renders no such item
+  FAIL: program-skeleton(h6): 246 page(s) with no ratified GAO item omit the
+    denial sentence in total (first 5 listed)
+  gate 21 program-skeleton: FAIL
+
+A REAL DEFECT FOUND BY THE BROKEN-ARTIFACT RUN, not by the injection. The 246
+h6 failures are NOT the one page whose denial sentence was deleted -- only
+/program/000042/ was. The other 245 never carried the sentence at all: they are
+the rollup tier, whose synthesized row (site/src/lib/program-tier.ts:114) stores
+a service NAME ("Air Force") where getGaoOverlayForOrg expects the org CODE
+("F"), so the department overlay resolves to null and the section falls through
+to its empty state -- plus one DHA line whose org is absent from the overlay
+map. That empty state described the two GAO lists honestly and said nothing
+about program-level GAO work at all, which is a worse silence than the note it
+stands in for. It now makes the same statement every other page makes. The
+underlying org-code bug is filed, untouched, and out of scope here.
+
+Two message defects were also caught inside the fix round and corrected: the
+h4 message read "a Army", and the injected h3 break initially did not fire at
+all because it was written against an attribute order React does not emit
+(href precedes data-gao-cite in the rendered HTML) -- an injection that does
+not land proves nothing, so it was rewritten against the real markup.
+
+NON-VACUITY. Not a pinned literal: the leg errors out if the ratified set is
+empty, and the population it checks IS the ratified set, so a crosswalk that
+shrinks cannot quietly stop exercising it. On the shipped build the note
+records the sample: 62 items over 48 pages against 62 ratified rows, and 1,957
+pages carrying the denial.
+
+MEASURED PRECISION, and the method. Matcher precision is verdict-"y" over all
+adjudicated candidates: 62/63 = 98.4%. Every one of the 63 was checked against
+a SECOND source -- the budget line's own J-book narrative on that page, not its
+title -- which is how the single rejection was found: GAO assessed Small
+Diameter Bomb Increment II, and SDB000's narrative opens "GBU-39/B: Small
+Diameter Bomb Increment I (SDB I)". Different weapon. The correct line,
+SDB002 "SMALL DIAMETER BOMB II", is proposed by neither rule (its title omits
+"Increment"), so SDB II ships no crosswalk at all rather than a wrong one --
+the smaller true number over the bigger false one.
+
+The service rule's own contribution is measured by ablation: with it, 63
+candidates and 1 wrong; without it, 65 and 3. The two it suppresses are the
+same species -- GAO's Air Force "LGM-35A Sentinel" reaching the Army's
+"Sentinel Mods" procurement line (the exact ROADMAP #55 defect), and GAO's
+Navy "Ship to Shore Connector (SSC)" reaching Space Systems Command's "SSC
+Enterprise Engineering & Integration".
+
+GATE COUNT: unchanged -> 24. Leg (h) is a leg of gate 21.
+
+PASS, after restoring the seed and the four built pages and rebuilding with
+the 246-page fix. Verbatim, same runner:
+
+  note: leg h: 62 GAO item(s) on 48 program page(s), each traced to a
+    verdict-"y" row of 62 in data-seeds/gao_program_xwalk.csv; 1957 other
+    page(s) state that no program-specific GAO finding for that line is
+    ingested ✓
+  gate 21 program-skeleton: PASS
+
+PAGE WEIGHT, re-measured rather than re-ceilinged. /methodology/ gained the
+crosswalk section and moved 128,833/34,833 -> 132,816/36,177 gzip, which trips
+the annotation-drift leg added on 2026-08-24 (recorded headroom 2,067 against
+a real 723, 2.9x). The ceiling stays at 36,900 and the `measured` string was
+updated to the built value; the section was cut by roughly a third first,
+which bought 191 gzip bytes and is recorded here so the next person does not
+repeat the experiment. /program/*/ heaviest re-measured too:
+1,108,205/142,255 -> 1,108,222/142,045.
