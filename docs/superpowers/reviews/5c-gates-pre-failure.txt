@@ -8387,6 +8387,156 @@ from the light-mode pass and once from inside leg (d)'s forced-dark context.
 No 25th gate.
 
 ================================================================================
+GATE 21 (program-skeleton) leg (g) — a renumbered-away program element must
+not end silently. 2026-08-26. (ROADMAP #32a)
+================================================================================
+
+WHY IT EXISTS. PB2026 renumbered program elements at scale. 319 program pages
+carry FY2024 and/or FY2025 money in the PB2026 R-1/P-1 workbook and NO FY2026
+row at all: Army 113, Air Force 77, Navy 69, OSD 18, DARPA 14, and 28 across
+the smaller components. DARPA is the readable case — PB2026 retired Defense
+Research Sciences, Tactical Technology, Sensor Technology, Electronics
+Technology and 10 more thematic lines and introduced Emerging Opportunities,
+Access and Awareness, Warfighting Performance, Effects and others, while
+DARPA's FY2026 total ROSE to $4.92B from $4.15B. Only 2 of 16 carried through.
+
+This is NOT an ingestion gap. data/raw_docs/fy2026/dod/r1_display.xlsx shows
+the FY2026 cells for the retired lines genuinely BLANK and the new lines
+genuinely without FY2024/FY2025 history; the parser reads the workbook
+correctly, and an earlier "DARPA coverage artifact" hypothesis was
+investigated and refuted. The gap is in the MODEL. Until it closes, a reader
+who followed /program/0601101E/ for a decade hit a page whose figures stopped
+at FY2025 and said nothing whatever about why.
+
+WHAT THE LEG PINS, on the built artifact, over the WHOLE page universe (2,016
+pages, one read pass, no sampling — the negative direction is exactly the half
+a sample would miss):
+
+  1. the exporter's fy2026_absent flag agrees with the leg's OWN recompute of
+     the predicate from the sidecar's workbook rows, both directions and
+     including last_fy (the CANONICAL_SECTIONS convention: a drift between the
+     two implementations is a real failure);
+  2. every page in the population renders [data-fy2026-absent];
+  3. NO page outside it does — a "no FY2026 request" note on a page still
+     funded in FY2026 is a false claim about that page's money, worse than the
+     silence it was written to fix;
+  4. the note says all four required sentences, and the year it names MATCHES
+     the recomputed last_fy;
+  5. the note never says zeroed / cancelled / terminated / defunded — the
+     exact wording of the 87 withdrawn "zeroed out in FY2026" feed cards;
+  6. the note names no OTHER program element, checked against the page
+     universe itself. This is the mechanical guard that stops #32(b) leaking
+     into #32(a) as a guess: the corpus cannot prove Defense Research Sciences
+     -> Emerging Opportunities, and a named guess is a fabricated citation.
+
+PROOF IT CAN FAIL. Run against the shipped build BEFORE the exporter emitted
+the flag or the page rendered the note — the leg fails on the full measured
+population, not a token sample:
+
+  errors: 12
+    program-skeleton(g): /program/000079/ sidecar fy2026_absent is absent but
+    the gate's own recompute says {"last_fy":2024} - the exporter and the gate
+    disagree about whether PB2026 still requests money for this line
+    program-skeleton(g): /program/0023A01001/ sidecar fy2026_absent is absent
+    but the gate's own recompute says {"last_fy":2025} - ...
+    program-skeleton(g): /program/0128B63000/ ... {"last_fy":2024} - ...
+    program-skeleton(g): /program/013005/ ... {"last_fy":2025} - ...
+    program-skeleton(g): /program/014005/ ... {"last_fy":2025} - ...
+    program-skeleton(g): 319 sidecars disagree with the recompute in total
+    (first 5 listed)
+    program-skeleton(g): /program/000079/ has PB2026 money through FY2024 and
+    no FY2026 workbook row, but renders no [data-fy2026-absent] note - the
+    page ends silently (ROADMAP #32a)
+    program-skeleton(g): /program/0023A01001/ has PB2026 money through FY2025
+    and no FY2026 workbook row, but renders no [data-fy2026-absent] note - ...
+    program-skeleton(g): /program/0128B63000/ ... through FY2024 ...
+    program-skeleton(g): /program/013005/ ... through FY2025 ...
+    program-skeleton(g): /program/014005/ ... through FY2025 ...
+    program-skeleton(g): 319 page(s) in the renumber population render no note
+    in total (first 5 listed)
+    note: leg g: 0/319 renumbered-away program page(s) carry the "no FY2026
+    request" note (); 1686 other page(s) correctly do not
+
+AFTER the exporter emits fy2026_absent and program-figures.tsx renders the
+note:
+
+  errors: 0
+    note: leg g: 319/319 renumbered-away program page(s) carry the "no FY2026
+    request" note (160 last funded FY2024, 159 last funded FY2025); 1686 other
+    page(s) correctly do not
+
+THE OTHER FOUR CHECKS, PROVED SEPARATELY, because a leg that only ever fails
+by rendering nothing has never exercised the checks that keep it honest. On a
+scratch copy of the built artifact: the note was planted verbatim on
+/program/0601102A/ (PB2026 DOES fund it -- the 142KB heaviest program page),
+and /program/0601101E/'s own note was rewritten to name a successor, assert an
+ending, and misstate its last year:
+
+  errors: 4
+    program-skeleton(g): /program/0601101E/ note does not say "its last figure
+    in this edition is FY2025" - the note must name the year the workbook
+    actually stops at, not a different one (got "No FY2026 request for this
+    program element. The FY2026 President's Budget R-1/P-1 request workbook
+    carries no FY2026 line for it; its last f...")
+    program-skeleton(g): /program/0601101E/ note says "cancelled" - absence
+    from one edition supports no such claim (this is the wording the 87
+    withdrawn feed cards used)
+    program-skeleton(g): /program/0601101E/ note names program element(s)
+    0602702E - the corpus cannot prove a successor for a renumbered line, so
+    the note must not name one (#32b / backlog #29)
+    program-skeleton(g): /program/0601102A/ renders the "no FY2026 request"
+    note but its PB2026 workbook DOES carry an FY2026 row - the note is a
+    false claim about this page's money
+
+Both pages restored; the leg returns errors: 0.
+
+THE FLOOR, AND WHY IT IS 319 AND NOT THE 165 IN THE ENTRY. ROADMAP #32's
+2026-08-07 correction records a "verified floor" of 165, superseding a
+proposed 190. Both count pe_blis with FY2025 money and no FY2026 row across
+ALL TEN EDITIONS. The note is a claim about ONE edition and renders per PAGE.
+Re-measured on the page grain, fenced to PB2026: FY2025-only is 159, and
+FY2024-or-FY2025 -- the definition the entry's own headline uses, and the only
+one that reproduces its per-service counts -- is 319 (160 last funded FY2024,
+159 FY2025). Cross-check against the numbers the entry filed: Air Force 77
+(77), Navy 69 (69), OSD 18 (18), DARPA 14 (14) exact; Army 113 against 115,
+the two-line difference being pe_blis with no /program/ page to render a note
+on (backlog #28/D5, not this leg's). The 165 was not weakened -- it was
+measuring a different thing, and both it and 190 would have been unsatisfiable
+against a per-page, per-edition predicate. This is recorded rather than
+quietly swapped because the previous correction exists for the same reason.
+
+A DESIGN CHOICE MADE AND THEN REVERSED, recorded because the first version
+would have gone soft. Check 6 ("names no other program element") was first
+written as a PE-code shape regex. It passed the real note and caught a planted
+"0602702E" -- and silently missed ATA000, HCMC00 and JSE000, because those
+codes start with a letter, while widening it to allow a leading letter would
+have made it fire on "FY2026" and "PB2026" in the note's own text. Rewritten
+to tokenize the note and look every candidate up in the PAGE UNIVERSE (the
+sidecar slugs), which has neither failure mode and cannot be fooled by a code
+shape nobody anticipated.
+
+PAGE WEIGHT. Unaffected, and MEASURED rather than assumed -- adding a note to
+319 pages is exactly the shape that moves a ceiling. The gate's /program/*/
+target is the RAW-heaviest page, /program/0601102A/, and PB2026 still funds it,
+so it gets no note: 1,108,205 / 142,255 before, 1,108,210 / 142,253 after
+(+5 raw, -2 gzip -- shared-chunk churn, not the note). Its `measured`
+annotation is left alone: a 2-byte movement is ordinary data movement, and
+this file's own drift rule fires only past 2x overstated headroom (8,745
+recorded bytes left vs 8,747 real). The heaviest page that DOES carry the note
+is /program/0602716E/: 517,544 / 80,737 -> 519,041 / 81,301, so the note costs
+~1.5KB raw / ~564 bytes gzip and lands 69KB under the gzip ceiling. No ceiling
+was raised and no annotation needed re-measuring.
+
+GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
+-> 24. This is a leg inside gate 21's existing runProgramSkeletonGate(),
+beside legs (a)-(f). No 25th gate.
+
+SCOPE FENCE. This ships #32(a) only. #32(b) -- the pe_remap /
+restructured_into edge type -- stays unbuilt and folds into backlog #29
+(lineage Phase 2). Check 6 above is what keeps the two apart mechanically
+rather than by intention.
+
+================================================================================
 GATE 23 (basis) leg (j) — a curated alias must route to the program it names.
 2026-08-27. (ROADMAP #55, Wave 1 Task 2.)
 ================================================================================
@@ -8559,3 +8709,90 @@ GATE COUNT: unchanged. `grep -c "gateResults.push" site/scripts/verify.mjs`
 -> 24. This is leg (j) inside gate 23's existing runBasisGate(), called once.
 No 25th gate. The letter was checked free against a/b/c/d/e/f/g[1-4]/h[1-5]/i
 before use.
+
+WHAT CHANGED. One rule, `.cite-id-chip` in globals.css. The fill and the hue
+are gone, weight is pinned, and the chip now wears the treatment this
+codebase ALREADY uses for the same value in the two places it is not a chip
+-- the citation drawer's `fact #…` line and /fact/{id}'s header, both
+mono / 12px / muted-foreground / no fill:
+
+  ml-1 inline-block cursor-copy whitespace-nowrap align-middle font-mono
+  text-xs font-normal text-muted-foreground no-underline
+  hover:text-foreground hover:underline hover:underline-offset-2
+
+Size was NOT touched -- 12px is leg (b)'s floor, so it is not an available
+axis. Hover lifts to foreground + underline rather than restoring a fill, so
+the click-to-copy affordance stays discoverable in the same quiet-at-rest
+language `.cite-figure` already speaks.
+
+MEASURED, AFTER, same probe, same 11 surfaces, both schemes:
+
+  chip   12px / w400 / chroma 0 / no fill / 5.21-6.01:1
+  figure 12-48px / w400-700 / chroma 0 / 16.57-19.80:1
+
+  fill≠ 0   chroma> 0   contrast≥ 0   font> 0   bold 0   on every surface
+
+  narrowest margin anywhere: /programs/ light, chip 5.59:1 against an
+  18.44:1 figure on the same 244,247,252 background.
+
+  chip width 72.8 -> 64.8px (-11%). /programs/ row heights at 1440px
+  collapsed from {46:22, 65:1, 66:377} to {45:22, 65:378}. At 390px they
+  went {108:359, 128:40, 148:1} -> {107:359, 127:40, 147:1}: one pixel
+  shorter each, and STILL alternating. Stated plainly because the panel
+  blamed the chip for that rhythm and the measurement does not: the 390px
+  variation is program-title wrapping, not chip wrapping. #43 is closed on
+  the loudness finding it actually names, not on the row rhythm.
+
+VERBATIM PASS -- gate 6 re-run against the rebuilt out/ (HEAD 2fbe833):
+
+  gate 6 a11y_gate: ... -> PASS
+    · P1-1 hierarchy (/program/000042/): 5 of 5 chip/figure pairs sampled,
+      chip subordinate on every axis (narrowest margin — chip
+      12px/w400/6.01:1/chroma 0/bg 255,255,255 vs figure "$4.00K"
+      20px/w700/19.80:1/chroma 0/bg 255,255,255) ✓
+    · P1-1 hierarchy (/programs/): 60 of 3061 chip/figure pairs sampled,
+      chip subordinate on every axis (narrowest margin — chip
+      12px/w400/5.59:1/chroma 0/bg 244,247,252 vs figure "$228.7B"
+      14px/w700/18.44:1/chroma 0/bg 244,247,252) ✓
+    · P1-1 hierarchy (home (dark)): 2 of 2 chip/figure pairs sampled, chip
+      subordinate on every axis (narrowest margin — chip
+      12px/w400/5.40:1/chroma 0/bg 23,23,23 vs figure "$5.57B"
+      48px/w700/17.18:1/chroma 0/bg 23,23,23) ✓
+    · P1-1 hierarchy (/program/000042/ (dark)): 5 of 5 chip/figure pairs
+      sampled, chip subordinate on every axis (narrowest margin — chip
+      12px/w400/5.40:1/chroma 0/bg 23,23,23 vs figure "$4.00K"
+      20px/w700/17.18:1/chroma 0/bg 23,23,23) ✓
+
+THE OLD LEGS ARE UNMOVED, and their numbers are identical to the pre-fix
+run -- the fix did not buy hierarchy with accessibility:
+
+    · P1-1 underline (/program/000042/): 15 sampled, min 4.96:1 (≥3:1) ✓
+    · P1-1 chip sizes (/program/000042/): 10 provenance elements all ≥12px ✓
+    · P1-1 default (/program/000042/): 5 fact-id chips visible on fresh visit ✓
+    · P1-1 underline (/years/): 15 sampled, min 4.84:1 (≥3:1) ✓
+    · P1-1 chip sizes (/years/): 3 provenance elements all ≥12px ✓
+    · a11y (d) home (dark): 15 citation underlines sampled, min 7.87:1 in
+      dark mode (≥3:1) ✓
+    · a11y (d) /program/000042/ (dark): 10 provenance chips all ≥12px in
+      dark mode ✓
+
+BLAST RADIUS, and how it was confirmed complete. `.cite-id-chip` is applied
+in exactly one place (cite.tsx's ReceiptsChip), so one rule moves every
+surface at once. Counted in the built output:
+
+  grep -rl cite-id-chip out/ | grep '\.html$'
+  -> 6,145 pages: 3,803 /filing/*/, 2,005 /program/*/, 200 /company/*/,
+     106 /district/*/, 24 /agency/*/, plus /programs/, /, /feed/,
+     /district/, /companies/, /companies/families/, /agency/
+
+Plus the citation drawer, which is client-rendered and therefore invisible
+to that grep: opened on a program page and measured directly -- 2 chips,
+12px, w400, backgroundColor rgba(0,0,0,0), in both schemes.
+
+/years/ and /flow/ render ZERO fact-id chips and always did: their dense
+cells pass chip={false}. Recorded because the entry implies otherwise.
+
+PAGE WEIGHT: unaffected, by construction. The class ATTRIBUTE in the HTML is
+the unchanged single token `cite-id-chip`; only the shared CSS chunk moved.
+Gate 1 confirms: /programs/ 279,297 gzip against a recorded 279,305 -- eight
+bytes LIGHTER. No ceiling was touched.
