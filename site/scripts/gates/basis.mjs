@@ -2686,22 +2686,77 @@ const RATIFIED_ALIASES = {
   "AARGM": ["0205601N"],
   "GBI": ["MD08"], // existing seed, ratified unchanged
   "JSF": ["ATA000"], // existing seed, ratified unchanged
+  // ── owner ratification, 2026-08-27 (roadmap-55-ratification.md §1 and §2) ──
+  // §1's nine terms are ONE program funded on a procurement line and an RDT&E
+  // program element, neither subordinate to the other. The owner took "seed
+  // every line listed". `_load_aliases` returns {pe_bli: [alias, ...]}, so an
+  // alias may key under more than one PE; a filing naming the program then
+  // emits one mention row per seeded PE, each on its own program page.
+  // Seeding only the larger line would hide the other half of the money from
+  // anyone reading the smaller page.
+  "AMRAAM": ["MAMRA0", "0207163F", "0207163N"],
+  "Javelin": ["0648CC0007", "0604611A"],
+  "KC-46": ["KC046A", "0401221F"],
+  "B-52": ["B05200", "0101113F"],
+  "C-17": ["C01700", "0401130F"],
+  "F-15EX": ["F015EX", "0207146F"],
+  "GMLRS": ["6005C64400", "0205778A"],
+  "LTAMDS": ["7265C12000", "0604114A"],
+  "Small Diameter Bomb": ["SDB000", "0207327F", "0604329N"],
+  // §2 one-offs.
+  "MQ-9": ["0205219F", "1108MQ9"], // seed both, same logic as §1
+  "C-130J": ["0401132F"], // was 2012C130J "AC/MC-130J", the SOCOM gunship and
+  // special-operations variants. Moves 17 live alias rows. The corpus
+  // corroborates: all 17 are Lockheed filings saying "C-130J procurement" /
+  // "(F-35, C-130J)" — the baseline airlifter, not the AC-130J gunship.
 };
 
 /**
- * The 13 terms roadmap-55-ratification.md hands to the owner. Two of them
- * (C-130J, MQ-9) are seeded already and stay exactly as they are until the
- * owner rules — re-pointing C-130J alone would move 17 live alias rows off
- * a $236.3M SOCOM page. j4 allows these strings in the seed and nothing else.
+ * Terms still awaiting an owner decision. EMPTY as of 2026-08-27: the owner
+ * ruled on all 13 that roadmap-55-ratification.md put to them — 11 moved into
+ * RATIFIED_ALIASES above, and Patriot and PAC-3 were dropped (below).
+ *
+ * Deliberately kept rather than deleted. j4's contract is "a seeded alias is
+ * ratified or explicitly pending", and the next curation round needs a place
+ * to park a term that is seeded-but-undecided without the gate going red.
+ * Empty means the strongest form of j4 is in force: everything in the seed
+ * has an answer.
  */
-const PENDING_RATIFICATION = new Set([
-  "AMRAAM", "Javelin", "KC-46", "B-52", "C-17", "F-15EX", "GMLRS", "LTAMDS",
-  "Small Diameter Bomb", "MQ-9", "C-130J", "Patriot", "PAC-3",
+const PENDING_RATIFICATION = new Set([]);
+
+/**
+ * Terms REFUSED as aliases, with the reason. Not an oversight list — a
+ * decision list, and j4 reports a seeded one differently from a merely
+ * unknown one so nobody re-adds these by reflex in six months.
+ *
+ * Four reasons (roadmap-55-ratification.md §5, plus this task's own findings):
+ *   - no line exists in the corpus at all: NASAMS, Paveway, Griffin, Maverick,
+ *     F135, F119, SLAM-ER, Trident — and, contrary to how they look, ESSM and
+ *     RAM. RAM's 89 "candidates" are every title containing the substring
+ *     inside the word PROGRAM; ESSM's 8 are inside ASSESSMENT.
+ *   - only a derivative line exists: Stinger (Stinger Mods), Harpoon (Harpoon
+ *     Support Equipment, $209K).
+ *   - only a rollup exists: Excalibur (ARTILLERY PROJECTILE, 155MM, All
+ *     Types), Coyote (COUNTER-SMALL UNMANNED AERIAL SYSTEM, multi-vendor).
+ *     Aliasing a rollup attributes the whole rollup to one product.
+ *   - the alias STRING is unsafe under a case-insensitive word-boundary
+ *     regex: TOW fires on the English word "tow"; Super Hornet's only
+ *     F/A-18E/F line is pe_bli 0145, which dim_programs shares with General
+ *     Purpose Bombs; Sentinel matches Rolls-Royce's Coast Guard filing on
+ *     "Sentinel Class Fast Response Cutters" (GBSD carries that program
+ *     instead). Patriot and PAC-3 are the owner's 2026-08-27 drops: no base
+ *     Patriot line exists in the corpus (both candidates are Mods /
+ *     Product Improvement), and no title anywhere contains "PAC-3".
+ */
+const DROPPED_ALIASES = new Set([
+  "ESSM", "RAM", "Stinger", "TOW", "Excalibur", "NASAMS", "Coyote", "Paveway",
+  "Griffin", "Maverick", "F135", "F119", "Super Hornet", "SLAM-ER", "Harpoon",
+  "Trident", "Sentinel", "Patriot", "PAC-3",
 ]);
 
-// 42 ratified terms; the floor is the whole set, because the set IS the
+// 53 ratified terms; the floor is the whole set, because the set IS the
 // curation and a partial transcription is the failure to catch.
-const MIN_RATIFIED_ALIASES = 42;
+const MIN_RATIFIED_ALIASES = 53;
 
 /** Minimal RFC4180 reader — the seed's `notes` column carries commas and quotes. */
 export function parseCsv(text) {
@@ -2905,9 +2960,17 @@ function runAliasRoutingLeg(errors, notes) {
 
   // ── j4 NOTHING UNRATIFIED IS SEEDED ──
   const pendingKeys = new Set([...PENDING_RATIFICATION].map((t) => t.toUpperCase()));
+  const droppedKeys = new Set([...DROPPED_ALIASES].map((t) => t.toUpperCase()));
   const j4 = [];
   for (const [key, { alias, pes }] of seeded) {
     if (ratifiedKeys.has(key) || pendingKeys.has(key)) continue;
+    if (droppedKeys.has(key)) {
+      j4.push(
+        `"${alias}" → ${[...pes].join(", ")} is seeded but was REFUSED as an alias ` +
+          `(DROPPED_ALIASES) — see the reason there before re-adding it`,
+      );
+      continue;
+    }
     j4.push(
       `"${alias}" → ${[...pes].join(", ")} is seeded but appears in neither the ` +
         `ratified set nor the owner's pending list`,

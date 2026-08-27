@@ -8804,3 +8804,100 @@ PAGE WEIGHT: unaffected, by construction. The class ATTRIBUTE in the HTML is
 the unchanged single token `cite-id-chip`; only the shared CSS chunk moved.
 Gate 1 confirms: /programs/ 279,297 gzip against a recorded 279,305 -- eight
 bytes LIGHTER. No ceiling was touched.
+
+================================================================================
+GATE 23 (basis) leg (j) ROUND 2 — the owner's ratification of the thirteen.
+2026-08-27. (ROADMAP #55, Wave 1 Task 2, second pass.)
+================================================================================
+
+WHAT CHANGED. roadmap-55-ratification.md put 13 terms to the owner. All 13
+came back on 2026-08-27:
+
+  §1 STRUCTURAL FORK, nine terms — SEED BOTH halves (all three where a third
+  exists). AMRAAM, Javelin, KC-46, B-52, C-17, F-15EX, GMLRS, LTAMDS, Small
+  Diameter Bomb are each ONE program funded on a procurement line AND an
+  RDT&E program element, neither subordinate to the other.
+  `_load_aliases` returns {pe_bli: [alias, ...]}, so an alias may key under
+  more than one PE; a filing naming the program emits one mention row per
+  seeded PE, each on its own program page. Seeding only the larger line
+  silently hides the other half of the money from anyone reading the smaller
+  page — and B-52 shows why that is not theoretical: the RDT&E half
+  (0101113F B-52 Squadrons, FY2026 $931.2M) is FOUR TIMES the procurement
+  half (B05200, $223.9M). Whichever one you dropped would have been the
+  wrong one to drop.
+
+  §2 ONE-OFFS. MQ-9 seeds both (0205219F Air Force lead, 1108MQ9 SOCOM).
+  C-130J re-points to 0401132F only. Patriot and PAC-3 are DROPPED.
+
+RATIFIED_ALIASES goes 42 -> 53 terms, MIN_RATIFIED_ALIASES with it.
+PENDING_RATIFICATION goes to EMPTY and is deliberately kept rather than
+deleted — j4's contract is "ratified or explicitly pending", and empty is the
+strongest form of it: everything in the seed now has an answer. A new
+DROPPED_ALIASES set (19 terms) records the refusals WITH their reasons, and
+j4 reports a seeded dropped term differently from a merely unknown one, so
+nobody re-adds TOW or Patriot by reflex in six months.
+
+PROOF IT CAN FAIL. The 11 new ratifications went into RATIFIED_ALIASES FIRST,
+before any seed row was written, and the leg was run against the seed as it
+stood after round 1 (44 rows). Exit 1:
+
+gate 23 basis: scanning 2016 program pages; leg a1: all 80746 program-page figures carry basis attrs ✓; leg a2 (attribute path): no unreconciled collisions ✓ → FAIL
+  note: leg j3: all 58 ratified alias targets resolve to a shipped page ✓
+  note: leg j4: 44 seeded aliases, every one ratified or on the owner's pending list ✓
+  note: leg j5: 194 alias-tier rows of 10599 mentions warehouse-wide — the curated tier is live ✓
+  ✗ leg j1 seed-agreement: 11 ratified alias(es) the seed does not carry as ratified (first 10):
+  ✗   "AMRAAM" ratified → MAMRA0, 0207163F, 0207163N but has no row in the seed
+  ✗   "Javelin" ratified → 0648CC0007, 0604611A but has no row in the seed
+  ✗   "KC-46" ratified → KC046A, 0401221F but has no row in the seed
+  ✗   "B-52" ratified → B05200, 0101113F but has no row in the seed
+  ✗   "C-17" ratified → C01700, 0401130F but has no row in the seed
+  ✗   "F-15EX" ratified → F015EX, 0207146F but has no row in the seed
+  ✗   "GMLRS" ratified → 6005C64400, 0205778A but has no row in the seed
+  ✗   "LTAMDS" ratified → 7265C12000, 0604114A but has no row in the seed
+  ✗   "Small Diameter Bomb" ratified → SDB000, 0207327F, 0604329N but has no row in the seed
+  ✗   "MQ-9" ratified → 0205219F "MQ-9 UAV", 1108MQ9 "MQ-9 Unmanned Aerial Vehicle": missing 0205219F
+  ✗   ... and 1 more
+  ✗ leg j2 evidence-routing: 1 ratified alias(es) route alias-tier lobbying evidence to an unratified program (first 10):
+  ✗   "C-130J": 17 alias-tier filing row(s) land on 2012C130J "AC/MC-130J" — ratified target is 0401132F "C-130J Program"
+  ✗ leg j6 export-fidelity: 1 shipped program sidecar(s) publish a ratified alias on an unratified program — the exporter has not re-run since the seed changed (first 10):
+  ✗   /program/2012C130J/ "AC/MC-130J" publishes 17 alias-tier "C-130J" filing row(s); "C-130J" is ratified to 0401132F
+
+The "... and 1 more" MAX_LISTED elides is C-130J: seeded 2012C130J, ratified
+0401132F. So j1's 11 = 9 fork terms with no row at all, plus MQ-9 missing its
+Air Force half, plus C-130J pointing at the SOCOM variants.
+
+C-130J IS A SECOND LIVE DEFECT, not a preference. j2 and j6 both caught it
+independently, and the corpus settles it without appeal to taste: all 17
+alias-tier filings are Lockheed Martin, and they say "C-130J procurement" and
+"(F-35, C-130J)". `2012C130J` is *AC/MC-130J* — the AC-130J gunship and
+MC-130J Commando II, SOCOM. An unqualified "C-130J" in a Lockheed filing is
+the baseline airlifter. Seventeen rows were on a $236.3M special-operations
+page; they belong on the $31.4M Air Force baseline line. This is the same
+species as JASSM and was left standing in round 1 only because the owner had
+not yet ruled.
+
+AFTER seeding (65 rows, 53 distinct terms), `influence rematch` and
+`dbt build`: mentions 10,599 -> 10,650 rows, alias tier 194 -> 240. The fork
+behaves exactly as designed — B-52 emits 13 rows on EACH of its two PEs and
+F-15EX 10 on each, one page per half of the program, rather than one page
+carrying a claim about money that sits on another.
+
+j1-j5 verbatim, warehouse-side:
+
+  note: leg j1: all 53 ratified aliases seeded as ratified ✓
+  note: leg j2: 240 alias-tier filing row(s) from ratified aliases, all on their ratified program ✓
+  note: leg j3: all 58 ratified alias targets resolve to a shipped page ✓
+  note: leg j4: 53 seeded aliases, every one ratified or on the owner's pending list ✓
+  note: leg j5: 240 alias-tier rows of 10650 mentions warehouse-wide — the curated tier is live ✓
+
+j6 stayed RED at that point, correctly — the exporter had not re-run, so
+/program/2012C130J/ was still shipping the 17 rows. Its PASS is captured
+below after `export-site`.
+
+ALIAS-STRING SAFETY, checked on all 11 as it was on Sentinel. AMRAAM, Javelin,
+KC-46, C-17, GMLRS, LTAMDS, Small Diameter Bomb, MQ-9 and PAC-3 match ZERO
+filings in the corpus (inert today, live after a re-pull). B-52's 13 are all
+genuine — Rolls-Royce's "B-52 CERP", the Commercial Engine Replacement
+Program. F-15EX's 10 are Boeing. Patriot matches zero, which is a second
+reason to drop it beyond "no base line exists". No new term reproduces the
+Sentinel failure.

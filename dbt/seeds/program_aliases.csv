@@ -1,6 +1,6 @@
 alias,pe_bli,notes
 JASSM,0207325F,"Joint Air-to-Surface Standoff Missile; AF RDT&E PE carrying the acronym in its own title. #55 CORRECTION 2026-08-27: pointed at 0603000D8Z ""Joint Munitions Advanced Technology"" (OSD, a defence-wide munitions S&T line that is not JASSM) and put 10 alias-tier filings there"
-C-130J,2012C130J,Lockheed C-130J Hercules variant; matches program AC/MC-130J (2012C130J). #55 AMBIGUOUS — left unchanged pending the owner decision in docs/curation/roadmap-55-ratification.md §2; re-pointing moves 17 live alias rows
+C-130J,0401132F,"Lockheed C-130J Hercules, baseline airlifter. #55 OWNER RATIFICATION 2026-08-27 (§2): pointed at 2012C130J ""AC/MC-130J"", the SOCOM gunship and special-operations variants. 0401132F ""C-130J Program"" is the only unqualified C-130J line with a current request. Moves 17 live alias rows; all 17 are Lockheed filings saying ""C-130J procurement"", the baseline aircraft"
 JADC2,0604122D8Z,Joint All-Domain Command and Control; direct title match in dim_programs. #55 ratified unchanged
 C2BMC,0603896C,Command and Control Battle Management Communications; abbreviation used in LDA filings for the full BMD C2BMC program. #55 ratified unchanged
 THAAD,MD07,Terminal High Altitude Area Defense; abbreviation used in LDA filings; exact program code in dim_programs. #55 ratified unchanged
@@ -8,7 +8,8 @@ Aegis,0603892C,"Aegis Ballistic Missile Defense. #55 CORRECTION 2026-08-27: poin
 Iron Dome,MD83,Israeli cooperative Iron Dome; appears in DoD LDA disclosures for funding appropriations. #55 ratified unchanged
 GBI,MD08,Ground Based Interceptor; abbreviation for Ground Based Midcourse program (MD08). #55 ratified unchanged
 SBX,0603907C,Sea Based X-Band Radar; abbreviation used in congressional lobbying text. #55 ratified unchanged
-MQ-9,1108MQ9,MQ-9 Reaper unmanned aerial vehicle; short alias for MQ-9 Unmanned Aerial Vehicle program. #55 AMBIGUOUS — left unchanged pending the owner decision in docs/curation/roadmap-55-ratification.md §2 (Air Force 0205219F vs this SOCOM line)
+MQ-9,1108MQ9,"MQ-9 Reaper unmanned aerial vehicle; SOCOM procurement line. #55 OWNER RATIFICATION 2026-08-27 (§2): seed BOTH components — the Air Force is lead and SOCOM buys its own, and neither is subordinate to the other"
+MQ-9,0205219F,"MQ-9 Reaper; Air Force RDT&E line (lead component). #55 OWNER RATIFICATION 2026-08-27 (§2), the second half of the MQ-9 pair"
 CV-22,0401318F,"CV-22 Osprey tiltrotor. #55 CORRECTION 2026-08-27: pointed at 1000CV2200 ""CV-22 Modification""; 0401318F is the only unqualified CV-22 line (the other three are Mods / Modification / Post Production Support). Zero alias rows moved"
 F-35,ATA000,"Lockheed F-35 Joint Strike Fighter; the program is universally written ""F-35"" in LDA filings and shares no two distinctive title tokens with ""F-35"" alone (#55). #55 ratified UNCHANGED — the only unqualified F-35 line; the five siblings are C2D2 / Modifications / Squadrons"
 JSF,ATA000,Joint Strike Fighter; the pre-2006 name still used in lobbying text for the same program (ATA000). #55 ratified unchanged
@@ -31,7 +32,7 @@ B-21,B02100,"#55 worksheet pick=y. ""B-21 Raider"" (Aircraft Procurement, AF, FY
 Triton,0305220N,"#55 worksheet pick=y. ""MQ-4C Triton"" is the unqualified Triton program element; the sibling 0305421N is explicitly ""Modernization"". Identity decides, not magnitude"
 Hellfire,1338C70000,"#55 worksheet pick=y. ""Hellfire Sys Summary"" (Missile Procurement, Army, BA-02) is the only system-level Hellfire line; the siblings are a launcher BLI and a Predator-specific missile buy"
 HIMARS,6200C02901,"#55 worksheet pick=y. The HIMARS launcher buy; the sibling 6580C67501 is ""HIMARS Modifications"""
-StormBreaker,SDB002,"#55 off-worksheet. StormBreaker is the fielded name of the GBU-53/B Small Diameter Bomb II; SDB002 is the corpus's SDB II line. The unqualified ""Small Diameter Bomb"" term is a different weapon and remains unratified"
+StormBreaker,SDB002,"#55 off-worksheet. StormBreaker is the fielded name of the GBU-53/B Small Diameter Bomb II; SDB002 is the corpus's SDB II line. The unqualified ""Small Diameter Bomb"" term is a DIFFERENT weapon and is seeded separately to SDB000 / 0207327F / 0604329N"
 SPY-6,0604522N,"#55 off-worksheet. AN/SPY-6 is the type designation of the Air and Missile Defense Radar; 0604522N is the corpus's sole AMDR line"
 JSOW,0604727N,"#55 off-worksheet. ""Joint Standoff Weapon Systems"" is the literal expansion of JSOW and the corpus's sole JSOW line"
 P-8,0605500N,"#55 off-worksheet. The P-8A Poseidon is funded as the Multi-mission Maritime Aircraft; 0605500N is the unqualified MMA program element (0605504N is ""Increment III"")"
@@ -43,3 +44,23 @@ Global Hawk,0305220F,"#55 off-worksheet. Global Hawk is the RQ-4; 0305220F ""RQ-
 E-2D,0604234N,"#55 off-worksheet. The E-2D is the Advanced Hawkeye; 0604234N is the corpus's sole Hawkeye line"
 IBCS,9280BZ5075,"#55 off-worksheet. IBCS expands to IAMD Battle Command System; 9280BZ5075 is that literal expansion. Its development companion 0605457A is the broader AIAMD program, not IBCS itself"
 AARGM,0205601N,"#55 off-worksheet. AARGM is the Advanced Anti-Radiation Guided Missile; 0205601N ""Anti-Radiation Missile Improvement"" is the corpus's sole anti-radiation missile line"
+AMRAAM,MAMRA0,"#55 OWNER RATIFICATION 2026-08-27 (§1 structural fork): AMRAAM is one program funded on a procurement line and two RDT&E elements; seed all three so neither page hides the other's money. This is the AF procurement line (FY2026 $665.1M)"
+AMRAAM,0207163F,"#55 OWNER RATIFICATION 2026-08-27 (§1): Air Force RDT&E half of the AMRAAM program (FY2026 $51.2M)"
+AMRAAM,0207163N,"#55 OWNER RATIFICATION 2026-08-27 (§1): Navy RDT&E half of the AMRAAM program (FY2026 $26.3M)"
+Javelin,0648CC0007,"#55 OWNER RATIFICATION 2026-08-27 (§1): Javelin (AAWS-M) System Summary, the Army procurement line (FY2026 $329.2M)"
+Javelin,0604611A,"#55 OWNER RATIFICATION 2026-08-27 (§1): JAVELIN, the Army RDT&E element (FY2026 $9.8M)"
+KC-46,KC046A,"#55 OWNER RATIFICATION 2026-08-27 (§1): KC-46A MDAP, the AF procurement line (FY2026 $2,819.0M)"
+KC-46,0401221F,"#55 OWNER RATIFICATION 2026-08-27 (§1): KC-46A Tanker Squadrons, the AF RDT&E element (FY2026 $145.4M)"
+B-52,B05200,"#55 OWNER RATIFICATION 2026-08-27 (§1): B-52, the AF procurement line (FY2026 $223.9M). 13 corpus filings, all genuine B-52 (Rolls-Royce ""B-52 CERP"", the Commercial Engine Replacement Program)"
+B-52,0101113F,"#55 OWNER RATIFICATION 2026-08-27 (§1): B-52 Squadrons, the AF RDT&E element (FY2026 $931.2M) — larger than the procurement half, which is why seeding only one would mislead"
+C-17,C01700,"#55 OWNER RATIFICATION 2026-08-27 (§1): C-17A, the AF procurement line (FY2026 $77.2M)"
+C-17,0401130F,"#55 OWNER RATIFICATION 2026-08-27 (§1): C-17 Aircraft (IF), the AF RDT&E element (FY2026 $80.9M)"
+F-15EX,F015EX,"#55 OWNER RATIFICATION 2026-08-27 (§1): F-15EX procurement (FY2026 $3,014.4M). The sharpest case in the fork — both lines carry the IDENTICAL title ""F-15EX"", so no title-based tiebreak exists at all"
+F-15EX,0207146F,"#55 OWNER RATIFICATION 2026-08-27 (§1): F-15EX RDT&E (FY2026 $80.4M), identically titled to the procurement line"
+GMLRS,6005C64400,"#55 OWNER RATIFICATION 2026-08-27 (§1): Guided MLRS Rocket (GMLRS), the Army procurement line (FY2026 $1,168.2M)"
+GMLRS,0205778A,"#55 OWNER RATIFICATION 2026-08-27 (§1): Guided Multiple-Launch Rocket System (GMLRS), the Army RDT&E element (FY2026 $33.3M)"
+LTAMDS,7265C12000,"#55 OWNER RATIFICATION 2026-08-27 (§1): Lower Tier Air and Missile Defense (AMD) Sensor, the Army procurement line (FY2026 $1,255.5M). No title anywhere spells ""LTAMDS"", so this term never entered the worksheet's candidate set"
+LTAMDS,0604114A,"#55 OWNER RATIFICATION 2026-08-27 (§1): Lower Tier Air Missile Defense (LTAMD) Sensor, the Army RDT&E element (FY2026 $210.4M)"
+Small Diameter Bomb,SDB000,"#55 OWNER RATIFICATION 2026-08-27 (§1): Small Diameter Bomb, the AF procurement line (FY2026 $41.5M). The unqualified term only — SDB002 ""Small Diameter Bomb II"" is a different weapon and belongs to the StormBreaker alias"
+Small Diameter Bomb,0207327F,"#55 OWNER RATIFICATION 2026-08-27 (§1): Small Diameter Bomb (SDB), the AF RDT&E element (FY2026 $24.8M)"
+Small Diameter Bomb,0604329N,"#55 OWNER RATIFICATION 2026-08-27 (§1): Small Diameter Bomb (SDB), the Navy RDT&E element (FY2026 $23.8M)"
