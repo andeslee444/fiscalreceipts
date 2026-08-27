@@ -8498,12 +8498,17 @@ Re-measured on the page grain, fenced to PB2026: FY2025-only is 159, and
 FY2024-or-FY2025 -- the definition the entry's own headline uses, and the only
 one that reproduces its per-service counts -- is 319 (160 last funded FY2024,
 159 FY2025). Cross-check against the numbers the entry filed: Air Force 77
-(77), Navy 69 (69), OSD 18 (18), DARPA 14 (14) exact; Army 113 against 115,
-the two-line difference being pe_blis with no /program/ page to render a note
-on (backlog #28/D5, not this leg's). The 165 was not weakened -- it was
-measuring a different thing, and both it and 190 would have been unsatisfiable
-against a per-page, per-edition predicate. This is recorded rather than
-quietly swapped because the previous correction exists for the same reason.
+(77), Navy 69 (69), OSD 18 (18), DARPA 14 (14) exact. Army measures 113 against
+115, and 115 COULD NOT BE REPRODUCED -- modal-org attribution, any-org
+attribution, and requiring the disqualifying FY2026 row to carry money rather
+than merely exist all return 113, and all 319 retired pe_blis do have a
+/program/ page, so it is not a missing-page effect. The floor is set at the
+measured number, not at the filed one: a floor of 115-worth-of-Army that true
+data cannot meet is not a tight gate, it is a broken one. The 165 was not
+weakened either -- it was measuring a different thing, and both it and 190
+would have been unsatisfiable against a per-page, per-edition predicate. All of
+this is recorded rather than quietly swapped, because the previous correction
+exists for exactly the same reason.
 
 A DESIGN CHOICE MADE AND THEN REVERSED, recorded because the first version
 would have gone soft. Check 6 ("names no other program element") was first

@@ -903,9 +903,15 @@ docs/superpowers/ROADMAP.md`.
     entry's own headline uses, and the only one that reproduces its per-service
     figures — is **319**. That measurement is what the shipped gate uses. The
     per-service check against this entry's numbers: Air Force 77 (77), Navy 69
-    (69), OSD 18 (18), DARPA 14 (14) — exact; Army **113** against the 115 filed
-    here, the two-line difference being pe_blis with no `/program/` page, which
-    is #28/D5 territory and not this note's. Plus 28 across the smaller
+    (69), OSD 18 (18), DARPA 14 (14) — exact. **Army measures 113 against the
+    115 filed here, and the 115 could not be reproduced.** Every variant tried
+    returns 113: modal-org attribution, any-org attribution (a pe_bli counted
+    under each org it has rows in), and requiring the disqualifying FY2026 row
+    to carry money rather than merely exist. It is not a missing-page effect
+    either — all 319 retired pe_blis have a `/program/` page, checked. So the
+    entry's Army figure is two lines generous by a measurement this task could
+    not recover, and **the shipped number is the measured one**: publish the
+    smaller true number and label it a correction. Plus 28 across the smaller
     components (SOCOM 6, MDA 6, DISA 3, DCSA 3, DTRA 2, DEFW 2, and one each for
     DCAA, CYBER, TJS, CBDP, DHA, DLA) that the entry never enumerated.
 
