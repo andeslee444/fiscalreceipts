@@ -9910,3 +9910,37 @@ pages and would have spent ~22 gzip bytes against /data/'s 330 and
 /companies/families/'s 496. Re-measured after the change: /data/ 13,170 (was
 13,174), /companies/families/ 25,504 (was 25,506) -- both a hair lighter,
 neither touched by this work.
+
+--------------------------------------------------------------------------------
+gate 23 LEG (e1) -- CAUGHT THE NEW PAGE ON THE FIRST POST-COMMIT BUILD
+--------------------------------------------------------------------------------
+
+Adding /lineage/ to CROSS_PAGE_INDEXES was meant as a strengthening. It found a
+real defect immediately, on the shipped artifact, with no injection at all:
+
+  gate 23 basis: scanning 2016 program pages; leg a1: all 80914 program-page
+  figures carry basis attrs ok; leg a2 (attribute path): no unreconciled
+  collisions ok; ERRORS: leg e1 index basis declaration: 50 problem(s):
+    /lineage/: figure "$34.3M" declares basis=toa in an attribute but the page
+      never says "P-1/R-1 TOA" where a reader can see it
+    /lineage/: figure "$125.5M" declares basis=toa in an attribute but the page
+      never says "P-1/R-1 TOA" where a reader can see it
+    ... and 48 more
+  -> FAIL
+
+  overall: 23/24 gates PASS, gate 23 FAIL
+
+All 50 of the page's figures. The table's money-column header carried the
+visible label, but the figures ALSO enter leg e1's per-figure form (any
+[data-amount][data-entity] with basis attributes), which requires the surface to
+carry a [data-basis-declared] element -- and the page carried none. An index
+publishing program figures on a basis it never names is exactly what that leg
+was written for; the gate was right and the page was wrong.
+
+Fixed by declaring it twice: on the money column's own <th>, so the declaration
+sits on the column it governs, and once in the lede's prose, so a reader who
+never opens the table view is still told. Not by relaxing the leg, and not by
+dropping /lineage/ back out of CROSS_PAGE_INDEXES -- which would have made the
+failure disappear while leaving 80 undeclared program figures on a live page.
+Leg (e2) -- those values agreeing with each /program/ page on that basis --
+passed in the same run and is unchanged.
