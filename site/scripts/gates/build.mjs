@@ -94,19 +94,19 @@ export const PAGE_WEIGHT_BUDGET = [
   // CURRENT proportional headroom would hand the next change the same
   // cliff. Gate 1's near-ceiling note (added 2026-08-14) is what stops
   // this recurring silently.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,679,496 / 282,201" },
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "31,765 / 6,365" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,502,947 / 77,147" },
-  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,255,520 / 82,058" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,551 / 67,130" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,202 / 28,199" },
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,384 / 25,390" },
-  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "92,468 / 13,152" },
+  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,679,496 / 279,306" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "31,765 / 6,401" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,502,947 / 76,765" },
+  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,255,520 / 79,852" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,551 / 67,149" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,202 / 28,163" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,384 / 25,506" },
+  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "92,468 / 13,174" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
   // round-number guess.
-  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "180,412 / 47,253" },
+  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "180,412 / 45,303" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -135,7 +135,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Restoring ~6% headroom against the new measurement (the /programs/
   // Sprint E rule: re-baselining to the CURRENT proportional headroom hands
   // the next change the same cliff), not a round-number guess.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "132,816 / 36,175" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "132,816 / 36,156" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -156,12 +156,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // Both ceilings re-derived at the SAME proportional headroom the previous
   // pair carried (raw ×1.0708, gzip ×1.0742), so the budget still catches
   // unintended growth from here rather than being merely widened.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "90,282 / 16,540" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "90,282 / 16,574" },
   // Templated classes — the heaviest built instance of each.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 111,886 (/agency/F/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,222 / 142,041 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "374,061 / 22,734 (/company/general-electric/)" },
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "301,669 / 26,484 (/filing/e4077ecc/)" },
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 110,085 (/agency/F/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,108,222 / 142,263 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "379,375 / 22,242 (/company/boeing/)" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "315,382 / 21,852 (/filing/82b97e10/)" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */

@@ -9377,31 +9377,48 @@ cites its document.
 
 GATE COUNT: unchanged -> 24. verify-lineage is its own CLI, not an npm gate.
 
-PAGE WEIGHT, re-measured rather than re-ceilinged. Not one ceiling moved. The
-lineage layer's growth (29 -> 49 edges, 22 -> 32 families) lands on /programs/
-(+2,896 gzip, family glyphs for ten more families) and /data/ (+98 gzip, the
-jbook_narratives row count and its scope sentence). /program/*/ heaviest did
-not move at all -- 0601102A carries no new rail.
+PAGE WEIGHT, re-measured rather than re-ceilinged. Not one ceiling moved.
 
-The /data/ scope sentence was written twice. The first version cost ~170 gzip
-bytes and left 277 of the page's 446; it was cut to "Fenced to the PB2026
+THE FIRST VERSION OF THIS SECTION WAS WRONG, and how it went wrong is worth
+more than what it said. I measured every page with a Python script --
+`gzip.compress(bytes, 9)` -- instead of with the gate's own `weigh()`
+(`zlib.gzipSync(buf, {level: 9})` in build.mjs) and its own heaviest-page rule
+(RAW size picks the candidate, then that one is gzipped). Python and Node's
+zlib do not produce byte-identical output, and gzip-heaviest is not
+raw-heaviest. So the script reported /programs/ at 282,201 when the gate reads
+279,306, and named general-electric and a filing the gate does not pick.
+
+On that bad measurement I wrote, in this file, that six annotations were
+"already stale from work that never touched them", with / off by 2,181 and
+/agency/ by 1,972. None of that was true. Every pre-existing annotation was
+accurate to within ~50 bytes of what the gate reads. I then "refreshed" all
+fifteen to my wrong numbers and committed them -- making the one file whose
+whole purpose is to stop page-weight facts rotting less accurate than I found
+it. Both are corrected below, measured by importing PAGE_WEIGHT_BUDGET from
+build.mjs and calling the gate's own logic.
+
+This is the same defect this repo has now recorded three times: a predicate
+re-implemented alongside the thing it checks, agreeing with itself and not
+with the artifact. It cost nothing here only because the drift leg fires on
+OVERSTATED headroom past 2x and my errors were mostly understatements. It
+would have quietly misinformed the next person, which is exactly what that
+leg was written to stop.
+
+WHAT THE LINEAGE CHANGE ACTUALLY MOVED, per the gate:
+  /data/                92,468 / 13,174   was 13,054   +120  (97.6%, 326 left)
+  /program/*/ heaviest 1,108,222 / 142,263 was 142,045 +218  (94.2%, 8,737 left)
+Everything else moved by under 50 bytes; /programs/ moved by ONE. The
+22 -> 32 family growth is invisible at the index because the family glyph was
+already rendered for every threaded row.
+
+The /data/ scope sentence was still written twice. The first version cost
+~170 gzip bytes of the page's 446; it was cut to "Fenced to the PB2026
 edition, plus the PB2017-PB2025 narratives a program-lineage edge cites --
 citation targets only, never a program page's own prose", which says the same
-thing and leaves 348. Recorded here so the next person does not re-run the
-experiment: /data/ is at 97.4% of its ceiling and one more dataset card will
-break it.
+thing for less. /data/ now sits at 97.6% with 326 bytes left: one more dataset
+card breaks it.
 
-All fifteen `measured` strings were refreshed off this build, as the file's own
-2026-08-14 refresh did. Six were already stale from work that never touched
-them -- /, /agency/, /agency/*/, /company/*/, /filing/*/, /companies/families/
--- and two of those had drifted the wrong way by more than this change did
-(/ +2,181, /agency/ +1,972). The drift leg tolerated all of them (none past
-2x overstated headroom) and gate 1 passed before and after, so nothing here
-was hiding a failure; the annotations were simply older than the build.
-/company/*/ and /filing/*/ also changed WHICH page is heaviest, so their
-parenthetical page names were corrected too.
-
-  /programs/            2,679,496 / 282,201   (95.0% of gzip ceiling)
-  /data/                   92,468 /  13,152   (97.4%)
-  /methodology/           132,816 /  36,175   (98.0%)
-  /program/*/ heaviest  1,108,222 / 142,041   (94.1%, /program/0601102A/)
+/company/*/ and /filing/*/ annotations also had the wrong parenthetical page
+names -- not from drift, but because the gate picks the RAW-heaviest page and
+I had recorded the gzip-heaviest. Corrected to /company/boeing/ and
+/filing/82b97e10/.
