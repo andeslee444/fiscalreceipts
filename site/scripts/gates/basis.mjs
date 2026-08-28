@@ -211,6 +211,16 @@ const footnoteModulePath = path.resolve(siteRoot, "src", "lib", "footnote.ts");
 const BOOTSTRAP_COLLISION_PAGE = "ATA000";
 const MAX_LISTED = 10;
 
+/** USD thousands → a short $M/$B string, for gate ERROR MESSAGES only. */
+function fmtK(thousands) {
+  const n = Number(thousands);
+  if (!Number.isFinite(n)) return String(thousands);
+  const abs = Math.abs(n);
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}B`;
+  if (abs >= 1e3) return `$${(n / 1e3).toFixed(1)}M`;
+  return `$${n.toFixed(1)}K`;
+}
+
 // ── Leg (e) — cross-page "one label, one basis" ──────────────────────────────
 //
 // Legs a/b are INTRA-page: they cannot see that /programs/ said $5.25B for
@@ -1612,12 +1622,41 @@ function runExhibitAgreementLeg(pages, errors, notes) {
 // — kept as its own function rather than folded into this one because its
 // ground truth (feed.json) and its page (out/feed/index.html) are both
 // singular, unlike the per-page loop g1-g3 run.
+//
+// LEG (g5) — THE RECONCILIATION STRIP MUST NOT CREDIT THE GAP TO ADVANCE
+// PROCUREMENT (§P0-3, added 2026-08-28).
+//
+// The shipped defect, on /program/834130/: the strip stated a TOA↔J-book gap
+// of $698.2M and explained it, via its shared mechanism sentence, as "budget
+// rows (such as advance procurement)". The warehouse says 834130 is disc
+// $294.7M + RECONCILIATION $698.2M. A [data-fy26-recon-chip] roughly 100px
+// above on the same screen read "$698.2M one-time reconciliation" — the same
+// number, two contradictory causes, one screen, both cited.
+//
+// Measured across the shipped sidecars: of 158 FY2026 rows this strip
+// renders, 151 have a gap fully accounted for by the reconciliation
+// appropriation and exactly ONE (B-21, B02100) is a genuine mix of $2,099.1M
+// reconciliation and $862.0M advance procurement. FY24 and FY25 rows close on
+// advance procurement exactly, which is why the defect was invisible: the
+// explanation is right in every year that has no reconciliation money.
+//
+// This leg checks the RENDERED PROSE, not the component's own branch
+// attribute. The truth is recomputed here from the sidecar's
+// summary.reconciliation delta and fy26_split.recon_k — and then the check is
+// against what a reader can actually see, because "the attribute says
+// reconciliation while the sentence says advance procurement" is precisely
+// the failure a mirror-the-component gate would wave through.
 const FY26_SPLIT_MIN_RESOLVED = 100;
+
+/** Minimum g5 resolutions before the leg is treated as VACUOUS. */
+const RECON_CAUSE_MIN_RESOLVED = 100;
 
 function runFy26SplitLeg(pages, errors, notes) {
   let resolved = 0;
+  let causeResolved = 0;
   const missingChip = [];
   const missingDiscRate = [];
+  const wrongCause = [];
 
   for (const { pe, htmlPath } of pages) {
     const sidecarPath = path.join(
@@ -1667,6 +1706,52 @@ function runFy26SplitLeg(pages, errors, notes) {
           `of the discretionary-only rate (${split.disc_pct_change}%)`,
       );
     }
+
+    // g5 — the reconciliation strip's FY2026 row must name the cause it has.
+    // Truth, recomputed here from the sidecar rather than read off the
+    // component's own branch attribute:
+    const fy26Entry = (sidecar.summary?.reconciliation || []).find(
+      (r) => r.fy === 2026 && r.measure === "request",
+    );
+    const reconK = Number(split.recon_k) || 0;
+    if (fy26Entry && reconK > 0) {
+      causeResolved++;
+      const remainderK = Number(fy26Entry.delta_thousands) - reconK;
+      // Does advance procurement genuinely explain any of this gap? Only when
+      // the reconciliation money falls short of it (B-21 is the one page).
+      const apIsReal = remainderK > 0.5;
+
+      // NOT [data-reconciliation]: Cite stamps that attribute on INDIVIDUAL
+      // figures whose (fy, measure) is a declared collision (cite.tsx), so
+      // that selector matches a single "$992.9M" span and the leg would read
+      // 8 characters of text and pass everything. Caught by running it. The
+      // strip's own root is the testid.
+      const strip = root.querySelector('[data-testid="reconciliation-strip"]');
+      if (!strip) {
+        wrongCause.push(
+          `/program/${pe}/: sidecar has an FY2026 reconciliation row but the ` +
+            `built page renders no reconciliation strip`,
+        );
+      } else {
+        const stripText = (strip.text ?? "").replace(/\s+/g, " ");
+        if (!/reconciliation/i.test(stripText)) {
+          wrongCause.push(
+            `/program/${pe}/: the strip explains a ${fmtK(fy26Entry.delta_thousands)} ` +
+              `FY2026 gap without once naming the ${fmtK(reconK)} reconciliation ` +
+              `appropriation that accounts for it`,
+          );
+        }
+        if (!apIsReal && /advance procurement/i.test(stripText)) {
+          wrongCause.push(
+            `/program/${pe}/: the strip credits advance procurement for an ` +
+              `FY2026 gap of ${fmtK(fy26Entry.delta_thousands)} that the ` +
+              `${fmtK(reconK)} reconciliation appropriation accounts for in full ` +
+              `(remainder ${fmtK(remainderK)}) — the same number the ` +
+              `[data-fy26-recon-chip] on this page calls reconciliation`,
+          );
+        }
+      }
+    }
   }
 
   if (missingChip.length > 0) {
@@ -1697,6 +1782,31 @@ function runFy26SplitLeg(pages, errors, notes) {
     notes.push(
       `leg g2: every rendered combined FY25→FY26 change on a reconciliation` +
         `-affected program is accompanied by the discretionary rate ✓`,
+    );
+  }
+
+  if (wrongCause.length > 0) {
+    errors.push(
+      `leg g5 reconciliation cause: ${wrongCause.length} program page(s) ` +
+        `explain an FY2026 TOA↔J-book gap as advance procurement when the ` +
+        `reconciliation appropriation accounts for it (first ${MAX_LISTED}):`,
+    );
+    for (const m of wrongCause.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (wrongCause.length > MAX_LISTED)
+      errors.push(`  ... and ${wrongCause.length - MAX_LISTED} more`);
+  } else {
+    notes.push(
+      `leg g5: ${causeResolved} FY2026 reconciliation strip row(s) name the ` +
+        `cause the sidecar actually carries ✓`,
+    );
+  }
+
+  if (causeResolved < RECON_CAUSE_MIN_RESOLVED) {
+    errors.push(
+      `leg g5 is VACUOUS: only ${causeResolved} page(s) resolved an FY2026 ` +
+        `reconciliation strip row with recon_k > 0 (need ≥ ` +
+        `${RECON_CAUSE_MIN_RESOLVED}) — the selector or the sidecar field is ` +
+        `not matching the built pages`,
     );
   }
 
@@ -2353,6 +2463,111 @@ function runCoverageDisclosureLeg(errors, notes) {
     notes.push(
       `leg h4: non-vacuous — all ${KNOWN_COLLISION_KEYS_H4.length} known #56 ` +
         `collision keys independently confirmed correctly disclosed ✓`,
+    );
+  }
+
+  runCoverageScopeLeg(truth, errors, notes);
+}
+
+// LEG (h6) — A COVERAGE PERCENTAGE MUST NAME THE UNIVERSE IT IS A PERCENTAGE
+// OF (§P0-4, added 2026-08-28)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// /programs/ shipped: "$228.7B of the $385.3B FY2026 request (59.4%)". Both
+// dollar figures are real <Cite>s, both resolve to real workbook facts, and
+// 228.7/385.3 really is 59.4%. The sentence is still false, because that
+// $385.3B is P-1 ($205.01B) + R-1 ($180.26B) and nothing else — procurement
+// and RDT&E. The FY2026 DoD request is roughly twice it. So a reader is told
+// the site covers 59.4% of "the FY2026 request" when it covers 59.4% of about
+// a quarter of defense spending, and the site's most prominent self-assessment
+// overstates its own reach by a factor of two.
+//
+// The general form, which is what makes this leg worth having: a percentage is
+// a claim about its DENOMINATOR, and a denominator that names a scope it does
+// not have is a false claim no number-vs-citation check can see — both numbers
+// are right and the ratio between them is right.
+//
+// Truth comes from universe_by_exhibit in the recompute above, read from
+// fct_budget_lines. Neither side hardcodes which exhibits exist: if an O&M or
+// MilPers family is ever ingested, the recompute grows a row and this leg
+// starts requiring the page to say so.
+
+/** exhibit code → the words a reader would recognise it by. */
+const EXHIBIT_WORDS = {
+  "P-1": [/procurement/i],
+  "R-1": [/RDT&(amp;)?E|research,? development/i],
+};
+
+function runCoverageScopeLeg(truth, errors, notes) {
+  const universe = truth.universe_by_exhibit || [];
+  if (universe.length === 0) {
+    errors.push(
+      "leg h6: the recompute returned no universe_by_exhibit rows — the scope " +
+        "of the /programs/ denominator cannot be checked",
+    );
+    return;
+  }
+
+  const pagePath = path.join(outDir, "programs", "index.html");
+  if (!fs.existsSync(pagePath)) {
+    notes.push("leg h6: out/programs/index.html not found (SKIP)");
+    return;
+  }
+  let scopeEl;
+  try {
+    const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+    scopeEl = root.querySelector("[data-programs-coverage-pct]");
+  } catch (e) {
+    errors.push(`leg h6: failed to parse /programs/ (${e.message})`);
+    return;
+  }
+  if (!scopeEl) {
+    errors.push(
+      "leg h6: /programs/ renders no [data-programs-coverage-pct] element — " +
+        "the dollar-denominated coverage claim has no hook to check",
+    );
+    return;
+  }
+
+  const text = (scopeEl.text ?? "").replace(/\s+/g, " ").trim();
+  const totalK = universe.reduce((a, r) => a + r.amount_thousands, 0);
+  const composition = universe
+    .map((r) => `${r.exhibit} $${(r.amount_thousands / 1e6).toFixed(2)}B`)
+    .join(" + ");
+
+  // Every exhibit family the denominator is built from has to be nameable in
+  // the sentence, IN WORDS A READER KNOWS.
+  //
+  // Deliberately NOT satisfied by the bare exhibit code. The first draft of
+  // this leg accepted `text.includes("P-1")` as a fallback, and the pre-fix
+  // page passed the P-1 half of the check on the incidental clause "absent
+  // even when they are large and even when they are P-1" — a sentence about
+  // what is MISSING, being read as a statement of what the denominator IS.
+  // A reader who does not already know that P-1 means procurement learns
+  // nothing from the code, which is the entire point of the correction.
+  const unnamed = universe.filter((r) => {
+    const pats = EXHIBIT_WORDS[r.exhibit];
+    // An exhibit family with no reader-facing words registered here can only
+    // be matched by its code — better than nothing, and it fails loudly the
+    // first time a new family appears, which is when someone should look.
+    if (!pats) return !new RegExp(r.exhibit.replace("-", "[- ]?"), "i").test(text);
+    return !pats.some((p) => p.test(text));
+  });
+
+  if (unnamed.length > 0) {
+    errors.push(
+      `leg h6 coverage scope: /programs/ denominates its coverage against a ` +
+        `$${(totalK / 1e6).toFixed(1)}B universe that is exactly ${composition}, ` +
+        `but the sentence never names ${unnamed
+          .map((r) => r.exhibit)
+          .join(", ")} — so "the FY2026 request" reads as the whole defense ` +
+        `request, which is roughly twice this. Rendered: "${text.slice(0, 220)}"`,
+    );
+  } else {
+    notes.push(
+      `leg h6 coverage scope: /programs/ names all ${universe.length} exhibit ` +
+        `families behind its $${(totalK / 1e6).toFixed(1)}B denominator ` +
+        `(${composition}) ✓`,
     );
   }
 }

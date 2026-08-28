@@ -684,6 +684,147 @@ function runSyndicationLegs(errors, notes) {
 
   // ── (k) company-feed items state their linkage basis ──────────────────────
   runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug);
+
+  // ── (m) a change claim cannot ship without its basis qualifier ────────────
+  runSyndicatedQualifierLeg(errors, notes, targets, docs);
+}
+
+/**
+ * leg m — A PERCENTAGE-CHANGE CLAIM MAY NOT SHIP WITHOUT ITS BASIS QUALIFIER,
+ * ANYWHERE, INCLUDING IN THE SYNDICATED PAYLOAD (§P0-2).
+ *
+ * THE DEFECT. FY2026 is abnormal: $89.01B of the $385.27B request is one-time
+ * reconciliation-bill money. Program pages carry a split chip. /feed/ cards
+ * carry a split chip. The FEEDS carried nothing — measured on the shipped
+ * build, rss.xml held 223 items and the string "reconciliation" ZERO times.
+ *
+ * The worst item shipped as:
+ *   "Long Range Kill Chains increased 3053% FY25→26 — FY2025 $244.1M →
+ *    FY2026 $7.70B (+$7.45B, +3053%)"   Basis: toa (PB2026), change.
+ *   Receipt: fact 2b159bea
+ * PE 1203154SF's FY2026 request is $1.916M discretionary + $7,695.0M
+ * reconciliation. The discretionary request FELL 99.2%. The claim is the
+ * opposite of what happened, every figure in it is true, and it carries a
+ * working receipt to prove each one.
+ *
+ * WHY THIS IS THE LEG WORTH HAVING. Gate 23 leg g4a/g4b already require the
+ * chip on the /feed/ PAGE. This one covers the payload that LEAVES the site,
+ * where no chip, no CSS and no adjacent element can travel with the sentence —
+ * an aggregator shows a title and maybe a description, and the qualifier has
+ * to be inside them or it does not exist. That is the same argument leg (k)
+ * makes for linkage, applied to the accounting basis.
+ *
+ * TRUTH SOURCE: feed.json's own fy26_split per card — the payload the mart
+ * computed and the page renders. The gate does not re-derive the split (that
+ * would be a second derivation of one number, the defect that produced two
+ * contradictory explanations of $698.2M on one program page); it asserts the
+ * SYNDICATED TEXT carries what the payload says, in both the title and the
+ * description, and that the machine-readable element agrees.
+ *
+ * NON-VACUITY: the leg must find items that genuinely carry a reconciliation
+ * component, and it must find at least one whose discretionary direction
+ * DISAGREES with its headline — the case it exists for. A corpus with no such
+ * item is possible in a future edition, which is why the disagreement floor is
+ * conditional on the recompute rather than a hardcoded expectation.
+ */
+function runSyndicatedQualifierLeg(errors, notes, targets, docs) {
+  let itemsWithSplit = 0;
+  let contradictions = 0;
+  let elementsChecked = 0;
+  const problems = [];
+
+  for (const t of targets) {
+    const doc = docs.get(t.rssPath);
+    if (!doc) continue;
+    const cards = new Map(cardsByGuidFor(t));
+    for (const item of doc.getElementsByTagName("item")) {
+      const guid = item.getElementsByTagName("guid")[0]?.textContent ?? "";
+      const card = cards.get(guid);
+      if (!card) continue;
+      const split = card.fy26_split;
+      if (!split?.has_reconciliation || !(Number(split.recon_k) > 0)) continue;
+      itemsWithSplit++;
+
+      const title = item.getElementsByTagName("title")[0]?.textContent ?? "";
+      const desc = item.getElementsByTagName("description")[0]?.textContent ?? "";
+      const short = guid.slice(-44);
+
+      // The title is the only part guaranteed to survive syndication.
+      if (!/reconciliation/i.test(title)) {
+        problems.push(
+          `${t.rssPath}: item ${short} states a change on a program whose ` +
+            `FY2026 request is ${(split.recon_share * 100).toFixed(1)}% one-time ` +
+            `reconciliation money, and its TITLE never says so: "${title.slice(0, 150)}"`,
+        );
+      }
+      if (!/reconciliation/i.test(desc)) {
+        problems.push(
+          `${t.rssPath}: item ${short} description omits the reconciliation ` +
+            `split entirely`,
+        );
+      }
+
+      // Where a like-for-like discretionary rate exists, it must travel too —
+      // and where it points the OTHER WAY from the headline, that is the
+      // whole reason this leg exists.
+      if (split.disc_pct_change != null) {
+        const rate = split.disc_pct_change.toFixed(1);
+        const headlineUp = /increas|\+\s*\d/.test(card.headline ?? "");
+        if (headlineUp && split.disc_pct_change < 0) contradictions++;
+        if (!title.includes(rate) && !desc.includes(rate)) {
+          problems.push(
+            `${t.rssPath}: item ${short} ships a combined change with no ` +
+              `discretionary rate (${rate}%) in either title or description — ` +
+              `headline: "${(card.headline ?? "").slice(0, 90)}"`,
+          );
+        }
+      }
+
+      const el = item.getElementsByTagNameNS(FR_NS, "reconciliation");
+      if (el.length === 0) {
+        problems.push(
+          `${t.rssPath}: item ${short} carries no <fr:reconciliation> element`,
+        );
+      } else {
+        elementsChecked++;
+        const got = Number(el[0].getAttribute("recon-value"));
+        if (Math.abs(got - Number(split.recon_k)) > 0.5) {
+          problems.push(
+            `${t.rssPath}: item ${short} <fr:reconciliation recon-value="${got}"> ` +
+              `disagrees with feed.json's recon_k ${split.recon_k}`,
+          );
+        }
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    errors.push(
+      `feed leg m: ${problems.length} syndicated item claim(s) ship a change ` +
+        `without the reconciliation qualifier that makes them readable:`,
+    );
+    for (const p of problems.slice(0, 12)) errors.push(`  ${p}`);
+    if (problems.length > 12)
+      errors.push(`  ... and ${problems.length - 12} more`);
+    return;
+  }
+
+  if (itemsWithSplit === 0) {
+    errors.push(
+      "feed leg m is VACUOUS: no syndicated item resolved a card with " +
+        "fy26_split.has_reconciliation — the selector or the payload field is " +
+        "not matching, and this leg would not catch the defect it exists for",
+    );
+    return;
+  }
+
+  notes.push(
+    `leg m: ${itemsWithSplit} syndicated item(s) on reconciliation-affected ` +
+      `programs carry the split in title, description and ` +
+      `<fr:reconciliation> (${elementsChecked} element(s) agree with ` +
+      `feed.json); ${contradictions} of them headline an increase whose ` +
+      `discretionary rate is negative and now say so ✓`,
+  );
 }
 
 /**

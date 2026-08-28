@@ -10039,3 +10039,112 @@ confess a backlog; it requires the page's claim to match the reconciliation in
 BOTH directions. When the ingestion lands and `unparsed` reaches 0, the backlog
 sentence becomes the false one and this leg fails on THAT -- so today's
 correction cannot rot into tomorrow's opposite error.
+
+--------------------------------------------------------------------------------
+gate 23 LEG (g5) -- THE RECONCILIATION STRIP'S CAUSE               [P0-3]
+--------------------------------------------------------------------------------
+
+WHAT WAS LIVE on /program/834130/: the strip stated a TOA<->J-book gap of
+$698.2M and explained it, through its shared mechanism sentence, as "budget
+rows (such as advance procurement) that the R-2/P-40 J-book program line
+excludes".
+
+WHAT IS TRUE: 834130 is disc $294.7M + RECONCILIATION $698.2M = $992.9M. The
+gap IS the reconciliation money, to the dollar. A [data-fy26-recon-chip] about
+100px above on the same screen already read "$698.2M one-time reconciliation".
+The same number, two contradictory causes, one screen, both cited.
+
+MEASURED ACROSS THE SHIPPED SIDECARS -- the population, before writing any
+branch, because a fix written against one example is a guess:
+
+  158  FY2026 rows the strip renders
+  146  gap == reconciliation exactly
+    5  reconciliation LARGER than the gap (the J-book line already carries
+       some of it -- asserting an "advance procurement remainder" for these
+       would fabricate a negative fact, so the leg and the component both
+       refuse to decompose them)
+    1  a genuine mix: B-21 (B02100), $2,961.1M gap = $2,099.1M reconciliation
+       + $862.0M advance procurement
+    6  no reconciliation at all -- advance procurement is the true cause and
+       the wording is left alone
+
+WHY IT WAS INVISIBLE: FY24 and FY25 close on advance procurement exactly. The
+sentence is correct in every year that has no reconciliation money, and FY2026
+is the first year that has any.
+
+VERBATIM FAIL against the real pre-fix out/program/*/ pages:
+
+  gate 23 basis
+  ERROR leg g5 reconciliation cause: 303 program page(s) explain an FY2026 TOA↔J-book gap as advance procurement when the reconciliation appropriation accounts for it (first 10):
+  ERROR   /program/000999/: the strip explains a $1.02B FY2026 gap without once naming the $1.02B reconciliation appropriation that accounts for it
+  ERROR   /program/000999/: the strip credits advance procurement for an FY2026 gap of $1.02B that the $1.02B reconciliation appropriation accounts for in full (remainder $0.0K) — the same number the [data-fy26-recon-chip] on this page calls reconciliation
+  ERROR   /program/0010I24000/: the strip explains a $386.8M FY2026 gap without once naming the $386.8M reconciliation appropriation that accounts for it
+  ERROR   /program/0010I24000/: the strip credits advance procurement for an FY2026 gap of $386.8M that the $386.8M reconciliation appropriation accounts for in full (remainder $0.0K) — the same number the [data-fy26-recon-chip] on this page calls reconciliation
+  ERROR   ... and 293 more
+
+  303 = 151 pages x 2 errors + B-21 x 1 (its advance-procurement remainder is
+  REAL, so the AP error correctly does not fire on it and only the
+  "never names reconciliation" error does). That arithmetic matching the
+  independently measured population is the evidence the leg is selecting the
+  right rows, not merely selecting a lot of them.
+
+A DEFECT IN THE FIRST DRAFT OF THE LEG, caught by running it. It selected the
+strip with querySelector("[data-reconciliation]"), the attribute named in the
+component's own docblock. But cite.tsx ALSO stamps data-reconciliation on
+INDIVIDUAL figures whose (fy, measure) is a declared collision -- so the
+selector matched one "$992.9M" span, the leg read 8 characters of text, and
+only 152 of the 303 errors fired. A gate that reads the wrong element passes
+things it should catch. Fixed to the strip's own
+[data-testid="reconciliation-strip"] root before the FAIL above was recorded.
+
+--------------------------------------------------------------------------------
+gate 8 LEG (m) -- THE QUALIFIER MUST TRAVEL WITH THE CLAIM          [P0-2]
+--------------------------------------------------------------------------------
+
+The most valuable of the six, because it guards the payload that LEAVES the
+site. Gate 23 legs g4a/g4b already require the reconciliation chip on the
+/feed/ PAGE. Nothing checked the feeds, and the feeds are what an aggregator
+shows: a title, maybe a description, no CSS, no adjacent element, nothing that
+a chip can ride on.
+
+WHAT WAS LIVE: curl https://fiscalreceipts.com/rss.xml -> 223 items, ZERO
+occurrences of "reconciliation". The worst item:
+
+  <title>Long Range Kill Chains increased 3053% FY25→26 — FY2025 $244.1M →
+         FY2026 $7.70B (+$7.45B, +3053%)</title>
+  <description>... Basis: toa (PB2026), change. ...
+               Receipt: fact 2b159bea ...</description>
+
+WAREHOUSE TRUTH for 1203154SF: fy_2026_disc_request $1.916M,
+fy_2026_reconciliation_request $7,695.0M, fy_2026_total $7,696.9M, against
+FY2025 enacted $244.121M. THE DISCRETIONARY REQUEST FELL 99.2%. The item says
+it rose 3053%, carries a basis note, and links a working receipt for every
+figure in it. All of them are true.
+
+VERBATIM FAIL against the real pre-fix out/rss.xml, out/atom.xml, out/feed.xml
+and every per-event and per-program/company feed:
+
+  gate 8 feed
+  ERROR feed leg m: 564 syndicated item claim(s) ship a change without the reconciliation qualifier that makes them readable:
+  ERROR   /rss.xml: item receipts:feed:yoy_swing:0207253F/F:2026:2026 states a change on a program whose FY2026 request is 100.0% one-time reconciliation money, and its TITLE never says so: "Compass Call decreased 52% FY25→26 — FY2025 $132.5M → FY2026 $63.1M (−$69.3M, −52%)"
+  ERROR   /rss.xml: item receipts:feed:yoy_swing:0207253F/F:2026:2026 description omits the reconciliation split entirely
+  ERROR   /rss.xml: item receipts:feed:yoy_swing:0207253F/F:2026:2026 ships a combined change with no discretionary rate (-100.0%) in either title or description — headline: "Compass Call decreased 52% FY25→26"
+  ERROR   /rss.xml: item receipts:feed:yoy_swing:0207253F/F:2026:2026 carries no <fr:reconciliation> element
+  ERROR   /rss.xml: item ts:feed:yoy_swing:0306250JCY/CYBER:2026:2026 states a change on a program whose FY2026 request is 47.6% one-time reconciliation money, and its TITLE never says so: "Cyber Operations Technology Support increased 79% FY25→26 — FY2025 $505.4M → FY2026 $903.0M (+$397.6M, +79%)"
+  ERROR   /rss.xml: item ts:feed:yoy_swing:0306250JCY/CYBER:2026:2026 ships a combined change with no discretionary rate (-6.3%) in either title or description — headline: "Cyber Operations Technology Support increased 79% FY25→26"
+  ERROR   ... and 552 more
+
+The leg found claims nobody had reported, of the same species: "Cyber
+Operations Technology Support increased 79%" ships on a program whose
+discretionary request FELL 6.3%.
+
+THE LEG CAUGHT A BUG IN ITS OWN FIX, FIRST RUN. The qualifier code passed the
+split's units string ("USD thousands", the site AmountUnits vocabulary)
+straight into formatCompactUsd, which speaks the card vocabulary
+("thousands_usd") and throws on anything else. Result:
+
+  ERROR feed leg f: could not rebuild the expected feed set — feed-model: unknown magnitude units "USD thousands"
+
+The entire feed build would have failed. Written, believed, and wrong -- which
+is the eleven-times-recorded failure mode in this repo, and the reason the leg
+is run before the fix is trusted rather than after.

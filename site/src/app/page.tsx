@@ -329,6 +329,26 @@ export default function HomePage() {
             {topMovers.map((p) => {
               const change = p.trajectory!.fy2526_change!;
               const isPos = change >= 0;
+              // §P0-2: all five of these movers are reconciliation-driven and
+              // three of them have FALLING discretionary money. A reader
+              // ranking "biggest funding swings" is entitled to know that the
+              // swing is one-time reconciliation-bill money before they click.
+              //
+              // Deliberately NOT a second computation of disc_pct_change: that
+              // rate is the exporter's (build_fy26_split), and two derivations
+              // of one number is how this site ended up explaining $698.2M two
+              // contradictory ways on one screen. What is rendered here is the
+              // SHARE, and a direction — a comparison of two figures already on
+              // this row. The like-for-like rate stays one click away on the
+              // program page, which is where it is computed.
+              const reconK = p.fy2026_reconciliation_toa_usd_thousands ?? 0;
+              const discK = p.fy2026_disc_toa_usd_thousands ?? 0;
+              const fy25K = p.trajectory?.fy2025_total ?? null;
+              const reconShare =
+                reconK > 0 && discK + reconK > 0
+                  ? (reconK / (discK + reconK)) * 100
+                  : null;
+              const discDown = fy25K != null && reconK > 0 && discK < fy25K;
               // NOTE: the Cite (role=button) must NOT nest inside the Link —
               // axe flags nested-interactive. Title links; figure sits beside it.
               return (
@@ -364,6 +384,16 @@ export default function HomePage() {
                     <span className="text-xs text-muted-foreground" title={`Organization code ${p.org}`}>
                       {serviceOrgName(p.org)}
                     </span>
+                    {reconShare != null && (
+                      <span
+                        data-mover-recon={reconShare.toFixed(1)}
+                        data-mover-disc-down={discDown ? "" : undefined}
+                        className="whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 text-[11px] leading-none text-muted-foreground"
+                      >
+                        {reconShare.toFixed(0)}% one-time reconciliation
+                        {discDown && " · discretionary down"}
+                      </span>
+                    )}
                   </Link>
                   <div
                     data-mobile-pair-value=""

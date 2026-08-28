@@ -129,8 +129,20 @@ export default function ProgramsPage() {
                 dataset="budget_lines"
                 factId={coverage.universe_fact_id}
               />{" "}
-              FY2026 request ({coverage.coverage_pct}%).
+              FY2026 procurement and RDT&amp;E request ({coverage.coverage_pct}
+              %).
             </strong>{" "}
+            {/* §P0-4: the denominator is P-1 + R-1 and nothing else. Both
+                figures were already cited and the ratio was already right;
+                the LABEL said "the FY2026 request", which a reader reads as
+                the whole defense request — roughly twice this. Naming the two
+                exhibits is the correction, and gate 23 leg (h6) recomputes the
+                universe's exhibit composition from fct_budget_lines and fails
+                the build if the sentence stops naming any family in it. */}
+            That denominator is the P-1 and R-1 workbooks only; military
+            personnel, operation and maintenance, military construction and
+            the other appropriation titles are outside this corpus entirely,
+            so this share is not a share of the whole defense budget.{" "}
             This index covers program elements that publish R-2/P-40 project
             detail, one page per program key. Lines without that detail are
             absent even when they are large and even when they are P-1; a

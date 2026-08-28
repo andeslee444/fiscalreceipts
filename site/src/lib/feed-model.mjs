@@ -417,6 +417,92 @@ export function linkageText(linkage) {
  * @param {{siteUrl: string, pubDate: string, programPages: Set<string>, companySlugByFamilyKey: Map<string,string>}} ctx
  * @param {{entity: string, bases: {id: string, label: string}[]}} [linkage]
  */
+/**
+ * §P0-2 — THE RECONCILIATION QUALIFIER HAS TO TRAVEL WITH THE CLAIM.
+ *
+ * FY2026 is abnormal: $89.01B of the $385.27B request is one-time
+ * reconciliation-bill money, not discretionary. Program pages and /feed/ cards
+ * both carry a split chip for it. The SYNDICATED payloads did not — measured
+ * on the shipped build, rss.xml held 223 items and the string "reconciliation"
+ * zero times.
+ *
+ * The worst item shipped as:
+ *   "Long Range Kill Chains increased 3053% FY25→26 — FY2025 $244.1M →
+ *    FY2026 $7.70B (+$7.45B, +3053%)"  ·  Basis: toa (PB2026), change.
+ * with a working receipt link. PE 1203154SF's FY2026 request is $1.916M
+ * discretionary and $7,695.0M reconciliation. The discretionary request FELL
+ * 99.2%. Every number in that title is true and the headline claim it makes is
+ * the opposite of what happened.
+ *
+ * A chip cannot save an item that has left the building. An RSS item is read
+ * detached from its page, in a reader's river, forwarded, quoted alone — which
+ * is exactly the argument leg (k) already makes for the linkage block. So the
+ * qualifier goes in the TITLE (the one part that always survives), in the
+ * description prose, and in a machine-readable fr:reconciliation element.
+ *
+ * Returns null when the card has no reconciliation component — never a
+ * fabricated zero-share qualifier on the ordinary majority of items.
+ */
+export function reconciliationQualifier(card) {
+  const split = card?.fy26_split;
+  if (!split?.has_reconciliation) return null;
+  const reconK = Number(split.recon_k) || 0;
+  if (reconK <= 0) return null;
+  // UNITS VOCABULARY. fy26_split sides carry the SITE's AmountUnits ("USD
+  // thousands"); formatCompactUsd here speaks the CARD's ("thousands_usd")
+  // and throws on anything else. Passing the split's string straight through
+  // took the whole feed build down with `unknown magnitude units "USD
+  // thousands"` — caught by leg m on its first run, which is the argument for
+  // running a leg before believing it.
+  const siteToCard = { "USD thousands": "thousands_usd", USD: "dollars" };
+  const rawUnits = split.reconciliation?.units ?? "USD thousands";
+  return {
+    reconK,
+    discK: Number(split.disc_k) || 0,
+    totalK: Number(split.total_k) || 0,
+    sharePct: split.recon_share != null ? split.recon_share * 100 : null,
+    discPctChange: split.disc_pct_change ?? null,
+    reconFactId: split.reconciliation?.fid ?? null,
+    discFactId: split.disc?.fid ?? null,
+    units: siteToCard[rawUnits] ?? rawUnits,
+  };
+}
+
+/**
+ * The short form that rides in the item TITLE. Kept to one clause: it has to
+ * survive being truncated by an aggregator, so the most load-bearing fact —
+ * that the discretionary direction differs — comes first where one exists.
+ */
+export function reconciliationTitleSuffix(q) {
+  if (!q) return "";
+  const money = formatCompactUsd(q.reconK, q.units);
+  if (q.discPctChange != null) {
+    const sign = q.discPctChange >= 0 ? "+" : "";
+    return ` — discretionary ${sign}${q.discPctChange.toFixed(1)}%; ${money} of this is one-time reconciliation money`;
+  }
+  return ` — includes ${money} of one-time reconciliation money`;
+}
+
+function reconciliationXml(q, siteUrl, indent) {
+  if (!q) return "";
+  const attrs = [
+    `recon-value="${escapeXml(String(q.reconK))}"`,
+    `recon-display="${escapeXml(formatCompactUsd(q.reconK, q.units))}"`,
+    `disc-value="${escapeXml(String(q.discK))}"`,
+    `disc-display="${escapeXml(formatCompactUsd(q.discK, q.units))}"`,
+    q.sharePct != null ? `recon-share-pct="${escapeXml(q.sharePct.toFixed(1))}"` : null,
+    q.discPctChange != null
+      ? `disc-pct-change="${escapeXml(q.discPctChange.toFixed(1))}"`
+      : null,
+    q.reconFactId ? `recon-fact="${escapeXml(q.reconFactId)}"` : null,
+    q.reconFactId
+      ? `recon-href="${escapeXml(factPermalink(siteUrl, q.reconFactId))}"`
+      : null,
+    q.discFactId ? `disc-fact="${escapeXml(q.discFactId)}"` : null,
+  ].filter(Boolean);
+  return `${indent}<fr:reconciliation ${attrs.join(" ")}/>\n`;
+}
+
 export function buildItem(card, ctx, linkage = null) {
   const base = trimSlash(ctx.siteUrl);
   const mag = card.magnitude ?? null;
@@ -430,9 +516,14 @@ export function buildItem(card, ctx, linkage = null) {
     card.event_type === "zeroed_fy2026" ||
     card.event_type === "concentration_shift" ||
     card.event_type === "request_vs_actuals_gap";
-  const title = magText && needsMagnitudeInTitle
+  // §P0-2: the split qualifier is part of the TITLE, not an enrichment of it.
+  // A percentage-change claim whose basis note stayed behind on the website is
+  // a false claim wherever the item lands.
+  const recon = reconciliationQualifier(card);
+  const titleBase = magText && needsMagnitudeInTitle
     ? `${card.headline} — ${magText}`
     : card.headline;
+  const title = `${titleBase}${reconciliationTitleSuffix(recon)}`;
   const receiptUrl = factPermalink(base, card.figure_fact_id);
   const link = itemLink(card, base, ctx);
   const whyUrl = `${base}${card.why_url}`;
@@ -447,6 +538,21 @@ export function buildItem(card, ctx, linkage = null) {
       `<p>Basis: ${escapeXml(card.basis)}${card.edition ? ` (PB${card.edition})` : ""}` +
         `${card.measure ? `, ${escapeXml(card.measure)}` : ""}.</p>`,
     );
+  }
+  // §P0-2: the split in prose, before the receipts, with both sides cited.
+  if (recon) {
+    const bits = [
+      `FY2026 split: ${formatCompactUsd(recon.discK, recon.units)} discretionary`,
+      `${formatCompactUsd(recon.reconK, recon.units)} one-time reconciliation`,
+    ];
+    let sentence = `${bits.join(" + ")}.`;
+    if (recon.discPctChange != null) {
+      const sign = recon.discPctChange >= 0 ? "+" : "";
+      sentence +=
+        ` Discretionary change vs FY2025 enacted: ${sign}${recon.discPctChange.toFixed(1)}%` +
+        " — the like-for-like rate, since FY2025 carries no reconciliation component.";
+    }
+    descParts.push(`<p>${escapeXml(sentence)}</p>`);
   }
   const linkText = linkageText(linkage);
   if (linkText) descParts.push(`<p>${escapeXml(linkText)}</p>`);
@@ -479,6 +585,7 @@ export function buildItem(card, ctx, linkage = null) {
     magnitudeText: magText,
     linkage,
     linkageText: linkText,
+    reconciliation: recon,
     card,
   };
 }
@@ -772,6 +879,8 @@ export function renderRss(target, siteUrl) {
     }
     const mx = magnitudeXml(it.magnitude, base, "      ");
     if (mx) out.push(mx.trimEnd());
+    const rx = reconciliationXml(it.reconciliation, base, "      ");
+    if (rx) out.push(rx.trimEnd());
     const lx = linkageXml(it.linkage, "      ");
     if (lx) out.push(lx.trimEnd());
     out.push("    </item>");
@@ -810,6 +919,8 @@ export function renderAtom(target, siteUrl) {
     out.push(`    <content type="html">${escapeXml(it.description)}</content>`);
     const mx = magnitudeXml(it.magnitude, base, "    ");
     if (mx) out.push(mx.trimEnd());
+    const rx = reconciliationXml(it.reconciliation, base, "    ");
+    if (rx) out.push(rx.trimEnd());
     const lx = linkageXml(it.linkage, "    ");
     if (lx) out.push(lx.trimEnd());
     out.push("  </entry>");

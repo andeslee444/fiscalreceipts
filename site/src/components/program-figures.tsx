@@ -403,8 +403,15 @@ export function ProgramFigures({
         ))}
       </div>
 
-      {/* §P0-1: the declared two-basis reconciliation, both receipts */}
-      <ReconciliationStrip entries={summary.reconciliation} />
+      {/* §P0-1: the declared two-basis reconciliation, both receipts.
+          §P0-3: the split goes in too, so the FY2026 row can name the cause
+          it actually has instead of inheriting "advance procurement" from the
+          shared sentence — the same payload the chip above renders, so the
+          two statements of $698.2M on this screen cannot disagree. */}
+      <ReconciliationStrip
+        entries={summary.reconciliation}
+        fy26Split={fy26Split}
+      />
 
       {/* ROADMAP #32a: PB2026 requests nothing here — say so, and say what
           that does and does not mean. Sits directly under the cards it

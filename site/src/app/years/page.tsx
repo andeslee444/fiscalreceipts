@@ -73,6 +73,25 @@ export default function YearsPage() {
           <p className="mb-2 text-sm font-medium text-foreground">
             All figures in USD millions.
           </p>
+          {/* §P0-2: the grid OPENS on the FY2026 request column, and that
+              column is discretionary + one-time reconciliation money with no
+              seam. YearsMatrix already carries this caveat — but only on the
+              %Δ legend, which renders only while the %Δ column is visible,
+              and the grid does not open with it visible. So the qualifier was
+              absent from the default view of the page and from its server
+              -rendered HTML entirely ("reconciliation" appeared zero times).
+              Stated here, beside the unit statement, where it is unconditional
+              and travels with the column a reader actually lands on. */}
+          <p
+            data-fy26-combined-note=""
+            className="mb-2 text-xs leading-5 text-muted-foreground"
+          >
+            FY2026 request figures are the combined total — the discretionary
+            request plus one-time reconciliation money, which no earlier year
+            carries. A FY2025→FY2026 comparison on the combined basis is
+            therefore not like-for-like; each program page states its own
+            split and its discretionary-only rate.
+          </p>
           {/* §P2-6 + the 390px fold. These two blocks are SCOPE DISCLOSURE —
               which edition the grid is drawn from, and how big the corpus
               behind it is — so they share one calm panel instead of two

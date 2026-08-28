@@ -112,6 +112,27 @@ def main() -> int:
             "   and pe_bli <> '9999999999'"
             " group by pe_bli"
         ).fetchall()
+        # §P0-4: WHAT EXHIBITS IS THE DENOMINATOR MADE OF?
+        #
+        # /programs/ publishes "$228.7B of the $385.3B FY2026 request (59.4%)".
+        # Both figures are cited and correct. The LABEL is not: that $385.3B is
+        # P-1 + R-1 and nothing else -- procurement and RDT&E -- while the
+        # FY2026 DoD request is roughly twice it. A reader is told the site
+        # covers 59.4% of "the FY2026 request" when it covers 59.4% of about a
+        # quarter of defense spending.
+        #
+        # Emitted here rather than asserted in the gate, so the gate can
+        # require the page to NAME the exhibits its denominator is built from
+        # without either side hardcoding which ones those are. If an O&M
+        # exhibit family is ever ingested, this list grows and the gate starts
+        # requiring the page to say so.
+        exhibit_rows = con.execute(
+            "select exhibit, sum(amount_thousands) as amt,"
+            "       count(distinct pe_bli) as pes"
+            " from fct_budget_lines"
+            " where amount_type = 'fy_2026_total' and exhibit is not null"
+            " group by exhibit order by amt desc"
+        ).fetchall()
     finally:
         con.close()
 
@@ -231,6 +252,15 @@ def main() -> int:
         "undisclosed": undisclosed,
         "falsely_disclosed": falsely_disclosed,
         "resolved_known_keys": sorted(resolved_known_keys),
+        # §P0-4 — the exhibit composition of the FY2026 dollar universe.
+        "universe_by_exhibit": [
+            {
+                "exhibit": ex,
+                "amount_thousands": float(amt),
+                "pe_count": int(pes),
+            }
+            for ex, amt, pes in exhibit_rows
+        ],
     }, sort_keys=True))
     return 0
 

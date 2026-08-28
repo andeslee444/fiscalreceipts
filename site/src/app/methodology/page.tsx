@@ -359,8 +359,14 @@ export default function MethodologyPage() {
               checks. Check A: project-level amounts within an exhibit must sum
               to the program-element total in that same exhibit (tolerance:
               ±$0.001M). Check B: that program-element total must match the
-              corresponding row in the official R-1 or P-1 Excel rollup.
-              Failures do not get published — they go to a human review queue.
+              corresponding row in the official R-1 or P-1 Excel rollup. A
+              failure does not suppress the figure — it marks the row
+              unreconciled, files a review-queue record against the specific
+              failed check, and the program page carries a Partial
+              Reconciliation badge instead of a Fully Reconciled one. A build
+              gate then refuses any unreconciled row that has no queue record,
+              so a figure can fail these checks in the open but never in
+              silence.
             </p>
           </div>
           <div>
