@@ -1788,6 +1788,7 @@ def cmd_verify_phase5e(args) -> None:
 def cmd_verify_lineage(args) -> None:
     from govbudget.verify_lineage import (
         artifact_cite_leg,
+        diagram_binding_leg,
         family_integrity_leg,
         funding_point_value_leg,
         lake_binding_leg,
@@ -1934,6 +1935,39 @@ def cmd_verify_lineage(args) -> None:
     for grain, reason in h["failures"][:10]:
         print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gh_ok
+
+    # Leg i: diagram-binding — everything /lineage/ draws traces to a row the
+    # legs above already passed, and no ribbon encodes an amount (#29(c))
+    i = diagram_binding_leg(
+        config.PG_DSN,
+        config.SITE_DIR / "json" / "lineage_flow.json",
+        config.SITE_DIR / "json" / "program_details",
+        config.SITE_DIR / "json" / "cite-shards",
+        config.DUCKDB_PATH,
+    )
+    gi_ok = i["ok"]
+    if i.get("reason"):
+        print(f"leg i diagram-binding: {i['reason']} → FAIL")
+    else:
+        print(
+            f"leg i diagram-binding: edges={i['edges_checked']}"
+            f" stated={i['stated_checked']} nodes={i['nodes_checked']}"
+            f" amounts={i['amounts_checked']} failures={len(i['failures'])}"
+            f" → {'PASS' if gi_ok else 'FAIL'}"
+        )
+        print(
+            f"  NOTE 0 ribbons encode an amount — portion_amount is null on"
+            f" every program_lineage row, so every band is one constant width"
+        )
+        if i["page_less_edges"]:
+            print(
+                f"  NOTE {i['page_less_edges']} stated edge(s) whose endpoints"
+                f" have no program page render HERE and nowhere else — the"
+                f" edges leg g reports as unrendered"
+            )
+    for grain, reason in i["failures"][:10]:
+        print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gi_ok
 
     print("verify-lineage:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)

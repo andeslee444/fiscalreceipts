@@ -44,6 +44,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/companies/families/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/data/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/flow/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // ROADMAP #29(c) — the lineage identity diagram. The only surface that
+    // renders the stated links whose endpoints have no program page of their
+    // own, so it is not reachable from any /program/ page for those.
+    { url: `${base}/lineage/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/downloads/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/methodology/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // Sprint C Task C1 (ROADMAP #60) — term definitions for what /methodology/

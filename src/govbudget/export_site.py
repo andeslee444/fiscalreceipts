@@ -7533,6 +7533,26 @@ def _write_all_sidecars(
         cited_fact_ids=_cited_fact_ids,
     )
 
+    # ROADMAP #29(c) — the /lineage/ identity diagram payload. Built from the
+    # SAME edges/families/titles/decade points _emit_lineage just used, so the
+    # corpus-level diagram and the per-program rail can never disagree about
+    # which edges exist or which endpoints resolve. Written in step 19b below.
+    #
+    # This is also where the 9 stated edges verify-lineage leg (g) reports as
+    # "renders nowhere" (neither endpoint has a program page) finally reach a
+    # reader: the rail can only show an edge on a page one of its endpoints
+    # owns, and those nine own none.
+    from govbudget.lineage.flow import build_lineage_flow
+
+    lineage_flow_payload = build_lineage_flow(
+        edges=_lin_edges,
+        families=_lin_families,
+        titles_by_pe=titles_by_pe,
+        page_pes=all_pe_blis | set(rollup_pes),
+        decade_series_by_pe=decade_series_by_pe,
+        cited_fact_ids=_cited_fact_ids,
+    )
+
     # Task E3 (Sprint E, ROADMAP #67): one sidecar per dim_programs ROW, not
     # per distinct pe_bli — all_prog_rows is a LIST (never deduped), so the
     # 8 genuine appropriation-account collisions' two rows each get their
@@ -8598,6 +8618,30 @@ def _write_all_sidecars(
         n_files += 1
     else:
         print("flow_chart.json: NOT written (fct_flow_edges missing/empty)")
+
+    # ------------------------------------------------------------------- #
+    # 19b. lineage_flow.json (ROADMAP #29(c) — /lineage/ identity diagram) #
+    # ------------------------------------------------------------------- #
+    from govbudget.lineage.flow import PAYLOAD_BUDGET_BYTES as _LIN_FLOW_BUDGET
+
+    _lin_flow_path = json_dir / "lineage_flow.json"
+    _write_json(_lin_flow_path, lineage_flow_payload)
+    _lin_flow_size = _lin_flow_path.stat().st_size
+    if _lin_flow_size > _LIN_FLOW_BUDGET:
+        print(
+            f"lineage_flow.json: {_lin_flow_size} bytes EXCEEDS the"
+            f" {_LIN_FLOW_BUDGET}-byte budget"
+        )
+    else:
+        _c = lineage_flow_payload["counts"]
+        print(
+            f"lineage_flow.json: {_lin_flow_size} bytes"
+            f" (budget {_LIN_FLOW_BUDGET}) — {_c['families']} families,"
+            f" {_c['identities']} identities, {_c['stated_edges']} stated +"
+            f" {_c['inferred_edges']} inferred edges,"
+            f" {_c['identities_unresolved']} unresolved reference(s)"
+        )
+    n_files += 1
 
     # ------------------------------------------------------------------ #
     # 20. title_overrides.json (published corrections table, ROADMAP #39) #

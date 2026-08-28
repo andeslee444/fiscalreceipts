@@ -137,6 +137,24 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,502,947 / 76,765" },
   { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,255,520 / 79,852" },
   { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,551 / 67,149" },
+  // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
+  // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
+  // table views totalling 86 identity rows and 52 link rows. The weight is
+  // overwhelmingly the RSC flight payload: the whole lineage_flow.json
+  // payload (33,649 bytes on disk) crosses the server→client boundary as
+  // props, because the diagram is an island that opens the citation panel
+  // from a ribbon.
+  //
+  // Same ~8% headroom convention as the other new-page entries (/agency/,
+  // /district/, /companies/families/) rather than a round-number guess:
+  // 340,000 against 315,463 is 7.78% raw; 36,000 against 33,369 is 7.89%
+  // gzip. Measured with this file's OWN weigh() — zlib level 9 — on the
+  // 2026-08-28 build, and on a build run WITH NEXT_PUBLIC_SITE_URL set: an
+  // earlier measuring pass without it wrote the placeholder origin into 16
+  // hrefs and read 176 raw / 37 gzip bytes light. Three agents have got a
+  // page-weight annotation wrong by measuring with a different tool; this
+  // one imports the gate's and states which build it read.
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "315,463 / 33,369" },
   { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,202 / 28,163" },
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,384 / 25,506" },
   { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "92,468 / 13,174" },
@@ -561,6 +579,8 @@ export async function runBuildGate() {
     { path: path.join("companies", "index.html"), label: "/companies/" },
     { path: path.join("data", "index.html"), label: "/data/" },
     { path: path.join("flow", "index.html"), label: "/flow/" },
+    // ROADMAP #29(c) — the lineage identity diagram.
+    { path: path.join("lineage", "index.html"), label: "/lineage/" },
     { path: path.join("downloads", "index.html"), label: "/downloads/" },
     { path: path.join("methodology", "index.html"), label: "/methodology/" },
     { path: path.join("glossary", "index.html"), label: "/glossary/" },
@@ -631,18 +651,20 @@ export async function runBuildGate() {
       // sidecars not generated — no filing URLs expected
     }
     // Expected: static(12) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(12) = /, /programs/, /companies/, /companies/families/, /data/,
-    //              /flow/, /downloads/, /methodology/, /glossary/, /agency/,
-    //              /coverage/, /about/
+    // static(13) = /, /programs/, /companies/, /companies/families/, /data/,
+    //              /flow/, /lineage/, /downloads/, /methodology/, /glossary/,
+    //              /agency/, /coverage/, /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
     //  §P1-3 — the curated rename/acquisition table; /coverage/ in Sprint 3
     //  Task 6 — the roadmap page; /glossary/ in Sprint C Task C1 — ROADMAP
     //  #60, term definitions; /agency/ in Sprint C Task C3 — ROADMAP #62,
     //  the /agency/{org}/ index, counted separately from the ${agencyCount}
-    //  dynamic /agency/{org}/ pages below.)
+    //  dynamic /agency/{org}/ pages below; /lineage/ in ROADMAP #29(c) — the
+    //  lineage identity diagram, the only surface that renders the nine
+    //  stated links whose endpoints have no program page of their own.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 12;
+    const STATIC_SITEMAP_PAGES = 13;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {

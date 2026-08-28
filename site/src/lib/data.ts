@@ -21,6 +21,7 @@ import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
 import { setIngestedServiceOrgs } from "./program-tier";
 import type { LineageBlock } from "./lineage";
+import type { LineageFlowPayload } from "./lineage-flow";
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -2273,6 +2274,32 @@ export interface FlowChartMeta {
 }
 
 let _flowChartMeta: FlowChartMeta | null = null;
+
+// ── lineage_flow.json (ROADMAP #29(c)) ───────────────────────────────────────
+
+let _lineageFlow: LineageFlowPayload | null = null;
+
+/**
+ * The /lineage/ identity-diagram payload.
+ *
+ * Read SERVER-side and passed to the island as props rather than fetched by
+ * the client the way /flow/ fetches its Sankey: the payload is two orders of
+ * magnitude smaller (80 identities, 52 links, no per-year series and no
+ * source sentences), and rendering it into the static HTML is what lets gate
+ * 2, gate 22 leg (g) and verify-lineage leg (i) assert the honesty contract
+ * against the BUILT artifact instead of against a payload nobody has drawn.
+ */
+export function getLineageFlow(): LineageFlowPayload {
+  if (_lineageFlow) return _lineageFlow;
+  const payload = readJson<LineageFlowPayload>("lineage_flow.json");
+  if (payload.schema_version !== 1) {
+    throw new Error(
+      `[govbudget/data] lineage_flow.json schema_version is ${payload.schema_version}, expected 1`,
+    );
+  }
+  _lineageFlow = payload;
+  return _lineageFlow;
+}
 
 /**
  * Light server-side meta extracted from the (heavy, client-fetched)

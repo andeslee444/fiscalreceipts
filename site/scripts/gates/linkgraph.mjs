@@ -239,8 +239,8 @@ export async function runLinkgraphGate() {
   for (const pageUrl of [
     "/", "/feed/", "/district/", "/programs/", "/companies/",
     "/companies/families/", "/filings/", "/data/", "/coverage/",
-    "/methodology/", "/flow/", "/agency/", "/years/", "/downloads/",
-    "/glossary/", "/about/",
+    "/methodology/", "/flow/", "/lineage/", "/agency/", "/years/",
+    "/downloads/", "/glossary/", "/about/",
   ]) {
     const pagePath = htmlPathFor(pageUrl);
     if (!fs.existsSync(pagePath)) {

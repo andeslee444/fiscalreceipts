@@ -241,6 +241,13 @@ const MAX_LISTED = 10;
 const CROSS_PAGE_INDEXES = [
   { label: "/programs/", file: "programs/index.html" },
   { label: "/agency/*/", dir: "agency" },
+  // ROADMAP #29(c). /lineage/ publishes one FY2026 request figure per
+  // identity in its table view — the same (entity, fy, measure) label the
+  // program pages publish, on a surface that holds 84 of them at once. That
+  // is exactly the shape leg (e) exists for: the P0 it was built after was
+  // an index publishing a program's figure on a basis the program page did
+  // not, with no single page holding both.
+  { label: "/lineage/", file: "lineage/index.html" },
 ];
 
 /**

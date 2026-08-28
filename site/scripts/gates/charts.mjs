@@ -262,6 +262,19 @@ export async function runChartLegs(context, baseUrl, errors, notes) {
       minCharts: 2,
       ready: '[data-testid="flow-chart"]',
     },
+    {
+      // ROADMAP #29(c). This page's diagram deliberately carries NO figures —
+      // no lineage edge states an amount — so its table view is not a
+      // supplement to the chart, it is the only place money appears at all.
+      // (c1) is therefore load-bearing here in a way it is nowhere else: if
+      // the disclosure does not open, the page has no numbers. (c2) is the
+      // /flow/ lesson applied before it can repeat — that table shipped with
+      // its AMOUNT column pushed out of its own scroll box at 390.
+      label: "/lineage/",
+      url: `${baseUrl}/lineage/`,
+      minCharts: 2,
+      ready: "[data-lineage-flow]",
+    },
   ];
 
   for (const pg of chartPages) {

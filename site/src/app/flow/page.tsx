@@ -174,6 +174,28 @@ export default function FlowPage() {
             </Link>
           </p>
         </section>
+
+        {/* ROADMAP #29(c). The third thing that moves is the IDENTITY of the
+            line itself, and it moves without a dollar figure attached — which
+            is why it gets its own page and its own drawing rules rather than a
+            third river here. Linked from /flow/ because a reader who has just
+            been told "these two systems cannot be added" is exactly the reader
+            who needs to know the labels move too. */}
+        <section className="mt-8 max-w-4xl">
+          <h2 className="mb-2 text-xl font-semibold">
+            And the lines themselves move
+          </h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            Both rivers key on program elements, and program elements get
+            renamed, realigned and merged — so &ldquo;the same program&rdquo;
+            across two years is often two different identities. Those links are
+            drawn separately, with no ribbon widths at all, because the books
+            state that a line moved and never state how much moved with it.{" "}
+            <Link href="/lineage/" className="underline hover:text-foreground">
+              One funded line, all the names it wore →
+            </Link>
+          </p>
+        </section>
       </div>
     </CitationPanelProvider>
   );

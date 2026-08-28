@@ -9630,3 +9630,283 @@ it: it compares `measured` against the artifact and never reads the prose. The
 smaller true number is now written down and the ceiling is unchanged, per the
 standing owner decision -- publish the smaller true number, label it a
 correction, never widen the claim to fit.
+
+================================================================================
+ROADMAP #29(c) — THE LINEAGE SANKEY THAT REFUSES TO DRAW DOLLARS (2026-08-28)
+verify-lineage leg (i) diagram-binding  ·  gate 22 leg (g) lineage ribbons
+================================================================================
+
+WHAT THE ENTRY ASKED FOR, AND THE HALF THAT COULD NOT BE BUILT HONESTLY.
+#29(c) reads "a lineage Sankey -- reuse the /flow/ renderer -- identities as
+nodes over time, dollar ribbons for transfers/splits/merges". The ribbons are
+built and they reuse /flow/'s ribbonPath() verbatim. The DOLLAR ribbons are
+not, and the refusal is the substance of this task:
+
+  select count(*) from program_lineage where portion_amount is not null;
+   -> 0
+
+Every one of the 52 lineage edges is a narrative assertion about IDENTITY. The
+sentences say "was realigned from PE 0203728A"; not one says how much money
+went with it. A Sankey ribbon's width is an amount, so a width here would be a
+number this project invented. Every ribbon is drawn at ONE constant width
+(8.0 viewBox units), on both faces, in every diagram -- and the identity boxes
+are uniform for the same reason, because a taller node in a Sankey means more
+money.
+
+The one figure the page does publish is a NODE-level fact, in the table, one
+column, one fiscal year: each identity's own FY2026 request, cited, on the
+P-1/R-1 TOA basis, with an honest absence on the 36 identities the ingested
+editions carry no request point for.
+
+THE SECOND REFUSAL: THE COLUMNS ARE NOT YEARS. "Identities over time" invites
+an x-axis of fiscal years, and against the live data that axis would lie.
+Family 11's six DARPA identities all carry a request in every FY2017-FY2025;
+family 15's four all start in FY2017. Predecessors and successors coexist for
+whole decades -- which is exactly why the family funding line refuses to sum
+them -- so placing a successor to the right of its predecessor on a YEAR axis
+would assert a hand-off date the record does not contain. The columns are
+lineage STEPS (longest-path depth over stated edges), and each ribbon carries
+the J-book EDITION that asserts it, which is what an edge's fiscal_year means.
+
+WHAT THE PAGE ADDS THAT NO OTHER SURFACE COULD. verify-lineage leg (g) has
+reported nine stated edges as "cites correctly but neither endpoint has a
+program page, so it renders nowhere" since #29(b) landed. The rail can only
+show an edge on a page one of its endpoints owns, and those nine own none:
+verified, cited, and invisible. All nine render here.
+
+--------------------------------------------------------------------------------
+verify-lineage LEG (i) diagram-binding -- FAIL FIRST
+--------------------------------------------------------------------------------
+
+The leg takes explicit paths, so each break is a SCRATCH COPY of the shipped
+lineage_flow.json with one real defect edited in; the real artifact is never
+touched. Modes, and the defect each one is:
+
+  amount          an extraction lands a portion amount on an edge and the
+                  ribbon keeps its constant width -- the silent failure the
+                  leg exists for
+  drop            the diagram quietly stops drawing one stated link
+  citedcandidate  an inferred edge acquires a fact id
+  resolved        an identity with no program page is claimed as resolved, so
+                  the renderer would draw it as a clean clickable thread
+  value           the one published figure drifts one thousand off its fact
+  clean           the shipped artifact, unedited
+
+$ python break_leg_i.py amount
+leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=1 → FAIL
+  FAIL 0206625M->0206313M (renamed, fy2026): the drawn edge carries an amount-bearing field amt=512151.0. Every ribbon on /lineage/ is one constant width because no lineage edge states a transferred amount; an amount on an edge means the diagram must be redesigned to show it honestly, not shipped as if the width still meant nothing
+
+$ python break_leg_i.py drop
+leg i diagram-binding: edges=51 stated=48 nodes=86 amounts=50 failures=1 → FAIL
+  FAIL 0206625M|0206313M|2026|renamed|stated: program_lineage has 1 such row(s); the diagram draws 0
+
+$ python break_leg_i.py citedcandidate
+leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=1 → FAIL
+  FAIL 0601384BP->0602384BP (matured_ba, fy2018): an INFERRED edge carries fid='ab7c31f0d0e14b22' — inferred edges are never cited (the honesty contract the whole tier rests on)
+
+$ python break_leg_i.py resolved
+leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=1 → FAIL
+  FAIL 0207604: node marks resolved=True but program_details/0207604.json does not exist
+
+$ python break_leg_i.py value
+leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=1 → FAIL
+  FAIL 0206625M amount fid=460d4a3de1094c24: displays 34290.0 but the cited fact records 34289.0
+
+$ python break_leg_i.py clean
+leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=0 → PASS
+
+
+--------------------------------------------------------------------------------
+verify-lineage LEG (i) -- THE WAREHOUSE CLAUSE, on the real table
+--------------------------------------------------------------------------------
+
+The clause the whole diagram rests on ("no edge states an amount") cannot be
+proved against a scratch file, because it is a fact about Postgres. So it was
+broken against the real table and restored in the same script:
+
+  update program_lineage set portion_amount = 512151.0
+   where from_pe_bli='0206625M' and to_pe_bli='0206313M';
+
+  leg i diagram-binding: edges=52 stated=49 nodes=86 amounts=50 failures=1 -> FAIL
+    FAIL 0206625M->0206313M: program_lineage now carries portion_amount=512151.0.
+    /lineage/ draws every ribbon at one constant width on the premise that NO
+    edge states an amount. That premise no longer holds: change the diagram (an
+    amount-bearing ribbon must read differently from an identity-only one)
+    before shipping this row
+
+  update program_lineage set portion_amount = NULL where ... ;
+  RESTORED -- rows with portion_amount now: 0
+
+Verified restored by count, before and after: 52 rows, 0 with portion_amount.
+The exporter refuses the same condition at BUILD time (lineage/flow.py raises,
+pinned by tests/lineage/test_flow.py::test_a_stated_portion_amount_stops_the_build);
+this refuses it at SHIP time. Both are wanted -- one stops the artifact being
+made, the other stops a stale artifact being trusted.
+
+--------------------------------------------------------------------------------
+gate 22 LEG (g) lineage ribbons -- FAIL FIRST, on the BUILT page
+--------------------------------------------------------------------------------
+
+Every clause here is measured off out/lineage/index.html: the `d=` strings the
+browser will paint, the attributes the DOM carries, the text a reader sees. It
+never calls the exporter's layout code, so an exporter that started encoding an
+amount in a width is CAUGHT rather than agreed with. The scratch copies edit one
+real defect into the built page (the pattern gate 3's mobile leg already uses on
+a scratch stylesheet):
+
+  width      one ribbon's band is widened to 27.4 units -- "proportional to
+             $512,151K", the shape a value-encoding renderer produces
+  dollars    a request figure is drawn as a label on a ribbon
+  candidate  the inferred ribbons lose data-inferred and their
+             "candidate (unverified)" label -- a candidate wearing a fact's
+             clothes
+  link       an unresolved identity is rendered as a link to a page that does
+             not exist
+  drop       one ribbon group is deleted
+
+$ node scripts/run-lineage-ribbon-leg.mjs <scratch copy: width>
+PASS: false
+NOTES:
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g3: 40 lineage svg(s), 0 dollar figures drawn ✓
+  leg g4: 52 drawn ribbons == the sidecar's 52 distinct edge(s) ✓
+  leg g5: 49 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+  leg g6: 21 unresolved reference(s) rendered as plain text, 0 as links ✓
+ERRORS:
+  ✗ leg g1: 1 of 52 lineage ribbon(s) differ from the page's common ribbon width (8.00) — a lineage ribbon's width must encode NOTHING, because no lineage edge states a transferred amount. Offenders: 0206625M→0206313M 27.40/27.40
+
+$ node scripts/run-lineage-ribbon-leg.mjs <scratch copy: dollars>
+PASS: false
+NOTES:
+  leg g1: 52 lineage ribbons, all 8.00 units on both faces ✓
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g4: 52 drawn ribbons == the sidecar's 52 distinct edge(s) ✓
+  leg g5: 49 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+  leg g6: 21 unresolved reference(s) rendered as plain text, 0 as links ✓
+ERRORS:
+  ✗ leg g3: currency token "$512.15M" is drawn inside a lineage svg (… click for the source sentence$512.15M0206625M — USMC Intelligence/Ele…) — the money on this page belongs in the table, cited, never on a ribbon whose width means nothing
+
+$ node scripts/run-lineage-ribbon-leg.mjs <scratch copy: candidate>
+PASS: false
+NOTES:
+  leg g1: 52 lineage ribbons, all 8.00 units on both faces ✓
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g3: 40 lineage svg(s), 0 dollar figures drawn ✓
+  leg g4: 52 drawn ribbons == the sidecar's 52 distinct edge(s) ✓
+  leg g5: 49 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+  leg g6: 21 unresolved reference(s) rendered as plain text, 0 as links ✓
+ERRORS:
+  ✗ leg g5: inferred edge 0601384BP→0602384BP does not carry data-inferred="true"
+  ✗ leg g5: inferred edge 0601384BP→0602384BP never names itself candidate/unverified in its own subtree
+  ✗ leg g5: inferred edge 0603654N→0604654N does not carry data-inferred="true"
+  ✗ leg g5: inferred edge 0603654N→0604654N never names itself candidate/unverified in its own subtree
+  ✗ leg g5: inferred edge 0604294D8Z→0605294D8Z does not carry data-inferred="true"
+  ✗ leg g5: inferred edge 0604294D8Z→0605294D8Z never names itself candidate/unverified in its own subtree
+
+$ node scripts/run-lineage-ribbon-leg.mjs <scratch copy: link>
+PASS: false
+NOTES:
+  leg g1: 52 lineage ribbons, all 8.00 units on both faces ✓
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g3: 40 lineage svg(s), 0 dollar figures drawn ✓
+  leg g4: 52 drawn ribbons == the sidecar's 52 distinct edge(s) ✓
+  leg g5: 49 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+ERRORS:
+  ✗ leg g6: 0207604 has no program page but renders as a link
+
+$ node scripts/run-lineage-ribbon-leg.mjs <scratch copy: drop>
+PASS: false
+NOTES:
+  leg g1: 51 lineage ribbons, all 8.00 units on both faces ✓
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g3: 40 lineage svg(s), 0 dollar figures drawn ✓
+  leg g5: 48 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+  leg g6: 21 unresolved reference(s) rendered as plain text, 0 as links ✓
+ERRORS:
+  ✗ leg g4: the drawn ribbon set does not equal lineage_flow.json's edge set — 1 difference(s): missing/undercount 0206625M|0206313M|renamed|2026|stated (payload 1, drawn 0)
+  ✗ leg g5: 48 stated ribbons drawn, sidecar says 49
+
+$ node scripts/run-lineage-ribbon-leg.mjs        # the real build, unedited
+PASS: true
+NOTES:
+  leg g1: 52 lineage ribbons, all 8.00 units on both faces ✓
+  leg g2: rendered width == declared ribbon_w (8) ✓
+  leg g3: 40 lineage svg(s), 0 dollar figures drawn ✓
+  leg g4: 52 drawn ribbons == the sidecar's 52 distinct edge(s) ✓
+  leg g5: 49 stated (all cited, none flagged inferred) vs 3 inferred (all flagged + labelled) ✓
+  leg g6: 21 unresolved reference(s) rendered as plain text, 0 as links ✓
+
+TWO ERROR MESSAGES WERE WRONG BEFORE THEY WERE RIGHT, and both were fixed
+because a message that misexplains its finding sends the next reader to the
+wrong file:
+
+  * g1 took the FIRST ribbon as the reference width. With the broken ribbon
+    first, it reported "51 of 52 lineage ribbon(s) are not the same width as
+    the rest (27.40)" and listed the 51 CORRECT ribbons as the offenders. The
+    reference is the MODE now, and the message names the one that differs.
+  * g3 quoted the start of the svg's text, so the failure opened with the
+    chart's own <desc> and read as if the description were the problem. It
+    quotes the matched token and its immediate context now ("$512.15M"), and
+    the currency pattern was widened to capture the whole figure rather than
+    the "$5" the detection regex happened to match. The DETECTION set is
+    unchanged -- "$" followed by a digit, or a spelled magnitude.
+
+--------------------------------------------------------------------------------
+390 x 844 -- MEASURED, AND IT FAILED FIRST
+--------------------------------------------------------------------------------
+
+The first build of this page shipped a real mobile defect, and gate 3's own
+mobile leg is what found it -- not a guess, and not a screenshot:
+
+  x mobile /lineage/ (lineage identity map): page scrolls horizontally at 390px
+    -- documentElement.scrollWidth 784 > clientWidth 390 (+394px)
+  x mobile /lineage/: only 0 identity FY2026 request cell(s) matched
+    "td[data-primary-value='lineage-amount']" (need >= 60) -- the sample is vacuous
+  x mobile /lineage/: 80 row(s) carry no identity FY2026 request cell
+    ("td[data-primary-value='lineage-amount']") -- every row must state its value
+
+Two causes, both real:
+  * The diagram scroller sat inside a CSS grid item with the default
+    `min-width: auto`, so the item grew to the widest diagram (742px) and took
+    the DOCUMENT sideways with it. The inner overflow-x-auto was doing nothing.
+    Fixed with min-w-0 on the grid items and on the scroller.
+  * data-primary-value sat on the <span> inside the cell rather than on the
+    <td>, so the leg's selector matched nothing -- and, worse, a hook on the
+    [data-amount] would have skipped the 36 identities that honestly render an
+    em-dash. It is on the CELL now, the way /district/ and /flow/ already do
+    it, so absence rows are measured too.
+
+After the fix, on the same leg, same viewport:
+
+  mobile /lineage/: 80 identity FY2026 request cell(s) fully on screen (OK)
+  mobile leg: 15/15 pages free of page-level horizontal overflow; 1381 value
+  element(s) measured across 11 value-bearing page(s)
+  mobile (m5) tablet-band overflow: 45/45 page x width check(s) free of
+  horizontal overflow across [768, 900, 1000]px on 15 page(s)
+  PASS: true
+
+30 of the 32 family diagrams are 334 units wide and fit a 390 viewport
+outright; the two that do not (538 and 742) scroll inside their own box, and
+the figure's description says how many do, computed from the payload rather
+than typed. The known /flow/ limitations are NOT reproduced: no value label
+sits at a scroll edge (every label is inside its own identity box), and the
+table view's amount column is measured on screen at 390 with the disclosures
+open, which is the state the figure's own caption sends the reader to.
+
+--------------------------------------------------------------------------------
+PAGE WEIGHT -- A NEW ENTRY, NO CEILING RAISED
+--------------------------------------------------------------------------------
+
+/lineage/ 315,463 raw / 33,369 gzip, ceilings 340,000 / 36,000 (7.78% / 7.89%
+headroom -- the ~8% new-page convention /agency/ and /district/ carry).
+Measured by importing build.mjs's own weigh() at zlib level 9, on a build run
+WITH NEXT_PUBLIC_SITE_URL set; an earlier measuring pass without it read 176
+raw / 37 gzip bytes light across 16 placeholder-origin hrefs.
+
+No existing ceiling moved and no existing page grew. The page is reachable from
+/flow/ and from the lineage section of the program pages whose identities it
+draws, and deliberately NOT from the sitewide footer, which ships on 6,700+
+pages and would have spent ~22 gzip bytes against /data/'s 330 and
+/companies/families/'s 496. Re-measured after the change: /data/ 13,170 (was
+13,174), /companies/families/ 25,504 (was 25,506) -- both a hair lighter,
+neither touched by this work.

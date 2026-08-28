@@ -745,6 +745,15 @@ export default async function ProgramPage({
                 />
               </div>
             )}
+            {/* ROADMAP #29(c). The rail shows this line's own neighbours; the
+                map shows the whole family, including the branches the funding
+                line above refuses to sum and the endpoints that have no page
+                of their own to be listed on. */}
+            <p className="mt-4 text-xs text-muted-foreground">
+              <Link href="/lineage/" className="underline hover:text-foreground">
+                See this family in the lineage map →
+              </Link>
+            </p>
           </div>
         ) : (
           <SectionEmpty title="Program Lineage">

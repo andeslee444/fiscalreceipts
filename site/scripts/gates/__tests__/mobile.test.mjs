@@ -38,6 +38,7 @@ describe("buildMobileSample", () => {
       "/years/",
       "/district/",
       "/flow/",
+      "/lineage/",
       "/feed/",
       "/methodology/",
     ]) {
@@ -79,6 +80,11 @@ describe("buildMobileSample", () => {
       // its own scroll box, so the chart's stated fallback carried no dollars.
       "/feed/",
       "/flow/",
+      // ROADMAP #29(c). The lineage map's diagram carries no figures at all
+      // (no lineage edge states an amount), so the table view is the ONLY
+      // place money appears on the page — which makes "is the money on
+      // screen at 390" the whole assertion rather than a supplement to it.
+      "/lineage/",
       // Added with the §P2-1 restructure: /programs/ was overflow-only while
       // both its money columns sat off the right edge inside the table's own
       // scroll container — (m1) passes on exactly that defect.

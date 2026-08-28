@@ -1107,3 +1107,325 @@ def no_supersession_leg(dsn: str) -> dict:
         "passed": len(stated) - len(failures),
         "failures": failures,
     }
+
+
+# ---------------------------------------------------------------------------
+# Leg (i): the lineage DIAGRAM is the lineage TABLE (ROADMAP #29(c))
+# ---------------------------------------------------------------------------
+
+
+def diagram_binding_leg(
+    dsn: str,
+    lineage_flow_path: Path,
+    program_details_dir: Path,
+    cite_shard_dir: Path,
+    duckdb_path: Path,
+) -> dict:
+    """Everything /lineage/ draws traces back to a row this gate already passed.
+
+    #29(c) put the whole lineage layer on one page as a Sankey-shaped identity
+    diagram. A Sankey is a MONEY diagram, and that is exactly the risk: the
+    reader arrives having been taught by every other Sankey they have seen that
+    a ribbon's width is an amount. It is not one here, because no lineage edge
+    in the corpus states an amount. Six clauses, all against the SHIPPED
+    lineage_flow.json rather than against the exporter's inputs:
+
+      i1 EDGE SET. The sidecar's (from, to, fiscal_year, relation, confidence)
+         multiset EQUALS program_lineage's. A diagram that drops an edge
+         understates the corpus; one that invents an edge is worse. Legs (a)
+         (f) (h) already proved each of those rows honest, so this clause is
+         what makes "every rendered edge traces to a verify-lineage-passing
+         edge" true rather than asserted.
+
+      i2 NO AMOUNT EXISTS TO DRAW — the clause the constant ribbon width rests
+         on. EVERY live program_lineage row must have portion_amount IS NULL,
+         and no sidecar edge may carry an amount-bearing key. Uniform widths
+         are only honest while this holds; the day an amount is stated, this
+         clause FAILS and forces the diagram to be changed deliberately rather
+         than continuing to draw a real number as if it were nothing.
+         (lineage/flow.py raises on the same condition at build time. Both are
+         wanted: the exporter refuses to BUILD it, this refuses to SHIP it.)
+
+      i3 STATED EDGES ARE CITED, IN THE DIAGRAM TOO. Every stated sidecar edge
+         carries the live row's own evidence_fact_id, and that id resolves in
+         the BUILT cite-shards as a jbook_narrative naming an openable source.
+         Leg (g) proves this for the program-page rail; the diagram is a second
+         surface and gets the same bar.
+
+      i4 INFERRED EDGES ARE NOT CITED. Every inferred sidecar edge carries
+         fid=null. An inferred edge with a citation would be a candidate
+         wearing a fact's clothes — the one confusion the whole tier exists to
+         prevent.
+
+      i5 UNRESOLVED MEANS UNRESOLVED. A node's `resolved` flag equals whether
+         program_details/{pe}.json exists — the same universe the rail's own
+         resolved flag uses. The 21 identities with no page (among them the
+         cited dangling ORIGINs and the dangling terminal leg (c) reports) must
+         be marked, so the renderer draws them as unresolved references and not
+         as clean threads.
+
+      i6 THE MONEY THAT IS DRAWN IS CITED AND EXACT. The one figure per
+         identity the page publishes must equal the fct_decade_series request
+         fact it cites, on that fact's own pe and fy — leg (d)'s rule, applied
+         to the surface that introduced a second copy of it.
+
+    Reports (not failures): how many edges the diagram carries that leg (g)
+    finds render on NO program page. That number was the point of the page.
+
+    Non-vacuous: a missing sidecar, zero edges, or zero stated edges FAIL.
+    """
+    import json
+
+    import duckdb
+
+    from govbudget.export_site import fact_id_derived
+
+    lineage_flow_path = Path(lineage_flow_path)
+    program_details_dir = Path(program_details_dir)
+    cite_shard_dir = Path(cite_shard_dir)
+    duckdb_path = Path(duckdb_path)
+    base = {
+        "ok": False,
+        "edges_checked": 0,
+        "nodes_checked": 0,
+        "amounts_checked": 0,
+        "page_less_edges": 0,
+        "failures": [],
+    }
+    if not lineage_flow_path.is_file():
+        return {**base, "reason": f"lineage_flow.json missing: {lineage_flow_path}"}
+    if not program_details_dir.is_dir():
+        return {**base, "reason": f"program_details dir missing: {program_details_dir}"}
+    if not duckdb_path.exists():
+        return {**base, "reason": f"duckdb warehouse missing: {duckdb_path}"}
+
+    try:
+        payload = json.loads(lineage_flow_path.read_text())
+    except ValueError as exc:
+        return {**base, "reason": f"lineage_flow.json unreadable: {exc}"}
+
+    failures: list[tuple[str, str]] = []
+    diagrams = list(payload.get("families") or []) + list(payload.get("candidates") or [])
+
+    # ---- i1 + i2(sidecar half): the drawn edge set --------------------------
+    from collections import Counter
+
+    drawn: Counter = Counter()
+    stated_fid: dict[str, str | None] = {}
+    amount_keys = ("amt", "amount", "portion_amount", "v")
+    for d in diagrams:
+        nodes = d.get("nodes") or []
+        for e in d.get("edges") or []:
+            try:
+                src = nodes[e["s"]]["pe"]
+                tgt = nodes[e["t"]]["pe"]
+            except (IndexError, KeyError, TypeError):
+                failures.append(("(sidecar)", f"edge {e!r} does not index its own nodes"))
+                continue
+            grain = f"{src}->{tgt} ({e.get('relation')}, fy{e.get('fy')})"
+            drawn[(src, tgt, int(e.get("fy") or 0), e.get("relation"), e.get("confidence"))] += 1
+            for k in amount_keys:
+                if e.get(k) is not None:
+                    failures.append((
+                        grain,
+                        f"the drawn edge carries an amount-bearing field {k}={e[k]!r}."
+                        " Every ribbon on /lineage/ is one constant width because no"
+                        " lineage edge states a transferred amount; an amount on an"
+                        " edge means the diagram must be redesigned to show it"
+                        " honestly, not shipped as if the width still meant nothing",
+                    ))
+            if e.get("confidence") == "stated":
+                stated_fid[grain] = e.get("fid")
+            elif e.get("fid") is not None:
+                failures.append((
+                    grain,
+                    f"an INFERRED edge carries fid={e['fid']!r} — inferred edges are"
+                    " never cited (the honesty contract the whole tier rests on)",
+                ))
+
+    edges = _load_edges(dsn)
+    live: Counter = Counter(
+        (e.from_pe_bli, e.to_pe_bli, int(e.fiscal_year), e.relation, e.confidence)
+        for e in edges
+    )
+    for key, n in live.items():
+        if drawn.get(key, 0) != n:
+            failures.append((
+                "|".join(str(x) for x in key),
+                f"program_lineage has {n} such row(s); the diagram draws"
+                f" {drawn.get(key, 0)}",
+            ))
+    for key, n in drawn.items():
+        if live.get(key, 0) != n:
+            failures.append((
+                "|".join(str(x) for x in key),
+                f"the diagram draws {n} such ribbon(s); program_lineage has"
+                f" {live.get(key, 0)}",
+            ))
+
+    # ---- i2 (warehouse half): no stated amount exists at all ----------------
+    with_amount = [e for e in edges if e.portion_amount is not None]
+    for e in with_amount:
+        failures.append((
+            f"{e.from_pe_bli}->{e.to_pe_bli}",
+            f"program_lineage now carries portion_amount={e.portion_amount!r}."
+            " /lineage/ draws every ribbon at one constant width on the premise"
+            " that NO edge states an amount. That premise no longer holds:"
+            " change the diagram (an amount-bearing ribbon must read differently"
+            " from an identity-only one) before shipping this row",
+        ))
+
+    # ---- i3 + i4: citations --------------------------------------------------
+    live_fid = {}
+    for e in edges:
+        if e.confidence != "stated":
+            continue
+        live_fid[
+            f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation}, fy{int(e.fiscal_year)})"
+        ] = e.evidence_fact_id
+    shard_cache: dict[str, dict] = {}
+
+    def _resolve(fid: str) -> dict | None:
+        if fid in shard_cache:
+            return shard_cache[fid]
+        shard = cite_shard_dir / f"{fid[:2]}.json"
+        if not shard.is_file():
+            shard_cache[fid] = None
+            return None
+        try:
+            data = json.loads(shard.read_text())
+        except ValueError:
+            shard_cache[fid] = None
+            return None
+        for k, v in data.items():
+            shard_cache[k] = v
+        return shard_cache.get(fid)
+
+    for grain, fid in stated_fid.items():
+        want = live_fid.get(grain, "(no such live edge)")
+        if fid != want:
+            failures.append((
+                grain,
+                f"the diagram cites {fid!r}; program_lineage records"
+                f" {want!r} for that edge",
+            ))
+            continue
+        if fid is None:
+            failures.append((grain, "a STATED edge is drawn with no fact id"))
+            continue
+        rec = _resolve(fid)
+        if rec is None:
+            failures.append((
+                grain,
+                f"cite-shard {fid[:2]}.json does not resolve {fid} — the reader"
+                " cannot open the sentence this ribbon asserts",
+            ))
+        elif rec.get("kind") != "jbook_narrative":
+            failures.append((grain, f"cite record for {fid} has kind {rec.get('kind')!r}"))
+        elif not rec.get("sha256") or not rec.get("official_url"):
+            failures.append((grain, f"cite record for {fid} names no openable source"))
+
+    # ---- i5: resolved flags -------------------------------------------------
+    nodes_checked = 0
+    has_page: dict[str, bool] = {}
+    for d in diagrams:
+        for n in d.get("nodes") or []:
+            nodes_checked += 1
+            pe = n.get("pe")
+            page = (program_details_dir / f"{pe}.json").is_file()
+            has_page[pe] = page
+            if bool(n.get("resolved")) != page:
+                failures.append((
+                    str(pe),
+                    f"node marks resolved={n.get('resolved')!r} but"
+                    f" program_details/{pe}.json"
+                    f" {'exists' if page else 'does not exist'}",
+                ))
+
+    # The number this page was built for: stated edges that render on NO
+    # program page, because neither endpoint owns one. Leg (g) reports them as
+    # "renders nowhere"; the diagram is where they render. Reported, never
+    # asserted as a threshold — the honest value is whatever the corpus holds.
+    page_less = sum(
+        n
+        for (src, tgt, _fy, _rel, conf), n in drawn.items()
+        if conf == "stated"
+        and not has_page.get(src, False)
+        and not has_page.get(tgt, False)
+    )
+
+    # ---- i6: the one money column ------------------------------------------
+    con = duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        fact_rows = con.execute(
+            "select source_fact_id, pe_bli, fy, amount, edition_year,"
+            " amount_type, n_source_rows"
+            " from fct_decade_series where amount_type_kind = 'request'"
+        ).fetchall()
+    finally:
+        con.close()
+    facts: dict[str, tuple[str, int, float]] = {}
+    for src_fid, pe, fy, amount, edition, amount_type, n_src in fact_rows:
+        fid = (
+            src_fid
+            if int(n_src or 1) == 1
+            else fact_id_derived("decade", f"{pe}|{int(edition)}", amount_type)
+        )
+        if fid is not None:
+            facts[fid] = (pe, int(fy), float(amount))
+
+    amounts_checked = 0
+    for d in diagrams:
+        for n in d.get("nodes") or []:
+            amt = n.get("amount")
+            if not amt:
+                continue
+            amounts_checked += 1
+            grain = f"{n.get('pe')} amount fid={amt.get('fid')}"
+            fact = facts.get(amt.get("fid"))
+            if fact is None:
+                failures.append((
+                    grain,
+                    "cites no fct_decade_series request fact — the one figure"
+                    " this page publishes per identity must be a cited fact",
+                ))
+                continue
+            fact_pe, fact_fy, fact_amount = fact
+            if float(amt.get("v")) != fact_amount:
+                failures.append((
+                    grain,
+                    f"displays {amt.get('v')!r} but the cited fact records"
+                    f" {fact_amount!r}",
+                ))
+            if fact_pe != n.get("pe") or int(amt.get("fy")) != fact_fy:
+                failures.append((
+                    grain,
+                    f"is labelled {n.get('pe')}/fy{amt.get('fy')} but cites"
+                    f" {fact_pe}/fy{fact_fy}'s fact",
+                ))
+
+    n_edges = sum(drawn.values())
+    n_stated = len(stated_fid)
+    ok = (
+        n_edges > 0
+        and n_stated > 0
+        and nodes_checked > 0
+        and not failures
+    )
+    reason = None
+    if n_edges == 0:
+        reason = "the diagram draws no edges at all"
+    elif n_stated == 0:
+        reason = "the diagram draws no STATED edges — vacuous"
+    elif nodes_checked == 0:
+        reason = "the diagram draws no nodes — vacuous"
+    return {
+        "ok": ok,
+        "edges_checked": n_edges,
+        "stated_checked": n_stated,
+        "nodes_checked": nodes_checked,
+        "amounts_checked": amounts_checked,
+        "page_less_edges": page_less,
+        "failures": failures,
+        **({"reason": reason} if reason else {}),
+    }

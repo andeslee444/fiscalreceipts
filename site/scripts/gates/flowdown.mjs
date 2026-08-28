@@ -61,8 +61,22 @@
  *      collision model could not see it because the obstacle was never a
  *      label. The leg now also asserts that no rendered label box intersects
  *      any node fill rect BELOW it in paint order. Vacuity fails.
+ *  (g) LINEAGE RIBBONS ENCODE NOTHING (ROADMAP #29(c)) — the mirror of leg
+ *      (a). On /flow/ a band's thickness IS its value and leg (a) proves it.
+ *      On /lineage/ a ribbon's thickness is NOT a value and must never be
+ *      readable as one: no lineage edge in the corpus states a transferred
+ *      amount (program_lineage.portion_amount is non-null on zero rows), so
+ *      there is nothing to encode. Measured off the BUILT
+ *      out/lineage/index.html — the `d=` strings the browser paints, not the
+ *      exporter's layout code — so an exporter that started encoding an
+ *      amount in a width is caught rather than agreed with. Also pins that
+ *      the drawn edge set equals the sidecar's, that stated and inferred are
+ *      separable by attribute AND by the reader's eye, and that an identity
+ *      with no program page renders as an unresolved reference and not a
+ *      link. Vacuity fails three ways (no ribbons, no stated, no inferred).
  *
  * Export: runFlowdownGate({ baseUrl }) → { pass, errors, notes }
+ *         runLineageRibbonLeg() → { errors, notes }   (leg g, standalone)
  */
 
 import fs from "fs";
@@ -71,6 +85,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
+import { parse as parseHtml } from "node-html-parser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -188,6 +203,354 @@ function checkRiver(errors, label, river, { terminalLevels, rootLevel }) {
       }
     }
   }
+}
+
+// ── Leg (g): the lineage ribbons encode nothing (ROADMAP #29(c)) ────────────
+
+/**
+ * Tokenize an absolute SVG path into its ON-PATH points.
+ *
+ * Deliberately NOT a re-implementation of ribbonPath(): it reads the built
+ * `d=` attribute and returns the vertices the browser will actually draw, so a
+ * renderer that changed shape, swapped a face, or scaled a band is measured
+ * rather than assumed. Control points (a cubic's first two triples) are
+ * dropped — only the points the curve passes THROUGH define the two faces.
+ *
+ * Any command other than M/C/L/Z, or a relative command, throws: the gate must
+ * fail loudly on a path shape it cannot measure, never silently pass one.
+ */
+export function onPathPoints(d) {
+  const toks = String(d).trim().match(/[MCLZmclz]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi);
+  if (!toks) throw new Error(`unparseable path: ${String(d).slice(0, 60)}`);
+  const pts = [];
+  let i = 0;
+  while (i < toks.length) {
+    const cmd = toks[i++];
+    if (!/^[MCLZ]$/.test(cmd)) {
+      throw new Error(
+        `lineage ribbon path uses "${cmd}" — this leg measures absolute M/C/L/Z only`,
+      );
+    }
+    const take = (n) => {
+      const out = [];
+      for (let k = 0; k < n; k++) out.push(Number(toks[i++]));
+      return out;
+    };
+    if (cmd === "M" || cmd === "L") {
+      const [x, y] = take(2);
+      pts.push([x, y]);
+    } else if (cmd === "C") {
+      const a = take(6);
+      pts.push([a[4], a[5]]);
+    }
+  }
+  return pts;
+}
+
+/**
+ * The two face thicknesses of a ribbon path: |Δy| among the on-path points at
+ * the leftmost x, and among those at the rightmost x.
+ */
+export function ribbonFaces(d) {
+  const pts = onPathPoints(d);
+  if (pts.length < 4) throw new Error(`ribbon path has ${pts.length} on-path points, expected 4`);
+  const xs = pts.map((p) => p[0]);
+  const xmin = Math.min(...xs);
+  const xmax = Math.max(...xs);
+  const at = (x) => pts.filter((p) => Math.abs(p[0] - x) < 1e-6).map((p) => p[1]);
+  const l = at(xmin);
+  const r = at(xmax);
+  if (l.length !== 2 || r.length !== 2) {
+    throw new Error(
+      `ribbon path faces are not 2+2 points (${l.length}+${r.length}) — shape changed`,
+    );
+  }
+  return { source: Math.abs(l[1] - l[0]), target: Math.abs(r[1] - r[0]) };
+}
+
+/**
+ * Leg (g) — /lineage/ ribbons carry no amount, and candidates cannot be
+ * mistaken for facts.
+ *
+ * WHY THIS SITS ON GATE 22. Gate 22 already owns "is the Sankey geometry
+ * honest": leg (a) checks that a /flow/ band's thickness IS its value. This is
+ * the same question with the opposite answer — a /lineage/ band's thickness is
+ * NOT a value and must not be readable as one — so it belongs beside it rather
+ * than in a 25th gate.
+ *
+ * WHAT IT MEASURES, and what it deliberately does not. Everything here is read
+ * off the BUILT out/lineage/index.html: the `d=` strings the browser will
+ * paint, the attributes the DOM carries, the text a reader sees. It never
+ * calls the exporter's layout code, so an exporter that started encoding an
+ * amount in a width would be caught by the artifact rather than agreed with.
+ *
+ *   g1 EVERY ribbon has the same thickness as every other ribbon, on BOTH
+ *      faces. This is the artifact-only form of "no width encodes an amount":
+ *      widths that encode differing values differ. It needs no reference to
+ *      the payload at all.
+ *   g2 …and that one thickness equals the payload's declared ribbon_w, so the
+ *      renderer cannot quietly rescale what the exporter laid out.
+ *   g3 NO amount is drawn inside any lineage SVG: no [data-amount], and no
+ *      currency token in any svg subtree. The money on this page lives in the
+ *      table, one column, cited — never on a ribbon.
+ *   g4 The drawn edge multiset EQUALS the sidecar's (from, to, relation, fy,
+ *      confidence). A dropped or duplicated ribbon is a lie about the corpus.
+ *   g5 Stated and inferred are machine-separable and reader-separable: every
+ *      [data-lineage-edge="inferred"] carries data-inferred="true" and names
+ *      itself candidate/unverified in its own subtree text; no stated edge
+ *      carries data-inferred; every stated edge carries a fact id.
+ *   g6 Unresolved identities render as unresolved: every [data-lineage-node]
+ *      the payload marks unresolvable carries [data-lineage-unresolved] and
+ *      contains no <a>.
+ *   VACUITY: zero ribbons, zero stated, or zero inferred all FAIL.
+ */
+export function runLineageRibbonLeg({ payloadPath, htmlPath } = {}) {
+  const errors = [];
+  const notes = [];
+  // Paths are injectable for ONE reason: proof-can-fail. A leg nobody has
+  // watched fail is not a gate, and the only way to watch this one fail is to
+  // point it at a scratch copy of the built page with a real defect edited in
+  // (the pattern gate 3's mobile leg already uses on a scratch stylesheet).
+  // The gate run itself always passes nothing and measures the real build.
+  payloadPath = payloadPath ?? path.join(jsonDir, "lineage_flow.json");
+  htmlPath = htmlPath ?? path.join(outDir, "lineage", "index.html");
+  if (!fs.existsSync(payloadPath)) {
+    return {
+      errors: [`leg g: lineage_flow.json missing at ${payloadPath} — run export-site`],
+      notes,
+    };
+  }
+  if (!fs.existsSync(htmlPath)) {
+    return {
+      errors: [`leg g: out/lineage/index.html not built — /lineage/ must render for this leg to measure anything`],
+      notes,
+    };
+  }
+  const payload = readJson(payloadPath);
+  const root = parseHtml(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+
+  const groups = root.querySelectorAll("[data-lineage-edge]");
+  if (groups.length === 0) {
+    errors.push("leg g: no [data-lineage-edge] ribbons on /lineage/ — the leg is vacuous");
+    return { errors, notes };
+  }
+
+  // ── g1 + g2: thickness ────────────────────────────────────────────────────
+  const thicknesses = [];
+  for (const g of groups) {
+    const p = g.querySelector("path[data-ribbon]");
+    if (!p) {
+      errors.push(
+        `leg g: [data-lineage-edge] ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} has no path[data-ribbon]`,
+      );
+      continue;
+    }
+    let faces;
+    try {
+      faces = ribbonFaces(p.getAttribute("d"));
+    } catch (e) {
+      errors.push(
+        `leg g: ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")}: ${e.message}`,
+      );
+      continue;
+    }
+    thicknesses.push({
+      id: `${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")}`,
+      ...faces,
+    });
+  }
+  if (thicknesses.length > 0) {
+    // 0.011 is the exporter's own 2-decimal rounding grain, not a tolerance
+    // chosen to make something pass: geometry ships rounded to 0.01.
+    const TOL = 0.011;
+    // The reference width is the MODE, not the first ribbon's. Taking the
+    // first made the message name the 51 correct ribbons as the offenders
+    // when the one broken ribbon happened to be first — an error message that
+    // misexplains its own finding sends the next reader to the wrong file.
+    // Ties break toward the declared ribbon_w, then toward the smaller value.
+    const tally = new Map();
+    for (const t of thicknesses) {
+      const k = t.source.toFixed(2);
+      tally.set(k, (tally.get(k) ?? 0) + 1);
+    }
+    const w0 = Number(
+      [...tally.entries()].sort(
+        (a, b) =>
+          b[1] - a[1] ||
+          Math.abs(Number(a[0]) - payload.ribbon_w) -
+            Math.abs(Number(b[0]) - payload.ribbon_w) ||
+          Number(a[0]) - Number(b[0]),
+      )[0][0],
+    );
+    const off = thicknesses.filter(
+      (t) => Math.abs(t.source - w0) > TOL || Math.abs(t.target - w0) > TOL,
+    );
+    if (off.length > 0) {
+      errors.push(
+        `leg g1: ${off.length} of ${thicknesses.length} lineage ribbon(s) differ from the page's common ribbon ` +
+          `width (${w0.toFixed(2)}) — a lineage ribbon's width must encode NOTHING, because no lineage edge states ` +
+          `a transferred amount. Offenders: ` +
+          off
+            .slice(0, 5)
+            .map((t) => `${t.id} ${t.source.toFixed(2)}/${t.target.toFixed(2)}`)
+            .join(", "),
+      );
+    } else {
+      notes.push(
+        `leg g1: ${thicknesses.length} lineage ribbons, all ${w0.toFixed(2)} units on both faces ✓`,
+      );
+    }
+    if (Math.abs(w0 - payload.ribbon_w) > TOL) {
+      errors.push(
+        `leg g2: lineage ribbons render at ${w0.toFixed(2)} units but lineage_flow.json declares ribbon_w=${payload.ribbon_w} — ` +
+          `the renderer rescaled the laid-out geometry`,
+      );
+    } else {
+      notes.push(`leg g2: rendered width == declared ribbon_w (${payload.ribbon_w}) ✓`);
+    }
+  }
+
+  // ── g3: no amount inside any lineage svg ─────────────────────────────────
+  {
+    let svgs = 0;
+    let offenders = 0;
+    // Same detection set as gate 2's currency scan ("$" followed by a digit,
+    // or a spelled magnitude); the extra trailing groups only widen what the
+    // MESSAGE can quote, so the reader sees "$512.15M" rather than "$5".
+    const CURRENCY = /\$\s?[\d,]+(?:\.\d+)?\s*[TBMK]?|\d[\d,.]*\s?(?:billion|million|trillion)\b/i;
+    for (const svg of root.querySelectorAll("svg")) {
+      svgs++;
+      if (svg.querySelectorAll("[data-amount]").length > 0) {
+        offenders++;
+        errors.push("leg g3: a [data-amount] figure is drawn INSIDE a lineage svg — the diagram must carry no dollars");
+      }
+      const t = (svg.text || "").replace(/\s+/g, " ");
+      const hit = CURRENCY.exec(t);
+      // Quote the TOKEN and its immediate context, not the start of the svg's
+      // text: a message that opens with the chart's <desc> reads as if the
+      // description were the problem and sends the reader to the wrong string.
+      if (hit) {
+        offenders++;
+        const from = Math.max(0, hit.index - 30);
+        errors.push(
+          `leg g3: currency token "${hit[0]}" is drawn inside a lineage svg (…${t.slice(from, hit.index + 40)}…) — ` +
+            `the money on this page belongs in the table, cited, never on a ribbon whose width means nothing`,
+        );
+      }
+    }
+    if (offenders === 0) {
+      notes.push(`leg g3: ${svgs} lineage svg(s), 0 dollar figures drawn ✓`);
+    }
+  }
+
+  // ── g4: the drawn edges ARE the sidecar's edges ──────────────────────────
+  {
+    const key = (from, to, rel, fy, conf) => `${from}|${to}|${rel}|${fy}|${conf}`;
+    const want = new Map();
+    const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
+    for (const d of [...payload.families, ...payload.candidates]) {
+      for (const e of d.edges) {
+        bump(want, key(d.nodes[e.s].pe, d.nodes[e.t].pe, e.relation, e.fy, e.confidence));
+      }
+    }
+    const got = new Map();
+    for (const g of groups) {
+      bump(
+        got,
+        key(
+          g.getAttribute("data-edge-from"),
+          g.getAttribute("data-edge-to"),
+          g.getAttribute("data-edge-relation"),
+          g.getAttribute("data-edge-fy"),
+          g.getAttribute("data-lineage-edge"),
+        ),
+      );
+    }
+    const diffs = [];
+    for (const [k, n] of want) if ((got.get(k) ?? 0) !== n) diffs.push(`missing/undercount ${k} (payload ${n}, drawn ${got.get(k) ?? 0})`);
+    for (const [k, n] of got) if ((want.get(k) ?? 0) !== n) diffs.push(`extra ${k} (drawn ${n}, payload ${want.get(k) ?? 0})`);
+    if (diffs.length > 0) {
+      errors.push(
+        `leg g4: the drawn ribbon set does not equal lineage_flow.json's edge set — ${diffs.length} difference(s): ${diffs.slice(0, 5).join("; ")}`,
+      );
+    } else {
+      notes.push(`leg g4: ${groups.length} drawn ribbons == the sidecar's ${want.size} distinct edge(s) ✓`);
+    }
+  }
+
+  // ── g5: stated vs inferred, at a glance and by attribute ─────────────────
+  {
+    let stated = 0;
+    let inferred = 0;
+    for (const g of groups) {
+      const tier = g.getAttribute("data-lineage-edge");
+      const hasInferredFlag = g.getAttribute("data-inferred") === "true";
+      const text = (g.text || "").toLowerCase();
+      if (tier === "stated") {
+        stated++;
+        if (hasInferredFlag) {
+          errors.push(`leg g5: stated edge ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} carries data-inferred="true"`);
+        }
+        if (!g.getAttribute("data-edge-fid")) {
+          errors.push(`leg g5: stated edge ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} carries no data-edge-fid — a stated edge may never render uncited`);
+        }
+      } else if (tier === "inferred") {
+        inferred++;
+        if (!hasInferredFlag) {
+          errors.push(`leg g5: inferred edge ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} does not carry data-inferred="true"`);
+        }
+        if (!text.includes("candidate") && !text.includes("unverified")) {
+          errors.push(`leg g5: inferred edge ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} never names itself candidate/unverified in its own subtree`);
+        }
+        if (g.getAttribute("data-edge-fid")) {
+          errors.push(`leg g5: inferred edge ${g.getAttribute("data-edge-from")}→${g.getAttribute("data-edge-to")} carries a fact id — inferred edges are NEVER cited`);
+        }
+      } else {
+        errors.push(`leg g5: data-lineage-edge="${tier}" is not stated|inferred`);
+      }
+    }
+    if (stated === 0) errors.push("leg g5: zero stated ribbons rendered — vacuous");
+    if (inferred === 0) errors.push("leg g5: zero inferred ribbons rendered — the stated/inferred separation is untested");
+    if (stated !== payload.counts.stated_edges) {
+      errors.push(`leg g5: ${stated} stated ribbons drawn, sidecar says ${payload.counts.stated_edges}`);
+    }
+    if (inferred !== payload.counts.inferred_edges) {
+      errors.push(`leg g5: ${inferred} inferred ribbons drawn, sidecar says ${payload.counts.inferred_edges}`);
+    }
+    if (stated > 0 && inferred > 0) {
+      notes.push(`leg g5: ${stated} stated (all cited, none flagged inferred) vs ${inferred} inferred (all flagged + labelled) ✓`);
+    }
+  }
+
+  // ── g6: unresolved identities render unresolved ──────────────────────────
+  {
+    const unresolvable = new Set();
+    for (const d of [...payload.families, ...payload.candidates]) {
+      for (const n of d.nodes) if (!n.resolved) unresolvable.add(n.pe);
+    }
+    let checked = 0;
+    let bad = 0;
+    for (const n of root.querySelectorAll("[data-lineage-node]")) {
+      const pe = n.getAttribute("data-node-pe");
+      if (!unresolvable.has(pe)) continue;
+      checked++;
+      if (n.getAttribute("data-lineage-unresolved") === null) {
+        bad++;
+        errors.push(`leg g6: ${pe} has no program page but renders without [data-lineage-unresolved]`);
+      }
+      if (n.querySelectorAll("a").length > 0) {
+        bad++;
+        errors.push(`leg g6: ${pe} has no program page but renders as a link`);
+      }
+    }
+    if (unresolvable.size > 0 && checked === 0) {
+      errors.push(`leg g6: the payload names ${unresolvable.size} unresolvable identities but none of them rendered`);
+    } else if (bad === 0) {
+      notes.push(`leg g6: ${checked} unresolved reference(s) rendered as plain text, 0 as links ✓`);
+    }
+  }
+
+  return { errors, notes };
 }
 
 export async function runFlowdownGate({ baseUrl }) {
@@ -846,6 +1209,13 @@ export async function runFlowdownGate({ baseUrl }) {
     } finally {
       await browser.close();
     }
+  }
+
+  // ── Leg (g): /lineage/ ribbons encode nothing (ROADMAP #29(c)) ──────────
+  {
+    const g = runLineageRibbonLeg();
+    errors.push(...g.errors);
+    notes.push(...g.notes);
   }
 
   return { pass: errors.length === 0, errors, notes };

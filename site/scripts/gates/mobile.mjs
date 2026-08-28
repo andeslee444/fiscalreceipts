@@ -311,6 +311,31 @@ export function buildMobileSample({ programPbl, companySlug, filingUuid }) {
       },
     },
     {
+      // ROADMAP #29(c). The lineage diagrams are sized to their own content
+      // rather than to a fixed 840px like /flow/'s Sankey, so most of them fit
+      // a 390 viewport outright and the two that do not scroll inside their
+      // own box. (m1) is what proves the page itself never moves sideways.
+      //
+      // (m2) measures the identity table's money cell with the disclosures
+      // OPEN, for the same reason /flow/ does: the figure's own description
+      // sends the reader to the table for the one number the diagram
+      // deliberately does not draw, and /flow/'s table shipped with its
+      // AMOUNT column pushed clean out of the scroller. The cell — not the
+      // [data-amount] inside it — is measured, because 36 of the 84 rows
+      // honestly render "—" and a [data-amount] selector would skip them.
+      path: "/lineage/",
+      label: "lineage identity map",
+      openDetails: true,
+      value: {
+        rowSelector: 'table[data-basis-table="lineage-identities"] tbody tr',
+        selector: "td[data-primary-value='lineage-amount']",
+        first: true,
+        minRows: 60,
+        min: 60,
+        describe: "identity FY2026 request cell",
+      },
+    },
+    {
       // Round-1 judges: every feed card kept its desktop two-column row at
       // 390, squeezing the headline into ~130px (one or two words per line)
       // while the figure column sat `shrink-0` beside it. The magnitude pair
