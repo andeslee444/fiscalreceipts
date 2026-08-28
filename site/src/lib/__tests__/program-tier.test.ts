@@ -174,7 +174,11 @@ describe("rollupProgramRow", () => {
     const row = rollupProgramRow("0708011F", rollupDetails());
     expect(row.pe_bli).toBe("0708011F");
     expect(row.title).toBe("Industrial Preparedness/Pol Prevention");
-    expect(row.org).toBe("Air Force");
+    // ProgramRow.org is the org CODE, never the display name: the GAO overlay
+    // lookup, the /agency/{org}/ href and the agencies.json membership test
+    // all key by code, and only display humanizes.
+    expect(row.org).toBe("F");
+    expect(serviceOrgName(row.org)).toBe("Air Force");
     expect(row.exhibit_family).toBe("rdte");
     expect(row.fully_reconciled).toBe(false);
     expect(row.fy2024_actual_millions).toBeNull();
@@ -191,6 +195,24 @@ describe("rollupProgramRow", () => {
   it("falls back to the PE code when the sidecar has no title", () => {
     const row = rollupProgramRow("000042", rollupDetails({ title: undefined }));
     expect(row.title).toBe("000042");
+  });
+
+  it("falls back to the DoD umbrella when the sidecar declares no service", () => {
+    // One live sidecar (9999999999) carries service_org "". "DoD" is the
+    // honest umbrella, and deliberately not a service code — it matches no
+    // agency page and no GAO overlay, which is the right answer for a line
+    // with no declared service.
+    const row = rollupProgramRow("000042", rollupDetails({ service_org: "" }));
+    expect(row.org).toBe("DoD");
+    expect(serviceOrgName(row.org)).toBe("DoD");
+  });
+
+  it("keeps Space Force under org F — 'SF' is a PE suffix, never an org", () => {
+    // 0601102SF-style PE numbers carry an SF suffix, but every Space Force
+    // line is published in the Air Force book under workbook org "F".
+    const row = rollupProgramRow("0601102SF", rollupDetails({ service_org: "F" }));
+    expect(row.org).toBe("F");
+    expect(serviceOrgName(row.org)).toBe("Air Force");
   });
 });
 

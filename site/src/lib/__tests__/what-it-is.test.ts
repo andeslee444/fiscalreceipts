@@ -273,13 +273,19 @@ describe("buildRollupCard — keeps the tier's honest tail", () => {
   it("says the book is ingested but carries no detail for this line", () => {
     const card = buildRollupCard({
       title: "SPACE PROGRAMS",
-      org: "Air Force",
+      // The org CODE, exactly what rollupProgramRow now puts on ProgramRow.org
+      // — the card humanizes it for display.
+      org: "F",
       exhibitFamily: "rdte",
       serviceOrg: "F",
       serviceIngested: true,
     });
     expect(card.tail).toContain("Air Force FY2026 book is ingested");
     expect(card.tail).toContain("no R-2/P-40 detail");
+    // The sentence humanizes the code — a raw "F" reaching the reader would
+    // be the same defect in the other direction.
+    expect(card.text).toContain("an Air Force research & development line");
+    expect(card.text).not.toContain(" a F ");
   });
 
   it("says the book is not ingested when it is not", () => {
@@ -298,7 +304,7 @@ describe("buildRollupCard — keeps the tier's honest tail", () => {
       tier: "rollup",
       peBli: "0605123F",
       title: "SPACE PROGRAMS",
-      org: "Air Force",
+      org: "F",
       exhibitFamily: "rdte",
       budgetLines: [],
       projectCount: 0,

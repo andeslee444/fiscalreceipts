@@ -10,9 +10,14 @@ import { serviceOrgName } from "@/lib/program-tier";
  *
  * The org links to /agency/{org}/ ONLY when the page passes orgHasPage
  * (computed from agencies.json, the agency generateStaticParams source).
- * Trajectory-only feed programs (backlog #17) carry service workbook org
- * codes (A/N/F/DHA) with no agency pages — those render the org as plain
- * text, never a dead link (G1 contract).
+ * `org` is always the raw org CODE — the /agency/ route's own identity and
+ * the key agencies.json is indexed by. A humanized name here matches no
+ * agency and silently demotes every such page to the plain-text branch,
+ * which is exactly what rollup pages did until lib/program-tier.ts was fixed.
+ * The codes that genuinely have no agency page are the workbook orgs outside
+ * agencies.json — DHA, DEFW, IG, and the "DoD" umbrella a sidecar with no
+ * service_org falls back to. Those render the org as plain text, never a
+ * dead link (G1 contract).
  *
  * Top-50 dossier pages (category present in categories.json) additionally get
  * a subtle CategoryHero background layer behind the header text (Task 8a);

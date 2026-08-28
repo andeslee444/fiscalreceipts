@@ -208,7 +208,7 @@ export function buildFieldCard(input: FieldCardInput): WhatItIsFields {
 
 export interface RollupCardInput {
   title: string;
-  /** Already-humanized org (rollupProgramRow humanizes service codes). */
+  /** Raw org code, humanized here — same contract as FieldCardInput.org. */
   org: string;
   exhibitFamily: string | null;
   /** Service code from the sidecar (drives the tail wording). */

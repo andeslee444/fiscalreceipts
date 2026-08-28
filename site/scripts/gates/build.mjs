@@ -78,6 +78,44 @@ function dirExists(p) {
 //
 // gzip is measured with zlib level 9 — the transfer size a reader pays. Raw is
 // the parse/DOM cost, which is what actually hurts a phone, so both are pinned.
+//
+// WHERE THE BYTES ACTUALLY GO, on the two tightest pages (measured
+// 2026-08-28 with this file's own weigh()/resolveBudgetTarget, so the next
+// person does not repeat the search):
+//
+//   /data/               92,468 raw / 13,172 gzip — 328 bytes of headroom.
+//                        49,326 raw of it is the RSC flight payload, which
+//                        costs 6,635 gzip: HALF the page is Next's second
+//                        copy of the same server tree, and it is what makes
+//                        the page hydrate. The other half is prose plus one
+//                        16-row inventory table.
+//   /companies/families/ 223,384 / 25,502 — 498 bytes of headroom. 141,423
+//                        raw / ~14,548 gzip is the flight payload; 21,023 of
+//                        that is the embedded citation slice.
+//
+// Four candidates were measured and REJECTED, each for a stated reason:
+//   · Empty the citation slice, as /programs/, /feed/, /years/ and /flow/ all
+//     do. Would save ~2 KB gzip — but those pages have no derived-input
+//     drill-down, and this one does: all 29 rows are `derived`, the panel's
+//     hasCitation() is synchronous, and /companies/families/ promises in
+//     prose that a reader can "drill into each member". Emptying the slice
+//     silently makes those chips unclickable. That is trimming disclosure.
+//   · Drop `description` from the <Explorer> props on /data/ (the 16 scope
+//     sentences, already in the inventory table above it). Measured at 3,534
+//     raw / 194 gzip — and the explorer renders the selected dataset's scope
+//     under its picker, so this removes disclosure for 194 bytes.
+//   · Drop data-external-source / data-source-form on /companies/families/
+//     (1,998 + 593 raw, duplicating the anchor's own href and text). They are
+//     the hooks gate 3's mobile leg and gate 24 read. Removing them weakens
+//     two gates.
+//   · Drop role="cell"/role="row" from the mobile-card tables. The rows are
+//     `display:block` below sm, which drops the implicit table semantics —
+//     the roles are what restores them.
+//
+// So: nothing honest was removed. The finding is that these two pages are
+// small documents whose weight is mostly framework duplication, not payload
+// anyone chose. The next real change here needs a justified raise, not a
+// hunt for slack that is not there.
 export const PAGE_WEIGHT_BUDGET = [
   // Singleton pages. `measured` is the Sprint 3 post-fix build.
   // Re-baselined 2026-08-21 (Sprint E). The key split gives each
@@ -135,6 +173,19 @@ export const PAGE_WEIGHT_BUDGET = [
   // Restoring ~6% headroom against the new measurement (the /programs/
   // Sprint E rule: re-baselining to the CURRENT proportional headroom hands
   // the next change the same cliff), not a round-number guess.
+  //
+  // CORRECTION 2026-08-28: that last sentence is false, and it is the exact
+  // species of error the drift leg below was built for — except the drift leg
+  // reads `measured`, not prose, so it could not see it. The pair below does
+  // NOT deliver ~6%: 36,900 against 36,156 is 744 bytes, 2.06%; 136,500
+  // against 132,816 is 3,684 bytes, 2.77%. #69 wrote down the intent and not
+  // the arithmetic, so /methodology/ has been sitting at 98.0% of its gzip
+  // ceiling since — reported by the near-ceiling note every build, while this
+  // comment told anyone who read it there was three times that much room.
+  // The smaller true number is published here rather than the ceiling being
+  // widened to make the claim come true: the ceiling is UNCHANGED, and the
+  // next sentence that needs to go on this page still has to be argued for
+  // in the same breath as the raise it needs.
   { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "132,816 / 36,156" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.

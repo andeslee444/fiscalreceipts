@@ -27,6 +27,11 @@
  *     crosswalk, quotes GAO verbatim, cites its own report, and sits above
  *     the department note; every other page states the absence (ROADMAP #30)
  *     — see leg h's own block at the bottom.
+ * (i) The organization a program page names is an org CODE, and the three
+ *     things that key off it actually happen: the header's own "Organization
+ *     code {X}" claim is true, X links to its agency page when one exists,
+ *     and the GAO department note renders exactly where the overlay payload
+ *     has one — see leg i's own block at the bottom.
  */
 
 import fs from "fs";
@@ -285,6 +290,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (h) the GAO program tier (ROADMAP #30) ────────────────────────────────
   runGaoProgramLeg({ errors, notes, sidecars });
+
+  // ── (i) the org a page names is an org CODE (#30's cause) ─────────────────
+  runOrgCodeLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -1247,5 +1255,194 @@ function runGaoProgramLeg({ errors, notes, sidecars }) {
       `data-seeds/gao_program_xwalk.csv; ${sidecars.size - pagesWithBlock} ` +
       `other page(s) state that no program-specific GAO finding for that line ` +
       `is ingested ✓`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg i — the org a program page names is an org CODE (ROADMAP #30's cause)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The defect this exists to stop recurring: rollupProgramRow synthesized
+// ProgramRow.org by running the sidecar's service_org through serviceOrgName,
+// storing "Air Force" where every LOOKUP downstream keys by "F". Display kept
+// working (serviceOrgName passes a name through unchanged), so nothing looked
+// broken — while 226 pages silently resolved no GAO department overlay, showed
+// their organization as dead plain text instead of a link to an /agency/ page
+// that does exist, and told the reader "Organization code Air Force". #30
+// patched the visible silence; nothing pinned the contract.
+//
+// The contract, asserted against the BUILT artifact for every program page:
+//
+//   i1 — the header's own claim is true. It renders title="Organization code
+//        {X}"; X must EQUAL the org the page's data source carries. Full tier:
+//        programs.json's `org`. Rollup tier: the sidecar's `service_org`, or
+//        the "DoD" umbrella when it declares none. (That `|| "DoD"` is the one
+//        line mirrored from rollupProgramRow — the sidecar's documented
+//        fallback for its one service-less line, not the resolution logic
+//        under test.) Every occurrence on the page must agree, so the RSC
+//        flight copy cannot disagree with the rendered header.
+//   i2 — a code with an agency page LINKS to it. out/agency/{X}/index.html
+//        existing and the header not carrying href="/agency/{X}/" is the
+//        exact shape the name-for-code swap produced.
+//   i3 — the GAO department note renders exactly where gao_overlays.json has
+//        a non-empty overlay for X. Both directions: a page with an overlay
+//        that stays quiet is #30's silence returning; a page without one that
+//        renders a note is citing an overlay that is not in the payload.
+//
+// Reads the org from the page's own tooltip text, not a data-* mirror: the
+// page ASSERTS "Organization code X" to the reader, and this checks that
+// assertion. A page that rendered the wrong org could not satisfy it by also
+// emitting a correct attribute somewhere.
+
+/** Display names serviceOrgName produces — never valid values for `org`. */
+const SERVICE_DISPLAY_NAMES = new Set(["Army", "Navy", "Air Force"]);
+
+function runOrgCodeLeg({ errors, notes, sidecars }) {
+  const programsPath = path.join(jsonDir, "programs.json");
+  const overlaysPath = path.join(jsonDir, "gao_overlays.json");
+  if (!fs.existsSync(programsPath)) {
+    errors.push("program-skeleton(i): programs.json missing — org codes cannot be verified");
+    return;
+  }
+  const orgBySlug = new Map(
+    readJson(programsPath).map((p) => [p.slug ?? p.pe_bli, p.org]),
+  );
+
+  // The overlay payload, read as data. `getGaoOverlayForOrg` returns null for
+  // an org whose overlay carries neither a high-risk area nor an improper
+  // row; that is a shape fact about this payload, mirrored here so i3 states
+  // the same "has an overlay" the page does.
+  let overlayOrgs = null;
+  if (fs.existsSync(overlaysPath)) {
+    const ov = readJson(overlaysPath);
+    overlayOrgs = new Set();
+    for (const [org, code] of Object.entries(ov.agency_code_by_org ?? {})) {
+      const a = (ov.agencies ?? {})[code];
+      if (!a) continue;
+      if ((a.high_risk_areas ?? []).length > 0 || a.improper) overlayOrgs.add(org);
+    }
+  }
+
+  const orgClaim = /Organization code ([A-Za-z0-9 &._-]+?)(?=["\\])/g;
+  const bad = { n: 0 };
+  const noLink = { n: 0 };
+  const noNote = { n: 0 };
+  const strayNote = { n: 0 };
+  const say = (bucket, msg) => {
+    bucket.n++;
+    if (bucket.n <= 5) errors.push(msg);
+  };
+
+  let checked = 0;
+  let linked = 0;
+  let withNote = 0;
+  const seenOrgs = new Map();
+
+  for (const [slug, d] of sidecars) {
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) continue;
+    const html = fs.readFileSync(p, "utf8");
+
+    const full = orgBySlug.get(slug);
+    // The one mirrored line — see the block comment above.
+    const expected = full ?? (d.service_org || "DoD");
+    const tier = full ? "full" : "rollup";
+
+    const claimed = new Set();
+    orgClaim.lastIndex = 0;
+    let m;
+    while ((m = orgClaim.exec(html)) !== null) claimed.add(m[1]);
+    if (claimed.size === 0) {
+      say(
+        bad,
+        `program-skeleton(i1): /program/${slug}/ (${tier}) renders no ` +
+          `"Organization code …" header claim at all — the org is unstated`,
+      );
+      continue;
+    }
+    const wrong = [...claimed].filter((c) => c !== expected);
+    if (wrong.length > 0) {
+      const nameSwap = wrong.find((c) => SERVICE_DISPLAY_NAMES.has(c));
+      say(
+        bad,
+        `program-skeleton(i1): /program/${slug}/ (${tier}) claims ` +
+          `"Organization code ${wrong.join('" / "')}" but its data source ` +
+          `carries org "${expected}"` +
+          (nameSwap
+            ? ` — "${nameSwap}" is the DISPLAY NAME of a code, not a code. ` +
+              `Something humanized the org before storing it (the ROADMAP #30 ` +
+              `cause: lib/program-tier.ts rollupProgramRow). Every lookup ` +
+              `keyed by org resolves nothing on this page.`
+            : ""),
+      );
+      continue;
+    }
+    // Counted only once the page's own claim is TRUE — a note that folded
+    // the mismatches in would report the number of pages it just failed.
+    checked++;
+    seenOrgs.set(expected, (seenOrgs.get(expected) ?? 0) + 1);
+
+    // i2 — an org with an agency page must be linked to it.
+    const agencyPage = path.join(outDir, "agency", expected, "index.html");
+    if (fs.existsSync(agencyPage)) {
+      if (!html.includes(`href="/agency/${expected}/"`)) {
+        say(
+          noLink,
+          `program-skeleton(i2): /program/${slug}/ (${tier}, org ${expected}) ` +
+            `renders its organization as plain text, but /agency/${expected}/ ` +
+            `is a built page — the header's orgHasPage test is keyed by code ` +
+            `and only fails to match when the org is not one`,
+        );
+      } else {
+        linked++;
+      }
+    }
+
+    // i3 — the department overlay note, both directions.
+    if (overlayOrgs) {
+      const hasNote = html.includes('data-gao-scope="department"');
+      const wantsNote = overlayOrgs.has(expected);
+      if (wantsNote && !hasNote) {
+        say(
+          noNote,
+          `program-skeleton(i3): /program/${slug}/ (${tier}) has org ` +
+            `"${expected}", which gao_overlays.json carries an overlay for, ` +
+            `but the page renders no [data-gao-scope="department"] note`,
+        );
+      } else if (!wantsNote && hasNote) {
+        say(
+          strayNote,
+          `program-skeleton(i3): /program/${slug}/ (${tier}) renders a GAO ` +
+            `department note, but gao_overlays.json has no non-empty overlay ` +
+            `for its org "${expected}" — the note cites something absent`,
+        );
+      }
+      if (hasNote) withNote++;
+    }
+  }
+
+  for (const [bucket, label] of [
+    [bad, "i1 org-code mismatch"],
+    [noLink, "i2 unlinked agency"],
+    [noNote, "i3 missing department note"],
+    [strayNote, "i3 unbacked department note"],
+  ]) {
+    if (bucket.n > 5) {
+      errors.push(
+        `program-skeleton(${label}): ${bucket.n} occurrence(s) in total ` +
+          `(first 5 listed)`,
+      );
+    }
+  }
+
+  const orgList = [...seenOrgs.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([o, n]) => `${o}:${n}`)
+    .join(" ");
+  notes.push(
+    `leg i: ${checked} of ${sidecars.size} program page(s) name an org code ` +
+      `matching their own data source; of those, ${linked} link to their ` +
+      `agency page and ${withNote} carry the GAO department note the overlay ` +
+      `payload backs — ${orgList}`,
   );
 }

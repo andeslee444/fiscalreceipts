@@ -110,9 +110,23 @@ export function rollupProgramRow(
   return {
     pe_bli: peBli,
     title: details.title ?? peBli,
-    // Empty service_org (1 sidecar) falls back to the honest umbrella "DoD"
-    // — the figures come from the DoD-wide R-1/P-1 workbooks.
-    org: serviceOrgName(details.service_org ?? "") || "DoD",
+    // ProgramRow.org is an org CODE ("F"), the code space shared by
+    // programs.json, agencies.json and gao_overlays.agency_code_by_org.
+    // It is NOT the display name: every consumer that SHOWS it humanizes at
+    // the point of display (serviceOrgName, which passes agency acronyms and
+    // "DoD" through unchanged), and the consumers that LOOK IT UP need the
+    // code. This field used to be humanized here, which is why 226 rollup
+    // pages resolved no GAO department overlay (getGaoOverlayForOrg keys by
+    // code) and rendered their own organization as dead plain text instead of
+    // a link to the /agency/{code}/ page that does exist — while their header
+    // tooltip claimed "Organization code Air Force". ROADMAP #30 patched that
+    // silence; this is the cause.
+    //
+    // Empty service_org (1 sidecar) still falls back to the honest umbrella
+    // "DoD" — the figures come from the DoD-wide R-1/P-1 workbooks. "DoD" is
+    // deliberately not a service code: it has no agency page and no overlay,
+    // which is the correct outcome for a line with no declared service.
+    org: details.service_org || "DoD",
     exhibit_family: deriveExhibitFamily(details.budget_lines),
     fully_reconciled: false,
     fy2024_actual_millions: null,

@@ -584,7 +584,12 @@ export default async function ProgramPage({
     tier,
     peBli,
     title: program.title,
-    org: tier === "rollup" ? (details.service_org ?? "") : program.org,
+    // One source for both tiers now that rollupProgramRow carries the org
+    // CODE. This used to read the sidecar directly on the rollup branch,
+    // because program.org held a humanized service NAME there and this card
+    // needs the code; that workaround was the visible half of the defect the
+    // rollupProgramRow comment now records.
+    org: program.org,
     exhibitFamily: program.exhibit_family,
     budgetLines: details.budget_lines,
     projectCount,
@@ -946,12 +951,18 @@ export default async function ProgramPage({
             )}
           </div>
         ) : (
-          // 246 pages reach this branch — the rollup tier, whose synthesized
-          // row carries a service NAME where getGaoOverlayForOrg expects an
-          // org CODE, plus one DHA line whose org is not in the overlay map.
-          // They were the only program pages that never made #30's statement
-          // at all, which is a worse silence than the note it replaces, so
-          // the statement is made here too.
+          // 20 pages reach this branch: the 19 rollup lines whose org is
+          // outside gao_overlays.agency_code_by_org (DHA 13, DEFW 4, IG 1,
+          // and the one sidecar with no service_org at all, which falls back
+          // to the "DoD" umbrella) plus one full-tier DHA line. They make
+          // #30's statement here rather than going quiet, which is what a
+          // page with no overlay honestly has to say.
+          //
+          // This branch used to hold 246 pages, because rollupProgramRow
+          // stored a service NAME in ProgramRow.org where getGaoOverlayForOrg
+          // keys by CODE. That is fixed at the source (lib/program-tier.ts);
+          // the 226 rollup pages it was hiding now render the department note
+          // like every other page whose department has one.
           <SectionEmpty title="Oversight">
             No GAO high-risk areas or improper-payment overlays map to{" "}
             {serviceOrgName(program.org)} in the ingested GAO data — absence of
