@@ -66,6 +66,7 @@
  * whatever is published is checkable.
  */
 
+import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -418,6 +419,9 @@ export async function runCoverageGate() {
 
   // ── leg cm: the coverage map (Sprint 3 Task 6) ───────────────────────────
   runCoverageMapLeg(errors, notes);
+
+  // ── leg cv: the unparsed-volume claim direction ──────────────────────────
+  runVolumeClaimLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -798,5 +802,163 @@ function runCoverageMapLeg(errors, notes) {
   notes.push(
     `leg cm coverage map: ${rendered.length} row(s), ${checkedFigures} recomputed figure(s) matched, ` +
       `${targetsSeen} target statement(s), of which ${datedTargets} dated ✓`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg cv — THE UNPARSED-VOLUME CLAIM DIRECTION
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The defect this leg exists for. /coverage/ shipped, live, for months:
+//
+//   "…the services publish no matching R-2/P-40 justification … there is no
+//    narrative document to ingest: this is a limit of what the Department
+//    publishes, not of what we have loaded."
+//   "No dated target — the missing volumes do not exist publicly."
+//
+// At the moment those sentences were served, 25 FY2026 justification volumes
+// sat downloaded and unparsed in this repository — 11 of the Navy's 13,
+// including the shipbuilding book carrying Virginia, COLUMBIA and DDG-51,
+// which are the three largest non-classified lines on the excluded list.
+//
+// EVERY NUMBER ON THAT PAGE WAS CORRECT. The 262 was recomputed by leg cm and
+// matched. The falsehood lived in the prose beside the number, attributing a
+// true count to a false cause — so no number-vs-citation gate could see it,
+// and none did. This leg is the shape of check that would have: it compares a
+// CLAIM DIRECTION against the world.
+//
+// Truth comes from volumes-recompute.py, which reconciles the raw download
+// tree against the staged documents lake PER FILE — both upstream of every
+// artifact /coverage/ renders from. Recomputing this from site_meta or from
+// the sidecars would let the exporter mark its own homework, which is how the
+// scope note shipped false on 179 of 319 pages here.
+//
+// The leg is symmetric on purpose. It does not say "the page must confess a
+// backlog"; it says the page's claim must match the reconciliation IN BOTH
+// DIRECTIONS. When the ingestion lands and `unparsed` reaches zero, the
+// backlog sentence becomes the false one, and this leg fails on it — so the
+// correction cannot rot into the opposite error.
+
+// Three predicates, and the distinction between the first two is the whole
+// leg. Tested against BOTH the live pre-fix string and the corrected one
+// before being written down here — a regex that fires on the fix is worse
+// than no regex, because the next person deletes it.
+//
+// ABSOLUTE: an unconditional denial that the source documents exist or are
+// obtainable. This is false while ANY volume sits unparsed on disk, no matter
+// what else the sentence says, so it fails on sight. The negated form is
+// explicitly exempted: "our backlog, NOT a limit of what the Department
+// publishes" is the CORRECTION, and a substring match would flag it.
+const ABSOLUTE_NONPUBLICATION_RE =
+  /(?<!not )(?<!rather than )\b(the missing volumes do not exist|do(es)? not exist publicly|no narrative document to ingest)\b|(?<!not a )\blimit of what the (Department|services) publish/i;
+
+// BLAME: non-publication offered as a cause. NOT false by itself — Classified
+// Programs, the single largest excluded line, genuinely publish nothing, and
+// the corrected page says so. It is only a defect when it is offered as the
+// WHOLE account, i.e. when the backlog is never mentioned. So this one is
+// reported only inside the missing-BACKLOG branch, never on its own.
+const BLAME_NONPUBLICATION_RE = /\b(publish(es)? no|withheld|never published)\b/i;
+
+/** Language that admits the volumes are held here and not yet ingested. */
+const BACKLOG_RE =
+  /\b(not (yet )?(parsed|ingested|loaded)|already downloaded|downloaded here|unparsed|our backlog|unbuilt ingestion)\b/i;
+
+/** Independent per-file disk↔lake reconciliation (DuckDB, via uv run python). */
+function recomputeVolumes() {
+  const script = path.join(__dirname, "volumes-recompute.py");
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: path.resolve(siteRoot, ".."),
+    encoding: "utf8",
+    timeout: 120000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    throw new Error(
+      `volumes-recompute.py failed (status ${res.status}): ${(res.stderr || "").slice(-800)}`,
+    );
+  }
+  const parsed = JSON.parse(res.stdout);
+  if (parsed.__error__) throw new Error(parsed.__error__);
+  return parsed;
+}
+
+function runVolumeClaimLeg(errors, notes) {
+  const pagePath = htmlFor("/coverage/");
+  if (!fs.existsSync(pagePath)) return; // leg cm already reported this
+
+  let truth;
+  try {
+    truth = recomputeVolumes();
+  } catch (e) {
+    errors.push(`leg cv: volume recompute failed — ${e.message}`);
+    return;
+  }
+  if (truth.__skip__) {
+    notes.push(`leg cv: ${truth.__skip__} (SKIP)`);
+    return;
+  }
+
+  const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+  const row = root
+    .querySelectorAll("[data-coverage-row]")
+    .find((r) => r.getAttribute("data-coverage-row") === "program-pages");
+  if (!row) {
+    errors.push(
+      'leg cv: /coverage/ has no "program-pages" row — the row whose blocker explains the un-detailed pages',
+    );
+    return;
+  }
+  const blocker = (row.querySelector("[data-coverage-blocker]")?.text ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const target = (row.querySelector("[data-coverage-target]")?.text ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const claim = `${blocker} ${target}`;
+  const before = errors.length;
+
+  const shortfall = truth.unparsed_orgs
+    .map((o) => `${o}: ${truth.by_org[o].unparsed} of ${truth.by_org[o].on_disk}`)
+    .join(", ");
+
+  if (truth.unparsed > 0) {
+    const absolute = claim.match(ABSOLUTE_NONPUBLICATION_RE);
+    if (absolute) {
+      errors.push(
+        `leg cv: /coverage/ "program-pages" states outright that the source documents are ` +
+          `unavailable ("${absolute[0]}") while ${truth.unparsed} FY2026 volume(s) sit ` +
+          `DOWNLOADED AND UNPARSED in this repo (${shortfall}). ` +
+          `e.g. ${truth.sample_unparsed.slice(0, 3).join(", ")}. ` +
+          "That is an engineering backlog wearing a departmental-withholding label.",
+      );
+    }
+    if (!BACKLOG_RE.test(claim)) {
+      const blame = claim.match(BLAME_NONPUBLICATION_RE);
+      errors.push(
+        `leg cv: ${truth.unparsed} FY2026 volume(s) are downloaded and unparsed (${shortfall}), ` +
+          'and the "program-pages" row never says so' +
+          (blame
+            ? ` — it offers non-publication ("${blame[0]}") as the entire explanation`
+            : "") +
+          `, so a reader is left to conclude the documents do not exist. ` +
+          `Rendered: "${claim.slice(0, 200)}"`,
+      );
+    }
+  } else if (BACKLOG_RE.test(claim)) {
+    errors.push(
+      'leg cv: every FY2026 volume on disk is ingested, but /coverage/ still claims an unparsed backlog — ' +
+        "the correction has rotted into the opposite false claim. " +
+        `Rendered: "${claim.slice(0, 200)}"`,
+    );
+  }
+
+  // The confirming note is only true when nothing above fired. A "✓" printed
+  // beside its own failure is how a gate teaches people to skim past it.
+  notes.push(
+    `leg cv volume claim: ${truth.ingested}/${truth.on_disk} FY2026 volumes ingested, ` +
+      `${truth.unparsed} unparsed (${truth.unparsed_orgs.join(", ") || "none"}) — ` +
+      (errors.length === before
+        ? "claim direction matches the disk↔lake reconciliation ✓"
+        : `claim direction CONTRADICTS the disk↔lake reconciliation (${errors.length - before} error(s))`),
   );
 }

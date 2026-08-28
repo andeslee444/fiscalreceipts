@@ -9944,3 +9944,98 @@ dropping /lineage/ back out of CROSS_PAGE_INDEXES -- which would have made the
 failure disappear while leaving 80 undeclared program figures on a live page.
 Leg (e2) -- those values agreeing with each /program/ page on that basis --
 passed in the same run and is unchanged.
+
+
+================================================================================
+2026-08-28 -- SIX LIVE FALSE CLAIMS, ONE SPECIES: A TRUE NUMBER, A FALSE LABEL
+================================================================================
+
+Three independent reviewers (a layman, a reporter, a defense-budget analyst)
+audited the live site. Every P0 they returned is the same defect: a figure that
+is correct, correctly cited, and reachable by its receipt, carrying a sentence
+beside it that is not true. Not one would have been caught by any of the 24
+gates, because all 24 were built to check a NUMBER against its CITATION, and in
+every one of these the number and the citation agree with each other.
+
+The legs below therefore check a different thing: a CLAIM DIRECTION against the
+world, and a QUALIFIER against the claim it qualifies.
+
+--------------------------------------------------------------------------------
+gate 14 LEG (cv) -- THE UNPARSED-VOLUME CLAIM DIRECTION       [P0-1]
+--------------------------------------------------------------------------------
+
+WHAT WAS LIVE on /coverage/, in the "Program pages" row:
+
+  "The 262 remaining pages are rollup lines for which the services publish no
+   matching R-2/P-40 justification -- classified programs, SBIR/STTR set-asides,
+   and spectrum-relocation lines. Their figures are cited to the workbook, but
+   there is no narrative document to ingest: this is a limit of what the
+   Department publishes, not of what we have loaded."
+
+  "No dated target -- the missing volumes do not exist publicly."
+
+WHAT IS TRUE, measured per file against the raw download tree and the staged
+documents lake (site/scripts/gates/volumes-recompute.py):
+
+  Navy       13 volumes on disk,  2 ingested,  11 UNPARSED
+  Army       20 volumes on disk, 10 ingested,  10 UNPARSED
+  Air Force  11 volumes on disk,  7 ingested,   4 UNPARSED
+  ---------------------------------------------------------
+  FY2026     81 files on disk,   56 ingested,  25 UNPARSED
+
+  Every other one of the 27 FY2026 agency directories is fully ingested. The 11
+  unparsed Navy volumes include SCN_Book.pdf -- the shipbuilding book carrying
+  Virginia ($11.08B), COLUMBIA ($10.92B) and DDG-51 ($5.41B), which are the
+  three largest NON-CLASSIFIED lines on programs_excluded.json.
+
+  The named categories were wrong too. Of the 192 excluded lines totalling
+  $156.5B: $73.9B is Classified Programs (genuinely unjustified, correctly
+  described) and $82.6B is overwhelmingly Navy procurement -- by account,
+  Shipbuilding $42.82B / Aircraft $17.08B / Weapons $7.31B / Marine Corps
+  $3.59B / Ammunition $1.23B. "SBIR/STTR" matches ZERO rows. "Spectrum" matches
+  2 rows totalling $140.4M (0.09%), and neither is a relocation line.
+
+WHY NO EXISTING GATE SAW IT: leg cm recomputes every FIGURE this page renders
+and matched all 22 of them on this same build, including the 262. The false
+claim was never a number.
+
+VERBATIM FAIL -- the leg run against the REAL pre-fix out/coverage/index.html,
+no injection, no fixture:
+
+  $ cd site && node -e "runCoverageGate()"
+  pass: false
+  NOTE  leg cv volume claim: 56/81 FY2026 volumes ingested, 25 unparsed (a, f, n) — claim direction CONTRADICTS the disk↔lake reconciliation (2 error(s))
+  ERROR leg cv: /coverage/ "program-pages" states outright that the source documents are unavailable ("no narrative document to ingest") while 25 FY2026 volume(s) sit DOWNLOADED AND UNPARSED in this repo (a: 10 of 20, f: 4 of 11, n: 11 of 13). e.g. fy2026/a/Other Procurement - BA1 - Tactical & Support Vehicles.pdf, fy2026/a/Other Procurement - BA2 - Communications & Electronics.pdf, fy2026/a/RDTE - Vol 1 - Budget Activity 3.pdf. That is an engineering backlog wearing a departmental-withholding label.
+  ERROR leg cv: 25 FY2026 volume(s) are downloaded and unparsed (a: 10 of 20, f: 4 of 11, n: 11 of 13), and the "program-pages" row never says so — it offers non-publication ("publish no") as the entire explanation, so a reader is left to conclude the documents do not exist. Rendered: "In the wayThe 262 remaining pages are rollup lines for which the services publish no matching R-2/P-40 justification — classified programs, SBIR/STTR set-asides, and spectrum-relocation lines. Their f"
+
+  Two things the first draft of this leg got wrong, both caught by running it
+  rather than by reading it, and both fixed before it shipped:
+
+  1. It printed its confirming "✓" note beside its own two failures. A gate
+     that prints a tick next to a failure trains people to skim it. The note
+     now reports the contradiction and the error count when the leg fires.
+
+  2. Its non-publication pattern ALSO fired on the CORRECTION. The corrected
+     text says two true things the first regex could not tell apart from the
+     false one: "Classified Programs ... genuinely publish no justification"
+     (true -- that is the largest excluded line, and no ingestion will change
+     it) and "our backlog, NOT a limit of what the Department publishes" (the
+     negated form of the exact phrase being banned). A leg that fails on the
+     fix gets deleted by the next person, so the predicate was split in three
+     and tested against BOTH strings before being written down:
+       ABSOLUTE -- unconditional denial that the documents exist. False on
+         sight while anything is unparsed. Negated forms exempted.
+       BLAME    -- non-publication offered as a cause. True of the classified
+         subset, so reported ONLY when the backlog is never mentioned.
+       BACKLOG  -- admits the volumes are held here and unparsed. Required
+         when unparsed > 0, and FORBIDDEN when it reaches 0.
+     Measured on the two real strings: OLD hits ABSOLUTE and has no BACKLOG
+     (2 errors). NEW hits no ABSOLUTE and has BACKLOG (0 errors), while still
+     containing "publish no" -- which is exactly the sentence that must stay
+     legal.
+
+THE LEG IS SYMMETRIC, and that is the point. It does not require the page to
+confess a backlog; it requires the page's claim to match the reconciliation in
+BOTH directions. When the ingestion lands and `unparsed` reaches 0, the backlog
+sentence becomes the false one and this leg fails on THAT -- so today's
+correction cannot rot into tomorrow's opposite error.

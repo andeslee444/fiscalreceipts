@@ -148,27 +148,41 @@ export function getCoverageMap(): CoverageMapRow[] {
       // Department publishes, not of what we have loaded". Both were false,
       // and this is the page whose whole value is that it does not spin.
       //
-      // Measured at the time of the correction: 25 FY2026 justification
+      // Measured at the time of the correction, per file, against the raw
+      // download tree and the staged documents lake: 25 FY2026 justification
       // volumes are downloaded in this repo and not yet parsed — Navy 11 of
-      // 13 on disk, Army 10 of 20, Air Force 4 of 11 — including the Navy
-      // shipbuilding book that carries Virginia, Columbia and DDG-51. The
-      // old sentence also named SBIR/STTR set-asides as a main category:
+      // 13 on disk, Army 10 of 20, Air Force 4 of 11 — including SCN_Book.pdf,
+      // the Navy shipbuilding volume carrying Virginia, COLUMBIA and DDG-51.
+      // The old sentence also named SBIR/STTR set-asides as a main category:
       // that string appears on ZERO rows of programs_excluded.json.
       // Spectrum relocation is 2 rows and well under a tenth of a percent.
       //
+      // NAVY, NOT "NAVY AND ARMY" — a correction to the first draft of this
+      // correction, which is the whole reason it is worth writing down. Army
+      // has TEN unparsed volumes, so naming it felt right; but Army
+      // contributes ZERO lines to the excluded list, because the Army PEs are
+      // covered by the volumes that ARE parsed. Of the $82.6B of
+      // non-classified excluded money, Navy is 90.9% and Army is 0%. Naming a
+      // service that contributes nothing to this particular gap would be the
+      // same species of defect the whole correction exists to remove: a true
+      // fact (Army volumes are unparsed) attached to the wrong claim.
+      //
       // Deliberately no hard-coded dollar or volume counts below: this file
       // has no derived source for them, and a stale literal here would be
-      // the same defect one layer down.
+      // the same defect one layer down. Gate 14 leg (cv) recomputes the
+      // disk↔lake reconciliation and fails the build if this row's claim
+      // points the other way — in EITHER direction, so when the ingestion
+      // lands the backlog sentence becomes the one that fails.
       blocker:
         `The ${formatCount(rollups)} remaining pages are rollup lines carrying ` +
         "cited R-1/P-1 workbook figures without R-2/P-40 detail, and they split " +
         "into two very different groups. Classified Programs — much the largest " +
         "single line — genuinely publish no justification, and no ingestion run " +
-        "will ever change that. Most of the rest are Navy and Army procurement " +
-        "lines, Virginia and COLUMBIA class submarines and DDG-51 among them, " +
-        "whose justification books ARE published, are already downloaded here, " +
-        "and are simply not parsed yet. That second group is our backlog, not a " +
-        "limit of what the Department publishes.",
+        "will ever change that. Almost all the rest are Navy procurement lines, " +
+        "Virginia and COLUMBIA class submarines and DDG-51 among them, whose " +
+        "justification books ARE published, are already downloaded here, and are " +
+        "simply not parsed yet. That second group is our backlog, not a limit of " +
+        "what the Department publishes.",
       targetKind: "none",
       target:
         "No dated target, and the honest reason is that this is unbuilt " +
