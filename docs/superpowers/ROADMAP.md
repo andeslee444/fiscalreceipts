@@ -794,6 +794,20 @@ docs/superpowers/ROADMAP.md`.
     other tiers. Deferred — verify the exact eligible set and its editorial
     value before building.
 
+    **Status: APPROVED 2026-08-27, queued.** The entry asked for the eligible set
+    to be verified and its editorial value decided before building; both are now
+    done. **Measured population: 624 real program elements** with a decade of cited
+    history and no FY2026 page (`0605230F` $20.8B 2017–2024, `1206442F` $11.4B,
+    `0303140G` $9.2B among them). The entry's own "~271" is **2.3× low**, and a
+    naive `budget_lines`-minus-built-pages cut returns **1,853** — 3× high, because
+    **1,214 of those are synthetic `-L<n>` rollup parse artifacts** (`3010F-AF-L1`
+    carries $142.6B) that must never become pages. Building against the naive cut
+    would have generated 1,214 pages for parse debris. Separately verified and
+    CLEARED: those artifacts hold 35.8% of `fct_budget_lines` and 20,781 of 59,179
+    `fct_decade_series` rows, but **all 9 reader-facing parquets carry 0 of them**
+    and `years_matrix.json` carries 0 — no published or reader-queryable figure is
+    inflated. Owner decided 2026-08-27 that a program which no longer requests
+    money should still have a browsable history page. *(Original marker below.)*
     **Status: OPEN** — swept 2026-08-24. Deferred by the entry itself and
     assigned to drawdown Task D5 ("decide before building"), which never
     executed; no commit in the history references #28.
@@ -815,6 +829,23 @@ docs/superpowers/ROADMAP.md`.
     and `_load_lineage_for_export`'s `fiscal_year or 0` coercion should skip/log an
     unparseable fy rather than emit a fy:0 edge (both unreachable in Phase 1).
 
+    **Status: (b) CLOSED 2026-08-27 · (a) APPROVED, queued · (c)(d) queued.**
+    **(b) shipped** (`4e6daa9`/`e85d101`/`03cf77c`/`b9d0804`): the PB2026 fence was
+    the whole problem — pre-2026 narratives were already in Postgres
+    `detail_narratives` (all ten editions), not missing as assumed; `export_site`
+    was fencing them out of the citation layer. Split `CITED_NARRATIVE_FY` from
+    `DISPLAY_NARRATIVE_FY` so evidence reaches back while program prose stays
+    PB2026-fenced. Stated edges **29 → 49**, families 22 → 32, family PEs 51 → 80,
+    page-anchored 13/29 → 32/49. The entry's "28 pre-2026 edges" reproduced as a
+    MINT count but is only **20 distinct links** — 7 are one transfer narrated by
+    several editions (an edge's `fiscal_year` is the edition asserting it, not the
+    year money moved) and 1 carries two relation labels; publishing 28 would have
+    double-counted. Supersession scan refused 0, and deliberately does NOT treat
+    "PE still has money after the transfer year" or absence-of-later-mention as
+    contradiction. verify-lineage gained legs (g) artifact-cite and (h)
+    no-supersession; 8/8 PASS. **(a) LLM extraction APPROVED by the owner
+    2026-08-27** (~$2 pilot, ~$10–20 full pass) — the only paid item in the
+    backlog. *(Original marker below.)*
     **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task D3; never
     executed. Verified at HEAD: `src/govbudget/lineage/extract.py:5` still says
     prose transfers without an adjacent PE code "are left for the Inferred tier
