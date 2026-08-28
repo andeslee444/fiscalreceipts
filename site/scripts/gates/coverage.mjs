@@ -1029,6 +1029,17 @@ function runUnevenRankingLeg(errors, notes) {
   // a defense-wide agency book being complete says nothing about the Navy's.
   const uneven = truth.unparsed_orgs.filter((o) => ["a", "f", "n"].includes(o));
   const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+  // SCRIPTS OUT FIRST. root.text includes <script> contents, and on a Next
+  // static export that means the RSC flight payload — the same sentence
+  // re-serialized with every element boundary as a separate JSON string. The
+  // first run of this leg failed the CORRECTED page on exactly that: the
+  // visible lede reads "sorted by the FY2026 total this site has ingested",
+  // whose qualifier the pattern exempts, but in the flight payload "sorted by
+  // the FY2026 total" and the <strong> that qualifies it are different
+  // strings, so the exemption could not see it. A gate must read what a
+  // reader reads. (feed.mjs leg e already makes this exact point about text
+  // nodes vs. server payload.)
+  for (const el of root.querySelectorAll("script, style")) el.remove();
   const text = (root.text ?? "").replace(/\s+/g, " ");
 
   if (uneven.length === 0) {
