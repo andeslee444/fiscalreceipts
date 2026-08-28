@@ -9422,3 +9422,211 @@ card breaks it.
 names -- not from drift, but because the gate picks the RAW-heaviest page and
 I had recorded the gzip-heaviest. Corrected to /company/boeing/ and
 /filing/82b97e10/.
+
+================================================================================
+ROADMAP #30 FOLLOW-UP — THE ORG-CODE BUG #30 PATCHED THE SYMPTOM OF (2026-08-28)
+gate 21 program-skeleton, leg (i) org-code contract
+================================================================================
+
+WHAT WAS ACTUALLY WRONG. site/src/lib/program-tier.ts rollupProgramRow built
+ProgramRow.org as `serviceOrgName(details.service_org ?? "") || "DoD"` -- it
+ran the sidecar's org CODE through the humanizer and stored the DISPLAY NAME.
+"Air Force" went into a field whose whole code space is "F".
+
+WHY NOBODY SAW IT FOR A TIER'S LIFETIME. serviceOrgName's default branch
+returns its input unchanged, so serviceOrgName("Air Force") === "Air Force".
+Every DISPLAY consumer humanizes at the point of display and therefore kept
+rendering the right words off the wrong value. The bug was invisible in
+exactly the places a person looks.
+
+EVERY CONSUMER OF ProgramRow.org, and what each needed (this is the audit the
+follow-up asked for; rollupProgramRow's row reaches only the program page and
+its children -- /programs/, /agency/, / and the home page all read
+getPrograms(), whose org comes straight from programs.json and was never
+wrong):
+
+  NEEDS THE CODE -- all three were broken, none of them loudly:
+  * program/[peBli]/page.tsx:545 getGaoOverlayForOrg(program.org). Keys by
+    code. 226 pages resolved null and fell through to #30's empty state.
+  * program/[peBli]/page.tsx:636 getAgencies().some(a => a.org===program.org).
+    agencies.json is indexed by code, so orgHasPage went false and 226 pages
+    rendered their organization as dead plain text -- while /agency/N/,
+    /agency/F/, /agency/A/, /agency/OSD/ and /agency/DCSA/ all exist as built
+    pages. The header's own doc comment asserted the opposite ("service
+    workbook org codes (A/N/F/DHA) with no agency pages"); A, N and F have
+    agency pages. Corrected in the same commit.
+  * components/program-header.tsx:96,98 href={`/agency/${org}/`} and
+    title={`Organization code ${org}`}. The href never fired (orgHasPage was
+    false); the tooltip fired on all 250 rollup pages and said "Organization
+    code Air Force", which is a false statement about the data.
+
+  NEEDS THE CODE -- already working, via a call-site workaround:
+  * program/[peBli]/page.tsx:587 whatItIsCard({org: tier === "rollup" ?
+    (details.service_org ?? "") : program.org}). It read around the defect.
+    Now `program.org` for both tiers. what-it-is.ts's RollupCardInput.org doc
+    ("Already-humanized org") described the field it was NOT being passed.
+
+  NEEDS THE DISPLAY NAME -- unaffected, because each humanizes itself:
+  * program page :161 stubDisplayTitle, :234/:235 stub subtitle, :339 meta
+    description, :957 the #30 empty state -- all serviceOrgName(p.org).
+  * program-header.tsx:100/:104 the visible label -- serviceOrgName(org).
+  * page.tsx:365/:441, agency/page.tsx:100, programs-table.tsx (search key,
+    CSV, sort key, org filter label, both row renderings) -- all
+    serviceOrgName(...), and all fed from programs.json, not from the
+    synthesized row.
+
+  NEITHER -- reads a different .org:
+  * sitemap.ts:119, agency/[org]/page.tsx:27/:77, programs/page.tsx:55 --
+    agencies.json / programs.json orgs. receipt-moment, years-matrix and
+    follow-the-dollar read their own payloads' org fields.
+
+THE FIX is `org: details.service_org || "DoD"`. Both documented behaviours
+survive and are now pinned by unit tests: Space Force stays under org F ("SF"
+is a PE-number suffix, never an org -- there is no SF service_org in any of
+the 250 sidecars, and isIngestedServiceOrg("SF") stays false), and the one
+sidecar with service_org "" (9999999999) still falls back to the "DoD"
+umbrella. "DoD" is deliberately NOT a service code: it matches no agency page
+and no GAO overlay, which is the honest outcome for a line with no declared
+service.
+
+COUNTS, VERIFIED AGAINST THE ARTIFACT BEFORE BEING WRITTEN DOWN. The comment
+#30 left in the else branch said "246 pages reach this branch". That number
+was right: `grep -rl 'No GAO high-risk areas or improper-payment overlays map
+to' out/program` returned 246 on the pre-fix build, and 1,759 pages carried
+data-gao-scope="department". After the fix: 1,985 carry the department note
+and 20 reach the empty state -- 19 rollup lines whose org is outside
+gao_overlays.agency_code_by_org (DHA 13, DEFW 4, IG 1, and the service-less
+sidecar's "DoD") plus one full-tier DHA line. 2005 = 1985 + 20 exactly. The
+branch comment was rewritten to the new number rather than left to rot.
+
+--------------------------------------------------------------------------------
+LEG (i) — PRE-FAILURE, verbatim, against the REAL pre-fix build
+--------------------------------------------------------------------------------
+
+The leg was written first and run against the artifact built from the commit
+BEFORE the fix -- not a synthetic fixture. i1 fired on all 226 pages:
+
+gate 21 overall: FAIL (6 error(s))
+leg i errors: 6
+  FAIL program-skeleton(i1): /program/000079/ (rollup) claims "Organization code Air Force" but its data source carries org "F" — "Air Force" is the DISPLAY NAME of a code, not a code. Something humanized the org before storing it (the ROADMAP #30 cause: lib/program-tier.ts rollupProgramRow). Every lookup keyed by org resolves nothing on this page.
+  FAIL program-skeleton(i1): /program/0105519N/ (rollup) claims "Organization code Navy" but its data source carries org "N" — "Navy" is the DISPLAY NAME of a code, not a code. Something humanized the org before storing it (the ROADMAP #30 cause: lib/program-tier.ts rollupProgramRow). Every lookup keyed by org resolves nothing on this page.
+  FAIL program-skeleton(i1): /program/013005/ (rollup) claims "Organization code Army" but its data source carries org "A" — "Army" is the DISPLAY NAME of a code, not a code. Something humanized the org before storing it (the ROADMAP #30 cause: lib/program-tier.ts rollupProgramRow). Every lookup keyed by org resolves nothing on this page.
+  FAIL program-skeleton(i1): /program/014005/ (rollup) claims "Organization code Navy" but its data source carries org "N" — "Navy" is the DISPLAY NAME of a code, not a code. Something humanized the org before storing it (the ROADMAP #30 cause: lib/program-tier.ts rollupProgramRow). Every lookup keyed by org resolves nothing on this page.
+  FAIL program-skeleton(i1): /program/0147/ (rollup) claims "Organization code Navy" but its data source carries org "N" — "Navy" is the DISPLAY NAME of a code, not a code. Something humanized the org before storing it (the ROADMAP #30 cause: lib/program-tier.ts rollupProgramRow). Every lookup keyed by org resolves nothing on this page.
+  FAIL program-skeleton(i1 org-code mismatch): 226 occurrence(s) in total (first 5 listed)
+  note: leg i: 1779 of 2005 program page(s) name an org code matching their own data source; of those, 1759 link to their agency page and 1759 carry the GAO department note the overlay payload backs — F:519 A:508 N:397 OSD:131 MDA:43 SOCOM:40 DISA:26 DARPA:24 DHA:14 DTRA:12 CBDP:10 TJS:8 CYBERCOM:8 DCSA:8 DLA:8 DHRA:5 DEFW:4 OTE:3 DTIC:2 DCAA:1 DCMA:1 DSCA:1 IG:1 DPAA:1 DMACT:1 WHS:1 DoD:1 DPAP:1
+
+(The 24 rollup pages that PASS i1 on the broken build are the ones whose org
+is an acronym serviceOrgName passes through unchanged -- OSD 3, DCSA 2, DHA
+13, DEFW 4, IG 1, plus the "DoD" fallback. The defect only ever touched the
+three codes the humanizer knows. That is why display never gave it away.)
+
+i2 and i3 could not fire on that build, because i1 short-circuits a page it
+has already failed. Each was proved separately by mutating ONE built page,
+running the leg, and restoring the file (md5-verified identical afterwards).
+
+i2 -- rewrite href="/agency/F/" on /program/000079/ so the org is no longer
+linked to the agency page that exists:
+
+gate 21 overall: FAIL (1 error(s))
+  FAIL program-skeleton(i2): /program/000079/ (rollup, org F) renders its organization as plain text, but /agency/F/ is a built page — the header's orgHasPage test is keyed by code and only fails to match when the org is not one
+
+i3, missing direction -- strip data-gao-scope="department" from /program/000079/:
+
+gate 21 overall: FAIL (1 error(s))
+  FAIL program-skeleton(i3): /program/000079/ (rollup) has org "F", which gao_overlays.json carries an overlay for, but the page renders no [data-gao-scope="department"] note
+
+i3, stray direction -- inject data-gao-scope="department" onto /program/0601117DHA/,
+whose org has no overlay in the payload:
+
+gate 21 overall: FAIL (1 error(s))
+  FAIL program-skeleton(i3): /program/0601117DHA/ (rollup) renders a GAO department note, but gao_overlays.json has no non-empty overlay for its org "DHA" — the note cites something absent
+
+--------------------------------------------------------------------------------
+LEG (i) — PASS, verbatim, against the fixed build
+--------------------------------------------------------------------------------
+
+gate 21 overall: PASS (0 error(s))
+leg i errors: 0
+  note: leg i: 2005 of 2005 program page(s) name an org code matching their own data source; of those, 1985 link to their agency page and 1985 carry the GAO department note the overlay payload backs — N:601 F:538 A:511 OSD:131 MDA:43 SOCOM:40 DISA:26 DARPA:24 DHA:14 DTRA:12 CBDP:10 TJS:8 CYBERCOM:8 DCSA:8 DLA:8 DHRA:5 DEFW:4 OTE:3 DTIC:2 DCAA:1 DCMA:1 DSCA:1 IG:1 DPAA:1 DMACT:1 WHS:1 DoD:1 DPAP:1
+
+WHAT THE LEG ASSERTS, and the one line it mirrors. i1 reads the page's OWN
+claim -- the header renders the words "Organization code {X}" to a reader --
+and checks that claim against the data the page was built from (programs.json
+org for full tier, the sidecar's service_org for rollup). It is not a second
+implementation of the resolution logic agreeing with the first: it is the
+artifact's assertion checked against the source. The single mirrored line is
+`d.service_org || "DoD"`, the sidecar's documented umbrella fallback, and it
+is called out as such in the leg's block comment. i3 mirrors one more shape
+fact -- getGaoOverlayForOrg returns null for an overlay with neither a
+high-risk area nor an improper row -- so that "has an overlay" means the same
+thing in the gate as on the page.
+
+Note the counter in the leg's own note: `checked` increments only AFTER i1
+passes. The first draft incremented before, and reported "2005 program
+page(s) name an org code matching their own data source" in the same breath
+as failing 226 of them. A note that contradicts the errors printed beside it
+is the third instance this file records of a check misdescribing its own
+finding; it was caught here only because the number was read.
+
+GATE COUNT: unchanged -> 24. grep -c "gateResults.push" site/scripts/verify.mjs
+=> 24. Leg (i) is a leg of gate 21, not a 25th gate.
+
+--------------------------------------------------------------------------------
+THE PAGE-WEIGHT HALF: nothing honest to remove, and one false claim corrected
+--------------------------------------------------------------------------------
+
+NO CEILING WAS RAISED, and nothing was trimmed. Measured with the gate's own
+logic -- PAGE_WEIGHT_BUDGET imported from build.mjs, zlib.gzipSync(buf,
+{level:9}), and for dir: entries the RAW-heaviest page picked first and only
+that one gzipped, which is the mistake recorded 60 lines above this one.
+
+The fix costs the budgeted pages nothing. Every entry is byte-identical
+before and after (raw exactly equal; gzip within 1 byte, which is this
+machine's zlib against the recording machine's):
+
+  /data/                 92,468 / 13,173   327 left  (97.6%)
+  /companies/families/  223,384 / 25,503   497 left  (98.1%)
+  /methodology/         132,816 / 36,155   745 left  (98.0%)
+  /companies/           683,551 / 67,146 1,854 left  (97.3%)
+  /                   1,255,520 / 79,851 4,149 left  (95.1%)
+  /program/*/ heaviest 1,108,222 / 142,262 8,738 left (94.2%, /program/0601102A/)
+
+The department note landed on 226 rollup pages, and the heaviest program page
+is a full-tier one that already carried it -- so the class ceiling never saw
+the change. For scale: the heaviest ROLLUP page is /program/9999999999/ at
+260,794 raw against a 1,180,000 ceiling, and /program/000079/ (which gained
+the note) is 89,147 / 16,917.
+
+WHERE THE BYTES ARE on the two tightest pages, so nobody searches again.
+/data/: 49,326 of 92,468 raw is the RSC flight payload, costing 6,635 of the
+13,173 gzip -- half the page is Next's second copy of the same server tree,
+and it is what makes the page hydrate. /companies/families/: 141,423 raw /
+~14,548 gzip is flight, 21,023 of it the embedded citation slice.
+
+FOUR CANDIDATES MEASURED AND REJECTED, each for a stated reason (the full
+list is in build.mjs above PAGE_WEIGHT_BUDGET):
+  * Emptying the citation slice, as /programs/, /feed/, /years/ and /flow/
+    already do -- worth ~2 KB gzip, but all 29 rows on this page are `derived`
+    and the panel's hasCitation() is synchronous, so the page's own promise
+    that a reader can "drill into each member" would silently stop working.
+  * Dropping `description` from <Explorer>'s props on /data/ (the 16 scope
+    sentences, already in the table above it) -- measured at 3,534 raw and
+    exactly 194 gzip, because gzip already matches the earlier copy. The
+    explorer renders the selected dataset's scope under its picker.
+  * Dropping data-external-source / data-source-form -- gate 3's mobile leg
+    and gate 24 read them.
+  * Dropping role="cell"/role="row" -- the rows are display:block below sm,
+    which drops the implicit table semantics those roles restore.
+
+ONE FALSE CLAIM CORRECTED, no ceiling touched. ROADMAP #69's re-baseline of
+/methodology/ wrote "Restoring ~6% headroom against the new measurement". The
+pair it set delivers 2.06% gzip (36,900 against 36,156 = 744 bytes) and 2.77%
+raw (136,500 against 132,816 = 3,684). The page has been reported at 98.0% by
+the near-ceiling note on every build since, while the comment beside it told
+the reader there was three times that much room. This is the same species the
+annotation-drift leg was built for, and the drift leg structurally cannot see
+it: it compares `measured` against the artifact and never reads the prose. The
+smaller true number is now written down and the ceiling is unchanged, per the
+standing owner decision -- publish the smaller true number, label it a
+correction, never widen the claim to fit.
