@@ -10256,3 +10256,60 @@ check it replaces. Measured on the four real strings:
 
 B-21 credits advance procurement and SHOULD: its $862.0M remainder is real, so
 requirement (2) does not apply to it. The pre-fix row fails (1).
+
+--------------------------------------------------------------------------------
+VERBATIM PASS -- all five new legs, on the post-fix build (HEAD e86acc1)
+--------------------------------------------------------------------------------
+
+  gate 14 leg cv volume claim: 56/81 FY2026 volumes ingested, 25 unparsed (a, f, n) — claim direction matches the disk↔lake reconciliation ✓
+  gate 14 leg cr uneven ranking: 3 service(s) with unparsed FY2026 volumes (a: 10 of 20 unparsed, f: 4 of 11 unparsed, n: 11 of 13 unparsed); /agency/ states its totals are ingestion-limited and names Navy ✓
+  gate 23 leg g5: 152 FY2026 reconciliation strip row(s) name the cause the sidecar actually carries ✓
+  gate 23 leg h6 coverage scope: /programs/ names all 2 exhibit families behind its $385.3B denominator (P-1 $205.01B + R-1 $180.26B) ✓
+  gate 8  leg m: 141 syndicated item(s) on reconciliation-affected programs carry the split in title, description and <fr:reconciliation> (141 element(s) agree with feed.json); 58 of them headline an increase whose discretionary rate is negative and now say so ✓
+
+FIFTY-EIGHT. The reviewers found one item whose headline direction was
+reversed by its own qualifier (Long Range Kill Chains). The leg found 58.
+
+  overall: PASS -- 24/24 gates, suite unchanged at 24
+  (grep -c "gateResults.push" site/scripts/verify.mjs -> 24)
+
+PAGE WEIGHT -- NO CEILING RAISED, NO CEILING BREACHED. Measured with the
+gate's own weigh() at zlib level 9, on the post-fix build run WITH
+NEXT_PUBLIC_SITE_URL set. Gzip headroom before -> after:
+
+  /methodology/          749 -> 512   (the P0-5 sentence, +237)
+  /coverage/           1,133 -> 844   (the P0-1 correction, +289)
+  /                    4,175 -> 3,882 (the P0-2 mover chips, +293)
+  /agency/             3,179 -> 2,187 (the P0-6 scope note, +992)
+  /data/                 333 -> 330   (untouched)
+  /companies/families/   500 -> 498   (untouched)
+
+The two pages the brief named as tightest -- /data/ and /companies/families/
+-- were not touched and did not move beyond build noise. /methodology/ is the
+tightest page this work did touch and it stays inside a ceiling that was NOT
+moved: the correction was written to fit the budget it had, rather than the
+budget being widened to fit the correction.
+
+WHAT THE CORRECTED SURFACES SAY NOW (post-fix build, verbatim):
+
+  /program/834130/ strip:
+    "FY26 Request · $992.9M TOA − $294.7M J-book line = 698.2M
+     (992.9 − 294.7 = 698.2) — $698.2M of one-time FY2026 reconciliation
+     money accounts for this gap — not advance procurement"
+
+  /programs/ scope:
+    "$228.7B of the $385.3B FY2026 procurement and RDT&E request (59.4%).
+     That denominator is the P-1 and R-1 workbooks only; military personnel,
+     operation and maintenance, military construction and the other
+     appropriation titles are outside this corpus entirely, so this share is
+     not a share of the whole defense budget."
+
+  /rss.xml, the item that started it:
+    <title>Long Range Kill Chains increased 3053% FY25→26 — FY2025 $244.1M →
+     FY2026 $7.70B (+$7.45B, +3053%) — discretionary -99.2%; $7.70B of this
+     is one-time reconciliation money</title>
+    <fr:reconciliation recon-value="7695000" recon-display="$7.70B"
+     disc-value="1916" disc-display="$1.92M" recon-share-pct="100.0"
+     disc-pct-change="-99.2" recon-fact="11020da183a1c682" .../>
+
+  /agency/N/: <title>Navy</title>, <h1>Navy</h1> (was "N" for both).
