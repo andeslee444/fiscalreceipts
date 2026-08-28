@@ -143,18 +143,39 @@ export function getCoverageMap(): CoverageMapRow[] {
         `carry cited R-1/P-1 workbook figures only.`,
       derivation:
         "program_details sidecars holding at least one J-book detail row, over every sidecar this build shipped.",
+      // CORRECTED 2026-08-27. The previous text said the missing justification
+      // "does not exist publicly" and that this was "a limit of what the
+      // Department publishes, not of what we have loaded". Both were false,
+      // and this is the page whose whole value is that it does not spin.
+      //
+      // Measured at the time of the correction: 25 FY2026 justification
+      // volumes are downloaded in this repo and not yet parsed — Navy 11 of
+      // 13 on disk, Army 10 of 20, Air Force 4 of 11 — including the Navy
+      // shipbuilding book that carries Virginia, Columbia and DDG-51. The
+      // old sentence also named SBIR/STTR set-asides as a main category:
+      // that string appears on ZERO rows of programs_excluded.json.
+      // Spectrum relocation is 2 rows and well under a tenth of a percent.
+      //
+      // Deliberately no hard-coded dollar or volume counts below: this file
+      // has no derived source for them, and a stale literal here would be
+      // the same defect one layer down.
       blocker:
-        `The ${formatCount(rollups)} remaining pages are rollup lines for which ` +
-        "the services publish no matching R-2/P-40 justification — classified " +
-        "programs, SBIR/STTR set-asides, and spectrum-relocation lines. Their " +
-        "figures are cited to the workbook, but there is no narrative document " +
-        "to ingest: this is a limit of what the Department publishes, not of " +
-        "what we have loaded.",
+        `The ${formatCount(rollups)} remaining pages are rollup lines carrying ` +
+        "cited R-1/P-1 workbook figures without R-2/P-40 detail, and they split " +
+        "into two very different groups. Classified Programs — much the largest " +
+        "single line — genuinely publish no justification, and no ingestion run " +
+        "will ever change that. Most of the rest are Navy and Army procurement " +
+        "lines, Virginia and COLUMBIA class submarines and DDG-51 among them, " +
+        "whose justification books ARE published, are already downloaded here, " +
+        "and are simply not parsed yet. That second group is our backlog, not a " +
+        "limit of what the Department publishes.",
       targetKind: "none",
       target:
-        "No dated target — the missing volumes do not exist publicly. If a " +
-        "service releases withheld justification, it lands in the next " +
-        "ingestion run and this number moves on its own.",
+        "No dated target, and the honest reason is that this is unbuilt " +
+        "ingestion rather than withheld source material. Until those volumes " +
+        "are parsed, every page in the second group says it carries no " +
+        "R-2/P-40 detail, which is true of this build and not true of the " +
+        "public record.",
     },
     {
       id: "editions",
