@@ -347,11 +347,18 @@ function IdentityTable({
           <th scope="col" className="px-2 py-1.5 text-left font-semibold text-muted-foreground">
             Group · step
           </th>
+          {/* data-basis-declared, on the column it governs: gate 23 leg e1
+              requires an aggregate surface to SAY which basis its figures are
+              on, where a reader can see it — an attribute nobody can read is
+              exactly what that leg exists to prevent. "P-1/R-1 TOA" is the
+              honest both-exhibits form: these 84 identities span RDT&E and
+              procurement, so no single exhibit can be claimed for the column. */}
           <th
             scope="col"
             data-basis="toa"
             data-fy={String(payload.amount_fy)}
             data-measure={payload.amount_measure}
+            data-basis-declared=""
             className="px-2 py-1.5 text-right font-semibold text-muted-foreground"
           >
             FY{payload.amount_fy} request · P-1/R-1 TOA

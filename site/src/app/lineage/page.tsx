@@ -110,7 +110,15 @@ export default function LineagePage() {
           <p className="mt-2 text-sm leading-7">
             The one figure that <em>is</em> stated per identity — its FY
             {payload.amount_fy} request — is in the table under the diagram,
-            cited, on the same P-1/R-1 TOA basis the rest of the site uses.{" "}
+            cited, on the same{" "}
+            {/* The surface's own basis declaration (gate 23 leg e1), stated
+                once in prose so a reader who never opens the table still gets
+                it. The table's money column carries the same declaration on
+                the column it governs. */}
+            <span data-basis-declared="" className="font-medium text-foreground">
+              P-1/R-1 TOA
+            </span>{" "}
+            basis the rest of the site uses.{" "}
             {c.identities_with_amount} of the {c.identities} identities carry
             one; the rest render an absence rather than a zero.
           </p>
