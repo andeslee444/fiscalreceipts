@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
 import { formatCount } from "@/lib/format";
+import { ScopeNote } from "@/components/notes";
 
 /**
  * /agency/ — the agency index (Sprint C Task C3, ROADMAP #62).
@@ -71,10 +72,45 @@ export default function AgencyIndexPage() {
           <h1 className="text-3xl font-bold mb-2">Agencies</h1>
           <p className="text-muted-foreground">
             {formatCount(sorted.length)} defense agencies with program-level
-            budget data, sorted by FY2026 total. Click a total to inspect its
-            derivation and cited inputs, or a name to see every program
-            element for that agency.
+            budget data, sorted by the FY2026 total{" "}
+            <strong className="text-foreground">this site has ingested</strong>
+            . Click a total to inspect its derivation and cited inputs, or a
+            name to see every program element for that agency.
           </p>
+          {/* §P0-6 — THE SORT WAS THE FALSE CLAIM.
+              This page said "sorted by FY2026 total" and put the Air Force
+              above the Navy. Every figure in the table is true and correctly
+              cited; the ORDER was not, because the totals are sums over what
+              has been ingested and ingestion is very uneven by service. The
+              Navy's justification volumes are largely unparsed (gate 14 leg
+              cv holds that claim to the disk↔lake reconciliation), so its
+              ingested total is far short of its actual FY2026 request, while
+              the Air Force's and the Army's are nearly complete. Ranking
+              those against each other silently ranks INGESTION COMPLETENESS
+              under a spending label.
+              Publishing the per-agency coverage percentage beside the money
+              is the real fix and it needs a figure agencies.json does not
+              carry yet. Until it does, this page does not get to imply a
+              ranking it cannot support. */}
+          <ScopeNote className="mt-3" label={null}>
+            <p className="text-sm leading-6">
+              <strong className="text-foreground">
+                Do not read this order as a ranking of what the services spend.
+              </strong>{" "}
+              Each total is a sum over the program elements whose justification
+              this site has loaded, and that coverage is uneven between
+              agencies. The Navy&rsquo;s is the most incomplete by a wide
+              margin — most of its FY2026 justification volumes are downloaded
+              but not yet parsed — so its total here understates its request by
+              far more than any other service&rsquo;s does, and it sorts lower
+              than it belongs. The Air Force and Army totals are close to
+              complete. Per-agency coverage figures are not published yet;{" "}
+              <Link href="/coverage/" className="underline hover:text-foreground">
+                what is and is not loaded
+              </Link>{" "}
+              states the shortfall volume by volume.
+            </p>
+          </ScopeNote>
         </div>
 
         <div className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-card">
@@ -84,7 +120,7 @@ export default function AgencyIndexPage() {
             <span className="flex-1">Agency</span>
             <span className="w-24 text-right">Programs</span>
             <span className="w-32 text-right">FY24 total</span>
-            <span className="w-32 text-right">FY26 total</span>
+            <span className="w-32 text-right">FY26 total (ingested)</span>
           </div>
           {sorted.map((a) => (
             <div

@@ -168,6 +168,14 @@ export function ReconciliationStrip({
             <p
               key={`${e.fy}-${e.measure}`}
               data-testid="reconciliation-row"
+              // IDENTITY, not claim: which (fy, measure) this row is. Gate 23
+              // leg g5 selects the FY2026 request row by these so it can read
+              // that row's OWN sentence — the shared mechanism sentence above
+              // legitimately names advance procurement, and a strip-wide text
+              // scan cannot tell "explains the mechanism" from "credits this
+              // gap to it".
+              data-reconciliation-fy={e.fy}
+              data-reconciliation-measure={e.measure}
               data-reconciliation-cause={
                 reconK === null
                   ? "ap"

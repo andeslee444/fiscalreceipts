@@ -1733,22 +1733,53 @@ function runFy26SplitLeg(pages, errors, notes) {
             `built page renders no reconciliation strip`,
         );
       } else {
-        const stripText = (strip.text ?? "").replace(/\s+/g, " ");
-        if (!/reconciliation/i.test(stripText)) {
-          wrongCause.push(
-            `/program/${pe}/: the strip explains a ${fmtK(fy26Entry.delta_thousands)} ` +
-              `FY2026 gap without once naming the ${fmtK(reconK)} reconciliation ` +
-              `appropriation that accounts for it`,
+        // THE ROW, not the strip. The first draft of this leg scanned the
+        // whole strip for "advance procurement" — which fails the CORRECTION,
+        // because the shared mechanism sentence legitimately explains that TOA
+        // includes AP rows in an ordinary year. Scanning the strip cannot tell
+        // "explains the mechanism" from "credits THIS gap to it".
+        //
+        // Replacing that check with a ROW-LEVEL one is a strengthening, not a
+        // relaxation, and the pre-fix artifact proves it: the recorded FAIL
+        // shows the pre-fix strip never contained the token "reconciliation"
+        // ANYWHERE (152 pages, "without once naming"), and the row is a subset
+        // of the strip — so a pre-fix row could not have named it either.
+        // Requiring the ROW to name it is therefore satisfied by strictly
+        // fewer artifacts than requiring the strip to.
+        const row = strip
+          .querySelectorAll("[data-reconciliation-fy]")
+          .find(
+            (r) =>
+              r.getAttribute("data-reconciliation-fy") === "2026" &&
+              r.getAttribute("data-reconciliation-measure") === "request",
           );
-        }
-        if (!apIsReal && /advance procurement/i.test(stripText)) {
+        if (!row) {
           wrongCause.push(
-            `/program/${pe}/: the strip credits advance procurement for an ` +
-              `FY2026 gap of ${fmtK(fy26Entry.delta_thousands)} that the ` +
-              `${fmtK(reconK)} reconciliation appropriation accounts for in full ` +
-              `(remainder ${fmtK(remainderK)}) — the same number the ` +
-              `[data-fy26-recon-chip] on this page calls reconciliation`,
+            `/program/${pe}/: the strip renders no FY2026 request row, but the ` +
+              `sidecar carries one — the gap cannot state its cause`,
           );
+        } else {
+          const rowText = (row.text ?? "").replace(/\s+/g, " ");
+          if (!/reconciliation/i.test(rowText)) {
+            wrongCause.push(
+              `/program/${pe}/: the FY2026 row states a ${fmtK(fy26Entry.delta_thousands)} ` +
+                `gap without naming the ${fmtK(reconK)} reconciliation ` +
+                `appropriation that accounts for it — the same number the ` +
+                `[data-fy26-recon-chip] on this page calls reconciliation`,
+            );
+          }
+          // "not advance procurement" is the CORRECTION, so the credit test
+          // has to be negation-aware — the same lookbehind discipline gate 14
+          // leg (cv) needed for "NOT a limit of what the Department publishes".
+          const credits = rowText.match(/(?<!not )advance procurement/i);
+          if (!apIsReal && credits) {
+            wrongCause.push(
+              `/program/${pe}/: the FY2026 row credits advance procurement for a ` +
+                `gap of ${fmtK(fy26Entry.delta_thousands)} that the ` +
+                `${fmtK(reconK)} reconciliation appropriation accounts for in ` +
+                `full (remainder ${fmtK(remainderK)})`,
+            );
+          }
         }
       }
     }

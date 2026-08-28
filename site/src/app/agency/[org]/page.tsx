@@ -18,6 +18,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { formatCount } from "@/lib/format";
+import { serviceOrgName } from "@/lib/program-tier";
 import { reproducibleDifference } from "@/lib/derivation";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
@@ -37,13 +38,18 @@ export async function generateMetadata({
   if (!agency) return { title: "Agency Not Found" };
 
   const canonical = `${SITE_URL}/agency/${org}/`;
+  // §P0-6: the human service name, not the raw workbook token. /agency/N/
+  // shipped with <title>N</title> and <h1>N</h1> — a page about the Navy
+  // titled with a single letter. serviceOrgName is identity-only and returns
+  // the code unchanged for every agency that has no other name.
+  const orgName = serviceOrgName(org);
   return {
-    title: org,
-    description: `${org}: ${agency.program_count} defense program elements with FY2024 and FY2026 budget data.`,
+    title: orgName,
+    description: `${orgName}: ${agency.program_count} defense program elements with FY2024 and FY2026 budget data.`,
     alternates: { canonical },
     openGraph: {
-      title: `${org} Defense Programs — ${SITE_NAME}`,
-      description: `${agency.program_count} program elements for ${org}.`,
+      title: `${orgName} Defense Programs — ${SITE_NAME}`,
+      description: `${agency.program_count} program elements for ${orgName}.`,
       url: canonical,
       siteName: SITE_NAME,
       images: agencyOgImages(org),
@@ -144,7 +150,9 @@ export default async function AgencyPage({
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-3">{org}</h1>
+          <h1 className="text-3xl font-bold mb-3" title={`Organization code ${org}`}>
+            {serviceOrgName(org)}
+          </h1>
           {/* Explicit {" "} separators between the meta spans keep Pagefind
               excerpts from concatenating fragments (§P1-4 snippet bug). */}
           <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">

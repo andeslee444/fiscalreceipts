@@ -423,6 +423,9 @@ export async function runCoverageGate() {
   // ── leg cv: the unparsed-volume claim direction ──────────────────────────
   runVolumeClaimLeg(errors, notes);
 
+  // ── leg cr: ranking entities whose coverage is uneven ────────────────────
+  runUnevenRankingLeg(errors, notes);
+
   return { pass: errors.length === 0, errors, notes };
 }
 
@@ -960,5 +963,143 @@ function runVolumeClaimLeg(errors, notes) {
       (errors.length === before
         ? "claim direction matches the disk↔lake reconciliation ✓"
         : `claim direction CONTRADICTS the disk↔lake reconciliation (${errors.length - before} error(s))`),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg cr — A PAGE MAY NOT RANK ENTITIES BY MONEY WHILE THEIR COVERAGE IS
+//          UNEVEN, UNLESS IT SAYS SO (§P0-6)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The nastiest of the six reviewer findings, because it has no wrong number
+// in it at all. /agency/ said "sorted by FY2026 total" and rendered:
+//
+//   Air Force  519 programs   $97.7B   <- first
+//   Navy       397 programs   $46.8B   <- second
+//   Army       507 programs   $43.1B
+//
+// Every one of those figures is a correctly cited sum. But fct_budget_lines'
+// own fy_2026_total by organization is N $121.8B, F $98.7B, A $43.3B — the
+// Navy is FIRST, by $23B. It renders at $46.8B because 11 of its 13 FY2026
+// justification volumes are unparsed, i.e. ~38% coverage against ~99% for the
+// Air Force and Army.
+//
+// So the falsehood is produced by the ACT OF SORTING correct-but-unevenly-
+// covered figures against each other. There is no number for a
+// number-vs-citation gate to catch, and no single page states the false
+// claim — the ORDER states it.
+//
+// THE GENERAL FORM, which is what this leg encodes: a page that ranks
+// entities by a money figure must not present that order as a ranking of the
+// underlying quantity while the entities' coverage differs materially, unless
+// the disparity is disclosed on the page.
+//
+// Truth is volumes-recompute.py again — the same disk↔lake reconciliation leg
+// cv uses, which is upstream of agencies.json and of every figure the page
+// renders. When the ingestion lands and no service has unparsed volumes, this
+// leg stops requiring the disclosure.
+
+/** Words that would let the page claim a plain spending ranking. */
+const BARE_RANK_RE = /sorted by (the )?FY\d{4} total\b(?!\s*this site has ingested)/i;
+
+/** The disclosure that makes an uneven ranking honest. */
+const UNEVEN_DISCLOSURE_RE =
+  /\b(uneven|incomplete|not yet parsed|understates|has ingested|ingested)\b/i;
+
+function runUnevenRankingLeg(errors, notes) {
+  const pagePath = htmlFor("/agency/");
+  if (!fs.existsSync(pagePath)) {
+    notes.push("leg cr: out/agency/index.html not found (SKIP)");
+    return;
+  }
+
+  let truth;
+  try {
+    truth = recomputeVolumes();
+  } catch (e) {
+    errors.push(`leg cr: volume recompute failed — ${e.message}`);
+    return;
+  }
+  if (truth.__skip__) {
+    notes.push(`leg cr: ${truth.__skip__} (SKIP)`);
+    return;
+  }
+
+  // Only SERVICE orgs matter here: /agency/ ranks them against each other, and
+  // a defense-wide agency book being complete says nothing about the Navy's.
+  const uneven = truth.unparsed_orgs.filter((o) => ["a", "f", "n"].includes(o));
+  const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+  const text = (root.text ?? "").replace(/\s+/g, " ");
+
+  if (uneven.length === 0) {
+    notes.push(
+      "leg cr: every service's FY2026 volumes are ingested — an unqualified " +
+        "ranking on /agency/ would be honest ✓",
+    );
+    return;
+  }
+
+  const shortfall = uneven
+    .map((o) => `${o}: ${truth.by_org[o].unparsed} of ${truth.by_org[o].on_disk} unparsed`)
+    .join(", ");
+
+  const worst = uneven.reduce((a, b) =>
+    truth.by_org[b].unparsed / truth.by_org[b].on_disk >
+    truth.by_org[a].unparsed / truth.by_org[a].on_disk
+      ? b
+      : a,
+  );
+  const worstName = { a: "Army", f: "Air Force", n: "Navy" }[worst];
+
+  const bare = text.match(BARE_RANK_RE);
+  if (bare) {
+    errors.push(
+      `leg cr: /agency/ claims to be "${bare[0]}" while service ingestion is ` +
+        `uneven (${shortfall}) — that order ranks ingestion completeness under ` +
+        "a spending label",
+    );
+  }
+
+  // THE DISCLOSURE MUST BE A SENTENCE, AND IT MUST NAME THE WORST SERVICE IN
+  // THE SAME SENTENCE.
+  //
+  // Scoped to a real paragraph rather than the whole page, because a
+  // whole-page scan passes on debris: the pre-fix page contains "Navy" (it is
+  // a row in the table) and, after the column header was relabelled, would
+  // contain "ingested" too (three words in a <span>). Either check alone would
+  // then be satisfied by text that discloses nothing. Requiring ONE paragraph
+  // to carry both the disclosure and the name is what a reader actually needs
+  // — "coverage varies" without naming the service that is at 38% is a
+  // disclosure nobody can act on.
+  const MIN_DISCLOSURE_CHARS = 80;
+  const paragraphs = root
+    .querySelectorAll("p")
+    .map((p) => (p.text ?? "").replace(/\s+/g, " ").trim())
+    .filter((t) => t.length >= MIN_DISCLOSURE_CHARS);
+  const disclosing = paragraphs.filter((t) => UNEVEN_DISCLOSURE_RE.test(t));
+
+  if (disclosing.length === 0) {
+    errors.push(
+      `leg cr: /agency/ ranks services by a money figure with ${shortfall}, ` +
+        "and no paragraph on the page discloses that the totals are what has " +
+        "been loaded rather than what is requested",
+    );
+  } else if (
+    !disclosing.some((t) => new RegExp(`\\b${worstName}\\b`, "i").test(t))
+  ) {
+    errors.push(
+      `leg cr: /agency/ discloses uneven coverage but no disclosing paragraph ` +
+        `names ${worstName}, whose ${truth.by_org[worst].unparsed} of ` +
+        `${truth.by_org[worst].on_disk} unparsed volumes make it the most ` +
+        `understated row on the page`,
+    );
+  }
+
+  notes.push(
+    `leg cr uneven ranking: ${uneven.length} service(s) with unparsed FY2026 ` +
+      `volumes (${shortfall}); /agency/ ` +
+      (errors.some((e) => e.startsWith("leg cr:"))
+        ? "does NOT carry the disclosure that makes its order readable"
+        : `states its totals are ingestion-limited and names ${worstName} ✓`),
   );
 }

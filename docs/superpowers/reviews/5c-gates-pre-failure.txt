@@ -10148,3 +10148,111 @@ straight into formatCompactUsd, which speaks the card vocabulary
 The entire feed build would have failed. Written, believed, and wrong -- which
 is the eleven-times-recorded failure mode in this repo, and the reason the leg
 is run before the fix is trusted rather than after.
+
+--------------------------------------------------------------------------------
+gate 23 LEG (h6) -- THE DENOMINATOR'S SCOPE                        [P0-4]
+--------------------------------------------------------------------------------
+
+WHAT WAS LIVE on /programs/: "$228.7B of the $385.3B FY2026 request (59.4%)".
+Both figures are real <Cite>s resolving to real workbook facts, and
+228.7/385.3 = 59.4% exactly.
+
+WHAT IS TRUE: that $385.3B is P-1 $205.01B + R-1 $180.26B and nothing else --
+procurement and RDT&E. The FY2026 DoD request is roughly twice it. The site's
+most prominent statement about its own reach overstates it by about 2x.
+
+VERBATIM FAIL:
+
+  ERROR leg h6 coverage scope: /programs/ denominates its coverage against a $385.3B universe that is exactly P-1 $205.01B + R-1 $180.26B, but the sentence never names P-1, R-1 — so "the FY2026 request" reads as the whole defense request, which is roughly twice this. Rendered: "$228.7B#05e40652 of the $385.3B#709cbd08 FY2026 request (59.4%). This index covers program elements that publish R-2/P-40 project detail, one page per program key. Lines without that detail are absent even when they are "
+
+A DEFECT IN THE FIRST DRAFT, again caught by running it. The leg originally
+accepted the bare exhibit code as evidence the page had named the family, and
+the pre-fix page PASSED the P-1 half -- on the clause "absent even when they
+are large and even when they are P-1", a sentence about what is MISSING being
+read as a statement of what the denominator IS. Removing the bare-code
+fallback took the failure from one exhibit to both, which is the true answer.
+
+--------------------------------------------------------------------------------
+gate 14 LEG (cr) -- RANKING ENTITIES WITH UNEVEN COVERAGE          [P0-6]
+--------------------------------------------------------------------------------
+
+The nastiest of the six, and the only one with NO WRONG NUMBER ANYWHERE IN IT.
+
+WHAT WAS LIVE on /agency/: "sorted by FY2026 total", rendering
+
+  Air Force  519 programs  $97.7B   <- first
+  Navy       397 programs  $46.8B   <- second
+  Army       507 programs  $43.1B
+
+WHAT IS TRUE, from fct_budget_lines fy_2026_total by organization:
+
+  N  $121.84B   rendered $46.76B   38.4% covered   <- actually FIRST, by $23B
+  F   $98.73B   rendered $97.72B   99.0% covered
+  A   $43.34B   rendered $43.13B   99.5% covered
+
+Every figure on the page is a correctly cited sum. No page states the false
+claim -- THE ORDER STATES IT. Sorting correct-but-unevenly-covered figures
+against each other silently ranks INGESTION COMPLETENESS under a spending
+label, and the Navy is second because 11 of its 13 FY2026 volumes are
+unparsed, not because it spends less than the Air Force.
+
+VERBATIM FAIL against the real pre-fix out/agency/index.html:
+
+  NOTE  leg cr uneven ranking: 3 service(s) with unparsed FY2026 volumes (a: 10 of 20 unparsed, f: 4 of 11 unparsed, n: 11 of 13 unparsed); /agency/ does NOT carry the disclosure that makes its order readable
+  ERROR leg cr: /agency/ claims to be "sorted by FY2026 total" while service ingestion is uneven (a: 10 of 20 unparsed, f: 4 of 11 unparsed, n: 11 of 13 unparsed) — that order ranks ingestion completeness under a spending label
+  ERROR leg cr: /agency/ ranks services by a money figure with a: 10 of 20 unparsed, f: 4 of 11 unparsed, n: 11 of 13 unparsed, and no paragraph on the page discloses that the totals are what has been loaded rather than what is requested
+
+A THIRD FIRST-DRAFT DEFECT. The "must name the worst-covered service" check
+originally scanned the whole page, and PASSED on the pre-fix build -- because
+"Navy" is a row in the table. Scanning a page for a word proves nothing about
+whether the page DISCLOSES anything. Scoped to paragraphs of at least 80
+characters that carry the disclosure language, and the name must appear in one
+of THOSE. (The same trap was waiting for "ingested" once the column header was
+relabelled "FY26 total (ingested)" -- three words in a <span> that disclose
+nothing.)
+
+WHAT IS DELIBERATELY NOT FIXED HERE: the per-agency coverage PERCENTAGE is not
+published. agencies.json carries the ingested sum and no universe figure, and
+minting one correctly means changing the exporter and re-running the export --
+a data change not worth rushing at the end of a session. So the page stops
+claiming a ranking it cannot support, says its totals are what has been loaded,
+and names the Navy as the most understated row. The number itself is
+outstanding work, recorded rather than approximated.
+
+--------------------------------------------------------------------------------
+LEG (g5) -- A PREDICATE CORRECTED BETWEEN ITS FAIL AND ITS PASS
+--------------------------------------------------------------------------------
+
+Recorded because the shipped predicate is NOT the one that produced the FAIL
+above, and that difference has to be defensible rather than quietly convenient.
+
+The first predicate scanned the WHOLE STRIP for "advance procurement". After
+the fix, the strip's shared mechanism sentence legitimately reads "advance
+procurement in an ordinary year, and in FY2026 the one-time reconciliation
+appropriation as well" -- so the leg failed the correction, on 151 pages. A
+strip-wide text scan cannot distinguish "explains the mechanism" from "credits
+THIS gap to it".
+
+The shipped predicate checks the FY2026 REQUEST ROW, selected by identity
+attributes (data-reconciliation-fy / -measure, which state which row it is and
+make no claim), and requires:
+  (1) that row NAMES the reconciliation appropriation, and
+  (2) where reconciliation covers the whole gap, that row does not CREDIT
+      advance procurement -- negation-aware, /(?<!not )advance procurement/i,
+      because "— not advance procurement" is the correction itself.
+
+IS THAT A WEAKENING? No, and it is checkable rather than a matter of opinion.
+The recorded FAIL shows the pre-fix strip never contained the token
+"reconciliation" ANYWHERE (152 pages, "without once naming"). The row is a
+SUBSET of the strip. So a pre-fix row could not have named it either, and
+requirement (1) is satisfied by strictly fewer artifacts than the strip-level
+check it replaces. Measured on the four real strings:
+
+  credits-AP?  false  834130 row, corrected  ("... — not advance procurement")
+  credits-AP?  true   B-21 row, mixed        ("... such as advance procurement")
+  credits-AP?  true   pre-fix shared sentence
+  credits-AP?  false  pre-fix 834130 row
+  names-recon? true   834130 corrected · true B-21 · false pre-fix (both)
+
+B-21 credits advance procurement and SHOULD: its $862.0M remainder is real, so
+requirement (2) does not apply to it. The pre-fix row fails (1).
