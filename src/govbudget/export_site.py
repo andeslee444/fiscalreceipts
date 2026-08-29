@@ -5355,9 +5355,10 @@ def _build_lobbied_by(
     TIER GATE. Only `_WHO_LOBBY_TIERS` rows can name a company. A program
     whose only mentions are `multi_token` gets NO named list — its box keeps
     the honest absence. Measured on this corpus: 41 pe_blis carry a
-    strong-tier mention with an attributed family, 38 of them outside the
-    crosswalk; 401 more have multi_token-only families and are deliberately
-    left alone.
+    strong-tier mention with an attributed family and NONE of the 41 is in
+    the award crosswalk, so all 41 qualify (45 pages — four are split keys
+    with two accounts each); 403 further pe_blis have multi_token-only
+    attributed families and are deliberately left alone.
 
     ATTRIBUTION. `family_key` on fct_program_lobbying is already gated on a
     confirmed entity match (`match_method <> 'none'`); nulls are dropped here

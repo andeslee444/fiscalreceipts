@@ -1329,8 +1329,10 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  * and `alias` (a curated, human-verified alias) qualify a company to be named.
  * `multi_token` — two or more non-generic title words — is real evidence and
  * is labelled on every mention row, but a title-word co-occurrence does not
- * earn a company's name in an above-the-fold answer. 401 programs have
- * multi_token-only families and deliberately keep the honest absence.
+ * earn a company's name in an above-the-fold answer. 403 program elements
+ * have multi_token-only attributed families and deliberately keep the honest
+ * absence; the 41 that qualify render on 45 pages (four split keys carry two
+ * accounts each).
  * The tier is stamped per name (`data-evidence-kind`) and the gate rejects
  * any name carrying a weaker one.
  */
