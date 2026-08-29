@@ -26,7 +26,6 @@
 import React from "react";
 import { Cite } from "@/components/cite";
 import type { LineageFamily, LineageFundingPoint } from "@/lib/lineage";
-import type { PeMembership } from "@/lib/pe-link";
 
 export function FamilyFundingLine({
   family,
@@ -40,15 +39,21 @@ export function FamilyFundingLine({
    *  funding line repeats the page's own decade request figure). */
   selfPe?: string;
   reconKeys?: Set<string>;
-  /** PEs in this family that have a built page. Their codes below are the
-   *  navigable identity of another program, so they link — the universal PE
-   *  mention rule (Phase 5F §2a). Gate 13 leg (f) found both of these chips
-   *  unlinked the first time its sample reached a page with a funding
-   *  chain. Codes with no page (and the page's own) stay plain. */
-  linkablePes?: PeMembership;
+  /** PEs in this family that have a built page, as a plain ARRAY — this is
+   *  a client component, so a PeLinkIndex (which carries methods) cannot
+   *  cross the boundary; the caller filters on the server. Their codes below
+   *  are the navigable identity of another program, so they link — the
+   *  universal PE mention rule (Phase 5F §2a). Gate 13 leg (f) found both of
+   *  these chips unlinked the first time its sample reached a page with a
+   *  funding chain. Codes with no page (and the page's own) stay plain. */
+  linkablePes?: readonly string[];
 }) {
+  const linkable = React.useMemo(
+    () => new Set(linkablePes ?? []),
+    [linkablePes],
+  );
   const peHref = (pe: string) =>
-    pe !== selfPe && linkablePes?.has(pe) ? `/program/${pe}/` : null;
+    pe !== selfPe && linkable.has(pe) ? `/program/${pe}/` : null;
   const PeCode = ({ pe, className }: { pe: string; className: string }) => {
     const href = peHref(pe);
     return href ? (

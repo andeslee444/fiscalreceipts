@@ -745,7 +745,13 @@ export default async function ProgramPage({
                   family={lineage.family}
                   selfPe={peBli}
                   reconKeys={reconKeySet(summary)}
-                  linkablePes={peIndex}
+                  // Plain array: FamilyFundingLine is a client component,
+                  // so the PeLinkIndex itself cannot cross the boundary
+                  // (it carries methods). Filter on the server.
+                  linkablePes={[
+                    ...(lineage.family.chain ?? []),
+                    ...lineage.family.funding_line.map((p) => p.pe),
+                  ].filter((pe) => peIndex.has(pe))}
                 />
               </div>
             )}
