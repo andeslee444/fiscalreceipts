@@ -10537,3 +10537,358 @@ verdict. Fixed by locating the restore click on its own label AND by wrapping
 the block, so a UI failure here reads as a gate error instead of deciding
 whether the other gates get to run. Recorded because "run your legs, don't
 read them" is the lesson that caught it, and reading it would not have.
+
+================================================================================
+TRI-PERSONA WAVE 3 — THE NEWCOMER CLIFF (four new legs, existing gates)
+================================================================================
+
+The layman review gave the live site three minutes and named the exact moment
+they would close the tab: "the site is a filing cabinet, not an answer." No
+reviewer questioned the provenance. Wave 3 is about the reader who has not yet
+decided the site is worth their time.
+
+Three legs, all on EXISTING gates. Suite unchanged at 24
+(`grep -c "gateResults.push" site/scripts/verify.mjs` -> 24).
+
+  gate 21 leg (j)  WHO GETS IT may never present lobbying evidence as award
+                   evidence — four declared tiers, dollars only on the award
+                   tier, a fixed sentence for the lobbying tier, and an
+                   evidence-tier floor on every named company.
+  gate  8 leg (n)  a ranked list is ranked by something that matters — each
+                   /feed/ section runs non-increasing in the dollars its own
+                   cards print.
+  gate 19 citizen  the journey asserted REACHABILITY; the review's complaint
+                   was COMPREHENSION. It now clicks a stamped term through to
+                   its definition, inside the same 6-interaction budget.
+
+A FOURTH leg was added after the wave's own first build failed a hand check:
+
+  gate 13 leg (g)  a fragment link must land somewhere. Leg (d) strips "#..."
+                   before resolving, deliberately — a dead PAGE and a dead
+                   ANCHOR are different failures, and only the first was ever
+                   checked. See its own section below; it caught a defect this
+                   wave had itself introduced, on a build that had already
+                   passed all 24 gates.
+
+--------------------------------------------------------------------------------
+VERBATIM FAIL -- all three legs, against the real pre-fix artifact (HEAD f2ffb0a)
+--------------------------------------------------------------------------------
+
+  gate 21 program-skeleton: FAIL
+  leg j: 2005 WHO GETS IT card(s) checked — award 0, J-book 0, lobbying 0, honest absence 0; every non-award tier states no dollars and every named company is pe_literal/alias-tier
+  ✗ program-skeleton(j): /program/000042/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/000071/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/000073/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/000074/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/000075/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/000079/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/00098A/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): /program/00098K/ WHO GETS IT declares 0 tiers (expected exactly 1)
+  ✗ program-skeleton(j): 2005 occurrence(s) in total (first 8 listed)
+
+  gate 8 feed: FAIL
+  leg n: sections ranked by their own printed dollars — yoy_swing 99 cards, $46,712,000 first; request_vs_actuals_gap 15 cards, $3,227,858,000 first; concentration_shift 84 cards, $73,440,184 first; new_entrant 25 cards, $150,000,000 first
+  ✗ feed(n): feed-yoy_swing is not ranked by dollar magnitude — position 1 ($471,805,000, "Strategic Sub & Weapons System Support increased 141% FY25→2") outranks position 0 ($46,712,000, "Minuteman Squadrons increased 79% FY25→26FY2025$59.3M→changi")
+  ✗ feed(n): feed-concentration_shift is not ranked by dollar magnitude — position 4 ($63,304,787, "Defense Research Sciences award concentration HHI=7630 (2019") outranks position 3 ($8,080,110, "Defense Research Sciences award concentration HHI=3820 (2022")
+  ✗ feed(n): feed-new_entrant is not ranked by dollar magnitude — position 2 ($125,774,161, "BERING WESTON new defense contractor (first award FY2024, $1") outranks position 1 ($110,962,000, "ASRC BUILDERS CADDELL new defense contractor (first award FY")
+
+  gate 19 personas: FAIL
+  ✗ persona:citizen — program page never links its own identifier term to a definition — glossary ids reachable from main: [partial-reconciliation]
+  ✗ persona:citizen — steps: loaded / → press "/" to open search [interaction 1] → search palette open → type "hypersonic" (typed query = 1 interaction) [interaction 2] → click first program result [interaction 3] → on program page /program/0604183F/ → program page has answer strip ✓ → og:image meta present ✓
+
+The feed leg names the reviewer's own sentence back at us: "Minuteman
+Squadrons increased 79%", $46.7M, at position 0 of a 99-card section. And the
+personas leg prints the whole finding in one line — `[partial-reconciliation]`
+was the ONLY glossary anchor a program page linked to, and it arrived in
+Wave 2, three days ago. Every other stamped term on the page went unexplained.
+
+--------------------------------------------------------------------------------
+AND THE FAIL THAT MATTERS MORE: leg (j) against a DELIBERATELY BROKEN artifact
+--------------------------------------------------------------------------------
+
+The FAIL above only proves the leg notices an attribute that does not exist
+yet. The defect it was actually written against is the CONFLATION — naming
+Lockheed under a heading that reads WHO GETS IT — and that shape cannot exist
+in a pre-fix build, because the tier did not. So the post-fix F-35 page was
+mutated into each of the three shapes the leg exists to reject, the leg run
+against the mutated HTML, and the page restored:
+
+  M1 — the names move above the disclaimer (caveat after the claim)
+  gate 21 program-skeleton: FAIL
+  ✗ program-skeleton(j): /program/ATA000/ lobbying tier does not read as the declared sentence — got "Lockheed Martin Corp, General Electric Company, Raytheon Company, The Aerospace Corporation and 1 more named this program in Senate lobbying filings. See the fi"
+  ✗ program-skeleton(j): /program/ATA000/ names a company before the disclaimer/badge — a reader meets the claim before the caveat
+
+  M2 — a company named on multi_token evidence
+  gate 21 program-skeleton: FAIL
+  ✗ program-skeleton(j): /program/ATA000/ names "Lockheed Martin Corp" on evidence tier "multi_token" — only pe_literal/alias may name a company
+
+  M3 — a dollar figure enters the lobbying card
+  gate 21 program-skeleton: FAIL
+  ✗ program-skeleton(j): /program/ATA000/ tier "lobbying" renders 1 [data-amount] — a non-award tier may state no dollars
+  ✗ program-skeleton(j): /program/ATA000/ lobbying tier does not read as the declared sentence — got "$1.23BNo contract award is linked to this line. Lobbying — not a contract Lockheed Martin Corp, General Electric Company, Raytheon Company, The Aerospace Corpor"
+
+  restored out/program/ATA000/index.html
+
+Each mutation is caught by the clause written for it, and two of the three are
+caught twice. M1 is the important one: it is the version of this feature a
+well-meaning redesign produces, and it fails on ORDER, not on wording.
+
+--------------------------------------------------------------------------------
+WHAT THE PAGES SAY NOW (post-fix build, verbatim)
+--------------------------------------------------------------------------------
+
+  /program/ATA000/ WHO GETS IT, as a reader reads it:
+
+    Who gets it
+    No contract award is linked to this line.
+    [ LOBBYING — NOT A CONTRACT ]
+    Lockheed Martin Corp, General Electric Company, Raytheon Company,
+    The Aerospace Corporation and 1 more named this program in Senate
+    lobbying filings.  See the filings →
+
+  and as the gate reads it:
+
+    <span data-who-tier="lobbying">
+      <span data-who-disclaimer="true" class="block text-muted-foreground">
+        <a href="/coverage/#bridge">No contract award is linked to this line</a>.
+      </span>
+      <span data-who-lobby-badge="true" class="... border-amber-600/60 ...">
+        Lobbying — not a contract</span>
+      <span class="block">
+        <a href="/company/lockheed-martin/" data-who-name="true"
+           data-evidence-kind="alias">…Lockheed Martin Corp</a>, …
+
+  Three separations, none of them a parenthetical: the absence is stated
+  BEFORE any company is named; the badge is its own block between them; and
+  the tier carries no [data-amount] at all, so it cannot be confused with the
+  award tier by SHAPE either — "X leads N families sharing $Y in matched
+  awards" is a sentence this tier structurally cannot produce.
+
+  The evidence is all alias-tier here: LOCKHEED MARTIN 27 filings, GENERAL
+  ELECTRIC 12, RAYTHEON 10, AEROSPACE 9, BAE SYSTEMS 8. The reviewer's
+  suggested list named "RTX"; the corpus files that family as RAYTHEON, and
+  the fifth name is The Aerospace Corporation, not BAE — which is why the card
+  reads from the mart rather than from the suggestion.
+
+  Home page hero subtitle, replacing the HHI anomaly:
+
+    "The Pentagon's budget request, line by line. Every number on this site is
+     linked to the page of the government document it was printed on."
+
+  /agency/TJS/ <title> and <h1>:  "The Joint Staff"  (was "TJS")
+  Home agency grid, first card:   "Air Force | F · 519 programs | $76.1B FY24"
+
+  /feed/ first card per section, before -> after:
+
+    yoy_swing            Minuteman Squadrons +79%, $46.7M change
+                      -> Long Range Kill Chains +3053%, $244.1M → $7.70B
+    concentration_shift  Defense Research Sciences HHI=8740, $73.4M pool
+                      -> Command, Control and Communications Systems
+                         HHI=1601, $551.8M pool
+    new_entrant          ALZCHEM TROSTBERG, $150.0M
+                      -> BLUEFORGE ALLIANCE, $924.1M
+    request_vs_actuals   unchanged — it was already ranked by |delta|
+
+--------------------------------------------------------------------------------
+PAGE WEIGHT -- NO CEILING RAISED, NO CEILING BREACHED
+--------------------------------------------------------------------------------
+
+Measured with gate 1's OWN weigh() (PAGE_WEIGHT_BUDGET imported,
+zlib level 9, raw-heaviest for `dir:` entries), on the final build, run WITH
+NEXT_PUBLIC_SITE_URL set. The nav link is the change that touches all 6,700+
+pages; the previous `measured:` pair is the baseline.
+
+  page                  gzip before -> after   headroom after   what changed
+  /methodology/         36,642 -> 36,653       247              nav link only: +11
+  /data/                13,174 -> 13,210       290              nav link only: +36
+  /companies/families/  25,506 -> 25,523       477              nav link only: +17
+  /coverage/            16,574 -> 16,870       830              nav link + its own
+                                                                re-exported counts
+  /                     79,852 -> 80,654     3,346              hero + agency names
+  /agency/              45,303 -> 46,888     1,612              agency names
+  /program/*/ heaviest 142,263 -> 142,796    8,204              WHO tiers + term links
+
+(gate 1's own numbers, from the suite run below, not a separate measurement.)
+
+THE NAV LINK COSTS ELEVEN GZIP BYTES ON THE TIGHTEST PAGE. Sprint C Task C3
+declined a tenth nav item rather than re-measure the 768–1023 header fix; that
+measurement is now done and it was cheap. /methodology/ is at 99.3% and stays
+there — it was at 99.3% before this wave too.
+
+ONE ENTRY DID NEED THE CHIP TAKEN BACK OUT. On the first post-fix build
+/agency/ came in at 189,750 of its 190,000 RAW ceiling — 250 bytes, 99.9% —
+once 24 rows carried a component name AND a workbook-code chip. That is the
+cliff /coverage/ hit at nine bytes and /programs/ at 643. No ceiling was
+raised: the chip came off the index (every row's href and title already carry
+the code, and the page it links to states it outright), which returned the
+page to 184,181 / 46,884 and 5,819 raw bytes of room. The home grid and
+/agency/{org}/ keep their chips; both have room for them.
+
+HEADER GEOMETRY, MEASURED RATHER THAN ASSUMED. The tenth nav link needed ~75px
+and the 1024px band — where `container` clamps the bar to exactly 1024 — had
+73px of slack (bar 1024 − 32 padding − 108 brand − 588 nav − 191 right cluster
+− 32 bar gaps). Tightening the eight inter-link gaps from 16px to 12px below
+`xl` returned 32px. Post-fix, at 1024 / 1100 / 1279 / 1280 / 1440: ten links,
+ONE row, documentElement.scrollWidth − clientWidth = 0 at every width, 38px of
+slack in the tight band and 258px at 1280+.
+
+THE COACH MARK, LIKEWISE. `hidden xl:block` (1280px) was exactly where the
+collision still was. Measured on the pre-fix build: at 1280 the card's box
+(x 1008–1264, y 64–204) overlapped the h1's own glyph rect (x 830–1048,
+y 104–170); at 1366 the boxes overlapped and the glyphs cleared; 1440 and up
+were clean. The requirement is 896 (max-w-4xl) + 2 × 272 (w-64 + right-4) =
+1440px, so the breakpoint is `min-[1440px]` — the arbitrary value, not a round
+up to Tailwind's 2xl (1536), which would have taken the callout away from
+every reader between. Post-fix computed display: none at 1279 / 1280 / 1439,
+block at 1440 / 1536, glyph overlap false at all five. Gate 18 checks it at
+1440×900, where it is still visible.
+
+--------------------------------------------------------------------------------
+THE LEG THIS WAVE DID NOT PLAN, AND THE DEFECT IT CAUGHT (gate 13 leg (g))
+--------------------------------------------------------------------------------
+
+The new WHO GETS IT card links the words "No contract award is linked to this
+line" to the paragraph that explains why. It was pointed at /coverage/#bridge
+— `bridge` is the coverage-map ROW KEY (CROSSWALK_LIMIT_ID in
+lib/coverage-map.ts), and the page renders that section under id="crosswalk".
+So the link loaded /coverage/ and left the reader at the top of a twelve-
+section page, having been promised the paragraph that answers their question.
+
+Twenty-four gates passed over it. Gate 13 leg (d) — the dead-link leg — passed
+it correctly: /coverage/ exists, and leg (d) strips the fragment before
+resolving, by design. Nothing on this site had ever checked the second half.
+
+  VERBATIM FAIL, against the build that had just passed the suite:
+
+  gate 13 linkgraph: FAIL
+  leg g: 396 fragment link(s) across 47 page(s) (17 hubs + sampled detail pages) — 1 dead anchor(s)
+  ✗ dead fragment: /coverage/#bridge — no element carries that id on the destination page (6 link(s) on 6 of 47 scanned page(s); first: /program/000042/)
+
+The other 395 fragment links on the sampled pages resolve, which is the other
+half of the finding: the site was clean here and this wave broke it. Fixed to
+/coverage/#crosswalk — "The budget→award crosswalk is a methodology limit, not
+a backlog item", which is exactly the paragraph the card promises.
+
+Leg (g) scans every singleton hub page (leg (d)'s list) PLUS a spread sample of
+each templated detail type. Leg (d) excludes templated pages because their risk
+is a shared template rather than a hand-written href; for FRAGMENTS that
+reasoning inverts — a shared template means one wrong anchor ships on two
+thousand pages, which is precisely what happened. Same-page anchors
+("#mentions-heading", the card's "See the filings →") are resolved against the
+source page's own ids for the same reason.
+
+--------------------------------------------------------------------------------
+FIGURES THAT DID NOT REPRODUCE
+--------------------------------------------------------------------------------
+
+Every figure handed to this wave was re-derived before being acted on. Three
+did not come back the same, and one of those changed what shipped.
+
+  "Lockheed appears 29 times on /program/ATA000/"
+    REPRODUCED EXACTLY — 29, case-insensitively. A case-SENSITIVE grep returns
+    0, because 22 of the 29 are the shouted registry string LOCKHEED MARTIN.
+    Worth recording because the first check said zero and it was the check
+    that was wrong.
+
+  "the crosswalk covers 24 of 1,753 programs (1.4%)"
+    24 REPRODUCES exactly (fct_program_concentration and fct_budget_to_awards
+    each carry 24 distinct pe_blis). 1,753 does not reproduce against any
+    denominator this corpus publishes: dim_programs holds 1,741 distinct
+    pe_blis (24/1,741 = 1.38%), site_meta.counts.programs says 1,755
+    (1.37%), there are 2,005 program_details sidecars and 2,016 built pages.
+    1,753 is a FIFTH way of stating the corpus headline — Wave 4 item 4 is
+    already about the four. Nothing shipped depends on it: the code comments
+    say "24 of 1,741", the denominator the predicate actually runs against.
+
+  "the hero reads HHI=3820 (2022)"
+    The DEFECT reproduces exactly and the STRING does not: on the build this
+    wave started from, the lede was "Defense Research Sciences award
+    concentration HHI=8740 (2021)". HHI=3820 (2022) is a real card and it sits
+    at position 3 of the concentration section — the anomaly feed re-ranks
+    whenever the corpus moves, which is itself the argument for not letting it
+    write the first sentence a newcomer reads.
+
+  "$73.9 billion of the FY2026 defense budget is classified"
+    NOT USED, and this is the one that changed what shipped. The figure has no
+    derived source in this corpus — classified lines are absent from the public
+    J-books and from USAspending, which /methodology/ states outright — so it
+    could only ship as a hard-coded literal, and gate 2 rejects a currency
+    token outside [data-amount] for exactly that reason. The hero sentence
+    carries no dollar figure at all. The site's cited superlative is fifty
+    pixels below it, in the receipt moment, wearing its receipt.
+
+  Two figures written INTO this wave's own code comments also failed to
+  reproduce and were corrected before the final build (commit 5c7f282):
+  "401 programs have multi_token-only families" was counted over sidecar slugs
+  and is 403 over pe_blis; and an earlier draft's "38 of them outside the
+  crosswalk" was 41 — all 41 qualifying pe_blis are outside it, rendering on
+  45 pages because four are split keys carrying two accounts each.
+
+--------------------------------------------------------------------------------
+WHAT WAS ASKED FOR AND DONE DIFFERENTLY
+--------------------------------------------------------------------------------
+
+The brief asked for the 21 agency acronyms on the home grid to be LINKED to
+their glossary entries. They are EXPANDED instead: the card's headline is now
+"The Joint Staff" with "TJS" beneath it, and /agency/TJS/ — titled, in full,
+"TJS" — is now titled "The Joint Staff". A link to a glossary entry is a
+promise to explain later; the name is the explanation, and it costs a reader
+nothing. /glossary/ gains one entry, "Organization code", explaining what the
+codes ARE and why the site keeps them beside the names. The names live in ONE
+place (lib/agency-names.ts, with a unit test that fails in CI the day a new
+service book brings a code nobody has expanded) rather than in a glossary
+string and a lexicon that can drift apart.
+
+That file refuses rather than guesses, and the refusal earned its keep
+immediately: the reflexive expansion of a DoD "DPAP" is Defense Pricing (or
+Procurement) and Acquisition Policy, and this corpus files exactly one program
+under it — "Defense Production Act Purchases". Every entry was cross-read
+against `select distinct title from dim_programs where org = ?` before being
+written down.
+
+--------------------------------------------------------------------------------
+ONE NEAR-MISS WORTH RECORDING
+--------------------------------------------------------------------------------
+
+The final suite's log was written to a scratchpad path a PREVIOUS session had
+already used. Greping it while the new run was still buffering returned the OLD
+file's contents — a complete, green, 24-gate summary — pinned to `git_head:
+2601c434`, a commit from a different wave entirely. Two lines of a report were
+about to be written off it.
+
+What caught it was the page-weight numbers in the same output: /methodology/
+reading 36,151 with 749 bytes left, when this wave had measured it at 36,652
+with 248. A gate suite that agrees with itself is easy to believe; a gate suite
+that disagrees with a measurement you took an hour ago is not. Every claimed
+PASS below was re-read from a log whose gate-1 line names THIS wave's HEAD.
+
+--------------------------------------------------------------------------------
+VERBATIM PASS -- all four legs, on the post-fix build (HEAD 99f81a0)
+--------------------------------------------------------------------------------
+  gate 21 program-skeleton: PASS
+  leg j: 2005 WHO GETS IT card(s) checked — award 24, J-book 4, lobbying 45, honest absence 1932; every non-award tier states no dollars and every named company is pe_literal/alias-tier
+  gate 8 feed: PASS
+  leg n: sections ranked by their own printed dollars — yoy_swing 99 cards, $7,452,795,000 first; request_vs_actuals_gap 15 cards, $3,227,858,000 first; concentration_shift 84 cards, $551,810,678 first; new_entrant 25 cards, $924,094,823 first
+  gate 13 linkgraph: PASS
+  leg g: 396 fragment link(s) across 47 page(s) (17 hubs + sampled detail pages) — 0 dead anchor(s)
+  gate 19 personas: PASS
+    persona:citizen OK (4/6 interactions)
+
+  overall: PASS -- 24/24 gates, suite unchanged at 24
+  (grep -c "gateResults.push" site/scripts/verify.mjs -> 24)
+
+  gate 1 build: build-meta git_head: 99f81a04 ✓; build freshness: out/ is
+  newer than all watched source files ✓ → PASS
+
+THE CENSUS IS THE FINDING. 2,005 WHO GETS IT cards: 24 answer from the award
+crosswalk, 4 from a J-book named prime, 45 from lobbying filings, and 1,932
+still say plainly that nothing is linked. The lobbying tier is not a large
+number of pages and was never going to be — the crosswalk's 1.4% is a
+structural limit of what USAspending publishes, not a backlog item. What it
+changes is WHICH pages: the F-35 is in the 45, and it was the page the review
+closed the tab on.
+
+AND THE FEED'S FIRST SCREEN. Every section now opens on its own largest
+number: $7.45B, $3.23B, $551.8M, $924.1M — against $46.7M, $3.23B, $73.4M,
+$150.0M before. Only request_vs_actuals_gap was already ranked; the other
+three met the reader with their smallest item.
