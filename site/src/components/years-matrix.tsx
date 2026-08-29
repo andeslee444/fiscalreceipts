@@ -267,6 +267,32 @@ export function decadeQualifierNote(col: DecadeColumn): string {
 }
 
 /**
+ * The footnote's whole body, grouped by qualifier.
+ *
+ * Twelve of the thirty decade columns are qualified and six can be visible at
+ * once, so one line per column would be six repetitions of the same phrase —
+ * the shape a reader skips, which is how a qualifier stops qualifying
+ * anything. Columns sharing a phrase are listed together, in the column order
+ * they appear in the grid.
+ */
+export function decadeQualifierSummary(cols: DecadeColumn[]): string {
+  const groups = new Map<string, string[]>();
+  for (const c of cols) {
+    const diverging = (c.measures ?? []).filter((m) => m !== c.kind);
+    if (diverging.length === 0) continue;
+    const partial = diverging.length !== (c.measures ?? []).length;
+    const phrase = `${diverging.map(measurePhrase).join("; ")}${
+      partial ? " on some lines" : ""
+    }`;
+    if (!groups.has(phrase)) groups.set(phrase, []);
+    groups.get(phrase)!.push(`${decadeColumnLabel(c)} (PB${c.edition})`);
+  }
+  return [...groups]
+    .map(([phrase, labels]) => `${labels.join(", ")} — ${phrase}`)
+    .join(". ");
+}
+
+/**
  * Program column → project-cell key (the J-book scenario years).
  * The three PB2026-edition decade columns map to the SAME project scenarios
  * as their amount-type twins (fy2024a ≡ PB2026 PriorYear, etc.) — other
@@ -1009,9 +1035,10 @@ export function YearsMatrix() {
         >
           <span className="text-amber-700 dark:text-amber-400">&dagger;</span>{" "}
           These columns are filed under the row label the book itself fills,
-          but the workbook column behind them reports something else —{" "}
-          {qualifiedCols.map((c) => decadeQualifierNote(c)).join("; ")}. Read
-          them as what was asked for, not what was appropriated.{" "}
+          but the workbook column behind them reports something narrower or
+          different: {decadeQualifierSummary(qualifiedCols)}. Where a
+          request column stands in for an enacted year, read it as what was
+          asked for, not what was appropriated.{" "}
           <Link
             href="/glossary/#enacted-request"
             className="underline decoration-dotted hover:text-foreground"

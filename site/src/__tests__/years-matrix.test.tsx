@@ -28,6 +28,7 @@ import {
   filterEntries,
   sortEntries,
   buildYearsCsv,
+  decadeQualifierSummary,
   decadeCellMeasure,
   decadeColumnQualified,
   decadeQualifierNote,
@@ -617,8 +618,10 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     const note = document.querySelector(
       '[data-testid="measure-qualifier-legend"]',
     ) as HTMLElement;
-    expect(note.textContent).toContain("FY2015A (PB2017): actuals (base + OCO)");
-    expect(note.textContent).toContain("FY2025E (PB2026): enacted (book total)");
+    expect(note.textContent).toContain("FY2015A (PB2017) — actuals (base + OCO)");
+    expect(note.textContent).toContain(
+      "FY2025E (PB2026) — enacted (book total) on some lines",
+    );
 
     // The cell's own machine label — the attribute gate 23 groups figures on.
     const cell = document.querySelector(
@@ -739,6 +742,26 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     // a column with no `measures` at all is never qualified
     expect(decadeColumnQualified(byKey.get("fy2026r")!)).toBe(false);
     expect(decadeColumnQualified(byKey.get("fy2020a")!)).toBe(false);
+  });
+
+  it("decadeQualifierSummary groups columns that share a qualifier", () => {
+    const byKey = new Map(MATRIX_DECADE.decade_columns!.map((c) => [c.key, c]));
+    // Six of the thirty real decade columns can be visible at once and share
+    // one phrase; one line per column would be five repetitions a reader
+    // skips, which is how a qualifier stops qualifying anything. The shape
+    // below is the shipped default view's, in miniature.
+    expect(
+      decadeQualifierSummary([
+        { key: "fy2015a", fy: 2015, kind: "actuals", edition: 2017, measures: ["actuals-base-oco"] },
+        { key: "fy2016a", fy: 2016, kind: "actuals", edition: 2018, measures: ["actuals-base-oco"] },
+        { key: "fy2024e", fy: 2024, kind: "enacted", edition: 2025, measures: ["enacted-request"] },
+      ]),
+    ).toBe(
+      "FY2015A (PB2017), FY2016A (PB2018) — actuals (base + OCO). " +
+        "FY2024E (PB2025) — enacted (request column)",
+    );
+    // an unqualified column contributes nothing
+    expect(decadeQualifierSummary([byKey.get("fy2026r")!])).toBe("");
   });
 
   it("decadeQualifierNote names the column and what it actually reports", () => {
