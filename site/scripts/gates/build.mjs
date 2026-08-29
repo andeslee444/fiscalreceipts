@@ -204,7 +204,17 @@ export const PAGE_WEIGHT_BUDGET = [
   // widened to make the claim come true: the ceiling is UNCHANGED, and the
   // next sentence that needs to go on this page still has to be argued for
   // in the same breath as the raise it needs.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "132,816 / 36,156" },
+  //
+  // RE-MEASURED 2026-08-29 (tri-persona review Wave 2). CEILING UNCHANGED at
+  // 136,500 / 36,900. The recorded pair was 132,816 / 36,156 and the page had
+  // already drifted to 134,024 / 36,389 before this wave touched it; Wave 2's
+  // reconciliation-scope sentence (the badge covers four scenarios, not the
+  // never-checked AllPriorYears) added 253 raw / 253 gzip. The annotation-drift
+  // leg below caught the stale string on the first post-fix build, which is
+  // what it was written for. 258 bytes of gzip headroom is the tightest this
+  // page has ever run: the next sentence here needs a ceiling raise argued in
+  // the same breath, and this comment is the warning, not an invitation.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "134,277 / 36,642" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
