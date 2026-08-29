@@ -33,7 +33,14 @@ import "server-only";
  * hero superlative carries, so the two cannot drift.
  */
 
-import { getDetailGradeCount, getProgramPagesCount, getSiteMeta } from "./data";
+import {
+  getDatasetManifest,
+  getDetailGradeCount,
+  getProgramPagesCount,
+  getProgramSitemapSlugs,
+  getPrograms,
+  getSiteMeta,
+} from "./data";
 import { formatCount } from "./format";
 
 export interface Corpus {
@@ -100,4 +107,122 @@ export function getCorpus(): Corpus {
     scope,
     statement: corpusStatement(programPages, detailPages, scope),
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The corpus-count registry — tri-persona review Wave 4, item 4
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The site states its own size FIVE ways and every one of them is right for
+// its own denominator:
+//
+//   2,016  every indexable /program/ URL declared in sitemap.xml
+//   2,005  program_details sidecars — the browsable page universe
+//   1,755  programs.json rows — the FY2026 budget index on /programs/
+//   1,753  dim_programs.parquet rows
+//   1,743  sidecars carrying at least one R-2/P-40 detail row
+//
+// The corpus statement above already pins two of them on four pages. Nothing
+// pinned the other three, nothing said what each counts, and a reader who
+// compared /programs/ ("1,755 program elements") against sitemap.xml (2,016)
+// or /data/ (dim_programs 1,753) had no way to tell an inconsistency from a
+// different question.
+//
+// So: ONE declaration of all five, each DERIVED from the artifact that defines
+// it, each carrying the sentence that says what one unit is. /coverage/
+// renders the table; gate 24 leg k recomputes all five independently and
+// requires every corpus-shaped number rendered on the singleton pages to be
+// one of them. A hard-coded 1,750 fails — that is the leg's whole point, and
+// it is the generalisation of the `measured:` annotation and the stale
+// docstring this project has been bitten by twice already.
+
+export interface CorpusCount {
+  /** Stable id — the gate's own key, and the row's DOM hook. */
+  id: string;
+  value: number;
+  /** Where the number is published. */
+  where: string;
+  /** What ONE unit of this count is. */
+  counts: string;
+}
+
+let _corpusCounts: CorpusCount[] | null = null;
+
+/**
+ * Every corpus count the site publishes, largest first, each derived.
+ *
+ * Order is deliberate: the list reads as a set of nested universes, so the
+ * differences between adjacent rows are the interesting part.
+ */
+export function getCorpusCounts(): CorpusCount[] {
+  if (_corpusCounts) return _corpusCounts;
+  const dimPrograms = getDatasetManifest().datasets.find(
+    (d) => d.name === "dim_programs",
+  );
+  if (!dimPrograms) {
+    throw new Error(
+      "[govbudget/corpus] datasets.json has no dim_programs entry — the " +
+        "corpus reconciliation cannot state what /data/ publishes. Re-run " +
+        '"uv run python -m govbudget export-site".',
+    );
+  }
+  _corpusCounts = [
+    {
+      id: "sitemap-urls",
+      value: getProgramSitemapSlugs().length,
+      where: "sitemap.xml",
+      counts:
+        "Indexable /program/ URLs: every page below, plus a stub for each " +
+        "budget-line key two programs share.",
+    },
+    {
+      id: "program-pages",
+      value: getProgramPagesCount(),
+      where: "the corpus line, four pages",
+      counts:
+        "Browsable program pages, all tiers — every element the workbooks " +
+        "name in any loaded edition.",
+    },
+    {
+      id: "index-rows",
+      value: getPrograms().length,
+      where: "Programs, Years, home",
+      counts:
+        "Rows of the FY2026 index: element \u00d7 appropriation account in " +
+        "PB2026. Older-edition-only pages are not rows.",
+    },
+    {
+      id: "dim-programs-rows",
+      value: dimPrograms.row_count,
+      where: "dim_programs, on Data",
+      counts:
+        "Detail-grade elements, plus a synthetic row per shared-key " +
+        "account with no exhibit behind it.",
+    },
+    {
+      id: "detail-pages",
+      value: getDetailGradeCount(),
+      where: "the corpus line; row one above",
+      counts:
+        "Pages carrying R-2/P-40 project detail. The rest carry cited " +
+        "R-1/P-1 rollup figures only.",
+    },
+  ];
+
+  // A count out of order means one of the derivations has changed shape (a
+  // subset overtaking its superset), which is a defect, not a rendering
+  // choice — and the table's whole claim is that these are nested.
+  for (let i = 1; i < _corpusCounts.length; i++) {
+    const prev = _corpusCounts[i - 1];
+    const cur = _corpusCounts[i];
+    if (!(cur.value <= prev.value)) {
+      throw new Error(
+        `[govbudget/corpus] ${cur.id} (${cur.value}) exceeds ${prev.id} ` +
+          `(${prev.value}). These counts are nested universes by ` +
+          `construction; one of the derivations no longer counts what its ` +
+          `description says.`,
+      );
+    }
+  }
+  return _corpusCounts;
 }

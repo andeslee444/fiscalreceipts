@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getDatasetManifest, getSiteMeta } from "@/lib/data";
+import { getAssetBase } from "@/lib/asset-base";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { AssetConfigProvider } from "@/components/asset-config";
@@ -22,58 +23,37 @@ export const metadata: Metadata = {
   },
 };
 
-function buildDatasets(citationCount: number, programCount: number) {
-  return [
-    {
-      name: "DoD Program Elements (dim_programs)",
-      description:
-        `All ${programCount.toLocaleString("en-US")} defense program elements with exhibit family, fiscal year trajectory, and reconciliation status.`,
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "J-book Details (jbook_details)",
-      description:
-        "Project-level cost detail rows extracted from DoD J-book XML attachments with XML paths and provenance.",
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "Budget Lines (budget_lines)",
-      description:
-        "Workbook-cited budget line items with cell-level provenance from R-1 and P-1 Excel rollups.",
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "Federal Awards (fct_budget_to_awards)",
-      description:
-        "USAspending award transactions linked to DoD program elements via budget account crosswalk.",
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "Entity Graph (dim_entities)",
-      description:
-        "Top contractor families with SAM.gov entity registration data, UEI counts, and confidence tiers.",
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "LDA Lobbying (fct_influence)",
-      description:
-        "Senate LDA lobbying filings linked to DoD programs, with filing UUIDs and client family keys.",
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-    {
-      name: "Citation Index (citations)",
-      description:
-        `${citationCount.toLocaleString("en-US")}-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.`,
-      url: "/downloads/",
-      encodingFormat: "application/vnd.apache.parquet",
-    },
-  ];
+/**
+ * schema.org Dataset nodes — one per shipped parquet, from the SAME manifest
+ * the cards render (Wave 4, item 2). This used to be a hand-written list of
+ * seven with its own descriptions, so a crawler was told the site publishes
+ * seven datasets of which one was "Top contractor families" (114,806 rows,
+ * every family) and budget_lines_decade did not exist.
+ *
+ * `contentUrl` is the absolute asset-host URL — the thing a machine reading
+ * this JSON-LD can actually fetch. It was `/downloads/` (the page describing
+ * the file) on every node.
+ */
+function buildDatasets(
+  inventory: { name: string; scope: string; row_count: number }[],
+  citationCount: number,
+  assetBase: string,
+) {
+  const nodes = inventory.map((ds) => ({
+    name: ds.name,
+    description: `${ds.row_count.toLocaleString("en-US")} rows. ${ds.scope}`,
+    url: "/downloads/",
+    contentUrl: `${assetBase}/data/${ds.name}.parquet`,
+    encodingFormat: "application/vnd.apache.parquet",
+  }));
+  nodes.push({
+    name: "citations",
+    description: `${citationCount.toLocaleString("en-US")}-row citation index mapping fact_ids to source documents — J-book PDF pages, workbook cells, or LDA filings.`,
+    url: "/downloads/",
+    contentUrl: `${assetBase}/citations/citations.parquet`,
+    encodingFormat: "application/vnd.apache.parquet",
+  });
+  return nodes;
 }
 
 export default function DownloadsPage() {
@@ -82,10 +62,14 @@ export default function DownloadsPage() {
   // §P1-5: the dataset manifest is the single source for per-parquet counts.
   // The old `?? 326` fallback was the same rotted literal that made /data/
   // claim 326 dim_programs rows against a 1,739-row parquet.
+  // Wave 4 item 2: it is now the single source for the card LIST too.
   const manifest = getDatasetManifest();
-  const programCount =
-    manifest.datasets.find((d) => d.name === "dim_programs")?.row_count ?? 0;
-  const datasets = buildDatasets(meta.counts.citations, programCount);
+  const assetBase = getAssetBase();
+  const datasets = buildDatasets(
+    manifest.datasets,
+    meta.counts.citations,
+    assetBase,
+  );
   const datasetsLd = datasets.map((d) =>
     datasetJsonLd({
       ...d,
@@ -129,9 +113,14 @@ export default function DownloadsPage() {
             lists each dataset with row counts and column descriptions.
           </p>
         </div>
-        <AssetConfigProvider>
+        {/* ssrBase (Wave 4 item 1): the static HTML carries absolute
+            asset-host hrefs, so `curl`, `wget`, a copied link and any
+            scripted fetch reach the parquet instead of a 404. Hydration
+            still applies the runtime /config.json answer. */}
+        <AssetConfigProvider ssrBase={assetBase}>
           <DownloadCards
             builtAt={meta.built_at}
+            inventory={manifest.datasets}
             datasets={meta.datasets ?? {}}
             pdfCount={meta.pdf_count}
             workbookCount={meta.workbook_count}

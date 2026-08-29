@@ -979,6 +979,20 @@ _DATASET_SCOPES: dict[str, str] = {
         "One row per (program element × amount type) figure in the FY2026"
         " President's Budget R-1/P-1 workbooks, carrying the source sheet and"
         " cell address it was read from. Fenced to the PB2026 edition."
+        # Tri-persona review Wave 4, item 3: the single most load-bearing
+        # aggregation decision on the site, and it was written down nowhere.
+        # An analyst who sums the P-1 workbook without the Add/Non-Add filter
+        # gets a materially larger total than the site and concludes the site
+        # is wrong. Stated on the dataset row it governs, so it reaches
+        # /data/ and /downloads/ from one source. Deliberately no figures:
+        # the filter is the fact, and a literal here would rot. The worked
+        # arithmetic lives on /methodology/, which this links nowhere because
+        # a manifest sentence carries no markup — /data/ links it in prose.
+        " Add rows only: the P-1 flags each row Add or Non-Add, and Non-Add"
+        " rows are memo lines the exhibit does not add into its own totals,"
+        " so summing the workbook without that filter double-counts. P-1R"
+        " rows are the reserve-component subset of P-1 lines and are never"
+        " summed with them."
     ),
     "budget_lines_decade": (
         "The decade sibling of budget_lines: one row per (President's Budget"
@@ -1066,6 +1080,66 @@ _DATASET_SCOPES: dict[str, str] = {
 }
 
 
+def _derived_caveat(name: str, parquet_path: Path) -> str:
+    """A limitation sentence MEASURED from the shipped parquet, or "".
+
+    Tri-persona review Wave 4, item 2. `/downloads/` described jbook_details
+    as carrying "page-level PDF citation". The dataset's own `resolution`
+    column says otherwise: of its non-zero-amount rows, 7,991 of 17,007 (47%)
+    are 'unresolved' — the amount could not be located on any page of the
+    source PDF, so the figure cites its XML path instead and the citation
+    panel shows no page. 'ambiguous_first' rows resolve to the FIRST page the
+    amount appears on, not a unique one.
+
+    That is a real, disclosed property of the pipeline (see ProgramDetailRow's
+    `resolution` doc in site/src/lib/data.ts), and it was true nowhere a
+    downloader would read it. It is counted here, never written down, so it
+    tracks ingestion instead of rotting the moment a service book lands.
+
+    SEPARATE FIELD, not appended to `scope`, for one reason: `scope` renders
+    on /data/ as well, and /data/ ships with ~290 bytes of gzip headroom
+    against its page-weight ceiling. The Add/Non-Add disclosure (item 3) is
+    the one that has to be on both pages, so it is in `scope`; this one goes
+    where the false claim actually was and where there is room for it.
+
+    Only jbook_details has a caveat today; the hook exists so the next
+    measured limitation is a function, not a literal.
+    """
+    if name != "jbook_details":
+        return ""
+    import duckdb as _duckdb_scope
+
+    con = _duckdb_scope.connect()
+    try:
+        src = str(parquet_path).replace("'", "''")
+        row = con.execute(
+            "select"
+            "  count(*) filter (where amount_millions <> 0) as nonzero,"
+            "  count(*) filter (where amount_millions <> 0"
+            "    and resolution = 'unique') as uniq,"
+            "  count(*) filter (where amount_millions <> 0"
+            "    and resolution = 'ambiguous_first') as ambig"
+            f" from read_parquet('{src}')"
+        ).fetchone()
+    except Exception:
+        # A fixture parquet without these columns must not take the export
+        # down over a caveat sentence.
+        return ""
+    finally:
+        con.close()
+    nonzero, uniq, ambig = (int(v or 0) for v in row)
+    if nonzero <= 0:
+        return ""
+    unresolved = nonzero - uniq - ambig
+    return (
+        f"Page resolution is partial: of {nonzero:,} rows carrying a non-zero"
+        f" amount, {uniq:,} resolve to a unique PDF page and {ambig:,} to the"
+        f" first page the amount appears on; the remaining {unresolved:,}"
+        f" ({100 * unresolved / nonzero:.0f}%) resolve to no page and cite"
+        " their XML path instead."
+    )
+
+
 def _build_dataset_manifest(
     data_dir, *, row_counts: dict[str, int], uncited: list[str], built_at: str
 ) -> dict:
@@ -1093,16 +1167,18 @@ def _build_dataset_manifest(
         if name not in shipped:
             continue
         pq = Path(data_dir) / f"{name}.parquet"
-        entries.append(
-            {
-                "bytes": pq.stat().st_size,
-                "cited": name not in uncited_set,
-                "file": pq.name,
-                "name": name,
-                "row_count": int(row_counts.get(name, 0)),
-                "scope": _DATASET_SCOPES[name],
-            }
-        )
+        entry = {
+            "bytes": pq.stat().st_size,
+            "cited": name not in uncited_set,
+            "file": pq.name,
+            "name": name,
+            "row_count": int(row_counts.get(name, 0)),
+            "scope": _DATASET_SCOPES[name],
+        }
+        caveat = _derived_caveat(name, pq)
+        if caveat:
+            entry["caveat"] = caveat
+        entries.append(entry)
     return {
         "built_at": built_at,
         "datasets": entries,

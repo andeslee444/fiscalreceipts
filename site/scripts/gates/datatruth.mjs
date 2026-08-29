@@ -70,6 +70,16 @@
  *      how /methodology/ removed its whole page from this sweep. Site-authored
  *      prose is swept, /methodology/ specifically must contribute numbers, and
  *      fiscal years are excluded by value. See leg j's own block at the bottom.
+ *  (k) CORPUS-COUNT PROVENANCE (tri-persona Wave 4, item 4). Leg (d) pins ONE
+ *      sentence stating TWO of the five ways this site counts itself; leg (j)
+ *      pins how counts are punctuated. Neither asks whether a corpus number
+ *      on a page is a DERIVED figure or a literal somebody typed. This leg
+ *      recomputes all five from the artifacts that define them (sitemap.xml,
+ *      the sidecars, programs.json, datasets.json), requires /coverage/'s
+ *      reconciliation table to publish each one correctly, and requires every
+ *      corpus-shaped claim on the singleton pages to equal one of them. Same
+ *      class as the stale `measured:` annotation and the outlived docstring.
+ *      See leg k's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -563,6 +573,9 @@ export async function runDataTruthGate() {
 
   // ── leg j: count notation swept site-wide (Sprint 3 Task 5, §P1-5) ────────
   runCountNotationLeg(errors, notes);
+
+  // ── leg k: corpus-count provenance (tri-persona Wave 4, item 4) ───────────
+  runCorpusCountLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -1817,4 +1830,256 @@ function runFeedFileLeg(errors, notes, truth) {
  */
 function require_jsdom() {
   return createRequire(import.meta.url)("jsdom");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg k — CORPUS-COUNT PROVENANCE (tri-persona review Wave 4, item 4)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The site states its own size five ways — 2,016 in sitemap.xml, 2,005
+// browsable pages, 1,755 index rows, 1,753 dim_programs rows, 1,743
+// detail-grade. Every one is right for its own denominator and nothing said
+// so, which from outside is indistinguishable from the site disagreeing with
+// itself on the one page built to let people check its work.
+//
+// Leg (d) already pins two of them, in one canonical sentence, on four pages.
+// This leg generalises the rule to the class:
+//
+//   A CORPUS COUNT RENDERED ON ANY PAGE MUST BE ONE OF THE DECLARED COUNTS.
+//
+// which is the same defect shape as the stale `measured:` page-weight
+// annotation and the docstring that outlived its function: a number that was
+// true when it was typed and is nobody's job to re-derive. A hard-coded
+// "1,750 program elements" is caught here even though it is plausible, well
+// formatted and beside no citation at all.
+//
+// FIVE INDEPENDENT RECOMPUTES, from the artifacts that DEFINE each count, not
+// from lib/corpus (which is the thing under test):
+//
+//   sitemap-urls       <loc> entries under /program/ in the SHIPPED sitemap.xml
+//   program-pages      program_details sidecars on disk
+//   index-rows         programs.json rows
+//   dim-programs-rows  datasets.json's dim_programs row_count (leg d already
+//                      ties that to the sidecars and the parquet)
+//   detail-pages       sidecars carrying a non-empty details array
+//
+// The one deliberate exemption is [data-historical-figures] — /methodology/'s
+// corrections table, whose "Was" column records superseded figures on
+// purpose. Scoped to that container and nowhere else: a superseded corpus
+// figure anywhere else IS the defect.
+
+/**
+ * A number that PRESENTS ITSELF as a corpus count: a comma-grouped integer
+ * whose head noun IS the corpus — "N programs", "N program elements",
+ * "N (browsable) program pages".
+ *
+ * Comma-grouped by design — an agency page's "519 programs" is a true
+ * statement about that agency, not a claim about the corpus, and every corpus
+ * count here is four digits.
+ *
+ * The noun phrase must be COMPLETE, which is what keeps "program" as a
+ * modifier out. A first cut allowed a bare singular "program" and flagged
+ * /methodology/'s "12,448 program mentions" — a mention count, correctly
+ * derived from fct_program_lobbying, that happens to have "program" as an
+ * adjective. Likewise "10,091 program-award links" (hyphen, no match).
+ */
+const CORPUS_CLAIM_RE = new RegExp(
+  String.raw`\b(\d{1,3}(?:,\d{3})+)\s+(?:browsable\s+)?` +
+    String.raw`(?:programs\b|program\s+elements?\b|program\s+pages?\b)(?![\w-])`,
+  "gi",
+);
+
+/**
+ * Pages scanned. The singleton, hand-written-prose pages — the templated
+ * detail pages (~2,000 of them) state per-program facts, never corpus size,
+ * and share one template that this list's members already exercise.
+ */
+const CORPUS_CLAIM_PAGES = [
+  "/", "/programs/", "/years/", "/methodology/", "/data/", "/coverage/",
+  "/downloads/", "/about/", "/glossary/", "/agency/", "/feed/", "/flow/",
+  "/lineage/", "/companies/", "/district/", "/filings/",
+];
+
+/** The five declared counts, recomputed from the shipped artifacts. */
+function recomputeCorpusCounts() {
+  const out = {};
+  const errs = [];
+
+  // sitemap-urls — the SHIPPED xml, so this is the number a crawler is given.
+  const smPath = path.join(outDir, "sitemap.xml");
+  if (fs.existsSync(smPath)) {
+    const xml = fs.readFileSync(smPath, "utf8");
+    const locs = xml.match(/<loc>[^<]*\/program\/[^<]*<\/loc>/g) ?? [];
+    out["sitemap-urls"] = locs.length;
+  } else {
+    errs.push("leg k: out/sitemap.xml missing — cannot recompute sitemap-urls");
+  }
+
+  // program-pages / detail-pages — the sidecars themselves.
+  const pdDir = path.join(jsonDir, "program_details");
+  if (fs.existsSync(pdDir)) {
+    const files = fs.readdirSync(pdDir).filter((f) => f.endsWith(".json"));
+    out["program-pages"] = files.length;
+    let withDetail = 0;
+    for (const f of files) {
+      let raw;
+      try {
+        raw = fs.readFileSync(path.join(pdDir, f), "utf8");
+      } catch {
+        continue;
+      }
+      if (!raw.includes('"details"') || /"details":\s*\[\]/.test(raw)) continue;
+      try {
+        const d = JSON.parse(raw).details;
+        if (Array.isArray(d) && d.length > 0) withDetail++;
+      } catch {
+        /* malformed — leg d reports it */
+      }
+    }
+    out["detail-pages"] = withDetail;
+  } else {
+    errs.push("leg k: program_details/ missing — cannot recompute page counts");
+  }
+
+  // index-rows — programs.json.
+  const progPath = path.join(jsonDir, "programs.json");
+  if (fs.existsSync(progPath)) {
+    try {
+      out["index-rows"] = JSON.parse(fs.readFileSync(progPath, "utf8")).length;
+    } catch {
+      errs.push("leg k: programs.json unparseable");
+    }
+  } else {
+    errs.push("leg k: programs.json missing — cannot recompute index-rows");
+  }
+
+  // dim-programs-rows — the shipped manifest.
+  const dsPath = path.join(jsonDir, "datasets.json");
+  if (fs.existsSync(dsPath)) {
+    try {
+      const row = (JSON.parse(fs.readFileSync(dsPath, "utf8")).datasets ?? []).find(
+        (d) => d.name === "dim_programs",
+      );
+      if (row) out["dim-programs-rows"] = row.row_count;
+      else errs.push("leg k: datasets.json has no dim_programs entry");
+    } catch {
+      errs.push("leg k: datasets.json unparseable");
+    }
+  } else {
+    errs.push("leg k: datasets.json missing");
+  }
+
+  return { counts: out, errs };
+}
+
+function runCorpusCountLeg(errors, notes) {
+  const { counts: expected, errs } = recomputeCorpusCounts();
+  for (const e of errs) errors.push(e);
+  const ids = Object.keys(expected);
+  if (ids.length < 5) {
+    errors.push(
+      `leg k: only ${ids.length} of 5 corpus counts could be recomputed — ` +
+        `the sweep below would pass vacuously`,
+    );
+    return;
+  }
+  const allowed = new Map();
+  for (const [id, v] of Object.entries(expected)) {
+    if (!allowed.has(v)) allowed.set(v, []);
+    allowed.get(v).push(id);
+  }
+
+  // ── (k1) /coverage/ publishes all five, each equal to its recompute ──
+  const covPath = htmlFor("/coverage/");
+  if (!fs.existsSync(covPath)) {
+    errors.push("leg k1: /coverage/ not built — the reconciliation is unverifiable");
+  } else {
+    const root = parse(fs.readFileSync(covPath, "utf8"), { comment: false });
+    for (const el of root.querySelectorAll("script, style, noscript, template")) {
+      el.remove();
+    }
+    const rows = root.querySelectorAll("[data-corpus-count]");
+    const seen = new Set();
+    for (const row of rows) {
+      const id = row.getAttribute("data-corpus-count");
+      seen.add(id);
+      if (!(id in expected)) {
+        errors.push(
+          `leg k1: /coverage/ publishes an undeclared corpus count "${id}" — ` +
+            `every row must name one of ${ids.join(", ")}`,
+        );
+        continue;
+      }
+      const shown = parseInt(norm(row.text).replace(/,/g, ""), 10);
+      if (shown !== expected[id]) {
+        errors.push(
+          `leg k1: /coverage/ row "${id}" renders ${shown} but the shipped ` +
+            `artifact holds ${expected[id]}`,
+        );
+      }
+    }
+    const missing = ids.filter((id) => !seen.has(id));
+    if (missing.length > 0) {
+      errors.push(
+        `leg k1: /coverage/'s corpus reconciliation omits ${missing.join(", ")} — ` +
+          `a count the site publishes and the reconciliation does not explain is ` +
+          `exactly the defect this table exists to close`,
+      );
+    }
+  }
+
+  // ── (k2) every corpus-shaped claim on a singleton page is a declared count ──
+  let scanned = 0;
+  let claims = 0;
+  const bad = [];
+  for (const url of CORPUS_CLAIM_PAGES) {
+    const p = htmlFor(url);
+    if (!fs.existsSync(p)) continue;
+    scanned++;
+    const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+    // The RSC flight payload lives in <script>. Reading it instead of the
+    // rendered page is how a previous leg in this project passed while the
+    // page was broken — strip them, and the historical-figures container.
+    for (const el of root.querySelectorAll(
+      "script, style, noscript, template, [data-historical-figures]",
+    )) {
+      el.remove();
+    }
+    const text = norm(root.text);
+    for (const m of text.matchAll(CORPUS_CLAIM_RE)) {
+      claims++;
+      const n = Number(m[1].replace(/,/g, ""));
+      if (allowed.has(n)) continue;
+      bad.push({ url, phrase: m[0].trim(), n });
+    }
+  }
+  if (scanned === 0) {
+    errors.push("leg k2: no singleton page built — the sweep is vacuous");
+    return;
+  }
+  if (claims === 0) {
+    errors.push(
+      `leg k2: ${scanned} pages scanned and NOT ONE corpus claim matched — ` +
+        `the site states its size on at least four pages, so a zero here means ` +
+        `the scan is broken, not that the site went quiet`,
+    );
+  }
+  for (const b of bad) {
+    errors.push(
+      `leg k2 (${b.url}): "${b.phrase}" states a corpus size of ${b.n.toLocaleString("en-US")}, ` +
+        `which is none of the declared counts (` +
+        ids.map((id) => `${id}=${expected[id].toLocaleString("en-US")}`).join(", ") +
+        `). Either it is a literal that has rotted, or it is a sixth ` +
+        `denominator that has to be declared in lib/corpus getCorpusCounts() ` +
+        `and explained on /coverage/`,
+    );
+  }
+  if (bad.length === 0) {
+    notes.push(
+      `leg k: ${claims} corpus claim(s) across ${scanned} page(s) all resolve to a ` +
+        `declared count (` +
+        ids.map((id) => `${id}=${expected[id].toLocaleString("en-US")}`).join(", ") +
+        `) ✓`,
+    );
+  }
 }

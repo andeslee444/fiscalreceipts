@@ -189,9 +189,25 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
   {
     id: "non-add",
-    term: "Non-Add",
-    expansion: "Memo line, excluded from totals",
+    term: "Add / Non-Add",
+    expansion: "The P-1 column that decides what is summable",
     definition:
-      "A workbook row flagged Non-Add is informational only — its dollar amount is a memo or reference figure already counted inside another row, so site totals exclude it to avoid double-counting. The flag appears verbatim in a workbook citation's preview whenever the source row carries it.",
+      // Tri-persona review Wave 4, item 3. The entry used to describe the
+      // flag; it did not say that the site FILTERS on it, which is the fact
+      // an analyst needs — reproducing a site total from the workbook fails
+      // without it, and the reader's natural conclusion is that the site is
+      // wrong. The rule is stated, never the arithmetic: a worked figure here
+      // would go stale the next time an edition lands.
+      "Every P-1 row carries an Add/Non-Add flag. A Non-Add row is informational — a memo or reference figure already counted inside another row, such as an advance-procurement entry booked in one fiscal year for delivery in a later one, or a ship-class memo line — and the exhibit does not add it into its own totals. Fiscal Receipts loads Add rows only. This is the single most consequential aggregation decision on the site: summing the P-1 workbook without the filter produces a materially larger total than any figure published here, and the difference is double-counted memo money, not missing coverage. The flag appears verbatim in a workbook citation's preview whenever the source row carries it.",
+  },
+  {
+    id: "p-1r",
+    term: "P-1R",
+    expansion: "Procurement Programs — Reserve Components exhibit",
+    definition:
+      // Wave 4, item 3: the second half of the same aggregation decision.
+      // Verified against budget_lines.parquet: every P-1R FY2026 request row
+      // shares a (program element, appropriation account) with a P-1 row.
+      "The reserve-component companion to the P-1, listing National Guard and Reserve equipment procurement. Its rows are a subset of the same budget lines the P-1 already reports, so they are never added to a P-1 total — the site's FY2026 request denominator is built from P-1 and R-1 rows only. The P-1R is loaded and citable in its own right; it is the summing that is excluded, not the data.",
   },
 ];

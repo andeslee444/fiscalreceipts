@@ -255,18 +255,33 @@ export function getCoverageMap(): CoverageMapRow[] {
         "renumbered, realigned or transferred.",
       derivation:
         "program_details sidecars carrying a non-empty lineage rail, over programs.json rows.",
+      // Tri-persona review Wave 4, item 5. This used to say an edge is
+      // asserted "only where a justification narrative names BOTH endpoints
+      // in a sentence we can quote back". Measured against
+      // data/parquet/jbooks/program_lineage.parquet: of 49 stated edges, 16
+      // quote a sentence naming both ends and 33 (67%) quote a sentence
+      // naming ONE — the other end being the program element whose own
+      // narrative the sentence came from. The edges are sound and the
+      // extractor's rules are deliberate (lineage/extract.py: a both-named
+      // clause pairs the two NAMED PEs; a single-direction clause pairs the
+      // named PE with `this`). The RULE AS WRITTEN was simply not the rule
+      // enforced, and it is the rule a reader uses to judge the tier.
       blocker:
-        "An edge is asserted only where a justification narrative names BOTH " +
-        "endpoints in a sentence we can quote back. “Realigned to PE " +
-        "0604818A” is usable; “realigned to another program element” " +
-        "is not, and most renumberings are written the second way. Candidate " +
-        "edges found by maturation patterns are shown dashed and are never cited.",
+        "An edge is asserted only where a justification narrative names the " +
+        "other end explicitly, next to a transfer verb: “realigned to PE " +
+        "0604818A” is usable, “realigned to another program element” is not, " +
+        "and most renumberings are written the second way. Usually the " +
+        "sentence names one end and the program whose book it appears in " +
+        "supplies the other; where one sentence names both, the two named " +
+        "elements are paired and the narrative's own line is not involved. " +
+        "Candidate edges found by maturation patterns are shown dashed and " +
+        "are never cited.",
       targetKind: "none",
       target:
         "No dated target yet — narrative extraction across the whole FY2026 " +
         "set is the planned next step and its date is pending a roadmap " +
         "decision. Whenever it runs, anything it finds stays in the candidate " +
-        "tier until a quotable sentence names both ends.",
+        "tier until a quotable sentence names the other end.",
     },
     {
       id: "flows",

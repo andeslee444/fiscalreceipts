@@ -8,6 +8,7 @@ import {
   CROSSWALK_LIMIT_ID,
   MAP_REVIEWED_ON,
 } from "@/lib/coverage-map";
+import { getCorpusCounts } from "@/lib/corpus";
 import { coreOgImages } from "@/lib/og";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -60,6 +61,7 @@ export const metadata: Metadata = {
 export default function CoveragePage() {
   const rows = getCoverageMap();
   const crosswalk = rows.find((r) => r.id === CROSSWALK_LIMIT_ID)!;
+  const counts = getCorpusCounts();
   const dated = rows.filter((r) => r.targetKind === "dated").length;
 
   return (
@@ -189,6 +191,76 @@ export default function CoveragePage() {
                       Target
                     </span>
                     {r.target}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── How the corpus is counted (tri-persona Wave 4, item 4) ──────────
+          Five true numbers, five denominators, and until now nothing that
+          said so: sitemap.xml declared 2,016 program URLs while /programs/
+          said 1,755 and dim_programs published 1,753. Each row is DERIVED
+          (lib/corpus getCorpusCounts) — gate 24 leg k recomputes all five
+          from the shipped artifacts and rejects any corpus-shaped number on
+          the singleton pages that is not one of them. */}
+      <section className="mt-12" aria-labelledby="counts-heading" id="corpus-counts">
+        <h2 id="counts-heading" className="mb-3 text-xl font-semibold">
+          How the corpus is counted
+        </h2>
+        <p className="mb-4 max-w-3xl text-sm leading-7 text-muted-foreground">
+          The site states its own size five ways, because five different
+          questions have five different answers. They are nested, and the
+          differences are the interesting part.
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table data-corpus-counts className="min-w-full text-sm">
+            <caption className="sr-only">
+              Each published corpus count, where it appears, and what one unit
+              of it is.
+            </caption>
+            <thead className="hidden sm:table-header-group">
+              <tr className="border-b border-border bg-muted/50">
+                <th scope="col" className="px-4 py-2 text-right font-semibold text-muted-foreground">
+                  Count
+                </th>
+                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
+                  Published on
+                </th>
+                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
+                  One of them is
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {counts.map((c) => (
+                <tr
+                  key={c.id}
+                  data-corpus-count={c.id}
+                  role="row"
+                  className="block border-b border-border py-3 last:border-0 sm:table-row sm:py-0"
+                >
+                  <td
+                    role="cell"
+                    className="inline px-4 py-0 text-left align-top font-semibold tabular-nums text-foreground sm:table-cell sm:py-3 sm:text-right"
+                  >
+                    {c.value.toLocaleString("en-US")}
+                  </td>
+                  <td
+                    role="cell"
+                    data-primary-value="where"
+                    className="inline px-4 py-0 align-top text-muted-foreground sm:table-cell sm:py-3"
+                  >
+                    {c.where}
+                  </td>
+                  <td
+                    role="cell"
+                    data-primary-value="counts"
+                    className="block px-4 pt-1 align-top text-muted-foreground sm:table-cell sm:py-3"
+                  >
+                    {c.counts}
                   </td>
                 </tr>
               ))}

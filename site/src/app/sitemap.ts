@@ -1,10 +1,8 @@
 import type { MetadataRoute } from "next";
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 import { SITE_URL } from "@/lib/site";
-import { isZeroContentDetails } from "@/lib/program-tier";
-import { getSplitProgramKeys } from "@/lib/data";
-import type { ProgramDetails } from "@/lib/data";
+import { getProgramSitemapSlugs, getSplitProgramKeys } from "@/lib/data";
 
 export const dynamic = "force-static";
 
@@ -43,6 +41,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // its own right, not just an appendix to /companies/.
     { url: `${base}/companies/families/`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/data/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // Tri-persona review Wave 4, item 5. /years/ — the decade matrix, the
+    // surface where cross-program "asked vs got" analysis happens and the
+    // only page that renders all ten PB editions side by side — was in no
+    // sitemap at all. It is linked from chrome, so it was crawlable; it was
+    // simply never declared. Same weekly cadence as /programs/: it moves
+    // with the corpus.
+    { url: `${base}/years/`, lastModified: now, changeFrequency: "weekly", priority: 0.85 },
     { url: `${base}/flow/`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     // ROADMAP #29(c) — the lineage identity diagram. The only surface that
     // renders the stated links whose endpoints have no program page of their
@@ -64,41 +69,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/about/`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
   ];
 
-  // ── Dynamic program pages (Phase 5F §2a: the full 1,995-sidecar universe,
-  //    both tiers). Zero-content pages are noindex and therefore EXCLUDED —
-  //    same policy as zero-mention filings. ─────────────────────────────────
+  // ── Dynamic program pages (Phase 5F §2a: the full sidecar universe, both
+  //    tiers, PLUS the split-key disambiguation stubs, which are real
+  //    indexable pages with no sidecar). Zero-content pages are noindex and
+  //    therefore EXCLUDED — same policy as zero-mention filings.
+  //
+  //    Wave 4 item 4: the set is lib/data getProgramSitemapSlugs() now, not
+  //    an inline scan, so /coverage/'s corpus reconciliation states the same
+  //    number this file declares instead of a second implementation of it.
   let programPages: MetadataRoute.Sitemap = [];
   try {
-    const detailsDir = join(jsonDir(), "program_details");
-    programPages = readdirSync(detailsDir)
-      .filter((f) => f.endsWith(".json"))
-      .sort()
-      .filter((f) => {
-        const details = readJson<ProgramDetails>(join("program_details", f));
-        return !isZeroContentDetails(details);
-      })
-      .map((f) => ({
-        url: `${base}/program/${f.slice(0, -".json".length)}/`,
-        lastModified: now,
-        changeFrequency: "monthly" as const,
-        priority: 0.8,
-      }));
+    const stubs = new Set(getSplitProgramKeys());
+    programPages = getProgramSitemapSlugs().map((slug) => ({
+      url: `${base}/program/${slug}/`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      // A stub is real content, but thinner than a program page.
+      priority: stubs.has(slug) ? 0.6 : 0.8,
+    }));
   } catch {
     // sidecars not yet generated — sitemap will be incomplete
-  }
-
-  // Sprint E, Task E3 (ROADMAP #67): the 8 split-key bare-pe_bli
-  // disambiguation stubs — real, indexable pages (see the stub branch in
-  // app/program/[peBli]/page.tsx) that carry no program_details sidecar, so
-  // the directory scan above never sees them. A slightly lower priority:
-  // real content, but thinner than a program page.
-  for (const peBli of getSplitProgramKeys()) {
-    programPages.push({
-      url: `${base}/program/${peBli}/`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    });
   }
 
   // ── Dynamic company pages ─────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAgencies, collectCitations } from "@/lib/data";
+import { getAgencies, getUnpagedOrgs, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { agencyDisplayName } from "@/lib/agency-names";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -60,6 +60,14 @@ export default function AgencyIndexPage() {
   for (const a of sorted) {
     if (a.fy2024_fact_id_derived) pageFactIds.push(a.fy2024_fact_id_derived);
     if (a.fy2026_fact_id_derived) pageFactIds.push(a.fy2026_fact_id_derived);
+  }
+  // Wave 4 item 5: the workbook organizations this index does not collect.
+  // Their figures are each page's OWN cited FY2026 headline, so their fact
+  // ids join the same citation slice — a figure here opens the same panel it
+  // opens on the program page.
+  const unpaged = getUnpagedOrgs();
+  for (const u of unpaged) {
+    for (const p of u.programs) if (p.factId) pageFactIds.push(p.factId);
   }
   const citationsSlice = collectCitations(pageFactIds);
 
@@ -197,6 +205,78 @@ export default function AgencyIndexPage() {
           </Link>{" "}
           for how the two fiscal years&rsquo; bases relate.
         </p>
+
+        {/* ── Money filed under an organization with no page here ──────────
+            Tri-persona review Wave 4, item 5. The index lists 24
+            organizations; the FY2026 budget lines carry money under more
+            than that. Every one of those programs HAS a page and is in the
+            sitemap — there was simply no way to reach it from the agency
+            index. Why a list rather than four more agency pages: see
+            getUnpagedOrgs()'s note in lib/data.ts. */}
+        {unpaged.length > 0 && (
+          <section className="mt-10" aria-labelledby="unpaged-heading">
+            <h2 id="unpaged-heading" className="text-xl font-semibold mb-2">
+              Filed under an organization with no page here
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-3xl">
+              {formatCount(unpaged.length)} organization
+              {unpaged.length === 1 ? "" : "s"} in the FY2026 workbooks carry
+              money that no agency page above collects. An agency page&rsquo;s
+              header total and its program list are both built from the
+              detail-grade program table, and these have no rows in it — a
+              page for them would state a real total over a list showing none
+              of it. Their program pages are below, and each figure is the
+              page&rsquo;s own cited FY2026 headline.
+            </p>
+            <div className="mt-4 space-y-5" data-unpaged-orgs>
+              {unpaged.map((u) => (
+                <div key={u.org || "(none)"} data-unpaged-org={u.org}>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {u.org ? agencyDisplayName(u.org) : "No organization code"}
+                    {u.org && agencyDisplayName(u.org) !== u.org && (
+                      <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                        {u.org}
+                      </span>
+                    )}
+                  </h3>
+                  <ul className="mt-1 divide-y divide-border rounded-lg border border-border bg-card">
+                    {u.programs.map((p) => (
+                      <li
+                        key={p.slug}
+                        className="flex items-baseline gap-3 px-4 py-2 text-sm"
+                      >
+                        <Link
+                          href={`/program/${p.slug}/`}
+                          className="flex-1 underline decoration-dotted hover:text-primary"
+                        >
+                          {p.title}
+                        </Link>
+                        <span className="tabular-nums">
+                          {p.value != null && p.units ? (
+                            <Cite
+                              value={p.value}
+                              units={p.units}
+                              dataset="budget_lines"
+                              factId={p.factId}
+                              basis={p.basis ?? undefined}
+                              fy={2026}
+                              measure={p.measure}
+                              entity={p.slug}
+                              edition={2026}
+                              chip={false}
+                            />
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </CitationPanelProvider>
   );

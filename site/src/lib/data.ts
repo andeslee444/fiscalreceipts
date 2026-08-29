@@ -19,7 +19,7 @@ import {
 } from "./dossier";
 import type { FamilyEventsPayload } from "./entity-families";
 import { pctNotCrosswalked, type FlowChartPayload } from "./flow";
-import { setIngestedServiceOrgs } from "./program-tier";
+import { isZeroContentDetails, setIngestedServiceOrgs } from "./program-tier";
 import type { LineageBlock } from "./lineage";
 import type { LineageFlowPayload } from "./lineage-flow";
 
@@ -240,6 +240,13 @@ export interface DatasetManifestEntry {
   row_count: number;
   /** One sentence describing what ONE row of this dataset IS. */
   scope: string;
+  /**
+   * A MEASURED limitation of the shipped file, present only where the
+   * exporter computes one (_derived_caveat in export_site.py). Rendered on
+   * the /downloads/ card, not in the /data/ inventory table — see the
+   * exporter's note on why the two disclosures split.
+   */
+  caveat?: string;
 }
 
 export interface DatasetManifest {
@@ -896,6 +903,140 @@ export function getProgramPeBlis(): string[] {
 /** Total number of program PAGES (all tiers) — 1,995 with Batch A data. */
 export function getProgramPagesCount(): number {
   return getProgramPeBlis().length;
+}
+
+// ── Organizations with money and no agency page (tri-persona Wave 4) ────────
+
+export interface UnpagedOrgProgram {
+  slug: string;
+  title: string;
+  /** The page's own cited FY2026 headline; null where it publishes none. */
+  value: number | null;
+  units: "USD thousands" | "USD millions" | null;
+  factId: string | null;
+  measure: string;
+  basis: string | null;
+}
+
+export interface UnpagedOrg {
+  /** Workbook organization code; "" where the workbook leaves it blank. */
+  org: string;
+  programs: UnpagedOrgProgram[];
+}
+
+let _unpagedOrgs: UnpagedOrg[] | null = null;
+
+/**
+ * Workbook organizations that carry FY2026 money and have NO /agency/ page —
+ * tri-persona review Wave 4, item 5.
+ *
+ * `/agency/` lists 24 organizations; 28 carry FY2026 money in the budget
+ * lines. The four with no page are DEFW ($5.65B, the two FY2026
+ * reconciliation initiatives), DHA ($973M across thirteen medical program
+ * elements), IG, and the classified line the workbook files under no
+ * organization code at all. Their PROGRAM pages exist and are indexed; what
+ * did not exist was any way to get to them from the agency index, because
+ * agencies.json is built from dim_programs and none of these has a
+ * dim_programs row.
+ *
+ * WHY A LIST AND NOT FOUR NEW AGENCY PAGES. An /agency/{org}/ page's header
+ * total and its program list are both dim_programs-grained; minting one for
+ * an org with no dim_programs rows would produce a page whose header states
+ * a real total over a list that shows none of it — the exact "true number,
+ * false label" shape this whole review is about. Giving dim_programs a
+ * per-org grain is ROADMAP #45, a dimension change. Until then the honest
+ * fix is the browse path plus a plain statement of why the page is absent.
+ *
+ * THE PAGED/UNPAGED TEST IS DERIVED, NOT AN ALIAS TABLE. The workbook
+ * organization code space is not quite agencies.json's — the workbook writes
+ * CYBER where agencies.json writes CYBERCOM — and a hand-written alias map
+ * would be one more paired constant to drift. Instead: an org is PAGED when
+ * any of its program pages has a programs.json row whose own org has an
+ * agency page. CYBER's seven pages all do (as CYBERCOM); DEFW's and IG's
+ * have no programs.json row at all, and DHA's one row carries org "DHA",
+ * which agencies.json does not list.
+ */
+export function getUnpagedOrgs(): UnpagedOrg[] {
+  if (_unpagedOrgs) return _unpagedOrgs;
+  const agencySet = new Set(getAgencies().map((a) => a.org));
+  const programRows = getProgramMap();
+
+  // org -> slugs, and slug -> its FY2026 headline card.
+  const byOrg = new Map<string, UnpagedOrgProgram[]>();
+  for (const slug of getProgramPeBlis()) {
+    const d = getProgramDetails(slug);
+    let org: string | null = null;
+    for (const bl of d.budget_lines) {
+      if (bl.edition !== 2026) continue;
+      if (
+        bl.amount_type !== "fy_2026_disc_request" &&
+        bl.amount_type !== "fy_2026_reconciliation_request"
+      ) {
+        continue;
+      }
+      org = bl.organization ?? "";
+      break;
+    }
+    if (org === null) continue; // no FY2026 request money on this page
+    const card = d.summary.cards.find((c) => c.key === "fy2026");
+    const list = byOrg.get(org) ?? [];
+    list.push({
+      slug,
+      title: d.title ?? programRows.get(slug)?.title ?? slug,
+      value: card?.value ?? null,
+      units: card?.units ?? null,
+      factId: card?.fid ?? null,
+      measure: card?.measure ?? "request",
+      basis: card?.basis ?? null,
+    });
+    byOrg.set(org, list);
+  }
+
+  const out: UnpagedOrg[] = [];
+  for (const [org, programs] of byOrg) {
+    const paged = programs.some((p) => {
+      const row = programRows.get(p.slug);
+      return row != null && agencySet.has(row.org);
+    });
+    if (paged) continue;
+    programs.sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+    out.push({ org, programs });
+  }
+  // Largest FY2026 headline first — the same order /agency/ itself uses.
+  out.sort(
+    (a, b) => (b.programs[0]?.value ?? -1) - (a.programs[0]?.value ?? -1),
+  );
+  return (_unpagedOrgs = out);
+}
+
+let _programSitemapSlugs: string[] | null = null;
+
+/**
+ * Every INDEXABLE /program/{key}/ URL — the set sitemap.xml declares.
+ *
+ * Tri-persona review Wave 4, item 4: sitemap.xml stated the corpus at 2,016
+ * while four pages said 1,755, /coverage/ said 1,743 of 2,005 and
+ * dim_programs.parquet said 1,753. Each is right for its own denominator and
+ * nothing said so. This one is "URLs a crawler is offered" — which is neither
+ * the sidecar universe (zero-content pages are noindex and excluded) nor the
+ * index (split-key stubs are real pages with no programs.json row of their
+ * own).
+ *
+ * app/sitemap.ts used to compute it inline; it calls this now, so the number
+ * on /coverage/'s reconciliation and the number in the XML are one
+ * expression evaluated once. Cached: this parses every sidecar, and the
+ * sitemap was already paying for that pass.
+ */
+export function getProgramSitemapSlugs(): string[] {
+  if (_programSitemapSlugs) return _programSitemapSlugs;
+  const indexable = getProgramPeBlis().filter(
+    (slug) => !isZeroContentDetails(getProgramDetails(slug)),
+  );
+  // The split-key disambiguation stubs are real, indexable pages that carry
+  // no sidecar (see getSplitProgramKeys), so the directory scan never sees
+  // them.
+  _programSitemapSlugs = [...indexable, ...getSplitProgramKeys()];
+  return _programSitemapSlugs;
 }
 
 let _detailGradeCount: number | null = null;

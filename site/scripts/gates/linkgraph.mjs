@@ -31,6 +31,13 @@
  *     link whose whole promise is "here is the paragraph that explains this"
  *     is worthless if it lands at the top of a long page. See leg (g)'s own
  *     block at the bottom.
+ * (h) EVERY SHIPPED DATASET IS DOWNLOADABLE WITHOUT JAVASCRIPT (tri-persona
+ *     Wave 4). Leg (d) used to skip href^="/assets/" as "runtime-resolved";
+ *     that skip hid fifteen /downloads/ links that 404 for curl, wget and
+ *     every non-browser client. Leg (h) reads datasets.json — the exporter's
+ *     own inventory of what it wrote — and requires each shipped parquet to
+ *     have an ABSOLUTE asset-host href on /downloads/. Leg (d) no longer
+ *     carves /assets/ out, so the negative half is covered too.
  */
 import fs from "fs";
 import path from "path";
@@ -262,16 +269,21 @@ export async function runLinkgraphGate() {
       internal++;
       const target = href.split("#")[0].split("?")[0];
       if (target === "") continue; // fragment/query on the page itself
-      // /assets/* is RESOLVED AT RUNTIME, not built into out/. asset-config.tsx
-      // ships DEFAULT_ASSET_BASE="/assets" as the SSR fallback and swaps it for
-      // public/config.json's assetBaseUrl (https://assets.fiscalreceipts.com)
-      // on hydration, so the static snapshot legitimately carries hrefs that no
-      // local file backs. Verified 2026-08-25: /assets/data/dim_programs.parquet
-      // 404s same-origin and returns 200 at the asset host. Skipping these is
-      // not a weakening — gate 15 "degraded" owns this contract, HEAD-probing
-      // the bundle and rendering data-degraded="downloads" when it is absent.
-      // Without this, widening the scan below flags all 15 /downloads/ cards.
-      if (target.startsWith("/assets/")) continue;
+      // CARVE-OUT REMOVED — tri-persona review Wave 4, item 1.
+      //
+      // This leg used to `continue` on every href starting with /assets/,
+      // reasoning that the path is "RESOLVED AT RUNTIME" and the static
+      // snapshot legitimately carries hrefs no local file backs. The premise
+      // was true and the conclusion was the bug: a reader without JavaScript
+      // — curl, wget, a copied link, any scripted fetch — never runs the
+      // resolution, and got a same-origin 404 from all fifteen /downloads/
+      // cards. The carve-out's own comment recorded that 404 as a verified
+      // fact and skipped it anyway.
+      //
+      // The SSR base is now the real asset host (lib/asset-base.ts →
+      // AssetConfigProvider ssrBase), so a /assets/ href in built HTML means
+      // a component skipped that seed and is shipping a 404. Leg (h) below
+      // checks the positive half: that the cards DO carry the host.
       const isFile = /\.[a-z0-9]+$/i.test(target);
       const resolved = isFile
         ? path.join(outDir, ...target.split("/").filter(Boolean))
@@ -297,6 +309,9 @@ export async function runLinkgraphGate() {
 
   // ── (g) fragment links must land somewhere (tri-persona Wave 3) ──
   runFragmentLeg(errors, notes);
+
+  // ── (h) every shipped dataset is downloadable without JS (Wave 4) ──
+  runDownloadLinkLeg(errors, notes);
 
   // ── (f) universal PE linking on sampled program pages (Phase 5F §2a) ──
   {
@@ -539,4 +554,111 @@ function runFragmentLeg(errors, notes) {
       `(${FRAGMENT_HUB_PAGES.length} hubs + sampled detail pages) — ` +
       `${dead.size} dead anchor(s)`,
   );
+}
+
+/**
+ * Leg (h) — EVERY SHIPPED DATASET IS DOWNLOADABLE WITHOUT JAVASCRIPT.
+ * Tri-persona review Wave 4, items 1 and 2.
+ *
+ * Two defects of one shape met on /downloads/:
+ *
+ *   1. Every href was `/assets/data/*.parquet` — a path nothing serves.
+ *      The real URL was assembled client-side from /config.json, so the
+ *      page worked in a browser and 404'd for `curl`, `wget`, a copied
+ *      link and every scripted fetch. Leg (d)'s carve-out skipped exactly
+ *      these hrefs, so no gate saw it.
+ *   2. The card list was hand-authored in TSX while /data/ read the
+ *      manifest, and the two drifted: budget_lines_decade (32,642 rows)
+ *      and fct_district_totals were queryable and not downloadable.
+ *
+ * So the predicate is the union of both, asserted against the artifact
+ * that decides the truth — data/site/json/datasets.json, the exporter's
+ * inventory of what it actually wrote:
+ *
+ *   · every dataset in the manifest has a download href on /downloads/;
+ *   · every one of those hrefs is an ABSOLUTE http(s) URL (fetchable with
+ *     no JavaScript), not a same-origin /assets/ path;
+ *   · the citation index (citations.parquet) is linked the same way.
+ *
+ * Independent of the page: the gate reads the manifest, not the component's
+ * own idea of the list. If a card is dropped, or its href regresses to the
+ * SSR fallback, or a new mart ships without a card, this fails.
+ */
+function runDownloadLinkLeg(errors, notes) {
+  const manifestPath = path.join(jsonDir, "datasets.json");
+  if (!fs.existsSync(manifestPath)) {
+    errors.push(`leg h: ${manifestPath} missing — cannot check download coverage`);
+    return;
+  }
+  let inventory;
+  try {
+    inventory = JSON.parse(fs.readFileSync(manifestPath, "utf8")).datasets ?? [];
+  } catch (e) {
+    errors.push(`leg h: datasets.json unreadable — ${e.message}`);
+    return;
+  }
+  if (!Array.isArray(inventory) || inventory.length === 0) {
+    errors.push("leg h: datasets.json lists no datasets");
+    return;
+  }
+
+  const pagePath = htmlPathFor("/downloads/");
+  if (!fs.existsSync(pagePath)) {
+    errors.push(`leg h: /downloads/ not built (${pagePath} missing)`);
+    return;
+  }
+  const root = parse(fs.readFileSync(pagePath, "utf8"), { comment: false });
+  const hrefs = root
+    .querySelectorAll("a[href]")
+    .map((a) => a.getAttribute("href") ?? "");
+
+  // Relative asset paths anywhere on the page are the original defect.
+  const relative = hrefs.filter((h) => h.startsWith("/assets/"));
+  if (relative.length > 0) {
+    const uniq = [...new Set(relative)];
+    errors.push(
+      `leg h: /downloads/ ships ${relative.length} same-origin /assets/ href(s) ` +
+        `(${uniq.length} unique; first: ${uniq[0]}). Nothing is served under ` +
+        `/assets/ in production — these 404 for every client that does not run ` +
+        `the client-side /config.json rewrite. Pass ssrBase={getAssetBase()} to ` +
+        `<AssetConfigProvider>`,
+    );
+  }
+
+  // Every manifest dataset needs an absolute href ending in its parquet.
+  const absolute = hrefs.filter((h) => /^https?:\/\//i.test(h));
+  const missing = [];
+  const notAbsolute = [];
+  for (const ds of inventory) {
+    const suffix = `/data/${ds.name}.parquet`;
+    if (absolute.some((h) => h.endsWith(suffix))) continue;
+    if (hrefs.some((h) => h.endsWith(suffix))) notAbsolute.push(ds.name);
+    else missing.push(ds.name);
+  }
+  if (missing.length > 0) {
+    errors.push(
+      `leg h: ${missing.length} shipped dataset(s) have no download link on ` +
+        `/downloads/ — ${missing.join(", ")}. datasets.json is the inventory of ` +
+        `what the exporter wrote; a parquet that ships without a card is ` +
+        `queryable on /data/ and undownloadable`,
+    );
+  }
+  if (notAbsolute.length > 0) {
+    errors.push(
+      `leg h: ${notAbsolute.length} dataset link(s) on /downloads/ are not ` +
+        `absolute URLs — ${notAbsolute.join(", ")}`,
+    );
+  }
+  if (!absolute.some((h) => h.endsWith("/citations/citations.parquet"))) {
+    errors.push(
+      "leg h: /downloads/ has no absolute link to citations/citations.parquet — " +
+        "the citation index is what makes every other file checkable",
+    );
+  }
+  if (missing.length === 0 && notAbsolute.length === 0 && relative.length === 0) {
+    notes.push(
+      `leg h: all ${inventory.length} shipped datasets + the citation index link ` +
+        `to absolute asset-host URLs on /downloads/ (no /assets/ paths) ✓`,
+    );
+  }
 }

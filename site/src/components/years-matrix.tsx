@@ -414,6 +414,19 @@ function csvField(s: string): string {
  * qualifier rides in the same single header row for the same reason the
  * edition does; a mixed column names every token its cells carry, so the
  * header can never be narrower than the data under it.
+ *
+ * Tri-persona review Wave 4: EVERY DOLLAR COLUMN CARRIES ITS FACT_ID. On
+ * screen each cell opens its own citation; in the export the citation chain
+ * simply stopped — a downloaded row was a number with no way back to the
+ * workbook cell it was read from, on the one page built for cross-program
+ * analysis. Each `<col>` value column is now followed by `fact_id_<col>`,
+ * resolvable at /fact/{id}/. Empty where the cell has no fact_id (a
+ * zero-amount cell citing an xml_path, or a derived %Δ), never zero-filled.
+ *
+ * The fact_id header is PREFIXED rather than suffixed on purpose: gate 22
+ * leg i4 finds a column's field by `startsWith("<col>_pb<edition>")`, and a
+ * `<col>_pb<edition>..._fact_id` sibling would be a second candidate for
+ * that prefix. `fact_id_` cannot collide with it whatever the field order.
  */
 export function buildYearsCsv(
   entries: ProgramEntry[],
@@ -423,22 +436,27 @@ export function buildYearsCsv(
   const decadeByKey = new Map(
     (decadeColumns ?? []).map((c) => [c.key, c]),
   );
+  const valueHeader = (c: string): string => {
+    if (c === PCT_KEY) return `${c}_pct`;
+    const d = decadeByKey.get(c);
+    if (!d) return `${c}_usd_millions`;
+    // "_or_" between tokens on a mixed column: fy2025e carries both
+    // enacted and enacted-total cells, and a bare concatenation
+    // (…_enacted_enacted_total_…) reads as one invented measure name.
+    const qual = decadeColumnQualified(d)
+      ? `_${(d.measures ?? []).join("_or_").replace(/-/g, "_")}`
+      : "";
+    return `${c}_pb${d.edition}${qual}_usd_millions`;
+  };
   const header = [
     "org",
     "pe_bli",
     "title",
-    ...columns.map((c) => {
-      if (c === PCT_KEY) return `${c}_pct`;
-      const d = decadeByKey.get(c);
-      if (!d) return `${c}_usd_millions`;
-      // "_or_" between tokens on a mixed column: fy2025e carries both
-      // enacted and enacted-total cells, and a bare concatenation
-      // (…_enacted_enacted_total_…) reads as one invented measure name.
-      const qual = decadeColumnQualified(d)
-        ? `_${(d.measures ?? []).join("_or_").replace(/-/g, "_")}`
-        : "";
-      return `${c}_pb${d.edition}${qual}_usd_millions`;
-    }),
+    ...columns.flatMap((c) =>
+      // %Δ is derived from two cells and has no fact_id of its own; the two
+      // cells it is derived from are in the file, each with theirs.
+      c === PCT_KEY ? [valueHeader(c)] : [valueHeader(c), `fact_id_${c}`],
+    ),
   ];
   const lines = [header.join(",")];
   for (const { org, program } of entries) {
@@ -452,6 +470,7 @@ export function buildYearsCsv(
       } else {
         fields.push((cell.v / 1000).toFixed(3));
       }
+      if (col !== PCT_KEY) fields.push(csvField(cell?.fid ?? ""));
     }
     lines.push(fields.join(","));
   }

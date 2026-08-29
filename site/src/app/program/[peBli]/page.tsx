@@ -1117,12 +1117,27 @@ function SharedKeyDisclosure({
 // ── Primary sources (§2d section 12) ─────────────────────────────────────────
 
 function PrimarySources({ citationsSlice }: { citationsSlice: CitationsMap }) {
-  const pdfLinks = Object.entries(citationsSlice)
-    .filter(
-      ([, cit]) =>
-        cit.kind === "jbook_pdf" && cit.official_url?.includes("#page="),
-    )
-    .slice(0, 5) as [string, JbookPdfCitation][];
+  // DEDUPE BY DESTINATION (tri-persona review Wave 4, item 5). Every figure
+  // on a program page carries its own fact_id, and dozens of them cite the
+  // same PDF page — so this list rendered "Budget Justification PDF (page
+  // 12)" four identical times on /program/0604015F/ and five on B02100. Five
+  // links, one destination: a reader counting sources over-counts, and a
+  // reader clicking twice thinks the second link is broken.
+  //
+  // Keyed on the resolved URL (document + page), which is what the link
+  // actually promises — the workbook branch below has always deduped by
+  // sha256:sheet for exactly this reason; the PDF branch simply never did.
+  const seenPdf = new Set<string>();
+  const pdfLinks: [string, JbookPdfCitation][] = [];
+  for (const [factId, cit] of Object.entries(citationsSlice)) {
+    if (cit.kind !== "jbook_pdf") continue;
+    const url = cit.official_url;
+    if (!url?.includes("#page=")) continue;
+    if (seenPdf.has(url)) continue;
+    seenPdf.add(url);
+    pdfLinks.push([factId, cit as JbookPdfCitation]);
+    if (pdfLinks.length >= 5) break;
+  }
 
   if (pdfLinks.length > 0) {
     return (

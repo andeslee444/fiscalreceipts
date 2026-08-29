@@ -258,8 +258,55 @@ describe("years-matrix helpers", () => {
     expect(lines[1]).toContain("300");
     // missing fy_2026_total on MDA row → empty field, never 0
     const mdaRow = lines[3].split(",");
-    const colIdx = lines[0].split(",").findIndex((h) => h.includes("fy_2026_total"));
+    const colIdx = lines[0]
+      .split(",")
+      .findIndex((h) => h === "fy_2026_total_usd_millions");
     expect(mdaRow[colIdx]).toBe("");
+  });
+
+  it("buildYearsCsv: every dollar column carries fact_id_<col>; %Δ does not", () => {
+    // Tri-persona review Wave 4: the citation chain used to die at export.
+    const csv = buildYearsCsv(entries, ["fy_2026_total", "fy2526_pct_change"]);
+    const lines = csv.trim().split("\n");
+    const header = lines[0].split(",");
+    expect(header).toEqual([
+      "org",
+      "pe_bli",
+      "title",
+      "fy_2026_total_usd_millions",
+      "fact_id_fy_2026_total",
+      "fy2526_pct_change_pct",
+    ]);
+    const fidIdx = header.indexOf("fact_id_fy_2026_total");
+    // 0601101E has a fact_id on fy_2026_total …
+    expect(lines[1].split(",")[fidIdx]).toBe("aa00000000000003");
+    // … and the MDA row, whose cell is missing entirely, has an empty one.
+    expect(lines[3].split(",")[fidIdx]).toBe("");
+  });
+
+  it("buildYearsCsv: a cell with no fact_id exports an empty fact_id field", () => {
+    // Cite state B — a zero amount citing its xml_path, not a fact_id.
+    const stateB = entries.map((e) =>
+      e.program.pe_bli === "0602702E"
+        ? {
+            ...e,
+            program: {
+              ...e.program,
+              cells: {
+                ...e.program.cells,
+                fy_2026_total: { fid: null, v: 0, xp: "PE[3]/Proj[1]" },
+              },
+            },
+          }
+        : e,
+    );
+    const lines = buildYearsCsv(stateB, ["fy_2026_total"]).trim().split("\n");
+    const header = lines[0].split(",");
+    const fidIdx = header.indexOf("fact_id_fy_2026_total");
+    const valIdx = header.indexOf("fy_2026_total_usd_millions");
+    const row = lines.find((l) => l.startsWith("DARPA,0602702E"))!.split(",");
+    expect(row[valIdx]).toBe("0.000");
+    expect(row[fidIdx]).toBe("");
   });
 });
 

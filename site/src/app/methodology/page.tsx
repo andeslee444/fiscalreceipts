@@ -214,6 +214,23 @@ export default function MethodologyPage() {
               </Link>
               . Update cadence: annual.
             </p>
+            {/* Wave 4 item 3 — the aggregation decision behind every P-1
+                figure on the site, previously stated nowhere. Kept to one
+                sentence because /methodology/ has ~248 bytes of gzip
+                headroom against its page-weight ceiling; the same rule is on
+                the budget_lines dataset row on /data/ and /downloads/, and
+                the glossary entry carries the definition. No figures: the
+                filter is the fact, and a literal would rot. */}
+            <p className="mt-2">
+              <strong className="text-foreground">Add rows only.</strong> The
+              P-1 flags each row{" "}
+              <Link href="/glossary/#non-add" className="underline hover:text-foreground">
+                Add or Non-Add
+              </Link>
+              ; Non-Add rows are memo lines the exhibit does not add into its
+              own totals, and we load Add rows only. Summing the workbook
+              without that filter double-counts.
+            </p>
           </div>
 
           <div>
@@ -1108,7 +1125,14 @@ export default function MethodologyPage() {
           the smaller true number rather than the larger false one. Corrections
           issued since are appended to the same table, newest last.
         </p>
-        <div className="mt-3 overflow-x-auto">
+        {/* data-historical-figures: this table's job is to record what the
+            site USED TO SAY, so its "Was" column is full of superseded
+            numbers on purpose — 1,741 of 1,741, 34,538 mentions, 31 stated
+            edges. Gate 24 leg k (corpus-count provenance) skips anything
+            inside this container for that reason, and ONLY this container:
+            a superseded figure anywhere else on the site is the defect the
+            leg exists to catch. */}
+        <div className="mt-3 overflow-x-auto" data-historical-figures>
           <table className="w-full text-sm tabular-nums">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
@@ -1177,8 +1201,8 @@ export default function MethodologyPage() {
                 <td className="py-2 pr-4">P-1 TOA</td>
                 <td className="py-2 pr-4">R-1 TOA</td>
                 <td className="py-2">
-                  P-1 is the procurement exhibit; 1,077 of 1,741 programs are
-                  RDT&amp;E and are reported on R-1. The chip now reads from each
+                  P-1 is the procurement exhibit; most of the index is RDT&amp;E
+                  and is reported on R-1. The chip now reads from each
                   row&apos;s own exhibit.
                 </td>
               </tr>

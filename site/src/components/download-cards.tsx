@@ -8,124 +8,93 @@
  * attached to the deployment, an explicit banner (data-degraded="downloads")
  * renders above the cards and the cards dim with aria-disabled — no dead
  * download links pretending to work.
+ *
+ * TRI-PERSONA REVIEW WAVE 4, item 2 — THE INVENTORY IS THE MANIFEST NOW.
+ * This file used to author its own fourteen-card list with its own
+ * hand-written descriptions, beside a /data/ page that reads all sixteen from
+ * data/site/json/datasets.json. The two drifted, exactly as §P1-5 predicted
+ * when it moved /data/ off literals:
+ *
+ *   · budget_lines_decade (32,642 rows — the decade table, the most
+ *     analytically distinctive thing on the site) and fct_district_totals
+ *     were QUERYABLE on /data/ and absent from /downloads/. Both parquets
+ *     ship; only the card was missing.
+ *   · dim_entities was described as "Top-200 contractor families". The file
+ *     is 114,806 rows.
+ *   · jbook_details was described as having "page-level PDF citation".
+ *     7,991 of its 17,007 non-zero rows (47%) resolve to no page at all —
+ *     the exporter's own `resolution` column says so, and the manifest scope
+ *     now says so on both pages.
+ *
+ * So the card list, the row counts, the descriptions and the cited badge all
+ * come from the manifest the exporter computes from the emitted parquets.
+ * This file authors NO dataset name, NO count and NO description.
  */
 
 import React from "react";
-import { useAssetUrl } from "@/components/asset-config";
+import { useAssetUrl, useAssetConfigResolved } from "@/components/asset-config";
+
+/** The manifest fields a card needs — mirrors lib/data DatasetManifestEntry. */
+export interface DownloadDataset {
+  name: string;
+  row_count: number;
+  scope: string;
+  cited: boolean;
+  caveat?: string;
+}
 
 interface DatasetCard {
   name: string;
   description: string;
-  parquetPath: string;
+  caveat?: string;
   rowCount?: number;
-  /**
-   * Hardcoded override only for the non-dataset "citations" card; dataset
-   * cards derive citedness from the manifest ledger (uncitedDatasets prop).
-   */
-  isCited?: boolean;
+  parquetPath: string;
+  isCited: boolean;
 }
 
-function buildDatasets(datasetsRowCounts: Record<string, number>): DatasetCard[] {
-  const citCount = datasetsRowCounts["citations"] ?? 0;
-  const citLabel = citCount > 0
-    ? `${citCount.toLocaleString("en-US")} source citations`
-    : "Source citations";
-  const programCount = datasetsRowCounts["dim_programs"] ?? 326;
-  return [
-    {
-      name: "dim_programs",
-      description: `${programCount.toLocaleString("en-US")} DoD R&D and procurement program elements with metadata.`,
-      parquetPath: "/data/dim_programs.parquet",
-    },
-    {
-      name: "jbook_details",
-      description:
-        "Project-level cost figures from J-book XML (R-2/P-40 exhibits), with page-level PDF citation.",
-      parquetPath: "/data/jbook_details.parquet",
-    },
-    {
-      name: "budget_lines",
-      description:
-        "Budget line items from R-1 and P-1 Excel rollups (workbook-cited).",
-      parquetPath: "/data/budget_lines.parquet",
-    },
-    {
-      name: "fct_budget_trajectory",
-      description: "FY2024–FY2026 budget trajectory per program element.",
-      parquetPath: "/data/fct_budget_trajectory.parquet",
-    },
-    {
-      name: "dim_entities",
-      description: "Top-200 contractor families by total federal obligation.",
-      parquetPath: "/data/dim_entities.parquet",
-    },
-    {
-      name: "fct_influence",
-      description:
-        "LDA lobbying filings by family key and filing year — income, expense, totals.",
-      parquetPath: "/data/fct_influence.parquet",
-    },
-    {
-      name: "fct_program_lobbying",
-      description: "Program mentions extracted from LDA filing issue text.",
-      parquetPath: "/data/fct_program_lobbying.parquet",
-    },
-    {
-      name: "fct_budget_to_awards",
-      description:
-        "Budget-to-contract crosswalk (confidence-tiered: high/medium/low), with per-link derived citations.",
-      parquetPath: "/data/fct_budget_to_awards.parquet",
-    },
-    {
-      name: "dim_geography",
-      description:
-        "Congressional-district obligation aggregates from USAspending place-of-performance data.",
-      parquetPath: "/data/dim_geography.parquet",
-    },
-    {
-      name: "fct_state_per_capita",
-      description: "State-level per-capita spending with Census population data.",
-      parquetPath: "/data/fct_state_per_capita.parquet",
-    },
-    {
-      name: "fct_program_concentration",
-      description: "HHI contractor concentration scores per program element.",
-      parquetPath: "/data/fct_program_concentration.parquet",
-    },
-    {
-      name: "fct_improper_exposure",
-      description: "Agency-level improper-payment exposure estimates (derived).",
-      parquetPath: "/data/fct_improper_exposure.parquet",
-    },
-    {
-      name: "dim_lobbyists",
-      description:
-        "Named lobbyists from LDA filings with revolving-door flags and disclosing-filing provenance columns.",
-      parquetPath: "/data/dim_lobbyists.parquet",
-    },
-    {
-      name: "jbook_narratives",
-      description: "Mission/accomplishment narratives from J-book exhibits.",
-      parquetPath: "/data/jbook_narratives.parquet",
-    },
-    {
-      name: "citations",
-      description:
-        `All ${citLabel} (jbook_pdf + workbook + lda_filing), keyed by fact_id.`,
-      parquetPath: "/citations/citations.parquet",
-      isCited: true,
-    },
-  ];
+function buildDatasets(
+  inventory: DownloadDataset[],
+  uncited: Set<string>,
+  citationsRowCount: number,
+): DatasetCard[] {
+  const cards: DatasetCard[] = inventory.map((ds) => ({
+    name: ds.name,
+    description: ds.scope,
+    caveat: ds.caveat,
+    rowCount: ds.row_count,
+    parquetPath: `/data/${ds.name}.parquet`,
+    isCited: ds.cited && !uncited.has(ds.name),
+  }));
+  // citations.parquet is the citation INDEX, not a mart — it has no manifest
+  // entry (it is not written to data/site/data/) and is listed last.
+  const citLabel =
+    citationsRowCount > 0
+      ? `${citationsRowCount.toLocaleString("en-US")} source citations`
+      : "Source citations";
+  cards.push({
+    name: "citations",
+    description: `All ${citLabel} (jbook_pdf + workbook + lda_filing), keyed by fact_id.`,
+    parquetPath: "/citations/citations.parquet",
+    isCited: true,
+  });
+  return cards;
 }
 
 export function DownloadCards({
   builtAt,
+  inventory,
   datasets = {},
   pdfCount,
   workbookCount,
   uncitedDatasets = [],
 }: {
   builtAt: string;
+  /**
+   * The shipped-parquet manifest (data/site/json/datasets.json), passed
+   * through from the server page. THE card list — see the file header.
+   */
+  inventory: DownloadDataset[];
+  /** site_meta.datasets row counts — used for the citations index only. */
   datasets?: Record<string, number>;
   /** Number of J-book PDFs in the bundle (from site_meta.pdf_count). */
   pdfCount?: number;
@@ -139,18 +108,25 @@ export function DownloadCards({
   uncitedDatasets?: string[];
 }) {
   const assetUrl = useAssetUrl();
-  const uncited = new Set(uncitedDatasets);
-  const DATASETS = buildDatasets(datasets).map((ds) => ({
-    ...ds,
-    isCited: ds.isCited ?? !uncited.has(ds.name),
-  }));
+  const assetConfigResolved = useAssetConfigResolved();
+  const DATASETS = buildDatasets(
+    inventory,
+    new Set(uncitedDatasets),
+    datasets["citations"] ?? 0,
+  );
 
   // Asset-bundle reachability: null = probing, true = reachable, false = not.
-  // Probe re-runs if the runtime asset base changes (config.json resolution).
+  //
+  // WAIT FOR THE RUNTIME BASE (Wave 4). `ssrBase` now seeds the first paint
+  // with the production asset host, so probing before /config.json resolves
+  // would fire at prod R2 from 127.0.0.1 — CORS-blocked — and flash the
+  // "not attached to this deployment" banner on every local page load. The
+  // probe runs once, against the base the reader's browser will actually use.
   const [assetsAvailable, setAssetsAvailable] = React.useState<boolean | null>(
     null,
   );
   React.useEffect(() => {
+    if (!assetConfigResolved) return;
     let cancelled = false;
     fetch(assetUrl("/citations/citations.parquet"), { method: "HEAD" })
       .then((r) => {
@@ -162,7 +138,7 @@ export function DownloadCards({
     return () => {
       cancelled = true;
     };
-  }, [assetUrl]);
+  }, [assetUrl, assetConfigResolved]);
   const degraded = assetsAvailable === false;
 
   const builtDate = builtAt
@@ -210,6 +186,11 @@ export function DownloadCards({
               <span className="font-mono text-sm font-semibold text-foreground">
                 {ds.name}
               </span>
+              {ds.rowCount !== undefined && (
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {ds.rowCount.toLocaleString("en-US")} rows
+                </span>
+              )}
               {ds.isCited && (
                 <span className="shrink-0 text-xs rounded bg-emerald-100 text-emerald-800 px-1.5 py-0.5">
                   cited
@@ -219,6 +200,14 @@ export function DownloadCards({
             <p className="text-xs text-muted-foreground leading-5">
               {ds.description}
             </p>
+            {ds.caveat && (
+              <p
+                data-dataset-caveat={ds.name}
+                className="text-xs text-muted-foreground leading-5 border-l-2 border-amber-500/50 pl-2"
+              >
+                {ds.caveat}
+              </p>
+            )}
             <a
               href={assetUrl(ds.parquetPath)}
               {...(degraded ? { "aria-disabled": true, tabIndex: -1 } : {})}
@@ -252,15 +241,10 @@ export function DownloadCards({
         <p className="font-medium text-foreground mb-2">
           Additional assets (not in table above)
         </p>
+        {/* citations.parquet used to be listed here too, under a heading
+            that says "not in table above" while it had a card of its own.
+            One place now: the card. */}
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>
-            <code>citations.parquet</code> —{" "}
-            {(datasets["citations"] ?? 0) > 0
-              ? (datasets["citations"] as number).toLocaleString("en-US")
-              : "all"}{" "}
-            source citations linking fact_ids to PDF pages, workbook cells,
-            and LDA filing UUIDs
-          </li>
           <li>
             <code>pdfs/</code> — {pdfCount ?? 34} SHA-named J-book PDFs (~149 MB total)
           </li>

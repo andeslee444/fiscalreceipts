@@ -4,12 +4,22 @@
  * Runtime asset configuration provider.
  *
  * The asset base URL is NOT baked into the build. Instead, it is read at
- * runtime from /config.json (committed with default value {"assetBaseUrl": "/assets"}).
- * Production deployments rewrite config.json to point at the R2 host — same
- * build artifact works in both gated and prod environments.
+ * runtime from /config.json (committed pointing at the R2 host; rewritten by
+ * scripts/launch/rewrite-config.mjs on a deploy, and answered as "/assets" by
+ * scripts/serve-static.mjs so the gate suite stays hermetic). One build
+ * artifact therefore works in both gated and prod environments.
+ *
+ * Tri-persona review Wave 4, item 1 — `ssrBase`. The FIRST paint used to fall
+ * back to DEFAULT_ASSET_BASE ("/assets") unconditionally, which is what
+ * `curl https://fiscalreceipts.com/downloads/` sees: fifteen download links
+ * to a path nothing serves. `ssrBase` seeds that first value from the SAME
+ * config.json at build time (lib/asset-base.ts) so the static HTML carries
+ * working absolute URLs, while the runtime fetch below still has the last
+ * word — a deploy that re-points the host does not need a rebuild, and the
+ * local gate suite still resolves to its own /assets/.
  *
  * Usage:
- *   <AssetConfigProvider>
+ *   <AssetConfigProvider ssrBase={getAssetBase()}>
  *     <App />
  *   </AssetConfigProvider>
  *
@@ -50,10 +60,28 @@ function getConfigPromise(): Promise<AssetConfig> {
 // Context: stores the resolved base URL (or default if not yet loaded)
 const AssetConfigContext = createContext<string>(DEFAULT_ASSET_BASE);
 
+/**
+ * Has the RUNTIME /config.json answer landed yet?
+ *
+ * Wave 4: with `ssrBase` seeding an absolute production host, a consumer that
+ * probes the asset bundle on mount would fire its first probe at prod R2 even
+ * on 127.0.0.1 — CORS-blocked, so `/downloads/` would flash its
+ * "not attached to this deployment" banner on every local page load before
+ * hydration corrected the base. Consumers that probe wait on this instead of
+ * racing the fetch.
+ */
+const AssetConfigResolvedContext = createContext<boolean>(false);
+
 interface AssetConfigProviderProps {
   children: React.ReactNode;
   /** Pre-resolved base for SSR/test scenarios (skips fetch). */
   initialBase?: string;
+  /**
+   * Build-time seed for the first paint (lib/asset-base.ts). Unlike
+   * `initialBase` this does NOT skip the runtime fetch — it only decides what
+   * the static HTML says before hydration.
+   */
+  ssrBase?: string;
 }
 
 /**
@@ -66,23 +94,35 @@ interface AssetConfigProviderProps {
 export function AssetConfigProvider({
   children,
   initialBase,
+  ssrBase,
 }: AssetConfigProviderProps) {
   const [base, setBase] = React.useState<string>(
-    initialBase ?? DEFAULT_ASSET_BASE,
+    initialBase ?? ssrBase ?? DEFAULT_ASSET_BASE,
+  );
+  const [resolved, setResolved] = React.useState<boolean>(
+    initialBase !== undefined,
   );
 
   React.useEffect(() => {
     if (initialBase) return; // skip fetch when caller provides value
     getConfigPromise().then((cfg) => {
       setBase(cfg.assetBaseUrl.replace(/\/$/, "")); // strip trailing slash
+      setResolved(true);
     });
   }, [initialBase]);
 
   return (
     <AssetConfigContext.Provider value={base}>
-      {children}
+      <AssetConfigResolvedContext.Provider value={resolved}>
+        {children}
+      </AssetConfigResolvedContext.Provider>
     </AssetConfigContext.Provider>
   );
+}
+
+/** True once the runtime /config.json answer has been applied. */
+export function useAssetConfigResolved(): boolean {
+  return useContext(AssetConfigResolvedContext);
 }
 
 /**

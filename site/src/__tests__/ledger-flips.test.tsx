@@ -17,7 +17,27 @@ import { render } from "@testing-library/react";
 import React from "react";
 import { DistrictTable } from "@/components/district-table";
 import { DownloadCards } from "@/components/download-cards";
+import type { DownloadDataset } from "@/components/download-cards";
 import type { DistrictIndexRow } from "@/lib/data";
+
+/**
+ * Wave 4 item 2: the card list is the exporter's manifest now, not a literal
+ * in the component. The fixture stands in for data/site/json/datasets.json —
+ * `cited: true` on every row so the flip under test is the LEDGER's, which is
+ * what these two cases are about. (Gate 13 leg h checks the real manifest
+ * against the built page; this checks the badge rule.)
+ */
+const INVENTORY: DownloadDataset[] = [
+  "budget_lines",
+  "dim_geography",
+  "fct_budget_to_awards",
+  "dim_lobbyists",
+].map((name, i) => ({
+  name,
+  row_count: 100 + i,
+  scope: `One row per thing in ${name}.`,
+  cited: true,
+}));
 
 function districtRow(overrides: Partial<DistrictIndexRow> = {}): DistrictIndexRow {
   return {
@@ -90,7 +110,11 @@ describe("DownloadCards — manifest-driven cited badges", () => {
 
   it("shows the cited badge for a dataset OFF the ledger", () => {
     const { container } = render(
-      <DownloadCards builtAt="2026-07-01T00:00:00Z" uncitedDatasets={[]} />,
+      <DownloadCards
+        builtAt="2026-07-01T00:00:00Z"
+        inventory={INVENTORY}
+        uncitedDatasets={[]}
+      />,
     );
     for (const name of ["dim_geography", "fct_budget_to_awards", "dim_lobbyists"]) {
       const card = cardFor(container, name);
@@ -102,6 +126,7 @@ describe("DownloadCards — manifest-driven cited badges", () => {
     const { container } = render(
       <DownloadCards
         builtAt="2026-07-01T00:00:00Z"
+        inventory={INVENTORY}
         uncitedDatasets={["dim_geography", "dim_lobbyists", "fct_budget_to_awards"]}
       />,
     );
