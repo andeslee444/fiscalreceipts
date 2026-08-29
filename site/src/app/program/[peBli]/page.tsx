@@ -55,6 +55,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CoverageNote } from "@/components/coverage-note";
+import { CompanyName } from "@/components/company-name";
 import {
   FollowTheDollar,
   getFlowData,
@@ -1415,6 +1416,9 @@ function WhoGetsItBody({
           {lobbiedBy.families.map((f, i) => (
             <span key={f.family_key} className="whitespace-nowrap">
               {i > 0 && <span className="text-muted-foreground">, </span>}
+              {/* <CompanyName> so the card reads "Lockheed Martin", not the
+                  shouted registry string, while keeping the registry string
+                  reachable in data-company-name (§P2-4, gate 2 leg tc). */}
               {f.slug ? (
                 <a
                   href={`/company/${encodeURIComponent(f.slug)}/`}
@@ -1422,15 +1426,11 @@ function WhoGetsItBody({
                   data-evidence-kind={f.evidence_kind}
                   className="font-medium text-primary underline decoration-dotted hover:decoration-solid"
                 >
-                  {f.name}
+                  <CompanyName raw={f.name} />
                 </a>
               ) : (
-                <span
-                  data-who-name
-                  data-evidence-kind={f.evidence_kind}
-                  className="font-medium"
-                >
-                  {f.name}
+                <span data-who-name data-evidence-kind={f.evidence_kind}>
+                  <CompanyName raw={f.name} className="font-medium" />
                 </span>
               )}
             </span>

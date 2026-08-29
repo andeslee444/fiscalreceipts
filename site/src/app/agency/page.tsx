@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAgencies, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
-import { agencyDisplayName, agencyFullName } from "@/lib/agency-names";
+import { agencyDisplayName } from "@/lib/agency-names";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -128,8 +128,16 @@ export default function AgencyIndexPage() {
               className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
             >
               <div className="flex-1 min-w-0">
-                {/* Tri-persona Wave 3, Task 3 — the component's name, with
-                    the workbook code beside it. See lib/agency-names.ts. */}
+                {/* Tri-persona Wave 3, Task 3 — the component's name, not the
+                    workbook code (see lib/agency-names.ts). NO visible code
+                    chip on THIS page, unlike the home grid and the agency page
+                    itself: measured on the first post-fix build, the names
+                    plus a chip put /agency/ at 189,750 of its 190,000 RAW
+                    ceiling — 250 bytes, 99.9%, the same cliff /coverage/ hit
+                    at nine bytes and /programs/ at 643. The chip is the part
+                    that buys least here (every row's href and title already
+                    carry the code, and the page a reader lands on states it
+                    outright), so the chip went rather than the ceiling. */}
                 <Link
                   href={`/agency/${a.org}/`}
                   className="font-medium hover:underline text-foreground"
@@ -137,14 +145,6 @@ export default function AgencyIndexPage() {
                 >
                   {agencyDisplayName(a.org)}
                 </Link>
-                {agencyFullName(a.org) && (
-                  <span
-                    data-agency-code={a.org}
-                    className="ml-2 font-mono text-xs text-muted-foreground"
-                  >
-                    {a.org}
-                  </span>
-                )}
               </div>
               <div className="sm:w-24 text-sm text-muted-foreground sm:text-right">
                 {a.program_count} program{a.program_count !== 1 ? "s" : ""}
