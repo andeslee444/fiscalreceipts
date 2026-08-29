@@ -577,7 +577,24 @@ function runWhatItIsLeg({ errors, notes }) {
 // removed from the population because they publish POSITIVE cited FY2026
 // money and must never carry an absence note. The floor tracks the true
 // population; lowering it here is the fix landing, not the bar moving.
-const MIN_FY2026_ABSENT_PAGES = 316;
+//
+// 316 -> 313 on 2026-08-29 (Wave 5), RE-MEASURED, not fitted. The Navy
+// procurement ingestion gave five pages in the population a POSITIVE cited
+// FY2026 J-book figure, which is precisely the condition that must remove a
+// page from it — the note may not say "no FY2026 request" over money the
+// page itself prints:
+//   1350-WPN  Missile Industrial Facilities        $180.867M
+//   2101-PMC  Tomahawk                              $12.593M
+//   2127      Littoral Combat Ship (LCS)             $5.766M
+//   5087      Oceanographic Ships                    $6.015M
+//   5035      Towing, Salvage, and Rescue Ship (ATS) $4.650M
+// Five left and the net is three, because the same ingestion also added
+// pages to the corpus and two of them satisfy the predicate. The two are not
+// named here: identifying them individually needs the pre-wave sidecar set,
+// which this build replaced, and inventing a confident list would be worse
+// than saying so. The DEPARTURES are named because they were measured
+// directly, per page, from the shipped sidecars.
+const MIN_FY2026_ABSENT_PAGES = 313;
 
 /** The stable hook the page must carry. */
 const FY2026_ABSENT_ATTR = "data-fy2026-absent";

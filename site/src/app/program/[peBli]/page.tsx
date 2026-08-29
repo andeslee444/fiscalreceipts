@@ -745,6 +745,7 @@ export default async function ProgramPage({
                   family={lineage.family}
                   selfPe={peBli}
                   reconKeys={reconKeySet(summary)}
+                  linkablePes={peIndex}
                 />
               </div>
             )}

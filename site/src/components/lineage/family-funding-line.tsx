@@ -26,11 +26,13 @@
 import React from "react";
 import { Cite } from "@/components/cite";
 import type { LineageFamily, LineageFundingPoint } from "@/lib/lineage";
+import type { PeMembership } from "@/lib/pe-link";
 
 export function FamilyFundingLine({
   family,
   selfPe,
   reconKeys,
+  linkablePes,
 }: {
   family: LineageFamily;
   /** The page's own PE — self points on a declared (fy, request)
@@ -38,7 +40,29 @@ export function FamilyFundingLine({
    *  funding line repeats the page's own decade request figure). */
   selfPe?: string;
   reconKeys?: Set<string>;
+  /** PEs in this family that have a built page. Their codes below are the
+   *  navigable identity of another program, so they link — the universal PE
+   *  mention rule (Phase 5F §2a). Gate 13 leg (f) found both of these chips
+   *  unlinked the first time its sample reached a page with a funding
+   *  chain. Codes with no page (and the page's own) stay plain. */
+  linkablePes?: PeMembership;
 }) {
+  const peHref = (pe: string) =>
+    pe !== selfPe && linkablePes?.has(pe) ? `/program/${pe}/` : null;
+  const PeCode = ({ pe, className }: { pe: string; className: string }) => {
+    const href = peHref(pe);
+    return href ? (
+      <a
+        href={href}
+        className="text-primary underline decoration-solid underline-offset-2 hover:decoration-2"
+        title={`Open program page for ${pe}`}
+      >
+        <code className={className}>{pe}</code>
+      </a>
+    ) : (
+      <code className={className}>{pe}</code>
+    );
+  };
   const points = family.funding_line ?? [];
   const chain = family.chain ?? [];
   const headTitle = family.chain_head_title ?? null;
@@ -74,7 +98,7 @@ export function FamilyFundingLine({
           {chain.map((pe, i) => (
             <React.Fragment key={pe}>
               {i > 0 && <span aria-hidden="true"> → </span>}
-              <code className="font-mono">{pe}</code>
+              <PeCode pe={pe} className="font-mono" />
             </React.Fragment>
           ))}
           {headTitle ? (
@@ -116,9 +140,10 @@ export function FamilyFundingLine({
               <span className="flex flex-col gap-0.5" data-multi-member-fy={fy}>
                 {entries.map((p) => (
                   <span key={p.pe} className="flex items-baseline gap-1">
-                    <code className="font-mono text-xs text-muted-foreground">
-                      {p.pe}
-                    </code>
+                    <PeCode
+                      pe={p.pe}
+                      className="font-mono text-xs text-muted-foreground"
+                    />
                     <Cite
                       value={p.v}
                       units="USD thousands"

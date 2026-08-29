@@ -315,7 +315,17 @@ function runDescriptionLeg(errors, notes) {
   const failures = [];
 
   for (const p of sample) {
-    const file = path.join(outDir, "program", p.pe_bli, "index.html");
+    // THE PAGE THIS ROW IS, not the bare key. A split key (ROADMAP #45/#67 —
+    // '20', '30', '500' and the ten account collisions) has one programs.json
+    // row per side, each with its own page at `slug`; `out/program/{pe_bli}/`
+    // is the DISAMBIGUATION STUB, whose description names both sides and
+    // deliberately opens with neither row's title. Reading the stub and
+    // comparing it against one side's title reports a violation that is not
+    // there, and — worse — never checks the two real pages at all. Invisible
+    // until Wave 5: the sample is a stride across programs.json, and the
+    // corpus growing from 1,755 to 1,938 rows moved the stride onto '500'.
+    const slug = p.slug ?? p.pe_bli;
+    const file = path.join(outDir, "program", slug, "index.html");
     if (!fs.existsSync(file)) continue;
     const root = parse(fs.readFileSync(file, "utf8"), { comment: false });
     const meta = root
@@ -327,22 +337,22 @@ function runDescriptionLeg(errors, notes) {
     checked += 1;
 
     if (!meta || !og) {
-      failures.push(`${p.pe_bli}: missing ${!meta ? "meta" : "og"} description`);
+      failures.push(`${slug}: missing ${!meta ? "meta" : "og"} description`);
       continue;
     }
     if (meta !== og) {
-      failures.push(`${p.pe_bli}: meta and og descriptions differ`);
+      failures.push(`${slug}: meta and og descriptions differ`);
       continue;
     }
-    if (!meta.startsWith(`${p.title} (${p.pe_bli})`)) {
+    if (!meta.startsWith(`${p.title} (${slug})`)) {
       failures.push(
-        `${p.pe_bli}: description does not open with its own title + code — "${meta.slice(0, 70)}…"`
+        `${slug}: description does not open with its own title + code — "${meta.slice(0, 70)}…"`
       );
       continue;
     }
     if (!meta.endsWith(DESC_PROMISE)) {
       failures.push(
-        `${p.pe_bli}: description does not close with the site promise — "…${meta.slice(-60)}"`
+        `${slug}: description does not close with the site promise — "…${meta.slice(-60)}"`
       );
       continue;
     }
@@ -357,7 +367,7 @@ function runDescriptionLeg(errors, notes) {
     if (expected.length === 0) {
       if (printed.length > 0) {
         failures.push(
-          `${p.pe_bli}: description states ${printed.join(", ")} but the corpus holds no trajectory figure for it`
+          `${slug}: description states ${printed.join(", ")} but the corpus holds no trajectory figure for it`
         );
       }
       continue;
@@ -366,13 +376,13 @@ function runDescriptionLeg(errors, notes) {
     for (const clause of expected) {
       if (!meta.includes(clause)) {
         failures.push(
-          `${p.pe_bli}: description is missing (or disagrees with) "${clause}" — "${meta.slice(0, 120)}…"`
+          `${slug}: description is missing (or disagrees with) "${clause}" — "${meta.slice(0, 120)}…"`
         );
       }
     }
     if (!meta.includes(DESC_BASIS)) {
       failures.push(
-        `${p.pe_bli}: description states figures without naming the ${DESC_BASIS} basis they came from`
+        `${slug}: description states figures without naming the ${DESC_BASIS} basis they came from`
       );
     }
   }

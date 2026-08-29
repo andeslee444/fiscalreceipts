@@ -28,6 +28,7 @@
 import React, { useContext } from "react";
 import Link from "next/link";
 import { CitationPanelContext } from "@/components/cite";
+import { PeText } from "@/components/pe-text";
 import type { LineageRail as LineageRailData, LineageRailEntry } from "@/lib/lineage";
 
 /**
@@ -145,11 +146,14 @@ function StatedEdge({
   entry,
   direction,
   linkablePes,
+  selfPe,
 }: {
   entry: LineageRailEntry;
   /** Rail position — drives the from/to preposition (directional honesty). */
   direction: "pred" | "succ";
   linkablePes: ReadonlySet<string>;
+  /** The page's own PE — self-references inside the quote stay plain text. */
+  selfPe?: string;
 }) {
   return (
     <li
@@ -183,7 +187,27 @@ function StatedEdge({
             data-cite-fact-id={entry.evidence.fact_id}
             className="mt-1 border-l-2 border-border pl-2 text-xs italic text-muted-foreground"
           >
-            &ldquo;{entry.evidence.sentence}&rdquo;
+            {/* The quoted J-book sentence names the other end of the edge by
+                its PE code, and that code has a page. Linking it is the same
+                universal PE-mention rule (Phase 5F §2a) every other narrative
+                on the page follows — the sentence is not altered, only the
+                token inside it becomes navigable. Gate 13 leg (f) found this
+                one unlinked the first time its sample reached a page with a
+                stated lineage edge. */}
+            &ldquo;
+            <PeText
+              text={entry.evidence.sentence}
+              // An UNRESOLVED edge must not become a link by the back door:
+              // EdgePe above refuses to link entry.pe when resolved is false,
+              // and the same sentence names that PE. Drop it from the
+              // membership so both renderings of one edge agree.
+              peSet={{
+                has: (pe: string) =>
+                  linkablePes.has(pe) && !(pe === entry.pe && !entry.resolved),
+              }}
+              selfPe={selfPe}
+            />
+            &rdquo;
           </blockquote>
         </details>
       ) : null}
@@ -280,6 +304,7 @@ export function LineageRail({
                     entry={e}
                     direction="pred"
                     linkablePes={linkable}
+                    selfPe={selfPe}
                   />
                 ))}
               </ul>
@@ -309,6 +334,7 @@ export function LineageRail({
                     entry={e}
                     direction="succ"
                     linkablePes={linkable}
+                    selfPe={selfPe}
                   />
                 ))}
               </ul>
