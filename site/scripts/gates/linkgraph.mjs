@@ -25,6 +25,12 @@
  *     from BOTH tiers), every PE-shaped token in body text that HAS a built
  *     page and is not the page's own PE must be inside an <a>. The PE shape
  *     is recomputed here (mirror of lib/pe-link.ts PE_TOKEN_RE).
+ * (g) A FRAGMENT LINK MUST LAND SOMEWHERE (tri-persona Wave 3). Leg (d)
+ *     strips "#..." before resolving, by design — a dead PAGE and a dead
+ *     ANCHOR are different failures. Nothing checked the second one, and a
+ *     link whose whole promise is "here is the paragraph that explains this"
+ *     is worthless if it lands at the top of a long page. See leg (g)'s own
+ *     block at the bottom.
  */
 import fs from "fs";
 import path from "path";
@@ -289,6 +295,9 @@ export async function runLinkgraphGate() {
     }
   }
 
+  // ── (g) fragment links must land somewhere (tri-persona Wave 3) ──
+  runFragmentLeg(errors, notes);
+
   // ── (f) universal PE linking on sampled program pages (Phase 5F §2a) ──
   {
     const detailsDir = path.join(jsonDir, "program_details");
@@ -404,4 +413,130 @@ export async function runLinkgraphGate() {
   }
 
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (g) — a fragment link must land somewhere
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// WHY THIS EXISTS, and it is an honest story. Wave 3 gave the WHO GETS IT
+// card a "why" link for the sentence "No contract award is linked to this
+// line", pointed at /coverage/#bridge — the id of the coverage-map ROW, which
+// is a data key and not an element id. The page loads, the browser finds no
+// anchor, and the reader lands at the top of a 12-section page having been
+// promised the paragraph that explains their question. Leg (d) passed it:
+// /coverage/ exists, and leg (d) strips the fragment before resolving,
+// deliberately, because a dead page and a dead anchor are different failures.
+// This is the second one. It was found by hand, on a build that had already
+// passed 24 gates, which is the argument for the leg.
+//
+// SCOPE. Every singleton hub page — the same list leg (d) scans, where
+// hand-written hrefs live — PLUS a sample of each templated detail type.
+// Leg (d) excludes templated pages on the grounds that their risk is a shared
+// template rather than a hand-written href; for FRAGMENTS that reasoning
+// inverts, because a shared template means ONE wrong anchor ships on two
+// thousand pages, which is exactly what happened. Sampling catches a template
+// defect at the first sampled page, so a handful per type is enough.
+//
+// SAME-PAGE ANCHORS COUNT TOO ("#mentions-heading"), resolved against the
+// source page's own ids: a jump link to a section that did not render is the
+// same broken promise.
+
+const FRAGMENT_HUB_PAGES = [
+  "/", "/feed/", "/district/", "/programs/", "/companies/",
+  "/companies/families/", "/filings/", "/data/", "/coverage/",
+  "/methodology/", "/flow/", "/lineage/", "/agency/", "/years/",
+  "/downloads/", "/glossary/", "/about/",
+];
+
+/** A few built pages of each templated type — evenly spread, not the head. */
+function sampledDetailPages(perType = 6) {
+  const out = [];
+  for (const dir of ["program", "company", "agency", "filing", "district"]) {
+    const abs = path.join(outDir, dir);
+    if (!fs.existsSync(abs)) continue;
+    const names = fs
+      .readdirSync(abs, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && fs.existsSync(path.join(abs, d.name, "index.html")))
+      .map((d) => d.name)
+      .sort();
+    if (names.length === 0) continue;
+    const stride = Math.max(1, Math.floor(names.length / perType));
+    for (let i = 0, taken = 0; i < names.length && taken < perType; i += stride, taken += 1) {
+      out.push(`/${dir}/${names[i]}/`);
+    }
+  }
+  return out;
+}
+
+function runFragmentLeg(errors, notes) {
+  const idCache = new Map();
+  const idsOf = (pageUrl) => {
+    if (!idCache.has(pageUrl)) {
+      const p = htmlPathFor(pageUrl);
+      if (!fs.existsSync(p)) idCache.set(pageUrl, null);
+      else {
+        const ids = new Set();
+        for (const m of fs.readFileSync(p, "utf8").matchAll(/\sid="([^"]+)"/g)) {
+          ids.add(m[1]);
+        }
+        idCache.set(pageUrl, ids);
+      }
+    }
+    return idCache.get(pageUrl);
+  };
+
+  const pages = [...FRAGMENT_HUB_PAGES, ...sampledDetailPages()];
+  const dead = new Map(); // "dest#frag" -> {count, sources:Set}
+  let checked = 0;
+  let scanned = 0;
+
+  for (const pageUrl of pages) {
+    const p = htmlPathFor(pageUrl);
+    if (!fs.existsSync(p)) continue;
+    scanned += 1;
+    const html = fs.readFileSync(p, "utf8");
+    const root = parse(html, { comment: false });
+    for (const a of root.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href") ?? "";
+      if (!href.includes("#")) continue;
+      const [rawTarget, frag] = href.split("#");
+      if (!frag) continue; // bare "#" / "path#" — nothing promised
+      if (rawTarget.startsWith("/assets/")) continue; // runtime-resolved host
+      if (rawTarget !== "" && !rawTarget.startsWith("/")) continue; // external
+      const destUrl = rawTarget === "" ? pageUrl : rawTarget;
+      const ids = idsOf(destUrl);
+      if (ids === null) continue; // dead PAGE — leg (d)'s finding, not this one
+      checked += 1;
+      // decodeURIComponent so an escaped anchor still matches its id
+      let want = frag;
+      try {
+        want = decodeURIComponent(frag);
+      } catch {
+        /* malformed escape — compare raw */
+      }
+      if (!ids.has(want) && !ids.has(frag)) {
+        const key = `${destUrl}#${frag}`;
+        const rec = dead.get(key) ?? { count: 0, sources: new Set() };
+        rec.count += 1;
+        rec.sources.add(pageUrl);
+        dead.set(key, rec);
+      }
+    }
+  }
+
+  if (dead.size > 0) {
+    for (const [key, rec] of [...dead.entries()].sort((a, b) => b[1].sources.size - a[1].sources.size)) {
+      errors.push(
+        `dead fragment: ${key} — no element carries that id on the destination ` +
+          `page (${rec.count} link(s) on ${rec.sources.size} of ${scanned} scanned page(s); ` +
+          `first: ${[...rec.sources][0]})`,
+      );
+    }
+  }
+  notes.push(
+    `leg g: ${checked} fragment link(s) across ${scanned} page(s) ` +
+      `(${FRAGMENT_HUB_PAGES.length} hubs + sampled detail pages) — ` +
+      `${dead.size} dead anchor(s)`,
+  );
 }

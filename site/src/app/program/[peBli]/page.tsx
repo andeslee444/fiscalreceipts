@@ -1393,7 +1393,7 @@ function WhoGetsItBody({
         {/* (1) The negative, first and on its own line. */}
         <span data-who-disclaimer className="block text-muted-foreground">
           <Link
-            href="/coverage/#bridge"
+            href="/coverage/#crosswalk"
             className="underline decoration-dotted hover:text-foreground"
           >
             No contract award is linked to this line
@@ -1463,7 +1463,7 @@ function WhoGetsItBody({
       No company is linked to this line. Award records do not carry the
       program element, so the crosswalk is silent here —{" "}
       <Link
-        href="/coverage/#bridge"
+        href="/coverage/#crosswalk"
         className="underline decoration-dotted hover:text-foreground"
       >
         why
