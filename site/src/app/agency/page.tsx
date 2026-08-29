@@ -217,46 +217,30 @@ export default function AgencyIndexPage() {
             sitemap — there was simply no way to reach it from the agency
             index. Why a list rather than four more agency pages: see
             getUnpagedOrgs()'s note in lib/data.ts. */}
+        {/* Tri-persona review Wave 4, item 5 — a POINTER, and the reason it
+            is only a pointer is page weight, measured with the gate's own
+            logic. The organizations, their program pages and the explanation
+            live on /programs/, beside the absent-lines note that already
+            covers the same ground. Rendering them here instead cost 7,834 raw
+            bytes against 5,819 of headroom (and 1,804 gzip against 1,614);
+            /programs/ has 169,576 raw and 17,426 gzip free. The ceiling did
+            not move and the disclosure did not shrink — it went to the page
+            that could hold it. */}
         {unpaged.length > 0 && (
-          <section className="mt-10" aria-labelledby="unpaged-heading">
-            <h2 id="unpaged-heading" className="text-xl font-semibold mb-2">
-              Filed under an organization with no page here
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-3xl">
-              {formatCount(unpaged.length)} organization
-              {unpaged.length === 1 ? "" : "s"} in the FY2026 workbooks carry
-              money no agency page above collects. An agency page&rsquo;s
-              header total and its program list are both built from the
-              detail-grade program table and these have no rows in it, so a
-              page for them would state a real total over a list showing none
-              of it. Their program pages, largest FY2026 request first:
-            </p>
-            {/* ONE PARAGRAPH PER ORG, inline links, short class strings.
-                The first cut gave each org a heading and a bordered list and
-                each program a <Cite>; measured, that put this page 29,668 raw
-                bytes over a 190,000 ceiling. Nothing was dropped from the
-                disclosure to get back under — every organization and every
-                program page is still named and linked. */}
-            <div className="mt-2 space-y-1 text-sm text-muted-foreground" data-unpaged-orgs>
-              {unpaged.map((u) => (
-                <p key={u.org || "(none)"} data-unpaged-org={u.org}>
-                  <span className="text-foreground">
-                    {u.org ? agencyDisplayName(u.org) : "No organization code"}
-                  </span>
-                  {" — "}
-                  {u.programs.map((p, i) => (
-                    <span key={p.slug}>
-                      {i > 0 ? ", " : ""}
-                      <Link href={`/program/${p.slug}/`} className="underline">
-                        {p.title}
-                      </Link>
-                    </span>
-                  ))}
-                  .
-                </p>
-              ))}
-            </div>
-          </section>
+          <p className="text-xs text-muted-foreground mt-3">
+            {formatCount(unpaged.length)} organization
+            {unpaged.length === 1 ? "" : "s"} in the FY2026 workbooks carry
+            money no page above collects, because an agency page is built from
+            the detail-grade program table and these have no rows in it. They
+            are named, with links to their program pages, on{" "}
+            <Link
+              href="/programs/#unpaged-orgs"
+              className="underline hover:text-foreground"
+            >
+              Programs
+            </Link>
+            .
+          </p>
         )}
       </div>
     </CitationPanelProvider>

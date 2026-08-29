@@ -211,28 +211,25 @@ export default function CoveragePage() {
           How the corpus is counted
         </h2>
         <p className="mb-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-          Five questions, five answers. They are nested, and the differences
-          are the interesting part.
+          Five questions, five answers — nested, and the differences are the
+          point.
         </p>
-        {/* A list, not a table. The table form of this block cost 10,794 raw
-            bytes (the RSC payload carries every class string a second time)
-            and put this page 288 gzip bytes over its ceiling. Nothing was
-            trimmed from the disclosure — the markup around it was. */}
+        {/* A LIST, AND EVERY SHARED CLASS ON THE <ul>. The table form of this
+            block cost 10,794 raw bytes and put the page 288 gzip over its
+            ceiling; per-row class strings then cost another 841 raw, because
+            the RSC payload carries each one a second time. Nothing was
+            trimmed from the disclosure — all five counts and all five
+            explanations are here; the markup around them is. */}
         <ul
           data-corpus-counts
-          className="divide-y divide-border rounded-lg border border-border text-sm"
+          className="divide-y divide-border rounded-lg border border-border text-sm text-muted-foreground [&>li]:px-4 [&>li]:py-3 [&_strong]:tabular-nums [&_strong]:text-foreground"
         >
           {counts.map((c) => (
-            <li key={c.id} data-corpus-count={c.id} className="px-4 py-3">
-              <strong
-                data-corpus-value
-                className="tabular-nums text-foreground"
-              >
+            <li key={c.id} data-corpus-count={c.id}>
+              <strong data-corpus-value>
                 {c.value.toLocaleString("en-US")}
               </strong>{" "}
-              <span className="text-muted-foreground">
-                on {c.where}. {c.counts}
-              </span>
+              on {c.where}. {c.counts}
             </li>
           ))}
         </ul>

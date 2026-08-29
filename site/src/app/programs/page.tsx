@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { getProgramDecadeCells, getPrograms, getProgramsCoverage } from "@/lib/data";
+import Link from "next/link";
+import {
+  getProgramDecadeCells,
+  getPrograms,
+  getProgramsCoverage,
+  getUnpagedOrgs,
+} from "@/lib/data";
+import { agencyDisplayName } from "@/lib/agency-names";
 import { formatAmount, formatCount } from "@/lib/format";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -32,6 +39,9 @@ export const metadata: Metadata = {
 export default function ProgramsPage() {
   const programs = getPrograms();
   const coverage = getProgramsCoverage();
+  // Wave 4 item 5 — workbook organizations with FY2026 money and no agency
+  // page (lib/data getUnpagedOrgs). /agency/ links here.
+  const unpaged = getUnpagedOrgs();
   const namedExcluded = coverage.largest_excluded.slice(0, 3);
 
   // Sort default: FY26 total descending (nulls last), projected to the eight
@@ -216,6 +226,55 @@ export default function ProgramsPage() {
             .
           </p>
         </ScopeNote>
+
+        {/* ── Absent lines with no agency page either (Wave 4, item 5) ─────
+            /agency/ lists 24 organizations; the FY2026 workbooks file money
+            under more. The extras have no dim_programs rows, so agencies.json
+            never sees them and no agency page collects them — and their
+            program pages, which do exist and are indexed, were reachable from
+            nothing but a search. An agency page for them would state a real
+            header total over a program list showing none of it, which is the
+            defect this whole review is about; so this is the browse path
+            instead, on the page that already documents the absent lines.
+            /agency/ links here rather than carrying the block: measured, it
+            costs 7,834 raw bytes and that page has 5,819. */}
+        {unpaged.length > 0 && (
+          <div id="unpaged-orgs" className="mt-4 scroll-mt-16">
+            <h2 className="text-sm font-semibold text-foreground">
+              Absent lines filed under an organization with no agency page
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatCount(unpaged.length)} organization
+              {unpaged.length === 1 ? "" : "s"} carry FY2026 money that no{" "}
+              <Link href="/agency/" className="underline hover:text-foreground">
+                agency page
+              </Link>{" "}
+              collects — an agency page is built from the detail-grade program
+              table and these have no rows in it. Their program pages, largest
+              FY2026 request first, each with its own cited figures:
+            </p>
+            <div
+              className="mt-2 space-y-1 text-sm text-muted-foreground [&_a]:underline [&_a:hover]:text-foreground"
+              data-unpaged-orgs
+            >
+              {unpaged.map((u) => (
+                <p key={u.org || "(none)"} data-unpaged-org={u.org}>
+                  <span className="text-foreground">
+                    {u.org ? agencyDisplayName(u.org) : "No organization code"}
+                  </span>
+                  {" — "}
+                  {u.programs.flatMap((p, i) => [
+                    i > 0 ? ", " : "",
+                    <Link key={p.slug} href={`/program/${p.slug}/`}>
+                      {p.title}
+                    </Link>,
+                  ])}
+                  .
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <ProgramsTable programs={sorted} orgs={orgs} />
     </div>
