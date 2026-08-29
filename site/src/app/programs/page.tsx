@@ -240,8 +240,15 @@ export default function ProgramsPage() {
             costs 7,834 raw bytes and that page has 5,819. */}
         {unpaged.length > 0 && (
           <div id="unpaged-orgs" className="mt-4 scroll-mt-16">
+            {/* "Program pages", not "absent lines": twelve of DHA's thirteen
+                are absent from the index above, and Medical Development is
+                IN it — an org with no agency page makes every one of its
+                pages unreachable from /agency/, whether the index rows it or
+                not. Calling all seventeen absent lines would be a true list
+                under a false label, which is the defect this review is
+                about. */}
             <h2 className="text-sm font-semibold text-foreground">
-              Absent lines filed under an organization with no agency page
+              Program pages filed under an organization with no agency page
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {formatCount(unpaged.length)} organization

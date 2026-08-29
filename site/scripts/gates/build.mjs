@@ -132,11 +132,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // CURRENT proportional headroom would hand the next change the same
   // cliff. Gate 1's near-ceiling note (added 2026-08-14) is what stops
   // this recurring silently.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,679,496 / 279,306" },
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "31,765 / 6,401" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,502,947 / 76,765" },
-  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,260,784 / 80,654" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,551 / 67,149" },
+  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,686,677 / 281,116" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "32,908 / 6,595" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,334 / 78,769" },
+  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,260,784 / 80,771" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,878 / 67,171" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -154,10 +154,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // hrefs and read 176 raw / 37 gzip bytes light. Three agents have got a
   // page-weight annotation wrong by measuring with a different tool; this
   // one imports the gate's and states which build it read.
-  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "315,463 / 33,369" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,202 / 28,163" },
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "316,056 / 33,458" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,582 / 28,211" },
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,712 / 25,523" },
-  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "92,795 / 13,210" },
+  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "93,911 / 13,340" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -174,7 +174,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // the destination states it outright). 5,819 raw bytes of room now, and the
   // recorded pair says so: the drift leg below reads THIS string, and the old
   // one would have promised 9,588.
-  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "184,181 / 46,888" },
+  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "185,075 / 47,214" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -235,7 +235,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // what it was written for. 258 bytes of gzip headroom is the tightest this
   // page has ever run: the next sentence here needs a ceiling raise argued in
   // the same breath, and this comment is the warning, not an invitation.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "134,618 / 36,653" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "135,373 / 36,870" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -256,7 +256,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // Both ceilings re-derived at the SAME proportional headroom the previous
   // pair carried (raw ×1.0708, gzip ×1.0742), so the budget still catches
   // unintended growth from here rather than being merely widened.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "91,274 / 16,870" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "95,638 / 17,638" },
   // Templated classes — the heaviest built instance of each.
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 110,085 (/agency/F/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,699 / 142,796 (/program/0601102A/)" },
@@ -682,9 +682,9 @@ export async function runBuildGate() {
       // sidecars not generated — no filing URLs expected
     }
     // Expected: static(12) + feed(1) + district pages + filing pages + programs + companies + agencies
-    // static(13) = /, /programs/, /companies/, /companies/families/, /data/,
-    //              /flow/, /lineage/, /downloads/, /methodology/, /glossary/,
-    //              /agency/, /coverage/, /about/
+    // static(14) = /, /programs/, /companies/, /companies/families/, /data/,
+    //              /years/, /flow/, /lineage/, /downloads/, /methodology/,
+    //              /glossary/, /agency/, /coverage/, /about/
     // (/flow/ added in Phase 5H; /companies/families/ added in PM Sprint 2
     //  §P1-3 — the curated rename/acquisition table; /coverage/ in Sprint 3
     //  Task 6 — the roadmap page; /glossary/ in Sprint C Task C1 — ROADMAP
@@ -692,10 +692,13 @@ export async function runBuildGate() {
     //  the /agency/{org}/ index, counted separately from the ${agencyCount}
     //  dynamic /agency/{org}/ pages below; /lineage/ in ROADMAP #29(c) — the
     //  lineage identity diagram, the only surface that renders the nine
-    //  stated links whose endpoints have no program page of their own.)
+    //  stated links whose endpoints have no program page of their own;
+    //  /years/ in the tri-persona review Wave 4 — the decade matrix was in
+    //  no sitemap at all, on a site whose cross-program "asked vs got"
+    //  analysis happens there.)
     // Programs: page universe MINUS zero-content noindex pages (5F policy —
     // built but excluded from the sitemap, like zero-mention filings).
-    const STATIC_SITEMAP_PAGES = 13;
+    const STATIC_SITEMAP_PAGES = 14;
     const expectedTotal =
       STATIC_SITEMAP_PAGES + 1 + districtPageCount + filingPageCount + sitemapProgramCount + companyCount + agencyCount;
     if (sitemapCount !== expectedTotal) {
