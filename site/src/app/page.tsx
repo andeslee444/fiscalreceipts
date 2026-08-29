@@ -13,11 +13,13 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { coreOgImages } from "@/lib/og";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
-import { FeedHeadline, hhiScopeNote } from "@/components/feed-headline";
+import { FeedHeadline } from "@/components/feed-headline";
+import { EVENT_ORDER as FEED_EVENT_ORDER } from "@/lib/feed-model.mjs";
 import { ReceiptMoment } from "@/components/receipt-moment";
 import { ReceiptsIntro } from "@/components/receipts-intro";
 import { Reveal } from "@/components/reveal";
 import { serviceOrgName } from "@/lib/program-tier";
+import { agencyDisplayName, agencyFullName } from "@/lib/agency-names";
 
 export const metadata: Metadata = {
   title: {
@@ -41,10 +43,22 @@ export default function HomePage() {
   const programs = getPrograms();
   const agencies = getAgencies();
 
-  // Feed teaser: first 3 cards from the feed sidecar
+  // Feed teaser: the three most consequential signals, in the SAME reading
+  // order /feed/ and the RSS/Atom feeds use — EVENT_ORDER from feed-model.mjs
+  // (the single declaration, imported rather than re-typed), and within an
+  // event type the exporter's dollar-magnitude ranking (tri-persona Wave 3,
+  // Task 4). It used to be `cards.slice(0, 3)` off a payload the mart had
+  // ordered `by event_type, pe_bli` — three alphabetically-first PE codes.
   let feedTeaser: ReturnType<typeof getFeed>["cards"] = [];
   try {
-    feedTeaser = getFeed().cards.slice(0, 3);
+    const rank = (t: string) => {
+      const i = FEED_EVENT_ORDER.indexOf(t);
+      return i === -1 ? FEED_EVENT_ORDER.length : i;
+    };
+    feedTeaser = [...getFeed().cards]
+      // Stable sort (ES2019+): the exporter's intra-type ranking survives.
+      .sort((a, b) => rank(a.event_type) - rank(b.event_type))
+      .slice(0, 3);
   } catch {
     // feed sidecar not yet generated — render without teaser
   }
@@ -86,13 +100,6 @@ export default function HomePage() {
   }
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
 
-  // Finding lede: the top feed event as a one-line finding in the hero.
-  // Falls back to the static subtitle when the feed sidecar is empty
-  // (same guard the teaser uses).
-  const lede = feedTeaser.length > 0 ? feedTeaser[0] : null;
-  // §57: the HHI scope note (null for non-hhi ledes) — see feed-headline.tsx.
-  const ledeHhiScope = lede ? hhiScopeNote(lede) : null;
-
   return (
     <CitationPanelProvider citations={citationsSlice}>
     <div>
@@ -106,68 +113,34 @@ export default function HomePage() {
             Federal defense spending,{" "}
             <span className="text-primary">fully cited</span>
           </h1>
-          {lede ? (
-            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              <span aria-hidden="true">⚡ </span>
-              {/* data-source-text="headline": prose COMPOSED by the export
-                  pipeline. Since backlog #44 it earns neither formatting
-                  exemption — its dollar tokens carry their own fact ids
-                  through <ProseCite> (see <FeedHeadline>). The marker's
-                  remaining job is (a0): no [data-amount] may nest inside it,
-                  which is what forces those per-token anchors.
-                  data-xml-path is the block-level anchor (a0) requires. */}
-              <span
-                className={lede.program_url ? undefined : "text-foreground"}
-                data-source-text="headline"
-                data-xml-path={`site:feed/${lede.event_type}/${lede.pe_bli ?? lede.family_key ?? "unknown"}`}
-              >
-                <FeedHeadline
-                  card={lede}
-                  href={lede.program_url}
-                  linkClassName="text-foreground hover:underline"
-                />
-              </span>
-              {/* HHI scope note (site-authored prose, so it sits OUTSIDE the
-                  data-source-text span — see feed-headline.tsx doc-comment).
-                  Backlog #57: this used to gloss ANY hhi lede with a
-                  two-way "near-monopoly" / "high supplier-concentration"
-                  editorial split at the DOJ/FTC "highly concentrated"
-                  FLOOR (>=2500 — four EQUAL competitors alone produce
-                  2,500), which both overstated the band name and implied
-                  the figure describes the PROGRAM generally. It is a single
-                  fiscal year's HHI; the /program/ page it links to renders
-                  a different, pooled all-years figure that can legitimately
-                  land in a different band (dbt fct_feed_events year-slice
-                  vs fct_program_concentration all-years/high+medium-
-                  confidence pool) — hhiScopeNote() names the standard band
-                  for THAT figure and says so explicitly, so a reader who
-                  clicks through and finds a different band on the program
-                  page can reconcile the two instead of catching the site in
-                  a contradiction. data-hhi-band/data-hhi-scope-note are read
-                  by scripts/gates/feed.mjs leg (l). */}
-              {ledeHhiScope && (
-                <>
-                  {" — "}
-                  <span data-hhi-scope-note="" data-hhi-band={ledeHhiScope.band}>
-                    {ledeHhiScope.text}
-                  </span>
-                </>
-              )}
-              {" — "}
-              <Link
-                href="/feed/"
-                className="text-primary underline decoration-dotted hover:decoration-solid whitespace-nowrap"
-              >
-                see the feed &rarr;
-              </Link>
-            </p>
-          ) : (
-            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Every budget figure, contract award, and lobbying dollar is
-              linked back to its exact source document. No number without a
-              receipt.
-            </p>
-          )}
+          {/* HERO SUBTITLE (tri-persona Wave 3, Task 2) — FIXED PROSE.
+              This slot used to render whatever the anomaly feed emitted first,
+              and the most jargon-dense item won it:
+
+                "⚡ Defense Research Sciences award concentration HHI=3820
+                 (2022) — Highly Concentrated in FY2022 — the program's
+                 pooled, all-years HHI can differ; see the program page."
+
+              That was the first sentence a newcomer read, and HHI is expanded
+              only in /glossary/. The lede is a real, cited, correctly-scoped
+              claim — it is simply not an introduction, and it now lives where
+              it belongs: the Anomaly Feed teaser further down this page, and
+              /feed/ itself.
+
+              No figure here on purpose. The one the reviewer proposed (a
+              classified-budget total) has no derived source in this corpus, so
+              it would be a hard-coded literal wearing a sentence — and gate 2
+              rejects a currency token outside [data-amount] for exactly that
+              reason. The site's cited superlative is fifty pixels below, in
+              the receipt moment, where it carries its receipt. */}
+          <p
+            data-testid="hero-subtitle"
+            className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto"
+          >
+            The Pentagon&rsquo;s budget request, line by line. Every number on
+            this site is linked to the page of the government document it was
+            printed on.
+          </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               data-search-trigger
@@ -463,14 +436,35 @@ export default function HomePage() {
                       dotted-at-rest/solid-on-hover convention every other
                       inline link on this page already uses, which is
                       correct in both schemes rather than tuned to one. */}
+                  {/* Tri-persona Wave 3, Task 3: this rendered
+                      serviceOrgName(), which expands A/N/F and returns the
+                      raw code for the other 21 — so 21 of the 24 cards on
+                      the site's front page read "TJS", "DMACT", "DHRA". The
+                      full component name is the card's headline now and the
+                      workbook code sits under it, still visible because it
+                      is the page's identity and the workbook's key. Codes
+                      lib/agency-names.ts has not been taught fall back to
+                      the code, and then the second line is suppressed
+                      rather than printed twice. */}
                   <Link
                     href={`/agency/${agency.org}/`}
                     className="font-bold text-sm text-primary underline decoration-dotted underline-offset-2 group-hover:decoration-solid"
                     title={`Organization code ${agency.org}`}
                   >
-                    {serviceOrgName(agency.org)}
+                    {agencyDisplayName(agency.org)}
                   </Link>
                   <span className="text-xs text-muted-foreground mt-1">
+                    {agencyFullName(agency.org) && (
+                      <>
+                        <span
+                          data-agency-code={agency.org}
+                          className="font-mono"
+                        >
+                          {agency.org}
+                        </span>
+                        {" · "}
+                      </>
+                    )}
                     {agency.program_count} program
                     {agency.program_count !== 1 ? "s" : ""}
                   </span>

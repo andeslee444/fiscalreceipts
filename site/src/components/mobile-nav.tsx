@@ -6,7 +6,8 @@
  *
  * Renders:
  *   - A hamburger button (☰) that opens a full-width disclosure panel
- *   - Nav links: Programs / Companies / Districts / Years / Flow / Feed / Data / Methodology
+ *   - Nav links: Programs / Companies / Districts / Years / Flow / Feed / Data /
+ *     Methodology / Coverage / Glossary
  *   - ReceiptsToggle inside the mobile menu
  *
  * Usage in layout.tsx:
@@ -29,6 +30,10 @@ const NAV_LINKS = [
   // Round-1 judging: /coverage/ was footer-only. It answers "what does this
   // site NOT cover?", so it belongs beside Methodology at both widths.
   { href: "/coverage/", label: "Coverage" },
+  // Tri-persona Wave 3, Task 3: /glossary/ was footer-only too. It is the
+  // cure for the site's jargon and it sat below the disease — mirrored in
+  // the desktop nav in layout.tsx.
+  { href: "/glossary/", label: "Glossary" },
 ];
 
 export function MobileNav() {

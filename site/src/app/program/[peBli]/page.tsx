@@ -24,6 +24,8 @@ import { GaoProgramFindingsBlock } from "@/components/gao-program-findings";
 import type {
   CitationsMap,
   JbookPdfCitation,
+  LobbiedBy,
+  NamedPrime,
   ProgramBudgetLine,
   ProgramDetails,
   ProgramRow,
@@ -1289,6 +1291,186 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
   );
 }
 
+/**
+ * WHO GETS IT (tri-persona Wave 3) — a tiered answer, not a dead end.
+ *
+ * THE DEFECT. This card rendered "No award linkage at high confidence" on
+ * /program/ATA000/ — the F-35 — on a page carrying 29 Lockheed Martin strings
+ * in its own Lobbying Mentions section. USAspending does not publish the
+ * program element on award records, so the crosswalk covers 24 of 1,741
+ * programs and structurally always will: the dead end is permanent, and a
+ * reader who asks the one question everybody asks was being told no, in
+ * jargon, on the most famous weapons programme in the world.
+ *
+ * THE FOUR TIERS, strongest first. Each stamps `data-who-tier`, and gate 21
+ * leg (g) holds each tier to its own contract in the built HTML.
+ *
+ *   award    — the crosswalk answers. A cited obligations figure.
+ *   jbook    — the program's dossier names a prime, cited to the claim.
+ *   lobbying — Senate LDA filings name the program. NO DOLLARS. See below.
+ *   none     — nothing qualifies. Says so plainly and links to the reason.
+ *
+ * WHY THE LOBBYING TIER IS SHAPED LIKE THIS. "Lobbied about it" and "was paid
+ * for it" are different claims, and merging them is exactly the defect class
+ * the tri-persona remediation exists to close. So the distinction is made
+ * three ways, none of them a parenthetical a skimming reader can miss:
+ *
+ *   1. The card LEADS with the negative — "No contract award is linked to
+ *      this line" — before any company is named, so the absence is read
+ *      first and the names arrive as an answer to a different question.
+ *   2. A visually distinct badge, "Lobbying — not a contract", sits between
+ *      the disclaimer and the names. It is its own block, not an aside.
+ *   3. The tier carries NO dollar figure at all. The award tier's whole
+ *      shape — "X leads N families sharing $Y in matched awards" — is
+ *      unavailable here, so the two tiers cannot be confused by shape either.
+ *
+ * EVIDENCE TIER. Only `pe_literal` (the program's code verbatim in the filing)
+ * and `alias` (a curated, human-verified alias) qualify a company to be named.
+ * `multi_token` — two or more non-generic title words — is real evidence and
+ * is labelled on every mention row, but a title-word co-occurrence does not
+ * earn a company's name in an above-the-fold answer. 401 programs have
+ * multi_token-only families and deliberately keep the honest absence.
+ * The tier is stamped per name (`data-evidence-kind`) and the gate rejects
+ * any name carrying a weaker one.
+ */
+function WhoGetsItBody({
+  hhi,
+  primes,
+  lobbiedBy,
+}: {
+  hhi: ProgramRow["hhi"];
+  primes: NamedPrime[];
+  lobbiedBy: LobbiedBy | null;
+}) {
+  if (hhi && hhi.program_dollars_fact_id) {
+    return (
+      <span data-who-tier="award">
+        <span className="font-medium">{hhi.top_family}</span>
+        <span className="text-muted-foreground">
+          {" leads "}
+          {hhi.family_count} contractor{" "}
+          {hhi.family_count === 1 ? "family" : "families"} sharing{" "}
+        </span>
+        <Cite
+          value={hhi.program_dollars}
+          units="USD"
+          dataset="fct_program_concentration"
+          factId={hhi.program_dollars_fact_id}
+          basis="usaspending"
+          fy="all-years"
+          measure="obligations"
+        />
+        <span className="text-muted-foreground"> in matched awards.</span>
+      </span>
+    );
+  }
+
+  if (primes.length > 0) {
+    return (
+      <span data-who-tier="jbook">
+        <span className="text-muted-foreground">Named in the J-book: </span>
+        {primes.map((prime, i) => (
+          <span key={prime.family_key} className="whitespace-nowrap">
+            {i > 0 && <span className="text-muted-foreground">, </span>}
+            <span className="font-medium">{prime.name}</span>
+            <DossierFactChip factId={prime.fact_id} />
+          </span>
+        ))}
+        <span className="text-muted-foreground">
+          {" "}
+          — not yet crosswalked to award data.
+        </span>
+      </span>
+    );
+  }
+
+  if (lobbiedBy && lobbiedBy.families.length > 0) {
+    return (
+      <span data-who-tier="lobbying">
+        {/* (1) The negative, first and on its own line. */}
+        <span data-who-disclaimer className="block text-muted-foreground">
+          <Link
+            href="/coverage/#bridge"
+            className="underline decoration-dotted hover:text-foreground"
+          >
+            No contract award is linked to this line
+          </Link>
+          .
+        </span>{" "}
+        {/* (2) The badge. Not a parenthetical, not a hover title — its own
+            block between the absence and the names, so a reader who skims
+            only the bold things still reads it. The {" "} separators around
+            it are not cosmetic: without them textContent runs the three
+            blocks together ("…this line.Lobbying — not a contractLockheed"),
+            and gate 21 leg (j) reads the card as a reader's screen reader
+            would. */}
+        <span
+          data-who-lobby-badge
+          className="my-1 inline-block rounded border border-amber-600/60 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide leading-none text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          Lobbying — not a contract
+        </span>{" "}
+        {/* (3) The names, with no dollars anywhere in this tier. */}
+        <span className="block">
+          {lobbiedBy.families.map((f, i) => (
+            <span key={f.family_key} className="whitespace-nowrap">
+              {i > 0 && <span className="text-muted-foreground">, </span>}
+              {f.slug ? (
+                <a
+                  href={`/company/${encodeURIComponent(f.slug)}/`}
+                  data-who-name
+                  data-evidence-kind={f.evidence_kind}
+                  className="font-medium text-primary underline decoration-dotted hover:decoration-solid"
+                >
+                  {f.name}
+                </a>
+              ) : (
+                <span
+                  data-who-name
+                  data-evidence-kind={f.evidence_kind}
+                  className="font-medium"
+                >
+                  {f.name}
+                </span>
+              )}
+            </span>
+          ))}
+          {lobbiedBy.more > 0 && (
+            <span className="text-muted-foreground">
+              {" "}
+              and {lobbiedBy.more} more
+            </span>
+          )}
+          <span className="text-muted-foreground">
+            {" "}
+            named this program in Senate lobbying filings.
+          </span>{" "}
+          <a
+            href="#mentions-heading"
+            className="text-primary underline decoration-dotted hover:decoration-solid"
+          >
+            See the filings &rarr;
+          </a>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span data-who-tier="none" className="text-muted-foreground">
+      No company is linked to this line. Award records do not carry the
+      program element, so the crosswalk is silent here —{" "}
+      <Link
+        href="/coverage/#bridge"
+        className="underline decoration-dotted hover:text-foreground"
+      >
+        why
+      </Link>
+      .
+    </span>
+  );
+}
+
 function AnswerStrip({
   program,
   summary,
@@ -1307,6 +1489,7 @@ function AnswerStrip({
   const pct = changeCard?.pct ?? null;
   const hhi = program.hhi;
   const primes = summary.named_primes;
+  const lobbiedBy = summary.lobbied_by ?? null;
   // §48: this whole strip is ONE program's own answers — the change card's
   // TOA chip shares the page's own exhibit_family, never "mixed".
   const exhibitFamily = normalizeExhibitFamily(program.exhibit_family);
@@ -1384,49 +1567,11 @@ function AnswerStrip({
         )}
       </AnswerItem>
 
-      {/* WHO GETS IT — top recipient family + cited program obligations from
-          the concentration sidecar; the J-book named-primes fallback when the
-          crosswalk is empty (§P0-2 fix 3); honest absence otherwise. */}
+      {/* WHO GETS IT — four declared tiers, each stamped with data-who-tier
+          so gate 21 leg (g) can hold each one to its own contract. See
+          WhoGetsItBody. */}
       <AnswerItem label="Who gets it" testId="answer-who">
-        {hhi && hhi.program_dollars_fact_id ? (
-          <>
-            <span className="font-medium">{hhi.top_family}</span>
-            <span className="text-muted-foreground">
-              {" leads "}
-              {hhi.family_count} contractor{" "}
-              {hhi.family_count === 1 ? "family" : "families"} sharing{" "}
-            </span>
-            <Cite
-              value={hhi.program_dollars}
-              units="USD"
-              dataset="fct_program_concentration"
-              factId={hhi.program_dollars_fact_id}
-              basis="usaspending"
-              fy="all-years"
-              measure="obligations"
-            />
-            <span className="text-muted-foreground"> in matched awards.</span>
-          </>
-        ) : primes.length > 0 ? (
-          <>
-            <span className="text-muted-foreground">Named in the J-book: </span>
-            {primes.map((prime, i) => (
-              <span key={prime.family_key} className="whitespace-nowrap">
-                {i > 0 && <span className="text-muted-foreground">, </span>}
-                <span className="font-medium">{prime.name}</span>
-                <DossierFactChip factId={prime.fact_id} />
-              </span>
-            ))}
-            <span className="text-muted-foreground">
-              {" "}
-              — not yet crosswalked to award data.
-            </span>
-          </>
-        ) : (
-          <span className="text-muted-foreground">
-            No award linkage at high confidence.
-          </span>
-        )}
+        <WhoGetsItBody hhi={hhi} primes={primes} lobbiedBy={lobbiedBy} />
       </AnswerItem>
     </div>
   );

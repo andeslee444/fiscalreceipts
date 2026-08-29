@@ -95,6 +95,35 @@ export const GLOSSARY: GlossaryEntry[] = [
     definition:
       "The fiscal year of the President's Budget submission a figure was published in — e.g. PB2026 is the FY2026 request submitted to Congress. Each edition reports three fiscal years (its own request, the prior year's enacted total, and the year before that as actuals); Fiscal Receipts loads ten defense-wide editions (PB2017–PB2026) and states which edition every figure comes from, because editions are parallel publications, never corrected into one another.",
   },
+  // The three words rendered as a program page's summary cards — "FY24
+  // Actuals", "FY25 Enacted", "FY26 Request" — and as the row labels on
+  // /years/. They were the three most load-bearing words on the site and the
+  // only stamped measures with no entry here (tri-persona Wave 3, Task 3);
+  // the layman review's point was that the reader who does not already know
+  // the difference between asking, being given, and having spent cannot read
+  // a single program page. Definitions traced to CORE_MEASURES in
+  // src/lib/basis.ts and to how the exporter fills each row.
+  {
+    id: "actuals",
+    term: "Actuals",
+    expansion: "What the year finally came to",
+    definition:
+      "The amount a budget book reports for a fiscal year that has already finished. Each President's Budget edition reports the year two before it as actuals — PB2026 reports FY2024 actuals — so an actuals figure is the government's own later account of a completed year, not a plan. It is still Total Obligational Authority, not cash out the door: see Obligation for the money that was actually committed.",
+  },
+  {
+    id: "enacted",
+    term: "Enacted",
+    expansion: "What Congress appropriated",
+    definition:
+      "The amount for the year in progress, as passed by Congress in an appropriations act. Each edition reports the year before its own as enacted — PB2026 reports FY2025 enacted. Where a book went to press under a continuing resolution it fills that row with a request column instead; those cells are marked on this site and explained under Enacted (request column). Treat an unmarked enacted figure as what was appropriated, and a marked one as what was asked for.",
+  },
+  {
+    id: "request",
+    term: "Request",
+    expansion: "What the Pentagon asked for",
+    definition:
+      "The amount the President's Budget asks Congress to provide for the budget year — the headline number in the book's own title year, and nothing more than a proposal at the time it is published. PB2026 requests FY2026. Congress may fund more, less, or nothing; the Request-vs-actuals gaps in the anomaly feed are exactly the distance between the two, per program.",
+  },
   {
     id: "j-book",
     term: "J-book",
@@ -143,6 +172,20 @@ export const GLOSSARY: GlossaryEntry[] = [
     expansion: "Money legally committed to be paid",
     definition:
       "The point at which a federal agency legally commits to pay for goods or services, such as when a contract is signed. Obligation figures on this site come from USAspending.gov award records and are a different quantity from TOA: TOA is what was requested or authorized; an obligation is what was actually committed, tracked separately by fiscal year.",
+  },
+  // Tri-persona Wave 3, Task 3. The home page's agency grid rendered 21 bare
+  // acronyms and /agency/TJS/ was titled "TJS". Both now render the component
+  // name (lib/agency-names.ts); this entry explains what the code IS, since
+  // a reader who has seen "org DMACT" on a citation chip has no other way to
+  // find out. The names themselves live in ONE place — agency-names.ts — and
+  // are deliberately not repeated here: a second copy is a second thing to
+  // drift.
+  {
+    id: "agency-code",
+    term: "Organization code",
+    expansion: "The workbook's short name for a DoD component",
+    definition:
+      "Each budget-justification workbook files its rows under a short organization code — A, N and F for the Army, Navy and Air Force, and an acronym for each defense-wide component (DTRA, DMACT, TJS, DHRA, …). The code is the workbook's own key, so this site keeps it on every agency page and every citation, and prints the component's full name beside it. Codes are not agencies in the budget-authority sense: several defense-wide components share one appropriation account.",
   },
   {
     id: "non-add",

@@ -5309,6 +5309,125 @@ def _build_named_primes(
     return out
 
 
+# Evidence tiers that may NAME a company in the WHO-GETS-IT card. `alias` is a
+# curated, human-verified program alias and `pe_literal` is the program's own
+# code appearing verbatim in the filing text. `multi_token` (>=2 non-generic
+# title words) is real evidence — it is why the row exists at all and it is
+# labelled on every mention row — but it is a title-word co-occurrence, and a
+# co-occurrence is not a strong enough basis to put a company's name in an
+# above-the-fold answer box. See site/src/lib/evidence.ts for the tier
+# definitions and dbt/models/marts/fct_program_lobbying.sql for how they are
+# assigned.
+_WHO_LOBBY_TIERS = ("pe_literal", "alias")
+
+# How many families the card names before it says "+N more".
+_WHO_LOBBY_CAP = 4
+
+
+def _build_lobbied_by(
+    *,
+    con,
+    hhi_by_pe: dict,
+    named_primes_by_pe: dict,
+    awards_by_pe: dict,
+    entity_rows: list,
+) -> dict[str, dict]:
+    """WHO-GETS-IT third tier (tri-persona Wave 3): the companies whose
+    Senate LDA filings name this program, for programs where the award
+    crosswalk answers nothing and no dossier names a prime.
+
+    THE PROBLEM THIS SOLVES. USAspending does not publish the program element
+    on an award record, so `fct_budget_to_awards` links 24 of 1,741 programs
+    and structurally always will. /program/ATA000/ — the F-35 — therefore read
+    "No award linkage at high confidence" while the SAME page rendered 29
+    Lockheed Martin strings in its Lobbying Mentions section. The site had the
+    answer and refused to put it where the question is asked.
+
+    THE CLAIM THIS DOES NOT MAKE. Lobbying about a program and being paid for
+    it are different facts, and merging them would be the exact defect class
+    this remediation exists to close. So the payload here is deliberately
+    NOT shaped like the award tier: it carries no dollar figure, no
+    obligations, no "leads"/"share" language, and the site renders it under a
+    fixed disclaimer plus a badge (see the AnswerStrip in
+    app/program/[peBli]/page.tsx and gate 21 leg g, which pins the rendered
+    wording to a template).
+
+    TIER GATE. Only `_WHO_LOBBY_TIERS` rows can name a company. A program
+    whose only mentions are `multi_token` gets NO named list — its box keeps
+    the honest absence. Measured on this corpus: 41 pe_blis carry a
+    strong-tier mention with an attributed family, 38 of them outside the
+    crosswalk; 401 more have multi_token-only families and are deliberately
+    left alone.
+
+    ATTRIBUTION. `family_key` on fct_program_lobbying is already gated on a
+    confirmed entity match (`match_method <> 'none'`); nulls are dropped here
+    rather than guessed at. Display casing comes from dim_entities'
+    display_name where the family is one of the profiled top-200, so the card
+    and /company/{slug}/ never spell the same company two ways.
+
+    Returns {pe_bli: {"families": [{name, family_key, filings, evidence_kind,
+    slug}], "shown": int, "more": int, "filings": int}}.
+    """
+    try:
+        rows = con.execute(
+            "select pe_bli, family_key, evidence_kind, count(*) as filings"
+            " from fct_program_lobbying"
+            " where family_key is not null"
+            f"   and evidence_kind in ({','.join(repr(t) for t in _WHO_LOBBY_TIERS)})"
+            " group by 1, 2, 3"
+            # Deterministic: most filings first, then the tier that is
+            # stronger evidence, then the key — never DuckDB's incidental order.
+            " order by pe_bli, filings desc, evidence_kind, family_key"
+        ).fetchall()
+    except Exception as exc:  # mart absent (partial warehouse) — no tier
+        print(f"who-gets-it: fct_program_lobbying unavailable ({exc}); lobbying tier skipped")
+        return {}
+
+    display_by_key = {r[0]: (r[1] or r[0]) for r in entity_rows}
+
+    grouped: dict[str, list] = {}
+    for pe_bli, family_key, evidence_kind, filings in rows:
+        grouped.setdefault(pe_bli, []).append(
+            {
+                "name": display_by_key.get(family_key, family_key),
+                "family_key": family_key,
+                "filings": int(filings),
+                "evidence_kind": evidence_kind,
+                # Linkable only when the family has a profiled company page —
+                # the same top-200 rule the mention rows use.
+                "slug": (
+                    family_key.lower().replace(" ", "-")
+                    if family_key in display_by_key
+                    else None
+                ),
+            }
+        )
+
+    out: dict[str, dict] = {}
+    for pe_bli, families in grouped.items():
+        hhi = hhi_by_pe.get(pe_bli)
+        if hhi is not None and hhi.get("program_dollars_fact_id"):
+            continue  # the crosswalk answers WHO-GETS-IT — no fallback needed
+        if named_primes_by_pe.get(pe_bli):
+            continue  # the J-book names a prime — a stronger, cited answer
+        if awards_by_pe.get(pe_bli):
+            # The page renders a Related Awards table, so its card must not
+            # say "no contract award is linked to this line" three thousand
+            # pixels above a list of award records. Zero pages hit this on
+            # the current corpus (all 41 strong-tier candidates have an empty
+            # awards array); the guard exists so a future crosswalk expansion
+            # cannot make the disclaimer false without anyone noticing.
+            continue
+        shown = families[:_WHO_LOBBY_CAP]
+        out[pe_bli] = {
+            "families": shown,
+            "shown": len(shown),
+            "more": max(0, len(families) - len(shown)),
+            "filings": sum(f["filings"] for f in families),
+        }
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Geography citation tier (uncited-ledger clearance)
 # ---------------------------------------------------------------------------
@@ -7496,17 +7615,33 @@ def _write_all_sidecars(
         cited_fact_ids=_cited_fact_ids,
     )
 
+    # WHO-GETS-IT third tier (tri-persona Wave 3) — the lobbying-filing
+    # answer, for programs the crosswalk and the dossiers both leave blank.
+    # Built AFTER named_primes because it defers to it: a J-book-named prime
+    # is a cited claim about who builds the thing, which outranks a filing.
+    lobbied_by_pe = _build_lobbied_by(
+        con=con,
+        hhi_by_pe=hhi_by_pe,
+        named_primes_by_pe=named_primes_by_pe,
+        awards_by_pe=awards_by_pe,
+        entity_rows=entity_rows,
+    )
+
     def _summary_block(pe_bli: str, slug: str) -> dict:
         """The sidecar's summary payload: union block + named_primes (always
-        a list — honest empty when no dossier names a known family).
+        a list — honest empty when no dossier names a known family) +
+        lobbied_by (null unless the lobbying tier applies).
 
         Task E3: summary_by_pe is keyed by SLUG (identity for every
         non-split pe_bli); named_primes_by_pe stays bare pe_bli — dossier
         named-primes claims have no account concept, so both accounts of a
         split key legitimately share the same list (same "no account data
-        available" bucket as awards/mentions)."""
+        available" bucket as awards/mentions). lobbied_by_pe is keyed the
+        same way and for the same reason: a filing names a PROGRAM, not one
+        of a split key's two accounts."""
         block = dict(summary_by_pe.get(slug) or _summary_absence_block())
         block["named_primes"] = named_primes_by_pe.get(pe_bli, [])
+        block["lobbied_by"] = lobbied_by_pe.get(pe_bli)
         return block
 
     all_pe_blis = {r[0] for r in all_prog_rows}
@@ -9746,6 +9881,43 @@ def _emit_feed_sidecar(
             "title": program_title or None,
             "why_url": f"{_WHY_BASE}-request_vs_actuals_gap",
         })
+
+    # ---- intra-section ranking (tri-persona Wave 3) ------------------------
+    # The mart's `order by event_type, pe_bli` put "Minuteman Squadrons
+    # increased 79% — $59.3M → $106.0M" at the top of a 99-card section
+    # because `0101213F` sorts first: a $46.7M change was the first thing a
+    # reader met in a section holding changes 70x larger. The site already
+    # insists every card state the DOLLARS it is about (§P1-8 magnitude);
+    # ranking by that same figure is the same argument applied to order.
+    #
+    # The key is the card's OWN rendered magnitude, normalized to USD — the
+    # delta for a pair (what changed), the single endpoint otherwise (the
+    # obligations the event is about). Nothing new is computed: this ranks
+    # the numbers the cards already publish and cite.
+    #
+    # Sorted WITHIN event_type only. The page and the feeds each group by
+    # event type and declare their own section order (app/feed/page.tsx
+    # EVENT_ORDER, src/lib/feed-model.mjs EVENT_ORDER), so cross-type order
+    # in this payload is not read by anyone — and an HHI-pool obligation and
+    # a budget delta are not the same quantity to rank against each other.
+    def _magnitude_usd(card: dict) -> float:
+        m = card.get("magnitude") or {}
+        point = m.get("delta") or m.get("to") or m.get("from")
+        if not point or point.get("value") is None:
+            return 0.0
+        scale = 1000.0 if m.get("units") == "thousands_usd" else 1.0
+        return abs(float(point["value"])) * scale
+
+    cards.sort(
+        key=lambda c: (
+            c["event_type"],
+            -_magnitude_usd(c),
+            # Total order, so two equal magnitudes never swap between builds.
+            c.get("pe_bli") or "",
+            c.get("family_key") or "",
+            c.get("fiscal_year") or 0,
+        )
+    )
 
     _write_json(json_dir / "feed.json", {
         "cards": cards,

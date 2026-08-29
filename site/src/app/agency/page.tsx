@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAgencies, collectCitations } from "@/lib/data";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
-import { serviceOrgName } from "@/lib/program-tier";
+import { agencyDisplayName, agencyFullName } from "@/lib/agency-names";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Cite } from "@/components/cite";
 import { CitationPanelProvider } from "@/components/citation-panel";
@@ -128,13 +128,23 @@ export default function AgencyIndexPage() {
               className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
             >
               <div className="flex-1 min-w-0">
+                {/* Tri-persona Wave 3, Task 3 — the component's name, with
+                    the workbook code beside it. See lib/agency-names.ts. */}
                 <Link
                   href={`/agency/${a.org}/`}
                   className="font-medium hover:underline text-foreground"
                   title={`Organization code ${a.org}`}
                 >
-                  {serviceOrgName(a.org)}
+                  {agencyDisplayName(a.org)}
                 </Link>
+                {agencyFullName(a.org) && (
+                  <span
+                    data-agency-code={a.org}
+                    className="ml-2 font-mono text-xs text-muted-foreground"
+                  >
+                    {a.org}
+                  </span>
+                )}
               </div>
               <div className="sm:w-24 text-sm text-muted-foreground sm:text-right">
                 {a.program_count} program{a.program_count !== 1 ? "s" : ""}

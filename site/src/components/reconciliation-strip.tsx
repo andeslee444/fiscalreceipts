@@ -143,9 +143,37 @@ export function ReconciliationStrip({
           has a reconciliation cause — otherwise it names both and defers to
           the per-row statement, which is the one that knows. */}
       <p data-reconciliation-mechanism={anyRecon ? "mixed" : "ap"} className="text-xs leading-5 text-muted-foreground">
-        Fiscal Receipts uses P-1/R-1 workbook total obligation authority
-        (TOA) as the headline figure sitewide. The workbook TOA includes
-        budget rows that the R-2/P-40 J-book program line excludes
+        {/* Tri-persona Wave 3, Task 3 — the site's densest three words of
+            jargon, in the one sentence that names all of them, on the page
+            where the reader meets them. TOA is stamped on ~80,000 figures
+            sitewide and was expanded in /glossary/ alone; linking it here
+            costs one anchor per page instead of eighty thousand. */}
+        Fiscal Receipts uses{" "}
+        <Link
+          href="/glossary/#r-1"
+          data-glossary-term="r-1"
+          className="underline decoration-dotted hover:text-foreground"
+        >
+          P-1/R-1
+        </Link>{" "}
+        workbook total obligation authority (
+        <Link
+          href="/glossary/#toa"
+          data-glossary-term="toa"
+          className="underline decoration-dotted hover:text-foreground"
+        >
+          TOA
+        </Link>
+        ) as the headline figure sitewide. The workbook TOA includes budget
+        rows that the R-2/
+        <Link
+          href="/glossary/#p-40"
+          data-glossary-term="p-40"
+          className="underline decoration-dotted hover:text-foreground"
+        >
+          P-40
+        </Link>{" "}
+        J-book program line excludes
         {anyRecon
           ? " — advance procurement in an ordinary year, and in FY2026 the one-time reconciliation appropriation as well. Each row below names the one it is."
           : " — advance procurement, most commonly."}{" "}

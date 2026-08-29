@@ -18,7 +18,7 @@ import { CitationPanelProvider } from "@/components/citation-panel";
 import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { formatCount } from "@/lib/format";
-import { serviceOrgName } from "@/lib/program-tier";
+import { agencyDisplayName, agencyFullName } from "@/lib/agency-names";
 import { reproducibleDifference } from "@/lib/derivation";
 import { governmentOrganizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 
@@ -40,9 +40,14 @@ export async function generateMetadata({
   const canonical = `${SITE_URL}/agency/${org}/`;
   // §P0-6: the human service name, not the raw workbook token. /agency/N/
   // shipped with <title>N</title> and <h1>N</h1> — a page about the Navy
-  // titled with a single letter. serviceOrgName is identity-only and returns
-  // the code unchanged for every agency that has no other name.
-  const orgName = serviceOrgName(org);
+  // titled with a single letter.
+  //
+  // Tri-persona Wave 3, Task 3: that fix reached three of 24 pages.
+  // serviceOrgName is identity-only outside A/N/F, so /agency/TJS/ was still
+  // titled, in full, "TJS" — and 20 others like it. agencyDisplayName reads
+  // the curated component-name map (lib/agency-names.ts) and falls back to
+  // the code for anything the map has not been taught.
+  const orgName = agencyDisplayName(org);
   return {
     title: orgName,
     description: `${orgName}: ${agency.program_count} defense program elements with FY2024 and FY2026 budget data.`,
@@ -150,9 +155,19 @@ export default async function AgencyPage({
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-3" title={`Organization code ${org}`}>
-            {serviceOrgName(org)}
+          <h1 className="text-3xl font-bold mb-1" title={`Organization code ${org}`}>
+            {agencyDisplayName(org)}
           </h1>
+          {/* The workbook code stays on the page under the name: it is this
+              page's identity, the workbook's key, and what a reader will see
+              stamped on every figure below. Suppressed where the name IS the
+              code (an org agency-names.ts has not been taught) rather than
+              printed twice. */}
+          {agencyFullName(org) && (
+            <p className="mb-3 font-mono text-sm text-muted-foreground">
+              Organization code <span data-agency-code={org}>{org}</span>
+            </p>
+          )}
           {/* Explicit {" "} separators between the meta spans keep Pagefind
               excerpts from concatenating fragments (§P1-4 snippet bug). */}
           <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">

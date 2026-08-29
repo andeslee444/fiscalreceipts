@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ProgramHHI } from "@/lib/data";
 import { Cite } from "@/components/cite";
 import { hhiBand } from "@/lib/hhi-band.mjs";
@@ -49,7 +50,21 @@ export function ProgramConcentration({ hhi }: ProgramConcentrationProps) {
           {/* HHI — derived citation (display override: index, not dollars) */}
           <div>
             <div className="text-xs text-muted-foreground mb-1">
-              HHI Index
+              {/* Tri-persona Wave 3, Task 3: "HHI" is stamped here, on every
+                  concentration_shift feed card, and in the anomaly headline
+                  that used to open the home page — and was expanded only
+                  inside /glossary/, which was linked twice per page and both
+                  times from the footer. The hover title stays (it carries the
+                  bands); the term now reaches its own definition in a click,
+                  which a hover title cannot do on a phone. */}
+              <Link
+                href="/glossary/#hhi"
+                data-glossary-term="hhi"
+                className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+              >
+                HHI
+              </Link>{" "}
+              Index
               <span
                 className="ml-1 text-muted-foreground/60 cursor-help"
                 title="Herfindahl-Hirschman Index: 0–10,000. <1500 competitive; 1500–2500 moderate; >2500 concentrated. Derived from positive-only contractor shares — click the value for the formula."

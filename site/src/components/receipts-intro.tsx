@@ -9,11 +9,23 @@
  * in localStorage["receipts-intro-seen"], so it appears at most once per
  * browser. Mounted on the home page only.
  *
- * xl+ only: below md the receipts toggle sits inside the hamburger menu, so a
- * callout pointing at the header would reference an invisible control. Between
- * md and xl the fixed right-4 callout overlaps the centered hero heading
- * (visual-judge D3 finding at 768: it covered "Federal defense spen…"), so it
- * renders only at xl+ where the callout clears the max-w-4xl hero column.
+ * Wide viewports only: below md the receipts toggle sits inside the hamburger
+ * menu, so a callout pointing at the header would reference an invisible
+ * control, and the fixed right-4 callout overlaps the centered hero heading
+ * (visual-judge D3 finding at 768: it covered "Federal defense spen…").
+ *
+ * THE BREAKPOINT IS DERIVED, NOT PICKED (tri-persona Wave 3, Task 2). It was
+ * `xl:block` (1280px), and 1280 is precisely where the collision still
+ * happens: Tailwind's `container` clamps to the CURRENT breakpoint, so at
+ * 1280 the hero column is 1280 − 32 padding, clamped by `max-w-4xl` to 896,
+ * leaving a 208px right gutter — and this card needs 256 (`w-64`) + 16
+ * (`right-4`) = 272. Measured on the pre-fix build at five widths: at 1280 the
+ * card's box (x 1008–1264, y 64–204) overlapped the h1's own glyph rect
+ * (x 830–1048, y 104–170); at 1366 the boxes overlapped but the glyphs
+ * cleared; 1440 and up were clean. The requirement is therefore
+ * 896 + 2×272 = 1440px, and that is the arbitrary breakpoint used here rather
+ * than rounding up to Tailwind's `2xl` (1536) and losing the callout for
+ * every reader between.
  *
  * SSR-safe: renders nothing on the server and on first client paint; the
  * localStorage read happens in a mount effect (functional-updater form, same
@@ -69,7 +81,7 @@ export function ReceiptsIntro() {
     <aside
       data-testid="receipts-intro"
       role="status"
-      className="hidden xl:block fixed right-4 top-16 z-30 w-64 rounded-lg border border-border bg-card p-3 shadow-lg"
+      className="hidden min-[1440px]:block fixed right-4 top-16 z-30 w-64 rounded-lg border border-border bg-card p-3 shadow-lg"
     >
       <p className="text-xs leading-5 text-muted-foreground">
         <span className="font-semibold text-foreground">

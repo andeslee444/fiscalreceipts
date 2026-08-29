@@ -32,6 +32,11 @@
  *     code {X}" claim is true, X links to its agency page when one exists,
  *     and the GAO department note renders exactly where the overlay payload
  *     has one — see leg i's own block at the bottom.
+ * (j) The WHO GETS IT card declares which of four tiers it is answering from,
+ *     states dollars ONLY on the award tier, and — where it names companies
+ *     from lobbying filings — reads as a fixed sentence that puts the absence
+ *     of a contract before the names, on evidence tiers strong enough to name
+ *     anyone (tri-persona Wave 3) — see leg j's own block at the bottom.
  */
 
 import fs from "fs";
@@ -293,6 +298,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (i) the org a page names is an org CODE (#30's cause) ─────────────────
   runOrgCodeLeg({ errors, notes, sidecars });
+
+  // ── (j) WHO GETS IT: lobbying evidence is never award evidence ───────────
+  runWhoGetsItLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -1444,5 +1452,209 @@ function runOrgCodeLeg({ errors, notes, sidecars }) {
       `matching their own data source; of those, ${linked} link to their ` +
       `agency page and ${withNote} carry the GAO department note the overlay ` +
       `payload backs — ${orgList}`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg j — WHO GETS IT may never present lobbying evidence as award evidence
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT THIS LEG WAS BUILT AGAINST (tri-persona review, layman pass).
+// /program/ATA000/ — the F-35 — rendered "WHO GETS IT — No award linkage at
+// high confidence" on a page carrying 29 Lockheed Martin strings of its own.
+// USAspending publishes no program element on award records, so the crosswalk
+// covers 24 of 1,741 programs and structurally always will: the dead end is
+// permanent. Wave 3 turned the card into a tiered answer whose third tier
+// names the companies whose Senate LDA filings cite the program.
+//
+// AND THE DEFECT THAT FIX COULD INTRODUCE, which is what this leg actually
+// guards. "Lobbied about it" and "was paid for it" are different claims. The
+// whole tri-persona remediation exists because this site keeps shipping a
+// true, correctly-cited number wearing a false label; naming Lockheed under a
+// heading that reads WHO GETS IT, without an unmissable separation, would be
+// the purest example of it yet. So the separation is a machine contract, in
+// the built HTML, on EVERY program page — not a code review promise:
+//
+//   1. Exactly one declared tier per card (data-who-tier ∈ award | jbook |
+//      lobbying | none). A card that declares nothing is a failure: it means
+//      a branch was added without deciding what it claims.
+//   2. MONEY ONLY WHERE AWARDS ARE. The award tier must carry a
+//      [data-amount] from fct_program_concentration. The other three must
+//      carry NO [data-amount] at all. A dollar figure inside a lobbying-tier
+//      card is the conflation, whatever the words around it say.
+//   3. The lobbying tier's rendered text must match a FIXED TEMPLATE — read
+//      as text, the way a reader (or a screen reader) reads it, not as a
+//      data-* attribute mirroring what the markup was supposed to say. The
+//      template pins the order too: the absence is stated, then the badge,
+//      then the names. A rewrite that moves the names above the disclaimer,
+//      or drops "not a contract", fails.
+//   4. EVIDENCE TIER PER NAME. Every named company carries data-evidence-kind
+//      ∈ {pe_literal, alias} — the program's own code verbatim in the filing
+//      text, or a curated human-verified alias. `multi_token` (two or more
+//      non-generic title words) is real evidence, and it is labelled on every
+//      mention row, but it may not put a company's name in an answer box.
+//   5. RENDERER ↔ PAYLOAD. The set of pages rendering the lobbying tier
+//      equals the set of sidecars carrying summary.lobbied_by. Neither a
+//      silently-dropped tier nor a tier rendered off nothing.
+//
+// It reads a bounded SLICE of each page rather than parsing 2,005 documents
+// whose heaviest is 1.1 MB: from the answer-who testid to the figures
+// section that follows it. The slice is the card and nothing else, which is
+// also what makes (2) meaningful — an [data-amount] found in it is IN it.
+
+const WHO_TIERS = new Set(["award", "jbook", "lobbying", "none"]);
+const WHO_NAME_EVIDENCE = new Set(["pe_literal", "alias"]);
+
+/**
+ * The lobbying tier's whole sentence, fixed. Groups: (1) the names clause.
+ * Written against textContent with runs of whitespace collapsed.
+ */
+const WHO_LOBBY_TEMPLATE =
+  /^No contract award is linked to this line\.\s+Lobbying — not a contract\s+(.+?) named this program in Senate lobbying filings\.\s+See the filings/;
+
+/** The card's own HTML: [data-testid="answer-who"] up to the figures section. */
+function answerWhoSlice(html) {
+  const at = html.indexOf('data-testid="answer-who"');
+  if (at === -1) return null;
+  const open = html.lastIndexOf("<", at);
+  const stop = html.indexOf('data-section="figures"', at);
+  return html.slice(open === -1 ? at : open, stop === -1 ? at + 12000 : stop);
+}
+
+function runWhoGetsItLeg({ errors, notes, sidecars }) {
+  const census = { award: 0, jbook: 0, lobbying: 0, none: 0 };
+  const problems = { n: 0 };
+  const renderedLobbying = new Set();
+  const payloadLobbying = new Set();
+  let checked = 0;
+
+  const fail = (msg) => {
+    problems.n += 1;
+    if (problems.n <= 8) errors.push(msg);
+  };
+
+  for (const [slug, d] of sidecars) {
+    if (d?.summary?.lobbied_by) payloadLobbying.add(slug);
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) continue;
+    const slice = answerWhoSlice(fs.readFileSync(p, "utf8"));
+    if (slice === null) {
+      // A split-key stub renders no answer strip; a real program page must.
+      if (d) fail(`program-skeleton(j): /program/${slug}/ has no [data-testid="answer-who"]`);
+      continue;
+    }
+    checked += 1;
+    const root = parse(slice, { comment: false });
+    const tierEls = root.querySelectorAll("[data-who-tier]");
+    if (tierEls.length !== 1) {
+      fail(
+        `program-skeleton(j): /program/${slug}/ WHO GETS IT declares ` +
+          `${tierEls.length} tiers (expected exactly 1)`,
+      );
+      continue;
+    }
+    const tier = tierEls[0].getAttribute("data-who-tier");
+    if (!WHO_TIERS.has(tier)) {
+      fail(`program-skeleton(j): /program/${slug}/ unknown data-who-tier="${tier}"`);
+      continue;
+    }
+    census[tier] += 1;
+
+    // (2) money only where awards are
+    const amounts = root.querySelectorAll("[data-amount]");
+    if (tier === "award") {
+      const conc = amounts.filter(
+        (a) => a.getAttribute("data-dataset") === "fct_program_concentration",
+      );
+      if (conc.length === 0) {
+        fail(
+          `program-skeleton(j): /program/${slug}/ claims tier "award" with no ` +
+            `fct_program_concentration [data-amount] behind it`,
+        );
+      }
+    } else if (amounts.length > 0) {
+      fail(
+        `program-skeleton(j): /program/${slug}/ tier "${tier}" renders ` +
+          `${amounts.length} [data-amount] — a non-award tier may state no dollars`,
+      );
+    }
+
+    const names = root.querySelectorAll("[data-who-name]");
+
+    if (tier === "lobbying") {
+      renderedLobbying.add(slug);
+      // (3) the fixed template, read as text
+      const text = (tierEls[0].text || "").replace(/\s+/g, " ").trim();
+      const m = text.match(WHO_LOBBY_TEMPLATE);
+      if (!m) {
+        fail(
+          `program-skeleton(j): /program/${slug}/ lobbying tier does not read as ` +
+            `the declared sentence — got "${text.slice(0, 160)}"`,
+        );
+      }
+      // order: disclaimer and badge both precede the first named company
+      const iDisc = slice.indexOf("data-who-disclaimer");
+      const iBadge = slice.indexOf("data-who-lobby-badge");
+      const iName = slice.indexOf("data-who-name");
+      if (iDisc === -1 || iBadge === -1) {
+        fail(
+          `program-skeleton(j): /program/${slug}/ lobbying tier is missing its ` +
+            `${iDisc === -1 ? "disclaimer" : "not-a-contract badge"}`,
+        );
+      } else if (!(iDisc < iName && iBadge < iName)) {
+        fail(
+          `program-skeleton(j): /program/${slug}/ names a company before the ` +
+            `disclaimer/badge — a reader meets the claim before the caveat`,
+        );
+      }
+      // (4) evidence tier per name
+      if (names.length === 0) {
+        fail(`program-skeleton(j): /program/${slug}/ lobbying tier names nobody`);
+      }
+      for (const n of names) {
+        const kind = n.getAttribute("data-evidence-kind");
+        if (!WHO_NAME_EVIDENCE.has(kind)) {
+          fail(
+            `program-skeleton(j): /program/${slug}/ names "${(n.text || "").trim()}" ` +
+              `on evidence tier "${kind}" — only ${[...WHO_NAME_EVIDENCE].join("/")} may name a company`,
+          );
+        }
+      }
+    } else if (names.length > 0) {
+      fail(
+        `program-skeleton(j): /program/${slug}/ tier "${tier}" carries ` +
+          `${names.length} [data-who-name] element(s), which only the lobbying tier may`,
+      );
+    }
+
+    if (tier === "jbook" && !/Named in the J-book/.test(tierEls[0].text || "")) {
+      fail(`program-skeleton(j): /program/${slug}/ jbook tier does not say so`);
+    }
+  }
+
+  // (5) renderer ↔ payload
+  const missed = [...payloadLobbying].filter((s) => !renderedLobbying.has(s));
+  const stray = [...renderedLobbying].filter((s) => !payloadLobbying.has(s));
+  if (missed.length) {
+    errors.push(
+      `program-skeleton(j5): ${missed.length} sidecar(s) carry summary.lobbied_by ` +
+        `but their page renders another tier (first: ${missed.slice(0, 5).join(", ")})`,
+    );
+  }
+  if (stray.length) {
+    errors.push(
+      `program-skeleton(j5): ${stray.length} page(s) render the lobbying tier with ` +
+        `no summary.lobbied_by behind it (first: ${stray.slice(0, 5).join(", ")})`,
+    );
+  }
+  if (problems.n > 8) {
+    errors.push(`program-skeleton(j): ${problems.n} occurrence(s) in total (first 8 listed)`);
+  }
+
+  notes.push(
+    `leg j: ${checked} WHO GETS IT card(s) checked — award ${census.award}, ` +
+      `J-book ${census.jbook}, lobbying ${census.lobbying}, honest absence ` +
+      `${census.none}; every non-award tier states no dollars and every named ` +
+      `company is ${[...WHO_NAME_EVIDENCE].join("/")}-tier`,
   );
 }

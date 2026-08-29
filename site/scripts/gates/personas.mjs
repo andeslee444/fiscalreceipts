@@ -20,7 +20,12 @@
  * 4. academic — / → footer Downloads → citations.parquet card present +
  *    schema/data-dictionary text present (degraded banner acceptable).
  * 5. citizen — / → open search with "/" → type "hypersonic" → first program
- *    result → program page has answer strip or dossier + og:image meta.
+ *    result → program page has answer strip or dossier + og:image meta, AND
+ *    the code that identifies the page (PE / BLI) links to its own /glossary/
+ *    entry — clicked, and the entry asserted to actually define it — with at
+ *    least one further stamped term reachable the same way (tri-persona Wave
+ *    3: this journey asserted REACHABILITY, and the layman review's complaint
+ *    was COMPREHENSION). 4 of 6 interactions.
  *
  * Per-journey error reporting: every journey returns
  * { name, ok, interactions, steps, errors } and the gate output carries one
@@ -326,6 +331,65 @@ async function journeyCitizen(browser, baseUrl) {
       j.fail("program page has no og:image meta");
     } else {
       j.note("og:image meta present ✓");
+    }
+
+    // ── COMPREHENSION (tri-persona Wave 3, Task 3) ────────────────────────
+    // Reachability was all this journey ever asserted: the citizen arrives at
+    // a program page, and the gate checked that a card and a social image
+    // exist. The layman review arrived at the same page and could not read
+    // it — "TOA", "P-40", "PE", "HHI" are stamped all over it and /glossary/,
+    // which is genuinely good, was linked twice per page and BOTH times from
+    // the footer, below six thousand pixels of the jargon it explains.
+    //
+    // So this journey now asserts what it is for: a reader who does not know
+    // a word can reach its definition IN ONE CLICK, from where the word is
+    // used, and what they land on actually defines it. Interaction 4 of 6 —
+    // the budget is not touched.
+    const termLinks = await page
+      .locator('main a[href^="/glossary/#"]')
+      .evaluateAll((els) =>
+        els.map((el) => ({
+          id: (el.getAttribute("href") || "").split("#")[1] || "",
+          text: (el.textContent || "").trim(),
+        })),
+      );
+    const ids = [...new Set(termLinks.map((t) => t.id))];
+    // The code beside the <h1> is the FIRST unexplained thing on the page and
+    // the one every figure below is keyed to. If a reader cannot find out
+    // what "PE" or "BLI" means from the page that shouts one at them, no
+    // other link on the page is going to rescue them.
+    const identifier = termLinks.find((t) => t.id === "pe" || t.id === "bli");
+    if (!identifier) {
+      j.fail(
+        `program page never links its own identifier term to a definition — ` +
+          `glossary ids reachable from main: [${ids.join(", ") || "none"}]`,
+      );
+    } else if (ids.length < 2) {
+      j.fail(
+        `program page links exactly one stamped term (${ids[0]}); the words on ` +
+          `its own headline figures still go unexplained`,
+      );
+    } else {
+      await page.locator(`main a[href="/glossary/#${identifier.id}"]`).first().click();
+      j.spend(`click the glossary link on "${identifier.text}"`);
+      await page.waitForURL(/\/glossary\/#/, { timeout: 15000 });
+      const entry = page.locator(`#${identifier.id}`);
+      if ((await entry.count()) === 0) {
+        j.fail(`/glossary/#${identifier.id} has no entry — the term links to nothing`);
+      } else {
+        const dd = (await entry.innerText()).replace(/\s+/g, " ").trim();
+        // A stub that echoes the acronym back is not a definition.
+        if (dd.length < 80) {
+          j.fail(
+            `/glossary/#${identifier.id} defines "${identifier.text}" in ${dd.length} chars`,
+          );
+        } else {
+          j.note(
+            `${ids.length} stamped terms link out; "${identifier.text}" → ` +
+              `/glossary/#${identifier.id}, defined in ${dd.length} chars ✓`,
+          );
+        }
+      }
     }
   } catch (e) {
     j.fail(e.message.split("\n")[0]);

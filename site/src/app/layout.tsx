@@ -109,9 +109,18 @@ export default function RootLayout({
                   hamburger — comfortably inside a 768px-clamped container —
                   and the desktop nav only appears once `container` itself
                   widens to match at 1024. */}
+              {/* gap-3 below xl (tri-persona Wave 3, Task 3). Adding the
+                  tenth link (Glossary) needed ~75px and the 1024px band —
+                  where `container` clamps the bar to exactly 1024 — had 73px
+                  of slack, measured on the pre-fix build (bar 1024 − 32
+                  padding − 108 brand − 588 nav − 191 right cluster − 32 bar
+                  gaps). Tightening the eight inter-link gaps from 16px to
+                  12px returns 32px, which covers it with room to spare;
+                  `xl:gap-4` restores the original spacing at 1280+, where
+                  there were already 329px of slack. */}
               <nav
                 data-site-nav
-                className="hidden lg:flex items-center gap-4 text-sm"
+                className="hidden lg:flex items-center gap-3 xl:gap-4 text-sm"
                 aria-label="Main navigation"
               >
                 <Link
@@ -173,6 +182,22 @@ export default function RootLayout({
                   className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   Coverage
+                </Link>
+                {/* Tri-persona Wave 3, Task 3 — the layman review's finding:
+                    /glossary/ is "the cure, hidden below the disease". It was
+                    linked twice per page and BOTH links were in the footer,
+                    while TOA is stamped on ~80,000 figures above it. A reader
+                    who does not know a word does not scroll past six thousand
+                    pixels of it to look for a glossary. The footer entry
+                    stays; this is the one a reader meets before the jargon.
+                    Sprint C Task C3 declined a tenth nav item rather than
+                    re-measure the 768–1023 fix — that measurement is now
+                    done and recorded on the <nav> above. */}
+                <Link
+                  href="/glossary/"
+                  className="text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  Glossary
                 </Link>
               </nav>
 

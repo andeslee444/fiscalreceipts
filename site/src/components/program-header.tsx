@@ -201,10 +201,23 @@ export function ProgramHeader({
           </Link>
         )}
 
-        {/* PE-BLI */}
+        {/* PE-BLI. Tri-persona Wave 3, Task 3: the code is the page's
+            identity and the first unexplained thing on it — an RDT&E line
+            wears a Program Element code and a procurement line a Budget Line
+            Item, and until this wave neither word appeared anywhere near it.
+            The label names which one this page carries (from the row's own
+            exhibit_family, never guessed from the code's shape) and links to
+            its glossary entry; the code itself stays verbatim beside it. */}
         <span className="text-muted-foreground/50" aria-hidden="true">
           ·
         </span>
+        <Link
+          href={`/glossary/#${exhibit_family === "procurement" ? "bli" : "pe"}`}
+          data-glossary-term={exhibit_family === "procurement" ? "bli" : "pe"}
+          className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+        >
+          {exhibit_family === "procurement" ? "BLI" : "PE"}
+        </Link>
         <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
           {pe_bli}
         </code>

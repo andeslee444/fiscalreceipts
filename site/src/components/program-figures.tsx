@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Cite, type ExhibitFamily } from "@/components/cite";
 import { TrajectorySpark } from "@/components/trajectory-spark";
 import { DecadeTrajectory } from "@/components/decade-trajectory";
@@ -57,6 +58,53 @@ const ABSENCE_LABEL: Record<string, string> = {
   "no-rollup": "No single program-level figure; see the line items below",
   "no-comparison": "No comparison: endpoints unavailable or on different bases",
 };
+
+/**
+ * Card measures that have a /glossary/ entry (tri-persona Wave 3, Task 3).
+ *
+ * "Actuals", "Enacted" and "Request" are the three most load-bearing words on
+ * a program page — they ARE the three summary cards — and until this wave
+ * they were the only stamped measures with no glossary entry at all, in a
+ * glossary that was itself linked twice per page and both times from the
+ * footer. Linking the word where it is used is the whole fix: the reader who
+ * does not know the difference between asking, being appropriated, and
+ * having spent meets the definition at the moment they need it.
+ *
+ * Only these three. "Total", "Change" and "Base Request" are either
+ * self-explanatory or have a narrower meaning than the entry would give, and
+ * a link that lands on an approximate definition is worse than no link.
+ */
+const MEASURE_GLOSSARY_ID: Record<string, string> = {
+  actuals: "actuals",
+  enacted: "enacted",
+  request: "request",
+};
+
+/**
+ * The card's label with its measure word linked to its glossary entry when
+ * there is one. textContent is IDENTICAL to cardLabel(card) — gate 23 leg b2
+ * matches the FY token out of this label's text, and an <a> inside it does
+ * not change the text a parser reads.
+ */
+function CardLabel({ card }: { card: SummaryCard }) {
+  const gid = card.key === "change" ? undefined : MEASURE_GLOSSARY_ID[card.measure];
+  if (!gid) return <>{cardLabel(card)}</>;
+  const full = cardLabel(card);
+  const measureText = CARD_MEASURE_LABEL[card.measure] ?? card.measure;
+  const head = full.slice(0, full.length - measureText.length);
+  return (
+    <>
+      {head}
+      <Link
+        href={`/glossary/#${gid}`}
+        data-glossary-term={gid}
+        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+      >
+        {measureText}
+      </Link>
+    </>
+  );
+}
 
 export function cardLabel(card: SummaryCard): string {
   if (card.key === "change") return `${TRAJECTORY_FY_LABEL} Change`;
@@ -297,10 +345,11 @@ function SummaryCardCell({
   /** backlog #50 — only rendered beside the fy2026 card, and only when set. */
   fy26Split?: Fy26Split | null;
 }) {
-  const label = cardLabel(card);
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className="text-xs text-muted-foreground mb-1">
+        <CardLabel card={card} />
+      </div>
       <div className="text-xl font-bold">
         {card.value !== null && card.units ? (
           <span

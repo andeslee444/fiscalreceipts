@@ -669,12 +669,45 @@ export interface NamedPrime {
   public_id: string;
 }
 
+/**
+ * WHO-GETS-IT lobbying tier (tri-persona Wave 3).
+ *
+ * The companies whose Senate LDA filings name this program, for the pages
+ * where the award crosswalk and the dossiers are both silent. THIS IS NOT AN
+ * AWARD CLAIM and the payload is shaped so it cannot be mistaken for one: no
+ * dollars, no obligations, no share. Only `pe_literal`/`alias` evidence
+ * qualifies a company for this list — see _build_lobbied_by in
+ * src/govbudget/export_site.py and lib/evidence.ts for the tiers.
+ */
+export interface LobbiedByFamily {
+  /** display_name from dim_entities where profiled, else the family key. */
+  name: string;
+  family_key: string;
+  /** Filings in this program's mention set naming this family. */
+  filings: number;
+  /** 'pe_literal' | 'alias' — never 'multi_token'. */
+  evidence_kind: string;
+  /** /company/{slug}/ when the family is profiled; null otherwise. */
+  slug: string | null;
+}
+
+export interface LobbiedBy {
+  families: LobbiedByFamily[];
+  shown: number;
+  /** Qualifying families beyond the ones named. */
+  more: number;
+  /** Total qualifying filings across all families. */
+  filings: number;
+}
+
 export interface ProgramSummary {
   edition: number;
   basis_preference: string;
   cards: SummaryCard[];
   reconciliation: ReconciliationEntry[];
   named_primes: NamedPrime[];
+  /** Null on every page where the tier does not apply. */
+  lobbied_by?: LobbiedBy | null;
 }
 
 /**

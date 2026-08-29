@@ -71,6 +71,13 @@
  *     requires the card to carry an explicit [data-hhi-scope-note]
  *     disclosure (checked by content, not just presence). See hhi-band.mjs
  *     for the shared band function both card and destination render with.
+ * (n) A RANKED LIST IS RANKED BY SOMETHING THAT MATTERS (tri-persona Wave 3).
+ *     /feed/ opened on a $46.7M change at the head of a section holding
+ *     changes seventy times larger, because the mart's order was
+ *     `event_type, pe_bli` and `0101213F` sorts first. Each section's cards
+ *     must run in non-increasing order of the DOLLARS THE CARD ITSELF
+ *     PRINTS — read off the rendered magnitude line, not recomputed from
+ *     feed.json — see leg (n)'s own block at the bottom.
  */
 
 import fs from "fs";
@@ -198,6 +205,9 @@ export async function runFeedGate() {
 
   // ── (l) a concentration claim must not contradict its destination ─────────
   runHhiDestinationLeg(errors, notes, root);
+
+  // ── (n) the reader meets the biggest signal first ─────────────────────────
+  runMagnitudeOrderLeg(errors, notes, sections);
 
   // ── (f)-(j) Syndication (PM-review Sprint 3 Task 2, §P1-8) ──────────────────
   runSyndicationLegs(errors, notes);
@@ -979,4 +989,106 @@ function runLinkageLeg(errors, notes, targets, docs, companyWatchBySlug) {
 /** guid → card for one target's items (the items already carry their card). */
 function cardsByGuidFor(target) {
   return target.items.map((it) => [it.guid, it.card]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg (n) — a ranked list must be ranked by something that matters
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT (tri-persona review, layman pass). /feed/ opened on "Minuteman
+// Squadrons increased 79% — $59.3M → $106.0M", a $46.7M change, at the head
+// of a 99-card section holding changes seventy times larger. Nothing was
+// wrong with the card. The order was `event_type, pe_bli` straight off the
+// mart, so `0101213F` sorted first and 223 signals were presented to the
+// reader least-consequential-first.
+//
+// §P1-8 already established that every card must state THE DOLLARS IT IS
+// ABOUT, because "increased 79%" is not a story until you know 79% of what.
+// This leg is that same argument applied to order: the figure the card
+// publishes is the figure the section is ranked by.
+//
+// WHAT IT READS. The rendered magnitude line — the delta for a pair
+// (what changed), the single endpoint otherwise (the obligations the event is
+// about) — off each card's own [data-mag-role] block, taking the exact value
+// out of the [data-amount] title the reader sees on hover, units and all.
+// Nothing is recomputed from feed.json: the gate ranks the numbers the page
+// prints, in the order the page prints them. A sort that ordered the payload
+// correctly but rendered a different figure would fail here, which is the
+// point of reading the artifact instead of the source.
+//
+// SCOPE: within a section. The page and the feeds each group by event type
+// and declare their own section order; an HHI pool's matched obligations and
+// a budget delta are both dollars but not the same quantity, and ranking one
+// against the other would be a new false comparison in place of the old one.
+
+/** "$1,234,567 (USD thousands)" → dollars. Null when unparseable. */
+function amountTitleToUsd(title) {
+  if (!title) return null;
+  const m = title.match(/\$\s*(-?[\d,]+(?:\.\d+)?)\s*(?:\(([^)]*)\))?/);
+  if (!m) return null;
+  const v = Number(m[1].replace(/,/g, ""));
+  if (!Number.isFinite(v)) return null;
+  const units = (m[2] || "").toLowerCase();
+  if (units.includes("thousand")) return Math.abs(v) * 1000;
+  if (units.includes("million")) return Math.abs(v) * 1e6;
+  if (units.includes("billion")) return Math.abs(v) * 1e9;
+  return Math.abs(v);
+}
+
+/** The dollars a rendered card is about: its delta, else its single endpoint. */
+function cardMagnitudeUsd(card) {
+  for (const role of ["delta", "to", "from"]) {
+    const point = card.querySelector(`[data-mag-role="${role}"] [data-amount]`);
+    if (!point) continue;
+    const usd = amountTitleToUsd(point.getAttribute("title"));
+    if (usd !== null) return usd;
+  }
+  return null;
+}
+
+function runMagnitudeOrderLeg(errors, notes, sections) {
+  const summaries = [];
+  let missing = 0;
+
+  for (const section of sections) {
+    const id = section.getAttribute("id") ?? "?";
+    const cards = section.querySelectorAll("[data-feed-card]");
+    const values = [];
+    for (const card of cards) {
+      const usd = cardMagnitudeUsd(card);
+      if (usd === null) {
+        missing += 1;
+        if (missing <= 5) {
+          errors.push(
+            `feed(n): ${id} has a card with no readable magnitude — ` +
+              `"${(card.text || "").replace(/\s+/g, " ").trim().slice(0, 80)}"`,
+          );
+        }
+        continue;
+      }
+      values.push({ usd, label: (card.text || "").replace(/\s+/g, " ").trim().slice(0, 60) });
+    }
+    if (values.length === 0) continue;
+
+    for (let i = 1; i < values.length; i += 1) {
+      if (values[i].usd > values[i - 1].usd) {
+        errors.push(
+          `feed(n): ${id} is not ranked by dollar magnitude — position ${i} ` +
+            `($${Math.round(values[i].usd).toLocaleString("en-US")}, "${values[i].label}") ` +
+            `outranks position ${i - 1} ` +
+            `($${Math.round(values[i - 1].usd).toLocaleString("en-US")}, "${values[i - 1].label}")`,
+        );
+        break; // one report per section: the first inversion is the finding
+      }
+    }
+    summaries.push(
+      `${id.replace(/^feed-/, "")} ${values.length} cards, ` +
+        `$${Math.round(values[0].usd).toLocaleString("en-US")} first`,
+    );
+  }
+
+  if (missing > 5) {
+    errors.push(`feed(n): ${missing} card(s) with no readable magnitude in total (first 5 listed)`);
+  }
+  notes.push(`leg n: sections ranked by their own printed dollars — ${summaries.join("; ")}`);
 }
