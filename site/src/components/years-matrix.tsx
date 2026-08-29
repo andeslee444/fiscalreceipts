@@ -52,6 +52,7 @@ import { YearsTotalsChart } from "@/components/years-totals-chart";
 import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 import { formatCount } from "@/lib/format";
+import { EXTENDED_MEASURE_LABEL } from "@/lib/basis";
 
 // ── Sidecar types (years_matrix.json schema_version 1) ──────────────────────
 
@@ -60,6 +61,15 @@ export interface YearsCell {
   fid?: string | null;
   /** xml_path for zero-amount project facts (Cite state B). */
   xp?: string | null;
+  /**
+   * Tri-persona review Wave 2 — this cell's own extended measure token
+   * (basis.ts's EXTENDED_MEASURE_LABEL vocabulary), present only on decade
+   * cells of a MIXED column whose token differs from the column kind. A
+   * uniform column states its one token on the column instead
+   * (DecadeColumn.measures), so the ~23k cells that would otherwise repeat
+   * it stay byte-identical. Resolve any decade cell as `m ?? kind`.
+   */
+  m?: string;
 }
 
 export interface YearsProject {
@@ -108,6 +118,22 @@ export interface DecadeColumn {
   fy: number;
   kind: "actuals" | "enacted" | "request";
   edition: number;
+  /**
+   * Tri-persona review Wave 2 — the extended measure tokens this column's
+   * EMITTED cells actually carry, present only when at least one differs
+   * from `kind`.
+   *
+   * A decade column is labelled by its kind ("FY2024E" → Enacted), but the
+   * workbook column behind it does not always report that kind: FY2024's
+   * enacted money is column K of the PB2025 R-1 workbook, headed "FY 2024 PB
+   * Request with CR Amounts*" — the request adjusted for a continuing
+   * resolution, byte-identical to the FY2024 request on every one of the
+   * 1,525 programs where /years/ shows both. FY2017E and FY2018E have the
+   * same shape. The program page's citation panel has always disclosed this;
+   * /years/, where cross-program "asked vs got" analysis happens, published
+   * a bare "Enacted".
+   */
+  measures?: string[];
 }
 
 export interface YearsMatrixData {
@@ -193,6 +219,51 @@ function decadeColumnLabelShort(col: DecadeColumn): string {
 /** Long-form for aria-labels / tooltips: "FY2020 actuals (PB2022 edition)". */
 function decadeColumnTitle(col: DecadeColumn): string {
   return `FY${col.fy} ${col.kind} (PB${col.edition} edition)`;
+}
+
+// ── Measure qualifiers (tri-persona review Wave 2) ──────────────────────────
+
+/**
+ * The extended measure token behind ONE decade cell: the cell's own `m` when
+ * the column is mixed, otherwise the column's single divergent token,
+ * otherwise the bare kind. This is the value stamped as `data-measure`, so
+ * the machine label on the figure and the words a reader can read come from
+ * the same place — the defect this fixes was a cell whose data-measure said
+ * "enacted" over a workbook column headed "PB Request with CR Amounts".
+ */
+export function decadeCellMeasure(
+  col: DecadeColumn,
+  cell?: YearsCell,
+): string {
+  if (cell?.m) return cell.m;
+  const only = col.measures?.length === 1 ? col.measures[0] : undefined;
+  return only ?? col.kind;
+}
+
+/** Human phrase for a measure token, via the shared basis vocabulary. */
+function measurePhrase(token: string): string {
+  return EXTENDED_MEASURE_LABEL[token] ?? token.replace(/-/g, " ");
+}
+
+/**
+ * Does this column need the † qualifier? True when any emitted cell carries
+ * a measure token other than the column's own kind.
+ */
+export function decadeColumnQualified(col: DecadeColumn): boolean {
+  return (col.measures ?? []).some((m) => m !== col.kind);
+}
+
+/**
+ * The footnote's own line for one qualified column.
+ * Uniform: "FY2024E (PB2025): enacted (request column)".
+ * Mixed:   "FY2025E (PB2026): enacted (book total) on some lines".
+ */
+export function decadeQualifierNote(col: DecadeColumn): string {
+  const tokens = col.measures ?? [];
+  const diverging = tokens.filter((m) => m !== col.kind);
+  const phrases = diverging.map(measurePhrase).join("; ");
+  const head = `${decadeColumnLabel(col)} (PB${col.edition}): ${phrases}`;
+  return diverging.length === tokens.length ? head : `${head} on some lines`;
 }
 
 /**
@@ -309,6 +380,14 @@ function csvField(s: string): string {
  * Decade columns carry their edition IN the header (fy2020a_pb2022_…):
  * one homogeneous header row keeps naive CSV parsers (and the G8 gate's
  * pe_bli set check) working — no second "edition row" of pseudo-data.
+ *
+ * Tri-persona review Wave 2: a QUALIFIED decade column carries its measure
+ * token in the header too — `fy2024e_pb2025_enacted_request_usd_millions`
+ * rather than the bare `fy2024e_pb2025_usd_millions` that told a downstream
+ * script the FY2024 request column was an enacted appropriation. The
+ * qualifier rides in the same single header row for the same reason the
+ * edition does; a mixed column names every token its cells carry, so the
+ * header can never be narrower than the data under it.
  */
 export function buildYearsCsv(
   entries: ProgramEntry[],
@@ -325,7 +404,11 @@ export function buildYearsCsv(
     ...columns.map((c) => {
       if (c === PCT_KEY) return `${c}_pct`;
       const d = decadeByKey.get(c);
-      return d ? `${c}_pb${d.edition}_usd_millions` : `${c}_usd_millions`;
+      if (!d) return `${c}_usd_millions`;
+      const qual = decadeColumnQualified(d)
+        ? `_${(d.measures ?? []).join("_").replace(/-/g, "_")}`
+        : "";
+      return `${c}_pb${d.edition}${qual}_usd_millions`;
     }),
   ];
   const lines = [header.join(",")];
@@ -633,6 +716,20 @@ export function YearsMatrix() {
     return allColumns.filter((c) => chosen.has(c));
   }, [matrix, chosenCols, allColumns, defaultCols]);
 
+  // Tri-persona review Wave 2 — the † footnote's own population: the VISIBLE
+  // decade columns whose money comes from a workbook column reporting
+  // something other than the kind the header names. Same pattern as the %Δ
+  // legend below: a column-level caveat rendered once, only while the column
+  // it qualifies is on screen, instead of the same sentence repeated in
+  // 2,888 cells.
+  const qualifiedCols = useMemo(
+    () =>
+      visibleCols
+        .map((k) => decadeMeta.get(k))
+        .filter((c): c is DecadeColumn => !!c && decadeColumnQualified(c)),
+    [visibleCols, decadeMeta],
+  );
+
   const allEntries = useMemo(
     () => (matrix ? flattenPrograms(matrix) : []),
     [matrix],
@@ -905,6 +1002,25 @@ export function YearsMatrix() {
         </p>
       )}
 
+      {qualifiedCols.length > 0 && (
+        <p
+          data-testid="measure-qualifier-legend"
+          className="text-xs leading-5 text-muted-foreground"
+        >
+          <span className="text-amber-700 dark:text-amber-400">&dagger;</span>{" "}
+          These columns are filed under the row label the book itself fills,
+          but the workbook column behind them reports something else —{" "}
+          {qualifiedCols.map((c) => decadeQualifierNote(c)).join("; ")}. Read
+          them as what was asked for, not what was appropriated.{" "}
+          <Link
+            href="/glossary/#enacted-request"
+            className="underline decoration-dotted hover:text-foreground"
+          >
+            why &rarr;
+          </Link>
+        </p>
+      )}
+
       {/* backlog #54: %Δ is computed on FY2026's COMBINED figure
           (discretionary request + one-time reconciliation money) versus
           FY2025 enacted — the same fold #50 disclosed per-program on
@@ -1042,12 +1158,22 @@ export function YearsMatrix() {
                 const sortTitle = decade
                   ? `Sort by ${decadeColumnTitle(decade)} (missing values last)`
                   : `Sort by ${columnLabel(key)} (missing values last)`;
+                // Wave 2: a column whose money comes from a workbook column
+                // reporting something other than its own kind flies a †, and
+                // says what it actually is in the footnote under the grid.
+                const qualified = decade ? decadeColumnQualified(decade) : false;
                 return (
                   <th
                     key={key}
                     scope="col"
                     data-col={key}
                     {...(decade ? { "data-edition": decade.edition } : {})}
+                    {...(qualified && decade
+                      ? {
+                          "data-measures": (decade.measures ?? []).join(" "),
+                          "data-qualified": "true",
+                        }
+                      : {})}
                     aria-sort={
                       sort?.key === key
                         ? sort.dir === "desc"
@@ -1075,6 +1201,14 @@ export function YearsMatrix() {
                               390 fold. */}
                           <span className="sm:hidden">{labelShort}</span>
                           <span className="hidden sm:inline">{label}</span>
+                          {qualified && decade && (
+                            <span
+                              className="text-amber-700 dark:text-amber-400"
+                              title={decadeQualifierNote(decade)}
+                            >
+                              †
+                            </span>
+                          )}
                         </span>
                         {decade && (
                           <span className="text-[9px] font-normal text-muted-foreground/80">
@@ -1465,7 +1599,10 @@ function ProgramCellTd({
           display={fmtThousandsAsMillions(cell.v)}
           basis="toa"
           fy={decade.fy}
-          measure={decade.kind}
+          // Wave 2: the cell's OWN measure, not the column's row label. A
+          // figure read out of "FY 2024 PB Request with CR Amounts*" is
+          // data-measure="enacted-request", never "enacted".
+          measure={decadeCellMeasure(decade, cell)}
           edition={decade.edition}
           chip={false}
         />

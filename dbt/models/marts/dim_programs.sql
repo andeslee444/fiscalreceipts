@@ -258,7 +258,42 @@ details as (
         count(distinct dd.project_number) as project_count,
         sum(dd.amount_millions) filter (where dd.scenario = 'PriorYear' and dd.project_number is null)
             as fy2024_actual_millions,
-        bool_and(dd.reconciled) as fully_reconciled
+        bool_and(dd.reconciled) as fully_reconciled,
+        -- Tri-persona review Wave 2 — the badge predicate.
+        --
+        -- fully_reconciled above is bool_and over EVERY scenario, including
+        -- the two the reconciler never checks. Gate A/B only ever run for a
+        -- scenario `govbudget.jbooks.reconcile.scenario_map()` has candidate
+        -- amount_type slugs for (PriorYear / CurrentYear / BudgetYearOne /
+        -- BudgetYearOneBase); every other scenario hits `continue` and its
+        -- rows keep budget_line_details.reconciled's false default forever.
+        -- reconcile.py names that complement DESIGN_EXCLUDED_SCENARIOS
+        -- ("no R-1 display analog... not-served-by-design, distinct from
+        -- pending-review") and jbooks/verify.py's accuracy_gate excludes it
+        -- from Gate 2's scope for the same reason.
+        --
+        -- Measured against the shipped PB2026 warehouse (2026-08-29):
+        -- AllPriorYears is 3,267 detail rows of which 0 are reconciled — it
+        -- cannot be otherwise — so bool_and over all scenarios is false for
+        -- every program that HAS an AllPriorYears row and true only for the
+        -- 344 pe_blis that happen to have none. Of the 1,398 dim_programs
+        -- rows reading false, 1,310 have zero in-scope failures and 87 have
+        -- a real one; the site rendered one undifferentiated "Partial
+        -- Reconciliation" badge over all of them.
+        --
+        -- BudgetYearOneOOC never appears in the shipped corpus but is in
+        -- scenario_map's complement, so it is excluded here too — the list
+        -- below is DESIGN_EXCLUDED_SCENARIOS verbatim and
+        -- tests/test_dim_programs_inscope_scope.py fails the build if this
+        -- SQL literal and that Python frozenset ever drift apart.
+        --
+        -- NULL (not false) when a group has no in-scope row at all: one
+        -- pe_bli in the shipped corpus carries AllPriorYears detail and
+        -- nothing else, and "we checked nothing" is not "we found a
+        -- failure". The synth branch below is NULL for the same reason.
+        bool_and(dd.reconciled) filter (
+            where dd.scenario not in ('AllPriorYears', 'BudgetYearOneOOC')
+        ) as reconciled_in_scope
     from details_dedup dd
     left join org_collision_pes ocp on ocp.pe_bli = dd.pe_bli
     left join org_collision_slots ocs
@@ -313,6 +348,7 @@ matched as (
         d.project_count,
         d.fy2024_actual_millions,
         d.fully_reconciled,
+        d.reconciled_in_scope,
         am.account,
         am.account_title,
         coalesce(max(dt.title), max(b.title)) as title
@@ -328,7 +364,7 @@ matched as (
         on dt.pe_bli = d.pe_bli
         and (am.account is null or dt.account = am.account)
         and (ocp.pe_bli is null or dt.organization = d.org)
-    group by 1, 2, 3, 4, 5, 6, 7, 8
+    group by 1, 2, 3, 4, 5, 6, 7, 8, 9
 ),
 -- E1 split key: per (pe_bli, amount_type) distinct-account count, fenced to
 -- fy_2026_total (see the model-level comment above for why fy_2026_total,
@@ -365,6 +401,9 @@ synth as (
         cast(0 as bigint) as project_count,
         cast(null as double) as fy2024_actual_millions,
         cast(null as boolean) as fully_reconciled,
+        -- no R-2/P-40 detail behind this row at all, so no scenario was
+        -- checked: NULL, never false (see the details CTE's note above).
+        cast(null as boolean) as reconciled_in_scope,
         sc.account,
         sc.account_title,
         -- ROADMAP #69: same money-anchored pick as `matched` above. No
@@ -386,9 +425,9 @@ synth as (
     having coalesce(max(dt.title), max(b.title)) is not null
 )
 select pe_bli, org, exhibit_family, project_count, fy2024_actual_millions,
-       fully_reconciled, account, account_title, title
+       fully_reconciled, reconciled_in_scope, account, account_title, title
 from matched
 union all
 select pe_bli, org, exhibit_family, project_count, fy2024_actual_millions,
-       fully_reconciled, account, account_title, title
+       fully_reconciled, reconciled_in_scope, account, account_title, title
 from synth

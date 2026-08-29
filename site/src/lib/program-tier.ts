@@ -129,6 +129,10 @@ export function rollupProgramRow(
     org: details.service_org || "DoD",
     exhibit_family: deriveExhibitFamily(details.budget_lines),
     fully_reconciled: false,
+    // Rollup tier renders the "Summary figures (R-1/P-1)" badge, never a
+    // reconciliation verdict — there is no R-2/P-40 detail behind this row
+    // to reconcile, so null (nothing checked), not false (a failure).
+    reconciled_in_scope: null,
     fy2024_actual_millions: null,
     fy2024_fact_id: null,
     fy2024_xml_path: null,

@@ -362,11 +362,25 @@ export default function MethodologyPage() {
               corresponding row in the official R-1 or P-1 Excel rollup. A
               failure does not suppress the figure — it marks the row
               unreconciled, files a review-queue record against the specific
-              failed check, and the program page carries a Partial
-              Reconciliation badge instead of a Fully Reconciled one. A build
+              failed check, and the program page carries a{" "}
+              <Link href="/glossary/#partial-reconciliation" className="underline decoration-dotted underline-offset-2 hover:text-foreground">
+                Partial Reconciliation
+              </Link>{" "}
+              badge instead of a Reconciled one. A build
               gate then refuses any unreconciled row that has no queue record,
               so a figure can fail these checks in the open but never in
-              silence.
+              silence.{" "}
+              {/* Tri-persona review Wave 2: the badge was bool_and over every
+                  J-book scenario, so the one scenario nothing can ever
+                  reconcile dragged 1,310 clean programs into the same warning
+                  as the 87 with a real failure. Naming the scope here is half
+                  the fix; the badge now reading it is the other half. The
+                  glossary entry carries the long form. */}
+              Both checks cover prior-year actuals, current-year enacted, and
+              the budget-year request and its base; the J-book&rsquo;s
+              cumulative All Prior Years element has no R-1 or P-1 column to
+              compare against, so it is never checked and never held against a
+              line.
             </p>
           </div>
           <div>

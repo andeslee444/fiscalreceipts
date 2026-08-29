@@ -28,6 +28,9 @@ import {
   filterEntries,
   sortEntries,
   buildYearsCsv,
+  decadeCellMeasure,
+  decadeColumnQualified,
+  decadeQualifierNote,
   defaultSortKey,
   cellState,
   fmtDisplayMillions,
@@ -136,7 +139,7 @@ const MATRIX_DECADE: YearsMatrixData = {
             fy2015a: { fid: "dd00000000000001", v: 90000 },
             fy2020a: { fid: "dd00000000000002", v: 95000 },
             fy2020e: { fid: "dd00000000000005", v: 94000 },
-            fy2025e: { fid: "dd00000000000003", v: 200000 },
+            fy2025e: { fid: "dd00000000000003", v: 200000, m: "enacted-total" },
             fy2026r: { fid: "dd00000000000004", v: 300000 },
           },
         },
@@ -154,11 +157,17 @@ const MATRIX_DECADE: YearsMatrixData = {
     MATRIX.orgs[1],
   ],
   decade_columns: [
-    { key: "fy2015a", fy: 2015, kind: "actuals", edition: 2017 },
+    // Tri-persona review Wave 2 — a UNIFORM qualified column: every emitted
+    // cell comes from one workbook column that reports something other than
+    // the header's kind, so the qualifier lives on the COLUMN and no cell
+    // repeats it (the real fy2015a is "FY 2015 (Base & OCO)").
+    { key: "fy2015a", fy: 2015, kind: "actuals", edition: 2017, measures: ["actuals-base-oco"] },
     { key: "fy2020a", fy: 2020, kind: "actuals", edition: 2022 },
-    { key: "fy2020e", fy: 2020, kind: "enacted", edition: 2021 },
+    { key: "fy2020e", fy: 2020, kind: "enacted", edition: 2021, measures: ["enacted-request"] },
     { key: "fy2024a", fy: 2024, kind: "actuals", edition: 2026 },
-    { key: "fy2025e", fy: 2025, kind: "enacted", edition: 2026 },
+    // …and a MIXED one: some cells are plain enacted, some are the book
+    // total, so the divergent cells carry their own `m` (the real fy2025e).
+    { key: "fy2025e", fy: 2025, kind: "enacted", edition: 2026, measures: ["enacted", "enacted-total"] },
     { key: "fy2026r", fy: 2026, kind: "request", edition: 2026 },
   ],
   decade_default_columns: ["fy2015a", "fy2020a", "fy2025e", "fy2026r"],
@@ -588,6 +597,40 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
   });
 
+  // Tri-persona review Wave 2 — the qualifier a reader can see.
+  it("renders the † mark, the footnote, and per-cell data-measure", async () => {
+    await renderMatrix();
+    // uniform qualified column: the token is on the column
+    const uniform = document.querySelector('th[data-col="fy2015a"]') as HTMLElement;
+    expect(uniform.getAttribute("data-qualified")).toBe("true");
+    expect(uniform.getAttribute("data-measures")).toBe("actuals-base-oco");
+    expect(uniform.textContent).toContain("†");
+    // mixed qualified column
+    const mixed = document.querySelector('th[data-col="fy2025e"]') as HTMLElement;
+    expect(mixed.getAttribute("data-measures")).toBe("enacted enacted-total");
+    expect(mixed.textContent).toContain("†");
+    // an unqualified column must NOT fly the mark
+    const plain = document.querySelector('th[data-col="fy2026r"]') as HTMLElement;
+    expect(plain.getAttribute("data-qualified")).toBeNull();
+    expect(plain.textContent).not.toContain("†");
+
+    const note = document.querySelector(
+      '[data-testid="measure-qualifier-legend"]',
+    ) as HTMLElement;
+    expect(note.textContent).toContain("FY2015A (PB2017): actuals (base + OCO)");
+    expect(note.textContent).toContain("FY2025E (PB2026): enacted (book total)");
+
+    // The cell's own machine label — the attribute gate 23 groups figures on.
+    const cell = document.querySelector(
+      'tr[data-pe="0601101E"] td[data-col="fy2015a"] [data-measure]',
+    ) as HTMLElement;
+    expect(cell.getAttribute("data-measure")).toBe("actuals-base-oco");
+    const mixedCell = document.querySelector(
+      'tr[data-pe="0601101E"] td[data-col="fy2025e"] [data-measure]',
+    ) as HTMLElement;
+    expect(mixedCell.getAttribute("data-measure")).toBe("enacted-total");
+  });
+
   it("decade column headers carry the fiscal year and an edition tag", async () => {
     await renderMatrix();
     const th = document.querySelector('th[data-col="fy2020a"]') as HTMLElement;
@@ -665,6 +708,65 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
       .split(",")
       .findIndex((h) => h.includes("fy2020a"));
     expect(mdaRow[colIdx]).toBe("");
+  });
+
+  // ── Tri-persona review Wave 2: the measure qualifier ─────────────────────
+  //
+  // FY2024 "Enacted" on /years/ is column K of the PB2025 R-1 workbook,
+  // headed "FY 2024 PB Request with CR Amounts*". The grid published a bare
+  // "enacted" on the header, the cell's data-measure and the CSV field name,
+  // on the one surface built for cross-program "asked vs got" work.
+
+  it("decadeCellMeasure prefers the cell's own token, then the column's", () => {
+    const uniform = MATRIX_DECADE.decade_columns!.find((c) => c.key === "fy2020e")!;
+    const mixed = MATRIX_DECADE.decade_columns!.find((c) => c.key === "fy2025e")!;
+    const plain = MATRIX_DECADE.decade_columns!.find((c) => c.key === "fy2026r")!;
+    // uniform column: the token lives on the column, cells carry no `m`
+    expect(decadeCellMeasure(uniform, { v: 1 })).toBe("enacted-request");
+    // mixed column: a cell without `m` falls back to the KIND, not to one of
+    // the two tokens — picking either would be a guess
+    expect(decadeCellMeasure(mixed, { v: 1 })).toBe("enacted");
+    expect(decadeCellMeasure(mixed, { v: 1, m: "enacted-total" })).toBe("enacted-total");
+    // unqualified column is unchanged
+    expect(decadeCellMeasure(plain, { v: 1 })).toBe("request");
+  });
+
+  it("decadeColumnQualified is true only where a token differs from the kind", () => {
+    const byKey = new Map(MATRIX_DECADE.decade_columns!.map((c) => [c.key, c]));
+    expect(decadeColumnQualified(byKey.get("fy2020e")!)).toBe(true);
+    expect(decadeColumnQualified(byKey.get("fy2025e")!)).toBe(true);
+    expect(decadeColumnQualified(byKey.get("fy2015a")!)).toBe(true);
+    // a column with no `measures` at all is never qualified
+    expect(decadeColumnQualified(byKey.get("fy2026r")!)).toBe(false);
+    expect(decadeColumnQualified(byKey.get("fy2020a")!)).toBe(false);
+  });
+
+  it("decadeQualifierNote names the column and what it actually reports", () => {
+    const byKey = new Map(MATRIX_DECADE.decade_columns!.map((c) => [c.key, c]));
+    expect(decadeQualifierNote(byKey.get("fy2020e")!)).toBe(
+      "FY2020E (PB2021): enacted (request column)",
+    );
+    // mixed: only the DIVERGENT token is named, and the note says it is
+    // partial rather than implying the whole column
+    expect(decadeQualifierNote(byKey.get("fy2025e")!)).toBe(
+      "FY2025E (PB2026): enacted (book total) on some lines",
+    );
+  });
+
+  it("CSV headers carry the measure qualifier for a qualified column", () => {
+    const entries = flattenPrograms(MATRIX_DECADE);
+    const csv = buildYearsCsv(
+      entries,
+      ["fy2020a", "fy2020e", "fy2025e"],
+      MATRIX_DECADE.decade_columns,
+    );
+    const header = csv.trim().split("\n")[0];
+    // unqualified column keeps its exact pre-existing field name
+    expect(header).toContain("fy2020a_pb2022_usd_millions");
+    // qualified columns say what they are, so a downstream script inherits it
+    expect(header).toContain("fy2020e_pb2021_enacted_request_usd_millions");
+    expect(header).toContain("fy2025e_pb2026_enacted_enacted_total_usd_millions");
+    expect(header).not.toContain("fy2020e_pb2021_usd_millions");
   });
 
   it("column picker groups decade and PB2026-detail columns", async () => {

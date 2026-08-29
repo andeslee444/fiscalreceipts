@@ -293,6 +293,216 @@ function breakdownClass(citation) {
   return null;
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (i) — THE MEASURE LABEL ON A FIGURE MUST MATCH THE COLUMN IT CAME FROM
+// (tri-persona review Wave 2; letter checked free against a-h above)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect: FY2024 "Enacted" on /years/ is not an enacted
+// appropriation. The PB2025 books had no FY2024 enacted column to publish —
+// FY2024 ran under a continuing resolution when they went to press — so the
+// figure comes from column K of r1_display.xlsx, headed verbatim "FY 2024 PB
+// Request with CR Amounts*" (P-1: column Q, "FY 2024 PB Request with CR
+// Adjustments Amount*"). On every one of the 1,525 /years/ programs carrying
+// both, FY2024E and FY2024R are byte-identical, because they are the same
+// column. FY2017E and FY2018E have the same shape in the PB2018/PB2019 books.
+//
+// The extraction was faithful and the program-page citation panel disclosed it
+// correctly one click deep. /years/ dropped the qualifier: decade_columns
+// carried only kind:"enacted", every cell stamped data-measure="enacted", and
+// the CSV exported fy2024e_pb2025_usd_millions with no note — on the one
+// surface built for cross-program "asked vs got" analysis.
+//
+// THE PREDICATE IS THE WORKBOOK'S OWN COLUMN HEADER, not the exporter's
+// slug→measure table. workbook-cells/{fid[:2]}.json ships `col_header` — the
+// literal text of the Excel header the number was read from. Re-deriving the
+// exporter's mapping here would be a gate agreeing with a copy of the rule it
+// checks; reading the header asks the source document instead.
+//
+//   i1 NO CONTRADICTION — for every emitted decade cell, the measure token the
+//      payload publishes (cell.m, else the column's single divergent measure,
+//      else its kind) must name at least one of the measure families its own
+//      col_header names. "enacted" over "FY 2024 PB Request with CR Amounts*"
+//      is a contradiction; "enacted-request" is not (both words are true:
+//      filed under Enacted, sourced from a request column).
+//   i2 JOIN INTEGRITY — every decade cell whose fid resolves to a WORKBOOK
+//      citation must have a workbook-cells entry with a col_header, and every
+//      decade column must contribute at least one checked cell. A silently
+//      broken join would make i1 pass by checking nothing.
+//   i3 RENDERED (live) — on /years/, every qualified column's header carries
+//      the visible †, a visible footnote names the column and what it actually
+//      reports, and the cells' rendered data-measure equals the payload token.
+//   i4 CSV — the exported header for a qualified column carries its measure
+//      token, so a downstream script reading the file inherits the qualifier
+//      instead of the bare year+kind.
+//   i5 NON-VACUITY (structural) — the population is the RENDERED set: every
+//      decade cell in the payload. It must be non-empty, every decade column
+//      must be represented, and at least one column must actually be
+//      qualified — a corpus with no divergent column would satisfy i1
+//      trivially.
+
+/** Measure families a piece of text names. Substrings, because workbook
+ *  headers are prose ("FY 2020 Total Enacted (Base+Emerg+ OCO)"). */
+function measureFamilies(text) {
+  const t = (text ?? "").toLowerCase();
+  const out = new Set();
+  if (t.includes("actual")) out.add("actuals");
+  if (t.includes("enact")) out.add("enacted");
+  if (t.includes("request")) out.add("request");
+  return out;
+}
+
+/** Families a hyphenated measure token asserts ("enacted-request" → both). */
+function tokenFamilies(token) {
+  const out = new Set();
+  for (const w of String(token ?? "").split("-")) {
+    if (w === "actuals" || w === "enacted" || w === "request") out.add(w);
+  }
+  return out;
+}
+
+/** The measure token the payload publishes for ONE decade cell. Mirrors the
+ *  client's `m ?? single-divergent-measure ?? kind` resolution exactly — this
+ *  is a payload contract, not a re-derivation of the exporter's mapping. */
+function payloadCellMeasure(col, cell) {
+  if (cell && cell.m) return cell.m;
+  if (col.measures && col.measures.length === 1) return col.measures[0];
+  return col.kind;
+}
+
+function decadeColumnIsQualified(col) {
+  return (col.measures ?? []).some((m) => m !== col.kind);
+}
+
+/** fid → col_header, over every workbook-cells shard. */
+function readWorkbookColHeaders() {
+  const dir = path.join(jsonDir, "workbook-cells");
+  if (!fs.existsSync(dir)) return null;
+  const map = new Map();
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".json")) continue;
+    let obj;
+    try {
+      obj = readJson(path.join(dir, f));
+    } catch {
+      continue;
+    }
+    for (const [fid, row] of Object.entries(obj)) {
+      if (row && typeof row.col_header === "string") map.set(fid, row.col_header);
+    }
+  }
+  return map;
+}
+
+export function runDecadeMeasureLabelLeg(matrix, citations, errors, notes) {
+  const cols = new Map((matrix.decade_columns ?? []).map((c) => [c.key, c]));
+  if (cols.size === 0) {
+    errors.push("leg i is VACUOUS: payload carries no decade_columns");
+    return null;
+  }
+  const headers = readWorkbookColHeaders();
+  if (!headers) {
+    errors.push(`leg i: json/workbook-cells/ missing under ${jsonDir}`);
+    return null;
+  }
+
+  const contradictions = [];
+  const contradictionsByCol = new Map();
+  const unjoinedWorkbook = [];
+  const perCol = new Map();
+  let population = 0;
+  let checked = 0;
+
+  for (const { program } of iterPrograms(matrix)) {
+    for (const [key, cell] of Object.entries(program.cells)) {
+      const col = cols.get(key);
+      if (!col || !cell) continue;
+      population++;
+      perCol.set(key, (perCol.get(key) ?? 0) + 1);
+      const token = payloadCellMeasure(col, cell);
+      const header = cell.fid ? headers.get(cell.fid) : undefined;
+      if (header === undefined) {
+        // Only WORKBOOK citations are supposed to have a header; a derived
+        // decade sum legitimately has none.
+        const cit = cell.fid ? citations[cell.fid] : null;
+        if (cit && cit.kind === "workbook") {
+          if (unjoinedWorkbook.length < 10) {
+            unjoinedWorkbook.push(`${program.pe_bli}/${key} (fid ${cell.fid})`);
+          }
+        }
+        continue;
+      }
+      checked++;
+      const hf = measureFamilies(header);
+      if (hf.size === 0) continue; // the header names no family — no claim to contradict
+      const tf = tokenFamilies(token);
+      let overlap = false;
+      for (const f of tf) if (hf.has(f)) overlap = true;
+      if (!overlap) {
+        contradictionsByCol.set(key, (contradictionsByCol.get(key) ?? 0) + 1);
+        if (contradictions.length < 10) {
+          contradictions.push(
+            `${program.pe_bli}/${key}: published measure "${token}" but the ` +
+              `workbook column it was read from is headed "${header}"`
+          );
+        }
+      }
+    }
+  }
+
+  // i5 — structural non-vacuity
+  if (population === 0) {
+    errors.push("leg i is VACUOUS: no decade cell in the payload");
+    return null;
+  }
+  const uncovered = [...cols.keys()].filter((k) => !perCol.has(k));
+  if (uncovered.length) {
+    errors.push(
+      `leg i5: ${uncovered.length} decade column(s) contribute no cell — the ` +
+        `population is not the rendered set: ${uncovered.join(", ")}`
+    );
+  }
+  const qualified = [...cols.values()].filter(decadeColumnIsQualified);
+  if (qualified.length === 0) {
+    errors.push(
+      "leg i5: no decade column publishes a measure qualifier at all. Either " +
+        "every column's workbook header agrees with its kind — which the " +
+        "PB2018/PB2019/PB2025 continuing-resolution columns make false — or " +
+        "the exporter stopped emitting decade_columns[].measures"
+    );
+  }
+
+  // i1
+  if (contradictionsByCol.size) {
+    const total = [...contradictionsByCol.values()].reduce((a, b) => a + b, 0);
+    const breakdown = [...contradictionsByCol]
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k} ×${v}`)
+      .join(", ");
+    errors.push(
+      `leg i1: ${total} of ${checked} decade cells publish a measure label its ` +
+        `own workbook column header contradicts (${breakdown}). ` +
+        contradictions.join(" | ")
+    );
+  }
+  // i2
+  if (unjoinedWorkbook.length) {
+    errors.push(
+      `leg i2: ${unjoinedWorkbook.length}+ decade cell(s) cite a WORKBOOK fact ` +
+        `with no workbook-cells col_header — the header join is broken and i1 ` +
+        `is checking less than it claims: ${unjoinedWorkbook.join(", ")}`
+    );
+  }
+  notes.push(
+    `leg i: ${checked}/${population} decade cells checked against their own ` +
+      `workbook column header across ${perCol.size} columns; ` +
+      `${qualified.length} column(s) publish a measure qualifier ` +
+      `(${qualified.map((c) => `${c.key}=${(c.measures ?? []).join("+")}`).join(", ") || "none"})`
+  );
+  return { qualified };
+}
+
 export async function runYearsMatrixGate({ baseUrl }) {
   const errors = [];
   const notes = [];
@@ -324,6 +534,9 @@ export async function runYearsMatrixGate({ baseUrl }) {
 
   const { programCells, deltaCells, projectCells } = sampleCells(matrix);
   const nSampled = programCells.length + deltaCells.length + projectCells.length;
+
+  // ── Leg (i, static half): measure label vs the workbook column header ─────
+  const measureLeg = runDecadeMeasureLabelLeg(matrix, citations, errors, notes);
 
   // ── Leg (a): cell integrity recompute vs the parquet lake ────────────────
   {
@@ -847,6 +1060,126 @@ export async function runYearsMatrixGate({ baseUrl }) {
             );
           } else {
             notes.push("leg g-UI: decade defaults + edition tags + legend ✓");
+          }
+        }
+      }
+
+      // ---- leg (i) live half: the qualifier a reader can actually see ----
+      if (measureLeg && measureLeg.qualified.length > 0) {
+        // Only columns that are VISIBLE by default can be asserted on the
+        // opening view; the rest are one column-picker click away and their
+        // payload contract is already covered by i1.
+        const visibleQualified = [];
+        for (const col of measureLeg.qualified) {
+          const th = page.locator(`th[data-col="${col.key}"]`);
+          if ((await th.count()) > 0) visibleQualified.push({ col, th: th.first() });
+        }
+        if (visibleQualified.length === 0) {
+          errors.push(
+            `leg i3: none of the ${measureLeg.qualified.length} qualified decade ` +
+              `column(s) is visible in the opening view — the qualifier cannot ` +
+              `be checked on what a reader reads ` +
+              `(${measureLeg.qualified.map((c) => c.key).join(", ")})`
+          );
+        }
+        for (const { col, th } of visibleQualified) {
+          const headerText = (await th.textContent()) ?? "";
+          if (!headerText.includes("\u2020")) {
+            errors.push(
+              `leg i3: header ${col.key} reports ${(col.measures ?? []).join("+")} ` +
+                `but carries no \u2020 qualifier mark`
+            );
+          }
+          if (!(await th.getAttribute("data-qualified"))) {
+            errors.push(`leg i3: header ${col.key} carries no data-qualified attribute`);
+          }
+          // Every rendered cell in this column must stamp the payload's token.
+          const stamped = await page.evaluate((k) => {
+            const out = {};
+            for (const td of document.querySelectorAll(`td[data-col="${k}"] [data-measure]`)) {
+              const m = td.getAttribute("data-measure");
+              out[m] = (out[m] ?? 0) + 1;
+            }
+            return out;
+          }, col.key);
+          const rendered = Object.keys(stamped);
+          if (rendered.length === 0) {
+            errors.push(`leg i3: column ${col.key} renders no [data-measure] cell`);
+          }
+          const allowed = new Set(col.measures ?? []);
+          allowed.add(col.kind);
+          const stray = rendered.filter((m) => !allowed.has(m));
+          if (stray.length) {
+            errors.push(
+              `leg i3: column ${col.key} renders data-measure ` +
+                `${stray.map((m) => `"${m}"`).join(", ")} — not in the payload's ` +
+                `measure set [${[...allowed].join(", ")}]`
+            );
+          }
+          // The bare kind may only be rendered by a column that genuinely has
+          // non-divergent cells; a uniform qualified column rendering its kind
+          // is the shipped defect exactly.
+          if ((col.measures ?? []).every((m) => m !== col.kind) && stamped[col.kind]) {
+            errors.push(
+              `leg i3: column ${col.key} renders ${stamped[col.kind]} cell(s) as ` +
+                `data-measure="${col.kind}" although every one of its cells is ` +
+                `${(col.measures ?? []).join("+")}`
+            );
+          }
+        }
+        // A footnote a reader can see, naming each visible qualified column.
+        const fnote = page.locator('[data-testid="measure-qualifier-legend"]');
+        if ((await fnote.count()) === 0) {
+          errors.push(
+            'leg i3: [data-testid="measure-qualifier-legend"] missing on /years/ — ' +
+              "the \u2020 points at nothing"
+          );
+        } else {
+          const t = (await fnote.first().textContent()) ?? "";
+          for (const { col } of visibleQualified) {
+            if (!t.includes(`FY${col.fy}`)) {
+              errors.push(
+                `leg i3: the measure footnote never names FY${col.fy}, whose ` +
+                  `header flies a \u2020`
+              );
+            }
+          }
+          if (!/\u2020/.test(t)) {
+            errors.push("leg i3: the measure footnote does not carry the \u2020 it explains");
+          }
+        }
+        // i4 — the CSV a reader downloads must carry the qualifier too. Same
+        // download path leg (c) uses below, read for its header row only.
+        if (visibleQualified.length > 0) {
+          let csv = null;
+          try {
+            const [download] = await Promise.all([
+              page.waitForEvent("download", { timeout: 15000 }),
+              page.locator('[data-testid="years-csv"]').click(),
+            ]);
+            csv = fs.readFileSync(await download.path(), "utf8").split("\n")[0];
+          } catch (e) {
+            errors.push(`leg i4: /years/ CSV export did not download (${e.message})`);
+          }
+          if (!csv) {
+            errors.push("leg i4: could not read the /years/ CSV export header");
+          } else {
+            for (const { col } of visibleQualified) {
+              const want = (col.measures ?? []).join("_").replace(/-/g, "_");
+              const field = csv
+                .split(",")
+                .find((f) => f.startsWith(`${col.key}_pb${col.edition}`));
+              if (!field) {
+                errors.push(`leg i4: CSV header has no field for ${col.key}`);
+              } else if (!field.includes(want)) {
+                errors.push(
+                  `leg i4: CSV field "${field}" for ${col.key} omits its measure ` +
+                    `qualifier "${want}" — a downstream script reading this file ` +
+                    `still sees a bare ${col.kind} column`
+                );
+              }
+            }
+            notes.push("leg i3/i4: \u2020 header, footnote, cell data-measure and CSV header ✓");
           }
         }
       }

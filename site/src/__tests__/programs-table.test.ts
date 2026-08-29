@@ -25,6 +25,7 @@ function fullProgram(over: Partial<ProgramRow> = {}): ProgramRow {
     org: "F",
     exhibit_family: "procurement",
     fully_reconciled: false,
+    reconciled_in_scope: true,
     fy2024_actual_millions: 5247.07,
     fy2024_fact_id: "a".repeat(16),
     fy2024_xml_path: null,

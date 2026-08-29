@@ -85,6 +85,7 @@ const PROGRAM: ProgramRow = {
   award_count: 0,
   exhibit_family: "rdte",
   fully_reconciled: true,
+  reconciled_in_scope: true,
   fy2024_actual_millions: 100,
   fy2024_fact_id: null,
   fy2024_xml_path: null,

@@ -6569,26 +6569,43 @@ def _write_all_sidecars(
     # pe_bli with >1 dim_programs row is a genuine appropriation-account
     # collision (see _ProgramIdentity above), and every consumer below that
     # used to treat "one row per pe_bli" as an invariant must be re-checked.
+    # Tri-persona review Wave 2: reconciled_in_scope is APPENDED (index 9) —
+    # every by-index consumer below (r[7]/r[8]) keeps its meaning, and only
+    # the three positional 9-unpacks widen. The fallback tiers pad None at
+    # the end, which the badge renders as "no in-scope detail" rather than
+    # silently reverting to the fully_reconciled predicate this column exists
+    # to replace.
     try:
         prog_rows = con.execute(
             "select pe_bli, org, exhibit_family, title, project_count,"
-            " fy2024_actual_millions, fully_reconciled, account, account_title"
+            " fy2024_actual_millions, fully_reconciled, account, account_title,"
+            " reconciled_in_scope"
             " from dim_programs order by pe_bli, account"
         ).fetchall()
     except Exception:
-        # Task E3: a dim_programs table predating E1's account/account_title
-        # columns (an older test fixture) — fall back to the pre-E3 7-column
-        # query and pad (None, None); ident (computed above from the SAME
-        # table) will already be the empty identity in this case, so every
-        # is_split check below is False regardless.
-        prog_rows = [
-            (*r, None, None)
-            for r in con.execute(
-                "select pe_bli, org, exhibit_family, title, project_count,"
-                " fy2024_actual_millions, fully_reconciled from dim_programs"
-                " order by pe_bli"
-            ).fetchall()
-        ]
+        try:
+            prog_rows = [
+                (*r, None)
+                for r in con.execute(
+                    "select pe_bli, org, exhibit_family, title, project_count,"
+                    " fy2024_actual_millions, fully_reconciled, account,"
+                    " account_title from dim_programs order by pe_bli, account"
+                ).fetchall()
+            ]
+        except Exception:
+            # Task E3: a dim_programs table predating E1's account/account_title
+            # columns (an older test fixture) — fall back to the pre-E3 7-column
+            # query and pad (None, None); ident (computed above from the SAME
+            # table) will already be the empty identity in this case, so every
+            # is_split check below is False regardless.
+            prog_rows = [
+                (*r, None, None, None)
+                for r in con.execute(
+                    "select pe_bli, org, exhibit_family, title, project_count,"
+                    " fy2024_actual_millions, fully_reconciled from dim_programs"
+                    " order by pe_bli"
+                ).fetchall()
+            ]
     # (ident is computed once, at the top of this function.)
 
     # Trajectory-only feed programs (backlog #17): feed events reference
@@ -6602,9 +6619,11 @@ def _write_all_sidecars(
     # (their orgs — A/N/F service workbook codes — have no agency pages).
     # They carry no (account, account_title) of their own — dim_programs has
     # no row for them at all, so they are never a split key — padded with
-    # (None, None) to match prog_rows' widened 9-tuple shape.
+    # (None, None) to match prog_rows' widened 9-tuple shape, plus a third
+    # None for reconciled_in_scope (there is no R-2/P-40 detail behind these
+    # rows to reconcile — they render at rollup tier anyway).
     synth_prog_rows = [
-        (*r, None, None)
+        (*r, None, None, None)
         for r in _trajectory_only_feed_programs(con, {r[0] for r in prog_rows})
     ]
     all_prog_rows = prog_rows + synth_prog_rows
@@ -6984,7 +7003,8 @@ def _write_all_sidecars(
     programs_list = []
     for r in all_prog_rows:
         (pe_bli, org, exhibit_family, title, project_count,
-         fy2024_actual_millions, fully_reconciled, account, account_title) = r
+         fy2024_actual_millions, fully_reconciled, account, account_title,
+         reconciled_in_scope) = r
         # Task E3 (Sprint E, ROADMAP #67): one programs.json ENTRY per
         # dim_programs row (all_prog_rows is a list, never deduped) — for
         # the 8 genuine appropriation-account collisions this loop runs
@@ -7059,6 +7079,10 @@ def _write_all_sidecars(
                 else None
             ),
             "fully_reconciled": fully_reconciled,
+            # Tri-persona review Wave 2: the RENDERED reconciliation badge
+            # reads this, not fully_reconciled. See dim_programs.sql's
+            # details CTE for why the two differ on 1,310 programs.
+            "reconciled_in_scope": reconciled_in_scope,
             "hhi": hhi_by_pe.get(pe_bli),
             # Task E3: gated on owns_detail for the same reason as
             # fy2024_fact_id — narr_by_pe is bare pe_bli and (per
@@ -8001,7 +8025,8 @@ def _write_all_sidecars(
 
     for r in prog_rows:
         (pe_bli, org, exhibit_family, title, project_count,
-         fy2024_actual_millions, fully_reconciled, account, _account_title) = r
+         fy2024_actual_millions, fully_reconciled, account, _account_title,
+         _reconciled_in_scope) = r
         org_prog_count[org] += 1
         cur = org_fy2024_millions.get(org, 0.0)
         org_fy2024_millions[org] = cur + (fy2024_actual_millions or 0.0)
@@ -8160,7 +8185,8 @@ def _write_all_sidecars(
     # generateStaticParams source)
     for r in all_prog_rows:
         (pe_bli, org, exhibit_family, title, project_count,
-         fy2024_actual_millions, fully_reconciled, account, account_title) = r
+         fy2024_actual_millions, fully_reconciled, account, account_title,
+         _reconciled_in_scope) = r
         is_split = pe_bli in ident.split_pe_blis
         slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # The PROGRAM's total (backlog #37) — search ranks and labels a
@@ -10672,7 +10698,12 @@ def _emit_years_matrix(
       _build_decade_citation_rows: the workbook fact for single-source
       grains, the derived decade sum otherwise). Cited grains become
       program cells under keys 'fy{fy}{a|e|r}'; the payload header gains
-      "decade_columns" [{key, fy, kind, edition}] (edition-honest rule:
+      "decade_columns" [{key, fy, kind, edition, measures?}] — `measures` is
+      the sorted set of extended measure tokens the column's EMITTED cells
+      carry, present only when at least one differs from `kind` (e.g.
+      fy2024e → ["enacted-request"]); a mixed column additionally stamps the
+      divergent cells' own token as cell["m"], and a cell without `m`
+      resolves to `kind` (edition-honest rule:
       actuals FY N ← PB(N+2)) and "decade_default_columns" (spec §1:
       FY2015A…FY2024A + FY2025E + FY2026R). Grains absent from an edition
       simply have no cell — "–", never 0; uncited grains never render.
@@ -10770,7 +10801,19 @@ def _emit_years_matrix(
     # cells. key_org (populated only for is_org_split pe_blis) fixes it.
     decade_cells_by_pe: dict[tuple, dict] = defaultdict(dict)
     decade_col_meta: dict[str, dict] = {}
-    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid, _d_at, d_account, d_org in (
+    #
+    # Tri-persona review Wave 2 — the QUALIFIER travels with the cell.
+    # A decade column is labelled by its KIND ("FY2024E" → Enacted), but the
+    # workbook column the money was read from does not always report that
+    # kind: FY2024's "enacted" is column K of the PB2025 R-1 workbook, headed
+    # "FY 2024 PB Request with CR Amounts*" — the request, adjusted for the
+    # continuing resolution, not an enacted appropriation. The program page's
+    # decade grid has carried the kind-qualified token since 5E
+    # (_decade_measure_token, 'enacted-request'); /years/ threw `_d_at` away
+    # and published the bare kind, on the one surface where cross-program
+    # "asked vs got" analysis actually happens. `m` is the cell's own token;
+    # `measures` (set below, once the emitted set is known) is the column's.
+    for pe_bli, d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account, d_org in (
         decade_grains or []
     ):
         key = _decade_column_key(d_fy, d_kind)
@@ -10787,9 +10830,12 @@ def _emit_years_matrix(
         # honesty: only cited grains become cells (missing renders '–')
         if d_fid is not None and d_fid in cited_fact_ids and d_amount is not None:
             key_org = d_org if ident.is_org_split(pe_bli) else None
-            decade_cells_by_pe[(pe_bli, _acct_key(pe_bli, d_account), key_org)][key] = {
-                "v": d_amount, "fid": d_fid,
-            }
+            cell = {"v": d_amount, "fid": d_fid}
+            _, _measure = _amount_type_meta(d_at, d_edition)
+            _token = _decade_measure_token(d_kind, _measure)
+            if _token != d_kind:
+                cell["m"] = _token
+            decade_cells_by_pe[(pe_bli, _acct_key(pe_bli, d_account), key_org)][key] = cell
 
     def _program_cells(
         pe_bli: str, translated_org: str, account: str | None = None,
@@ -10879,7 +10925,12 @@ def _emit_years_matrix(
     # entry per split key is now two correct ones.
     by_org: dict[str, list] = defaultdict(list)
     for r in all_prog_rows:
-        pe_bli, org, _fam, title, _pc, _fy24m, _rec, account, account_title = r
+        # By INDEX, not by unpack: prog_rows gained a trailing
+        # reconciled_in_scope (tri-persona review Wave 2) and this function is
+        # also called directly by tests with the pre-Wave-2 9-tuple. The
+        # leading nine positions are stable; nothing here reads past [8].
+        pe_bli, org, title = r[0], r[1], r[3]
+        account, account_title = r[7], r[8]
         by_org[org].append((pe_bli, title, account, account_title))
 
     orgs_out = []
@@ -10959,6 +11010,34 @@ def _emit_years_matrix(
             for key in p["cells"]
             if key in decade_col_meta
         }
+        # Tri-persona review Wave 2: the column's own measure vocabulary,
+        # over the cells it ACTUALLY emits (not over every grain the mart
+        # holds — a column whose divergent rows all failed the citation
+        # filter must not fly a qualifier it does not carry).
+        #
+        # `measures` is present only when at least one emitted cell's token
+        # differs from the column kind. When the column is uniform, the
+        # per-cell `m` is redundant and dropped (~23k cells' worth of bytes);
+        # when it is mixed — fy2025e is, in the shipped corpus: 'enacted'
+        # from FY 2025 Enacted and 'enacted-total' from FY 2025 Total — the
+        # divergent cells keep their own `m` and the client resolves each
+        # cell as `m ?? kind`.
+        decade_cell_index: dict[str, list[dict]] = {}
+        for o in orgs_out:
+            for p in o["programs"]:
+                for k, c in p["cells"].items():
+                    if k in decade_col_meta:
+                        decade_cell_index.setdefault(k, []).append(c)
+        for key in used_decade:
+            meta = decade_col_meta[key]
+            cells_here = decade_cell_index.get(key, [])
+            tokens = sorted({c.get("m") or meta["kind"] for c in cells_here})
+            if tokens == [meta["kind"]]:
+                continue
+            meta["measures"] = tokens
+            if len(tokens) == 1:
+                for c in cells_here:
+                    c.pop("m", None)
         decade_columns = sorted(
             (decade_col_meta[k] for k in used_decade),
             key=lambda c: (c["fy"], _DECADE_KIND_ORDER[c["kind"]]),

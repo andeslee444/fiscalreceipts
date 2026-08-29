@@ -31,6 +31,7 @@ const PROGRAM: ProgramRow = {
   award_count: 0,
   exhibit_family: "procurement",
   fully_reconciled: false,
+  reconciled_in_scope: false,
   fy2024_actual_millions: 5247.07,
   fy2024_fact_id: "bb54b1658b2746cb",
   fy2024_xml_path: null,

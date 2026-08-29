@@ -189,6 +189,28 @@
  *   Warehouse facts come from scripts/gates/aliasrouting-resolve.py, the same
  *   spawn-a-helper shape leg (d) uses.
  *
+ * LEG (k) — the reconciliation BADGE must mean what the data says
+ *   (tri-persona review Wave 2; letter checked free against a-j above):
+ *
+ *   dim_programs.fully_reconciled was bool_and(reconciled) over EVERY J-book
+ *   scenario, including AllPriorYears — which reconcile.scenario_map() issues
+ *   no check for, so its rows are 0-of-3,267 reconciled by construction. The
+ *   badge read that flag, so 1,310 programs whose every checked scenario ties
+ *   wore the same "Partial Reconciliation" warning as the 87 with a real
+ *   failure, and the term was defined neither on the page nor in /glossary/.
+ *
+ *   k1 VERDICT AGREEMENT — the badge a page RENDERS (read from its own text,
+ *      so the leg reads a pre-fix build honestly) equals the verdict the
+ *      warehouse supports, per reconbadge-recompute.py — which takes its scope
+ *      from reconcile.scenario_map() itself, never from the mart under test.
+ *   k2 TERM DEFINED — every rendered badge term appears in the built
+ *      /glossary/, and the badge links there.
+ *   k3 STATE DECLARED — every badge carries data-reconciliation-badge.
+ *   k4 NON-VACUITY — structural: the population is every program page
+ *      rendering a known badge, every full-tier one must join to a verdict,
+ *      and both the pass and the fail verdicts must actually occur.
+ *   See runReconciliationBadgeLeg at the bottom of this file.
+ *
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
@@ -1116,6 +1138,9 @@ export async function runBasisGate() {
 
   // ── Leg (j) — curated alias routing (#55) ─────────────────────────────────
   runAliasRoutingLeg(errors, notes);
+
+  // ── Leg (k) — the reconciliation badge must mean what the data says ───────
+  runReconciliationBadgeLeg(pages, errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -3330,4 +3355,306 @@ if (
   for (const n of result.notes) console.log(`  note: ${n}`);
   for (const e of result.errors) console.log(`  ✗ ${e}`);
   process.exit(result.pass ? 0 : 1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (k) — THE BADGE MUST MEAN WHAT THE DATA SAYS  (tri-persona review Wave 2)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The shipped defect: `dim_programs.fully_reconciled` was bool_and(reconciled)
+// over EVERY J-book detail scenario. One of those, `AllPriorYears`, is a
+// cumulative to-date element with no R-1/P-1 display column, so
+// govbudget.jbooks.reconcile never issues a Gate A/B check for it and its rows
+// keep reconciled=false permanently — 0 of 3,267 rows in the shipped PB2026
+// corpus. The program-page badge read that flag, so 1,310 programs whose every
+// CHECKED scenario ties wore the identical "Partial Reconciliation" warning as
+// the 87 with a genuine failure, and a reader had no way to separate them.
+// B-21 (all checks tie) and F-47 (five real BudgetYearOne failures) rendered
+// the same words. Every number on both pages was true and cited; the falsehood
+// was in a LABEL, which is precisely the class the 24-gate suite checked
+// nowhere. The term was also undefined on the page and absent from /glossary/.
+//
+// This leg is the general form of that: a verdict rendered on a page must be
+// the verdict its own evidence supports, and a term the site invents must be
+// defined where a reader meets it.
+//
+//   k1 VERDICT AGREEMENT — the badge a program page RENDERS (read from the
+//      badge's own text, so the leg works on any build, before or after the
+//      attribute contract below existed) must equal the verdict the warehouse
+//      supports for that program element. Truth comes from
+//      reconbadge-recompute.py, which derives the checked scenario set from
+//      reconcile.scenario_map() itself — never from dim_programs, whose column
+//      is the artifact under test, and never from a second transcription of
+//      the scenario list (a gate that agrees with a copy of the rule it is
+//      checking agrees with itself).
+//   k2 TERM DEFINED — every distinct badge term rendered on a program page
+//      must appear verbatim in the built /glossary/ page, and the badge must
+//      LINK there. A verdict word that exists nowhere else on the site is not
+//      a disclosure; "Partial Reconciliation" appeared on 1,410 pages and in
+//      no definition anywhere.
+//   k3 STATE DECLARED — every reconciliation badge must carry
+//      data-reconciliation-badge, so the rendered verdict is machine-readable
+//      and k1 can never silently degrade into text-sniffing alone.
+//   k4 NON-VACUITY (structural, not a pinned floor) — the population is the
+//      RENDERED set: every out/program/*/index.html that renders one of the
+//      known reconciliation badges. It must be non-empty; every full-tier page
+//      must join to a warehouse verdict; and the badge vocabulary must be
+//      exercised — a corpus in which no page ever renders a failure verdict
+//      would satisfy k1 trivially while proving nothing about the distinction
+//      this leg exists to protect.
+//
+// SPLIT KEYS. dim_programs' grain is (pe_bli, account, org): 11 pe_blis in the
+// shipped corpus publish two-or-more pages, and the warehouse verdict here is
+// per pe_bli, so those pages are checked for vocabulary/definition/declaration
+// (k2-k4) but excluded from k1's equality. The count is reported in the notes;
+// it is a disclosed hole, never a silent one.
+
+/** Rendered badge text → the verdict it asserts. Legacy wordings included so
+ *  the leg reads a PRE-fix build honestly instead of finding nothing. */
+const RECON_BADGE_VERDICT = new Map([
+  ["Reconciled", "reconciled"],
+  ["Fully Reconciled", "reconciled"],
+  ["Partial Reconciliation", "partial"],
+  ["No detail to reconcile", "no-detail"],
+  ["Summary figures (R-1/P-1)", "rollup"],
+]);
+
+function runReconciliationBadgeLeg(pages, errors, notes) {
+  const script = path.join(__dirname, "reconbadge-recompute.py");
+  if (!fs.existsSync(script)) {
+    errors.push(`leg k: recompute helper missing at ${script}`);
+    return;
+  }
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    errors.push(
+      `leg k: reconbadge-recompute.py failed (status ${res.status}): ` +
+        `${(res.stderr || res.error?.message || "").slice(0, 400)}`,
+    );
+    return;
+  }
+  let truth;
+  try {
+    truth = JSON.parse(res.stdout);
+  } catch (e) {
+    errors.push(`leg k: recompute produced non-JSON output (${e.message})`);
+    return;
+  }
+  if (truth.__error__) {
+    errors.push(`leg k: recompute could not run — ${truth.__error__}`);
+    return;
+  }
+
+  // Pages published under more than one slug for the same pe_bli — see the
+  // SPLIT KEYS note above.
+  const slugsByPe = new Map();
+  const peBySlug = new Map();
+  const programsPath = path.join(repoRoot, "data", "site", "json", "programs.json");
+  if (!fs.existsSync(programsPath)) {
+    errors.push("leg k: data/site/json/programs.json missing — cannot resolve page slugs");
+    return;
+  }
+  let programRows;
+  try {
+    programRows = JSON.parse(fs.readFileSync(programsPath, "utf8"));
+  } catch (e) {
+    errors.push(`leg k: programs.json unreadable (${e.message})`);
+    return;
+  }
+  for (const row of programRows) {
+    if (!row || typeof row.pe_bli !== "string") continue;
+    const slug = typeof row.slug === "string" ? row.slug : row.pe_bli;
+    peBySlug.set(slug, row.pe_bli);
+    if (!slugsByPe.has(row.pe_bli)) slugsByPe.set(row.pe_bli, new Set());
+    slugsByPe.get(row.pe_bli).add(slug);
+  }
+
+  const glossaryPath = path.join(outDir, "glossary", "index.html");
+  const glossaryText = fs.existsSync(glossaryPath)
+    ? parse(fs.readFileSync(glossaryPath, "utf8"), { comment: false }).text
+    : null;
+  if (glossaryText === null) {
+    errors.push("leg k2: out/glossary/index.html was not built — no term can be defined");
+  }
+
+  const verdictCounts = new Map();
+  const mismatches = [];
+  const undeclared = [];
+  const unlinked = [];
+  const unknownBadge = [];
+  const undefinedTerms = new Set();
+  let badgePages = 0;
+  let splitSkipped = 0;
+  let noDetailPages = 0;
+
+  for (const { pe: slug, htmlPath } of pages) {
+    const relPath = path.relative(outDir, htmlPath);
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch {
+      continue; // the main scan already reported the parse failure
+    }
+    // Read what a reader reads: the badge's own rendered words.
+    let badgeEl = null;
+    let term = null;
+    for (const el of root.querySelectorAll('[data-slot="badge"]')) {
+      const t = (el.text || "").trim();
+      if (RECON_BADGE_VERDICT.has(t)) {
+        badgeEl = el;
+        term = t;
+        break;
+      }
+    }
+    if (!badgeEl) {
+      unknownBadge.push({ slug, rel: relPath });
+      continue;
+    }
+    badgePages++;
+    const verdict = RECON_BADGE_VERDICT.get(term);
+    verdictCounts.set(verdict, (verdictCounts.get(verdict) ?? 0) + 1);
+
+    // k3 — the state must be declared, not only spelled.
+    if (!badgeEl.getAttribute("data-reconciliation-badge")) {
+      if (undeclared.length < MAX_LISTED) undeclared.push(`${relPath}: "${term}"`);
+    }
+
+    // k2 — defined in the glossary, and reachable from the badge itself.
+    if (glossaryText !== null && verdict !== "rollup" && !glossaryText.includes(term)) {
+      undefinedTerms.add(term);
+    }
+    if (verdict !== "rollup") {
+      const html = badgeEl.parentNode ? badgeEl.parentNode.toString() : badgeEl.toString();
+      if (!/href="[^"]*\/glossary\//.test(html)) {
+        if (unlinked.length < MAX_LISTED) unlinked.push(`${relPath}: "${term}"`);
+      }
+    }
+
+    if (verdict === "rollup") continue; // R-1/P-1 summary tier: no J-book detail
+
+    const pe = peBySlug.get(slug) ?? slug;
+    if ((slugsByPe.get(pe)?.size ?? 1) > 1) {
+      splitSkipped++;
+      continue; // disclosed hole — see SPLIT KEYS above
+    }
+    // A pe_bli with no in-scope detail row — or with no stg_budget_details row
+    // at all (the trajectory-only feed programs, which have a page but no
+    // R-2/P-40 exhibit) — supports exactly one verdict: nothing was checked.
+    const expected = truth.verdicts[pe] ?? "no-detail";
+    if (!truth.verdicts[pe]) noDetailPages++;
+    if (expected !== verdict) {
+      if (mismatches.length < MAX_LISTED) {
+        mismatches.push(
+          `${relPath}: renders "${term}" (${verdict}) but the warehouse says ` +
+            `${expected} for ${pe}`,
+        );
+      }
+      const k = `${verdict}->${expected}`;
+      verdictCounts.set(`MISMATCH ${k}`, (verdictCounts.get(`MISMATCH ${k}`) ?? 0) + 1);
+    }
+  }
+
+  // ── k4 NON-VACUITY (structural) ──
+  if (badgePages === 0) {
+    errors.push(
+      "leg k is VACUOUS: not one of the " +
+        `${pages.length} program pages renders a recognised reconciliation badge ` +
+        `(known wordings: ${[...RECON_BADGE_VERDICT.keys()].join(" / ")})`,
+    );
+    return;
+  }
+  // A page with no reconciliation badge is legitimate in exactly one shape:
+  // the DISAMBIGUATION page a split key publishes at its bare code
+  // (/program/0145/ → "this code is used by 2 separate programs"), which
+  // carries no figures of its own. That set is derived from programs.json —
+  // every pe_bli with more than one row — never hardcoded, so a genuinely
+  // badgeless program page can never hide inside it.
+  const splitPes = new Set(
+    [...slugsByPe].filter(([, slugs]) => slugs.size > 1).map(([pe]) => pe),
+  );
+  const unexplainedBadgeless = unknownBadge.filter((p) => !splitPes.has(p.slug));
+  const missingDisambiguation = [...splitPes].filter(
+    (pe) => !unknownBadge.some((p) => p.slug === pe),
+  );
+  if (unexplainedBadgeless.length) {
+    errors.push(
+      `leg k4: ${unexplainedBadgeless.length} program page(s) render NO recognised ` +
+        `reconciliation badge and are not a split key's disambiguation page — ` +
+        `the population is not the rendered set: ` +
+        unexplainedBadgeless.slice(0, MAX_LISTED).map((p) => p.rel).join(", "),
+    );
+  }
+  if (missingDisambiguation.length) {
+    errors.push(
+      `leg k4: ${missingDisambiguation.length} split key(s) publish no badgeless ` +
+        `disambiguation page — the badgeless set no longer matches programs.json's ` +
+        `own multi-row keys: ${missingDisambiguation.slice(0, MAX_LISTED).join(", ")}`,
+    );
+  }
+  for (const required of ["reconciled", "partial"]) {
+    if (!verdictCounts.get(required)) {
+      errors.push(
+        `leg k4: no program page renders the "${required}" verdict — the badge ` +
+          "vocabulary is not exercised, so k1 proves nothing about the " +
+          "distinction between a clean line and a failing one",
+      );
+    }
+  }
+
+  // ── k1 ──
+  const nMismatch = [...verdictCounts]
+    .filter(([k]) => k.startsWith("MISMATCH "))
+    .reduce((a, [, v]) => a + v, 0);
+  if (nMismatch) {
+    const breakdown = [...verdictCounts]
+      .filter(([k]) => k.startsWith("MISMATCH "))
+      .map(([k, v]) => `${v}× ${k.slice(9)}`)
+      .join(", ");
+    errors.push(
+      `leg k1: ${nMismatch} program page(s) render a reconciliation verdict the ` +
+        `warehouse does not support (${breakdown}). AllPriorYears is ` +
+        `${truth.scenario_rows?.AllPriorYears?.reconciled ?? 0} of ` +
+        `${truth.scenario_rows?.AllPriorYears?.rows ?? 0} reconciled BY DESIGN ` +
+        `(reconcile.scenario_map() issues no check for it); the checked set is ` +
+        `${truth.in_scope_scenarios.join("/")}. First ${Math.min(mismatches.length, MAX_LISTED)}: ` +
+        mismatches.join(" | "),
+    );
+  }
+  // ── k2 ──
+  if (undefinedTerms.size) {
+    errors.push(
+      `leg k2: badge term(s) rendered on program pages but defined nowhere in ` +
+        `/glossary/: ${[...undefinedTerms].map((t) => `"${t}"`).join(", ")}`,
+    );
+  }
+  if (unlinked.length) {
+    errors.push(
+      `leg k2: ${unlinked.length}+ reconciliation badge(s) do not link to ` +
+        `/glossary/ — the term is unreachable from where the reader meets it: ` +
+        unlinked.join(", "),
+    );
+  }
+
+  // ── k3 ──
+  if (undeclared.length) {
+    errors.push(
+      `leg k3: ${undeclared.length}+ reconciliation badge(s) carry no ` +
+        `data-reconciliation-badge attribute: ${undeclared.join(", ")}`,
+    );
+  }
+
+  notes.push(
+    `leg k: ${badgePages} program pages carry a reconciliation badge ` +
+      `(${[...verdictCounts]
+        .filter(([k]) => !k.startsWith("MISMATCH "))
+        .map(([k, v]) => `${k} ${v}`)
+        .join(", ")}); warehouse verdicts ` +
+      `${JSON.stringify(truth.counts)}; ${splitSkipped} split-key page(s) ` +
+      `excluded from k1 (one pe_bli, several pages); ${noDetailPages} page(s) ` +
+      `expect "no detail" (no in-scope J-book row at all)`,
+  );
 }

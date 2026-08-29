@@ -117,6 +117,20 @@ export const GLOSSARY: GlossaryEntry[] = [
       "Used two ways here. (1) The verification check where a program's P-1/R-1 workbook TOA is compared against its R-2/P-40 detail-exhibit total for the same year, shown as the reconciliation strip under a program's figures. (2) For FY2026 specifically, the congressional budget reconciliation process: a one-time funding mechanism separate from the annual discretionary appropriations bill. Context on the page makes clear which sense applies.",
   },
   {
+    id: "partial-reconciliation",
+    term: "Partial Reconciliation",
+    expansion: "The badge on a program page's header",
+    definition:
+      "The reconciliation badge states the result of the checks described under How we verify. “Reconciled” means every scenario this site checks — prior-year actuals, current-year enacted, and the budget-year request and its base — ties to the R-1/P-1 workbook rollup for that line. “Partial Reconciliation” means at least one of those checks failed and the failure is filed in the review queue; it is a real, specific disagreement, not a to-do. “No detail to reconcile” means the line has no R-2/P-40 detail to check against, so no check ran. One scenario in the J-book XML, All Prior Years, is a cumulative to-date figure with no R-1 or P-1 column to compare it to; it is never checked and never counted against a line's badge.",
+  },
+  {
+    id: "enacted-request",
+    term: "Enacted (request column)",
+    expansion: "An enacted year reported through a request column",
+    definition:
+      "Some President's Budget editions publish no enacted column for the prior year, because that year ran under a continuing resolution when the book went to press. The PB2025 books report FY2024 in a column headed “FY 2024 PB Request with CR Amounts*” — the request, adjusted for the CR, not an appropriation Congress passed. FY2017 and FY2018 have the same shape in the PB2018 and PB2019 books. Fiscal Receipts still files those figures under the year's Enacted row, because that is the slot the book itself fills, and marks every such column so the label never reads as an enacted total. Treat these cells as “asked for”, never as “got”.",
+  },
+  {
     id: "hhi",
     term: "HHI",
     expansion: "Herfindahl-Hirschman Index",

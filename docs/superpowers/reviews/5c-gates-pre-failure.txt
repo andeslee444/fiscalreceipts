@@ -10313,3 +10313,126 @@ WHAT THE CORRECTED SURFACES SAY NOW (post-fix build, verbatim):
      disc-pct-change="-99.2" recon-fact="11020da183a1c682" .../>
 
   /agency/N/: <title>Navy</title>, <h1>Navy</h1> (was "N" for both).
+
+
+================================================================================
+TRI-PERSONA REVIEW WAVE 2 -- the two badges that are wrong at scale
+gate 23 leg (k)  -- the reconciliation badge must mean what the data says
+gate 20 leg (i)  -- a measure label on a figure must match the column it came from
+================================================================================
+
+Suite stays at 24 gates. Both are LEGS on existing gates:
+  grep -c "gateResults.push" site/scripts/verify.mjs -> 24
+
+THE ONE CLASS. Both defects are the same shape as everything Wave 1 found: a
+true, correctly-cited number wearing a false LABEL. Neither is a wrong number.
+The 24-gate suite checked number-to-citation exhaustively and label-to-evidence
+nowhere, which is why both shipped.
+
+WHAT I MEASURED FIRST (the brief's figures did not all reproduce -- see
+"WHAT DID NOT REPRODUCE" at the end of this block).
+
+  Task 1, dim_programs (1,753 rows), shipped PB2026 warehouse 2026-08-29:
+
+    scenario           rows   reconciled
+    PriorYear          4530   4419
+    CurrentYear        4453   4348
+    BudgetYearOne      4415   4280
+    BudgetYearOneBase  4363   4166
+    AllPriorYears      3267      0     <-- 0 of 3,267, by construction
+
+    fully_reconciled = true    345 rows   (344 distinct pe_bli)
+    fully_reconciled = false  1398 rows
+    fully_reconciled = null     10 rows   (the detail-less synth side)
+
+    Splitting the 1,398 by in-scope verdict:
+      1,310  every CHECKED scenario ties; only AllPriorYears fails
+         87  a genuine in-scope failure
+          1  no in-scope row at all (only AllPriorYears detail)
+
+    Rendered on the built site (out/program/*/index.html, grep -l):
+      "Fully Reconciled"           345 pages
+      "Partial Reconciliation"   1,410 pages   <-- 1,310 clean + 87 broken + 13
+      "Summary figures (R-1/P-1)"  250 pages
+
+  Task 2, /years/ decade columns:
+
+    R-1 column K header, verbatim, from data/site/json/workbook-cells/:
+      "FY 2024 PB Request with CR Amounts*"          (934 cited cells)
+    P-1 column Q header:
+      "FY 2024 PB Request with CR Adjustments Amount*" (583 cited cells)
+
+    On /years/ itself, FY2024E and FY2024R are byte-identical for 1,525 of
+    1,525 programs carrying both -- 100%, because they are the same column.
+
+--------------------------------------------------------------------------------
+VERBATIM FAIL -- gate 23 leg (k), against the PRE-FIX build (HEAD 16cc91a)
+--------------------------------------------------------------------------------
+
+NOTE  leg k: 2005 program pages carry a reconciliation badge (reconciled 345, partial 1410, rollup 250); warehouse verdicts {"reconciled":1651,"partial":87,"no_detail":1,"all_scenario_pass":344}; 23 split-key page(s) excluded from k1 (one pe_bli, several pages); 3 page(s) expect "no detail" (no in-scope J-book row at all)
+ERROR leg k1: 1301 program page(s) render a reconciliation verdict the warehouse does not support (1298× partial->reconciled, 3× partial->no-detail). AllPriorYears is 0 of 3267 reconciled BY DESIGN (reconcile.scenario_map() issues no check for it); the checked set is BudgetYearOne/BudgetYearOneBase/CurrentYear/PriorYear. First 10: program/000071/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 000071 | program/00098A/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 00098A | program/00098K/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 00098K | program/000999/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 000999 | program/0023A01001/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0023A01001 | program/0050E89600/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0050E89600 | program/0100MF9000/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0100MF9000 | program/0101113F/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0101113F | program/0101122F/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0101122F | program/0101126F/index.html: renders "Partial Reconciliation" (partial) but the warehouse says reconciled for 0101126F
+ERROR leg k2: badge term(s) rendered on program pages but defined nowhere in /glossary/: "Fully Reconciled", "Partial Reconciliation"
+ERROR leg k2: 10+ reconciliation badge(s) do not link to /glossary/ — the term is unreachable from where the reader meets it: program/000042/index.html: "Fully Reconciled", program/000071/index.html: "Partial Reconciliation", program/000073/index.html: "Fully Reconciled", program/000074/index.html: "Fully Reconciled", program/000075/index.html: "Fully Reconciled", program/00098A/index.html: "Partial Reconciliation", program/00098K/index.html: "Partial Reconciliation", program/000999/index.html: "Partial Reconciliation", program/00099L/index.html: "Partial Reconciliation", program/0010I24000/index.html: "Partial Reconciliation"
+ERROR leg k3: 10+ reconciliation badge(s) carry no data-reconciliation-badge attribute: program/000042/index.html: "Fully Reconciled", program/000071/index.html: "Partial Reconciliation", program/000073/index.html: "Fully Reconciled", program/000074/index.html: "Fully Reconciled", program/000075/index.html: "Fully Reconciled", program/000079/index.html: "Summary figures (R-1/P-1)", program/00098A/index.html: "Partial Reconciliation", program/00098K/index.html: "Partial Reconciliation", program/000999/index.html: "Partial Reconciliation", program/00099L/index.html: "Partial Reconciliation"
+
+1,301 = 1,298 pages that should read "Reconciled" + 3 that should read
+"No detail to reconcile" (2939B09600, whose only PB2026 detail is
+AllPriorYears, plus the two trajectory-only feed programs 0603115DHA and
+0708083D, which have a page but no J-book detail at all).
+
+The leg reads the badge's OWN RENDERED TEXT, not an attribute, so it reads a
+pre-fix build honestly instead of finding nothing. Its truth comes from
+reconbadge-recompute.py, which imports reconcile.scenario_map() -- Gate B's
+loop is `candidates = edition_map.get(scenario); if (!candidates) continue`,
+so that function's keys ARE the checked set by construction. It never reads
+dim_programs: comparing the mart against a copy of the mart's own rule is how
+a wrong scope ships past three checks that all agree with each other.
+
+--------------------------------------------------------------------------------
+VERBATIM FAIL -- gate 20 leg (i), against the PRE-FIX years_matrix.json
+--------------------------------------------------------------------------------
+
+NOTE  leg i: 29614/29916 decade cells checked against their own workbook column header across 30 columns; 0 column(s) publish a measure qualifier (none)
+ERROR leg i5: no decade column publishes a measure qualifier at all. Either every column's workbook header agrees with its kind — which the PB2018/PB2019/PB2025 continuing-resolution columns make false — or the exporter stopped emitting decade_columns[].measures
+ERROR leg i1: 2888 of 29614 decade cells publish a measure label its own workbook column header contradicts (fy2024e ×1517, fy2018e ×701, fy2017e ×670). 0023A01001/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0050E89600/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0050MA0780/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0100MF9000/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0122TA0600/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0125B96000/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0125WK5057/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0128B63000/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0132E00700/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*" | 0140KA3500/fy2024e: published measure "enacted" but the workbook column it was read from is headed "FY 2024 PB Request with CR Adjustments Amount*"
+
+The predicate is NOT the exporter's slug-to-measure table. It is the workbook's
+OWN column header string, shipped per fact in json/workbook-cells/*.json --
+the literal text of the Excel header the number was read out of. A published
+measure token must name at least one measure family its header names;
+"enacted" over a header saying "PB Request with CR Amounts" names none.
+"enacted-request" names both, and both are true.
+
+The leg is silent where the header makes no measure claim ("FY 2015 (Base &
+OCO)", "FY 2025 Total") -- it flags contradiction, never mere difference, so
+it produces zero false positives across the other 27 columns.
+
+WHAT DID NOT REPRODUCE (verify every number yourself, including mine):
+
+  * "52 programs with a genuine in-scope failure" -> the real number is 87.
+    52 is what you get from the scenario list in jbooks/verify.py's
+    accuracy_gate DOCSTRING ("PriorYear, CurrentYear, BudgetYearOne"), which
+    omits BudgetYearOneBase. But scenario_map() DOES return candidate slugs
+    for BudgetYearOneBase, so Gate B does check it, and 73 programs carry an
+    unreconciled BudgetYearOneBase row. Under the narrow list the split is
+    345 / 1,345 / 52; under the pipeline's real scope it is 345 / 1,310 / 87.
+    The gate takes its scope from scenario_map(), not from the docstring.
+    Filed as a live understatement of the site's own failure count: 35 real
+    reconciliation failures were about to be relabelled clean.
+
+  * "1,343 partial-but-clean" -> 1,310 under the real scope (1,345 under the
+    narrow one). "~344 fully reconciled" -> 344 distinct pe_bli / 345
+    dim_programs rows (one is a split key with two rows).
+
+  * "98.2% of FY2024 Enacted values are byte-identical to the FY2024 request
+    (1,736 of 1,767)" -> 100%. In fct_decade_series, 1,724 of 1,724 pe_blis
+    reporting both FY2024 enacted and FY2024 request report the SAME value;
+    on /years/ it is 1,525 of 1,525. The defect is worse than reported, not
+    milder: there is no 1.8% of genuinely-enacted FY2024 figures hiding in
+    the column.
+
+  * "the term is absent from /glossary/" -> reproduced exactly (leg k2).
+  * "cell K2 of the PB2025 r1_display.xlsx reads 'FY 2024 PB Request with CR
+    Amounts*'" -> reproduced exactly; the shipped citations put those 934
+    R-1 cells in column K under that header, and the 583 P-1 cells in column
+    Q under "FY 2024 PB Request with CR Adjustments Amount*".

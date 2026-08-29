@@ -5,7 +5,7 @@ import { CategoryHero } from "@/components/hero";
 import { serviceOrgName } from "@/lib/program-tier";
 
 /**
- * ProgramHeader — title, org link, exhibit_family badge, fully_reconciled badge, pe_bli mono.
+ * ProgramHeader — title, org link, exhibit_family badge, reconciliation badge, pe_bli mono.
  * Server component.
  *
  * The org links to /agency/{org}/ ONLY when the page passes orgHasPage
@@ -69,13 +69,48 @@ function exhibitFamilyLabel(family: string | null): string {
   }
 }
 
+/**
+ * Tri-persona review Wave 2 — the badge said the same thing about 1,310
+ * clean programs and 87 broken ones.
+ *
+ * The old predicate was ProgramRow.fully_reconciled, i.e. bool_and over
+ * EVERY J-book detail scenario. One of those scenarios, AllPriorYears, has
+ * no R-1/P-1 display analog, so govbudget.jbooks.reconcile never issues a
+ * check for it and its rows keep `reconciled=false` permanently — 0 of 3,267
+ * in the shipped corpus. Measured 2026-08-29 against dim_programs: 345 rows
+ * read "Fully Reconciled" (only because they happen to carry no
+ * AllPriorYears detail at all), 1,398 read "Partial Reconciliation", and of
+ * those 1,398 exactly 87 have a real in-scope failure. B-21 wore the warning
+ * badge with every checked scenario tying; F-47 wore the identical badge
+ * with five genuine BudgetYearOne failures.
+ *
+ * So the badge now reads dim_programs.reconciled_in_scope, and the pass
+ * label is "Reconciled" — NOT "Fully Reconciled". The 1,310 promoted rows do
+ * carry an unreconciled AllPriorYears row; claiming "fully" of them would
+ * widen the claim to fit the new number, which is the opposite of the fix.
+ * Each state links to its glossary entry, because a badge whose term appears
+ * nowhere else on the site is not a disclosure.
+ */
+const RECONCILED_TITLE =
+  "Every scenario this site reconciles — prior-year actuals, current-year " +
+  "enacted, and the budget-year request and its base — ties to the R-1/P-1 " +
+  "workbook rollup for this line. Click for the full definition.";
+const PARTIAL_TITLE =
+  "At least one reconciliation check FAILED for this line: a scenario's " +
+  "J-book detail does not tie to the R-1/P-1 workbook rollup. The failure " +
+  "is filed in the review queue. Click for the full definition.";
+const NO_DETAIL_TITLE =
+  "No reconcilable R-2/P-40 detail exists for this line, so no check was " +
+  "run — this is an absence of evidence, not a failed check. Click for the " +
+  "full definition.";
+
 export function ProgramHeader({
   program,
   category,
   orgHasPage = true,
   tier = "full",
 }: ProgramHeaderProps) {
-  const { title, org, exhibit_family, fully_reconciled, pe_bli } = program;
+  const { title, org, exhibit_family, reconciled_in_scope, pe_bli } = program;
 
   return (
     <div className={category ? "relative mb-6 -mx-3 px-3 py-3" : "mb-6"}>
@@ -126,26 +161,44 @@ export function ProgramHeader({
           <Badge
             variant="outline"
             className="text-xs text-muted-foreground"
+            data-reconciliation-badge="rollup"
             title="Summary figures from the all-service R-1/P-1 workbooks — this line carries no matching R-2/P-40 J-book detail (see the description note for why)"
           >
             Summary figures (R-1/P-1)
           </Badge>
-        ) : fully_reconciled ? (
-          <Badge
-            variant="default"
-            className="text-xs bg-green-100 text-green-800 border-green-200"
-            title="All budget line items have been reconciled against source documents"
-          >
-            Fully Reconciled
-          </Badge>
+        ) : reconciled_in_scope === true ? (
+          <Link href="/glossary/#partial-reconciliation" className="rounded-sm">
+            <Badge
+              variant="default"
+              className="text-xs bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
+              data-reconciliation-badge="reconciled"
+              title={RECONCILED_TITLE}
+            >
+              Reconciled
+            </Badge>
+          </Link>
+        ) : reconciled_in_scope === false ? (
+          <Link href="/glossary/#partial-reconciliation" className="rounded-sm">
+            <Badge
+              variant="outline"
+              className="text-xs border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+              data-reconciliation-badge="partial"
+              title={PARTIAL_TITLE}
+            >
+              Partial Reconciliation
+            </Badge>
+          </Link>
         ) : (
-          <Badge
-            variant="outline"
-            className="text-xs text-muted-foreground"
-            title="Reconciliation in progress — some line items may be unmatched"
-          >
-            Partial Reconciliation
-          </Badge>
+          <Link href="/glossary/#partial-reconciliation" className="rounded-sm">
+            <Badge
+              variant="outline"
+              className="text-xs text-muted-foreground"
+              data-reconciliation-badge="no-detail"
+              title={NO_DETAIL_TITLE}
+            >
+              No detail to reconcile
+            </Badge>
+          </Link>
         )}
 
         {/* PE-BLI */}

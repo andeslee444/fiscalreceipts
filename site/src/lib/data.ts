@@ -348,7 +348,27 @@ export interface ProgramRow {
    * exhibitFamilyLabel.
    */
   exhibit_family: string | null;
+  /**
+   * bool_and(reconciled) across EVERY detail scenario, INCLUDING the two the
+   * reconciler never issues a check for. Not the badge predicate — see
+   * reconciled_in_scope. Kept because published agency/coverage counts were
+   * computed on this definition.
+   */
   fully_reconciled: boolean;
+  /**
+   * Tri-persona review Wave 2 — what the reconciliation badge renders.
+   *
+   * dim_programs.reconciled_in_scope: bool_and(reconciled) restricted to the
+   * scenarios govbudget.jbooks.reconcile.scenario_map() actually checks.
+   * true = no in-scope failure; false = a genuine reconciliation failure;
+   * null = nothing in scope was checked (the detail-less synthetic side of an
+   * account collision, a rollup-tier row, or a payload predating this field).
+   *
+   * fully_reconciled is false on 1,398 of 1,753 corpus rows only because the
+   * AllPriorYears scenario is 0-of-3,267 reconciled BY CONSTRUCTION; on this
+   * predicate 87 of them are real failures and the badge can say so.
+   */
+  reconciled_in_scope: boolean | null;
   fy2024_actual_millions: number | null;
   fy2024_fact_id: string | null;
   /** xml_path for zero-amount FY24 facts (Cite state B fallback). */
@@ -1186,8 +1206,9 @@ export interface AgencyRow {
    * the same tolerance govbudget.jbooks.reconcile.TOLERANCE_M uses) between
    * the P-40 detail basis (fy2024_total_millions's own programs) and the
    * TOA basis above. NOT the same set as dim_programs.fully_reconciled —
-   * that flag is bool_and(reconciled) across ALL FOUR workbook scenarios
-   * (PriorYear/CurrentYear/BudgetYearOne/BudgetYearOneBase), so a program
+   * that flag is bool_and(reconciled) across ALL FIVE detail scenarios
+   * (PriorYear/CurrentYear/BudgetYearOne/BudgetYearOneBase, plus the
+   * never-checked AllPriorYears), so a program
    * can be fully_reconciled:false purely on a FY2025/FY2026 mismatch while
    * its FY2024 actuals matches exactly (1,271 of 1,397 such programs,
    * verified 2026-08-11) — using that flag here would overstate what the
