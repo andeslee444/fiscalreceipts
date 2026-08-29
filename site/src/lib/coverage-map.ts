@@ -271,9 +271,8 @@ export function getCoverageMap(): CoverageMapRow[] {
         "other end explicitly, next to a transfer verb: “realigned to PE " +
         "0604818A” is usable, “realigned to another program element” is not, " +
         "and most renumberings are written the second way. Usually the " +
-        "sentence names one end and the program whose book it appears in " +
-        "supplies the other; where one sentence names both, the two named " +
-        "elements are paired and the narrative's own line is not involved. " +
+        "sentence names one end and the book it appears in supplies the " +
+        "other; where one names both, those two are paired instead. " +
         "Candidate edges found by maturation patterns are shown dashed and " +
         "are never cited.",
       targetKind: "none",

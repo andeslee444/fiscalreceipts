@@ -211,8 +211,7 @@ export default function CoveragePage() {
           How the corpus is counted
         </h2>
         <p className="mb-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-          Five questions, five answers — nested, and the differences are the
-          point.
+          Five nested questions; the differences are the point.
         </p>
         {/* A LIST, AND EVERY SHARED CLASS ON THE <ul>. The table form of this
             block cost 10,794 raw bytes and put the page 288 gzip over its
