@@ -2010,7 +2010,8 @@ function runCorpusCountLeg(errors, notes) {
         );
         continue;
       }
-      const shown = parseInt(norm(row.text).replace(/,/g, ""), 10);
+      const valueEl = row.querySelector("[data-corpus-value]") ?? row;
+      const shown = parseInt(norm(valueEl.text).replace(/,/g, ""), 10);
       if (shown !== expected[id]) {
         errors.push(
           `leg k1: /coverage/ row "${id}" renders ${shown} but the shipped ` +
@@ -2045,6 +2046,17 @@ function runCorpusCountLeg(errors, notes) {
     )) {
       el.remove();
     }
+    // WHOLE-PAGE TEXT, not leg j's leaf-element unit. The two legs need
+    // different units: leg j reads a number's NOTATION, which a leaf split
+    // ("CO-05" + "10 programs") would fabricate, so it must scan leaves.
+    // This leg reads a number's NOUN, and the noun routinely sits in a
+    // sibling node — React renders `{n} program` + `s` as two text nodes,
+    // and a leaf-joined scan that inserted separators would read "program s"
+    // and match nothing. Concatenation cannot fabricate a match here because
+    // the leading \b refuses a number glued to a preceding word character
+    // ("$2.60B" + "1,755 programs" does not match) — a glue can only cost a
+    // finding, never invent one, and the claims===0 guard below is what
+    // stops that degrading silently.
     const text = norm(root.text);
     for (const m of text.matchAll(CORPUS_CLAIM_RE)) {
       claims++;

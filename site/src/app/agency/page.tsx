@@ -62,13 +62,17 @@ export default function AgencyIndexPage() {
     if (a.fy2026_fact_id_derived) pageFactIds.push(a.fy2026_fact_id_derived);
   }
   // Wave 4 item 5: the workbook organizations this index does not collect.
-  // Their figures are each page's OWN cited FY2026 headline, so their fact
-  // ids join the same citation slice — a figure here opens the same panel it
-  // opens on the program page.
+  //
+  // NO FIGURES IN THIS BLOCK, AND THE REASON IS PAGE WEIGHT, MEASURED. A
+  // first cut rendered each program's own cited FY2026 headline as a <Cite>.
+  // Seventeen more citations in the slice cross the server→client boundary
+  // twice (rendered HTML + RSC payload) and put this page at 219,668 raw
+  // against a 190,000 ceiling — 15.6% over, and 2,469 bytes over on gzip.
+  // The ceiling does not move for a convenience: the disclosure this item is
+  // about is the BROWSE PATH, and one click away every one of these pages
+  // states its figure with the citation attached. The list is ordered by
+  // FY2026 request so the material lines lead.
   const unpaged = getUnpagedOrgs();
-  for (const u of unpaged) {
-    for (const p of u.programs) if (p.factId) pageFactIds.push(p.factId);
-  }
   const citationsSlice = collectCitations(pageFactIds);
 
   return (
@@ -221,58 +225,35 @@ export default function AgencyIndexPage() {
             <p className="text-sm text-muted-foreground max-w-3xl">
               {formatCount(unpaged.length)} organization
               {unpaged.length === 1 ? "" : "s"} in the FY2026 workbooks carry
-              money that no agency page above collects. An agency page&rsquo;s
+              money no agency page above collects. An agency page&rsquo;s
               header total and its program list are both built from the
-              detail-grade program table, and these have no rows in it — a
+              detail-grade program table and these have no rows in it, so a
               page for them would state a real total over a list showing none
-              of it. Their program pages are below, and each figure is the
-              page&rsquo;s own cited FY2026 headline.
+              of it. Their program pages, largest FY2026 request first:
             </p>
-            <div className="mt-4 space-y-5" data-unpaged-orgs>
+            {/* ONE PARAGRAPH PER ORG, inline links, short class strings.
+                The first cut gave each org a heading and a bordered list and
+                each program a <Cite>; measured, that put this page 29,668 raw
+                bytes over a 190,000 ceiling. Nothing was dropped from the
+                disclosure to get back under — every organization and every
+                program page is still named and linked. */}
+            <div className="mt-2 space-y-1 text-sm text-muted-foreground" data-unpaged-orgs>
               {unpaged.map((u) => (
-                <div key={u.org || "(none)"} data-unpaged-org={u.org}>
-                  <h3 className="text-sm font-semibold text-foreground">
+                <p key={u.org || "(none)"} data-unpaged-org={u.org}>
+                  <span className="text-foreground">
                     {u.org ? agencyDisplayName(u.org) : "No organization code"}
-                    {u.org && agencyDisplayName(u.org) !== u.org && (
-                      <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
-                        {u.org}
-                      </span>
-                    )}
-                  </h3>
-                  <ul className="mt-1 divide-y divide-border rounded-lg border border-border bg-card">
-                    {u.programs.map((p) => (
-                      <li
-                        key={p.slug}
-                        className="flex items-baseline gap-3 px-4 py-2 text-sm"
-                      >
-                        <Link
-                          href={`/program/${p.slug}/`}
-                          className="flex-1 underline decoration-dotted hover:text-primary"
-                        >
-                          {p.title}
-                        </Link>
-                        <span className="tabular-nums">
-                          {p.value != null && p.units ? (
-                            <Cite
-                              value={p.value}
-                              units={p.units}
-                              dataset="budget_lines"
-                              factId={p.factId}
-                              basis={p.basis ?? undefined}
-                              fy={2026}
-                              measure={p.measure}
-                              entity={p.slug}
-                              edition={2026}
-                              chip={false}
-                            />
-                          ) : (
-                            <span className="text-muted-foreground/50">—</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  </span>
+                  {" — "}
+                  {u.programs.map((p, i) => (
+                    <span key={p.slug}>
+                      {i > 0 ? ", " : ""}
+                      <Link href={`/program/${p.slug}/`} className="underline">
+                        {p.title}
+                      </Link>
+                    </span>
+                  ))}
+                  .
+                </p>
               ))}
             </div>
           </section>

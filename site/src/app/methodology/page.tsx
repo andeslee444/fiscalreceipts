@@ -222,13 +222,12 @@ export default function MethodologyPage() {
                 the glossary entry carries the definition. No figures: the
                 filter is the fact, and a literal would rot. */}
             <p className="mt-2">
-              <strong className="text-foreground">Add rows only.</strong> The
-              P-1 flags each row{" "}
+              The P-1 flags each row{" "}
               <Link href="/glossary/#non-add" className="underline hover:text-foreground">
                 Add or Non-Add
               </Link>
-              ; Non-Add rows are memo lines the exhibit does not add into its
-              own totals, and we load Add rows only. Summing the workbook
+              , and we load the Add rows only: Non-Add rows are memo lines the
+              exhibit excludes from its own totals, so summing the workbook
               without that filter double-counts.
             </p>
           </div>

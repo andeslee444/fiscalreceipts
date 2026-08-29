@@ -172,13 +172,13 @@ export function getCorpusCounts(): CorpusCount[] {
       value: getProgramSitemapSlugs().length,
       where: "sitemap.xml",
       counts:
-        "Indexable /program/ URLs: every page below, plus a stub for each " +
+        "Indexable /program/ URLs — every page below, plus a stub per " +
         "budget-line key two programs share.",
     },
     {
       id: "program-pages",
       value: getProgramPagesCount(),
-      where: "the corpus line, four pages",
+      where: "the corpus line",
       counts:
         "Browsable program pages, all tiers — every element the workbooks " +
         "name in any loaded edition.",
@@ -188,8 +188,8 @@ export function getCorpusCounts(): CorpusCount[] {
       value: getPrograms().length,
       where: "Programs, Years, home",
       counts:
-        "Rows of the FY2026 index: element \u00d7 appropriation account in " +
-        "PB2026. Older-edition-only pages are not rows.",
+        "Rows of the FY2026 index — element \u00d7 appropriation account in " +
+        "PB2026. An older-edition-only page is not a row.",
     },
     {
       id: "dim-programs-rows",
@@ -202,7 +202,7 @@ export function getCorpusCounts(): CorpusCount[] {
     {
       id: "detail-pages",
       value: getDetailGradeCount(),
-      where: "the corpus line; row one above",
+      where: "the corpus line, and the row above",
       counts:
         "Pages carrying R-2/P-40 project detail. The rest carry cited " +
         "R-1/P-1 rollup figures only.",

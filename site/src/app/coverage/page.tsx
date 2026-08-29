@@ -211,62 +211,31 @@ export default function CoveragePage() {
           How the corpus is counted
         </h2>
         <p className="mb-4 max-w-3xl text-sm leading-7 text-muted-foreground">
-          The site states its own size five ways, because five different
-          questions have five different answers. They are nested, and the
-          differences are the interesting part.
+          Five questions, five answers. They are nested, and the differences
+          are the interesting part.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table data-corpus-counts className="min-w-full text-sm">
-            <caption className="sr-only">
-              Each published corpus count, where it appears, and what one unit
-              of it is.
-            </caption>
-            <thead className="hidden sm:table-header-group">
-              <tr className="border-b border-border bg-muted/50">
-                <th scope="col" className="px-4 py-2 text-right font-semibold text-muted-foreground">
-                  Count
-                </th>
-                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
-                  Published on
-                </th>
-                <th scope="col" className="px-4 py-2 text-left font-semibold text-muted-foreground">
-                  One of them is
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {counts.map((c) => (
-                <tr
-                  key={c.id}
-                  data-corpus-count={c.id}
-                  role="row"
-                  className="block border-b border-border py-3 last:border-0 sm:table-row sm:py-0"
-                >
-                  <td
-                    role="cell"
-                    className="inline px-4 py-0 text-left align-top font-semibold tabular-nums text-foreground sm:table-cell sm:py-3 sm:text-right"
-                  >
-                    {c.value.toLocaleString("en-US")}
-                  </td>
-                  <td
-                    role="cell"
-                    data-primary-value="where"
-                    className="inline px-4 py-0 align-top text-muted-foreground sm:table-cell sm:py-3"
-                  >
-                    {c.where}
-                  </td>
-                  <td
-                    role="cell"
-                    data-primary-value="counts"
-                    className="block px-4 pt-1 align-top text-muted-foreground sm:table-cell sm:py-3"
-                  >
-                    {c.counts}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* A list, not a table. The table form of this block cost 10,794 raw
+            bytes (the RSC payload carries every class string a second time)
+            and put this page 288 gzip bytes over its ceiling. Nothing was
+            trimmed from the disclosure — the markup around it was. */}
+        <ul
+          data-corpus-counts
+          className="divide-y divide-border rounded-lg border border-border text-sm"
+        >
+          {counts.map((c) => (
+            <li key={c.id} data-corpus-count={c.id} className="px-4 py-3">
+              <strong
+                data-corpus-value
+                className="tabular-nums text-foreground"
+              >
+                {c.value.toLocaleString("en-US")}
+              </strong>{" "}
+              <span className="text-muted-foreground">
+                on {c.where}. {c.counts}
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* ── The crosswalk: a methodology limit, not a backlog item ───────── */}
