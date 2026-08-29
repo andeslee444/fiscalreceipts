@@ -11083,3 +11083,294 @@ the site's own P-1 total:
 Keeping those two rows would double-count the R-1, which already carries the
 same $210.039M. The reviewer's $205.0B is the site's figure exactly; the
 $221.3B naive total reproduces to the dollar; the "exclusion" does not exist.
+
+================================================================================
+WAVE 5 — THE NAVY INGESTION (2026-08-29)
+================================================================================
+
+Wave 5 added no gate and no leg: the suite is 24
+(`grep -c "gateResults.push" site/scripts/verify.mjs` → 24). It added one dbt
+test, changed one gate helper's definition of "ingested", and added two unit
+tests. Every one of them is recorded below as a verbatim FAIL against a
+genuinely broken artifact, then a verbatim PASS.
+
+--------------------------------------------------------------------------------
+1. tests/jbooks/test_p40_parser.py — THE FUNDING MEASURE
+--------------------------------------------------------------------------------
+
+The committed CBDP fixture carries IDENTICAL NetProcurementP1 and
+TotalObligationAuthority blocks, so its golden values pass whichever element
+the parser reads — which is exactly how "NetProcurementP1 is the measure that
+reconciles against the P-1 display" survived in the docstring for a year. The
+new case is shipbuilding-shaped (Virginia Class, P-1 line 2013), where the two
+differ by advance procurement, outfitting and cost-to-complete.
+
+BROKEN ARTIFACT: p40_parser.parse_p40_xml with `toa = None` — i.e. the parser
+as it was, reading NetProcurementP1.
+
+  --- FAIL RUN (parser reverted to NetProcurementP1) ---
+  ..F.                                                                     [100%]
+  =================================== FAILURES ===================================
+  ________ test_funding_is_total_obligation_authority_not_net_procurement ________
+  ...
+          p = tmp_path / "scn_excerpt.xml"
+          p.write_text(_shipbuilding_xml(with_toa=True))
+          (li,) = parse_p40_xml(p)
+          funding = {f.scenario: f.amount_millions for f in li.funding}
+  >       assert funding["PriorYear"] == Decimal("10656.927")
+  E       AssertionError: assert Decimal('7129.965') == Decimal('10656.927')
+  E        +  where Decimal('10656.927') = Decimal('10656.927')
+
+  tests/jbooks/test_p40_parser.py:91: AssertionError
+  =========================== short test summary info ============================
+  FAILED tests/jbooks/test_p40_parser.py::test_funding_is_total_obligation_authority_not_net_procurement
+  1 failed, 3 passed in 0.03s
+
+  --- PASS RUN (parser restored) ---
+  ....                                                                     [100%]
+  4 passed in 0.02s
+
+--------------------------------------------------------------------------------
+2. dbt/tests/assert_dim_programs_detail_account_single.sql — THE FUSION
+--------------------------------------------------------------------------------
+
+Ten PB2026 budget-line codes are shared by two different Navy programs in two
+different appropriations. Until Wave 5 only ONE Navy procurement appropriation
+was loaded, so no shared key ever had two accounts' detail at once and the
+mart's pe_bli-only grouping was never exercised. Parsing the other five made
+all ten fuse — '3010' published LPD Flight II's $500.000M of Shipbuilding &
+Conversion plus Shipboard Tactical Communications' $28.574M as $528.574M under
+the communications title.
+
+THE EXISTING SUITE SAW NOTHING. That build reported:
+
+  Done. PASS=133 WARN=1 ERROR=0 SKIP=0 NO-OP=0 TOTAL=134
+
+assert_program_key_unique cannot see it: it filters `account is not null`, and
+a fused row's account resolves NULL precisely because its summed amount ties
+neither account's workbook line.
+
+BROKEN ARTIFACT: dim_programs.sql with the detail-side split disabled
+(`having count(distinct account) > 99` — never true).
+
+  === FAIL RUN: dim_programs detail-side account split disabled ===
+  1 of 7 START sql view model main.dim_programs .................................. [RUN]
+  1 of 7 OK created sql view model main.dim_programs ............................. [OK in 0.04s]
+  2 of 7 START test assert_dim_programs_detail_account_single .................... [RUN]
+  ...
+  2 of 7 FAIL 8 assert_dim_programs_detail_account_single ........................ [FAIL 8 in 0.16s]
+  ...
+  Failure in test assert_dim_programs_detail_account_single (tests/assert_dim_programs_detail_account_single.sql)
+    Got 8 results, configured to fail if != 0
+  Done. PASS=5 WARN=0 ERROR=1 SKIP=1 NO-OP=0 TOTAL=7
+
+  === FAIL RUN (fixture lake, same break) ===
+  >       assert result.returncode == 0, result.stdout + result.stderr
+  E         Failure in test assert_dim_programs_detail_account_single (tests/assert_dim_programs_detail_account_single.sql)
+  E       assert 1 == 0
+  1 failed, 1 passed in 3.21s
+
+  === PASS RUN (split restored) ===
+  5 of 7 PASS assert_dim_programs_pb2026_pin ..................................... [PASS in 0.07s]
+  4 of 7 PASS assert_dim_programs_dual_volume_dedup_pin .......................... [PASS in 0.07s]
+  3 of 7 PASS assert_dim_programs_detail_dedup ................................... [PASS in 0.16s]
+  2 of 7 PASS assert_dim_programs_detail_account_single .......................... [PASS in 0.17s]
+  6 of 7 PASS not_null_dim_programs_pe_bli ....................................... [PASS in 0.12s]
+  7 of 7 PASS assert_program_key_unique .......................................... [PASS in 0.14s]
+  Done. PASS=7 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=7
+  ..                                                                       [100%]
+  2 passed in 3.60s
+
+The fixture lake gained a real shared-'3010' pair (two accounts, two
+documents, two detail rows) so the test is load-bearing in CI and not only
+against the live warehouse.
+
+--------------------------------------------------------------------------------
+3. site/src/__tests__/search.test.ts — ONE NULL TITLE, SITEWIDE SEARCH OUTAGE
+--------------------------------------------------------------------------------
+
+Two Navy P-40 line items — 3039 Expeditionary Sea Base (ESB) and 3043
+Expeditionary Fast Transport (EPF) — are published in the P-40 exhibit and
+ABSENT from the FY2026 P-1 display. dim_programs takes `title` from the
+workbook, so both arrived with real R-2/P-40 detail and no name. Their program
+pages rendered `<title>null — …</title>`, and search_quick.json shipped two
+docs with `title: null`.
+
+`null.toLowerCase()` threw inside the client index build → buildIndex()
+rejected → quickSearch() rejected → the palette's tier-1 effect caught it and
+rendered an empty list. FOR EVERY QUERY ON THE SITE. Search silently fell back
+to pagefind alone, and gate 5 went from passing to 49% with results like
+"boeing" → three lobbying filings.
+
+This is what the whole-suite verify reported:
+
+  gate 5 search: loaded 37 eval cases; search results: 18/37 (49%) — typo: 1/3
+    ✗ search gate: 49% overall (need ≥90%). Failed cases:
+    ✗   "0601101E" → expected "/program/0601101E/", got [/program/0601122E/, /agency/DARPA/, /program/0603467E/]
+    ✗   "boeing" → expected "/company/boeing/", got [/filing/33d75f1e-…/, /filing/eb990371-…/, /filing/9e46e3ca-…/]
+    ✗   "darpa" → expected "/agency/DARPA/", got [/program/0603467E/, /program/0602026E/, /program/0605502E/]
+    ✗ search gate: typo cases NOT 100% (1/3)
+
+Fixed at source: dim_programs falls back to the J-book's own LineItemTitle
+(detail_narratives.title, the string the Navy prints on the exhibit) when the
+workbook supplies none. Both programs are now named, and no other page's name
+changes.
+
+Fixed a second time in the client, because "one missing string kills site
+search" is a blast radius nobody would choose. BROKEN ARTIFACT: the null guard
+removed from normalizeAlnumWords, against the committed search_quick.json that
+still carried the two nulls.
+
+  === FAIL RUN (null guard removed) ===
+   ❯ src/__tests__/search.test.ts (36 tests | 30 failed) 24ms
+     × titleForUrl — deep-hit title resolution > resolves a /program/<pe>/ URL to the program's quick-index title
+       → expected null to be 'Missile/Air Defense Product Improveme…'
+     × quick search — index build & basic cases > returns a 'Defense Research Sciences' program for that query
+       → Cannot read properties of null (reading 'toLowerCase')
+     × quick search — index build & basic cases > returns DARPA agency for query 'darpa'
+       → Cannot read properties of null (reading 'toLowerCase')
+     × quick search — grouping > programs land in programs group, not companies
+       → Cannot read properties of null (reading 'toLowerCase')
+     [30 of 36 failed]
+
+  === PASS RUN (guard restored) ===
+   Test Files  1 passed (1)
+        Tests  36 passed (36)
+
+Worth recording separately: the EXISTING suite would have caught this before
+the build, because it indexes the committed search_quick.json. It did not,
+because `uv run pytest` was run and `npm test` was not. The new case pins the
+second half of the fix (a titleless doc stays reachable by its code) so the
+guard cannot be removed as dead weight later.
+
+--------------------------------------------------------------------------------
+4. GATE 14 LEG cv — THE SYMMETRY FIRING IN THE OTHER DIRECTION
+--------------------------------------------------------------------------------
+
+Leg cv was written to fail in BOTH directions: "when the ingestion lands and
+`unparsed` reaches zero, the backlog sentence becomes the false one, and this
+leg fails on it — so the correction cannot rot into the opposite error."
+
+Wave 5 is that moment, and it took a change to the helper to reach it.
+volumes-recompute.py reconciled `rel_path` presence in documents.parquet
+against the raw tree, which was a faithful proxy for "are these facts loaded"
+only while unparsed files meant unparsed facts. The services print the same
+justification book under several budget-activity covers — the FY2026 Army
+RDT&E Vol 4 PDFs for BA-6/7/8/9 embed ONE byte-identical master between them,
+as do the four Air Force RDT&E volumes and the Navy APN and OPN books — and
+only one of each set is registered, because registering more loads the
+identical master several times over. Counting the other covers as "unparsed
+volumes" would have made /coverage/ confess a backlog that does not exist and
+made /agency/ name whichever service prints the most duplicate covers as its
+most-understated row.
+
+So the helper now reconciles CONTENT: a file is ingested when the master
+justification XML it embeds is one the lake already carries. Checked once, per
+file, over the union of ProgramElement/LineItem identities in EVERY
+justification XML each of the 20 duplicate covers embeds — not only the one
+pick_book_xml selects — against the registered twin's master:
+
+  a/RDTE - Vol 4 - Budget Activity 9.pdf   dup_ids=  66 keep_ids=  66 OK
+  f/FY26 Air Force R&D T&E Vol IV.pdf      dup_ids= 259 keep_ids= 259 OK
+  n/OPN_BA5-8_Book.pdf                     dup_ids= 135 keep_ids= 135 OK
+  … 20 of 20 OK
+  duplicate volumes carrying a fact identity absent from the parsed twin: 0 of 20
+
+  $ uv run python site/scripts/gates/volumes-recompute.py
+  {"fiscal_year": 2026, "on_disk": 81, "ingested": 81, "duplicate": 20, "unparsed": 0, …}
+    a {"on_disk": 20, "registered": 10, "duplicate": 10, "ingested": 20, "unparsed": 0}
+    f {"on_disk": 11, "registered":  7, "duplicate":  4, "ingested": 11, "unparsed": 0}
+    n {"on_disk": 13, "registered":  7, "duplicate":  6, "ingested": 13, "unparsed": 0}
+
+BROKEN ARTIFACT: the built out/coverage/index.html with its Wave 5 blocker
+replaced by the sentence it used to carry ("…are already downloaded here, and
+are simply not parsed yet"), which is now false.
+
+  === FAIL RUN (built /coverage/ still claims an unparsed backlog) ===
+  {
+   "pass": false,
+   "cv": [
+    "leg cv: every FY2026 volume on disk is ingested, but /coverage/ still claims an unparsed backlog — the correction has rotted into the opposite false claim. Rendered: \"In the wayThe 73 remaining pages are rollup lines carrying cited R-1/P-1 workbook figures without R-2/P-40 detail. Classified Programs — much the largest single line, and most of the money — genuinely\""
+   ],
+   "cvNote": [
+    "leg cv volume claim: 81/81 FY2026 volumes ingested (20 of them duplicate covers of a parsed book), 0 unparsed (none) — claim direction CONTRADICTS the disk↔lake reconciliation (1 error(s))"
+   ]
+  }
+
+  === PASS RUN (built page restored) ===
+  {
+   "pass": true,
+   "cv": [],
+   "cvNote": [
+    "leg cv volume claim: 81/81 FY2026 volumes ingested (20 of them duplicate covers of a parsed book), 0 unparsed (none) — claim direction matches the disk↔lake reconciliation ✓"
+   ]
+  }
+
+leg cr, the /agency/ ranking leg, uses the same reconciliation and stops
+requiring its disclosure now that no service has an unparsed volume. It is
+symmetric too: if a future edition arrives unevenly, the requirement turns
+itself back on. /agency/ keeps a short, true disclosure anyway.
+
+--------------------------------------------------------------------------------
+PAGE WEIGHT — WAVE 5 ROUND
+--------------------------------------------------------------------------------
+
+Measured with the gate's own logic — imported PAGE_WEIGHT_BUDGET,
+zlib.gzipSync level 9, raw-heaviest for dir: entries — on the 2026-08-29
+Wave 5 build, run WITH NEXT_PUBLIC_SITE_URL set.
+
+AND THE FIRST PASS GOT IT WRONG, which is worth recording because this file
+has now caught it three times. The first measuring pass used Python's
+zlib.compress(buf, 9) instead of the gate's zlib.gzipSync — a DIFFERENT
+compressor, not just a different container. It read /programs/ at 311,339
+where the gate reads 308,268, /agency/ at 52,220 where the gate reads 50,601,
+and /coverage/ at 17,678 where the gate reads 17,694 — errors in both
+directions, up to 3,071 bytes. Ceilings set from that pass would have banked
+9.5% of unearned headroom on /agency/ and would have called /coverage/'s
+8-byte breach a pass. Every number below is the gate's own.
+
+  page                       measured (raw/gzip)      ceiling            left
+  /programs/    RAISED    2,962,635 /  308,268   3,150,000 / 330,000   187,365 / 21,732
+  /             RAISED    1,389,357 /   88,060   1,475,000 /  95,000    85,643 /  6,940
+  /data/        RAISED       94,741 /   13,619     101,000 /  14,450     6,259 /    831
+  /agency/      RAISED      192,213 /   50,601     204,000 /  53,700    11,787 /  3,099
+  /coverage/    RAISED       95,766 /   17,694     101,500 /  18,750     5,734 /  1,056
+  /methodology/ unchanged   135,373 /   36,866     136,500 /  36,900     1,127 /     34
+  /years/       unchanged    32,908 /    6,596      45,000 /   9,000    12,092 /  2,404
+  /feed/        unchanged 1,503,332 /   78,754   1,700,000 /  92,000   196,668 / 13,246
+  /companies/   unchanged   683,878 /   67,163     710,000 /  69,000    26,122 /  1,837
+  /lineage/     unchanged   316,056 /   33,453     340,000 /  36,000    23,944 /  2,547
+  /district/    unchanged   262,524 /   28,199     265,000 /  30,000     2,476 /  1,801
+  /companies/families/      223,712 /   25,520     226,000 /  26,000     2,288 /    480
+  /agency/*/    unchanged 1,791,582 /  120,667   2,060,000 / 137,000   268,418 / 16,333  (/agency/N/)
+  /program/*/   unchanged 1,110,705 /  142,798   1,180,000 / 151,000    69,295 /  8,202  (/program/0601102A/)
+  /company/*/   unchanged   379,703 /   22,254     545,000 /  25,000   165,297 /  2,746  (/company/boeing/)
+  /filing/*/    unchanged   315,699 /   21,902     325,000 /  27,500     9,301 /  5,598  (/filing/82b97e10/)
+
+WHAT CAUSED EACH RAISE, AND WHAT DID NOT COME OFF ANY PAGE.
+
+  /programs/  programs.json 1,755 -> 1,938 entries. This page is the index of
+              every one of them. 183 more rows IS the ingestion.
+  /           1,341,090 of 1,389,357 raw bytes are inline <script>, and
+              1,239,952 of those are ONE RSC flight chunk carrying the page's
+              citation slice — 1,802 citations, the first of which on this
+              build is Virginia Class Submarine's 10,656.927. The page renders
+              17 program links; the weight is disclosure payload.
+  /data/      jbook_details 21,028 -> 21,993 rows and a new `account` column,
+              whose scope sentence explains that summing that table by pe_bli
+              alone adds ten pairs of unrelated Navy programs together.
+  /agency/    the two Navy derived agency sums now cite 11,180 and 10,520
+              input ids (12,887 and 12,154 bytes of JSON; 102,551 for the
+              whole slice). The page's PROSE GOT SHORTER in the same wave —
+              the §P0-6 uneven-ranking disclosure is no longer needed at that
+              length, because the ranking is no longer uneven.
+  /coverage/  the program-pages blocker was REPLACED, not extended, and the
+              page still breached by 8 gzip bytes on the build the gate
+              measured. It came back 6 bytes under only because a later edit
+              shortened one sentence for accuracy. Six bytes is not headroom.
+
+NOT RAISED: /methodology/, which came in FOUR BYTES LIGHTER than its recorded
+measurement (36,870 -> 36,866) and sits at 34 bytes of gzip headroom. Wave 5
+added no sentence to it, so there is no change to argue a raise in the same
+breath as. That page's next sentence still has to buy its own ceiling.
+

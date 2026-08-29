@@ -47,6 +47,19 @@ models:
         description: "#56/E1: the appropriation account (e.g. '1810N') this row's title and fy2024_actual_millions were amount-matched to in stg_budget_lines (or, for a synthesized second row of a genuine ACCOUNT collision, the account itself — see the model's own E1 comment). NULL when fy2024_actual_millions is null or no stg_budget_lines row matches to float tolerance (falls back to the unconstrained title join). Real (but identical across all rows sharing the key) for the 3 ROADMAP #45 organization-collision keys — account is not their discriminating axis."
       - name: account_title
         description: "#56/E1: human-readable name of `account` (e.g. 'Other Procurement, Navy')."
+      - name: title
+        data_tests: [not_null]
+        description: >
+          The program's display name. NOT NULL is load-bearing, not tidiness.
+          Wave 5 parsed the Navy shipbuilding book and brought in two line
+          items the FY2026 P-1 display omits (3039 Expeditionary Sea Base,
+          3043 Expeditionary Fast Transport); title resolved only from
+          stg_budget_lines, so both came out NULL. Their pages rendered
+          "<title>null</title>" and search_quick.json shipped two null-titled
+          docs, which threw inside the client index build and took the whole
+          site's tier-1 search down (gate 5: 49%). The model now falls back to
+          the J-book's own LineItemTitle; this test is what fails first if a
+          future edition produces a nameless program again.
       - name: fully_reconciled
         description: "bool_and(reconciled) across EVERY detail scenario, including the two the reconciler never checks. NOT the badge predicate — use reconciled_in_scope. Kept because agency/coverage consumers already published counts on this definition."
       - name: reconciled_in_scope

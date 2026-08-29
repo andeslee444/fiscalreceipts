@@ -106,8 +106,22 @@ export function kindGroupLabel(kind: string): string {
 // keeps all existing match behavior.
 
 /** Word-level normalization: lowercase, strip non-alphanumerics inside each
- *  whitespace-separated word. "F-35 C2D2" → "f35 c2d2". */
-export function normalizeAlnumWords(s: string): string {
+ *  whitespace-separated word. "F-35 C2D2" → "f35 c2d2".
+ *
+ *  Null-tolerant since Wave 5, and the reason is a blast radius nobody would
+ *  have chosen. Two program docs shipped with `title: null` (Navy P-40 lines
+ *  the FY2026 P-1 display omits, so the mart had no workbook name for them);
+ *  `null.toLowerCase()` threw inside buildIndex()'s addAll, buildIndex()
+ *  rejected, quickSearch() rejected, and the palette's tier-1 effect caught
+ *  the rejection and rendered an empty list — for EVERY query on the site.
+ *  Search silently degraded to pagefind-only and gate 5 fell to 49%.
+ *
+ *  The data defect is fixed at source (dim_programs falls back to the
+ *  J-book's own LineItemTitle), so this is not papering over it. It is the
+ *  refusal to let one missing string take down the index: a doc with no
+ *  title still gets indexed on its pe_bli and org and stays reachable. */
+export function normalizeAlnumWords(s: string | null | undefined): string {
+  if (typeof s !== "string") return "";
   return s
     .toLowerCase()
     .split(/\s+/)
@@ -257,7 +271,10 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
   const applyBoosts = <T extends { score: number } & Record<string, unknown>>(
     r: T,
   ): T => {
-    const titleLow = (r.title as string).toLowerCase();
+    // Same null tolerance as normalizeAlnumWords above: a stored doc whose
+    // title is missing must not throw here either (this runs on every hit of
+    // every query, so a throw is another whole-search outage).
+    const titleLow = ((r.title as string | null | undefined) ?? "").toLowerCase();
     // Exact match boost: agency or company whose title exactly matches the query
     if ((r.kind === "agency" || r.kind === "company") && titleLow === queryNorm) {
       return { ...r, score: 10000 };
@@ -403,10 +420,10 @@ export async function quickSearch(query: string): Promise<GroupedResults> {
     return {
       id: r.id,
       kind,
-      title: r.title as string,
+      title: (r.title as string | null | undefined) ?? "",
       url: r.url as string,
       dollars: r.dollars as number | null | undefined,
-      titleHtml: highlightTerms(r.title as string, terms),
+      titleHtml: highlightTerms((r.title as string | null | undefined) ?? "", terms),
       score: r.score,
       ...(aka ? { aka } : {}),
       ...(akaMatched ? { akaMatched } : {}),

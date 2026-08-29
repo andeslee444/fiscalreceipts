@@ -337,3 +337,57 @@ describe("quick search — typo tolerance (5 representative cases per plan)", ()
     );
   });
 });
+
+// ── One malformed doc must not disable the whole index (Wave 5) ──────────────
+//
+// Two program docs shipped with `title: null` — Navy P-40 line items the
+// FY2026 P-1 display omits, so the mart had no workbook name for them.
+// `null.toLowerCase()` threw inside the index build, quickSearch() rejected,
+// the palette's tier-1 effect caught the rejection and rendered nothing, and
+// EVERY query on the site fell through to pagefind. Gate 5 went from passing
+// to 49% and no test saw it, because this suite indexes the committed
+// search_quick.json, which had no null title in it at the time.
+//
+// The data defect is fixed upstream (dim_programs falls back to the J-book's
+// own LineItemTitle). This test pins the second half of the fix: the index
+// survives a titleless doc, and that doc is still reachable by its code.
+
+describe("quick search — a titleless doc cannot take the index down", () => {
+  it("indexes and finds a doc whose title is null", async () => {
+    vi.resetModules();
+    const real = JSON.parse(
+      fs.readFileSync(SEARCH_JSON_PATH, "utf8"),
+    ) as { docs: Array<Record<string, unknown>> };
+    const withNull = {
+      docs: [
+        ...real.docs,
+        {
+          id: "p:ZZ9999",
+          kind: "program",
+          pe_bli: "ZZ9999",
+          title: null,
+          url: "/program/ZZ9999/",
+          org: "N",
+          dollars: 0,
+        },
+      ],
+    };
+    const prevFetch = global.fetch;
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => withNull,
+    })) as unknown as typeof fetch;
+    try {
+      const mod = await import("@/lib/search");
+      // The build must not throw, and ordinary queries must still work.
+      const hit = await mod.quickSearch("ZZ9999");
+      expect(hit.programs.map((r) => r.url)).toContain("/program/ZZ9999/");
+      const other = await mod.quickSearch("0601101E");
+      expect(allResults(other).length).toBeGreaterThan(0);
+    } finally {
+      global.fetch = prevFetch;
+      vi.resetModules();
+    }
+  });
+});

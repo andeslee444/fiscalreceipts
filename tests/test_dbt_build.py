@@ -181,7 +181,14 @@ def make_lake(data_dir: Path):
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E',null,'accomplishment','Defense Research',"
-        f"'Some body text','ProgramElement[0]','DARPA','2026'))"
+        f"'Some body text','ProgramElement[0]','DARPA','2026'),"
+        # Wave 5: 0601102A has R-2 detail (docs 344/351) and NO budget_lines
+        # row, so stg_budget_lines can give dim_programs no name for it —
+        # exactly the live shape of Navy 3039/3043. Its title has to come from
+        # the J-book's own narrative, or the program ships nameless and takes
+        # the client search index down with it (not_null_dim_programs_title).
+        f"('0601102A',null,'mission','University Research Initiatives',"
+        f"'Basic research grants to universities.','ProgramElement[1]','A','2026'))"
         f" t({JBOOK_NARRATIVE_COLS})) to '{jbooks}/detail_narratives.parquet' (format parquet)"
     )
     duckdb.sql(

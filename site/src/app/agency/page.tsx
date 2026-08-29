@@ -113,14 +113,14 @@ export default function AgencyIndexPage() {
           <ScopeNote className="mt-3" label={null}>
             <p className="text-sm leading-6">
               <strong className="text-foreground">
-                These are totals this site has loaded, not the services&rsquo;
-                requests.
+                These are totals this site has loaded, not what each agency
+                requested.
               </strong>{" "}
-              Every FY2026 justification volume held here is now parsed, and
-              each service&rsquo;s total is within a few percent of its
-              workbook figure — the Navy&rsquo;s is the furthest short, and
-              the order matches the workbook&rsquo;s own. Where the remaining
-              gap comes from, line by line, is on{" "}
+              Every FY2026 justification volume held here is parsed. The
+              three services&rsquo; totals are each within a few percent of
+              their workbook figures — the Navy&rsquo;s is the furthest short
+              — and the three rank here in the order the workbook itself puts
+              them. Where the remaining gap comes from, line by line, is on{" "}
               <Link href="/coverage/" className="underline hover:text-foreground">
                 what is and is not loaded
               </Link>

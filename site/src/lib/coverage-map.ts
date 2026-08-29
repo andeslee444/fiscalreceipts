@@ -178,8 +178,9 @@ export function getCoverageMap(): CoverageMapRow[] {
         "cited R-1/P-1 workbook figures without R-2/P-40 detail. Classified " +
         "Programs — much the largest single line, and most of the money — " +
         "genuinely publish no justification, and no ingestion run will ever " +
-        "change that. The rest is a short tail of lines the services fund " +
-        "without filing a separate R-2/P-40 exhibit for them. No FY2026 " +
+        "change that. The rest is a short tail of lines whose money is real " +
+        "and whose justification is not filed as an R-2 or P-40 exhibit of " +
+        "its own. No FY2026 " +
         "justification volume this project holds is still waiting to be read: " +
         "the Navy procurement books, Virginia and COLUMBIA class submarines " +
         "and DDG-51 among them, were the last of them and are loaded.",

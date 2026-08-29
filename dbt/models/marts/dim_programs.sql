@@ -221,6 +221,34 @@ detail_account_titles as (
     where fiscal_year = 2026 and account is not null
     group by pe_bli, account
 ),
+-- Wave 5 — THE TITLE OF LAST RESORT, and why a program needs one.
+--
+-- `title` below is resolved entirely from stg_budget_lines: the R-1/P-1
+-- workbook is the naming authority. That holds for every program whose line
+-- appears in the workbook, which was all of them until Wave 5 parsed the Navy
+-- shipbuilding book. Two of its line items — 3039 Expeditionary Sea Base
+-- (ESB) and 3043 Expeditionary Fast Transport (EPF) — are published in the
+-- P-40 exhibit and are absent from the FY2026 P-1 display, so they arrived
+-- with real R-2/P-40 detail and NO workbook row to take a name from, and
+-- dim_programs.title came out NULL for both.
+--
+-- That is not a cosmetic gap. Their program pages rendered "<title>null</title>",
+-- and search_quick.json shipped two docs with a null title, which threw
+-- inside the client index build and left the WHOLE SITE's tier-1 search
+-- dead — every query fell through to pagefind, and gate 5 dropped from
+-- passing to 49%. One missing string, sitewide blast radius.
+--
+-- The fallback is the title the Navy prints on the exhibit itself
+-- (LineItemTitle, carried into detail_narratives.title by the P-40 loader) —
+-- real and sourced, never invented, and it is the string the program page's
+-- own narrative already displays. Used ONLY where the workbook supplies
+-- nothing, so no page's name changes.
+jbook_detail_titles as (
+    select pe_bli, max(title) as title
+    from {{ source('lake', 'jbook_narratives') }}
+    where cast(fiscal_year as integer) = 2026 and title is not null
+    group by pe_bli
+),
 -- ROADMAP #45: the fy_2026_total-anchored organization-collision set, same
 -- shape as collision_slots/collision_pes below but on organization instead
 -- of account. Defined here (ahead of `details`) because `details` needs it
@@ -434,9 +462,10 @@ matched as (
         -- the row its (independently known) account and its title scope.
         coalesce(d.detail_account, am.account) as account,
         coalesce(am.account_title, dat.account_title) as account_title,
-        coalesce(max(dt.title), max(b.title)) as title
+        coalesce(max(dt.title), max(b.title), max(jt.title)) as title
     from details d
     left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
+    left join jbook_detail_titles jt on jt.pe_bli = d.pe_bli
     left join account_match am
         on am.pe_bli = d.pe_bli and am.org is not distinct from d.org
         and am.detail_account is not distinct from d.detail_account and am.rn = 1

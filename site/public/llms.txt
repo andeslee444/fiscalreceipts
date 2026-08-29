@@ -3,8 +3,8 @@
 Fiscal Receipts is a spending-intelligence platform for U.S. federal defense budget data.
 Every program element, award, and lobbying figure is citation-backed: J-book PDF
 page-and-bounding-box, workbook cell coordinates, or Senate LDA filing UUID.
-The site covers 1,755 DoD R&D and procurement program elements across 24 agencies,
-200 top contractor families, and 113,939 source citations from FY2017 onward.
+The site covers 1,938 DoD R&D and procurement program elements across 24 agencies,
+200 top contractor families, and 115,175 source citations from FY2017 onward.
 
 ## Core routes
 
@@ -19,11 +19,11 @@ https://fiscalreceipts.com/about/
 
 ## Top 5 programs by FY2026 budget
 
+https://fiscalreceipts.com/program/2013/  # Virginia Class Submarine [N] FY26: 11078.0M
+https://fiscalreceipts.com/program/1045/  # COLUMBIA Class Submarine [N] FY26: 10920.5M
 https://fiscalreceipts.com/program/1203154SF/  # Long Range Kill Chains [F] FY26: 7696.9M
 https://fiscalreceipts.com/program/B02100/  # B-21 Raider [F] FY26: 5551.2M
-https://fiscalreceipts.com/program/0604015F/  # Long Range Strike - Bomber [F] FY26: 4739.1M
-https://fiscalreceipts.com/program/0605238F/  # Ground Based Strategic Deterrent EMD [F] FY26: 4147.6M
-https://fiscalreceipts.com/program/ATA000/  # F-35 [F] FY26: 4086.7M
+https://fiscalreceipts.com/program/2122/  # DDG-51 [N] FY26: 5410.8M
 
 ## Data downloads
 

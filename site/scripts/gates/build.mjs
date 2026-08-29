@@ -132,11 +132,39 @@ export const PAGE_WEIGHT_BUDGET = [
   // CURRENT proportional headroom would hand the next change the same
   // cliff. Gate 1's near-ceiling note (added 2026-08-14) is what stops
   // this recurring silently.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 2_850_000, maxGzip: 297_000, measured: "2,686,677 / 281,116" },
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "32,908 / 6,595" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,334 / 78,769" },
-  { label: "/", file: "index.html", maxRaw: 1_330_000, maxGzip: 84_000, measured: "1,260,784 / 80,771" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,878 / 67,171" },
+  //
+  // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, AND THE
+  // CHANGE THAT NEEDS THEM IS THIS ONE. Wave 5 parsed the five FY2026 Navy
+  // procurement appropriations the pipeline had been discarding (APN, PMC,
+  // WPN, SCN, PANMC — six masters where a filename rule had kept one), and
+  // programs.json went from 1,755 entries to 1,938. This page is the index
+  // of every one of them, so it grew by construction: 2,686,677 / 281,116 ->
+  // 2,962,701 / 311,339, breaching both ceilings.
+  //
+  // Nothing was trimmed to fit and nothing should be: 183 more rows on the
+  // program index is the entire point of the ingestion. Same ~6% headroom
+  // rule the Sprint E entry above established (re-baselining to the CURRENT
+  // proportional headroom hands the next change the same cliff): 3,150,000
+  // is 6.32% over the raw measurement, 330,000 is 7.05% over the gzip one.
+  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,635 / 308,268" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "32,908 / 6,596" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,332 / 78,754" },
+  // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
+  // CHANGE. 1,260,784 / 80,771 -> 1,389,568 / 89,557, breaching both.
+  //
+  // Where the bytes are, measured rather than assumed: 1,341,090 of the
+  // page's 1,389,357 raw bytes are inline <script>, and 1,239,952 of those
+  // are one RSC flight chunk carrying the page's citation slice — 1,802
+  // citations, whose first entry on this build is Virginia Class Submarine's
+  // 10,656.927. The homepage cites its hero, its movers and its agency grid,
+  // and every one of those slices is drawn from the corpus Wave 5 grew. The
+  // page renders 17 program links; the weight is disclosure payload, not
+  // markup, and there is nothing to trim that would not remove a citation.
+  //
+  // ~6% headroom against the new measurement: 1,475,000 is 6.16% over raw,
+  // 95,000 is 7.88% over gzip.
+  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,357 / 88,060" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,878 / 67,163" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -154,10 +182,22 @@ export const PAGE_WEIGHT_BUDGET = [
   // hrefs and read 176 raw / 37 gzip bytes light. Three agents have got a
   // page-weight annotation wrong by measuring with a different tool; this
   // one imports the gate's and states which build it read.
-  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "316,056 / 33,458" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,582 / 28,211" },
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,712 / 25,523" },
-  { label: "/data/", file: "data/index.html", maxRaw: 95_000, maxGzip: 13_500, measured: "93,911 / 13,340" },
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "316,056 / 33,453" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,524 / 28,199" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,712 / 25,520" },
+  // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
+  // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
+  // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
+  // bytes of raw headroom left, which is the same cliff rather than a pass.
+  // This page renders the dataset inventory, and Wave 5 moved it:
+  // jbook_details went from 21,028 rows to 21,993 and gained an `account`
+  // column (the appropriation each detail figure was filed under — without
+  // it, summing that table by pe_bli adds ten pairs of unrelated Navy
+  // programs together), and its scope sentence now says so.
+  //
+  // ~6% headroom against the new measurement: 101,000 is 6.34% over raw,
+  // 14,450 is 6.02% over gzip.
+  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "94,741 / 13,619" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -174,7 +214,32 @@ export const PAGE_WEIGHT_BUDGET = [
   // the destination states it outright). 5,819 raw bytes of room now, and the
   // recorded pair says so: the drift leg below reads THIS string, and the old
   // one would have promised 9,588.
-  { label: "/agency/", file: "agency/index.html", maxRaw: 190_000, maxGzip: 48_500, measured: "185,075 / 47,214" },
+  //
+  // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
+  // CHANGE. 185,075 / 47,214 -> 192,318 / 52,220, breaching both.
+  //
+  // AND THE PAGE'S PROSE GOT SHORTER, so the growth is worth naming exactly.
+  // Every agency total on this index is a DERIVED sum and cites its inputs.
+  // Wave 5 gave the Navy 183 more programs, and the two Navy derived facts'
+  // input lists grew with them: the FY2024 and FY2026 citations for org N
+  // are 12,887 and 12,154 bytes of JSON on this build (11,180 and 10,520
+  // input ids), and the whole slice this page carries is 102,551 bytes. That
+  // is the derivation a reader clicks a total to see. Shrinking it means
+  // publishing a sum whose inputs are not listed.
+  //
+  // The §P0-6 note above this table was rewritten SHORTER in the same wave
+  // (the ranking is no longer uneven — N 97.0%, F 99.0%, A 99.5% of their
+  // workbook totals), so none of this growth is prose.
+  //
+  // ~6% headroom against the new measurement: 204,000 is 6.13% over raw,
+  // 53,700 is 6.12% over gzip. (A first pass set the gzip pair from a
+  // measurement taken with Python's zlib.compress instead of the gate's
+  // zlib.gzipSync — 52,220 against the gate's own 50,601 — and would have
+  // banked 9.5% of unearned headroom. This file has now recorded three
+  // agents mis-measuring this table with the wrong tool; the numbers above
+  // are the gate's, read by importing PAGE_WEIGHT_BUDGET and calling its
+  // weigh().)
+  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,213 / 50,601" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -235,7 +300,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // what it was written for. 258 bytes of gzip headroom is the tightest this
   // page has ever run: the next sentence here needs a ceiling raise argued in
   // the same breath, and this comment is the warning, not an invitation.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "135,373 / 36,870" },
+  // RE-MEASURED 2026-08-29 (tri-persona Wave 5). CEILING UNCHANGED, AND THE
+  // NUMBER IS STILL ALARMING: 135,373 / 36,870 -> 135,373 / 36,866. The page
+  // did not grow at all — it came in FOUR bytes lighter — so Wave 5 raised
+  // five ceilings on this build and deliberately not this one. 34 bytes of
+  // gzip headroom. The rule from the 2026-08-28 correction above stands: a
+  // raise is argued in the same breath as the change that needs it, and no
+  // sentence was added here to argue for one.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "135,373 / 36,866" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -256,12 +328,34 @@ export const PAGE_WEIGHT_BUDGET = [
   // Both ceilings re-derived at the SAME proportional headroom the previous
   // pair carried (raw ×1.0708, gzip ×1.0742), so the budget still catches
   // unintended growth from here rather than being merely widened.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 96_000, maxGzip: 17_700, measured: "95,638 / 17,638" },
+  // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, AND THIS
+  // ONE NEEDS SAYING PLAINLY BECAUSE IT LOOKS LIKE A PASS.
+  //
+  // Wave 5 REPLACED this page's program-pages blocker rather than adding to
+  // it: the unparsed-volume backlog it confessed no longer exists, and the
+  // row now says so. The replacement plus the recomputed figures beside it
+  // still took the page from 95,638 / 17,638 to 95,952 / 17,708 — over the
+  // 17,700 ceiling by 8 bytes, measured by the gate on that build. It came
+  // back UNDER (95,766 / 17,694, six bytes clear) only because a later edit
+  // shortened one sentence, and that edit was made for accuracy — the old
+  // wording attributed the residual excluded lines to "the services", which
+  // is wrong for the Defense Health and reconciliation lines in it — not to
+  // fit a budget. Six bytes is not headroom either way, and leaving the
+  // ceiling where it is would mean this page's next true sentence has to be
+  // paid for by deleting another one.
+  //
+  // So the ceiling moves, on the breach this change caused, restored to ~6%
+  // against the current measurement (101,500 is 5.99% over raw, 18,750 is
+  // 5.97% over gzip) rather than to the 0.03% it had drifted to.
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "95,766 / 17,694" },
   // Templated classes — the heaviest built instance of each.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,564,881 / 110,085 (/agency/F/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,699 / 142,796 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "379,375 / 22,242 (/company/boeing/)" },
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "315,382 / 21,852 (/filing/82b97e10/)" },
+  // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
+  // Navy overtook the Air Force on this page class for the same reason it
+  // overtook it on the index: 183 more programs.
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,582 / 120,667 (/agency/N/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,705 / 142,798 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "379,703 / 22,254 (/company/boeing/)" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "315,699 / 21,902 (/filing/82b97e10/)" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
