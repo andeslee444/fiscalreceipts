@@ -291,9 +291,11 @@ def test_leakage_gate_fails_below_sample_size(pg5e):
 
 
 def make_lake_parquet(tmp_path: Path, rows: list[tuple]) -> Path:
-    """Rows: (pe_bli, fiscal_year, amount_type, amount_thousands[, exhibit])
-    — written all-varchar to match the real jbooks lake export. exhibit
-    defaults to 'R-1' (5-tuples opt in, e.g. 'P-1R' sibling rows)."""
+    """Rows: (pe_bli, fiscal_year, amount_type, amount_thousands[, exhibit
+    [, account[, organization]]]) — written all-varchar to match the real
+    jbooks lake export. exhibit defaults to 'R-1' (5-tuples opt in, e.g.
+    'P-1R' sibling rows); account/organization default to the DARPA fixture
+    values, and 6-/7-tuples opt in to a SPLIT key's real slot."""
     pq = tmp_path / "budget_lines.parquet"
     con = duckdb.connect()
     con.execute(
@@ -303,9 +305,17 @@ def make_lake_parquet(tmp_path: Path, rows: list[tuple]) -> Path:
     )
     if rows:
         con.executemany(
-            "insert into lake values (?, ?, '0400', 'DARPA', ?, ?, ?)",
+            "insert into lake values (?, ?, ?, ?, ?, ?, ?)",
             [
-                (r[4] if len(r) > 4 else "R-1", str(r[1]), r[0], r[2], str(r[3]))
+                (
+                    r[4] if len(r) > 4 else "R-1",
+                    str(r[1]),
+                    r[5] if len(r) > 5 else "0400",
+                    r[6] if len(r) > 6 else "DARPA",
+                    r[0],
+                    r[2],
+                    str(r[3]),
+                )
                 for r in rows
             ],
         )
@@ -315,15 +325,24 @@ def make_lake_parquet(tmp_path: Path, rows: list[tuple]) -> Path:
 
 
 def make_book_diff_db(tmp_path: Path, rows: list[tuple]) -> Path:
+    """Rows: (pe_bli, from_edition, to_edition, diff_kind, from_value,
+    to_value, delta[, account[, organization]]). account/organization are the
+    SPLIT axes the real mart carries (NULL for every non-split pe_bli); the
+    gate scopes its lake recompute by them, so a 7-tuple keeps the pre-split
+    behaviour byte-for-byte."""
     db = tmp_path / "wh.duckdb"
     con = duckdb.connect(str(db))
     con.execute(
         "create table fct_book_diff (pe_bli varchar, from_edition int,"
         " to_edition int, diff_kind varchar, from_value decimal(20,3),"
-        " to_value decimal(20,3), delta decimal(20,3))"
+        " to_value decimal(20,3), delta decimal(20,3), account varchar,"
+        " organization varchar)"
     )
     if rows:
-        con.executemany("insert into fct_book_diff values (?, ?, ?, ?, ?, ?, ?)", rows)
+        con.executemany(
+            "insert into fct_book_diff values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [tuple(r) + (None,) * (9 - len(r)) for r in rows],
+        )
     con.close()
     return db
 
@@ -490,14 +509,22 @@ def test_book_diff_unknown_diff_kind_fails(tmp_path):
 
 
 def make_decade_series_db(tmp_path: Path, rows: list[tuple]) -> Path:
+    """Rows: (pe_bli, fy, edition_year, amount, fact_id[, account[,
+    organization]]). Same split axes as make_book_diff_db above: they are
+    part of the mart's grain since #56/#67 and ROADMAP #45, and NULL for
+    every pe_bli that is not shared by two programs."""
     db = tmp_path / "wh2.duckdb"
     con = duckdb.connect(str(db))
     con.execute(
         "create table fct_decade_series (pe_bli varchar, fy int,"
-        " edition_year int, amount decimal(20,3), fact_id varchar)"
+        " edition_year int, amount decimal(20,3), fact_id varchar,"
+        " account varchar, organization varchar)"
     )
     if rows:
-        con.executemany("insert into fct_decade_series values (?, ?, ?, ?, ?)", rows)
+        con.executemany(
+            "insert into fct_decade_series values (?, ?, ?, ?, ?, ?, ?)",
+            [tuple(r) + (None,) * (7 - len(r)) for r in rows],
+        )
     con.close()
     return db
 
@@ -771,3 +798,70 @@ def test_decade_parquet_recompute_excludes_p1r_rows(tmp_path):
     g = decade_parquet_gate5e(pq_bad, lake, sample_size=1)
     assert g["ok"] is False
     assert "lake recompute mismatch" in g["failures"][0][1]
+
+
+# ---------------------------------------------------------------------------
+# Split keys: (pe_bli, fy, edition_year) is NOT the decade grain
+# ---------------------------------------------------------------------------
+#
+# Thirteen pe_bli values are shared by two or more different programs — ten on
+# the ACCOUNT axis (#56/#67) and three on the ORGANIZATION axis ('20', '30',
+# '500', ROADMAP #45) — and fct_decade_series publishes one row per real slot
+# for them. Both gates below kept checking the pre-split grain and summing the
+# whole pe_bli out of the lake, so they reported the mart's correct rows as
+# duplicates and recomputed each of them against the OTHER program's money
+# added in. Measured on the 2026-08-29 warehouse: 100 "duplicate" grains, 27
+# of them from the three organization keys alone — the same 27 the mart's own
+# dbt test records for the pre-#45 grain, which dates the staleness to
+# 2026-08-21, before the Wave 5 ingestion that surfaced it.
+
+
+def test_decade_series_split_key_is_not_a_duplicate_and_recomputes_per_account(
+    tmp_path,
+):
+    """Two accounts, one BLI code, one fiscal year — two legitimate rows."""
+    lake = make_lake_parquet(tmp_path, [
+        # '3302' is ASW Range Support in Weapons Procurement AND Joint
+        # Communications Support Element in Other Procurement.
+        ("3302", 2026, "fy_2026_total", "4328", "P-1", "1507N", "N"),
+        ("3302", 2026, "fy_2026_total", "3389", "P-1", "1810N", "N"),
+    ])
+    db = make_decade_series_db(tmp_path, [
+        ("3302", 2026, 2026, 4328.0, "f1", "1507N", None),
+        ("3302", 2026, 2026, 3389.0, "f2", "1810N", None),
+    ])
+    g = decade_series_gate5e(db, lake, sample_size=2)
+    assert g["duplicate_grains"] == 0, g
+    # and each row recomputes against ITS OWN account's lake rows, not the sum
+    assert g["ok"] is True, g["failures"]
+    assert g["passed"] == 2
+
+
+def test_decade_series_split_key_wrong_amount_still_fails(tmp_path):
+    """The scoping must not become a way to pass: a row whose amount matches
+    neither its own account NOR the fused sum is still a failure."""
+    lake = make_lake_parquet(tmp_path, [
+        ("3302", 2026, "fy_2026_total", "4328", "P-1", "1507N", "N"),
+        ("3302", 2026, "fy_2026_total", "3389", "P-1", "1810N", "N"),
+    ])
+    db = make_decade_series_db(tmp_path, [
+        ("3302", 2026, 2026, 7717.0, "f1", "1507N", None),  # the fused sum
+    ])
+    g = decade_series_gate5e(db, lake, sample_size=1)
+    assert g["ok"] is False
+    assert any("lake recompute mismatch" in reason for _, reason in g["failures"])
+
+
+def test_book_diff_split_key_recomputes_per_account(tmp_path):
+    lake = make_lake_parquet(tmp_path, [
+        ("3302", 2025, "fy_2025_request", "4039", "P-1", "1507N", "N"),
+        ("3302", 2025, "fy_2025_request", "4551", "P-1", "1810N", "N"),
+        ("3302", 2026, "fy_2026_total", "4328", "P-1", "1507N", "N"),
+        ("3302", 2026, "fy_2026_total", "3389", "P-1", "1810N", "N"),
+    ])
+    db = make_book_diff_db(tmp_path, [
+        ("3302", 2025, 2026, "request_vs_request", 4039.0, 4328.0, 289.0,
+         "1507N", None),
+    ])
+    g = book_diff_gate5e(db, lake, sample_size=1)
+    assert g["ok"] is True, g["failures"]

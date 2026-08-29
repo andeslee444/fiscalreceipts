@@ -93,6 +93,8 @@ def _lake_candidate_match(
     edition: int,
     candidates: list[str],
     target: Decimal,
+    account: str | None = None,
+    organization: str | None = None,
 ) -> tuple[bool, str]:
     """Any-candidate-matches rule (reconcile.scenario_map semantics).
 
@@ -109,8 +111,25 @@ def _lake_candidate_match(
     Modern (PB2024–PB2026) P-1R rows share (pe_bli, amount_type) with their
     P-1 line, so a naive whole-lake sum double-counts the reserve share —
     fct_decade_series applies the same exclusion in its lake_sums CTE.
+
+    `account`/`organization` scope the sum for a SPLIT key. Thirteen pe_bli
+    values are shared by two or more different programs — ten on the account
+    axis (#56/#67) and three on the organization axis ('20', '30', '500',
+    ROADMAP #45) — and fct_decade_series publishes one row per real slot for
+    them. Summing the whole pe_bli there adds two unrelated programs together
+    and mismatches BOTH of their rows. NULL on either argument keeps the
+    unscoped sum, which is byte-for-byte the previous behavior for the ~1,940
+    keys that are not split.
     """
     sums: list[str] = []
+    scope_sql = ""
+    scope_params: list[object] = []
+    if account is not None:
+        scope_sql += " and account = ?"
+        scope_params.append(account)
+    if organization is not None:
+        scope_sql += " and organization = ?"
+        scope_params.append(organization)
     for slug in candidates:
         n, s = lake_con.execute(
             f"""
@@ -121,8 +140,8 @@ def _lake_candidate_match(
               and try_cast(fiscal_year as integer) = ?
               and amount_type = ?
               and exhibit <> 'P-1R'
-            """,
-            [pe_bli, edition, slug],
+            """ + scope_sql,
+            [pe_bli, edition, slug, *scope_params],
         ).fetchone()
         if n == 0 or s is None:
             continue
@@ -421,7 +440,7 @@ def book_diff_gate5e(
             rows = con.execute(
                 """
                 select pe_bli, from_edition, to_edition, diff_kind,
-                       from_value, to_value, delta
+                       from_value, to_value, delta, account, organization
                 from fct_book_diff
                 where delta is not null
                 order by random()
@@ -459,8 +478,14 @@ def book_diff_gate5e(
     failures: list[tuple[str, str]] = []
     lake = duckdb.connect()
     try:
-        for pe_bli, from_ed, to_ed, kind, from_v, to_v, delta in rows:
-            grain = f"{pe_bli} {from_ed}→{to_ed} {kind}"
+        for (pe_bli, from_ed, to_ed, kind, from_v, to_v, delta,
+             account, organization) in rows:
+            grain = (
+                f"{pe_bli}"
+                + (f"/{account}" if account else "")
+                + (f"/{organization}" if organization else "")
+                + f" {from_ed}→{to_ed} {kind}"
+            )
             fd, td, dd = _dec(from_v), _dec(to_v), _dec(delta)
             if fd is None or td is None:
                 failures.append(
@@ -499,7 +524,8 @@ def book_diff_gate5e(
                 failures.append((grain, f"unknown diff_kind: {kind!r}"))
                 continue
             ok_from, detail = _lake_candidate_match(
-                lake, lake_budget_lines, pe_bli, int(from_ed), from_candidates, fd
+                lake, lake_budget_lines, pe_bli, int(from_ed), from_candidates, fd,
+                account=account, organization=organization,
             )
             if not ok_from:
                 failures.append(
@@ -508,7 +534,8 @@ def book_diff_gate5e(
                 )
                 continue
             ok_to, detail = _lake_candidate_match(
-                lake, lake_budget_lines, pe_bli, int(to_ed), to_candidates, td
+                lake, lake_budget_lines, pe_bli, int(to_ed), to_candidates, td,
+                account=account, organization=organization,
             )
             if not ok_to:
                 failures.append(
@@ -541,7 +568,22 @@ def decade_series_gate5e(
 ) -> dict:
     """fct_decade_series integrity: unique grain + lake recompute.
 
-    - (pe_bli, fy, edition_year) must be unique.
+    - (pe_bli, account, organization, fy, edition_year) must be unique.
+
+      WIDENED 2026-08-29. This gate still checked (pe_bli, fy, edition_year)
+      — the grain fct_decade_series had before E2 (#56/#67) gave the ten
+      account-collision keys one row per real account, and before ROADMAP
+      #45 gave '20'/'30'/'500' one row per organization. The mart's own dbt
+      test (assert_decade_series_grain_unique) was widened both times; this
+      one was not, so it has been reporting duplicates for a grain the mart
+      deliberately publishes. Measured on the 2026-08-29 warehouse: 100
+      "duplicate" grains, of which 27 are the three ORGANIZATION-collision
+      keys alone — the exact figure that dbt test records for the pre-#45
+      grain, which dates this gate's staleness to 2026-08-21, before the
+      Wave 5 ingestion that surfaced it. Widening it to the mart's
+      documented grain is the stale check catching up, not a bar moving:
+      account and organization are NULL for every non-split pe_bli, so this
+      reproduces the old check byte-for-byte there.
     - ≥sample_size sampled rows: amount recomputes from the parquet-lake
       budget_lines as the sum of amount_thousands for that edition's rows
       whose amount_type matches the edition-relative scenario slugs
@@ -581,16 +623,16 @@ def decade_series_gate5e(
             dupes = con.execute(
                 """
                 select count(*) from (
-                  select pe_bli, fy, edition_year
+                  select pe_bli, account, organization, fy, edition_year
                   from fct_decade_series
-                  group by 1, 2, 3
+                  group by 1, 2, 3, 4, 5
                   having count(*) > 1
                 )
                 """
             ).fetchone()[0]
             rows = con.execute(
                 """
-                select pe_bli, fy, edition_year, amount
+                select pe_bli, fy, edition_year, amount, account, organization
                 from fct_decade_series
                 order by random()
                 limit ?
@@ -609,7 +651,9 @@ def decade_series_gate5e(
     failures: list[tuple[str, str]] = []
     if dupes:
         failures.append(
-            ("(grain)", f"{dupes} duplicate (pe_bli, fy, edition_year) grain(s)")
+            ("(grain)",
+             f"{dupes} duplicate (pe_bli, account, organization, fy,"
+             f" edition_year) grain(s)")
         )
 
     if not lake_budget_lines.exists():
@@ -626,8 +670,13 @@ def decade_series_gate5e(
 
     lake = duckdb.connect()
     try:
-        for pe_bli, fy, edition_year, amount in rows:
-            grain = f"{pe_bli} fy={fy} edition={edition_year}"
+        for pe_bli, fy, edition_year, amount, account, organization in rows:
+            grain = (
+                f"{pe_bli}"
+                + (f"/{account}" if account else "")
+                + (f"/{organization}" if organization else "")
+                + f" fy={fy} edition={edition_year}"
+            )
             amt = _dec(amount)
             if amt is None:
                 failures.append((grain, f"amount null/non-numeric: {amount!r}"))
@@ -642,7 +691,8 @@ def decade_series_gate5e(
                 continue
             candidates = scenario_map(int(edition_year))[scenario]
             matched, detail = _lake_candidate_match(
-                lake, lake_budget_lines, pe_bli, int(edition_year), candidates, amt
+                lake, lake_budget_lines, pe_bli, int(edition_year), candidates,
+                amt, account=account, organization=organization,
             )
             if not matched:
                 failures.append(
