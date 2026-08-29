@@ -51,9 +51,21 @@ def coverage_gate(dsn: str, *, organizations: list[str]) -> dict:
 def accuracy_gate(dsn: str) -> dict:
     """Gate 2: no unreconciled live detail without an open/resolved queue trail.
 
-    Only counts scenarios that reconciliation actually checks (PriorYear, CurrentYear,
-    BudgetYearOne); other scenarios like AllPriorYears are extraction artifacts and
-    out of scope.
+    Only counts scenarios that reconciliation actually checks. The SQL below
+    defines that by asking for a Gate B check row, which is the honest test:
+    reconcile.py's Gate B loop skips any scenario `scenario_map()` has no
+    candidate amount_type slugs for, so that function's KEYS are the checked
+    set — PriorYear, CurrentYear, BudgetYearOne **and BudgetYearOneBase**.
+    The complement is reconcile.DESIGN_EXCLUDED_SCENARIOS (AllPriorYears,
+    BudgetYearOneOOC): no R-1 display analog, so never checked, so 100%
+    unreconciled by construction rather than by failure.
+
+    This docstring used to omit BudgetYearOneBase. It cost a real figure: a
+    2026-08-27 review counted the site's genuine reconciliation failures from
+    this sentence rather than from scenario_map() and reported 52 where the
+    warehouse has 87 — 73 programs carry an unreconciled BudgetYearOneBase
+    row, and Gate B does check them. Anything that needs the scope must read
+    scenario_map(), never this paragraph.
     """
     with psycopg.connect(dsn) as con:
         silent = con.execute(
