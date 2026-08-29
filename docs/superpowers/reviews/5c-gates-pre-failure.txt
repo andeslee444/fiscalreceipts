@@ -10436,3 +10436,104 @@ WHAT DID NOT REPRODUCE (verify every number yourself, including mine):
     Amounts*'" -> reproduced exactly; the shipped citations put those 934
     R-1 cells in column K under that header, and the 583 P-1 cells in column
     Q under "FY 2024 PB Request with CR Adjustments Amount*".
+
+--------------------------------------------------------------------------------
+VERBATIM PASS -- both new legs, on the post-fix build (HEAD f125cbb)
+--------------------------------------------------------------------------------
+
+  gate 23 basis: PASS
+  leg k: 2005 program pages carry a reconciliation badge (reconciled 1655, rollup 250, partial 87, no-detail 13); warehouse verdicts {"reconciled":1651,"partial":87,"no_detail":1,"all_scenario_pass":344}; 23 split-key page(s) excluded from k1 (one pe_bli, several pages); 3 page(s) expect "no detail" (no in-scope J-book row at all)
+
+  gate 20 yearsmatrix: PASS
+  leg i: 29614/29916 decade cells checked against their own workbook column header across 30 columns; 12 column(s) publish a measure qualifier (fy2015a=actuals-base-oco, fy2016a=actuals-base-oco, fy2017a=actuals-base-oco, fy2017e=enacted-request, fy2018a=actuals-base-oco, fy2018e=enacted-request, fy2019a=actuals-base-oco, fy2020r=request-total-base-oco, fy2021a=actuals-base-oco, fy2021r=request-total-base-oco, fy2024e=enacted-request, fy2025e=enacted+enacted-total)
+  leg i3: revealed fy2017e from the column picker — † + data-measure enacted-request ✓
+  leg i3/i4: † header, footnote, cell data-measure and CSV header ✓
+
+TWELVE, not three. The FY2024 finding pointed at one column; asking every
+decade cell what its own workbook header says found twelve qualified columns.
+Nine are the six per-edition actuals columns reporting "(Base + OCO)" and the
+two FY2020/FY2021 request columns reporting the base+OCO total -- true
+qualifiers the leg does NOT flag as contradictions (those headers name no
+competing measure family), but which the payload now states and the grid now
+marks. The three the leg flags as contradictions are exactly the three CR
+columns: fy2017e, fy2018e, fy2024e.
+
+  overall: PASS -- 24/24 gates, suite unchanged at 24
+  (grep -c "gateResults.push" site/scripts/verify.mjs -> 24)
+
+WHAT THE PAGES SAY NOW (post-fix build, verbatim):
+
+  /program/1203154SF/ (Long Range Kill Chains -- every checked scenario ties,
+  AllPriorYears does not; wore the warning badge before):
+    <a href="/glossary/#partial-reconciliation">
+      <span data-reconciliation-badge="reconciled"
+            title="Every scenario this site reconciles ... ties to the R-1/P-1
+                   workbook rollup for this line. Click for the full
+                   definition.">Reconciled</span></a>
+
+  /program/ATA000/ (F-35 -- a real in-scope failure; keeps the warning):
+    data-reconciliation-badge="partial"  "Partial Reconciliation"
+
+  Badge census across the 2,016 built program pages:
+    Reconciled                  1,655
+    Partial Reconciliation         87
+    No detail to reconcile         13
+    Summary figures (R-1/P-1)     250   (rollup tier, unchanged)
+    no badge                       11   (a split key's disambiguation page,
+                                         which carries no figures of its own)
+
+  /years/ header, FY2015A (and every other qualified column):
+    FY2015A†  PB2017          data-qualified="true"
+                              data-measures="actuals-base-oco"
+
+  /years/ footnote, opening view, verbatim:
+    "† These columns are filed under the row label the book itself fills, but
+     the workbook column behind them reports something narrower or different:
+     FY2015A (PB2017), FY2016A (PB2018), FY2017A (PB2019), FY2018A (PB2020),
+     FY2019A (PB2021), FY2021A (PB2023) — actuals (base + OCO). FY2025E
+     (PB2026) — enacted (book total) on some lines. Where a request column
+     stands in for an enacted year, read it as what was asked for, not what
+     was appropriated. why →"
+
+  /years/ cells, live DOM, per column:
+    fy2015a  data-measure="actuals-base-oco"  x616
+    fy2020a  data-measure="actuals"           x878   (unqualified, unchanged)
+    fy2025e  data-measure="enacted-total"     x947
+             data-measure="enacted"           x582   (the mixed column)
+    fy2017e  data-measure="enacted-request"          (revealed via the picker)
+
+  /years/ CSV export header fields:
+    fy2024e_pb2025_enacted_request_usd_millions
+    fy2017e_pb2018_enacted_request_usd_millions
+    fy2018e_pb2019_enacted_request_usd_millions
+    fy2015a_pb2017_actuals_base_oco_usd_millions
+    fy2025e_pb2026_enacted_or_enacted_total_usd_millions
+    fy2020a_pb2022_usd_millions                      (unqualified, unchanged)
+
+PAGE WEIGHT -- NO CEILING RAISED, NO CEILING BREACHED. Measured with the
+gate's own weigh() at zlib level 9, on the f125cbb build run WITH
+NEXT_PUBLIC_SITE_URL set. Gzip headroom before -> after:
+
+  /methodology/          511 -> 261   (the reconciliation-scope sentence, +250)
+  /years/              2,412 -> 2,411 (server shell only; the † and the
+                                       footnote live in the client island)
+  /data/                 330 -> 329   (untouched)
+  /companies/families/   495 -> 500   (untouched)
+
+The two pages the brief named as tightest -- /data/ and /companies/families/
+-- were not touched and did not move beyond build noise. The one entry that
+needed correcting was an ANNOTATION, not a ceiling: gate 1's own drift leg
+caught /methodology/'s `measured` string recording 744 bytes of room against
+258 actual, and the string was re-measured to 134,277 / 36,642 while the
+136,500 / 36,900 ceiling stood.
+
+ONE LEG DREW BLOOD ON ITSELF. The first draft of leg i3 revealed FY2017E
+through the column picker, checked it, and then clicked the SAME
+`[aria-label="Show FY2017E column"]` locator to restore the default view --
+after showing the column had already flipped that chip to "Hide FY2017E
+column". Playwright waited 30s for a selector that had stopped matching, and
+the throw took gates 20 through 24 down with it: the suite never reached a
+verdict. Fixed by locating the restore click on its own label AND by wrapping
+the block, so a UI failure here reads as a gate error instead of deciding
+whether the other gates get to run. Recorded because "run your legs, don't
+read them" is the lesson that caught it, and reading it would not have.
