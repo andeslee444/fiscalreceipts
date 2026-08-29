@@ -102,14 +102,28 @@ class TestCommittedSeed:
             assert row["category"].strip() in CATEGORY_ENUM
 
     def test_seed_emits_verbatim(self, tmp_path):
+        """The sidecar is the seed, verbatim — no re-derivation, no defaults
+        invented for missing rows.
+
+        The pinned keys track the seed, and the seed tracks the live top-50
+        by FY2026 total, so they move when the corpus does. Wave 5 parsed the
+        Navy procurement books: nine Navy shipbuilding lines (Virginia,
+        COLUMBIA, DDG-51 among them) entered the top-50 and fifteen smaller
+        lines left it, including 0306250JCY — which was the seed's ONLY
+        'cyber' row, so cyber is absent from the value set below now. That is
+        a fact about which programs are largest this edition, not a loosening:
+        the assertion still pins the exact category set the seed carries, and
+        still fails if a category appears or disappears unnoticed.
+        """
         json_dir = tmp_path / "json"
         json_dir.mkdir()
         _emit_categories_sidecar(json_dir=json_dir, categories_csv=SEED_CSV)
         obj = json.loads((json_dir / "categories.json").read_text())
         assert len(obj) == 50
         assert obj["1203154SF"] == "space"
-        assert obj["0306250JCY"] == "cyber"
         assert obj["1000"] == "shipbuilding"
+        assert obj["2013"] == "shipbuilding"   # Virginia Class, entered Wave 5
+        assert obj["0147"] == "default"        # F-35C, entered Wave 5
         assert sorted(set(obj.values()) - {"default"}) == [
-            "cyber", "shipbuilding", "space",
+            "shipbuilding", "space",
         ]

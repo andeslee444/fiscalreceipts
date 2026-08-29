@@ -24,9 +24,17 @@ EXPORTS: dict[str, str] = {
         " where source_document_id is not null"
     ),
     "details": (
+        # d.account is the P-40 AppropriationNumber the reconciler already
+        # joins budget_lines.account on byte-for-byte. It was not exported,
+        # so the detail side of the mart had no way to tell two programs
+        # sharing a BLI code apart and summed them (ten PB2026 Navy keys —
+        # '3010' is LPD Flight II in 1611N AND Shipboard Tactical
+        # Communications in 1810N). NULL for R-1/RDT&E rows, which carry
+        # no appropriation on the detail side.
         "select d.pe_bli, d.project_number, d.project_title, d.scenario,"
-        " d.amount_millions, d.xml_path, d.reconciled, j.org, j.exhibit_family,"
-        " j.fiscal_year, d.document_id, j.sha256 as document_sha256"
+        " d.amount_millions, d.xml_path, d.reconciled, d.account, j.org,"
+        " j.exhibit_family, j.fiscal_year, d.document_id,"
+        " j.sha256 as document_sha256"
         " from budget_line_details d join jbook_documents j on j.id=d.document_id"
         " where not d.superseded"
     ),

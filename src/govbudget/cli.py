@@ -409,8 +409,10 @@ def _navy_service_exclusions(inventory, plan) -> list[dict]:
     """Build the edition-manifest service exclusion rows from a plan.
 
     Non-justification appropriations (O&M/MilPers/etc.) carry rule
-    'non-justification-appropriation'; deduped BA-splits (RDTE and procurement,
-    each embedding the same full family master XML) carry 'ba-split-duplicate'."""
+    'non-justification-appropriation'. plan.deduped is always empty now — no
+    book is excluded before download on a filename guess; duplicates are
+    collapsed after load by embedded-master sha256 and recorded as
+    status='superseded' documents, not as plan exclusions."""
     rows = [
         {"filename": name, "rule": "non-justification-appropriation", "reason": reason}
         for name, reason in plan.excluded
@@ -423,9 +425,10 @@ def _navy_service_exclusions(inventory, plan) -> list[dict]:
 
 
 def _jbooks_backfill_service(args) -> None:
-    """Phase 5G Navy backfill: Playwright inventory -> plan (classify + RDTE
-    dedup + resume skip) -> register (acquisition='playwright') + record
-    service exclusions -> browser download -> scoped extract/reconcile.
+    """Phase 5G Navy backfill: Playwright inventory -> plan (classify + resume
+    skip) -> register (acquisition='playwright') + record service exclusions ->
+    browser download -> scoped extract/reconcile -> dedup identical-master
+    duplicates.
 
     Army/AF are NOT reachable via headless Chromium (Akamai/CAC — probe
     finding); they route through `jbooks ingest-local`. This command only
@@ -433,6 +436,7 @@ def _jbooks_backfill_service(args) -> None:
     from govbudget.jbooks import edition_probe
     from govbudget.jbooks.service_fetch import (
         build_download_plan,
+        dedup_service_master_dups,
         known_downloaded_urls,
         register_service_documents,
     )
@@ -455,8 +459,7 @@ def _jbooks_backfill_service(args) -> None:
     )
     print(
         f"jbooks backfill {service} FY{fy}: {len(plan.to_download)} to download,"
-        f" {len(plan.skipped)} already present, {len(plan.deduped)} ba-split-dupes,"
-        f" {len(plan.excluded)} excluded"
+        f" {len(plan.skipped)} already present, {len(plan.excluded)} excluded"
     )
     edition_probe.record_service_exclusions(
         manifest_path, service, fy, _navy_service_exclusions(inventory, plan)
@@ -477,6 +480,15 @@ def _jbooks_backfill_service(args) -> None:
         for d, e in extract_failures:
             print(f"  extract FAILED doc {d}: {e}")
         sys.exit(1)
+
+    # Same evidence-keyed collapse the archive path runs: books whose embedded
+    # master XML is byte-identical are the same book printed twice (the Navy
+    # APN and OPN budget-activity volumes are), and only one of each is kept
+    # live. This used to be done at plan time from filenames, which threw away
+    # five whole appropriations; see service_fetch.build_download_plan.
+    superseded = dedup_service_master_dups(config.PG_DSN, fiscal_year=fy, org=org)
+    print(f"jbooks backfill {service} dedup:"
+          f" {len(superseded)} duplicate-master book(s) superseded")
 
 
 # ---------------------------------------------------------------------------
@@ -614,16 +626,12 @@ def _jbooks_backfill_service_archive(args) -> None:
     manifest_path = config.RESEARCH_DIR / "edition_manifest.json"
 
     inventory = _service_archive_enumerate(service, fy)
-    # Reuse the classify/plan machinery (dedup_ba_splits is a no-op here — the
-    # service allowlists carry no Navy-style BA markers; real dup collapse
-    # happens post-load in dedup_service_master_dups by master identity).
-    # dedup_ba=False: the Navy filename BA-split collapse is wrong for the
-    # archive services (Army RDTE volumes carry distinct PEs; AF/SF dedup by
-    # master identity post-load). The real duplicate collapse is
-    # dedup_service_master_dups after extraction.
+    # Reuse the classify/plan machinery. The real duplicate collapse is
+    # dedup_service_master_dups after extraction, on embedded-master identity
+    # — the plan no longer guesses duplicates from filenames at all (the Navy
+    # path guessed wrong; see service_fetch.build_download_plan's note).
     plan = build_download_plan(
         inventory, known_urls=known_downloaded_urls(config.PG_DSN, fiscal_year=fy),
-        dedup_ba=False,
     )
     registrable, excluded = classify_inventory(inventory)
     print(f"jbooks backfill {service} (archive) FY{fy}:"

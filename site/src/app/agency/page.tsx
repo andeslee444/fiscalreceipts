@@ -89,38 +89,42 @@ export default function AgencyIndexPage() {
             . Click a total to inspect its derivation and cited inputs, or a
             name to see every program element for that agency.
           </p>
-          {/* §P0-6 — THE SORT WAS THE FALSE CLAIM.
+          {/* §P0-6 — THE SORT WAS THE FALSE CLAIM, AND THEN IT WASN'T.
               This page said "sorted by FY2026 total" and put the Air Force
-              above the Navy. Every figure in the table is true and correctly
-              cited; the ORDER was not, because the totals are sums over what
-              has been ingested and ingestion is very uneven by service. The
-              Navy's justification volumes are largely unparsed (gate 14 leg
-              cv holds that claim to the disk↔lake reconciliation), so its
-              ingested total is far short of its actual FY2026 request, while
-              the Air Force's and the Army's are nearly complete. Ranking
-              those against each other silently ranks INGESTION COMPLETENESS
-              under a spending label.
-              Publishing the per-agency coverage percentage beside the money
-              is the real fix and it needs a figure agencies.json does not
-              carry yet. Until it does, this page does not get to imply a
-              ranking it cannot support. */}
+              above the Navy. Every figure in the table was true and
+              correctly cited; the ORDER was not, because the totals are sums
+              over what has been ingested and ingestion was very uneven by
+              service — the Navy rendered at $46.8B against a real $121.8B
+              because five of its six procurement appropriations were
+              unparsed. Ranking those against each other silently ranked
+              INGESTION COMPLETENESS under a spending label.
+              Wave 5 parsed them. Measured against fct_budget_lines' own
+              fy_2026_total, the three services now sit at N 97.0%, F 99.0%,
+              A 99.5%, and the ingested order (N $118.1B > F $97.7B >
+              A $43.1B) matches the workbook order (N $121.8B > F $98.7B >
+              A $43.3B). Gate 14 leg cr no longer requires a disclosure here
+              — it is symmetric on the reconciliation and turns the
+              requirement back on by itself if a future edition arrives
+              unevenly. The note below stays anyway and says the one thing
+              that is still true: these are sums over what is loaded, not the
+              services' requests. It is deliberately shorter than the claim it
+              replaces; this page has ~250 bytes of raw headroom (see the
+              chip note below) and the honest sentence is the small one. */}
           <ScopeNote className="mt-3" label={null}>
             <p className="text-sm leading-6">
               <strong className="text-foreground">
-                Do not read this order as a ranking of what the services spend.
+                These are totals this site has loaded, not the services&rsquo;
+                requests.
               </strong>{" "}
-              Each total is a sum over the program elements whose justification
-              this site has loaded, and that coverage is uneven between
-              agencies. The Navy&rsquo;s is the most incomplete by a wide
-              margin — most of its FY2026 justification volumes are downloaded
-              but not yet parsed — so its total here understates its request by
-              far more than any other service&rsquo;s does, and it sorts lower
-              than it belongs. The Air Force and Army totals are close to
-              complete. Per-agency coverage figures are not published yet;{" "}
+              Every FY2026 justification volume held here is now parsed, and
+              each service&rsquo;s total is within a few percent of its
+              workbook figure — the Navy&rsquo;s is the furthest short, and
+              the order matches the workbook&rsquo;s own. Where the remaining
+              gap comes from, line by line, is on{" "}
               <Link href="/coverage/" className="underline hover:text-foreground">
                 what is and is not loaded
-              </Link>{" "}
-              states the shortfall volume by volume.
+              </Link>
+              .
             </p>
           </ScopeNote>
         </div>

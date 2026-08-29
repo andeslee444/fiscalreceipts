@@ -166,11 +166,15 @@ def _bl_rows() -> list[tuple]:
     ]
 
 
-def _detail_row(fid, pe, pn, pt, scenario, amount, xml_path, resolution):
-    """13-tuple matching the export pass detail_rows shape."""
+def _detail_row(fid, pe, pn, pt, scenario, amount, xml_path, resolution,
+                account=None):
+    """14-tuple matching the export pass detail_rows shape.
+
+    `account` (Wave 5, last position) is the detail row's own appropriation —
+    NULL for R-2/RDT&E rows, which is what these DARPA fixtures are."""
     return (
         fid, pe, pn, pt, scenario, amount, "USD millions", xml_path,
-        "DARPA", "rdte", 2026, "sha_jb", resolution,
+        "DARPA", "rdte", 2026, "sha_jb", resolution, account,
     )
 
 

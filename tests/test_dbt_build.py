@@ -41,7 +41,8 @@ JBOOK_DOCUMENT_COLS = (
 
 JBOOK_DETAIL_COLS = (
     "pe_bli, project_number, project_title, scenario, amount_millions,"
-    " xml_path, reconciled, org, exhibit_family, fiscal_year, document_id"
+    " xml_path, reconciled, org, exhibit_family, fiscal_year, document_id,"
+    " account"
 )
 
 JBOOK_NARRATIVE_COLS = (
@@ -96,7 +97,24 @@ def make_lake(data_dir: Path):
         f"('P-1','2025','3010F','Aircraft Procurement, Air Force','F','01','Combat Aircraft',"
         f"'C130J0','C-130J','fy_2023_actuals','1775293','300'),"
         f"('P-1R','2025','3010F','Aircraft Procurement, Air Force','F','01','Combat Aircraft',"
-        f"'C130J0','C-130J','fy_2023_actuals','1700000','300'))"
+        f"'C130J0','C-130J','fy_2023_actuals','1700000','300'),"
+        # Wave 5: ONE budget-line code, TWO unrelated Navy programs in two
+        # appropriations — the live '3010' shape (LPD Flight II in
+        # Shipbuilding & Conversion, Shipboard Tactical Communications in
+        # Other Procurement). Both sides report fy_2026_total, so this is a
+        # genuine collision on dim_programs' own anchor, and both carry
+        # R-2/P-40 detail below. Before Wave 5 the detail source had no
+        # account and the mart summed them into ONE row of $528.574M under
+        # the communications title; assert_dim_programs_detail_account_single
+        # fails on exactly that.
+        f"('P-1','2026','1611N','Shipbuilding and Conversion, Navy','N','02','Other Warships',"
+        f"'3010','LPD Flight II','fy_2024_actuals','500000','400'),"
+        f"('P-1','2026','1611N','Shipbuilding and Conversion, Navy','N','02','Other Warships',"
+        f"'3010','LPD Flight II','fy_2026_total','1000000','400'),"
+        f"('P-1','2026','1810N','Other Procurement, Navy','N','01','Ship Propulsion',"
+        f"'3010','Shipboard Tactical Communications','fy_2024_actuals','28574','401'),"
+        f"('P-1','2026','1810N','Other Procurement, Navy','N','01','Ship Propulsion',"
+        f"'3010','Shipboard Tactical Communications','fy_2026_total','50000','401'))"
         f" t({JBOOK_BUDGET_LINE_COLS})) to '{jbooks}/budget_lines.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -117,34 +135,48 @@ def make_lake(data_dir: Path):
         f"('344','A','rdte','2026','RDTE - Vol 1 - Budget Activity 1.pdf',"
         f"'https://example.test/2026/army-vol1-ba1.pdf','sha-army-2026-ba1','1000','2026-06-01','fy2026/army/vol1ba1.pdf'),"
         f"('351','A','rdte','2026','RDTE - Vol 1 - Budget Activity 2.pdf',"
-        f"'https://example.test/2026/army-vol1-ba2.pdf','sha-army-2026-ba2','1000','2026-06-01','fy2026/army/vol1ba2.pdf'))"
+        f"'https://example.test/2026/army-vol1-ba2.pdf','sha-army-2026-ba2','1000','2026-06-01','fy2026/army/vol1ba2.pdf'),"
+        # Wave 5: the two Navy procurement books behind the shared '3010'
+        # key — different appropriations, different programs, one BLI code.
+        f"('400','N','procurement','2026','SCN_Book.pdf',"
+        f"'https://example.test/2026/scn.pdf','sha-navy-2026-scn','1000','2026-06-01','fy2026/n/SCN_Book.pdf'),"
+        f"('401','N','procurement','2026','OPN_BA1_Book.pdf',"
+        f"'https://example.test/2026/opn.pdf','sha-navy-2026-opn','1000','2026-06-01','fy2026/n/OPN_BA1_Book.pdf'))"
         f" t({JBOOK_DOCUMENT_COLS})) to '{jbooks}/documents.parquet' (format parquet)"
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E',null,'Defense Research','PriorYear','280.494',"
-        f"'ProgramElement[0]','True','DARPA','rdte','2026','1'),"
+        f"'ProgramElement[0]','True','DARPA','rdte','2026','1',null),"
         # Decoy PB2024-edition row: scenario names are edition-RELATIVE
         # (PriorYear = FY2022 actuals in PB2024), so the dim_programs
         # PB2026 fence (fiscal_year = 2026) must exclude it — the
         # assert_dim_programs_pb2026_pin dbt test fails if it ever sums in.
         f"('0601101E',null,'Defense Research','PriorYear','424.332',"
-        f"'ProgramElement[0]','True','DARPA','rdte','2024','2'),"
+        f"'ProgramElement[0]','True','DARPA','rdte','2024','2',null),"
         # Phase 5E PB2019 OSD dual-volume pair: docs 278 and 279 EACH embed
         # the complete OSD XML — identical (pe_bli, scenario, amount)
         # tuples under both documents (Task 5 binding (i)).
         f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
-        f"'ProgramElement[0]','True','OSD','rdte','2019','278'),"
+        f"'ProgramElement[0]','True','OSD','rdte','2019','278',null),"
         f"('0303140D8Z',null,'Information Systems Security Program','BudgetYearOne','7.940',"
-        f"'ProgramElement[0]','True','OSD','rdte','2019','279'),"
+        f"'ProgramElement[0]','True','OSD','rdte','2019','279',null),"
         # PM-review Sprint 1: FY2026 dual-volume duplication INSIDE the
         # PB2026 fence — docs 344/351 each carry the identical PriorYear
         # root tuple for 0601102A (live: 47 Army PEs doubled to 2× in
         # dim_programs). The distinct-tuple dedup must report 322.341,
         # never the raw both-volumes sum 644.682.
         f"('0601102A',null,'University Research Initiatives','PriorYear','322.341',"
-        f"'ProgramElement[1]','True','A','rdte','2026','344'),"
+        f"'ProgramElement[1]','True','A','rdte','2026','344',null),"
         f"('0601102A',null,'University Research Initiatives','PriorYear','322.341',"
-        f"'ProgramElement[1]','True','A','rdte','2026','351'))"
+        f"'ProgramElement[1]','True','A','rdte','2026','351',null),"
+        # Wave 5: the shared-'3010' detail pair. Same pe_bli, different
+        # appropriation on each row — the account column is the ONLY thing
+        # that tells them apart, and dim_programs must not add 500.000 to
+        # 28.574.
+        f"('3010',null,'LPD Flight II','PriorYear','500.000',"
+        f"'LineItem[0]','True','N','procurement','2026','400','1611N'),"
+        f"('3010',null,'Shipboard Tactical Communications','PriorYear','28.574',"
+        f"'LineItem[7]','True','N','procurement','2026','401','1810N'))"
         f" t({JBOOK_DETAIL_COLS})) to '{jbooks}/details.parquet' (format parquet)"
     )
     duckdb.sql(
@@ -381,10 +413,13 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
         "select amount from fct_flow_edges where river='budget'"
         " and level_from='total' and node_to='DARPA'"
     ).fetchone()[0] == 400000.0  # 300000 + 100000 detail rows only
+    # 4 since Wave 5 added the shared-'3010' pair: DARPA's two PEs plus the
+    # two Navy programs that share one budget-line code. Their being TWO
+    # edges rather than one fused edge is the point.
     assert con.sql(
         "select count(*) from fct_flow_edges where river='budget'"
         " and level_to='program'"
-    ).fetchone()[0] == 2
+    ).fetchone()[0] == 4
     assert con.sql(
         "select amount from fct_flow_edges where river='budget'"
         " and node_to='DARPA|0400|1|0601101E'"

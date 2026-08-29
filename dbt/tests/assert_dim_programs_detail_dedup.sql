@@ -35,7 +35,28 @@
 -- original `using (pe_bli)` behavior for every non-collision pe_bli (x.org
 -- is NULL there, matching regardless of d.org's real fused value) while
 -- requiring an exact org match for the 3 collision keys.
-with org_collision_pes as (
+--
+-- Wave 5 (tri-persona remediation): the same treatment on the ACCOUNT axis,
+-- for the same reason. Parsing the five previously-unparsed Navy
+-- procurement appropriations put two programs' detail under ten shared BLI
+-- codes, and dim_programs.sql's `details` now splits those by the detail
+-- row's own account — so a bare pe_bli recompute here re-fuses exactly what
+-- the mart correctly un-fused, and this test failed on all ten keys (18
+-- rows) before the axis was added. The anchor is RE-DERIVED from
+-- stg_budget_details here, never ref'd off dim_programs: a test that read
+-- the mart's own split back would agree with any split at all, including a
+-- wrong one.
+with detail_account_collisions as (
+    select pe_bli
+    from (
+        select distinct pe_bli, account
+        from {{ ref('stg_budget_details') }}
+        where fiscal_year = 2026 and account is not null
+    )
+    group by pe_bli
+    having count(distinct account) > 1
+),
+org_collision_pes as (
     select pe_bli
     from (
         select pe_bli, organization
@@ -53,17 +74,22 @@ dedup as (
     select
         dd.pe_bli,
         case when ocp.pe_bli is not null then dd.org end as org,
+        case when dac.pe_bli is not null then dd.account end as account,
         sum(dd.amount_millions)
             filter (where dd.scenario = 'PriorYear' and dd.project_number is null)
             as expected_fy2024
     from (
         select distinct
-            pe_bli, project_number, scenario, amount_millions, xml_path, org
+            pe_bli, project_number, scenario, amount_millions, xml_path, org,
+            account
         from {{ ref('stg_budget_details') }}
         where fiscal_year = 2026
     ) dd
     left join org_collision_pes ocp on ocp.pe_bli = dd.pe_bli
-    group by dd.pe_bli, case when ocp.pe_bli is not null then dd.org end
+    left join detail_account_collisions dac on dac.pe_bli = dd.pe_bli
+    group by dd.pe_bli,
+             case when ocp.pe_bli is not null then dd.org end,
+             case when dac.pe_bli is not null then dd.account end
 )
 select
     d.pe_bli,
@@ -74,6 +100,7 @@ from {{ ref('dim_programs') }} d
 join dedup x
     on x.pe_bli = d.pe_bli
    and (x.org is null or x.org = d.org)
+   and (x.account is null or x.account = d.account)
 where d.fy2024_actual_millions is not null
   and (
     abs(coalesce(d.fy2024_actual_millions, 0) - coalesce(x.expected_fy2024, 0)) > 0.0005

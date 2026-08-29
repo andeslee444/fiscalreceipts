@@ -25,13 +25,19 @@
 -- assert_dim_programs_detail_dedup + assert_dim_programs_dual_volume_dedup_pin.
 --
 -- #56 account attribution (BINDING): stg_budget_details (the R-2/P-40
--- detail source `details`/`details_dedup` read from) carries NO account
--- column — only stg_budget_lines (the R-1/P-1 workbook source) does. Several
--- pe_bli values are legitimately shared by two DIFFERENT real appropriation
--- accounts within PB2026 (#56 — e.g. '3010' is BOTH LPD Flight II's
--- Shipbuilding & Conversion account AND Shipboard Tactical Communications'
--- Other Procurement account; 9999999999 is the intentional classified
--- sentinel, excluded by name). The old unconstrained
+-- detail source `details`/`details_dedup` read from) carried NO account
+-- column when #56 was fixed — only stg_budget_lines (the R-1/P-1 workbook
+-- source) did. IT DOES NOW (Wave 5, tri-persona remediation): the column was
+-- always on budget_line_details, populated by the P-40 loader and joined
+-- byte-for-byte by reconcile.py's Gate B; it simply was not in the export.
+-- See detail_account_collisions below, which uses it to keep two programs
+-- sharing a BLI code from being summed on the detail side — the half of #56
+-- the amount heuristic could only approximate. Several pe_bli values are
+-- legitimately shared by two DIFFERENT real appropriation accounts within
+-- PB2026 (#56 — e.g. '3010' is BOTH LPD Flight II's Shipbuilding &
+-- Conversion account AND Shipboard Tactical Communications' Other
+-- Procurement account; 9999999999 is the intentional classified sentinel,
+-- excluded by name). The old unconstrained
 -- `left join stg_budget_lines b on b.pe_bli = d.pe_bli` fanned out across
 -- BOTH accounts' titles for those keys, so `max(b.title)` could name either
 -- program regardless of which one d.fy2024_actual_millions actually
@@ -39,15 +45,19 @@
 -- Communications" — the OPN title, matching this row's own money — purely
 -- by max()'s lexical accident; nothing pinned the title to the money).
 --
--- account_match ties the two sources together by AMOUNT, not by a shared
--- key neither source carries: the stg_budget_lines row whose FY2024
--- actuals dollar figure equals details' own fy2024_actual_millions is, by
--- construction, the SAME line the R-2/P-40 detail describes, so its
--- account is this program's account. A pe_bli with only one account (99%+
--- of them) resolves trivially (only one candidate row); a pe_bli with no
--- fy2024_actual_millions, or none of its stg_budget_lines rows matching to
--- float tolerance (a genuine toa-vs-detail reconciliation disagreement),
--- falls back to today's unconstrained join — no worse than before.
+-- account_match ties the two sources together by AMOUNT where the detail
+-- states no account of its own (every R-1/RDT&E row, and every era-keyed
+-- row): the stg_budget_lines row whose FY2024 actuals dollar figure equals
+-- details' own fy2024_actual_millions is, by construction, the SAME line the
+-- R-2/P-40 detail describes, so its account is this program's account. A
+-- pe_bli with only one account (99%+ of them) resolves trivially (only one
+-- candidate row); a pe_bli with no fy2024_actual_millions, or none of its
+-- stg_budget_lines rows matching to float tolerance (a genuine
+-- toa-vs-detail reconciliation disagreement), falls back to today's
+-- unconstrained join — no worse than before. Where the detail DOES state an
+-- account (procurement rows on a shared key), that statement wins and
+-- account_match is scoped to it; the heuristic never gets to disagree with
+-- the source.
 --
 -- E1 (Sprint E, ROADMAP #67) — re-grain, replacing B'1's pick-one rule.
 -- B'1 (#56) picked exactly one account per pe_bli and left the OTHER
@@ -153,12 +163,63 @@ with details_dedup as (
         scenario,
         amount_millions,
         xml_path,
+        -- Wave 5: the detail row's OWN appropriation. Part of the row's
+        -- identity, so adding it to the group-by cannot merge or split a
+        -- dual-volume duplicate pair (both copies come from the same
+        -- appropriation by construction) — it only carries the column
+        -- through to detail_account_collisions and `details` below.
+        account,
         max(org) as org,
         max(exhibit_family) as exhibit_family,
         bool_and(reconciled) as reconciled
     from {{ ref('stg_budget_details') }}
     where fiscal_year = 2026
-    group by pe_bli, project_number, scenario, amount_millions, xml_path
+    group by pe_bli, project_number, scenario, amount_millions, xml_path, account
+),
+-- Wave 5 (tri-persona remediation) — THE DETAIL-SIDE ACCOUNT COLLISION.
+--
+-- #45/#56/E1 fixed this on the stg_budget_lines side and could not fix it
+-- here, for the reason the model comment above still records: the exported
+-- detail rows carried no account, so `details` had nothing to group on but
+-- pe_bli and summed every account's money for a shared BLI code. That was
+-- invisible while only ONE Navy procurement appropriation was loaded — the
+-- pipeline had collapsed twelve Navy procurement books to one, so no shared
+-- key ever had two accounts' detail at once. Parsing the other five
+-- appropriations made it visible immediately: ten PB2026 keys arrived with
+-- detail from two accounts each, and the pre-fix build fused all ten — most
+-- starkly '3010', where LPD Flight II's $500M of Shipbuilding & Conversion
+-- FY2024 actuals was summed with Shipboard Tactical Communications' $28.574M
+-- of Other Procurement and published as $528.574M under the communications
+-- title. That is the original #56 defect exactly, arriving from the source
+-- the #56 fix could not reach.
+--
+-- The set is DERIVED FROM THE DETAIL ROWS THEMSELVES, never from a key list
+-- and never from stg_budget_lines: two distinct non-null accounts under one
+-- pe_bli in the detail source IS two programs' money, whatever the workbook
+-- side happens to say about which of them still reports this edition.
+--
+-- Deliberately NOT reusing collision_pes (below): that set is anchored to
+-- fy_2026_total because its question is "does this need a second PAGE
+-- today". This one's question is "may these two amounts be added together",
+-- and the answer is no even when one side has wound down — 1350 and 2101
+-- (Tomahawk) both carry real FY2024 detail on both accounts while only one
+-- account still reports fy_2026_total, and summing them would be wrong for
+-- the same reason summing 3010 is.
+detail_account_collisions as (
+    select pe_bli
+    from details_dedup
+    where account is not null
+    group by pe_bli
+    having count(distinct account) > 1
+),
+-- account_title for an account the DETAIL states. account_match supplies it
+-- whenever the amount ties a workbook row; this covers the rest, so a row
+-- never carries an account with no name beside it.
+detail_account_titles as (
+    select pe_bli, account, max(account_title) as account_title
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026 and account is not null
+    group by pe_bli, account
 ),
 -- ROADMAP #45: the fy_2026_total-anchored organization-collision set, same
 -- shape as collision_slots/collision_pes below but on organization instead
@@ -253,6 +314,7 @@ details as (
     -- the model-level comment above).
     select
         dd.pe_bli,
+        case when dac.pe_bli is not null then dd.account end as detail_account,
         max(dd.org) as org,
         max(dd.exhibit_family) as exhibit_family,
         count(distinct dd.project_number) as project_count,
@@ -298,8 +360,14 @@ details as (
     left join org_collision_pes ocp on ocp.pe_bli = dd.pe_bli
     left join org_collision_slots ocs
         on ocs.pe_bli = dd.pe_bli and ocs.organization = dd.org
+    left join detail_account_collisions dac on dac.pe_bli = dd.pe_bli
     where ocp.pe_bli is null or ocs.pe_bli is not null
-    group by dd.pe_bli, ocs.organization
+    -- Wave 5: split by the detail's own appropriation for the keys two
+    -- programs share, and by nothing extra for every other key (the case
+    -- expression is NULL there, so the group-by is byte-for-byte what it
+    -- was). No row is dropped on either branch.
+    group by dd.pe_bli, ocs.organization,
+             case when dac.pe_bli is not null then dd.account end
 ),
 account_match as (
     -- ROADMAP #45: partitioned by (pe_bli, org) instead of pe_bli alone, and
@@ -313,12 +381,21 @@ account_match as (
     -- two sources' org vocabularies are not asserted to agree everywhere
     -- (see the model-level comment: "account_match ties the two sources by
     -- AMOUNT, not by a shared key neither source carries").
+    --
+    -- Wave 5: when the detail row STATES its appropriation (detail_account,
+    -- non-null only for the shared keys), the amount heuristic is not what
+    -- resolves the account — the source is. The join is scoped to that
+    -- account so a near-equal amount under the sibling account can never
+    -- cross-match, and the partition widens with it.
     select
         d.pe_bli,
         d.org,
+        d.detail_account,
         b.account,
         b.account_title,
-        row_number() over (partition by d.pe_bli, d.org order by b.account) as rn
+        row_number() over (
+            partition by d.pe_bli, d.org, d.detail_account order by b.account
+        ) as rn
     from details d
     left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
     join {{ ref('stg_budget_lines') }} b
@@ -326,6 +403,7 @@ account_match as (
         and b.amount_type = 'fy_2024_actuals'
         and abs(b.amount_thousands / 1000.0 - d.fy2024_actual_millions) < 0.0005
         and (ocp.pe_bli is null or b.organization = d.org)
+        and (d.detail_account is null or b.account = d.detail_account)
     where d.fy2024_actual_millions is not null
 ),
 matched as (
@@ -349,20 +427,32 @@ matched as (
         d.fy2024_actual_millions,
         d.fully_reconciled,
         d.reconciled_in_scope,
-        am.account,
-        am.account_title,
+        -- Wave 5: the stated account wins over the amount-matched one. They
+        -- agree wherever both exist (account_match is now scoped to it);
+        -- coalesce matters when the amount does NOT tie any workbook row —
+        -- a genuine reconciliation disagreement, which must not also cost
+        -- the row its (independently known) account and its title scope.
+        coalesce(d.detail_account, am.account) as account,
+        coalesce(am.account_title, dat.account_title) as account_title,
         coalesce(max(dt.title), max(b.title)) as title
     from details d
     left join org_collision_pes ocp on ocp.pe_bli = d.pe_bli
     left join account_match am
-        on am.pe_bli = d.pe_bli and am.org is not distinct from d.org and am.rn = 1
+        on am.pe_bli = d.pe_bli and am.org is not distinct from d.org
+        and am.detail_account is not distinct from d.detail_account and am.rn = 1
     left join {{ ref('stg_budget_lines') }} b
         on b.pe_bli = d.pe_bli and b.fiscal_year = 2026
-        and (am.account is null or b.account = am.account)
+        and (coalesce(d.detail_account, am.account) is null
+             or b.account = coalesce(d.detail_account, am.account))
         and (ocp.pe_bli is null or b.organization = d.org)
+    -- account_title for a row whose account came from the detail rather than
+    -- from account_match: read it off the workbook rows for that account.
+    left join detail_account_titles dat
+        on dat.pe_bli = d.pe_bli and dat.account = d.detail_account
     left join dominant_title dt
         on dt.pe_bli = d.pe_bli
-        and (am.account is null or dt.account = am.account)
+        and (coalesce(d.detail_account, am.account) is null
+             or dt.account = coalesce(d.detail_account, am.account))
         and (ocp.pe_bli is null or dt.organization = d.org)
     group by 1, 2, 3, 4, 5, 6, 7, 8, 9
 ),

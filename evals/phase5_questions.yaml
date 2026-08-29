@@ -182,7 +182,7 @@
   question: How many program elements are tracked in the budget trajectory mart?
   answer_sql: |
     select count(*) from fct_budget_trajectory
-  expected_answer: '1980'
+  expected_answer: '1988'
   expected_citation_kind: warehouse
   notes: fct_budget_trajectory row count
 - id: q018
@@ -240,8 +240,8 @@
   expected_answer: 2118.5, 3319
   tolerance: 0.1
   expected_citation_kind: warehouse
-  notes: MDA moderately concentrated; HHI and family_count both move with the
-    entity crosswalk, which the Task 5b rebuild corrected
+  notes: MDA moderately concentrated; HHI and family_count both move with the entity
+    crosswalk, which the Task 5b rebuild corrected
 - id: q023
   question: Which program element in the program concentration mart has the highest
     HHI, and who is the top family?

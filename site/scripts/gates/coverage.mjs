@@ -836,6 +836,13 @@ function runCoverageMapLeg(errors, notes) {
 // the sidecars would let the exporter mark its own homework, which is how the
 // scope note shipped false on 179 of 319 pages here.
 //
+// Wave 5: that helper now reconciles CONTENT, not filenames. A volume whose
+// embedded master XML is byte-identical to a parsed one is the same book
+// under another cover and counts as ingested — see the helper's own
+// docstring for the per-file evidence. Without that change this leg would
+// have kept demanding a backlog sentence for 20 duplicate covers after the
+// ingestion landed, which is the opposite false claim it exists to prevent.
+//
 // The leg is symmetric on purpose. It does not say "the page must confess a
 // backlog"; it says the page's claim must match the reconciliation IN BOTH
 // DIRECTIONS. When the ingestion lands and `unparsed` reaches zero, the
@@ -958,7 +965,8 @@ function runVolumeClaimLeg(errors, notes) {
   // The confirming note is only true when nothing above fired. A "✓" printed
   // beside its own failure is how a gate teaches people to skim past it.
   notes.push(
-    `leg cv volume claim: ${truth.ingested}/${truth.on_disk} FY2026 volumes ingested, ` +
+    `leg cv volume claim: ${truth.ingested}/${truth.on_disk} FY2026 volumes ingested ` +
+      `(${truth.duplicate ?? 0} of them duplicate covers of a parsed book), ` +
       `${truth.unparsed} unparsed (${truth.unparsed_orgs.join(", ") || "none"}) — ` +
       (errors.length === before
         ? "claim direction matches the disk↔lake reconciliation ✓"
@@ -998,6 +1006,16 @@ function runVolumeClaimLeg(errors, notes) {
 // cv uses, which is upstream of agencies.json and of every figure the page
 // renders. When the ingestion lands and no service has unparsed volumes, this
 // leg stops requiring the disclosure.
+//
+// Wave 5 landed it. The Navy's five unparsed procurement appropriations are
+// loaded, and measured against fct_budget_lines' own fy_2026_total the three
+// services now sit at N 97.0%, F 99.0%, A 99.5% of their workbook totals —
+// with the ingested order (N $118.1B > F $97.7B > A $43.1B) matching the
+// workbook order (N $121.8B > F $98.7B > A $43.3B) exactly. So this leg no
+// longer requires the disclosure. /agency/ keeps a short, true one anyway:
+// the totals are still sums over what is loaded, and if a future edition
+// arrives unevenly this leg turns the requirement back on rather than
+// discovering that the page has meanwhile stopped saying so.
 
 /** Words that would let the page claim a plain spending ranking. */
 const BARE_RANK_RE = /sorted by (the )?FY\d{4} total\b(?!\s*this site has ingested)/i;
@@ -1044,8 +1062,11 @@ function runUnevenRankingLeg(errors, notes) {
 
   if (uneven.length === 0) {
     notes.push(
-      "leg cr: every service's FY2026 volumes are ingested — an unqualified " +
-        "ranking on /agency/ would be honest ✓",
+      `leg cr: every service's FY2026 volumes are ingested ` +
+        `(${["a", "f", "n"]
+          .filter((o) => truth.by_org[o])
+          .map((o) => `${o}: ${truth.by_org[o].ingested}/${truth.by_org[o].on_disk}`)
+          .join(", ")}) — an unqualified ranking on /agency/ would be honest ✓`,
     );
     return;
   }

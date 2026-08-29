@@ -17,7 +17,6 @@ Split by testability:
 from __future__ import annotations
 
 import hashlib
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urljoin
@@ -147,10 +146,10 @@ def render_inventory(links: list[PdfLink]) -> str:
 # Phase 5G Task 3 — acquisition adapter (pure logic).
 #
 # Turn a service PDF inventory into a resume-safe download plan: classify each
-# link (registrable justification book vs. explicit exclusion), deduplicate the
-# Navy RDTE BA-split PDFs (each embeds the SAME full master book — probe
-# sample-extraction.md), and drop anything already downloaded. The live
-# Playwright download that consumes the plan is a Task-4 script, not a test.
+# link (registrable justification book vs. explicit exclusion) and drop anything
+# already downloaded. Duplicate volumes are collapsed after load by embedded-
+# master identity, never by filename. The live Playwright download that consumes
+# the plan is a Task-4 script, not a test.
 # --------------------------------------------------------------------------
 
 
@@ -169,7 +168,8 @@ class DownloadPlan:
     """Resume-safe plan: what to fetch, and why the rest was left out."""
     to_download: list[Candidate]
     skipped: list[Candidate]            # already present (known URL) — resume
-    deduped: list[tuple[str, str]]      # (name, reason) — RDTE BA-split dupes
+    deduped: list[tuple[str, str]]      # (name, reason) — always empty; see
+                                        # the note above build_download_plan
     excluded: list[tuple[str, str]]     # (name, reason) — non-justification
 
 
@@ -210,105 +210,60 @@ def classify_inventory(
     return registrable, excluded
 
 
-_RDTE_BA = re.compile(r"(?i)_BA(\d+)")
-
-# Families whose Navy appropriation books EACH embed the same full master XML.
-# Both must dedup to one registered detail book per family: the 5 RDTEN_BA*
-# volumes AND the 12 procurement appropriation books (APN/OPN/WPN/SCN/PMC/
-# PANMC) were each verified live (Task 4) to embed the identical master —
-# RDTE 252 PEs, procurement 135 line items (same master sha picked from every
-# book by pick_book_xml). Registering all would load the same master N times
-# (procurement was loaded 12× before this dedup was generalized).
-_MASTER_DUP_FAMILIES = ("rdte", "procurement")
-
-
-def _first_ba(name: str) -> int:
-    """Lowest starting budget-activity number in a BA-split filename.
-
-    'RDTEN_BA1-3_Book.pdf' -> 1, 'RDTEN_BA7-8_Book.pdf' -> 7,
-    'APN_BA6-7_Book.pdf' -> 6. Names without a BA marker (WPN/SCN/PMC/PANMC)
-    sort last (large sentinel) so a BA-numbered volume wins deterministically.
-    """
-    m = _RDTE_BA.search(name)
-    return int(m.group(1)) if m else 10_000
-
-
-def dedup_ba_splits(
-    registrable: list[Candidate],
-) -> tuple[list[Candidate], list[tuple[str, str]]]:
-    """Collapse each master-duplicating family's BA-split PDFs to ONE book.
-
-    Every Navy RDTE BA-split PDF embeds the SAME full 252-PE master; every
-    Navy procurement appropriation PDF embeds the SAME full 135-line master
-    (Task 4 live evidence). Registering all would load the identical master
-    once per book. Per family, keep the candidate with the LOWEST starting
-    budget activity (stable, deterministic); the rest are duplicates recorded
-    for the manifest exclusion ledger.
-
-    Families NOT in _MASTER_DUP_FAMILIES pass through untouched. Returns
-    (kept, [(name, reason)]) where reason names the master-book duplication.
-
-    NOTE: the deduped sibling PDFs are the ONLY source of their own budget
-    activities' rendered R-2/R-2A/P-40 exhibit pages. Because each family is
-    registered/loaded once (from the winner's PDF), page provenance can only
-    locate facts whose exhibit page is rendered in the winner's PDF; the other
-    BAs' facts resolve 'unresolved' (recorded honest gap) — the detail data
-    is complete (the embedded master carries every fact), only the page
-    highlight is missing. Cross-sibling page resolution is out of scope
-    (it would require re-keying provenance to the detail sha; see the 5G
-    review note).
-    """
-    kept: list[Candidate] = []
-    deduped: list[tuple[str, str]] = []
-    for family in _MASTER_DUP_FAMILIES:
-        fam = [c for c in registrable if c.exhibit_family == family]
-        if len(fam) <= 1:
-            kept += fam
-            continue
-        winner = min(fam, key=lambda c: (_first_ba(c.name), c.name))
-        kept.append(winner)
-        deduped += [
-            (c.name,
-             f"BA-split {family} volume embedding the same full Navy {family}"
-             f" master book as {winner.name} (registered once)")
-            for c in fam if c.name != winner.name
-        ]
-    kept += [c for c in registrable
-             if c.exhibit_family not in _MASTER_DUP_FAMILIES]
-    # preserve input order for stable, diff-friendly plans
-    order = {c.name: i for i, c in enumerate(registrable)}
-    kept.sort(key=lambda c: order[c.name])
-    deduped.sort(key=lambda nr: order[nr[0]])
-    return kept, deduped
+# WHY THERE IS NO FILENAME-BASED DEDUP HERE ANY MORE.
+#
+# This module used to collapse each "master-duplicating family" (rdte,
+# procurement) to ONE Navy PDF at PLAN time, keeping the lowest budget
+# activity, on the recorded premise that "every Navy RDTE BA-split PDF embeds
+# the SAME full 252-PE master; every Navy procurement appropriation PDF embeds
+# the SAME full 135-line master (Task 4 live evidence)".
+#
+# The procurement half of that premise is FALSE, and the way it came to be
+# recorded as live evidence is worth keeping: the Navy download path extracted
+# every book's attachments into ONE shared `fy2026/n/xml/` directory, so
+# `pick_book_xml(dir, family='procurement')` returned the single largest
+# `_MJB_` procurement XML — the same file — no matter which book you asked
+# about. The premise was measured through the very layout that hid its
+# counter-evidence.
+#
+# Re-measured per document (2026-08-29) after extracting each PDF into its own
+# `{stem}__xml` dir, the 12 Navy FY2026 procurement books embed SIX distinct
+# appropriation masters:
+#   APN_BA1-4 / BA5 / BA6-7  -> U_PROCUREMENT_MJB_2506241128XAYF (1506N,  58 lines)
+#   OPN_BA1..BA5-8           -> U_PROCUREMENT_MJB_2506250933XAYF (1810N, 135 lines)
+#   PMC_Book                 -> U_PROCUREMENT_MJB_2506241455XAYF (1109N,  50 lines)
+#   WPN_Book                 -> U_PROCUREMENT_MJB_2506251122XAYF (1507N,  37 lines)
+#   SCN_Book                 -> U_PROCUREMENT_MJB_250731454XAYF  (1611N,  26 lines)
+#   PANMC_Book               -> U_PROCUREMENT_MJB_2506261039XAYF (1508N,  22 lines)
+# Keeping only the lowest-BA book therefore discarded five whole
+# appropriations, Shipbuilding & Conversion among them.
+#
+# The replacement is not a better filename rule; it is to stop guessing from
+# filenames. Every classified book is planned and downloaded, and duplicates
+# are collapsed AFTER load by `dedup_service_master_dups`, which groups on the
+# sha256 of the master XML each book actually embeds. That is the same
+# evidence-keyed collapse the Army/Air Force archive path has always used, and
+# it is decidable from the artefact rather than from its name.
 
 
 def build_download_plan(
-    links: list[PdfLink], *, known_urls: set[str], dedup_ba: bool = True
+    links: list[PdfLink], *, known_urls: set[str]
 ) -> DownloadPlan:
     """Full inventory -> resume-safe DownloadPlan.
 
-    classify -> (optionally) dedup BA-splits -> drop anything whose URL is
-    already downloaded (`known_urls`, resume safety).
-
-    `dedup_ba` is the Navy filename-heuristic BA-split collapse (every Navy
-    RDTEN/APN/OPN volume embeds the SAME full master, so one wins). It is a
-    NAVY-SPECIFIC premise and MUST be off for the archive services: Army RDTE
-    volumes are genuinely BA-split (distinct PEs per volume), and AF/SF books
-    dedup by embedded-master identity POST-LOAD (dedup_service_master_dups),
-    not by filename. So the archive path passes dedup_ba=False and lets the
-    master-identity dedup collapse the real duplicates.
+    classify -> drop anything whose URL is already downloaded (`known_urls`,
+    resume safety). Every classified justification book is planned; duplicate
+    volumes are collapsed after load, on embedded-master sha256, by
+    `dedup_service_master_dups` (see the note above this function for why no
+    filename rule decides it any more).
     """
     registrable, excluded = classify_inventory(links)
-    if dedup_ba:
-        kept, deduped = dedup_ba_splits(registrable)
-    else:
-        kept, deduped = registrable, []
     to_download, skipped = [], []
-    for c in kept:
+    for c in registrable:
         (skipped if c.href in known_urls else to_download).append(c)
     return DownloadPlan(
         to_download=to_download, skipped=skipped,
-        deduped=deduped, excluded=excluded,
+        deduped=[], excluded=excluded,
     )
 
 
@@ -562,7 +517,7 @@ def download_registered_playwright(
     import psycopg
 
     from govbudget.download import ensure_free_space
-    from govbudget.jbooks.attachments import extract_jbook_xml
+    from govbudget.jbooks.attachments import doc_xml_dir, extract_jbook_xml
 
     with psycopg.connect(dsn) as con:
         pending = con.execute(
@@ -580,7 +535,16 @@ def download_registered_playwright(
             ensure_free_space(dest.parent, min_free_gb)
             log(f"[service-acquire] GET {title} ({url})")
             sha, n = download_pdf(context, url, dest)
-            xmls = extract_jbook_xml(dest, dest.parent / "xml")
+            # PER-DOCUMENT xml dir, never the shared `xml/` one. Every Navy
+            # book lands in ONE org folder; extracting them all into
+            # `fy2026/n/xml/` makes pick_book_xml return the single largest
+            # `_MJB_` file of the family for EVERY book — which is how the
+            # "all 12 Navy procurement volumes embed the same master" premise
+            # came to be recorded as live evidence. It was an artefact of this
+            # line: the 12 books embed SIX distinct appropriation masters
+            # (APN 58 line items, OPN 135, PMC 50, WPN 37, SCN 26, PANMC 22),
+            # and reading them through a shared dir hid five of them.
+            xmls = extract_jbook_xml(dest, doc_xml_dir(dest))
             has_xml = bool(xmls)
         except Exception as e:  # noqa: BLE001
             failures.append((doc_id, title, f"{type(e).__name__}: {e}"))

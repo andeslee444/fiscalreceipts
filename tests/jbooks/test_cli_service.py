@@ -56,9 +56,19 @@ def _wire_service_backfill(monkeypatch, tmp_path, pg_dsn, inventory):
     return calls, tmp_path / "edition_manifest.json"
 
 
-def test_backfill_service_navy_registers_dedups_downloads_extracts(
+def test_backfill_service_navy_registers_downloads_extracts_dedups(
     monkeypatch, tmp_path, pg_dsn
 ):
+    """Every classified book registers; duplicates collapse AFTER load.
+
+    This test used to assert the opposite — that the plan dropped
+    RDTEN_BA4/BA7-8 before download because they "embed the same master".
+    That filename rule was measured false on the procurement side (the 12
+    Navy books embed six distinct appropriation masters, five of which it
+    discarded), so it is gone on both. dedup_service_master_dups now decides,
+    on the sha256 of the master each book actually embeds; here it supersedes
+    nothing because the fixture writes no XML to disk.
+    """
     from govbudget import cli
 
     inventory = _navy_inventory(
@@ -81,10 +91,14 @@ def test_backfill_service_navy_registers_dedups_downloads_extracts(
         rows = dict(con.execute(
             "select title, acquisition from jbook_documents order by title"
         ))
-    assert set(rows) == {"RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"}
+    assert set(rows) == {
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",
+        "RDTEN_BA7-8_Book.pdf", "APN_BA5_Book.pdf",
+    }
     assert all(v == "playwright" for v in rows.values())
 
-    # service exclusions recorded: 2 non-justification + 2 ba-split dupes
+    # service exclusions recorded: the 2 non-justification appropriations,
+    # and NO ba-split rule — nothing is excluded on a filename guess now.
     svc = json.loads(manifest.read_text())["services"]["navy_2026"]["exclusions"]
     by_rule = {}
     for e in svc:
@@ -92,9 +106,7 @@ def test_backfill_service_navy_registers_dedups_downloads_extracts(
     assert set(by_rule["non-justification-appropriation"]) == {
         "OMN_Book.pdf", "BRAC_Book.pdf"
     }
-    assert set(by_rule["ba-split-duplicate"]) == {
-        "RDTEN_BA4_Book.pdf", "RDTEN_BA7-8_Book.pdf"
-    }
+    assert "ba-split-duplicate" not in by_rule
 
 
 def test_backfill_service_navy_resume_skips_downloaded(monkeypatch, tmp_path, pg_dsn):

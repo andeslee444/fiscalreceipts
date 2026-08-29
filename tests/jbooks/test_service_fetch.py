@@ -113,9 +113,11 @@ def test_render_inventory_tab_separated():
 
 
 # --------------------------------------------------------------------------
-# Phase 5G Task 3 — acquisition adapter pure logic (download plan + dedup).
+# Phase 5G Task 3 — acquisition adapter pure logic (download plan).
 # The live Playwright download is exercised in Task 4 (a script, not a test);
-# here we test the inventory -> plan and RDTE dedup selection deterministically.
+# here we test the inventory -> plan selection deterministically. Duplicate
+# collapse is NOT a plan-time concern any more — it happens after load on
+# embedded-master sha256 (test_service_master_dedup.py).
 # --------------------------------------------------------------------------
 
 NAVY_BASE = "https://www.secnav.navy.mil/fmc/fmb/Documents/26pres"
@@ -144,66 +146,47 @@ def test_classify_inventory_partitions_navy():
     assert "not R/D" in ex["BRAC_Book.pdf"]
 
 
-def test_dedup_ba_splits_keeps_lowest_ba_per_family():
-    from govbudget.jbooks.service_fetch import (
-        classify_inventory,
-        dedup_ba_splits,
-    )
+def test_plan_keeps_every_appropriation_book_no_filename_dedup():
+    """The plan must NOT collapse Navy volumes by filename.
 
-    reg, _ = classify_inventory(_navy_links(
-        "RDTEN_BA7-8_Book.pdf", "RDTEN_BA4_Book.pdf", "RDTEN_BA1-3_Book.pdf",
-        "RDTEN_BA6_Book.pdf", "RDTEN_BA5_Book.pdf",
-        # procurement books ALSO each embed the same full master (Task 4 live
-        # evidence) — they dedup too, to one book (lowest BA: APN_BA1-4).
+    It used to: every rdte/procurement candidate but the lowest budget
+    activity was dropped before download, on the recorded premise that all of
+    them embed one master. Re-measured per document, the 12 FY2026 Navy
+    procurement books embed SIX distinct appropriation masters — APN 58 line
+    items, OPN 135, PMC 50, WPN 37, SCN 26 (Virginia / COLUMBIA / DDG-51),
+    PANMC 22 — so that rule discarded five whole appropriations. Duplicates
+    are now collapsed after load, on embedded-master sha256
+    (dedup_service_master_dups), which is decidable from the artefact.
+    """
+    from govbudget.jbooks.service_fetch import build_download_plan
+
+    names = [
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",
         "APN_BA1-4_Book.pdf", "APN_BA5_Book.pdf", "OPN_BA2_Book.pdf",
         "WPN_Book.pdf", "SCN_Book.pdf",
-    ))
-    kept, deduped = dedup_ba_splits(reg)
-    kept_names = {c.name for c in kept}
-    # exactly ONE book per master-duplicating family survives.
-    assert kept_names == {"RDTEN_BA1-3_Book.pdf", "APN_BA1-4_Book.pdf"}
-    assert sum(1 for c in kept if c.exhibit_family == "rdte") == 1
-    assert sum(1 for c in kept if c.exhibit_family == "procurement") == 1
-    deduped_names = {name for name, _ in deduped}
-    assert deduped_names == {
-        "RDTEN_BA4_Book.pdf", "RDTEN_BA5_Book.pdf",
-        "RDTEN_BA6_Book.pdf", "RDTEN_BA7-8_Book.pdf",
-        "APN_BA5_Book.pdf", "OPN_BA2_Book.pdf",
-        "WPN_Book.pdf", "SCN_Book.pdf",
-    }
-    for _, reason in deduped:
-        assert "master" in reason.lower()
+    ]
+    plan = build_download_plan(_navy_links(*names), known_urls=set())
+    assert {c.name for c in plan.to_download} == set(names)
+    assert plan.deduped == []
+    # SCN in particular: the book carrying Virginia, COLUMBIA and DDG-51 was
+    # the highest-cost casualty of the filename rule.
+    assert "SCN_Book.pdf" in {c.name for c in plan.to_download}
 
 
-def test_dedup_single_book_per_family_keeps_it():
-    """One candidate in each master-duplicating family means nothing to dedup."""
-    from govbudget.jbooks.service_fetch import (
-        classify_inventory,
-        dedup_ba_splits,
-    )
-
-    reg, _ = classify_inventory(_navy_links("RDTEN_BA5_Book.pdf", "SCN_Book.pdf"))
-    kept, deduped = dedup_ba_splits(reg)
-    # one RDTE + one procurement, nothing to collapse.
-    assert {c.name for c in kept} == {"RDTEN_BA5_Book.pdf", "SCN_Book.pdf"}
-    assert deduped == []
-
-
-def test_build_download_plan_dedups_and_skips_known_shas():
-    """The full plan: classify -> dedup -> resume-safe skip of already-present
-    shas. Returns (to_download, deduped, excluded)."""
+def test_build_download_plan_classifies_and_skips_known_urls():
+    """The full plan: classify -> resume-safe skip of already-downloaded URLs."""
     from govbudget.jbooks.service_fetch import build_download_plan
 
     links = _navy_links(
-        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",  # dedup -> keep BA1-3
-        "APN_BA5_Book.pdf",                             # keep
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",
+        "APN_BA5_Book.pdf",
         "OMN_Book.pdf",                                 # exclude
     )
     plan = build_download_plan(links, known_urls=set())
     assert {c.name for c in plan.to_download} == {
-        "RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf", "APN_BA5_Book.pdf"
     }
-    assert {n for n, _ in plan.deduped} == {"RDTEN_BA4_Book.pdf"}
+    assert plan.deduped == []
     assert {n for n, _ in plan.excluded} == {"OMN_Book.pdf"}
     for c in plan.to_download:
         assert c.acquisition == "playwright"
@@ -211,7 +194,9 @@ def test_build_download_plan_dedups_and_skips_known_shas():
     # resume-safe: a URL already downloaded is not re-planned.
     already = {f"{NAVY_BASE}/APN_BA5_Book.pdf"}
     plan2 = build_download_plan(links, known_urls=already)
-    assert {c.name for c in plan2.to_download} == {"RDTEN_BA1-3_Book.pdf"}
+    assert {c.name for c in plan2.to_download} == {
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf"
+    }
     assert {c.name for c in plan2.skipped} == {"APN_BA5_Book.pdf"}
 
 
@@ -229,12 +214,12 @@ def test_register_service_documents_marks_playwright_and_registered(pg_dsn):
     )
 
     links = _navy_links(
-        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",  # dedup
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf",
         "APN_BA5_Book.pdf", "OMN_Book.pdf",            # excl
     )
     plan = build_download_plan(links, known_urls=set())
     n = register_service_documents(pg_dsn, plan, fiscal_year=2026)
-    assert n == 2
+    assert n == 3
     with psycopg.connect(pg_dsn) as con:
         rows = {
             r[0]: r for r in con.execute(
@@ -242,7 +227,9 @@ def test_register_service_documents_marks_playwright_and_registered(pg_dsn):
                 " acquisition from jbook_documents order by title"
             )
         }
-    assert set(rows) == {"RDTEN_BA1-3_Book.pdf", "APN_BA5_Book.pdf"}
+    assert set(rows) == {
+        "RDTEN_BA1-3_Book.pdf", "RDTEN_BA4_Book.pdf", "APN_BA5_Book.pdf"
+    }
     for r in rows.values():
         assert r[1] == "N" and r[3] == 2026
         assert r[4] == "registered" and r[5] == "playwright"
@@ -328,19 +315,16 @@ def test_register_local_documents_reports_unclassifiable(pg_dsn, tmp_path):
     assert skipped == ["mystery_volume.pdf"]
 
 
-def test_build_download_plan_dedup_ba_false_keeps_all_army_volumes():
-    """The archive path (Army/AF) passes dedup_ba=False so genuinely BA-split
-    Army RDTE volumes are all kept — the Navy filename collapse must not fire."""
+def test_build_download_plan_keeps_all_army_volumes():
+    """Every classified Army RDTE volume is planned — no filename collapse on
+    any path. (Army volumes that DO turn out to embed one master collapse
+    after load, on sha256; see test_service_master_dedup.py.)"""
     from govbudget.jbooks.service_fetch import PdfLink, build_download_plan
 
     base = ("https://www.asafm.army.mil/Portals/72/Documents/BudgetMaterial/2026/"
             "Discretionary%20Budget/rdte")
     names = [f"RDTE - Vol 1 - Budget Activity {n}.pdf" for n in (1, 2, 3)]
     links = [PdfLink(n, f"{base}/{n.replace(' ', '%20')}") for n in names]
-    plan = build_download_plan(links, known_urls=set(), dedup_ba=False)
+    plan = build_download_plan(links, known_urls=set())
     assert len(plan.to_download) == 3
     assert plan.deduped == []
-    # default (Navy) still collapses when the premise holds
-    plan_default = build_download_plan(links, known_urls=set())
-    assert len(plan_default.to_download) == 1
-    assert len(plan_default.deduped) == 2

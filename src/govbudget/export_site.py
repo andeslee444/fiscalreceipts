@@ -240,10 +240,11 @@ class _ProgramIdentity:
     title, account_title, has_detail) row). `has_detail` is exhibit_family
     IS NOT NULL — dim_programs.sql's own discriminator for "this specific
     row owns the R-2/P-40 J-book detail rows filed under this pe_bli"
-    (verified empirically 2026-08-21: every one of the 8 account-collision
-    keys has AT MOST ONE account with has_detail=True; details/narratives
-    sourced from stg_budget_details belong ENTIRELY to that account, never
-    the sibling).
+    (Wave 5: has_detail is now genuinely per-row on both axes. The earlier
+    note here recorded "every one of the 8 account-collision keys has AT
+    MOST ONE account with has_detail=True" — an artefact of five of the six
+    Navy procurement appropriations being unparsed, not a property of the
+    data. All ten shared keys now carry real detail on both sides.)
 
     split_pe_blis: pe_bli values with >1 dim_programs row — exactly the keys
     that need a composite slug and a disambiguation stub. Two independent
@@ -274,28 +275,19 @@ class _ProgramIdentity:
             if len(accts) > 1
         }
         self._slug_by_title = _build_account_slug_map(all_titles)
-        # matched_account_by_pe: for an ACCOUNT-split pe_bli, the ONE
-        # account (if any) whose has_detail is True — the account entitled
-        # to this pe_bli's J-book detail/narrative rows. Absent when both
-        # sides (or neither) have detail (E1: 0145 and 2292 have zero
-        # J-book detail on EITHER side — both split pages are honestly
-        # rollup-tier there). Only ever consulted for pe_blis whose rows
-        # differ by account (see has_own_detail) — an ORGANIZATION-split
-        # pe_bli's rows all share one account, so `detail_accounts` below
-        # would collect duplicate copies of that same account and
-        # correctly never populate an entry (len != 1), which is exactly
-        # right: ROADMAP #45's per-organization rows are never synthetic
-        # placeholders the way an account-collision's losing side can be
-        # (dim_programs.sql has no synth-equivalent branch for organization
-        # — every organization sharing a key has genuine stg_budget_details
-        # rows of its own), so has_own_detail resolves them per-row instead.
-        self.matched_account_by_pe: dict[str, str] = {}
-        for pe, accts in by_pe.items():
-            if len(accts) <= 1:
-                continue
-            detail_accounts = [a for a, _t, _o, hd in accts if hd]
-            if len(detail_accounts) == 1:
-                self.matched_account_by_pe[pe] = detail_accounts[0]
+        # Wave 5 removed matched_account_by_pe. It existed to pick the ONE
+        # account of an account-split pe_bli entitled to that pe_bli's
+        # J-book detail — necessary only because the exported detail rows
+        # carried no account of their own, so "which of these two programs
+        # does this R-2/P-40 row describe" had to be inferred once per key
+        # rather than read off each row. stg_budget_details and the detail
+        # query now both carry `account`, so every consumer attributes per
+        # row instead, on the account axis exactly as ROADMAP #45 already
+        # did on the organization axis. The old rule was also no longer
+        # true: it rested on "at most one account per collision key has
+        # detail", which held only while five of the six Navy procurement
+        # appropriations were unparsed — all ten shared keys now carry real
+        # detail on both sides.
 
     def accounts(self, pe_bli: str) -> list[tuple[str, str, str, bool]]:
         return self._by_pe.get(pe_bli, [])
@@ -403,19 +395,22 @@ class _ProgramIdentity:
     def has_own_detail(
         self, pe_bli: str, account: str | None, organization: str | None = None,
     ) -> bool:
-        """True iff THIS (pe_bli, account, organization) owns the pe_bli's
-        J-book detail rows (details_by_pe / narratives). Non-split pe_blis
-        always own whatever is under their bare key (unchanged pre-E3
-        behavior). Account-split keys resolve via matched_account_by_pe
-        (unchanged E3 behavior: exactly one side, if any, owns detail).
-        Organization-split keys (ROADMAP #45) resolve per-row instead —
-        every organization sharing one of these 3 keys has its own genuine
-        detail rows (no synthetic/detail-less side exists on this axis)."""
+        """True iff THIS (pe_bli, account, organization) owns J-book detail
+        rows of its own. Non-split pe_blis always own whatever is under
+        their bare key (unchanged pre-E3 behavior). Split keys resolve PER
+        ROW on whichever axis distinguishes them — dim_programs.has_detail
+        (exhibit_family is not null) is now per-account as well as
+        per-organization, because dim_programs splits the detail source by
+        account (Wave 5). A collision side with no detail of its own still
+        answers False and still renders as a rollup-tier page."""
         if pe_bli not in self.split_pe_blis:
             return True
         rows = self._by_pe.get(pe_bli, [])
         if len({a for a, _t, _o, _hd in rows}) > 1:
-            return self.matched_account_by_pe.get(pe_bli) == account
+            for a, _t, _o, hd in rows:
+                if a == account:
+                    return hd
+            return False
         for _a, _t, o, hd in rows:
             if o == organization:
                 return hd
@@ -1003,7 +998,11 @@ _DATASET_SCOPES: dict[str, str] = {
     "jbook_details": (
         "One row per (program element × project × budget scenario) cost figure"
         " extracted from J-book R-2/P-40 XML, with its XML element path and"
-        " source-PDF SHA-256."
+        " source-PDF SHA-256. `account` is the appropriation the figure was"
+        " filed under (NULL for R-2/RDT&E rows, which carry none): ten PB2026"
+        " budget-line codes are shared by two different Navy programs in two"
+        " different appropriations, so summing this table by pe_bli alone"
+        " adds those pairs together."
     ),
     "jbook_narratives": (
         "One row per J-book narrative text block — mission, description,"
@@ -1483,7 +1482,12 @@ def export_site(
             select d.pe_bli, d.project_number, d.project_title, d.scenario,
                    d.amount_millions, d.xml_path, j.org, j.exhibit_family,
                    j.fiscal_year, j.sha256 as document_sha256,
-                   coalesce(p.resolution, 'unresolved') as resolution
+                   coalesce(p.resolution, 'unresolved') as resolution,
+                   -- Wave 5: the row's OWN appropriation. For a pe_bli two
+                   -- programs share, this is what says which of the two
+                   -- pages the row belongs on; before it was exported the
+                   -- exporter had to guess with one account per pe_bli.
+                   d.account
             from budget_line_details d
             join jbook_documents j on j.id = d.document_id
             left join provenance_pages p
@@ -1509,14 +1513,18 @@ def export_site(
         detail_rows = []
         for (pe_bli, project_number, project_title, scenario,
              amount_millions, xml_path, org, exhibit_family,
-             fiscal_year, document_sha256, resolution) in rows_details:
+             fiscal_year, document_sha256, resolution,
+             d_account) in rows_details:
             fid = fact_id_jbook(document_sha256, pe_bli, project_number, scenario, amount_millions)
+            # account is APPENDED (index 13), never inserted: every existing
+            # positional reader of this tuple (r[12] == resolution among
+            # them) keeps its index.
             detail_rows.append((
                 fid, pe_bli, project_number, project_title, scenario,
                 float(amount_millions) if amount_millions is not None else None,
                 "USD millions", xml_path, org, exhibit_family,
                 int(fiscal_year) if fiscal_year is not None else None,
-                document_sha256, resolution,
+                document_sha256, resolution, d_account,
             ))
 
         _write_typed_parquet(
@@ -1528,7 +1536,7 @@ def export_site(
                 ("units", "varchar"), ("xml_path", "varchar"),
                 ("org", "varchar"), ("exhibit_family", "varchar"),
                 ("fiscal_year", "integer"), ("document_sha256", "varchar"),
-                ("resolution", "varchar"),
+                ("resolution", "varchar"), ("account", "varchar"),
             ],
             rows=detail_rows,
         )
@@ -4689,29 +4697,26 @@ def _build_summary_blocks(
     # this key with the sidecar display dedupe, so a zero recorded twice is
     # a SINGLE honest zero root, not an ambiguity). >1 DISTINCT amount →
     # ambiguous → slot skipped (never sum project rows onto one member's
-    # fact). stg_budget_details carries NO account column (dim_programs.sql's
-    # own #56 comment) — for an ACCOUNT-split key, EVERY detail row belongs
-    # entirely to the one account dim_programs' account_match resolved
-    # (has_own_detail), never the sibling (verified 2026-08-21: LPD Flight
-    # II and Medium Landing Ship, among others, have zero stg_budget_details
-    # rows at all) — _gkey via matched_account_by_pe attributes it there and
-    # nowhere else, so the sibling's page never inherits detail it doesn't
-    # own. An ORG-split key (ROADMAP #45) is different: stg_budget_details
-    # DOES carry an org column, and every organization sharing one of the 3
-    # keys has genuine detail rows of its own (no synthetic side exists on
-    # this axis) — d_org (the row's OWN org, from jbook_documents) is the
-    # correct per-row attribution instead of a single matched pick.
+    # fact).
+    #
+    # Wave 5: attribution is now PER ROW on BOTH axes. The detail query
+    # selects d.account, so an account-split key's rows land on the page for
+    # the appropriation they were filed under — the same treatment ROADMAP
+    # #45 already gave the organization axis with d_org. The previous rule
+    # ("EVERY detail row belongs entirely to the one account account_match
+    # resolved") was true only while five of the six Navy procurement
+    # appropriations went unparsed: parsing them gave all ten shared keys
+    # real detail on BOTH sides, and a single matched pick would have put
+    # one program's R-2/P-40 rows on the other program's page.
     detail_root: dict[tuple, dict] = {}
     _root_seen: dict[tuple, set] = {}
     det_fys: dict[tuple, set] = {}  # (pe, account, org) → fiscal years with ANY detail row
     for (fid, pe_bli, project_number, _pt, scenario, amount_millions,
-         _units, xml_path, d_org, _ef, fiscal_year, _sha, resolution) in detail_rows:
+         _units, xml_path, d_org, _ef, fiscal_year, _sha, resolution,
+         d_account) in detail_rows:
         if fiscal_year != ed:
             continue
-        gkey = (
-            _gkey(pe_bli, None, d_org) if ident.is_org_split(pe_bli)
-            else _gkey(pe_bli, ident.matched_account_by_pe.get(pe_bli))
-        )
+        gkey = _gkey(pe_bli, d_account, d_org)
         if amount_millions is not None:
             d_fy, _d_m = _scenario_meta(scenario, ed)
             if d_fy is not None:
@@ -6501,7 +6506,7 @@ def _write_all_sidecars(
     # jbook_details index: pe_bli → list of detail dicts
     # detail_rows cols: (fact_id, pe_bli, project_number, project_title, scenario,
     #                    amount_millions, units, xml_path, org, exhibit_family,
-    #                    fiscal_year, document_sha256, resolution)
+    #                    fiscal_year, document_sha256, resolution, account)
     from collections import Counter, defaultdict
 
     # Dual-volume display dedupe (Task 3 mini-fix): the 47 dual-volume books
@@ -6513,8 +6518,10 @@ def _write_all_sidecars(
     _RES_RANK = {"unique": 0, "ambiguous_first": 1, "unresolved": 2, "zero_amount": 3}
     _detail_best: dict[tuple, tuple[int, int]] = {}  # display key → (rank, row idx)
     for i, row in enumerate(detail_rows):
-        (fid, pe_bli, project_number, _pt, scenario, amount_millions,
-         *_rest, resolution) = row
+        pe_bli, project_number, scenario, amount_millions = (
+            row[1], row[2], row[4], row[5]
+        )
+        resolution = row[12]
         dkey = (pe_bli, project_number, scenario, amount_millions)
         rank = _RES_RANK.get(resolution, 9)
         cur = _detail_best.get(dkey)
@@ -6540,7 +6547,7 @@ def _write_all_sidecars(
             continue
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, units, xml_path, org, exhibit_family,
-         fiscal_year, document_sha256, resolution) = row
+         fiscal_year, document_sha256, resolution, _d_account) = row
         # Basis threading (PM Sprint 1): every detail figure is a J-book
         # R-2/P-40 row → basis 'jbook-detail'; (fy, measure) from the
         # edition-relative scenario map. `entity` scopes gate-23 grouping:
@@ -11028,7 +11035,7 @@ def _emit_years_matrix(
     for r in detail_rows:
         (fid, pe_bli, project_number, project_title, scenario,
          amount_millions, _units, xml_path, _org, _fam,
-         _fy, _sha, _resolution) = r
+         _fy, _sha, _resolution, _acct) = r
         if project_number is None:
             continue
         proj = projects_by_pe[pe_bli].setdefault(
