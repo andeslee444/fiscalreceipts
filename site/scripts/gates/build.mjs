@@ -355,7 +355,18 @@ export const PAGE_WEIGHT_BUDGET = [
   { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,582 / 120,667 (/agency/N/)" },
   { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,705 / 142,798 (/program/0601102A/)" },
   { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "379,703 / 22,254 (/company/boeing/)" },
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 325_000, maxGzip: 27_500, measured: "315,699 / 21,902 (/filing/82b97e10/)" },
+  // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
+  // needed it, per this file's own rule -- not pre-emptively. Two changes
+  // landed together: Wave 5's Navy ingestion gave 183 more programs a
+  // parseable title, and the LDA re-pull grew program mentions 12,448 ->
+  // 14,016 across 499 programs (was 453). Filing pages list the programs a
+  // filing names, so the heaviest one gained ~12,000 raw bytes of real,
+  // cited content. Nothing was trimmed to avoid this.
+  //
+  // gzip is UNCHANGED at 27,500 and is not close: 22,532, 18% headroom. Only
+  // the raw ceiling moved, restored to ~6% headroom (the /programs/ Sprint E
+  // convention) rather than to the drift.
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 347_500, maxGzip: 27_500, measured: "327,702 / 22,532" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
