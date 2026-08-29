@@ -165,9 +165,27 @@ def _trim_filing(raw: dict) -> dict:
             "government_entities": gov_entities,
             "lobbyists": lobbyists,
         })
+    # The API's own `url` is the JSON RESOURCE (…/api/v1/filings/{uuid}/),
+    # not something a reader can open. It has always been stored here, and
+    # verify_phase5b1 only ever checked the HOST prefix, so an API endpoint
+    # passed as an "official_url" for as long as the host happened to match.
+    # Moving LDA_BASE to lda.gov on 2026-08-27 broke that prefix check and
+    # exposed it.
+    #
+    # Cite the public filing page instead — verified 2026-08-29:
+    #   https://lda.gov/filings/public/filing/{uuid}/print/   -> 200
+    #   lda.senate.gov/filings/public/...                     -> 301 to the above
+    # Falls back to the API url only when no uuid is present, so a row is
+    # never silently left without a source.
+    _uuid = raw.get("filing_uuid", "")
+    _public_url = (
+        f"https://lda.gov/filings/public/filing/{_uuid}/print/"
+        if _uuid
+        else raw.get("url", "")
+    )
     return {
-        "filing_uuid": raw.get("filing_uuid", ""),
-        "url": raw.get("url", ""),
+        "filing_uuid": _uuid,
+        "url": _public_url,
         "filing_type": raw.get("filing_type", ""),
         "filing_year": raw.get("filing_year"),
         "filing_period": raw.get("filing_period", ""),

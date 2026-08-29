@@ -451,11 +451,26 @@ def _verify_lda(row: tuple, idx: dict) -> str | None:
     if not official_url:
         return "official_url is null"
 
-    if not official_url.startswith("https://lda.senate.gov/"):
-        return f"official_url does not start with https://lda.senate.gov/: {official_url}"
+    # TIGHTENED 2026-08-29. This checked only the HOST, so an API endpoint
+    # (…/api/v1/filings/{uuid}/) satisfied it — a JSON resource passing as an
+    # "official_url" a reader could open. It went unnoticed until the host
+    # moved (lda.senate.gov now 301s to lda.gov) and the prefix stopped
+    # matching, which is the only reason the weak check ever surfaced.
+    #
+    # Now requires the PUBLIC filing page. Verified 2026-08-29:
+    #   https://lda.gov/filings/public/filing/{uuid}/print/  -> 200
+    #   https://lda.senate.gov/filings/public/filing/{uuid}/  -> 301 to lda.gov
+    # Both hosts stay acceptable so an older corpus is not retroactively
+    # failed for a redirect the Senate performed, but an /api/ path is not.
+    if not re.match(r"^https://(lda\.gov|lda\.senate\.gov)/", official_url):
+        return f"official_url is not an LDA host: {official_url}"
+    if "/api/" in official_url:
+        return (
+            "official_url points at the JSON API resource, not a page a reader "
+            f"can open: {official_url}"
+        )
 
     # The filing UUID must be embedded in the URL path (LDA API contract).
-    # All live LDA filing URLs are https://lda.senate.gov/filings/{uuid}/
     uuid_pattern = re.compile(r"[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}", re.I)
     if not uuid_pattern.search(official_url):
         return f"filing uuid not found in official_url: {official_url}"
