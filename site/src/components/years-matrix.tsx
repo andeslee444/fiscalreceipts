@@ -431,8 +431,11 @@ export function buildYearsCsv(
       if (c === PCT_KEY) return `${c}_pct`;
       const d = decadeByKey.get(c);
       if (!d) return `${c}_usd_millions`;
+      // "_or_" between tokens on a mixed column: fy2025e carries both
+      // enacted and enacted-total cells, and a bare concatenation
+      // (…_enacted_enacted_total_…) reads as one invented measure name.
       const qual = decadeColumnQualified(d)
-        ? `_${(d.measures ?? []).join("_").replace(/-/g, "_")}`
+        ? `_${(d.measures ?? []).join("_or_").replace(/-/g, "_")}`
         : "";
       return `${c}_pb${d.edition}${qual}_usd_millions`;
     }),

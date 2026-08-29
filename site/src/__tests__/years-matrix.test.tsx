@@ -788,7 +788,7 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     expect(header).toContain("fy2020a_pb2022_usd_millions");
     // qualified columns say what they are, so a downstream script inherits it
     expect(header).toContain("fy2020e_pb2021_enacted_request_usd_millions");
-    expect(header).toContain("fy2025e_pb2026_enacted_enacted_total_usd_millions");
+    expect(header).toContain("fy2025e_pb2026_enacted_or_enacted_total_usd_millions");
     expect(header).not.toContain("fy2020e_pb2021_usd_millions");
   });
 

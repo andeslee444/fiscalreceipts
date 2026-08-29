@@ -1127,6 +1127,60 @@ export async function runYearsMatrixGate({ baseUrl }) {
             );
           }
         }
+        // A qualified column that is NOT default-visible is still one click
+        // away in the column picker, and FY2024E — the column this leg exists
+        // for — is exactly that. Reveal one and assert the same contract on
+        // the revealed header, so "not in the default view" can never become
+        // a place the qualifier quietly stops applying.
+        const hiddenQualified = measureLeg.qualified.filter(
+          (c) => !visibleQualified.some((v) => v.col.key === c.key)
+        );
+        if (hiddenQualified.length > 0) {
+          const col = hiddenQualified[0];
+          const label = `FY${col.fy}${{ actuals: "A", enacted: "E", request: "R" }[col.kind]}`;
+          const chip = page.locator(`[aria-label="Show ${label} column"]`);
+          if ((await chip.count()) === 0) {
+            errors.push(
+              `leg i3: qualified column ${col.key} is neither visible nor ` +
+                `offered in the column picker — its qualifier is unreachable`
+            );
+          } else {
+            await chip.first().click();
+            const th = page.locator(`th[data-col="${col.key}"]`).first();
+            await th.waitFor({ state: "attached", timeout: 5000 });
+            const t = (await th.textContent()) ?? "";
+            if (!t.includes("\u2020")) {
+              errors.push(
+                `leg i3: revealed column ${col.key} reports ` +
+                  `${(col.measures ?? []).join("+")} but carries no \u2020`
+              );
+            }
+            const revealed = await page.evaluate((k) => {
+              const s = new Set();
+              for (const td of document.querySelectorAll(`td[data-col="${k}"] [data-measure]`)) {
+                s.add(td.getAttribute("data-measure"));
+              }
+              return [...s];
+            }, col.key);
+            const allowed = new Set([...(col.measures ?? []), col.kind]);
+            const stray = revealed.filter((m) => !allowed.has(m));
+            if (revealed.length === 0) {
+              errors.push(`leg i3: revealed column ${col.key} renders no [data-measure] cell`);
+            } else if (stray.length) {
+              errors.push(
+                `leg i3: revealed column ${col.key} renders data-measure ` +
+                  `${stray.map((m) => `"${m}"`).join(", ")}, not in [${[...allowed].join(", ")}]`
+              );
+            } else {
+              notes.push(
+                `leg i3: revealed ${col.key} from the column picker — ` +
+                  `\u2020 + data-measure ${revealed.join("/")} ✓`
+              );
+            }
+            await chip.first().click(); // restore the default view
+          }
+        }
+
         // A footnote a reader can see, naming each visible qualified column.
         const fnote = page.locator('[data-testid="measure-qualifier-legend"]');
         if ((await fnote.count()) === 0) {
@@ -1165,18 +1219,24 @@ export async function runYearsMatrixGate({ baseUrl }) {
             errors.push("leg i4: could not read the /years/ CSV export header");
           } else {
             for (const { col } of visibleQualified) {
-              const want = (col.measures ?? []).join("_").replace(/-/g, "_");
+              // Each token must appear, not a particular joined spelling —
+              // the gate holds the CONTRACT (the qualifier survives into the
+              // file), never the exporter's choice of separator.
+              const want = (col.measures ?? []).map((m) => m.replace(/-/g, "_"));
               const field = csv
                 .split(",")
                 .find((f) => f.startsWith(`${col.key}_pb${col.edition}`));
               if (!field) {
                 errors.push(`leg i4: CSV header has no field for ${col.key}`);
-              } else if (!field.includes(want)) {
-                errors.push(
-                  `leg i4: CSV field "${field}" for ${col.key} omits its measure ` +
-                    `qualifier "${want}" — a downstream script reading this file ` +
-                    `still sees a bare ${col.kind} column`
-                );
+              } else {
+                const missing = want.filter((w) => !field.includes(w));
+                if (missing.length) {
+                  errors.push(
+                    `leg i4: CSV field "${field}" for ${col.key} omits measure ` +
+                      `token(s) ${missing.join(", ")} — a downstream script reading ` +
+                      `this file still sees a bare ${col.kind} column`
+                  );
+                }
               }
             }
             notes.push("leg i3/i4: \u2020 header, footnote, cell data-measure and CSV header ✓");

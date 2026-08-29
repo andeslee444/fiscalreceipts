@@ -121,6 +121,9 @@ describe("toProgramsTableRow — §P2-1: only what the table renders is shipped"
       "project_count",
       "exhibit_family",
       "fully_reconciled",
+      // Wave 2 added this beside it; /programs/ renders no reconciliation
+      // verdict, so it must not ride into the client payload either.
+      "reconciled_in_scope",
       "hhi",
       "trajectory",
       "trajectory_fact_ids",
