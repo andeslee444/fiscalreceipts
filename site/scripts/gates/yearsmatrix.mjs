@@ -1132,52 +1132,78 @@ export async function runYearsMatrixGate({ baseUrl }) {
         // for — is exactly that. Reveal one and assert the same contract on
         // the revealed header, so "not in the default view" can never become
         // a place the qualifier quietly stops applying.
+        //
+        // Wrapped: a UI hiccup here must READ as a gate error, never abort the
+        // suite. The first draft of this block re-used the "Show …" locator to
+        // toggle the column back off, after the click had already flipped the
+        // chip's label to "Hide …" — the locator then matched nothing, the
+        // click timed out, and the throw took gates 20-24 down with it.
         const hiddenQualified = measureLeg.qualified.filter(
           (c) => !visibleQualified.some((v) => v.col.key === c.key)
         );
         if (hiddenQualified.length > 0) {
           const col = hiddenQualified[0];
           const label = `FY${col.fy}${{ actuals: "A", enacted: "E", request: "R" }[col.kind]}`;
-          const chip = page.locator(`[aria-label="Show ${label} column"]`);
-          if ((await chip.count()) === 0) {
-            errors.push(
-              `leg i3: qualified column ${col.key} is neither visible nor ` +
-                `offered in the column picker — its qualifier is unreachable`
-            );
-          } else {
-            await chip.first().click();
-            const th = page.locator(`th[data-col="${col.key}"]`).first();
-            await th.waitFor({ state: "attached", timeout: 5000 });
-            const t = (await th.textContent()) ?? "";
-            if (!t.includes("\u2020")) {
+          const showChip = page.locator(`[aria-label="Show ${label} column"]`);
+          const hideChip = page.locator(`[aria-label="Hide ${label} column"]`);
+          try {
+            if ((await showChip.count()) === 0) {
               errors.push(
-                `leg i3: revealed column ${col.key} reports ` +
-                  `${(col.measures ?? []).join("+")} but carries no \u2020`
-              );
-            }
-            const revealed = await page.evaluate((k) => {
-              const s = new Set();
-              for (const td of document.querySelectorAll(`td[data-col="${k}"] [data-measure]`)) {
-                s.add(td.getAttribute("data-measure"));
-              }
-              return [...s];
-            }, col.key);
-            const allowed = new Set([...(col.measures ?? []), col.kind]);
-            const stray = revealed.filter((m) => !allowed.has(m));
-            if (revealed.length === 0) {
-              errors.push(`leg i3: revealed column ${col.key} renders no [data-measure] cell`);
-            } else if (stray.length) {
-              errors.push(
-                `leg i3: revealed column ${col.key} renders data-measure ` +
-                  `${stray.map((m) => `"${m}"`).join(", ")}, not in [${[...allowed].join(", ")}]`
+                `leg i3: qualified column ${col.key} is neither visible nor ` +
+                  `offered in the column picker — its qualifier is unreachable`
               );
             } else {
-              notes.push(
-                `leg i3: revealed ${col.key} from the column picker — ` +
-                  `\u2020 + data-measure ${revealed.join("/")} ✓`
-              );
+              await showChip.first().click({ timeout: 10000 });
+              const th = page.locator(`th[data-col="${col.key}"]`).first();
+              await th.waitFor({ state: "attached", timeout: 10000 });
+              const t = (await th.textContent()) ?? "";
+              if (!t.includes("\u2020")) {
+                errors.push(
+                  `leg i3: revealed column ${col.key} reports ` +
+                    `${(col.measures ?? []).join("+")} but carries no \u2020`
+                );
+              }
+              const revealed = await page.evaluate((k) => {
+                const seen = new Set();
+                for (const td of document.querySelectorAll(`td[data-col="${k}"] [data-measure]`)) {
+                  seen.add(td.getAttribute("data-measure"));
+                }
+                return [...seen];
+              }, col.key);
+              const allowed = new Set([...(col.measures ?? []), col.kind]);
+              const stray = revealed.filter((m) => !allowed.has(m));
+              if (revealed.length === 0) {
+                errors.push(`leg i3: revealed column ${col.key} renders no [data-measure] cell`);
+              } else if (stray.length) {
+                errors.push(
+                  `leg i3: revealed column ${col.key} renders data-measure ` +
+                    `${stray.map((m) => `"${m}"`).join(", ")}, not in [${[...allowed].join(", ")}]`
+                );
+              } else if ((col.measures ?? []).every((m) => m !== col.kind) && revealed.includes(col.kind)) {
+                errors.push(
+                  `leg i3: revealed column ${col.key} still renders the bare ` +
+                    `"${col.kind}" although every one of its cells is ` +
+                    `${(col.measures ?? []).join("+")}`
+                );
+              } else {
+                notes.push(
+                  `leg i3: revealed ${col.key} from the column picker — ` +
+                    `\u2020 + data-measure ${revealed.join("/")} ✓`
+                );
+              }
+              // Restore the default view. The chip's own label has flipped,
+              // so this is a DIFFERENT locator, not the one clicked above.
+              await hideChip.first().click({ timeout: 10000 });
+              await page
+                .locator(`th[data-col="${col.key}"]`)
+                .first()
+                .waitFor({ state: "detached", timeout: 10000 });
             }
-            await chip.first().click(); // restore the default view
+          } catch (e) {
+            errors.push(
+              `leg i3: revealing qualified column ${col.key} through the column ` +
+                `picker failed: ${e.message.split("\n")[0]}`
+            );
           }
         }
 
