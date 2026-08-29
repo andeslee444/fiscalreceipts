@@ -10892,3 +10892,194 @@ AND THE FEED'S FIRST SCREEN. Every section now opens on its own largest
 number: $7.45B, $3.23B, $551.8M, $924.1M — against $46.7M, $3.23B, $73.4M,
 $150.0M before. Only request_vs_actuals_gap was already ranked; the other
 three met the reader with their smallest item.
+
+================================================================================
+TRI-PERSONA REVIEW, WAVE 4 -- the analyst's gaps
+Two new legs on two existing gates. Suite unchanged at 24.
+================================================================================
+
+WHAT THE TWO LEGS ASSERT
+
+  gate 13 linkgraph, leg (h) -- EVERY SHIPPED DATASET IS DOWNLOADABLE WITHOUT
+  JAVASCRIPT. Reads data/site/json/datasets.json (the exporter's own inventory
+  of what it wrote) and requires each shipped parquet to have an ABSOLUTE
+  asset-host href on /downloads/, plus the citation index. Any same-origin
+  /assets/ href on the page is an error in its own right. Leg (d)'s /assets/
+  carve-out is REMOVED in the same change, so the negative half is covered by
+  the dead-link scan that always should have seen it.
+
+  gate 24 datatruth, leg (k) -- CORPUS-COUNT PROVENANCE. Recomputes all five
+  published corpus counts from the artifacts that DEFINE them (out/sitemap.xml,
+  the program_details sidecars, programs.json, datasets.json), requires
+  /coverage/'s reconciliation to publish each one correctly, and requires every
+  corpus-shaped claim on the singleton pages to equal one of them. The single
+  exemption is [data-historical-figures] -- /methodology/'s corrections table,
+  whose "Was" column records superseded figures on purpose.
+
+  Leg (k) is the generalisation the wave was asked for: a corpus count rendered
+  on any page must derive from a single declared source, not a literal. Same
+  class as the stale `measured:` page-weight annotation and the docstring that
+  outlived its function -- a number that was true when it was typed and is
+  nobody's job to re-derive.
+
+--------------------------------------------------------------------------------
+VERBATIM FAIL -- both legs, run against the REAL pre-fix build (HEAD 8b4d427)
+--------------------------------------------------------------------------------
+
+No artifact was broken to produce these. site/out/ at 8b4d427 was the shipping
+build; the legs were written, then run against it before a line of the fix
+landed.
+
+  $ node -e "import('./scripts/gates/linkgraph.mjs').then(async m => {
+      const r = await m.runLinkgraphGate();
+      for (const s of [...r.errors, ...r.notes].filter(s => /leg h|dead link.*downloads/.test(s))) console.log(s);
+    })"
+
+  dead links on /downloads/: 15 internal href(s) resolve to no built page (15 unique target(s); first: /assets/data/dim_programs.parquet, /assets/data/jbook_details.parquet, /assets/data/budget_lines.parquet, /assets/data/fct_budget_trajectory.parquet, /assets/data/dim_entities.parquet, /assets/data/fct_influence.parquet, /assets/data/fct_program_lobbying.parquet, /assets/data/fct_budget_to_awards.parquet, /assets/data/dim_geography.parquet, /assets/data/fct_state_per_capita.parquet)
+    dead link on /downloads/: /assets/data/dim_programs.parquet
+    dead link on /downloads/: /assets/data/jbook_details.parquet
+    dead link on /downloads/: /assets/data/budget_lines.parquet
+    dead link on /downloads/: /assets/data/fct_budget_trajectory.parquet
+    dead link on /downloads/: /assets/data/dim_entities.parquet
+    dead link on /downloads/: /assets/data/fct_influence.parquet
+    dead link on /downloads/: /assets/data/fct_program_lobbying.parquet
+    dead link on /downloads/: /assets/data/fct_budget_to_awards.parquet
+    dead link on /downloads/: /assets/data/dim_geography.parquet
+    dead link on /downloads/: /assets/data/fct_state_per_capita.parquet
+    dead link on /downloads/: /assets/data/fct_program_concentration.parquet
+    dead link on /downloads/: /assets/data/fct_improper_exposure.parquet
+    dead link on /downloads/: /assets/data/dim_lobbyists.parquet
+    dead link on /downloads/: /assets/data/jbook_narratives.parquet
+    dead link on /downloads/: /assets/citations/citations.parquet
+  leg h: /downloads/ ships 15 same-origin /assets/ href(s) (15 unique; first: /assets/data/dim_programs.parquet). Nothing is served under /assets/ in production — these 404 for every client that does not run the client-side /config.json rewrite. Pass ssrBase={getAssetBase()} to <AssetConfigProvider>
+  leg h: 2 shipped dataset(s) have no download link on /downloads/ — budget_lines_decade, fct_district_totals. datasets.json is the inventory of what the exporter wrote; a parquet that ships without a card is queryable on /data/ and undownloadable
+  leg h: 14 dataset link(s) on /downloads/ are not absolute URLs — budget_lines, jbook_details, jbook_narratives, fct_budget_trajectory, dim_programs, dim_entities, fct_influence, fct_program_lobbying, fct_budget_to_awards, dim_geography, fct_program_concentration, fct_state_per_capita, fct_improper_exposure, dim_lobbyists
+  leg h: /downloads/ has no absolute link to citations/citations.parquet — the citation index is what makes every other file checkable
+
+The first fifteen lines are the CARVE-OUT'S OWN FINDING, released. Leg (d) had
+been computing "these fifteen resolve to nothing" and discarding it since
+2026-08-25, with a comment recording the 404 as a verified fact.
+
+  $ node -e "import('./scripts/gates/datatruth.mjs').then(async m => {
+      const r = await m.runDataTruthGate();
+      for (const s of [...r.errors, ...r.notes].filter(s => /leg k/.test(s))) console.log(s);
+    })"
+
+  leg k1: /coverage/'s corpus reconciliation omits sitemap-urls, program-pages, detail-pages, index-rows, dim-programs-rows — a count the site publishes and the reconciliation does not explain is exactly the defect this table exists to close
+  leg k2 (/methodology/): "1,741 programs" states a corpus size of 1,741, which is none of the declared counts (sitemap-urls=2,016, program-pages=2,005, detail-pages=1,743, index-rows=1,755, dim-programs-rows=1,753). Either it is a literal that has rotted, or it is a sixth denominator that has to be declared in lib/corpus getCorpusCounts() and explained on /coverage/
+
+THE k2 FINDING IS A REAL ROTTED LITERAL, and it is the one the wave was not
+looking for. /methodology/'s corrections table said, in the present tense,
+"P-1 is the procurement exhibit; 1,077 of 1,741 programs are RDT&E and are
+reported on R-1". The index has been 1,755 for two sprints. It is the only
+corpus number on the site that no derivation backs, it sits in the middle of a
+table about correcting figures, and no gate could see it: the number is true of
+a past build, correctly punctuated (leg j), and attached to no citation at all
+(gate 2 and gate 23 both scan figures, not claims). It reads as a fact and it
+is a fossil. The sentence now says "most of the index is RDT&E" and states no
+count. The table itself carries data-historical-figures, because its "Was"
+column is superseded figures BY DESIGN -- scoped to that one container, and to
+nothing else.
+
+ONE FALSE POSITIVE, CAUGHT BY RUNNING THE LEG RATHER THAN READING IT. The first
+cut of CORPUS_CLAIM_RE allowed a bare singular "program" after the number, and
+the pre-fix run flagged /methodology/'s "12,448 program mentions" -- a mention
+count, correctly derived from fct_program_lobbying, whose "program" is an
+adjective. The noun phrase must be COMPLETE now ("N programs", "N program
+elements", "N (browsable) program pages"), which also keeps "10,091
+program-award links" out. Both findings above are from the tightened regex.
+
+--------------------------------------------------------------------------------
+VERBATIM PASS -- both legs, on the post-fix build (HEAD 09c665b)
+--------------------------------------------------------------------------------
+
+  gate 13 linkgraph: PASS
+    leg h: all 16 shipped datasets + the citation index link to absolute asset-host URLs on /downloads/ (no /assets/ paths) ✓
+  gate 24 datatruth: PASS
+    leg k: 20 corpus claim(s) across 16 page(s) all resolve to a declared count (sitemap-urls=2,016, program-pages=2,005, detail-pages=1,743, index-rows=1,755, dim-programs-rows=1,753) ✓
+
+  gate 1 build: sidecars: 2005 program pages (1755 full tier, 0 zero-content/noindex), 200 companies, 24 agencies, 113939 citations; build-meta git_head: 09c665b7 ✓; build freshness: out/ is newer than all watched source files ✓ → PASS
+
+  overall: PASS -- 24/24 gates, suite unchanged at 24
+  (grep -c "gateResults.push" site/scripts/verify.mjs -> 24)
+
+--------------------------------------------------------------------------------
+THE FIVE COUNTS, RECONCILED
+--------------------------------------------------------------------------------
+
+  2,016  every indexable /program/ URL in sitemap.xml
+         = 2,005 sidecar pages + 11 split-key disambiguation stubs
+  2,005  program_details sidecars — the browsable page universe, all tiers
+         = 1,755 FY2026-index pages + 250 decade-only pages
+  1,755  programs.json rows — the FY2026 budget index on /programs/
+         (program element x appropriation account in PB2026)
+  1,753  dim_programs.parquet rows
+         = 1,743 detail-grade + 10 synthetic split-key rows
+  1,743  sidecars carrying at least one R-2/P-40 detail row
+
+Each is right for its own denominator. All five are now derived in
+lib/corpus getCorpusCounts(), rendered on /coverage/ with the sentence that
+says what one unit of each IS, and recomputed independently by leg (k).
+
+--------------------------------------------------------------------------------
+PAGE WEIGHT: THREE CEILINGS HIT, NONE RAISED
+--------------------------------------------------------------------------------
+
+Measured with the gate's own logic (import PAGE_WEIGHT_BUDGET, zlib.gzipSync
+level 9, raw-heaviest for dir: entries), on the build named in each round.
+
+  round 1 (a8d98b3)   /agency/       219,668 raw / 50,969 gzip   +29,668 / +2,469
+                      /coverage/     102,068 / 17,988             +6,068 /   +288
+                      /methodology/  135,529 / 36,907                  — /     +7
+  round 2 (7a71a09)   /agency/       192,015 / 48,690             +2,015 /   +190
+                      /coverage/      96,841 / 17,699               +841 /     −3
+  round 3 (4afa2cb)   all within ceiling; /coverage/ at 1 byte of gzip headroom
+  round 4 (f986281)   /coverage/      95,638 / 17,637                          63
+  final   (09c665b)   /methodology/  135,373 / 36,870 — 30 bytes left
+                      /coverage/      95,638 / 17,637 — 63 bytes left
+                      /data/          93,911 / 13,340 — 160 bytes left
+                      /agency/       185,075 / 47,214 — 1,286 bytes left
+
+WHAT CAME OFF, AND WHAT DID NOT. Nothing was removed from any disclosure. The
+/agency/ block gave each program a <Cite>; seventeen extra citations cross the
+server→client boundary in the RSC payload as well as rendering, and the block
+cost 35,487 raw bytes for seventeen links. The organizations, their program
+pages and the explanation moved to /programs/ (169,576 raw and 17,426 gzip
+free) with a pointer left on /agency/. /coverage/'s reconciliation moved from a
+three-column table to a list with every shared class on the <ul>. The
+Add/Non-Add paragraph on /methodology/ lost a bold lead-in and one clause that
+repeated the sentence before it.
+
+/methodology/ AND /coverage/ ARE NOW EFFECTIVELY AT THEIR CEILINGS -- 30 and 63
+bytes. Both numbers are derived from the corpus, so ordinary ingestion growth
+will move them. The next disclosure either page needs is an owner decision
+about the budget, not something a wave can absorb.
+
+--------------------------------------------------------------------------------
+AND ONE CLAIM THAT DID NOT REPRODUCE
+--------------------------------------------------------------------------------
+
+The review reported a "Chem Demilitarization exclusion": ~$1.0B FY24 / ~$210M
+FY26 of RDT&E in account 0390D that "appears in the P-1, is dropped, and is in
+neither the R-1 nor anywhere on the site."
+
+The money is on the site, penny for penny. budget_lines.parquet carries account
+0390D on the R-1 side as PE 0708083D, Assembled Chemical Weapons Alternatives:
+fy_2026_disc_request 210,039 and fy_2024_actuals 1,000,467 (plus 2,093 on
+0708081D). /program/0708083D/ publishes both, cited.
+
+What IS true is the mechanism, and it is worth writing down. The FY2026 P-1
+carries two 0390D rows whose Budget Line Item cell holds "RDT&E" and "O&M" --
+appropriation labels, not BLI codes -- and p1_loader's _is_valid_pe_bli rejects
+them. That rejection is exactly the gap between the Add-only workbook sum and
+the site's own P-1 total:
+
+  naive sum of every FY2026 P-1 row              $221.303B
+  less 146 Non-Add memo rows                     −$16.079B
+  = Add-only sum                                 $205.224B
+  less the two 0390D appropriation-label rows      −$0.213B
+  = the site's P-1 side of the $385.268B          $205.011B
+
+Keeping those two rows would double-count the R-1, which already carries the
+same $210.039M. The reviewer's $205.0B is the site's figure exactly; the
+$221.3B naive total reproduces to the dollar; the "exclusion" does not exist.
