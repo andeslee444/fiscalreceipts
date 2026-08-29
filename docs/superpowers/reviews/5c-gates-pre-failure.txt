@@ -11374,3 +11374,155 @@ measurement (36,870 -> 36,866) and sits at 34 bytes of gzip headroom. Wave 5
 added no sentence to it, so there is no change to argue a raise in the same
 breath as. That page's next sentence still has to buy its own ceiling.
 
+
+--------------------------------------------------------------------------------
+5. WHAT THE SUITE FOUND WHEN IT WAS POINTED AT THE NEW CORPUS
+--------------------------------------------------------------------------------
+
+The wave brief predicted "real findings — this is the first new J-book
+ingestion since several gates were written". Six, and none of them were the
+ones expected: gate 23's basis leg, the one flagged as likely to be exercised
+hardest, passed first time.
+
+Two were REAL PAGE DEFECTS the growing corpus newly sampled onto:
+
+  gate 13 linkgraph (f) — three PE codes on /program/1203154SF/ that name
+  another program with a page and were not links: the lineage rail's evidence
+  blockquote ("…transferred to Program Element 1203155SF…"), the Family
+  Funding Line's chain chips, and the per-member code beside each coexistence
+  figure. Pre-existing; invisible because the leg samples 8 pages and the
+  corpus growing 1,755 → 1,938 moved the sample.
+
+    ✗ (f) pe-linking: 3 PE-shaped token(s) with pages are NOT <a>-wrapped on sampled pages:
+    ✗   /program/1203154SF/: "1203155SF" in "In FY 2026, Project Moving Target Indicator is transferred to Program Element 12"
+    ✗   /program/1203154SF/: "1203155SF" in "1203155SF"
+    ✗   /program/1203154SF/: "1203155SF" in "1203155SF"
+
+  gate 24 datatruth (e) — /methodology/ said 98 dbt assertions against a
+  manifest holding 99. Not a stale literal: the figure is derived at export
+  from dbt's own manifest, and the export predated the new
+  not_null_dim_programs_title. Re-exported; no code change.
+
+    ✗ leg e (/methodology/): §3 says 98 dbt assertions, the defining artifact has 99
+
+Two were GATES READING THE WRONG THING, both invisible until the corpus moved:
+
+  gate 11 og (f) built its page path from `p.pe_bli`, but a split key has one
+  programs.json row per side and a page at `slug`; out/program/{pe_bli}/ is
+  the disambiguation stub, whose description opens with neither row's title.
+  It reported a violation that was not there AND never checked either real
+  page.
+
+    ✗ og leg f: 1 description violation(s) — §P2-5 (first 10):
+    ✗   500: description does not open with its own title + code — "Budget line 500 is used by 2 separate programs run by different organi…"
+
+  gate 21 program-skeleton (g)'s non-vacuity floor. Five pages left the
+  renumber population because they now publish a POSITIVE cited FY2026 J-book
+  figure — exactly the condition that must remove a page from it.
+
+    ✗ program-skeleton(g): only 313 page(s) match the renumber predicate (expected >= 316) — the leg would be vacuous. Re-measure the population and re-derive the floor; do not lower it to fit the build
+
+  Re-measured per page from the shipped sidecars: 1350-WPN $180.867M,
+  2101-PMC $12.593M, 2127 $5.766M, 5087 $6.015M, 5035 $4.650M. Five left, net
+  three, because the ingestion also added pages and two of them satisfy the
+  predicate. The floor is 313. The two entrants are NOT named in the code
+  comment: identifying them individually needs the pre-wave sidecar set this
+  build replaced, and a confident invented list would be worse than the
+  admission.
+
+And two were STALE ACCEPTANCE GATES that had been failing since before this
+wave — the same defect species one layer down, a grain widened in one place
+and not the other:
+
+  verify-phase5e gate d counted the marts' correct split rows as duplicates:
+
+    gate d decade-series-integrity: rows=59179 duplicate_grains=100 sampled=20 passed=20 → FAIL
+      FAIL (grain): 100 duplicate (pe_bli, fy, edition_year) grain(s)
+
+  27 of those 100 are the three ORGANIZATION-collision keys alone — the exact
+  number assert_decade_series_grain_unique already records for the pre-#45
+  grain, which dates the staleness to 2026-08-21.
+
+  verify-phase5e gate c recomputed a split row against a lake sum over the
+  whole pe_bli — its own money plus an unrelated program's. It only surfaced
+  when the random sample of 20 landed on '3302':
+
+    gate c book-diff-conservation: rows=18412 sampled=20 passed=19 → FAIL
+      FAIL 3302 2024→2025 request_vs_request: from_value lake recompute mismatch: mart=4146.0 but candidates [fy_2024_request=9211.000]
+
+  9,211 = 4,146 + 5,065: ASW Range Support (Weapons Procurement) plus Joint
+  Communications Support Element (Other Procurement), added together.
+
+BROKEN ARTIFACT for the fix: verify_phase5e with the pre-split grain restored
+and the lake sum unscoped, against fixtures carrying a real split key.
+
+  === FAIL RUN (pre-split grain + unscoped lake sum) ===
+          g = decade_series_gate5e(db, lake, sample_size=1)
+  >       assert g["ok"] is False
+  E       assert True is False
+
+  tests/test_verify_phase5e.py:851: AssertionError
+  =========================== short test summary info ============================
+  FAILED tests/test_verify_phase5e.py::test_decade_series_split_key_is_not_a_duplicate_and_recomputes_per_account
+  FAILED tests/test_verify_phase5e.py::test_decade_series_split_key_wrong_amount_still_fails
+  2 failed, 45 passed in 1.43s
+
+  === PASS RUN (restored) ===
+  ...............................................                          [100%]
+  47 passed in 1.35s
+
+The second of those two tests is the one that matters: it feeds the gate a
+row carrying the FUSED sum and requires it to FAIL. Scoping the recompute by
+account made the check stronger, not looser — a wrongly-split row is now
+caught where before it was arithmetic nobody could see.
+
+  $ uv run python -m govbudget verify-phase5e   (three runs; c/d sample randomly)
+  gate c book-diff-conservation: rows=18412 sampled=20 passed=20 → PASS
+  gate d decade-series-integrity: rows=59179 duplicate_grains=0 sampled=20 passed=20 → PASS
+  verify-phase5e: PASS
+
+--------------------------------------------------------------------------------
+6. THE FULL SUITE ON THE SHIPPED BUILD
+--------------------------------------------------------------------------------
+
+Build 8ff5ee6, `NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com npm run build`,
+then every gate function verify.mjs calls, in verify.mjs's own order and with
+its own signatures:
+
+  gate  1 build              PASS      gate 15 degraded           PASS
+  gate  2 render-static      PASS      gate 16 answerfold         PASS
+  gate  3 render-live        PASS      gate 17 motion             PASS
+  gate  4 clickthrough       PASS      gate 18 receiptmoment      PASS
+  gate  5 search             PASS      gate 19 personas           PASS
+  gate  6 a11y               PASS      gate 20 yearsmatrix        PASS
+  gate  8 feed               PASS      gate 21 program-skeleton   PASS
+  gate  9 district           PASS      gate 22 flowdown           PASS
+  gate 10 filing             PASS      gate 23 basis              PASS
+  gate 11 og                 PASS      gate 24 datatruth          PASS
+  gate 12 animation          PASS
+  gate 13 linkgraph          PASS      23/23 pass
+  gate 14 coverage           PASS
+
+Gate 5 (search) and gate 20 (yearsmatrix) are worth naming: both were FAILING
+on the build before the null-title fix — search at 49% and yearsmatrix timing
+out on its filter — and both pass now. One missing string caused both.
+
+--------------------------------------------------------------------------------
+AND ONE FAILURE THIS WAVE DID NOT CAUSE AND DID NOT FIX
+--------------------------------------------------------------------------------
+
+  $ uv run python -m govbudget verify-phase5b1
+  gate 1 citations: sampled=50 passed=45 failures=5 bl_decade_overlap=5251 divergent=0 → FAIL
+    FAIL b0d7acc820bfc30d: official_url does not start with https://lda.senate.gov/: https://lda.gov/api/v1/filings/50884f78-…/
+    [4 more, all the same shape]
+  gate 2 integrity: … → PASS
+  gate 4 narrative provenance: resolved=6096/11698 (52.1%) sampled=25 passed=25 → PASS
+
+5,392 rows of data/parquet/influence/lda_filings.parquet carry an
+`https://lda.gov/api/v1/filings/{uuid}/` API URL where the citable public
+filing page belongs. That parquet is dated 2026-08-27 13:38 — two days before
+this wave — and nothing in the J-book ingestion touches lobbying data; the
+gate samples 50 citations at random, which is why it surfaces intermittently.
+Fixing it means re-running `govbudget influence pull` against the live LDA
+API, which is out of this wave's scope. Recorded here rather than left for
+the next person to rediscover.
