@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-2004",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax8ZLoX5rY1fx9qxngT",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"CVN-81 is a Ford-class aircraft carrier being built under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"eb1d1bba4ae902bd\"}},{\"text\":\"The program's mission is to provide credible, sustainable, independent forward presence during peacetime without access to land bases; to operate as the cornerstone of a joint and/or allied maritime expeditionary force in response to crisis; and to carry the war to the enemy through joint multi-mission offensive operations.\",\"citation\":{\"fact_id\":\"ca5a0cdd567e271c\"}},{\"text\":\"The Ford-class carrier incorporates advances in technology such as a new reactor plant, propulsion system, electric plant, Electromagnetic Aircraft Launch System (EMALS), Advanced Arresting Gear (AAG), machinery control, and integrated warfare systems intended to increase lethality while lowering life-cycle costs through reductions in maintenance and manning requirements.\",\"citation\":{\"fact_id\":\"ca5a0cdd567e271c\"}},{\"text\":\"CVN 80 and CVN 81 were awarded under a two-ship buy, with CVN 81 as a separate contract line item under the same contract as CVN 80, allowing discrete hull costs to be captured.\",\"citation\":{\"fact_id\":\"ca5a0cdd567e271c\"}},{\"text\":\"The CVN 80/81 construction contract is a Fixed Price Incentive (Firm Target) contract type intended to limit the Navy's liability and incentivize the shipyard's best performance, with a single technical baseline for both ships that lets the shipyard re-use engineering products and leverage economic order quantities for equipment and material.\",\"citation\":{\"fact_id\":\"ca5a0cdd567e271c\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, the Navy requested about $1.62 billion (1,622,935 in USD thousands) for CVN-81, a discretionary request under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"1433d27f7d54c013\"}},{\"text\":\"That FY2026 request roughly doubles the program's FY2024 actual spending of about $800 million (800,492 in USD thousands).\",\"citation\":{\"fact_id\":\"eb1d1bba4ae902bd\"}},{\"text\":\"In between, Congress enacted about $675 million (674,930 in USD thousands) for CVN-81 in FY2025.\",\"citation\":{\"fact_id\":\"d1faa9ef44f86a9f\"}},{\"text\":\"Justification documents show that all prior-year funding for the line item totaled about $5,803.675 million, indicating a multi-year investment already made in the ship.\",\"citation\":{\"fact_id\":\"261dd8bc4cc32aff\"}},{\"text\":\"The FY2026 base request for the line item is about $1,622.935 million, matching the total FY2026 request.\",\"citation\":{\"fact_id\":\"c3d616d50218b110\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Navy (organization code N).\",\"citation\":{\"fact_id\":\"eb1d1bba4ae902bd\"}},{\"text\":\"FedEx Corporation reported lobbying filings in 2024 that matched this program's identifier, addressing issues related to China trade policy, customs reform, and de minimis rules — topics unrelated to carrier construction, suggesting the match reflects the numeric term rather than the program itself.\",\"citation\":{\"fact_id\":\"2ec47d0443231448\"}},{\"text\":\"Additional FedEx Corporation filings in 2024 referenced legislative monitoring of Open Skies Agreements and general trade issues including customs modernization.\",\"citation\":{\"fact_id\":\"0823104dbb624904\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 4844,
+   "output_tokens": 1299,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

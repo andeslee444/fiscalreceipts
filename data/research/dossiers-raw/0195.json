@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0195",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax5bd96u8qWc1heDPET",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The E-2D Advanced Hawkeye (AHE) is an all-weather, twin-engine, carrier-based Airborne Command, Control and Surveillance aircraft designed to extend a naval task force's defense perimeter.\",\"citation\":{\"fact_id\":\"a032ec666ace3332\"}},{\"text\":\"Its mission is to provide advance warning of approaching enemy surface units and aircraft, to direct interceptor or strike aircraft to attack, and to provide area surveillance, search and rescue, communications relay, and strike/air traffic control.\",\"citation\":{\"fact_id\":\"a032ec666ace3332\"}},{\"text\":\"Key objectives include improved battle-space target detection and situational awareness — especially in coastal (littoral) waters — support of Theater Air Missile Defense operations, and improved operational availability.\",\"citation\":{\"fact_id\":\"a032ec666ace3332\"}},{\"text\":\"As of Fiscal Year 2026 the program has been funded for 86 E-2D aircraft, after the quantity baseline was raised from 75 to 86 per a Resources and Requirements Review Board (R3B) memo dated 19 July 2019 that identified a need for 11 additional aircraft to fill fleet shortfalls.\",\"citation\":{\"fact_id\":\"a032ec666ace3332\"}},{\"text\":\"The program is funded through the Aircraft Procurement, Navy account.\",\"citation\":{\"fact_id\":\"b5af3123ff596be8\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The Navy requested about $1.50 billion (USD, $1,503,556 thousand) for the E-2D in Fiscal Year 2026, a large increase over the roughly $571 million actually spent in Fiscal Year 2024.\",\"citation\":{\"fact_id\":\"df4f2d639606876a\"}},{\"text\":\"For comparison, Fiscal Year 2024 actual spending on the program was about $571 million (USD, $571,100 thousand).\",\"citation\":{\"fact_id\":\"1b1ce2b687aa417e\"}},{\"text\":\"The Fiscal Year 2025 enacted amount was much smaller, about $95 million (USD, $95,219 thousand).\",\"citation\":{\"fact_id\":\"e56578bf07b39e9a\"}},{\"text\":\"Cumulatively, the program's prior-year funding totals roughly $18.76 billion (USD $18,760.673 million) across all prior years.\",\"citation\":{\"fact_id\":\"2e8c65aa1aada53e\"}},{\"text\":\"The FY 2026 request funds four aircraft that bring the program to 86 E-2Ds, procured on a separate contract at single-year pricing and designated as Full-Rate Production lot 12 (FRP 12).\",\"citation\":{\"fact_id\":\"bc7726f6043e847c\"}},{\"text\":\"The FY 2026 request also covers establishing E-2D organic depot maintenance capability (in accordance with Title 10 U.S. Code 2464 core logistics requirements), production line shutdown, and government engineering and logistics support for aircraft still in production.\",\"citation\":{\"fact_id\":\"bc7726f6043e847c\"}},{\"text\":\"The FY 2026 request was reduced by $0.227 million for Advisory and Assistance Services under Executive Order 14222 (the President's Department of Government Efficiency Cost Efficiency Initiative).\",\"citation\":{\"fact_id\":\"bc7726f6043e847c\"}},{\"text\":\"The FY 2026 request was also reduced by $0.342 million for civilian personnel under Executive Order 14210 (the President's Department of Government Efficiency Workforce Optimization Initiative).\",\"citation\":{\"fact_id\":\"bc7726f6043e847c\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed within the Department of the Navy.\",\"citation\":{\"fact_id\":\"b5af3123ff596be8\"}},{\"text\":\"Recent aircraft were funded under a Fiscal Year 2019 through Fiscal Year 2024 Multi-Year Procurement (MYP) contract, with two congressionally added aircraft in FY 2023 and FY 2024 funded on that contract at single-year pricing.\",\"citation\":{\"fact_id\":\"bc7726f6043e847c\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 3239,
+   "output_tokens": 1450,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

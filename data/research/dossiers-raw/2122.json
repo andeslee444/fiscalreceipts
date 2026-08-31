@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-2122",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax9RNrddP7q2HDMBG97",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"DDG-51 is the U.S. Navy's Arleigh Burke-class guided-missile destroyer program, funded under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"06b4b0dd3d59e700\"}},{\"text\":\"The Navy describes the DDG 51 as able to operate offensively and defensively, independently or as part of Carrier Strike Groups and Surface Action Groups, in multi-threat environments that include air, surface and subsurface threats.\",\"citation\":{\"fact_id\":\"7bc24f8d6771099f\"}},{\"text\":\"Beginning in FY2017, DDG 51 Flight III ships added the Air and Missile Defense Radar (SPY-6(V)1) to significantly enhance Integrated Air and Missile Defense capability against current and future threats.\",\"citation\":{\"fact_id\":\"7bc24f8d6771099f\"}},{\"text\":\"Starting in FY2023, the program is upgrading the MK38 Gun Weapon System to the Mod 4 configuration, replacing the WSN-7 inertial navigation system with the follow-on WSN-12, adding 15 additional berths, and replacing the Bridgemaster Surface Search Radar with the Next-Generation Surface Search Radar.\",\"citation\":{\"fact_id\":\"7bc24f8d6771099f\"}},{\"text\":\"For FY2026 the Department requests a total of $5,410,773 thousand (about $5.4 billion) and a total quantity of two ships.\",\"citation\":{\"fact_id\":\"7bc24f8d6771099f\"}},{\"text\":\"That FY2026 request combines $10,773 thousand of discretionary funding (quantity of 0) with $5,400,000 thousand of mandatory funding (quantity of 2), supporting the contract award for two FY2026 ships.\",\"citation\":{\"fact_id\":\"3e5027104a7d44bb\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"DDG-51 is a large shipbuilding line: FY2024 actual funding totaled $6,366,431 thousand (about $6.4 billion).\",\"citation\":{\"fact_id\":\"06b4b0dd3d59e700\"}},{\"text\":\"For FY2025, Congress enacted $8,268,628 thousand (about $8.3 billion) for the program.\",\"citation\":{\"fact_id\":\"60bc7e5d65d9a69f\"}},{\"text\":\"The FY2026 total request drops to $5,410,773 thousand (about $5.4 billion), lower than the prior year's enacted level.\",\"citation\":{\"fact_id\":\"99b987eb326c9857\"}},{\"text\":\"Most of the FY2026 request comes as a reconciliation (mandatory) request of $5,400,000 thousand rather than through the regular discretionary budget.\",\"citation\":{\"fact_id\":\"5adb4183aed84ed8\"}},{\"text\":\"Only $10,773 thousand of the FY2026 request is discretionary funding.\",\"citation\":{\"fact_id\":\"bc3d2a6091db4104\"}},{\"text\":\"The Navy awarded two Multi-year Procurement contracts covering FY2023-FY2027 for 9 ships with options, with the budget reflecting savings from economic order quantity procurement and the multi-year strategy.\",\"citation\":{\"fact_id\":\"7bc24f8d6771099f\"}},{\"text\":\"DDG-51 FY2024 actuals came in about $1.9 billion above the original PB2024 request, rising from a $4,483,214 thousand request to $6,366,431 thousand in actuals — a roughly 42% increase.\",\"citation\":{\"fact_id\":\"8169f40c26f22ffd\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is run by the Department of the Navy (organization code N).\",\"citation\":{\"fact_id\":\"06b4b0dd3d59e700\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 4420,
+   "output_tokens": 1314,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

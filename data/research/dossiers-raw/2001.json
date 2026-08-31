@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-2001",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax5dtZkMf8JNuTj5axS",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The Carrier Replacement Program funds construction of the Navy's Ford-class aircraft carriers under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"0d6cc1288a392540\"}},{\"text\":\"The Navy classifies the program as shipbuilding, covering Ford-class aircraft carrier construction.\",\"citation\":{\"fact_id\":\"1754d4a45e3b8ad3\"}},{\"text\":\"The Navy designed the Ford-class aircraft carrier with warfighting capability for the 21st century, incorporating advances such as a new reactor plant, propulsion system, electric plant, the Electromagnetic Aircraft Launch System (EMALS), Advanced Arresting Gear (AAG), machinery control, and integrated warfare systems intended to increase lethality while lowering life-cycle costs through reduced maintenance and manning.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}},{\"text\":\"The program's stated purpose is to provide credible, sustainable, independent forward presence during peacetime without land bases, to operate as the cornerstone of a joint or allied maritime expeditionary force in a crisis, and to carry the war to the enemy through joint multi-mission offensive operations.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}},{\"text\":\"Two carriers, CVN 80 and CVN 81, were awarded under a two-ship buy, with CVN 80 as a separate contract line item under the same contract as CVN 81, allowing discrete hull costs to be captured.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}},{\"text\":\"The CVN 80/81 construction contract is a Fixed Price Incentive (Firm Target) contract type intended to limit the Navy's liability and incentivize the shipyard's performance.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}},{\"text\":\"The Advanced Procurement funding in fiscal year 2026 is the first of four years of advance procurement funding for CVN 82.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The program received actual funding of about $1.73 billion (USD thousands: 1,729,021) in fiscal year 2024.\",\"citation\":{\"fact_id\":\"0d6cc1288a392540\"}},{\"text\":\"Congress enacted about $1.36 billion (USD thousands: 1,359,124) for the program in fiscal year 2025.\",\"citation\":{\"fact_id\":\"f6e40afe14dbd7ca\"}},{\"text\":\"The fiscal year 2026 request for the program is about $1.66 billion (USD thousands: 1,658,738).\",\"citation\":{\"fact_id\":\"4d98e67d5ad59c73\"}},{\"text\":\"The full fiscal year 2026 total for the program is about $1.66 billion (USD thousands: 1,658,738).\",\"citation\":{\"fact_id\":\"52bb2765bb8562b2\"}},{\"text\":\"Program budget detail records show cumulative all-prior-years funding of about $34.7 billion (USD millions: 34,672.79), reflecting the large sustained investment carrier construction requires.\",\"citation\":{\"fact_id\":\"1754d4a45e3b8ad3\"}},{\"text\":\"Ford-class carriers are designed with increased Service Life Allowances for weight and stability to enable future modernization over the ship's 50-year life cycle.\",\"citation\":{\"fact_id\":\"f831cf29fe1f788f\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings by Huntington Ingalls Industries Incorporated referenced the Carrier Replacement Program in a 2026 filing.\",\"citation\":{\"fact_id\":\"031b3d01352d06c2\"}},{\"text\":\"Another 2026 lobbying filing from Huntington Ingalls Industries Incorporated also referenced the Carrier Replacement Program.\",\"citation\":{\"fact_id\":\"03896b4ee16122ec\"}},{\"text\":\"Huntington Ingalls Industries Incorporated reported lobbying that referenced the Carrier Replacement Program in a 2025 filing.\",\"citation\":{\"fact_id\":\"03a0ca1810c6c7ef\"}},{\"text\":\"A 2025 lobbying filing from Huntington Ingalls Industries Incorporated also referenced the Carrier Replacement Program.\",\"citation\":{\"fact_id\":\"0059cba441e076dc\"}},{\"text\":\"Huntington Ingalls Industries Incorporated referenced the Carrier Replacement Program in a 2024 lobbying filing.\",\"citation\":{\"fact_id\":\"0e73b7864c404bb8\"}},{\"text\":\"Another 2024 lobbying filing from Huntington Ingalls Industries Incorporated referenced the Carrier Replacement Program.\",\"citation\":{\"fact_id\":\"0078d6e1d0f36bcd\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 7766,
+   "output_tokens": 1696,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

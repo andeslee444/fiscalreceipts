@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-1045",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax8Nq392DzHWGpg6M7M",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The COLUMBIA Class Submarine program is the U.S. Navy's effort to design, build, and deliver a replacement for the aging OHIO Class Fleet Ballistic Missile Submarines (SSBNs). It is classified as an Acquisition Category (ACAT) ID Major Defense Acquisition Program — the Pentagon's designation for its largest and most complex weapons programs.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The submarine's core mission is strategic deterrence — maintaining readiness to help deter a nuclear attack on the United States and its allies, and, if deterrence fails, being able to launch missiles at planned targets. The boats are designed to carry out extended undersea patrols without resupply.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The program falls under shipbuilding — specifically the Shipbuilding and Conversion, Navy account for design and construction of the OHIO replacement.\",\"citation\":{\"fact_id\":\"7293ed39210e3a81\"}},{\"text\":\"Key equipment includes torpedo tubes, ballistic missile tubes, and the Trident D5 Strategic Weapons System, along with a command, control, communications and intelligence system built on an open architecture with twenty-three subsystems.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The OHIO Class submarines the COLUMBIA program is meant to replace begin retiring at a rate of one per year starting in 2027.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The lead ship is named DISTRICT OF COLUMBIA (SSBN 826), the second ship is WISCONSIN (SSBN 827), and the third ship is SSBN 828.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"For fiscal year 2026, the Navy requested a total of $10.92 billion (shown as 10,920,486 in USD thousands) for the COLUMBIA program — its single largest recent budget line.\",\"citation\":{\"fact_id\":\"0ca272ae2d15de60\"}},{\"text\":\"That FY2026 total splits into $8.99 billion of ordinary discretionary funding plus $1.93 billion of mandatory (reconciliation) funding.\",\"citation\":{\"fact_id\":\"7293ed39210e3a81\"}},{\"text\":\"The $1.93 billion reconciliation portion (1,925,892 in USD thousands) is meant to continue investment in nuclear shipbuilder infrastructure productivity enhancements — an investment that had been funded in the VIRGINIA Class Submarine program in FY2025.\",\"citation\":{\"fact_id\":\"044b35880d95e17d\"}},{\"text\":\"In FY2024 the program recorded $7.79 billion in actual spending (7,789,332 in USD thousands), giving a sense of the program's steep and growing cost profile.\",\"citation\":{\"fact_id\":\"11c952cfbf51e09b\"}},{\"text\":\"For FY2025 the program was enacted at $9.58 billion (9,580,774 in USD thousands), showing the year-over-year growth as construction ramps up.\",\"citation\":{\"fact_id\":\"f2bf8a50f24baaef\"}},{\"text\":\"FY2026 is the first year of incremental full funding for the third ship, SSBN 828, and the year of its authorization.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The narrative describes the funding as crucial to accelerating ship delivery in order to reduce strategic deterrence coverage gaps during the transition from OHIO submarines to COLUMBIA submarines, and to meet U.S. Strategic Command requirements for Sea-Based Strategic Deterrence.\",\"citation\":{\"fact_id\":\"66940630fa7c0e8e\"}},{\"text\":\"The FY2026 request was reduced by $24.124 million for Advisory and Assistance Services, in alignment with Executive Order 14222 on government cost efficiency.\",\"citation\":{\"fact_id\":\"044b35880d95e17d\"}},{\"text\":\"COLUMBIA Class Submarine FY2024 actuals came in about $2.0 billion above the original PB2024 request (comparing the PB2024 FY2024 request of roughly $5.83 billion to the PB2026-reported FY2024 actual of roughly $7.79 billion), a gap of about 33.5 percent.\",\"citation\":{\"fact_id\":\"037c01db105c69e2\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings from General Dynamics Corporation reported lobbying for full funding of the Virginia Class and Columbia Class submarine programs and funding for the submarine industrial base (2026 filing).\",\"citation\":{\"fact_id\":\"2e0033079e665cda\"}},{\"text\":\"Additional General Dynamics Corporation filings referenced the same full-funding advocacy for the Virginia Class and Columbia Class submarine programs in 2025.\",\"citation\":{\"fact_id\":\"abf01fdb5491c25b\"}},{\"text\":\"Huntington Ingalls Industries Incorporated filings referenced the COLUMBIA Class submarine among a list of Navy shipbuilding programs (2026 filing).\",\"citation\":{\"fact_id\":\"031b3d01352d06c2\"}},{\"text\":\"Additional Huntington Ingalls Industries filings referencing the COLUMBIA Class submarine were reported in 2025.\",\"citation\":{\"fact_id\":\"03a0ca1810c6c7ef\"}},{\"text\":\"General Dynamics Corp filings referencing the terms 'Class' and 'Submarine' also appeared in 2026, in the context of State and Foreign Operations funding.\",\"citation\":{\"fact_id\":\"02254d2126f00efc\"}},{\"text\":\"A FedEx Corporation filing matched the term '1045' while describing lobbying on aviation security and safety issues — a coincidental keyword match unrelated to the submarine program (2026 filing).\",\"citation\":{\"fact_id\":\"019440805ba04bc0\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 14447,
+   "output_tokens": 2104,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

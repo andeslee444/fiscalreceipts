@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-2086",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax5bXBs32DKsTKy4ud3",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"CVN Refueling Overhauls is a Navy shipbuilding program that pays for refueling the nuclear reactors of aircraft carriers (CVNs) and performing what the Navy calls a Refueling and Complex Overhaul (RCOH). It is funded through the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"89a970bec313bc7e\"}},{\"text\":\"The program's stated purpose is to support and operate aircraft that engage targets afloat and ashore threatening U.S. use of the sea, and to sustain operations in support of other forces. Refueling the reactors and repairing and upgrading the main propulsion equipment is meant to provide reliable operations during the ship's remaining 23-plus years of service using only the normal maintenance cycle.\",\"citation\":{\"fact_id\":\"8babd1aa6efee83d\"}},{\"text\":\"The current focus is the aircraft carrier CVN 75. Fiscal year (FY) 2026 is the second of three years of full funding for CVN 75, whose RCOH starts in FY 2026 after five years of advance procurement (FY 2020 to FY 2024) and three years of full funding (FY 2025 to FY 2027).\",\"citation\":{\"fact_id\":\"55d928f47ba93289\"}},{\"text\":\"The Navy classifies this program under shipbuilding, describing it as nuclear carrier refueling and complex overhaul funded in Shipbuilding and Conversion, Navy.\",\"citation\":{\"fact_id\":\"4e51a958a1587618\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The FY 2026 request for the program is about $1.78 billion (1,779,011 USD thousands), a large increase over the $530.9 million (530,868 USD thousands) actually spent in FY 2024.\",\"citation\":{\"fact_id\":\"8657807d5cf81073\"}},{\"text\":\"For comparison, the FY 2025 enacted level was about $1.48 billion (1,480,314 USD thousands), showing the funding climb as the CVN 75 overhaul ramps up.\",\"citation\":{\"fact_id\":\"c035aef0a3fcf8b8\"}},{\"text\":\"Federal law shapes how the money can be spent: Section 123 of the 2020 National Defense Authorization Act limits the use of incremental funding to a period not exceeding six years after advance procurement funds for the refueling and complex overhaul were first obligated (October 2020). The budget supports the planned start of construction at HII-NNS in June 2026.\",\"citation\":{\"fact_id\":\"55d928f47ba93289\"}},{\"text\":\"Part of the FY 2026 request reflects cost overruns on an earlier carrier: it includes Cost to Complete funding for CVN 74 cost growth and time-related charges tied to an additional 13-month delivery delay, totaling $483.1 million.\",\"citation\":{\"fact_id\":\"55d928f47ba93289\"}},{\"text\":\"The full funding request for CVN 75 also includes $92.0 million to complete delivery of parking garages, programmable space, and other enhancements for a multi-use facility in FY 2026 — investments described as supporting sailor quality-of-service initiatives.\",\"citation\":{\"fact_id\":\"55d928f47ba93289\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is run by the Department of the Navy.\",\"citation\":{\"fact_id\":\"89a970bec313bc7e\"}},{\"text\":\"Construction of the CVN 75 overhaul is planned to start at HII-NNS (Huntington Ingalls Industries – Newport News Shipbuilding) in June 2026.\",\"citation\":{\"fact_id\":\"55d928f47ba93289\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 2875,
+   "output_tokens": 1262,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

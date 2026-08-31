@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0605",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax8LZcNxTmkiwWG3mSE",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Spares and Repair Parts is a Navy program (organization \\\"N\\\") that buys the spare and repair parts needed to keep naval and Marine Corps aircraft flying. It is funded under the Aircraft Procurement, Navy account.\",\"citation\":{\"fact_id\":\"a767c63490cbe337\"}},{\"text\":\"The program is known internally as APN-6, a \\\"follower\\\" account that procures all applicable spare and repair parts for Navy and Marine Corps end-items and modifications bought under other Aircraft Procurement, Navy budget activities — meaning its needs track program changes in aircraft quantities, basing plans, installation schedules, and maintenance data.\",\"citation\":{\"fact_id\":\"6b0582686403b079\"}},{\"text\":\"Spares fall into several categories: Initial spares (parts and spare engines to support newly procured aircraft), spares for modifications, spares for support equipment and training devices, Wholesale Supply Inventory (long-term stock for programs after their Material Support Date), and Replenishment spares (headquarters and fleet outfitting parts).\",\"citation\":{\"fact_id\":\"6b0582686403b079\"}},{\"text\":\"A large part of the program funds the Aviation Outfitting Account, which stocks carriers and amphibious ships with spare parts to provide 90-day sustainment levels for fielded aircraft such as the F/A-18, H-1, E-2, V-22, P-8, H-60, and MQ-4 while deployed.\",\"citation\":{\"fact_id\":\"6b0582686403b079\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The Navy describes aviation sparing as a strategic investment in readiness, aimed at sustaining both today's deployed forces and the future \\\"Airwing of the Future,\\\" and at achieving the Chief of Naval Operations' required 90-day endurance level of repair parts aboard aircraft carriers.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"Stocking more spares aboard deployed carriers is meant to increase mission-capable rates and extend a carrier's time on station without resupply — reducing the logistics burden in a contested environment. Because suppliers have multi-year lead times, the Navy argues spares must be bought today to be ready for future conflict.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"Initial contractor spares, engine spares, and Peculiar Support Equipment are cited as major cost drivers as new aircraft types are introduced, procured, and modified.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"For fiscal year 2026 the F-35C carrier-variant initial spares funding rises from $124.685 million to $160.029 million, driven partly by the Navy and Marine Corps increasing their Afloat Spares Package requirements for the joint aircraft's Global Spares Pool.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"The MQ-25 unmanned tanker sees its first substantial initial-spares buy — up from $0 in FY2025 to $35.797 million in FY2026 — timed to the aircraft's first carrier and shore standups and deployment schedule.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"A newly established Wholesale Supply Inventory cost type appears in FY2026 with $81.412 million, addressing shortfalls in long-term stock and parts obsolescence across numerous platforms.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"The largest single line, Aviation Outfitting Account Repairables, grows from $1,059.646 million to $1,231.978 million in FY2026 to support fleet readiness and a \\\"Targeted AVCAL Wholeness\\\" initiative that plans for a 42-day resupply time rather than the previously estimated 10 days.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}},{\"text\":\"The FY2026 request was reduced by $1.836 million for Advisory and Assistance Services and by $0.263 million for civilian personnel, in alignment with executive orders implementing the administration's Department of Government Efficiency initiatives.\",\"citation\":{\"fact_id\":\"e6de031d9fbcd50a\"}}]},\"players\":{\"claims\":[{\"text\":\"Lobbying filings referenced this program: FedEx Corporation reported lobbying activity in a 2026 filing that mentioned repair and parts legislation, including the REPAIR Act.\",\"citation\":{\"fact_id\":\"019440805ba04bc0\"}},{\"text\":\"A second 2026 FedEx Corporation filing also referenced repair and parts matters. (Lobbying mentions show only that a filing referenced program-related terms, not that any spending decision resulted.)\",\"citation\":{\"fact_id\":\"011d6ee62d525049\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 12229,
+   "output_tokens": 1683,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

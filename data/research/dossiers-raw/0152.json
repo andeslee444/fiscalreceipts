@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0152",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax8YnpKK1jNV4hyCkLD",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"JSF STOVL is the Navy-managed procurement line for the F-35B, the Short Take-Off and Vertical Landing (STOVL) variant of the Joint Strike Fighter (JSF) family of aircraft. The Joint Strike Fighter program fields three variants: the F-35A Conventional Take Off and Landing (CTOL) version, the F-35B STOVL version, and the F-35C Carrier Variant (CV), sharing commonality to minimize life-cycle costs.\",\"citation\":{\"fact_id\":\"f0d765b03beeee18\"}},{\"text\":\"This is a joint program with no executive service; Service Acquisition Executive authority alternates between the Department of the Navy and the Department of the Air Force and currently resides with the Navy. It is described as a Commandant of the Marine Corps Force Design program.\",\"citation\":{\"fact_id\":\"f0d765b03beeee18\"}},{\"text\":\"For the Marine Corps, the F-35B combines precision weapons and multi-spectral sensors with the expeditionary responsiveness of a STOVL fighter-attack platform. The Marine Corps currently has seven F-35B operational squadrons and will stand up an additional five.\",\"citation\":{\"fact_id\":\"f0d765b03beeee18\"}},{\"text\":\"Initial Operational Capability occurred in July 2015, and the Full Rate Production decision occurred in March 2024 after completion of Initial Operational Test and Evaluation.\",\"citation\":{\"fact_id\":\"f0d765b03beeee18\"}},{\"text\":\"The funding falls under the Aircraft Procurement, Navy account (Exhibit P-1).\",\"citation\":{\"fact_id\":\"ee4a0842dfc79225\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The FY 2026 budget provides funding for 11 F-35B aircraft plus associated non-recurring and ancillary mission equipment, and supports advanced procurement, squadron stand-up, training, and logistics requirements.\",\"citation\":{\"fact_id\":\"4a166b96799797f9\"}},{\"text\":\"For fiscal year 2024, actual spending on JSF STOVL was about $2.32 billion (2,319,442 USD thousands).\",\"citation\":{\"fact_id\":\"ee4a0842dfc79225\"}},{\"text\":\"For fiscal year 2025, enacted funding was about $2.14 billion (2,141,076 USD thousands).\",\"citation\":{\"fact_id\":\"26dde8e930db35c8\"}},{\"text\":\"The FY 2026 request totals about $1.90 billion (1,901,057 USD thousands), a decrease from both the FY 2024 actual and the FY 2025 enacted levels.\",\"citation\":{\"fact_id\":\"fbc00c61da4dcaad\"}},{\"text\":\"The FY 2026 request was reduced by $1.653 million for Advisory and Assistance Services in alignment with Executive Order 14222, the President's Department of Government Efficiency Cost Efficiency Initiative.\",\"citation\":{\"fact_id\":\"4a166b96799797f9\"}},{\"text\":\"FY 2026 funding also supports transitioning the Autonomic Logistics Information System (ALIS) to the F-35 Operational Data Integrated Network (ODIN), a modern logistics and information system, and continued depot activation to expand long-term sustainment repair capacity.\",\"citation\":{\"fact_id\":\"4a166b96799797f9\"}},{\"text\":\"Cumulative funding for all prior years is reported at about $26.36 billion (26,361.229 USD millions).\",\"citation\":{\"fact_id\":\"60a445ceba81156b\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Department of the Navy (organization code N), with Service Acquisition Executive authority currently residing with the Navy.\",\"citation\":{\"fact_id\":\"f0d765b03beeee18\"}},{\"text\":\"FY 2026 support costs include equipment for squadron completion at Marine Corps Air Station Beaufort (VMFA-224) and Marine Corps Air Station Cherry Point (VMFA-231), and air vehicle modification support at Fleet Readiness Center Southeast.\",\"citation\":{\"fact_id\":\"4a166b96799797f9\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 4016,
+   "output_tokens": 1447,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-5025",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax655e8AhtwpNCGaG99",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The TAO Fleet Oiler program funds construction of the T-AO 205 John Lewis-class fleet oiler under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"e3c199bcd4cc8b84\"}},{\"text\":\"The T-AO 205 John Lewis Fleet Oiler Class will recapitalize (replace) the existing T-AO 187 fleet oiler class.\",\"citation\":{\"fact_id\":\"e3c199bcd4cc8b84\"}},{\"text\":\"The Navy's Combat Logistics Force (CLF) oilers supply fuel and dry cargo to Navy ships at sea, and the T-AO 205 Class will operate as shuttle ships moving supplies from resupply posts to customer ships.\",\"citation\":{\"fact_id\":\"e3c199bcd4cc8b84\"}},{\"text\":\"Working alongside a dry cargo and ammunition ship (T-AKE), the oilers will accompany a Carrier Strike Group (CSG) and stay on station to provide fuel to customer ships as required.\",\"citation\":{\"fact_id\":\"e3c199bcd4cc8b84\"}},{\"text\":\"For fiscal year 2026, the Department requests a total of $1,861,705 thousand (about $1.86 billion) and two ships for the T-AO 205 program.\",\"citation\":{\"fact_id\":\"038e1ca79f6e0f3f\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The FY 2026 request combines $8,346 thousand of discretionary funding with $1,853,359 thousand of mandatory (reconciliation) funding, for the total of $1,861,705 thousand.\",\"citation\":{\"fact_id\":\"1905e0d556018c76\"}},{\"text\":\"The mandatory and discretionary funds support the contract award of 2 T-AO Fleet Oilers.\",\"citation\":{\"fact_id\":\"e3c199bcd4cc8b84\"}},{\"text\":\"The discretionary portion of the FY 2026 request is $8,346 thousand.\",\"citation\":{\"fact_id\":\"3ba25be55bab6afa\"}},{\"text\":\"The mandatory (reconciliation) portion of the FY 2026 request is $1,853,359 thousand — the bulk of the funding, which the Navy notes is detailed in Section 20002 (Shipbuilding) of the Reconciliation Exhibit.\",\"citation\":{\"fact_id\":\"da391702b902c455\"}},{\"text\":\"In FY 2024, the program recorded $938,315 thousand (about $938 million) in actual funding, showing a substantial planned increase in the FY 2026 request.\",\"citation\":{\"fact_id\":\"44da7a281dff2153\"}},{\"text\":\"For FY 2025, the program was enacted at $227,154 thousand (about $227 million).\",\"citation\":{\"fact_id\":\"bea6aeb8b89d2f88\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Department of the Navy (organization code N).\",\"citation\":{\"fact_id\":\"44da7a281dff2153\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 3316,
+   "output_tokens": 1060,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

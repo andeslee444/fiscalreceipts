@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-3041",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax6uhriqh3MkR77vD6K",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"LHA Replacement is a U.S. Navy shipbuilding program that funds construction of amphibious assault ships under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"c82ddcbf62bbbcd8\"}},{\"text\":\"The LHA(R) Program replaces the Tarawa Class (LHA 1) amphibious assault ships and the retiring Wasp Class (LHD 1) amphibious assault ships, aiming to keep the Amphibious Fleet capable of Expeditionary Warfare well into the 21st century.\",\"citation\":{\"fact_id\":\"ea9888d908c95b4b\"}},{\"text\":\"These ships provide forward presence and power projection, operating for sustained periods to embark, deploy, and land a Marine Landing Force and supporting forces using helicopters, tilt rotors, and F-35B Joint Strike Fighters (JSF).\",\"citation\":{\"fact_id\":\"ea9888d908c95b4b\"}},{\"text\":\"LHA(R) Flight 1 — the second design increment in the LHA 6 Class, beginning with LHA 8 (FY 2017) — adds a well deck that can accommodate two Landing Craft, Air Cushion (LCAC) vehicles and increases flight deck capacity; LHA 9 (FY 2023) is the second Flight 1 ship.\",\"citation\":{\"fact_id\":\"ea9888d908c95b4b\"}},{\"text\":\"For FY 2026, the Department requests a total of $3,895,000 thousand (about $3.9 billion) and a quantity of one ship, LHA 10.\",\"citation\":{\"fact_id\":\"1c71634735176d24\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The FY 2026 request of $3,895,000 thousand (roughly $3.9 billion) is entirely mandatory (reconciliation) funding, with $0 in discretionary funding, and is intended to procure one LHA(R) ship.\",\"citation\":{\"fact_id\":\"1c71634735176d24\"}},{\"text\":\"The FY 2026 total request of about $3.9 billion is more than double the FY 2024 actual spending of $1,830,149 thousand (about $1.8 billion).\",\"citation\":{\"fact_id\":\"d89fc6b3c0a7edbe\"}},{\"text\":\"FY 2025 enacted funding for the program was $176,515 thousand (about $177 million), far below both the FY 2024 actuals and the FY 2026 request.\",\"citation\":{\"fact_id\":\"85a7227f7635f440\"}},{\"text\":\"Across all prior years, the program's j-book detail reports cumulative funding of about $12,578.6 million (roughly $12.6 billion), reflecting the long-running scale of the shipbuilding effort.\",\"citation\":{\"fact_id\":\"7160c9abbdc7eff1\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is run by the Department of the Navy under the Shipbuilding and Conversion, Navy account.\",\"citation\":{\"fact_id\":\"3da545689a522a13\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 2889,
+   "output_tokens": 1056,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

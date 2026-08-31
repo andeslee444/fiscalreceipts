@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-0158",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax8RHdEpdHNyP7dcy8y",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"The CH-53K (Heavy Lift) is a Navy program covered under the Aircraft Procurement, Navy account. It is a next-generation fly-by-wire heavy-lift helicopter that offers improvements in range, payload, performance, cargo handling, reliability, maintainability, interoperability, and survivability. It is described as the only marinized (sea-capable) heavy-lift helicopter in the world and the Department of Defense's only heavy-lift helicopter.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"The CH-53K's mission is to support the Marine Air-Ground Task Force (MAGTF) Commander by transporting heavy equipment, combat troops, and supplies day or night in all weather conditions during expeditionary, joint, or combined operations.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"The total planned buy for the program is 200 helicopters. Of these, four are System Demonstration Test Articles funded with research-and-development (RDT&E) money, and 196 are funded through Aircraft Procurement, Navy (APN) funds.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"The program received a successful Milestone C decision on 4 April 2017, and the production program received approval on 22 December 2022 to proceed to Full Rate Production.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"The fiscal year 2026 request funds Full Rate Production Lot 10 (twelve aircraft), Airframe Economic Order Quantity (EOQ) requirements, and advance procurement of long-lead materials for Lot 11.\",\"citation\":{\"fact_id\":\"8560f8549ae99816\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The CH-53K is described as a critical enabler for distributed operations and a key component of the Marine Corps' Expeditionary Advanced Base Operations concept, providing a greater payload at greater ranges than any current or emerging rotorcraft.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"Compared to the legacy aircraft, the CH-53K is said to improve reliability and decrease operations and support costs by reducing maintenance man-hours per flight hour.\",\"citation\":{\"fact_id\":\"1bad174346d0d084\"}},{\"text\":\"For fiscal year 2024, the program recorded actual spending of about $2.14 billion (roughly $2,142,617 thousand) in Aircraft Procurement, Navy funds.\",\"citation\":{\"fact_id\":\"00ac6e5a3041e8d2\"}},{\"text\":\"For fiscal year 2025, the program was enacted at about $2.62 billion (roughly $2,616,629 thousand).\",\"citation\":{\"fact_id\":\"b984705b8f25b5a4\"}},{\"text\":\"The fiscal year 2026 request is about $2.04 billion (roughly $2,042,953 thousand), a decrease from the 2025 enacted level.\",\"citation\":{\"fact_id\":\"87ca2e2cefaa2337\"}},{\"text\":\"The budget documents show the program's trajectory falling from $2,142,617 thousand in FY2024 actuals to $2,042,953 thousand in the FY2026 request.\",\"citation\":{\"fact_id\":\"6f534cdc31c38cd0\"}},{\"text\":\"The FY2026 total request is confirmed at $2,042,953 thousand.\",\"citation\":{\"fact_id\":\"1cf510f822ad2e4c\"}},{\"text\":\"The plan reduced FY2026 aircraft quantities from eighteen (under the prior PB25 plan) to twelve (under PB26), a reduction of six aircraft, and FY2025 advance procurement was repurposed to EOQ to support the Lots 9-13 Multi-Year Procurement.\",\"citation\":{\"fact_id\":\"8560f8549ae99816\"}},{\"text\":\"The FY2026 request was reduced by $0.918 million for Advisory and Assistance Services in alignment with Executive Order 14222 on government efficiency, and reduced by $3.429 million for civilian personnel in compliance with Executive Order 14210 on workforce optimization.\",\"citation\":{\"fact_id\":\"8560f8549ae99816\"}},{\"text\":\"Cumulative all-prior-years funding for the program is reported at about $8,672.145 million.\",\"citation\":{\"fact_id\":\"58d0fd4e73cb763b\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is managed by the Navy (organization code N) under the Aircraft Procurement, Navy account.\",\"citation\":{\"fact_id\":\"4e791a671aeec39c\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 4525,
+   "output_tokens": 1605,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}

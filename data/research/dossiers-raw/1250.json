@@ -1,0 +1,38 @@
+{
+ "custom_id": "dossier-1250",
+ "batch_id": "msgbatch_01AF3ZGAoNDhkYGgg6S8htu7",
+ "collected_at": "2026-08-31T14:06:44.043788+00:00",
+ "message": {
+  "id": "msg_011Ceax9yEGpWs4ibCU5yQK9",
+  "container": null,
+  "content": [
+   {
+    "citations": null,
+    "text": "{\"what_it_is\":{\"claims\":[{\"text\":\"Trident II Mods (Budget Line Item 1250) is a U.S. Navy program that funds modifications and life-extension work on the TRIDENT II (D5) submarine-launched ballistic missile — the sea-based leg of the nation's nuclear deterrent, carried on OHIO-class and future COLUMBIA-class submarines.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"The program modernizes TRIDENT II (D5) missiles to the D5LE (D5 Life Extension) version, which enhances submarine survivability with increased range, maximizes payload to minimize costs, and adds hard-target-kill capability.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"Because the D5LE electronics are expected to become obsolete by fiscal year 2039, a follow-on program called D5 Life Extension 2 (D5LE2) will refresh the electronics and address component obsolescence and inventory shortages to keep the sea-based deterrent effective.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"The budget line is organized into three parts: the D5 Life Extension (D5LE) program, the Operating and Support Costs program, and the D5 Life Extension II (D5LE2) subprogram supporting the COLUMBIA-class submarine.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"Program funding currently supports continued procurement of TRIDENT II missiles and the life-extension of the D5 missile.\",\"citation\":{\"fact_id\":\"ff02189d7366bac1\"}}]},\"why_it_matters\":{\"claims\":[{\"text\":\"The fiscal year 2026 request for Trident II Mods totals $2,644,029 thousand (about $2.6 billion), made up of $2,582,029 thousand in discretionary funding and $62,000 thousand in mandatory (reconciliation) funding.\",\"citation\":{\"fact_id\":\"ff02189d7366bac1\"}},{\"text\":\"The full fiscal year 2026 request is recorded at $2,644,029 thousand in the Weapons Procurement, Navy account.\",\"citation\":{\"fact_id\":\"c1e6410cfe9e4fa3\"}},{\"text\":\"The $62,000 thousand reconciliation request is intended to help expand capacity of the sea-based leg of the nuclear triad and to maximize missile inventory for continuous production and availability.\",\"citation\":{\"fact_id\":\"1bc87fe8506659c8\"}},{\"text\":\"By comparison, actual spending in fiscal year 2024 was $1,284,705 thousand (about $1.28 billion), meaning the fiscal year 2026 request represents a substantial increase over two years earlier.\",\"citation\":{\"fact_id\":\"b75d1c82714cc2d0\"}},{\"text\":\"The fiscal year 2025 enacted amount was $1,793,867 thousand (about $1.79 billion), showing a rising funding trajectory into the fiscal year 2026 request.\",\"citation\":{\"fact_id\":\"63785c4ec0b8b814\"}},{\"text\":\"The reconciliation funding is tied to keeping limited-life large energetics — such as the Post Boost Control System (PBCS) and Solid Rocket Motors (SRMs) — in continuous production, and to adding railcars that expand missile processing capacity at Strategic Weapon Facilities in Kings Bay, Georgia and Bangor, Washington.\",\"citation\":{\"fact_id\":\"ff02189d7366bac1\"}},{\"text\":\"Fiscal year 2026 is the last year of RDT&E (Research, Development, Test & Evaluation) funding for D5LE2, as that subprogram transitions from system-level requirements work to subsystem-level redesign and production/vendor startup activities.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}}]},\"players\":{\"claims\":[{\"text\":\"The program is run by the Navy (organization code N) and is funded through the Weapons Procurement, Navy account.\",\"citation\":{\"fact_id\":\"c1e6410cfe9e4fa3\"}},{\"text\":\"The Joint Fuze Sustainment Program produces parts procured by the National Nuclear Security Administration (NNSA) and the Navy, with production engineering and support labor at the Department of Energy's Sandia National Laboratories and Kansas City facility along with various industry partners.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"Production support work involves restart efforts at Courtland, Alabama and re-entry production/test requalification and restart efforts at Valley Forge, Pennsylvania.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}},{\"text\":\"Solid rocket motor igniter and nozzle tooling recapitalization takes place at the Promontory production facility to meet OHIO and COLUMBIA throughput requirements.\",\"citation\":{\"fact_id\":\"ff02189d7366bac1\"}},{\"text\":\"Capital maintenance projects are funded at Navy-owned Naval Industrial Reserve Ordnance Plants (NIROPs) in Sunnyvale, California, Santa Cruz, California, and Bacchus, Utah, in support of the Fleet Ballistic Missile program.\",\"citation\":{\"fact_id\":\"ed28b4aad4522655\"}}]},\"recent_developments\":{\"claims\":[]}}",
+    "type": "text"
+   }
+  ],
+  "model": "claude-opus-4-8",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2661,
+   "inference_geo": "global",
+   "input_tokens": 20477,
+   "output_tokens": 1832,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "server_tool_use": null,
+   "service_tier": "batch"
+  }
+ }
+}
