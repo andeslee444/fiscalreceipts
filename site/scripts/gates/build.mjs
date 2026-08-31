@@ -307,7 +307,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // gzip headroom. The rule from the 2026-08-28 correction above stands: a
   // raise is argued in the same breath as the change that needs it, and no
   // sentence was added here to argue for one.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 36_900, measured: "135,373 / 36,866" },
+  // RAISED 2026-08-29 for ROADMAP #28, justified by the change that needed
+  // it. gzip 36,900 -> 39,100. The page breached by EIGHT bytes because 553
+  // decade-only pages moved the corpus counts this page derives from — it
+  // states them, so growing the corpus grows the page. Nothing was trimmed;
+  // headroom restored to ~6% (the /programs/ convention) rather than to the
+  // breach. Raw was NOT raised: 135,373 of 136,500 is comfortable.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 39_100, measured: "135,373 / 36,908" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -526,7 +532,14 @@ export async function runBuildGate() {
         (d.details ?? []).length > 0 ||
         (d.narratives ?? []).length > 0 ||
         (d.awards ?? []).length > 0 ||
-        (d.mentions ?? []).length > 0;
+        (d.mentions ?? []).length > 0 ||
+        // ROADMAP #28: a decade-only page's whole content IS its decade
+        // series — cited figures from the editions that do carry the line.
+        // Omitting it here counted all 553 of them as "zero-content" and
+        // subtracted them from the expected sitemap size, against a sitemap
+        // that (correctly) lists them and pages that are not noindex.
+        (d.decade_series?.actuals ?? []).length > 0 ||
+        (d.decade_series?.request ?? []).length > 0;
       if (hasContent) continue;
       const figures = (d.budget_lines ?? []).map((bl) => bl.amount_thousands);
       const t = d.trajectory;
@@ -535,7 +548,10 @@ export async function runBuildGate() {
           if (v !== null && v !== undefined) figures.push(v);
         }
       }
-      if (figures.every((v) => v === 0)) zeroContentCount++;
+      // `[].every(...)` is TRUE, so a page with no figures at all read as
+      // "every figure is zero". Zero-content means measured-and-zero, not
+      // nothing-to-measure — require at least one figure before concluding it.
+      if (figures.length > 0 && figures.every((v) => v === 0)) zeroContentCount++;
     } catch {
       errors.push(`program sidecar unreadable: ${f}`);
     }

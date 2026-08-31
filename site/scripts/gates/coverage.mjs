@@ -474,6 +474,27 @@ function recomputeCoverageMap() {
     : [];
   const pages = detailFiles.length;
   const detailGrade = detailGradeCount();
+  // ROADMAP #28 split the non-detail remainder into two DIFFERENT things:
+  // rollup-tier pages (a current FY2026 workbook line, no R-2/P-40 detail)
+  // and decade-only history pages (no FY2026 line at all). The page says so
+  // rather than lumping them, so the check follows — but the two parts must
+  // still account for the whole remainder, which is the property that
+  // actually matters and the one a lump total was standing in for.
+  const decadeOnly = detailFiles.filter((f) => {
+    try {
+      return readJson(path.join(detailsDir, f)).tier === "decade";
+    } catch {
+      return false;
+    }
+  }).length;
+  const rollupOnly = pages - detailGrade - decadeOnly;
+  if (detailGrade + rollupOnly + decadeOnly !== pages) {
+    throw new Error(
+      `coverage: the three page tiers do not partition the corpus — ` +
+        `${detailGrade} detail + ${rollupOnly} rollup + ${decadeOnly} decade ` +
+        `!== ${pages} pages`
+    );
+  }
 
   // Programs carrying a non-empty lineage rail — parsed, not grepped.
   let lineage = 0;
@@ -559,7 +580,11 @@ function recomputeCoverageMap() {
       d: pages,
       must: [
         `${fmtCount(detailGrade)} of ${fmtCount(pages)}`,
-        fmtCount(pages - detailGrade),
+        // Both parts of the split, and the arithmetic is asserted below —
+        // a page could otherwise print two plausible numbers that do not
+        // add up to the remainder they claim to divide.
+        fmtCount(rollupOnly),
+        fmtCount(decadeOnly),
       ],
     },
     editions: {

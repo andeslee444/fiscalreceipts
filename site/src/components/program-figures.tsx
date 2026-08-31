@@ -423,14 +423,11 @@ export function DecadeOnlyNote({
         )}
         {count === 1 ? (
           <>
-            The figures below come from that single edition, and report
-            fiscal years FY{fyMin} to FY{fyMax}.
+            {`The figures below come from that single edition, and report fiscal years FY${fyMin} to FY${fyMax}.`}
           </>
         ) : (
           <>
-            The figures below are cited to {`${count} President\u2019s Budget`}
-            {` editions, the earliest PB${first} and the latest PB${last}, and`}
-            report fiscal years FY{fyMin} to FY{fyMax}.
+            {`The figures below are cited to ${count} President\u2019s Budget editions, the earliest PB${first} and the latest PB${last}, and report fiscal years FY${fyMin} to FY${fyMax}.`}
           </>
         )}{" "}
         {hasSuccessor ? (
