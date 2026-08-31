@@ -182,7 +182,30 @@ export const PAGE_WEIGHT_BUDGET = [
   // hrefs and read 176 raw / 37 gzip bytes light. Three agents have got a
   // page-weight annotation wrong by measuring with a different tool; this
   // one imports the gate's and states which build it read.
-  { label: "/lineage/", file: "lineage/index.html", maxRaw: 340_000, maxGzip: 36_000, measured: "316,056 / 33,453" },
+  //
+  // RAISED 2026-08-31 (ROADMAP #29(a) — LLM lineage extraction). The page
+  // draws the whole corpus, and the corpus doubled: stated edges 49 -> 98,
+  // families 32 -> 52, identities 86 -> 154. 539,883 / 50,438 against the
+  // 340,000 / 36,000 above. This is the change the page exists to show, so
+  // the ceiling follows it, at the same ~8% convention: 585,000 is 8.36%
+  // over raw, 54,500 is 8.05% over gzip.
+  //
+  // TRIMMING WAS TRIED FIRST AND MEASURED, so nobody repeats the experiment.
+  // Two candidates dominate the markup — the `font-family` attribute repeated
+  // verbatim on 154 text elements (9,394 bytes) and the 444-character
+  // Fact-ID chip class repeated on 98 edges (43,414 bytes; the chip's weight
+  // is already filed as backlog #43 and is a shared component, out of scope
+  // here). Removing BOTH, measured with this file's own weigh():
+  //     baseline           539,883 / 50,438
+  //     minus font-family  530,489 / 50,223   (-9,394 raw, -215 gzip)
+  //     minus chip class   496,469 / 49,957   (-43,414 raw, -481 gzip)
+  //     both               487,075 / 49,739   (-52,808 raw, -699 gzip)
+  // 52,808 raw bytes buy 699 gzip bytes — 1.4% — because repeated identical
+  // strings are exactly what gzip already collapses. The gzip weight is
+  // DISTINCT content: 98 evidence sentences, 154 identity labels, 101 edge
+  // descriptions, none of which repeat. No amount of markup tidying reaches
+  // 36,000, and removing a citation to fit a ceiling is not on the table.
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "539,883 / 50,438" },
   { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,524 / 28,199" },
   { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,712 / 25,520" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
