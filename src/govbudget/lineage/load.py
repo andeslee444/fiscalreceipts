@@ -78,8 +78,15 @@ select f.pe_bli, t.title, f.fy, 'request' as kind, f.amount_thousands as amount
 """
 
 
-def _load_stated(dsn: str) -> tuple[list[LineageEdge], list[tuple[LineageEdge, str]]]:
-    """(kept stated edges, [(superseded edge, reason), …])."""
+def load_narratives(dsn: str) -> list[dict]:
+    """The narrative corpus every lineage tier reads, in ONE ordering.
+
+    PUBLIC because #29(a)'s LLM tier, its candidate generator and
+    verify-lineage leg (j) must all see byte-identical clauses to the regex
+    tier — a second copy of this query is a second corpus, and two tiers
+    disagreeing about which sentence exists is exactly the drift this project
+    keeps finding. Ordered latest-edition-first (see _NARRATIVE_SQL).
+    """
     narratives: list[dict] = []
     with psycopg.connect(dsn) as con:
         for sha, pe_bli, kind, xml_path, fy, body, page in con.execute(
@@ -95,7 +102,37 @@ def _load_stated(dsn: str) -> tuple[list[LineageEdge], list[tuple[LineageEdge, s
                 # regex risk); 50k comfortably exceeds any real transfer section.
                 "body": (body or "")[:50000],
             })
-    return drop_superseded(extract_stated_edges(narratives), narratives)
+    return narratives
+
+
+def _load_stated(
+    dsn: str, seed_path=None
+) -> tuple[list[LineageEdge], list[tuple[LineageEdge, str]]]:
+    """(kept stated edges, [(superseded edge, reason), …]).
+
+    Two sources, in this order:
+      * the regex tier (extract_stated_edges) — adjacency rules over the corpus;
+      * the RATIFIED LLM tier (#29(a)) — verdict-'y' rows of
+        data-seeds/lineage_llm_edges.csv, re-bound to the live corpus by
+        ratified_edges(). Never the model's raw output: nothing reaches a
+        reader that a person did not sign, exactly as oversight/gao_xwalk.py
+        does for the GAO crosswalk.
+
+    Regex first, so extract_stated_edges' (from, to) first-seen-wins dedup keeps
+    the regex tier's telling when both tiers state one link.
+    """
+    narratives = load_narratives(dsn)
+    edges = extract_stated_edges(narratives)
+    if seed_path is not None:
+        from govbudget.lineage.llm_extract import ratified_edges
+
+        seen = {(e.from_pe_bli, e.to_pe_bli) for e in edges}
+        for e in ratified_edges(seed_path, narratives):
+            if (e.from_pe_bli, e.to_pe_bli) in seen:
+                continue
+            seen.add((e.from_pe_bli, e.to_pe_bli))
+            edges.append(e)
+    return drop_superseded(edges, narratives)
 
 
 def _load_inferred(duckdb_path) -> list[LineageEdge]:
@@ -112,8 +149,8 @@ def _load_inferred(duckdb_path) -> list[LineageEdge]:
     return infer_edges(series)
 
 
-def build_lineage(dsn: str, duckdb_path) -> dict:
-    stated, superseded = _load_stated(dsn)
+def build_lineage(dsn: str, duckdb_path, seed_path=None) -> dict:
+    stated, superseded = _load_stated(dsn, seed_path)
     inferred = _load_inferred(duckdb_path)
 
     # Stated wins: drop any inferred edge whose (from, to) pair already exists stated.

@@ -1803,6 +1803,7 @@ def cmd_verify_lineage(args) -> None:
         no_retraction_leg,
         no_supersession_leg,
         one_to_one_sum_leg,
+        ratification_leg,
         stated_cite_leg,
     )
 
@@ -1977,6 +1978,21 @@ def cmd_verify_lineage(args) -> None:
         print(f"  FAIL {grain}: {reason}")
     gates_ok = gates_ok and gi_ok
 
+    # Leg j: ratification — every stated edge is regex-derived or human-signed
+    j = ratification_leg(config.PG_DSN, _LINEAGE_SEED)
+    gj_ok = j["ok"]
+    if j.get("reason"):
+        print(f"leg j ratification: {j['reason']} → FAIL")
+    else:
+        print(
+            f"leg j ratification: stated={j['stated']} derived={j['derived']}"
+            f" ratified={j['ratified']} seed_rows={j['seed_rows']}"
+            f" failures={len(j['failures'])} → {'PASS' if gj_ok else 'FAIL'}"
+        )
+    for grain, reason in j["failures"][:10]:
+        print(f"  FAIL {grain}: {reason}")
+    gates_ok = gates_ok and gj_ok
+
     print("verify-lineage:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)
 
@@ -2060,8 +2076,376 @@ def cmd_lineage(args) -> None:
     if args.action == "build":
         from govbudget.lineage.load import build_lineage
 
-        counts = build_lineage(config.PG_DSN, config.DUCKDB_PATH)
+        counts = build_lineage(
+            config.PG_DSN, config.DUCKDB_PATH, seed_path=_LINEAGE_SEED
+        )
         print(f"lineage built: {counts}")
+
+
+_LINEAGE_SEED = config.ROOT / "data-seeds" / "lineage_llm_edges.csv"
+_LINEAGE_RAW = config.RESEARCH_DIR / "lineage-raw"
+
+_LINEAGE_NO_KEY = """\
+lineage-llm: BLOCKED — ANTHROPIC_API_KEY is not set.
+
+ROADMAP #29(a) reads J-book clauses with a model; that is a paid call. Export
+the key and re-run:
+
+    export ANTHROPIC_API_KEY=sk-ant-...
+    uv run python -m govbudget lineage-llm submit
+
+No batch was created and nothing was spent."""
+
+
+def _lineage_llm_universe():
+    """(candidate clauses, corpus PE universe, pairs the regex tier states)."""
+    import duckdb
+
+    from govbudget.lineage.extract import extract_stated_edges
+    from govbudget.lineage.llm_extract import candidates
+    from govbudget.lineage.load import load_narratives
+
+    narratives = load_narratives(config.PG_DSN)
+    clauses = candidates(narratives)
+    known = {n["pe_bli"] for n in narratives if n["pe_bli"]}
+    con = duckdb.connect(str(config.DUCKDB_PATH), read_only=True)
+    try:
+        known |= {r[0] for r in con.execute("select pe_bli from dim_pe_titles").fetchall()}
+    finally:
+        con.close()
+    existing = {
+        (e.from_pe_bli, e.to_pe_bli) for e in extract_stated_edges(narratives)
+    }
+    return narratives, clauses, known, existing
+
+
+def cmd_lineage_llm(args) -> None:
+    """ROADMAP #29(a) — candidates / submit / collect / measure."""
+    import json
+
+    from govbudget.common.anthropic_client import require_client
+    from govbudget.lineage import llm_extract as lx
+
+    action = args.llm_action
+
+    if action == "candidates":
+        _narr, clauses, _known, existing = _lineage_llm_universe()
+        print(
+            f"lineage-llm: {len(clauses)} candidate clause(s)"
+            f" (verb + >=1 program-element token);"
+            f" the regex tier already states {len(existing)} pair(s)"
+        )
+        by_codes: dict[int, int] = {}
+        for c in clauses:
+            by_codes[len(c.codes)] = by_codes.get(len(c.codes), 0) + 1
+        print(f"lineage-llm: clauses by distinct codes: {dict(sorted(by_codes.items()))}")
+        est = lx.estimate_cost(clauses)
+        lx.print_estimate(est)
+        return
+
+    if action == "submit":
+        client = require_client(None, message=_LINEAGE_NO_KEY)
+        _narr, clauses, _known, _existing = _lineage_llm_universe()
+        done = _lineage_llm_done_ids()
+        # Ordered by clause_id — a sha256, so this is a deterministic and
+        # UNBIASED permutation of the corpus. --limit therefore takes a random
+        # sample, not the first N in edition/pe order (which would have made
+        # the pilot one service's book and its precision unrepresentative).
+        pending = sorted(
+            (c for c in clauses if c.clause_id not in done),
+            key=lambda c: c.clause_id,
+        )
+        if args.limit:
+            pending = pending[: args.limit]
+        if not pending:
+            print("lineage-llm submit: nothing pending — every clause is archived.")
+            return
+        cap = lx.COST_CAP_USD if args.cost_cap is None else args.cost_cap
+        est = lx.estimate_cost(pending, client=client)
+        lx.print_estimate(est)
+        if est["total_usd"] > cap:
+            raise SystemExit(
+                f"lineage-llm submit: estimated ${est['total_usd']:.4f} exceeds"
+                f" the ${cap:.2f} cap — ABORTED, no batch created."
+            )
+        batch = client.messages.batches.create(
+            requests=lx.build_requests(pending, model=lx.MODEL)
+        )
+        _LINEAGE_RAW.mkdir(parents=True, exist_ok=True)
+        meta_path = _LINEAGE_RAW / f"batch-{batch.id}.json"
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "batch_id": batch.id,
+                    "model": lx.MODEL,
+                    "submitted_at": _utcnow(),
+                    "request_count": len(pending),
+                    "estimated_usd": round(est["total_usd"], 6),
+                    "output_basis": est["output_basis"],
+                    "clauses": [lx.clause_to_dict(c) for c in pending],
+                },
+                ensure_ascii=False,
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
+        print(
+            f"lineage-llm submit: batch {batch.id} created"
+            f" ({len(pending)} requests) — meta {meta_path}"
+        )
+        return
+
+    if action == "collect":
+        client = require_client(None, message=_LINEAGE_NO_KEY)
+        batch_id = args.batch_id or _lineage_llm_latest_batch()
+        if not batch_id:
+            raise SystemExit("lineage-llm collect: no batch to collect (pass --batch-id)")
+        status = client.messages.batches.retrieve(batch_id).processing_status
+        print(f"lineage-llm collect: batch {batch_id} is {status}")
+        if status != "ended":
+            raise SystemExit(
+                "lineage-llm collect: batch has not ended; re-run when it has."
+            )
+        out = _LINEAGE_RAW / f"results-{batch_id}.jsonl"
+        n = 0
+        with open(out, "w", encoding="utf-8") as f:
+            for res in client.messages.batches.results(batch_id):
+                f.write(
+                    json.dumps(
+                        json.loads(res.to_json())
+                        if hasattr(res, "to_json")
+                        else res,
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+                n += 1
+        print(f"lineage-llm collect: {n} result(s) archived to {out}")
+        return
+
+    if action == "confirm":
+        # Stage 2 (V10): the adversarial second read, over the pairs stage 1
+        # proposed and the deterministic rules did not already refuse.
+        client = require_client(None, message=_LINEAGE_NO_KEY)
+        _narr, clauses, known, existing = _lineage_llm_universe()
+        by_id = {c.clause_id: c for c in clauses}
+        proposals, _errors = _lineage_llm_proposals()
+        rows, _ref = lx.verify(proposals, by_id, known_pes=known,
+                               existing_pairs=existing)
+        done = _lineage_llm_confirmed_ids()
+        pairs = sorted(
+            (r["clause_id"], r["from_pe_bli"], r["to_pe_bli"])
+            for r in rows
+            if (r["clause_id"], r["from_pe_bli"], r["to_pe_bli"]) not in done
+        )
+        if not pairs:
+            print("lineage-llm confirm: nothing pending — every pair is archived.")
+            return
+        est = lx.estimate_cost(
+            [by_id[cid] for cid, _f, _t in pairs], client=client
+        )
+        lx.print_estimate(est)
+        cap = lx.COST_CAP_USD if args.cost_cap is None else args.cost_cap
+        if est["total_usd"] > cap:
+            raise SystemExit(
+                f"lineage-llm confirm: estimated ${est['total_usd']:.4f} exceeds"
+                f" the ${cap:.2f} cap — ABORTED, no batch created."
+            )
+        batch = client.messages.batches.create(
+            requests=lx.build_confirm_requests(pairs, by_id, model=lx.MODEL)
+        )
+        _LINEAGE_RAW.mkdir(parents=True, exist_ok=True)
+        (_LINEAGE_RAW / f"batch-{batch.id}.json").write_text(
+            json.dumps(
+                {"batch_id": batch.id, "stage": "confirm", "model": lx.MODEL,
+                 "submitted_at": _utcnow(), "request_count": len(pairs),
+                 "estimated_usd": round(est["total_usd"], 6),
+                 "pairs": pairs},
+                ensure_ascii=False, indent=1),
+            encoding="utf-8",
+        )
+        print(
+            f"lineage-llm confirm: batch {batch.id} created ({len(pairs)} pairs)"
+        )
+        return
+
+    if action == "verify":
+        _narr, clauses, known, existing = _lineage_llm_universe()
+        by_id = {c.clause_id: c for c in clauses}
+        proposals, errors = _lineage_llm_proposals()
+        confirmations = None if args.ablate_confirm else _lineage_llm_confirmations()
+        rows, refusals = lx.verify(
+            proposals, by_id, known_pes=known, existing_pairs=existing,
+            confirmations=confirmations,
+            require_confirmation=not args.ablate_confirm,
+        )
+        print(
+            f"lineage-llm verify: {len(proposals)} proposal(s) over"
+            f" {len(by_id)} clause(s); {len(rows)} candidate(s),"
+            f" {len(refusals)} refused, {errors} batch error(s)"
+        )
+        counts: dict[str, int] = {}
+        for r in refusals:
+            counts[r.rule] = counts.get(r.rule, 0) + 1
+        for rule, n in sorted(counts.items()):
+            print(f"  REFUSED {n:3d}  {rule}")
+        for r in refusals:
+            print(f"    {r.from_pe_bli}->{r.to_pe_bli} [{r.rule}] {r.reason}")
+        if args.write_seed:
+            # Merge key is (from, to, evidence_sentence) — NOT clause_id. The
+            # same link is often narrated by several editions in identical
+            # words, and which of those duplicate clauses represents the pair
+            # shifts whenever the refusal order changes; keying on clause_id
+            # therefore re-asks for a verdict the curator already gave on the
+            # very same sentence. Keying on the SENTENCE carries the verdict
+            # exactly as far as the evidence is unchanged and no further: a row
+            # whose wording moved comes back blank and must be re-adjudicated,
+            # which is what verify-lineage leg j4 enforces on the other side.
+            def key(r):
+                return (r["from_pe_bli"], r["to_pe_bli"], r["evidence_sentence"])
+
+            existing_rows = {key(r): r for r in lx.load_ratified(_LINEAGE_SEED)}
+            merged = []
+            for row in rows:
+                prior = existing_rows.pop(key(row), None)
+                carried = {k: v for k, v in prior.items() if v} if prior else {}
+                # The candidate's own clause_id always wins: it names the
+                # narrative the loader and the gate will actually bind to.
+                merged.append({**row, **carried, "clause_id": row["clause_id"]})
+            merged.extend(existing_rows.values())
+            lx.write_seed(_LINEAGE_SEED, merged)
+            print(f"lineage-llm verify: {len(merged)} row(s) written to {_LINEAGE_SEED}")
+        return
+
+    if action == "measure":
+        _narr, clauses, _known, _existing = _lineage_llm_universe()
+        rows = lx.load_ratified(_LINEAGE_SEED)
+        rep = lx.measure(rows, {c.clause_id for c in clauses})
+        print(
+            f"lineage-llm measure: adjudicated={rep.adjudicated}"
+            f" accepted={rep.accepted} rejected={rep.rejected}"
+            f" precision={rep.precision:.1%}"
+            f" (+{rep.refused} judged true but refused downstream, excluded"
+            f" from the denominator)"
+        )
+        for s in rep.stale:
+            print(f"  STALE {s} — the candidate generator no longer proposes this clause")
+        if rep.stale:
+            sys.exit(1)
+        return
+
+    print(f"unknown lineage-llm action: {action}", file=sys.stderr)
+    sys.exit(2)
+
+
+def _utcnow() -> str:
+    import datetime as _dt
+
+    return _dt.datetime.now(_dt.UTC).isoformat()
+
+
+def _lineage_llm_done_ids() -> set[str]:
+    """clause_ids already archived, so a re-submit never re-pays for one."""
+    import json
+
+    done: set[str] = set()
+    if not _LINEAGE_RAW.is_dir():
+        return done
+    for path in sorted(_LINEAGE_RAW.glob("results-*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            cid = (json.loads(line).get("custom_id") or "")
+            if cid.startswith("lin-"):
+                done.add(cid[4:])
+    return done
+
+
+def _lineage_llm_latest_batch() -> str | None:
+    import json
+
+    metas = sorted(_LINEAGE_RAW.glob("batch-*.json")) if _LINEAGE_RAW.is_dir() else []
+    if not metas:
+        return None
+    return json.loads(metas[-1].read_text(encoding="utf-8"))["batch_id"]
+
+
+def _lineage_llm_confirm_records():
+    """Archived stage-2 results, as (clause_id, from, to, payload)."""
+    import json
+
+    out = []
+    if not _LINEAGE_RAW.is_dir():
+        return out
+    for path in sorted(_LINEAGE_RAW.glob("results-*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            cid = rec.get("custom_id") or ""
+            if not cid.startswith("cfm-"):
+                continue
+            # cfm-{clause_id}-{from}-{to}. clause_id is 16 hex chars and a
+            # program-element code never contains '-', so maxsplit=2 is exact.
+            parts = cid[4:].split("-", 2)
+            if len(parts) != 3:
+                continue
+            clause, frm, to = parts
+            result = rec.get("result") or {}
+            if result.get("type") != "succeeded":
+                continue
+            blocks = ((result.get("message") or {}).get("content")) or []
+            text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            out.append((clause, frm, to, payload))
+    return out
+
+
+def _lineage_llm_confirmed_ids() -> set:
+    return {(c, f, t) for c, f, t, _p in _lineage_llm_confirm_records()}
+
+
+def _lineage_llm_confirmations() -> dict:
+    from govbudget.lineage.llm_extract import confirmation_from_result
+
+    return {
+        (c, f, t): confirmation_from_result(c, f, t, p)
+        for c, f, t, p in _lineage_llm_confirm_records()
+    }
+
+
+def _lineage_llm_proposals():
+    """Every archived result parsed into Proposals; plus the error count."""
+    import json
+
+    from govbudget.lineage.llm_extract import proposals_from_result
+
+    out = []
+    errors = 0
+    if not _LINEAGE_RAW.is_dir():
+        return out, errors
+    for path in sorted(_LINEAGE_RAW.glob("results-*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            cid = (rec.get("custom_id") or "")[4:]
+            result = rec.get("result") or {}
+            if result.get("type") != "succeeded":
+                errors += 1
+                continue
+            blocks = ((result.get("message") or {}).get("content")) or []
+            text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                errors += 1
+                continue
+            out.extend(proposals_from_result(cid, payload))
+    return out, errors
 
 
 def cmd_evals(args) -> None:
@@ -2262,6 +2646,33 @@ def main(argv=None) -> None:
     lin = sub.add_parser("lineage", help="program lineage pipeline")
     lin.add_argument("action", choices=["build"])
     lin.set_defaults(func=cmd_lineage)
+
+    llm = sub.add_parser(
+        "lineage-llm",
+        help="ROADMAP #29(a): LLM-read lineage candidates, verified + ratified",
+    )
+    llm.add_argument(
+        "llm_action",
+        choices=["candidates", "submit", "confirm", "collect", "verify", "measure"],
+        help="candidates: deterministic clause selection + cost forecast (no API)."
+             " submit: stage-1 extraction Batch (paid). confirm: stage-2"
+             " adversarial second read over the surviving pairs (paid)."
+             " collect: archive results of either stage."
+             " verify: apply the refusal rules, optionally write the seed."
+             " measure: precision of the ratified seed.",
+    )
+    llm.add_argument("--ablate-confirm", action="store_true", dest="ablate_confirm",
+                     help="verify: ignore stage 2, to measure what it is worth")
+    llm.add_argument("--limit", type=int, default=0,
+                     help="submit: cap the batch to the first N pending clauses (pilot)")
+    llm.add_argument("--cost-cap", type=float, dest="cost_cap",
+                     default=None,
+                     help="submit: hard USD ceiling; a batch over it creates nothing")
+    llm.add_argument("--batch-id", dest="batch_id", default=None,
+                     help="collect: the batch to archive (default: newest submitted)")
+    llm.add_argument("--write-seed", action="store_true", dest="write_seed",
+                     help="verify: merge candidates into data-seeds/lineage_llm_edges.csv")
+    llm.set_defaults(func=cmd_lineage_llm)
 
     ev = sub.add_parser("evals", help="phase 5B-4 eval refresh/check pipeline")
     ev_sub = ev.add_subparsers(dest="evals_action", required=True)

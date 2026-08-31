@@ -1429,3 +1429,238 @@ def diagram_binding_leg(
         "failures": failures,
         **({"reason": reason} if reason else {}),
     }
+
+
+# ---------------------------------------------------------------------------
+# Leg (j): ratification — no stated edge ships that neither the regex tier
+# derived nor a person signed (ROADMAP #29(a), 2026-08-31)
+# ---------------------------------------------------------------------------
+
+
+def ratification_leg(dsn: str, seed_path) -> dict:
+    """Every stated edge is regex-derived OR verdict-'y' in the committed seed.
+
+    #29(a) lets a language model READ narrative clauses the adjacency rules in
+    lineage/extract.py cannot parse. A model must therefore never be the last
+    word on what the books say. The pipeline is candidates -> model proposals ->
+    deterministic refusals -> a HUMAN verdict in data-seeds/lineage_llm_edges.csv
+    -> the loader, which mints only verdict-'y' rows. This leg is what makes the
+    last two links unbreakable, against the LIVE table rather than against the
+    loader's intentions.
+
+    Five clauses:
+
+      j1 RATIFIED OR DERIVED. Partition the persisted stated edges by whether
+         extract_stated_edges — IMPORTED, re-applied to the same corpus
+         lineage/load.py reads, never restated here — mints the pair. Every edge
+         it does not mint must match a verdict-'y' seed row on (from, to,
+         relation, evidence_fact_id, evidence_sentence). An edge matching none is
+         a stated claim nobody derived and nobody signed.
+
+      j2 A ROW THAT IS NOT VERDICT-'y' NEVER SHIPS. No verdict-'n' pair (judged
+         false) and no verdict-'r' pair (judged true, but declined by a
+         downstream refusal rule) may appear among the persisted stated edges.
+         Adjudication the table ignores is not adjudication, and an 'r' that
+         shipped means a refusal rule stopped working.
+
+      j3 THE ANTI-FABRICATION INVARIANT, ON WHAT ACTUALLY SHIPPED. For every
+         ratified edge: each endpoint appears verbatim in evidence_sentence, or
+         equals the narrating narrative's own pe_bli AND that sentence names
+         exactly one program-element code. This is spec §2's V1+V2 re-checked
+         against the artifact. The 5I incident (3 of 25 stated edges asserting a
+         wrong predecessor, because rollup sentences aggregating statements about
+         OTHER PEs were paired with `this`) is the reason it is a gate clause and
+         not merely an extractor rule: a rule can be bypassed by a hand-edit, a
+         gate clause cannot.
+
+      j4 THE SEED IS NOT TRUSTED ON INERTIA. Every seed row — accepted and
+         rejected alike — must still bind: its evidence_fact_id resolves to a
+         narrative whose body contains its evidence_sentence verbatim. A row
+         whose evidence moved must be re-adjudicated, not carried forward.
+
+      j5 A RATIFIED EDGE IS NOT SILENTLY DROPPED. Every still-binding verdict-'y'
+         row must be IN the table, unless one of exactly three documented
+         reasons excuses it: the regex tier already states the pair (one link,
+         one edge), a later edition supersedes it (extract.py's OWN
+         superseded_reason, imported), or it is a self-loop. Without j5 the leg
+         would be vacuous against the failure most likely to actually happen — a
+         build that stopped reading the seed at all.
+
+    Non-vacuity is structural, not a pinned count: a missing seed file FAILS, a
+    seed with zero adjudicated rows FAILS, and j5's population IS the ratified
+    set, so a table that quietly carries none of them cannot pass by having
+    nothing to check. The leg knows no edge count.
+
+    Returns: ok, stated, derived, ratified, seed_rows, failures [(grain, reason)].
+    """
+    import psycopg
+
+    from govbudget.lineage.extract import extract_stated_edges, superseded_reason
+    from govbudget.lineage.llm_extract import PE_TOKEN, load_ratified
+    from govbudget.lineage.load import load_narratives
+
+    seed_path = Path(seed_path)
+    base = {
+        "ok": False,
+        "stated": 0,
+        "derived": 0,
+        "ratified": 0,
+        "seed_rows": 0,
+        "failures": [],
+    }
+    if not seed_path.is_file():
+        return {**base, "reason": f"ratification seed missing: {seed_path}"}
+
+    seed = load_ratified(seed_path)
+    if not seed:
+        return {
+            **base,
+            "seed_rows": 0,
+            "reason": (
+                f"{seed_path.name} carries no adjudicated row — the ratified"
+                " tier cannot be emptied without a deliberate decision"
+            ),
+        }
+
+    narratives = load_narratives(dsn)
+    derived_pairs = {
+        (e.from_pe_bli, e.to_pe_bli) for e in extract_stated_edges(narratives)
+    }
+    # fact_id -> the narrative that carries it (pe_bli + body), for j3 and j4.
+    by_fact: dict[str, dict] = {}
+    for n in narratives:
+        by_fact.setdefault(n["fact_id"], n)
+
+    edges = _load_edges(dsn)
+    stated = [e for e in edges if e.confidence == "stated"]
+    table_pairs = {(e.from_pe_bli, e.to_pe_bli) for e in stated}
+
+    accepted = {
+        (r["from_pe_bli"], r["to_pe_bli"]): r for r in seed if r["verdict"] == "y"
+    }
+    rejected = {
+        (r["from_pe_bli"], r["to_pe_bli"]): r["verdict"]
+        for r in seed
+        if r["verdict"] in ("n", "r")
+    }
+
+    failures: list[tuple[str, str]] = []
+    ratified_count = 0
+    derived_count = 0
+
+    for e in stated:
+        pair = (e.from_pe_bli, e.to_pe_bli)
+        grain = f"{e.from_pe_bli}->{e.to_pe_bli} ({e.relation})"
+
+        # j2 — a non-'y' pair must not be in the table, derived or not.
+        if pair in rejected:
+            why = (
+                "judged FALSE by a curator"
+                if rejected[pair] == "n"
+                else "judged true but DECLINED by a downstream refusal rule"
+            )
+            failures.append(
+                (grain, f"a verdict-{rejected[pair]!r} row of the ratification"
+                        f" seed says this pair must not ship ({why}), but the"
+                        " table carries it")
+            )
+            continue
+
+        if pair in derived_pairs:
+            derived_count += 1
+            continue
+
+        # j1 — not derived, so it must be ratified, and match on every field
+        # the reader can see.
+        row = accepted.get(pair)
+        if row is None:
+            failures.append(
+                (grain, "neither extract_stated_edges derives this pair nor does"
+                        f" a verdict-'y' row of {seed_path.name} ratify it — it"
+                        " is a stated claim nobody derived and nobody signed")
+            )
+            continue
+        ratified_count += 1
+        for field, persisted in (
+            ("relation", e.relation),
+            ("evidence_fact_id", e.evidence_fact_id or ""),
+            ("evidence_sentence", e.evidence_sentence or ""),
+        ):
+            if (row.get(field) or "") != persisted:
+                failures.append(
+                    (grain, f"{field} differs from the ratified row —"
+                            f" seed {(row.get(field) or '')[:90]!r},"
+                            f" table {persisted[:90]!r}")
+                )
+
+        # j3 — V1 + V2 re-applied to what shipped.
+        sent = e.evidence_sentence or ""
+        narrating = (by_fact.get(e.evidence_fact_id or "") or {}).get("pe_bli")
+        codes = set(PE_TOKEN.findall(sent))
+        for pe in (e.from_pe_bli, e.to_pe_bli):
+            if _pe_token_in(pe, sent):
+                continue
+            if pe == narrating and len(codes) <= 1:
+                continue
+            failures.append(
+                (grain, f"endpoint {pe} is not named in the cited clause"
+                        f" (clause names {sorted(codes)}, narrating PE"
+                        f" {narrating}) — an endpoint the sentence does not"
+                        " state is a fabrication, however well cited")
+            )
+
+    # j4 — every seed row still binds to a clause that exists.
+    for r in seed:
+        grain = f"{r['from_pe_bli']}->{r['to_pe_bli']} (verdict {r['verdict']})"
+        n = by_fact.get(r.get("evidence_fact_id") or "")
+        if n is None:
+            failures.append(
+                (grain, f"evidence_fact_id {r.get('evidence_fact_id')!r}"
+                        " re-derives to no narrative — the row's evidence has"
+                        " moved and it must be re-adjudicated")
+            )
+            continue
+        if (r.get("evidence_sentence") or "") not in (n.get("body") or ""):
+            failures.append(
+                (grain, "the ratified clause is no longer present in the"
+                        " narrative body it cites — re-adjudicate, do not carry"
+                        " the verdict forward")
+            )
+
+    # j5 — a ratified edge is not silently dropped.
+    for pair, r in accepted.items():
+        n = by_fact.get(r.get("evidence_fact_id") or "")
+        if n is None or (r.get("evidence_sentence") or "") not in (n.get("body") or ""):
+            continue  # j4 already reports this row; do not double-count it
+        if pair in table_pairs or pair in derived_pairs or pair[0] == pair[1]:
+            continue
+        probe = LineageEdge(
+            from_pe_bli=pair[0], to_pe_bli=pair[1],
+            fiscal_year=int(n["fiscal_year"]), relation=r["relation"],
+            confidence="stated", evidence_fact_id=r.get("evidence_fact_id"),
+            evidence_sentence=r.get("evidence_sentence"),
+        )
+        if superseded_reason(probe, stated + [probe], narratives) is not None:
+            continue
+        failures.append(
+            (f"{pair[0]}->{pair[1]} (ratified)",
+             "a verdict-'y' row whose clause still exists is ABSENT from"
+             " program_lineage, and neither the regex tier nor supersession"
+             " explains it — the build is not reading the ratification seed")
+        )
+
+    return {
+        "ok": not failures,
+        "stated": len(stated),
+        "derived": derived_count,
+        "ratified": ratified_count,
+        "seed_rows": len(seed),
+        "failures": failures,
+    }
+
+
+def _pe_token_in(pe: str, text: str) -> bool:
+    """Whole-token membership, mirroring extract.py's _pe_named."""
+    from govbudget.lineage.extract import _pe_named
+
+    return _pe_named(pe, text)
