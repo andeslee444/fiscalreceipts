@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import math
+
+from govbudget.dossiers import batch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -551,7 +553,10 @@ class TestEstimator:
         assert BATCH_OUTPUT_USD_PER_MTOK == 12.50
         assert MAX_OUTPUT_TOKENS == 16000
 
-    def test_fixed_token_math(self):
+    def test_fixed_token_math(self, monkeypatch):
+        """Input math, with the output predictor pinned so this test measures
+        one thing. The output basis has its own two tests below."""
+        monkeypatch.setattr(batch, "_observed_mean_output_tokens", lambda: None)
         client = FakeClient(fixed_input_tokens=10_000)
         bundles = [{"pe_bli": "A", "title": "", "text": "x"},
                    {"pe_bli": "B", "title": "", "text": "y"}]
@@ -562,6 +567,34 @@ class TestEstimator:
         assert p["output_usd"] == pytest.approx(0.20)     # 16k * $12.50/MTok
         assert p["total_usd"] == pytest.approx(0.225)
         assert est["total_usd"] == pytest.approx(0.45)
+        assert est["output_basis"] == "cap"
+
+    def test_output_predicted_from_archived_runs_when_available(self, monkeypatch):
+        """The cap is a CEILING, not a forecast.
+
+        Assuming every dossier emits MAX_OUTPUT_TOKENS ran the estimate ~6x
+        high and is why 15 needed dossiers sat undone: quoted $3.31, actual
+        $0.55. When archived runs exist, predict from them.
+        """
+        monkeypatch.setattr(batch, "_observed_mean_output_tokens", lambda: 1_600)
+        client = FakeClient(fixed_input_tokens=10_000)
+        est = estimate_cost([{"pe_bli": "A", "title": "", "text": "x"}],
+                            client=client)
+        p = est["per_dossier"][0]
+        assert p["output_tokens"] == 1_600
+        assert p["output_usd"] == pytest.approx(0.02)     # 1.6k * $12.50/MTok
+        assert est["output_basis"] == "observed"
+        assert est["output_tokens_assumed"] == 1_600
+
+    def test_predictor_refuses_on_too_few_samples(self, tmp_path, monkeypatch):
+        """Fewer than 5 archived runs is not a distribution — fall back to the
+        cap rather than predict from noise."""
+        assert batch._observed_mean_output_tokens() is not None  # real archive
+        monkeypatch.setattr(
+            batch.Path, "resolve", lambda self: tmp_path / "nope" / "x" / "y" / "z"
+        )
+        # a directory with no runs at all must not produce a prediction
+        assert batch._observed_mean_output_tokens() is None
 
     def test_heuristic_path_counts_system_plus_bundle(self):
         text = "a" * 4000  # 1,000 tokens heuristic

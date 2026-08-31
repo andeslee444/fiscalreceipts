@@ -520,14 +520,68 @@ def build_bundle(
 # --------------------------------------------------------------------------
 
 
+def _observed_mean_output_tokens() -> int | None:
+    """Mean output tokens across archived batch results, or None.
+
+    WHY THIS EXISTS. The estimate used to assume every dossier emits the
+    full MAX_OUTPUT_TOKENS. Dossiers do not: measured across the archived
+    runs the mean is ~1,700 against a 16,000 cap, so the estimate ran ~6x
+    high. That is not a harmless safety margin -- on 2026-08-29 the 15
+    dossiers Wave 5's ingestion made necessary were quoted at $3.31,
+    deferred as "a paid research run", and actually cost $0.55. The same
+    shape deferred the LDA re-pull for months behind a $28.60 quote whose
+    real cost was under a dollar.
+
+    An estimate is a claim about a number, and this project has spent a
+    long time learning that those are what go wrong. So: predict from what
+    was observed, and keep the cap as the CEILING it is.
+    """
+    import json
+
+    raw_dir = Path(__file__).resolve().parents[3] / "data" / "research" / "dossiers-raw"
+    if not raw_dir.is_dir():
+        return None
+
+    def _find_usage(obj):
+        if isinstance(obj, dict):
+            if "output_tokens" in obj:
+                return obj
+            for v in obj.values():
+                found = _find_usage(v)
+                if found:
+                    return found
+        elif isinstance(obj, list):
+            for v in obj:
+                found = _find_usage(v)
+                if found:
+                    return found
+        return None
+
+    seen: list[int] = []
+    for path in raw_dir.glob("*.json"):
+        try:
+            usage = _find_usage(json.loads(path.read_text()))
+        except Exception:
+            continue
+        if usage and usage.get("output_tokens"):
+            seen.append(int(usage["output_tokens"]))
+    if len(seen) < 5:  # too few to predict from — fall back to the cap
+        return None
+    return int(sum(seen) / len(seen))
+
+
 def estimate_cost(bundles: list[dict], *, client=None, model: str = MODEL) -> dict:
     """Per-dossier + total cost at Batch-discounted Opus rates.
 
-    Input tokens via count_tokens (when a client is given) over the full
-    request (system + bundle); output assumed the full MAX_OUTPUT_TOKENS.
+    Input tokens via count_tokens (when a client is given). Output is
+    predicted from archived runs when there are at least 5 of them, and
+    falls back to MAX_OUTPUT_TOKENS otherwise — see
+    _observed_mean_output_tokens for why the cap is the wrong predictor.
     """
     per: list[dict] = []
-    output_usd = MAX_OUTPUT_TOKENS * BATCH_OUTPUT_USD_PER_MTOK / 1_000_000
+    observed = _observed_mean_output_tokens()
+    out_tokens = observed if observed is not None else MAX_OUTPUT_TOKENS
+    output_usd = out_tokens * BATCH_OUTPUT_USD_PER_MTOK / 1_000_000
     for b in bundles:
         input_tokens = count_request_tokens(b["text"], client=client, model=model)
         input_usd = input_tokens * BATCH_INPUT_USD_PER_MTOK / 1_000_000
@@ -536,13 +590,18 @@ def estimate_cost(bundles: list[dict], *, client=None, model: str = MODEL) -> di
                 "pe_bli": b["pe_bli"],
                 "title": b.get("title", ""),
                 "input_tokens": input_tokens,
-                "output_tokens": MAX_OUTPUT_TOKENS,
+                "output_tokens": out_tokens,
                 "input_usd": input_usd,
                 "output_usd": output_usd,
                 "total_usd": input_usd + output_usd,
             }
         )
-    return {"per_dossier": per, "total_usd": sum(p["total_usd"] for p in per)}
+    return {
+        "per_dossier": per,
+        "total_usd": sum(p["total_usd"] for p in per),
+        "output_basis": "observed" if observed is not None else "cap",
+        "output_tokens_assumed": out_tokens,
+    }
 
 
 def print_estimate(est: dict) -> None:
@@ -552,10 +611,19 @@ def print_estimate(est: dict) -> None:
             f" out<={p['output_tokens']:,}tok  est ${p['total_usd']:.3f}"
             f"  {p['title'][:48]}"
         )
+    basis = est.get("output_basis", "cap")
+    assumed = est.get("output_tokens_assumed", MAX_OUTPUT_TOKENS)
+    how = (
+        f"output predicted at {assumed:,}tok from archived runs"
+        if basis == "observed"
+        else f"output assumed at the {assumed:,}tok CAP — no archived runs to "
+        f"predict from, so this is a ceiling, not a forecast"
+    )
     print(
         f"dossiers submit: TOTAL estimated ${est['total_usd']:.2f}"
         f" for {len(est['per_dossier'])} dossiers"
-        f" (Batch rates ${BATCH_INPUT_USD_PER_MTOK}/{BATCH_OUTPUT_USD_PER_MTOK} per MTok)"
+        f" (Batch rates ${BATCH_INPUT_USD_PER_MTOK}/{BATCH_OUTPUT_USD_PER_MTOK} per MTok;"
+        f" {how})"
     )
 
 
