@@ -8403,7 +8403,7 @@ def _write_all_sidecars(
     if rollup_pes:
         print(
             f"program_details: +{len(rollup_pes)} rollup-tier sidecars"
-            f" (total {len(all_prog_rows) + len(rollup_pes)})"
+            f" (total {len(_written_det_names)} across all tiers)"
         )
     print(
         f"program_details: {_n_fy2026_absent} page(s) flagged fy2026_absent"
@@ -9024,7 +9024,16 @@ def _write_all_sidecars(
         # key). all_prog_rows is the loop that actually WRITES the
         # full-tier sidecars, one per ROW (never deduped) — its length is
         # the real full-tier page count, split keys included.
-        "program_pages": len(all_prog_rows) + len(rollup_pes),
+        #
+        # ROADMAP #28: counted from the sidecars ACTUALLY WRITTEN rather
+        # than from a sum of the three loops' inputs. The sum shape is what
+        # broke when the decade tier landed — it read 2,009 against 2,562
+        # files on disk, and lib/corpus's cross-check (correctly) failed the
+        # build rather than publish a corpus size the artifact contradicts.
+        # A third loop was added and one addend was not; there is no fourth
+        # mistake of that shape available now, because _written_det_names is
+        # the set every loop adds to as it writes.
+        "program_pages": len(_written_det_names),
     }
 
     # ---- Canonical-TOA hero (PM Sprint 1, §P0-5) -------------------------
@@ -9167,9 +9176,14 @@ def _write_all_sidecars(
         con=con,
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
-        # The program-page universe (full-tier + rollup-tier sidecars) —
-        # request_vs_actuals_gap cards link only where a page exists.
-        page_pe_blis=all_pe_blis | set(rollup_pes),
+        # The program-page universe (full-tier + rollup-tier + ROADMAP #28
+        # decade-tier sidecars) — request_vs_actuals_gap cards link only
+        # where a page exists. Decade pages belong here by the comment's own
+        # rule: a page exists for them now, and an RVA gap is precisely the
+        # kind of card whose subject is a line whose actuals diverged years
+        # ago. It cannot change WHICH cards appear — _rva_gap_rows ranks by
+        # magnitude and never consults this set — only whether they link.
+        page_pe_blis=all_pe_blis | set(rollup_pes) | set(decade_only_pes),
         # P0-5: the feed's superlative claims carry the corpus scope
         # qualifier (same dynamic string as the hero).
         corpus_scope_qualifier=_corpus_qualifier,
