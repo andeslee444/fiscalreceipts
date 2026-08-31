@@ -335,3 +335,59 @@ describe("whatItIsCard — a dossier with an empty what_it_is falls back", () =>
     expect(card.source).toBe("fields");
   });
 });
+
+describe("the decade card (ROADMAP #28, tier 4)", () => {
+  const input = {
+    tier: "decade" as const,
+    peBli: "0605230F",
+    title: "Ground Based Strategic Deterrent",
+    org: "F",
+    exhibitFamily: "rdte",
+    budgetLines: [],
+    projectCount: 0,
+    dossier: null,
+    serviceOrg: "F",
+    serviceIngested: true,
+    lastEdition: 2024,
+  };
+
+  it("names the line, its org, its family and the edition it stops at", () => {
+    const card = whatItIsCard(input);
+    expect(card.source).toBe("decade");
+    if (card.source !== "decade") throw new Error("unreachable");
+    expect(card.text).toBe(
+      "Ground Based Strategic Deterrent (0605230F) is an Air Force research & " +
+        "development line last carried in the PB2024 R-1/P-1 workbooks.",
+    );
+  });
+
+  it("carries the history-only tail, never the rollup one", () => {
+    const card = whatItIsCard(input);
+    if (card.source !== "decade") throw new Error("unreachable");
+    expect(card.tail).toBe(
+      "History only: the FY2026 President's Budget workbooks carry no line " +
+        "for this program element.",
+    );
+    // The rollup tail says the service's FY2026 book carries no R-2/P-40
+    // DETAIL for this line. On a decade page there is no line in that book
+    // at all, so it would be a false sentence rather than a weaker one.
+    expect(card.tail).not.toContain("Summary figures only");
+  });
+
+  it("falls back rather than inventing an edition when the block is absent", () => {
+    const card = whatItIsCard({ ...input, lastEdition: null });
+    expect(card.source).not.toBe("decade");
+  });
+
+  it("still lets a dossier win", () => {
+    // No decade page carries a dossier today; the precedence is asserted so
+    // a future one does not lose its cited prose to the template.
+    const card = whatItIsCard({
+      ...input,
+      dossier: dossierWith([
+        { text: "A land-based leg of the nuclear triad.", citation: { fact_id: "a".repeat(16) } },
+      ]),
+    });
+    expect(card.source).toBe("dossier");
+  });
+});

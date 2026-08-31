@@ -45,6 +45,11 @@ from pathlib import Path
 # (lineage.model imports nothing from this module — no cycle.)
 from govbudget.lineage.model import DISPLAY_NARRATIVE_FY
 
+# The authoritative era-procurement-key membership test (ROADMAP #28 must
+# never turn one into a page — see decade_only_page_pes below).
+# (jbooks.era_keys imports nothing from this module — no cycle.)
+from govbudget.jbooks.era_keys import is_era_procurement_key
+
 
 # ---------------------------------------------------------------------------
 # Canonical identity (binding — imported by tests and verify_phase5b1)
@@ -1920,11 +1925,26 @@ def export_site(
     # Ships in data/budget_lines_decade.parquet (a SIBLING of the fenced
     # budget_lines.parquet — the PB2026 fence above stays intact; editions
     # never merge silently, spec §2 rule 1).
+    #
+    # ROADMAP #28: scope_pes is the PAGE universe, and the page universe now
+    # includes the decade-only tier — 553 program elements whose cited
+    # history stops before PB2026 and which had no page at all. Their grains
+    # have to be minted HERE or their pages would render nothing: the decade
+    # tier is the only source a decade-only page has.
+    decade_only_pes, decade_only_census = decade_only_page_pes(duckdb_path)
+    print(
+        f"decade-only (ROADMAP #28): {len(decade_only_pes)} page(s) from"
+        f" {decade_only_census.get('candidates', 0)} fct_decade_series keys"
+        f" — excluded {decade_only_census.get('has_page', 0)} that already"
+        f" have a page, {decade_only_census.get('era_key', 0)} era procurement"
+        f" keys, {decade_only_census.get('route_unsafe', 0)} route-unsafe,"
+        f" {decade_only_census.get('no_positive_grain', 0)} with no positive grain"
+    )
     (decade_bl_rows, decade_cit_rows, decade_grains,
      decade_side_meta) = _build_decade_citation_rows(
         duckdb_path=duckdb_path,
         existing_fids={r[0] for r in citation_rows},
-        scope_pes={r[8] for r in bl_rows},
+        scope_pes={r[8] for r in bl_rows} | set(decade_only_pes),
     )
     citation_rows.extend(decade_cit_rows)
     if decade_bl_rows:
@@ -3670,6 +3690,141 @@ def _build_derived_citation_rows(
 
 
 # ---------------------------------------------------------------------------
+# Route safety + the ROADMAP #28 decade-only page universe
+# ---------------------------------------------------------------------------
+
+
+def is_route_safe_pe(pe_bli: str) -> bool:
+    """A program page is a Next.js static route, so the pe_bli must
+    round-trip through a URL path segment. (Module-level since ROADMAP #28,
+    which needs the same predicate one pass earlier than the sidecar
+    writer's local copy — a handful of Army R-1/P-1 workbook lines mis-parse
+    the appropriation label into the pe_bli slot, and '&' breaks routing.)"""
+    return not (set(pe_bli) & set("&#/?%") or any(c.isspace() for c in pe_bli))
+
+
+def decade_only_page_pes(duckdb_path) -> tuple[list[str], dict[str, int]]:
+    """Program elements that get a HISTORY-ONLY /program/ page (ROADMAP #28).
+
+    A program element with a decade of cited President's Budget figures and
+    no PB2026 line generates no page at all today: the history exists in the
+    warehouse and is not browsable. The owner decided 2026-08-27 that a
+    program which no longer requests money should still have a browsable
+    history page.
+
+    Returns (pes, census) — census is the per-reason exclusion count, printed
+    by the caller so the population is auditable from the build log rather
+    than only from a query someone remembers to run.
+
+    THE ELIGIBILITY RULE, and why each clause is there:
+
+      · at least one POSITIVE fct_decade_series grain. That mart is the
+        site's gated decade history: edition-aware, lake-verified, P-1R
+        excluded. Requiring a grain (not merely a raw budget_lines row) is
+        what guarantees the page has something CITED to show — everything
+        else on it is an absence claim, and a page whose only content is
+        absence is not a page worth building. It also excludes, for free,
+        the 63 candidates whose only workbook rows are P-1R: the
+        reserve-component breakout of P-1, which the decade mart drops
+        because P-1 already contains it. Pages for those would publish the
+        reserve share as if it were a program's funding line.
+
+      · NOT an era procurement key (era_keys.is_era_procurement_key). 1,214
+        of the 3,771 decade-series keys are namespaced era P-1 display lines
+        ('3010F-AF-L1', $142.6B across PB2017-PB2023). era_keys' own module
+        docstring says cross-edition identity is deliberately not claimed
+        for them; a /program/ page IS a cross-edition identity claim.
+
+      · not already a page (dim_programs OR the PB2026 workbook), and
+        route-safe.
+
+    Deliberately NOT scoped to "the FY2026 books" in any way: the whole
+    point is the editions PB2026 does not carry.
+    """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        try:
+            series = con.execute(
+                "select pe_bli, max(amount), max(edition_year)"
+                " from fct_decade_series group by 1"
+            ).fetchall()
+        except Exception as exc:
+            print(f"decade-only: fct_decade_series unavailable ({exc}); tier skipped")
+            return [], {}
+        try:
+            existing = {
+                r[0]
+                for r in con.execute(
+                    "select distinct pe_bli from dim_programs"
+                ).fetchall()
+            }
+            existing |= {
+                r[0]
+                for r in con.execute(
+                    "select distinct pe_bli from fct_budget_lines"
+                    " where fiscal_year = 2026"
+                ).fetchall()
+            }
+            # The LAST edition whose R-1/P-1 workbook carries a provenanced
+            # row for this line — the raw fact, read independently of the
+            # decade mart's own lake-verifiability filter. Same source filter
+            # fct_decade_series' `detail` CTE uses.
+            last_workbook_edition = dict(
+                con.execute(
+                    "select pe_bli, max(fiscal_year) from fct_budget_lines"
+                    " where exhibit in ('R-1', 'P-1')"
+                    "   and source_document_id is not null"
+                    "   and pe_bli <> '9999999999'"
+                    " group by 1"
+                ).fetchall()
+            )
+        except Exception as exc:
+            # Every clause of this tier's eligibility needs BOTH marts: one
+            # to know which elements already have a page, the other to know
+            # where each line's record actually stops. A partial warehouse
+            # (the unit-test fixtures build one) can answer neither, and
+            # guessing would ship pages whose note names an edition nothing
+            # verified. Skip the tier rather than degrade it.
+            print(
+                "decade-only: dim_programs/fct_budget_lines unavailable"
+                f" ({exc}); tier skipped"
+            )
+            return [], {}
+    finally:
+        con.close()
+
+    census = {"candidates": len(series), "has_page": 0, "era_key": 0,
+              "route_unsafe": 0, "no_positive_grain": 0, "edition_gap": 0}
+    pes: list[str] = []
+    for pe_bli, max_amount, max_edition in series:
+        if pe_bli in existing:
+            census["has_page"] += 1
+        elif is_era_procurement_key(pe_bli):
+            census["era_key"] += 1
+        elif not is_route_safe_pe(pe_bli):
+            census["route_unsafe"] += 1
+        elif max_amount is None or max_amount <= 0:
+            census["no_positive_grain"] += 1
+        elif last_workbook_edition.get(pe_bli) != max_edition:
+            # The page's note states which edition this line LAST appears
+            # in, and derives that from the editions the page itself
+            # renders. Those agree for all 553 eligible keys in the shipped
+            # warehouse — but they need not: the decade mart withholds a
+            # grain whose honest detail sum does not equal the raw lake sum,
+            # so a later edition CAN carry the line while publishing no
+            # point for it. On such a key the sentence would name an edition
+            # that is not the last one, which is the whole defect species
+            # this tier is being built carefully to avoid. No page rather
+            # than a page that misstates where its own record stops.
+            census["edition_gap"] += 1
+        else:
+            pes.append(pe_bli)
+    return sorted(pes), census
+
+
+# ---------------------------------------------------------------------------
 # Decade citation tier (Phase 5E Task 6)
 # ---------------------------------------------------------------------------
 
@@ -4278,6 +4433,66 @@ def _fy2026_absent_block(
         "last_fy": max(funded),
         "jbook_fy2026_zero": jbook_zero,
         "has_successor": has_successor,
+    }
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #28 — the decade-only page's absence block
+# ---------------------------------------------------------------------------
+#
+# A decade-only page is MORE exposed to the #32(a) defect than an ordinary
+# one, because everything it says is about absence. Every field below is
+# therefore derived from the page's OWN rendered payload (its decade_series,
+# its lineage rail), so gate 21 leg (k) can recompute the whole block from
+# the sidecar and check the sentence against what the page displays — not
+# against a second copy of this predicate.
+#
+# What it deliberately does NOT carry:
+#   · a successor name (#32b / backlog #29 — a named guess is a fabricated
+#     citation);
+#   · any word implying an ending ("zeroed", "cancelled", "terminated") —
+#     absence from the editions we hold supports none of them, and those are
+#     the words the 87 withdrawn feed cards used;
+#   · the PB2026-renumber explanation on a line that vanished BEFORE PB2026.
+#     319 pages were told "PB2026 renumbered at scale" as the reason their
+#     record stops; on a line last carried in PB2019 that attributes the
+#     disappearance to an event six editions later. `renumber` is true only
+#     where the line survived to PB2025, the edition immediately before this
+#     one, so its disappearance really is a PB2025 -> PB2026 event.
+_DECADE_PRIOR_EDITION = _SUMMARY_EDITION - 1  # PB2025 — the edition before this one
+
+
+def _decade_absent_block(
+    decade_series: dict | None,
+    lineage: dict | None = None,
+) -> dict | None:
+    """`decade_absent` sidecar payload for a decade-only page, or None.
+
+    decade_series is the sidecar's own `decade_series` field — the exact
+    points the page's decade table renders. None/empty returns None: with no
+    cited figure there is nothing to make an absence claim ABOUT, and such a
+    page is not built (see the decade-tier loop).
+    """
+    editions: set[int] = set()
+    fys: set[int] = set()
+    for points in (decade_series or {}).values():
+        for pt in points or []:
+            if pt.get("edition") is not None:
+                editions.add(int(pt["edition"]))
+            if pt.get("fy") is not None:
+                fys.add(int(pt["fy"]))
+    if not editions or not fys:
+        return None
+    last_edition = max(editions)
+    rail = (lineage or {}).get("rail") or {}
+    return {
+        "first_edition": min(editions),
+        "last_edition": last_edition,
+        "edition_count": len(editions),
+        "fy_min": min(fys),
+        "fy_max": max(fys),
+        "renumber": last_edition == _DECADE_PRIOR_EDITION,
+        "has_successor": bool(rail.get("successors")),
     }
 
 
@@ -7761,6 +7976,116 @@ def _write_all_sidecars(
     dropped_unsafe = [p for p in rollup_pes_raw if not _is_route_safe_pe(p)]
     rollup_pes = [p for p in rollup_pes_raw if _is_route_safe_pe(p)]
 
+    # -- ROADMAP #28: the decade-only page universe ---------------------- #
+    # Same function the decade citation tier scoped itself with, so a page
+    # can only exist here if its grains were minted there. The extra filter
+    # is the one thing the mart-level query cannot see: the page must
+    # actually have a RENDERED cited series (grains whose fact_id survived
+    # into _cited_fact_ids). A decade-only page with no cited figure would
+    # be nothing but absence claims, which is not a page.
+    _decade_only_all, _decade_census = decade_only_page_pes(duckdb_path)
+    decade_only_pes = [
+        pe for pe in _decade_only_all
+        if pe not in all_pe_blis
+        and pe not in set(rollup_pes)
+        and decade_series_by_pe.get(pe)
+    ]
+    _decade_uncited = [pe for pe in _decade_only_all if pe not in decade_only_pes]
+    if _decade_uncited:
+        print(
+            f"program_details: {len(_decade_uncited)} decade-only candidate(s)"
+            f" dropped for carrying no cited decade point:"
+            f" {', '.join(_decade_uncited[:10])}"
+        )
+
+    # Per-PE indexes over the decade tier's OWN workbook rows: the
+    # organization it was last filed under, its R-1/P-1 majority, and its
+    # title. Built here rather than beside the loop below because
+    # titles_by_pe (which _emit_lineage reads a few lines down) has to carry
+    # decade titles too — otherwise a lineage rail pointing AT a decade page
+    # would render the bare pe_bli as its label while the page it links to
+    # has a name.
+    decade_org_counts: dict[str, Counter] = defaultdict(Counter)
+    decade_exhibits: dict[str, Counter] = defaultdict(Counter)
+    decade_last_edition: dict[str, int] = {}
+    decade_title_cands: dict[str, list] = defaultdict(list)
+    for _r in (decade_bl_rows or []):
+        _pe, _ed = _r[8], _r[2]
+        decade_exhibits[_pe][_r[1]] += 1
+        if (_r[9] or "").strip():
+            decade_title_cands[_pe].append((_ed, _r[9].strip(), _r[10], _r[11]))
+        if _ed is not None and _ed >= decade_last_edition.get(_pe, -1):
+            if _ed > decade_last_edition.get(_pe, -1):
+                decade_org_counts[_pe] = Counter()
+                decade_last_edition[_pe] = _ed
+            decade_org_counts[_pe][_r[5]] += 1
+
+    def _decade_title(pe_bli: str) -> str | None:
+        """The line's own workbook title, from the LAST edition that names it.
+
+        dim_pe_titles — the site's single source for program titles — is
+        PB2026-fenced BY DESIGN (its own header: era titles "would join the
+        alphabetical fallback pool and shift winners"; "the decade series
+        gets its own edition-aware marts, which supersede this fence"). It
+        therefore holds nothing for a decade-only element, and without this
+        the h1 on all 553 pages would be the bare pe_bli.
+
+        Same deterministic rule as that mart, shifted one edition at a time:
+        within the latest edition that carries a title, prefer the row whose
+        amount_type is that edition's PriorYear actuals slug (the
+        most-populated detail amount_type — fy_2024_actuals in PB2026,
+        fy_2022_actuals in PB2024) by descending amount, then the
+        alphabetically-first title. 539 of the 553 carry exactly one distinct
+        title across their whole history; 14 were renamed between editions,
+        and the rule picks the name the line last went by — which is the name
+        the note beside it says the record stops at.
+
+        Never invented: every title here is a cell in the workbook this
+        page's own figures are cited to.
+        """
+        cands = decade_title_cands.get(pe_bli)
+        if not cands:
+            return None
+        last_ed = max(ed for ed, _t, _at, _amt in cands if ed is not None)
+        actuals_slug = f"fy_{last_ed - 2}_actuals"
+        best = min(
+            (c for c in cands if c[0] == last_ed),
+            key=lambda c: (
+                c[2] != actuals_slug,
+                -(c[3] or 0.0),
+                c[1],
+            ),
+        )
+        return _corrected_title(pe_bli, best[1])
+
+    # Merge the decade titles into the shared index. dim_pe_titles is
+    # PB2026-fenced, so it holds none of these; without this a rail entry or
+    # a /lineage/ node naming a decade-tier endpoint shows a bare code.
+    _n_decade_titles = 0
+    for _pe in decade_only_pes:
+        if titles_by_pe.get(_pe):
+            continue
+        _t = _decade_title(_pe)
+        if _t:
+            titles_by_pe[_pe] = _t
+            _n_decade_titles += 1
+    if _n_decade_titles:
+        print(
+            f"program_details: +{_n_decade_titles} decade-tier title(s) from"
+            " the workbook rows (dim_pe_titles is PB2026-fenced)"
+        )
+    _decade_untitled = [pe for pe in decade_only_pes if not titles_by_pe.get(pe)]
+    if _decade_untitled:
+        # Same rule _trajectory_only_feed_programs states: a page with no h1
+        # is broken, and inventing a title violates cited-or-absent. Skip
+        # loudly rather than shipping a page headed by its own code.
+        print(
+            f"program_details: {len(_decade_untitled)} decade-only page(s)"
+            f" skipped for having no workbook title:"
+            f" {', '.join(_decade_untitled[:10])}"
+        )
+        decade_only_pes = [pe for pe in decade_only_pes if titles_by_pe.get(pe)]
+
     # program-lineage sidecar blocks (Task 6): read edges+families from the
     # jbooks parquet lake (the writer only holds the DuckDB mart connection; the
     # lineage tables are Postgres, staged to the lake). Emit once — chain /
@@ -7770,7 +8095,7 @@ def _write_all_sidecars(
         edges=_lin_edges,
         families=_lin_families,
         all_pe_blis=all_pe_blis,
-        rollup_pes=set(rollup_pes),
+        rollup_pes=set(rollup_pes) | set(decade_only_pes),
         titles_by_pe=titles_by_pe,
         decade_series_by_pe=decade_series_by_pe,
         cited_fact_ids=_cited_fact_ids,
@@ -7791,7 +8116,7 @@ def _write_all_sidecars(
         edges=_lin_edges,
         families=_lin_families,
         titles_by_pe=titles_by_pe,
-        page_pes=all_pe_blis | set(rollup_pes),
+        page_pes=all_pe_blis | set(rollup_pes) | set(decade_only_pes),
         decade_series_by_pe=decade_series_by_pe,
         cited_fact_ids=_cited_fact_ids,
     )
@@ -7972,6 +8297,99 @@ def _write_all_sidecars(
         _write_json(det_dir / f"{pe_bli}.json", obj)
         _written_det_names.add(f"{pe_bli}.json")
         n_files += 1
+
+    # -- Decade-only sidecars (ROADMAP #28) ----------------------------- #
+    # A program element with a decade of CITED President's Budget figures and
+    # no PB2026 line at all. Until now it generated no page: the history was
+    # in the warehouse and not browsable. The owner decided 2026-08-27 that a
+    # program which no longer requests money should still have a browsable
+    # history page.
+    #
+    # These sidecars are deliberately SPARE, and every empty field is empty
+    # for a checked reason rather than an assumed one (verified against the
+    # shipped warehouse for all 553 keys): fct_program_trajectory,
+    # fct_budget_trajectory, fct_program_concentration, fct_budget_to_awards
+    # and fct_program_lobbying carry ZERO rows for any of them, and the
+    # FY2026-fenced jbook detail/narrative queries carry zero as well. So
+    # `budget_lines`, `details`, `narratives`, `awards` and `mentions` are
+    # honestly empty, `trajectory` is null, and the ONLY figures on the page
+    # are the decade series — which is exactly what the page says.
+    #
+    # budget_lines stays [] rather than being backfilled with the older
+    # editions' rows. That table is the PB2026 R-1/P-1 workbook (spec §2 rule
+    # 1: editions never merge silently), and filling it with PB2019 rows
+    # would also hand _fy2026_absent_block a page that satisfies its
+    # predicate — producing the #32(a) note, whose sentence "its last
+    # workbook figure is FY2024" would then be a claim about the PB2026
+    # workbook made out of PB2025's rows. The decade note below is the
+    # honest statement for this tier, and it is a different statement.
+
+    def _decade_service_org(pe_bli: str) -> str | None:
+        """The organization the workbook filed this line under when it LAST
+        appeared — modal within that edition, org-ascending tiebreak. Latest
+        edition rather than all-time: an org that changed once should be
+        reported as it stands in the last record, not as its historical
+        plurality."""
+        counts = decade_org_counts.get(pe_bli)
+        if not counts:
+            return None
+        return min(counts.items(), key=lambda kv: (-kv[1], kv[0] or ""))[0] or None
+
+    def _decade_exhibit_family(pe_bli: str) -> str:
+        """R-1 -> rdte, P-1 -> procurement, mixed -> the majority, none ->
+        the honest generic 'budget'. Same vocabulary and same tiebreak as
+        site/src/lib/program-tier.ts deriveExhibitFamily, computed here
+        because a decade page's budget_lines array is empty by construction
+        and that function reads it."""
+        counts = decade_exhibits.get(pe_bli) or Counter()
+        rdte = counts.get("R-1", 0)
+        proc = counts.get("P-1", 0) + counts.get("P-1R", 0)
+        if rdte == 0 and proc == 0:
+            return "budget"
+        return "rdte" if rdte >= proc else "procurement"
+
+    _n_decade_absent = 0
+    for pe_bli in decade_only_pes:
+        obj = {
+            "awards": awards_by_pe.get(pe_bli, []),
+            "budget_lines": [],
+            "details": [],
+            "mentions": _build_mentions(
+                mentions_by_pe.get(pe_bli, []),
+                top200_family_keys,
+            ),
+            "narratives": [],
+            "summary": _summary_block(pe_bli, pe_bli),
+            "service_org": _decade_service_org(pe_bli),
+            "exhibit_family": _decade_exhibit_family(pe_bli),
+            "tier": "decade",
+            "title": titles_by_pe.get(pe_bli),
+            "trajectory": None,
+            "trajectory_fact_ids": None,
+            "decade_series": decade_series_by_pe[pe_bli],
+        }
+        if pe_bli in rva_by_pe:
+            obj["book_diff"] = rva_by_pe[pe_bli]
+        if pe_bli in lineage_by_pe:
+            obj["lineage"] = lineage_by_pe[pe_bli]
+        _dec_absent = _decade_absent_block(
+            obj["decade_series"], obj.get("lineage")
+        )
+        if _dec_absent is None:
+            # Unreachable by construction (decade_only_pes requires a
+            # non-empty cited series), and a page that reached it would be
+            # pure absence with no figure to anchor it. Skip loudly.
+            print(
+                f"program_details: decade-only {pe_bli} has no derivable"
+                " decade_absent block — page skipped"
+            )
+            continue
+        obj["decade_absent"] = _dec_absent
+        _n_decade_absent += 1
+        _write_json(det_dir / f"{pe_bli}.json", obj)
+        _written_det_names.add(f"{pe_bli}.json")
+        n_files += 1
+
     _det_pruned = []
     for _stale_det in sorted(det_dir.glob("*.json")):
         if _stale_det.name not in _written_det_names:
@@ -7990,6 +8408,10 @@ def _write_all_sidecars(
     print(
         f"program_details: {_n_fy2026_absent} page(s) flagged fy2026_absent"
         " (PB2026 workbook carries no FY2026 row — ROADMAP #32a)"
+    )
+    print(
+        f"program_details: +{_n_decade_absent} decade-only sidecar(s)"
+        " (cited pre-PB2026 history, no PB2026 line — ROADMAP #28)"
     )
 
     # ------------------------------------------------------------------ #

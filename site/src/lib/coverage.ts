@@ -22,6 +22,7 @@ import {
   getFlowsCount,
   getProgramsCount,
   getProgramPagesCount,
+  getTierPageCounts,
   getDossierCount,
   getCompaniesCount,
   getCompaniesWithAwardsCount,
@@ -171,11 +172,20 @@ export function getCoverage(id: CoverageId): Coverage {
       // /programs/ index, which also holds trajectory-only lines.
       const num = getDetailGradeCount();
       const den = getProgramPagesCount();
+      // ROADMAP #28. This sentence used to call the whole remainder "the
+      // small remainder [which] carries cited R-1/P-1 workbook figures for
+      // lines that publish no matching R-2/P-40 narrative". Both halves
+      // stopped being true when the decade tier shipped: the remainder is no
+      // longer small, and 553 of it carries no FY2026 workbook figure at all
+      // — those elements are not in the FY2026 books, so "publishes no
+      // matching narrative" describes the wrong absence. Both counts derived
+      // (getTierPageCounts), so neither can rot into a literal.
+      const tiers = getTierPageCounts();
       return {
         id,
         numerator: num,
         denominator: den,
-        note: `Detailed J-book justification is ingested for ${formatCount(num)} of ${formatCount(den)} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in; the small remainder carries cited R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines).`,
+        note: `Detailed J-book justification is ingested for ${formatCount(num)} of ${formatCount(den)} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in. ${formatCount(tiers.rollup)} pages carry cited FY2026 R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines); another ${formatCount(tiers.decade)} are history pages whose program element the FY2026 workbooks do not list at all, cited to the President's Budget editions that do carry it.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-service-books",
         linkText: "why summary figures only? →",

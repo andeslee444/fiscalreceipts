@@ -56,6 +56,7 @@ import {
   getProgramPagesCount,
   getProgramsCount,
   getSiteMeta,
+  getTierPageCounts,
 } from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
@@ -131,7 +132,26 @@ export function getCoverageMap(): CoverageMapRow[] {
   // lists trajectory-only lines. This page LEADS with this number, so it is
   // the worst possible place for the site to be two generous about itself.
   const detailGrade = getDetailGradeCount();
-  const rollups = pages - detailGrade;
+  // ROADMAP #28: the non-detail remainder is TWO tiers now, and they are not
+  // the same claim. A rollup page HAS FY2026 R-1/P-1 figures and lacks the
+  // R-2/P-40 narrative behind them; a decade page has no FY2026 workbook row
+  // at all and publishes older editions' figures instead. `pages −
+  // detailGrade` used to be exactly "rollup", and every sentence below said
+  // so; keeping the subtraction would have made those sentences false for
+  // 553 pages on the day this tier shipped. Both halves are derived from the
+  // sidecars' own `tier` field, and their sum is asserted against the
+  // subtraction so a third tier cannot appear here unnoticed.
+  const tiers = getTierPageCounts();
+  const rollups = tiers.rollup;
+  const decadeOnly = tiers.decade;
+  if (rollups + decadeOnly !== pages - detailGrade) {
+    throw new Error(
+      `[govbudget/coverage-map] ${pages} pages − ${detailGrade} detail-grade ` +
+        `leaves ${pages - detailGrade}, but the sidecars declare ` +
+        `${rollups} rollup + ${decadeOnly} decade. A page tier this row does ` +
+        `not name would be described by neither sentence below.`,
+    );
+  }
   const editions = getDecadeEditions();
   const bridge = getFlowChartMeta().bridge;
   const budgetFy = getFlowChartMeta().budgetFy;
@@ -147,10 +167,11 @@ export function getCoverageMap(): CoverageMapRow[] {
       denominator: pages,
       covered:
         `${formatCount(detailGrade)} of ${formatCount(pages)} program pages carry ` +
-        `detail-grade J-book justification; the other ${formatCount(rollups)} ` +
-        `carry cited R-1/P-1 workbook figures only.`,
+        `detail-grade J-book justification; ${formatCount(rollups)} carry cited ` +
+        `FY2026 R-1/P-1 workbook figures only, and ${formatCount(decadeOnly)} are ` +
+        `history pages for elements the FY2026 workbooks do not list at all.`,
       derivation:
-        "program_details sidecars holding at least one J-book detail row, over every sidecar this build shipped.",
+        "program_details sidecars holding at least one J-book detail row, over every sidecar this build shipped; the two remainders are the sidecars' own tier field.",
       // CORRECTED TWICE, and the second correction is the one that matters.
       //
       // 2026-08-27: the text said the missing justification "does not exist
@@ -181,14 +202,25 @@ export function getCoverageMap(): CoverageMapRow[] {
       // points the other way — in EITHER direction, which is exactly what
       // forced this second correction: with the volumes parsed, leg cv fails
       // on any sentence still claiming an unparsed backlog.
+      // ROADMAP #28 split this sentence in two. It used to describe the
+      // whole non-detail remainder as "rollup lines carrying cited R-1/P-1
+      // workbook figures without R-2/P-40 detail" — false, from the day the
+      // decade tier shipped, for every page whose element has no FY2026
+      // workbook line at all. The reason those pages carry no justification
+      // is not that the volume is missing; it is that the FY2026 books do
+      // not list the element.
       blocker:
-        `The ${formatCount(rollups)} remaining pages are rollup lines carrying ` +
-        "cited R-1/P-1 workbook figures without R-2/P-40 detail. Classified " +
+        `${formatCount(rollups)} of the remaining pages are rollup lines carrying ` +
+        "cited FY2026 R-1/P-1 workbook figures without R-2/P-40 detail. Classified " +
         "Programs — much the largest single line, and most of the money — " +
         "genuinely publish no justification, and no ingestion run will ever " +
         "change that. The rest is a short tail of lines whose money is real " +
         "and whose justification is not filed as an R-2 or P-40 exhibit of " +
-        "its own. No FY2026 " +
+        `its own. The other ${formatCount(decadeOnly)} are history pages: the ` +
+        "FY2026 books carry no line for those elements, so there is no FY2026 " +
+        "justification for them to be missing, and what those pages publish is " +
+        "the cited record from the President's Budget editions that do carry " +
+        "them. No FY2026 " +
         "justification volume this project holds is still waiting to be read: " +
         "the Navy procurement books, Virginia and COLUMBIA class submarines " +
         "and DDG-51 among them, were the last of them and are loaded.",

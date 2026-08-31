@@ -179,9 +179,19 @@ export function getCorpusCounts(): CorpusCount[] {
       id: "program-pages",
       value: getProgramPagesCount(),
       where: "the corpus line",
+      // ROADMAP #28 widened what this counts and made the sentence more
+      // nearly true at the same time. Before the decade tier it read "every
+      // element the workbooks name in any loaded edition", while the page
+      // universe was in fact FY2026-only — 1,287 elements named by an
+      // earlier edition had no page. 553 of those have one now: the ones
+      // whose history is CITED (a positive fct_decade_series grain). The
+      // rest are era P-1 display line numbers, which are workbook rows
+      // rather than program identities, and reserve-component P-1R rows,
+      // whose money is already inside the P-1 line. The sentence names the
+      // two universes it unions instead of claiming all of them.
       counts:
-        "Browsable program pages, all tiers — every element the workbooks " +
-        "name in any loaded edition.",
+        "Browsable program pages, all tiers: elements the FY2026 workbooks " +
+        "list, plus elements only earlier editions list.",
     },
     {
       id: "index-rows",

@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
 
 import {
+  decadeProgramRow,
   deriveExhibitFamily,
+  isDecadeDetails,
   isIngestedServiceOrg,
   isRollupDetails,
   isZeroContentDetails,
@@ -269,5 +271,106 @@ describe("isZeroContentDetails", () => {
       ],
     });
     expect(isZeroContentDetails(withNarrative)).toBe(false);
+  });
+});
+
+// ── ROADMAP #28 — the decade tier ──────────────────────────────────────────
+
+/** Minimal decade sidecar: no FY2026 workbook row, no detail, no
+ *  trajectory — only the cited pre-PB2026 series. */
+function decadeDetails(overrides: Partial<ProgramDetails> = {}): ProgramDetails {
+  return {
+    awards: [],
+    budget_lines: [],
+    details: [],
+    mentions: [],
+    narratives: [],
+    summary: {
+      edition: 2026,
+      basis_preference: "toa",
+      cards: [],
+      reconciliation: [],
+      named_primes: [],
+    },
+    tier: "decade",
+    service_org: "F",
+    exhibit_family: "rdte",
+    title: "Ground Based Strategic Deterrent",
+    trajectory: null,
+    trajectory_fact_ids: null,
+    decade_series: {
+      actuals: [
+        {
+          fy: 2016,
+          v: 64966,
+          fid: "2f5055bcb9d2ea0f",
+          edition: 2018,
+          basis: "toa",
+          measure: "actuals",
+        },
+      ],
+    },
+    decade_absent: {
+      first_edition: 2018,
+      last_edition: 2024,
+      edition_count: 5,
+      fy_min: 2016,
+      fy_max: 2024,
+      renumber: false,
+      has_successor: false,
+    },
+    ...overrides,
+  } as ProgramDetails;
+}
+
+describe("decade tier (ROADMAP #28)", () => {
+  it("recognises the tier, and does not confuse it with rollup", () => {
+    expect(isDecadeDetails(decadeDetails())).toBe(true);
+    expect(isRollupDetails(decadeDetails())).toBe(false);
+    expect(isDecadeDetails(rollupDetails())).toBe(false);
+  });
+
+  it("takes exhibit_family from the sidecar, not from the empty budget_lines", () => {
+    // The whole point: deriveExhibitFamily([]) is the generic "budget", which
+    // would be what every one of these 553 pages rendered without the
+    // exporter-supplied field.
+    expect(deriveExhibitFamily([])).toBe("budget");
+    expect(decadeProgramRow("0605230F", decadeDetails()).exhibit_family).toBe("rdte");
+  });
+
+  it("keeps the org CODE, never the humanized name (the #30 defect)", () => {
+    expect(decadeProgramRow("0605230F", decadeDetails()).org).toBe("F");
+  });
+
+  it("declares no reconciliation verdict and no trajectory", () => {
+    const row = decadeProgramRow("0605230F", decadeDetails());
+    expect(row.reconciled_in_scope).toBeNull();
+    expect(row.trajectory).toBeNull();
+    expect(row.hhi).toBeNull();
+  });
+
+  it("is INDEXABLE on its cited decade figures alone", () => {
+    // Pre-#28 this page had no budget_lines, no trajectory and no prose, so
+    // `figures` was [] and [].every() is true — all 553 pages would have
+    // been noindexed and dropped from the sitemap.
+    expect(isZeroContentDetails(decadeDetails())).toBe(false);
+  });
+
+  it("still calls an all-zero decade series zero-content", () => {
+    const zero = decadeDetails({
+      decade_series: {
+        actuals: [
+          {
+            fy: 2016,
+            v: 0,
+            fid: "2f5055bcb9d2ea0f",
+            edition: 2018,
+            basis: "toa",
+            measure: "actuals",
+          },
+        ],
+      },
+    });
+    expect(isZeroContentDetails(zero)).toBe(true);
   });
 });

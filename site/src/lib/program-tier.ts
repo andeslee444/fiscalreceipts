@@ -5,6 +5,10 @@
  *            after the Phase 5G Army/AF/SF archive round; grows as books land).
  *   rollup — sidecars carrying only R-1/P-1 workbook figures + trajectory
  *            (tier:'rollup', service_org, title on the sidecar).
+ *   decade — ROADMAP #28: sidecars carrying only the CITED pre-PB2026
+ *            decade series (tier:'decade'). No FY2026 workbook row exists
+ *            for these elements at all, so budget_lines/details/narratives
+ *            are empty and `trajectory` is null. 553 pages.
  *
  * Universal module (no fs, no server-only): data.ts, sitemap.ts, and the
  * program page all consume these; unit tests construct sidecar objects
@@ -81,6 +85,24 @@ export function isRollupDetails(details: ProgramDetails): boolean {
 }
 
 /**
+ * True when the sidecar is a ROADMAP #28 decade-tier export: cited
+ * President's Budget history from editions BEFORE PB2026, and no PB2026
+ * R-1/P-1 line at all.
+ *
+ * Distinct from the rollup tier in the one way that matters to every
+ * sentence such a page renders: a rollup page HAS FY2026 workbook figures
+ * and lacks the R-2/P-40 narrative behind them; a decade page has no FY2026
+ * record of any kind. The two tiers' empty states, WHAT-IT-IS card and
+ * coverage notes therefore say different things, and conflating them would
+ * put the rollup tier's "the {service} FY2026 J-book is ingested, but this
+ * element carries no R-2/P-40 narrative" onto a page whose element is not in
+ * the FY2026 books at all.
+ */
+export function isDecadeDetails(details: ProgramDetails): boolean {
+  return details.tier === "decade";
+}
+
+/**
  * Exhibit family for a rollup page, derived from its workbook lines:
  * R-1 → rdte, P-1/P-1R → procurement; mixed → the family with more lines;
  * no lines → the honest generic "budget".
@@ -152,11 +174,52 @@ export function rollupProgramRow(
 }
 
 /**
+ * ProgramRow for a ROADMAP #28 decade-tier page. Same synthesis as the
+ * rollup tier — a decade sidecar carries the same title / service_org /
+ * (null) trajectory fields, and for the same reason: there is no
+ * programs.json row to read them from — with two departures.
+ */
+export function decadeProgramRow(
+  peBli: string,
+  details: ProgramDetails,
+): ProgramRow {
+  return {
+    ...rollupProgramRow(peBli, details),
+    // exhibit_family: deriveExhibitFamily reads budget_lines, which is empty
+    // by construction on this tier (the PB2026 workbook has no row for this
+    // element), so it would return the generic "budget" for all 553 of these
+    // pages. The exporter derives it from the page's OWN older-edition
+    // workbook rows and ships it; the fallback keeps a pre-#28 sidecar
+    // rendering rather than throwing.
+    exhibit_family:
+      details.exhibit_family ?? deriveExhibitFamily(details.budget_lines),
+    // award_count: zero for every decade page in the shipped corpus
+    // (fct_budget_to_awards carries no row for any of them — verified, not
+    // assumed). Spelled out rather than inherited so a future crosswalk that
+    // DOES reach these lines flows through instead of being pinned to 0.
+    award_count: details.awards.length,
+  };
+}
+
+/**
  * noindex policy (Phase 5F §2a): a page whose ONLY content is zero-valued
  * figure line(s) — no details, narratives, awards, or mentions, and every
- * workbook amount and trajectory value is 0 (or absent) — is built but
+ * workbook, trajectory and decade value is 0 (or absent) — is built but
  * noindexed and excluded from the sitemap (same policy as zero-mention
  * filings). Pages with any non-zero figure or any prose stay indexable.
+ *
+ * ROADMAP #28 widened the figure set to `decade_series`. It HAD to: a
+ * decade-tier page carries no budget_lines, no trajectory and no prose, so
+ * on the pre-#28 predicate `figures` was the empty array, `[].every()` is
+ * true, and all 553 pages would have been built, noindexed and dropped from
+ * sitemap.xml — the corpus's whole pre-PB2026 history published to nobody.
+ * The decade points are cited workbook grains: they are the most
+ * index-worthy thing on those pages, not an absence of content.
+ *
+ * The pages this predicate is FOR still fail it: a sidecar with an
+ * all-zero decade series (8 keys in the shipped warehouse, which #28's own
+ * eligibility filter already declines to build) counts its zeros here like
+ * any other zero figure.
  */
 export function isZeroContentDetails(details: ProgramDetails): boolean {
   if (
@@ -172,6 +235,11 @@ export function isZeroContentDetails(details: ProgramDetails): boolean {
   if (t) {
     for (const v of [t.fy2024_actuals, t.fy2025_total, t.fy2026_total]) {
       if (v !== null && v !== undefined) figures.push(v);
+    }
+  }
+  for (const points of Object.values(details.decade_series ?? {})) {
+    for (const p of points ?? []) {
+      if (p.v !== null && p.v !== undefined) figures.push(p.v);
     }
   }
   return figures.every((v) => v === 0);

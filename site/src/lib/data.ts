@@ -825,6 +825,39 @@ export interface Fy2026Absent {
   has_successor: boolean;
 }
 
+/**
+ * ROADMAP #28 — the decade-only tier's absence block.
+ *
+ * Present on EVERY decade-tier sidecar and nowhere else. A decade-only page
+ * is one whose program element has cited President's Budget history and no
+ * PB2026 R-1/P-1 line AT ALL — not a blank FY2026 cell on a line that is
+ * still listed (that is Fy2026Absent above, a different record and a
+ * different sentence), but no row.
+ *
+ * Every field is derived from the page's OWN rendered decade series and
+ * lineage rail, so gate 21 leg (k) recomputes the whole block from the
+ * sidecar and checks the rendered sentence against what the page displays.
+ *
+ * `renumber` is true ONLY when `last_edition` is PB2025 — the edition
+ * immediately before this one — so the PB2026-renumber explanation renders
+ * only where the line's disappearance really is a PB2025 → PB2026 event. A
+ * line last carried in PB2019 gets the other sentence; blaming PB2026 for it
+ * would be the #32(a) defect in a new place.
+ */
+export interface DecadeAbsent {
+  /** Earliest PB edition the page publishes a figure from. */
+  first_edition: number;
+  /** Latest — and, by the exporter's eligibility filter, the last edition
+   *  whose R-1/P-1 workbook carries this line at all. */
+  last_edition: number;
+  /** Distinct PB editions behind the page's figures (may have gaps). */
+  edition_count: number;
+  fy_min: number;
+  fy_max: number;
+  renumber: boolean;
+  has_successor: boolean;
+}
+
 export interface ProgramDetails {
   awards: ProgramAward[];
   budget_lines: ProgramBudgetLine[];
@@ -858,16 +891,31 @@ export interface ProgramDetails {
    */
   fy2026_absent?: Fy2026Absent;
   /**
+   * ROADMAP #28: this page's program element has no PB2026 R-1/P-1 line at
+   * all, and everything it shows comes from earlier editions. Present on
+   * every tier:"decade" sidecar, absent on every other.
+   */
+  decade_absent?: DecadeAbsent;
+  /**
    * Phase 5F rollup-tier fields (Batch A): present ONLY on the rollup
    * sidecars (R-1/P-1 figures + trajectory, no J-book detail) — ~254 after
-   * the Phase 5G Army/AF/SF archive round. The ~1,741 full-tier sidecars
+   * the Phase 5G Army/AF/SF archive round — and on the ROADMAP #28
+   * decade-tier sidecars, which carry the same fields for the same reason
+   * (no programs.json row to read them from). The ~1,741 full-tier sidecars
    * carry none of these — their program row lives in programs.json.
    */
-  tier?: "rollup";
+  tier?: "rollup" | "decade";
   service_org?: string;
   title?: string;
   trajectory?: ProgramTrajectory | null;
   trajectory_fact_ids?: ProgramTrajectoryFactIds | null;
+  /**
+   * ROADMAP #28 (decade tier only): R-1 vs P-1 majority across the page's
+   * OWN older-edition workbook rows. The rollup tier derives this from
+   * `budget_lines` (deriveExhibitFamily); a decade page's budget_lines array
+   * is empty by construction, so the exporter computes it and ships it.
+   */
+  exhibit_family?: string | null;
 }
 
 const _programDetails = new Map<string, ProgramDetails>();
@@ -1037,6 +1085,50 @@ export function getProgramSitemapSlugs(): string[] {
   // them.
   _programSitemapSlugs = [...indexable, ...getSplitProgramKeys()];
   return _programSitemapSlugs;
+}
+
+let _tierPageCounts: { rollup: number; decade: number } | null = null;
+
+/**
+ * Program pages by NON-FULL tier, counted from the sidecars themselves
+ * (ROADMAP #28). Returns { rollup, decade }.
+ *
+ * The site's coverage prose used to say "the other N pages carry cited
+ * R-1/P-1 workbook figures only", deriving N as programPages − detailGrade.
+ * That subtraction was exact while the non-detail remainder was ONE thing.
+ * #28 makes it two: the rollup tier (an FY2026 workbook line with no
+ * matching R-2/P-40 narrative) and the decade tier (no FY2026 workbook line
+ * at all). Left as a subtraction, every one of those sentences would have
+ * become false for 553 pages the moment this tier shipped — the same "true
+ * number, false label" shape three independent reviews found on this site.
+ *
+ * Derived, never a literal: the tier is a field on the artifact the page
+ * renders from. Cheap byte prefilter, like getDetailGradeCount above.
+ */
+export function getTierPageCounts(): { rollup: number; decade: number } {
+  if (_tierPageCounts) return _tierPageCounts;
+  const dir = join(jsonDir(), "program_details");
+  if (!existsSync(dir)) return (_tierPageCounts = { rollup: 0, decade: 0 });
+  let rollup = 0;
+  let decade = 0;
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    let raw: string;
+    try {
+      raw = readFileSync(join(dir, f), "utf8");
+    } catch {
+      continue;
+    }
+    if (!raw.includes('"tier"')) continue;
+    let tier: unknown;
+    try {
+      tier = (JSON.parse(raw) as { tier?: unknown }).tier;
+    } catch {
+      continue; // malformed — leg d / getCorpus report it
+    }
+    if (tier === "rollup") rollup++;
+    else if (tier === "decade") decade++;
+  }
+  return (_tierPageCounts = { rollup, decade });
 }
 
 let _detailGradeCount: number | null = null;

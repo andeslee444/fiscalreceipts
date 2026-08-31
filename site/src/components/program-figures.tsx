@@ -7,6 +7,7 @@ import { CoverageNote } from "@/components/coverage-note";
 import { ScopeNote } from "@/components/notes";
 import { normalizeExhibitFamily } from "@/lib/basis";
 import type {
+  DecadeAbsent,
   DecadeSeries,
   Fy26Split,
   Fy2026Absent,
@@ -331,6 +332,123 @@ export function Fy2026AbsentNote({
   );
 }
 
+/**
+ * DecadeOnlyNote — the ROADMAP #28 tier's absence statement.
+ *
+ * A decade-only page is more exposed to the #32(a) defect than any other
+ * page on this site, because EVERYTHING it says is about absence. #32(a)'s
+ * first version shipped a "no FY2026 request" note that two independent
+ * reviews found false on 179 of the 319 pages it rendered on, and this
+ * component is written against that post-mortem clause by clause:
+ *
+ *   · THE HEADLINE NAMES THE RECORD THAT IS BLANK, and it is a DIFFERENT
+ *     record from #32(a)'s. There, the PB2026 workbook carries the line and
+ *     leaves the FY2026 cell empty. Here it carries no row for the element
+ *     at all — a stronger and separate fact, so a separate sentence. The two
+ *     notes never render on the same page: the exporter's own predicates are
+ *     mutually exclusive (Fy2026AbsentNote needs FY2024/FY2025 rows in
+ *     `budget_lines`, which is empty by construction on this tier).
+ *
+ *   · NO DOCUMENTED ZERO IS HIDDEN. There is none to hide: the FY2026 J-book
+ *     detail and narrative queries are FY2026-fenced and return zero rows for
+ *     every element on this tier (verified across all 553, not assumed), so
+ *     `details` is empty and the page publishes no FY2026 figure of any kind
+ *     to contradict.
+ *
+ *   · IT NAMES THE CARDS ABOVE IT. All four summary cards on a decade page
+ *     read absent, labelled "Not in the FY2026 J-books we ingested" — true,
+ *     and edition-scoped, but a reader who skims it as "no FY2024 actuals
+ *     exist" would be wrong about a page whose own table cites them from
+ *     PB2025. The note says which edition those cards read and which
+ *     editions the table below reads, so the two cannot be confused.
+ *
+ *   · THE RENUMBER EXPLANATION IS CONDITIONAL. #32(a) told 319 pages "PB2026
+ *     renumbered program elements at scale" as the reason their record stops.
+ *     For a line last carried in PB2019 that attributes the disappearance to
+ *     an event six editions later. `renumber` is set only where the line
+ *     survived to PB2025 — the edition immediately before this one — so its
+ *     disappearance really is a PB2025 → PB2026 event. 101 of 553 pages.
+ *
+ *   · THE SUCCESSOR CLAUSE FOLLOWS THE PAGE'S OWN RAIL, the fix that closed
+ *     the five pages denying a successor they named with a citation three
+ *     inches below.
+ *
+ *   · NO FIGURE IS MINTED. The only numbers are edition and fiscal years,
+ *     each read from the page's own decade payload.
+ *
+ * ScopeNote, not CautionNote: this is scope disclosure about what the corpus
+ * covers, not a warning about a number's reliability (notes.tsx).
+ */
+export function DecadeOnlyNote({
+  decadeAbsent,
+}: {
+  decadeAbsent?: DecadeAbsent | null;
+}) {
+  if (!decadeAbsent) return null;
+  const {
+    first_edition: first,
+    last_edition: last,
+    edition_count: count,
+    fy_min: fyMin,
+    fy_max: fyMax,
+    renumber,
+    has_successor: hasSuccessor,
+  } = decadeAbsent;
+  return (
+    <ScopeNote label={null} className="mt-3">
+      <p
+        data-decade-only=""
+        className="text-xs leading-relaxed text-muted-foreground"
+      >
+        <strong className="text-foreground">
+          No FY2026 R-1/P-1 workbook line for this program element.
+        </strong>{" "}
+        The FY2026 President&apos;s Budget request workbooks carry no row for
+        it at all — not a blank FY2026 cell on a line that is still listed,
+        but no line. The summary cards above read that one edition, which is
+        why they are empty; the decade figures below read the editions that
+        do carry this line.{" "}
+        {renumber ? (
+          <>
+            It last appears in the PB{last} workbook, the edition immediately
+            before this one. PB2026 renumbered program elements at scale
+            across the services and defense agencies, so this work may
+            continue under a different number.{" "}
+          </>
+        ) : (
+          <>
+            It last appears in the PB{last} workbook; no later President&apos;s
+            Budget edition in this corpus carries it.{" "}
+          </>
+        )}
+        {count === 1 ? (
+          <>
+            The figures below come from that single edition, and report
+            fiscal years FY{fyMin} to FY{fyMax}.
+          </>
+        ) : (
+          <>
+            The figures below are cited to {count} President&apos;s Budget
+            editions, the earliest PB{first} and the latest PB{last}, and
+            report fiscal years FY{fyMin} to FY{fyMax}.
+          </>
+        )}{" "}
+        {hasSuccessor ? (
+          <>
+            Where this line&apos;s funding went is recorded under Program
+            Lineage below.
+          </>
+        ) : (
+          <>
+            No ingested budget document in this corpus states a successor for
+            this line.
+          </>
+        )}
+      </p>
+    </ScopeNote>
+  );
+}
+
 function SummaryCardCell({
   card,
   reconKeys,
@@ -417,6 +535,9 @@ interface ProgramFiguresProps {
   /** ROADMAP #32a — from the sidecar's fy2026_absent field; absent when the
    *  PB2026 workbook DOES carry an FY2026 row for this line. */
   fy2026Absent?: Fy2026Absent | null;
+  /** ROADMAP #28 — from the sidecar's decade_absent field; present ONLY on
+   *  the decade tier, where the PB2026 workbook carries no row at all. */
+  decadeAbsent?: DecadeAbsent | null;
 }
 
 export function ProgramFigures({
@@ -424,6 +545,7 @@ export function ProgramFigures({
   summary,
   fy26Split = null,
   fy2026Absent = null,
+  decadeAbsent = null,
 }: ProgramFiguresProps) {
   const reconKeys = reconKeySet(summary);
   // §48: every TOA card on this grid is this ONE program's own figure, so
@@ -466,6 +588,10 @@ export function ProgramFigures({
           that does and does not mean. Sits directly under the cards it
           explains, above the generic partial-year note. */}
       <Fy2026AbsentNote fy2026Absent={fy2026Absent} />
+
+      {/* ROADMAP #28: this element is not in the FY2026 workbooks at all.
+          Mutually exclusive with the note above — see DecadeOnlyNote. */}
+      <DecadeOnlyNote decadeAbsent={decadeAbsent} />
 
       {/* FY2026 partial-year scope note — G2 contract
           (data-coverage="fy2026-partial") */}

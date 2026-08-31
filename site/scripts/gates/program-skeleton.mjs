@@ -1,8 +1,9 @@
 /**
  * gate 21 — program_skeleton_gate (Phase 5F §2d)
  *
- * Every program page — full tier AND rollup tier — renders the SAME ordered
- * section skeleton. Sampled pages from both tiers are checked for:
+ * Every program page — full tier, rollup tier AND the ROADMAP #28 decade
+ * tier — renders the SAME ordered section skeleton. Sampled pages from every
+ * tier are checked for:
  *
  * (a) All 12 [data-section] markers present in the canonical order
  *     (independent copy of src/components/program-section.tsx
@@ -37,6 +38,10 @@
  *     from lobbying filings — reads as a fixed sentence that puts the absence
  *     of a contract before the names, on evidence tiers strong enough to name
  *     anyone (tri-persona Wave 3) — see leg j's own block at the bottom.
+ * (k) A decade-only page (ROADMAP #28: cited pre-PB2026 history, no FY2026
+ *     workbook line at all) states its absence, states it about the record
+ *     that is actually blank, and states nothing the page itself contradicts
+ *     — see leg k's own block at the bottom.
  */
 
 import fs from "fs";
@@ -99,6 +104,16 @@ function isZeroContent(d) {
       if (v !== null && v !== undefined) figures.push(v);
     }
   }
+  // ROADMAP #28 widened the figure set here for the same reason the source
+  // did: a decade-tier sidecar carries no budget_lines, no trajectory and no
+  // prose, so on the pre-#28 predicate `figures` was [] and [].every() is
+  // true — all 553 pages would be classed zero-content, noindexed and
+  // dropped from sitemap.xml, and this gate would have DEMANDED that.
+  for (const points of Object.values(d.decade_series ?? {})) {
+    for (const p of points ?? []) {
+      if (p.v !== null && p.v !== undefined) figures.push(p.v);
+    }
+  }
   return figures.every((v) => v === 0);
 }
 
@@ -127,6 +142,7 @@ export async function runProgramSkeletonGate() {
   // ── Classify sidecars by tier + zero-content ─────────────────────────────
   const fullSlugs = [];
   const rollupSlugs = [];
+  const decadeSlugs = [];
   const zeroContentSlugs = [];
   const sidecars = new Map();
   for (const f of fs.readdirSync(detailsDir).filter((x) => x.endsWith(".json")).sort()) {
@@ -139,17 +155,25 @@ export async function runProgramSkeletonGate() {
       continue;
     }
     sidecars.set(slug, d);
-    (d.tier === "rollup" ? rollupSlugs : fullSlugs).push(slug);
+    // ROADMAP #28: a THIRD tier. Left unclassified it would fall into
+    // fullSlugs, and leg (d) would look for project anchors on a page with
+    // no project rows while leg (f) demanded a field-sourced WHAT-IT-IS card
+    // from a page that has no fields to build one from.
+    if (d.tier === "rollup") rollupSlugs.push(slug);
+    else if (d.tier === "decade") decadeSlugs.push(slug);
+    else fullSlugs.push(slug);
     if (isZeroContent(d)) zeroContentSlugs.push(slug);
   }
   notes.push(
-    `universe: ${fullSlugs.length} full + ${rollupSlugs.length} rollup pages, ` +
+    `universe: ${fullSlugs.length} full + ${rollupSlugs.length} rollup + ` +
+      `${decadeSlugs.length} decade pages, ` +
       `${zeroContentSlugs.length} zero-content (noindex)`
   );
 
   const sample = [
     ...spreadSample(fullSlugs, SAMPLE_PER_TIER),
     ...spreadSample(rollupSlugs, SAMPLE_PER_TIER),
+    ...spreadSample(decadeSlugs, SAMPLE_PER_TIER),
   ];
 
   // ── (a)+(b)+(c)+(d) per sampled page ─────────────────────────────────────
@@ -162,7 +186,8 @@ export async function runProgramSkeletonGate() {
     }
     const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
     const d = sidecars.get(slug);
-    const tier = d.tier === "rollup" ? "rollup" : "full";
+    const tier =
+      d.tier === "rollup" ? "rollup" : d.tier === "decade" ? "decade" : "full";
     let pageOk = true;
 
     // (a) canonical section order
@@ -301,6 +326,9 @@ export async function runProgramSkeletonGate() {
 
   // ── (j) WHO GETS IT: lobbying evidence is never award evidence ───────────
   runWhoGetsItLeg({ errors, notes, sidecars });
+
+  // ── (k) the decade-only tier's absence claims (ROADMAP #28) ─────────────
+  runDecadeOnlyLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -464,6 +492,7 @@ function runWhatItIsLeg({ errors, notes }) {
     .sort();
   const fullNoDossier = [];
   const rollups = [];
+  const decades = [];
   for (const slug of allSlugs) {
     if (dossierSlugs.has(slug)) continue;
     let d;
@@ -472,12 +501,15 @@ function runWhatItIsLeg({ errors, notes }) {
     } catch {
       continue;
     }
-    (d.tier === "rollup" ? rollups : fullNoDossier).push(slug);
+    if (d.tier === "rollup") rollups.push(slug);
+    else if (d.tier === "decade") decades.push(slug);
+    else fullNoDossier.push(slug);
   }
 
   for (const [slugs, wantSource, label] of [
     [spreadSample(fullNoDossier, 6), "fields", "full-tier (no dossier)"],
     [spreadSample(rollups, 6), "rollup", "rollup-tier"],
+    [spreadSample(decades, 6), "decade", "decade-tier"],
   ]) {
     for (const slug of slugs) {
       const p = pageHtmlPath(slug);
@@ -509,11 +541,31 @@ function runWhatItIsLeg({ errors, notes }) {
             `("Summary figures only: …") — got "${text.slice(0, 90)}…"`
         );
       }
+      // ROADMAP #28: the decade tail is a DIFFERENT sentence, and the rollup
+      // one would be false here — it says the service book carries no
+      // R-2/P-40 detail for this line, when no FY2026 book carries the line
+      // at all. Both directions checked, so a copy-paste of the rollup tail
+      // onto this tier fails.
+      if (wantSource === "decade") {
+        if (!text.includes("History only")) {
+          errors.push(
+            `program-skeleton(f): /program/${slug}/ (decade) WHAT-IT-IS lost its honest tail ` +
+              `("History only: …") — got "${text.slice(0, 90)}…"`
+          );
+        }
+        if (text.includes("Summary figures only")) {
+          errors.push(
+            `program-skeleton(f): /program/${slug}/ (decade) WHAT-IT-IS carries the ROLLUP tail ` +
+              `("Summary figures only: …"), which claims an FY2026 book that has no line for ` +
+              `this element — got "${text.slice(0, 120)}…"`
+          );
+        }
+      }
     }
   }
   notes.push(
     `leg f: sampled ${Math.min(6, fullNoDossier.length)} field-sourced + ` +
-      `${Math.min(6, rollups.length)} rollup cards ✓`
+      `${Math.min(6, rollups.length)} rollup + ${Math.min(6, decades.length)} decade cards ✓`
   );
 }
 
@@ -1673,5 +1725,457 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
       `J-book ${census.jbook}, lobbying ${census.lobbying}, honest absence ` +
       `${census.none}; every non-award tier states no dollars and every named ` +
       `company is ${[...WHO_NAME_EVIDENCE].join("/")}-tier`,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg k — the decade-only tier's absence claims (ROADMAP #28)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 553 program elements carry cited President's Budget history and no FY2026
+// R-1/P-1 workbook line at all. Before #28 they generated no page: the
+// decade existed in the warehouse and was not browsable. They have pages
+// now, and EVERYTHING those pages say is about absence — which makes them
+// the most exposed surface on this site to the defect #32(a) shipped and two
+// independent reviews caught: a note that was true of the predicate the
+// exporter used and false of the page it rendered on, 179 times.
+//
+// This leg is written against that post-mortem. What it pins, on the BUILT
+// artifact, over the WHOLE page universe (no sampling — the negative
+// direction is the half a sample would miss):
+//
+//   1. POPULATION, both directions. Every tier:"decade" sidecar renders
+//      [data-decade-only]; no other page does. A page carrying this note
+//      while its own budget_lines hold an FY2026 row would be making a false
+//      claim about its own money.
+//   2. THE TIER'S PREMISE, recomputed from the sidecar rather than trusted:
+//      budget_lines empty, details empty, a non-empty cited decade_series.
+//      Those three are what make every sentence in the note true; if the
+//      exporter ever ships a decade sidecar with an FY2026 workbook row on
+//      it, the note's first sentence is a lie and this fails.
+//   3. THE BLOCK, recomputed independently from the sidecar's OWN
+//      decade_series and lineage rail — first/last edition, edition count,
+//      fy span, the renumber flag and the successor flag. Same convention as
+//      CANONICAL_SECTIONS and leg (g): two implementations, and a drift
+//      between them is a real failure.
+//   4. THE SENTENCE says all of it, verbatim, with the recomputed numbers —
+//      and the CONDITIONAL clauses render only where they hold:
+//        · the PB2026-renumber explanation ONLY when the line survived to
+//          PB2025. #32(a) told 319 pages "PB2026 renumbered at scale" as the
+//          reason their record stops; on a line last carried in PB2019 that
+//          blames an event six editions later, and both directions are
+//          checked here so it cannot creep back;
+//        · the successor POINTER where the page renders a cited successor
+//          rail, the DENIAL where it does not — the fix that closed the five
+//          #32(a) pages denying a successor they named three inches below.
+//   5. THE FY SPAN IS CHECKED AGAINST THE RENDERED TABLE, not only against
+//      the sidecar: the note's FY{min}–FY{max} must be the first and last
+//      fiscal year the page's own decade grid actually draws a cited figure
+//      for. This is the "check the claim against what the page displays"
+//      rule that leg (g) had to learn.
+//   6. It never claims an ending, and never names another program element —
+//      the same two rules, and the same two mechanisms, as leg (g).
+//   7. The two absence notes are MUTUALLY EXCLUSIVE. A page may not carry
+//      both [data-decade-only] and [data-fy2026-absent]: they are claims
+//      about different blank records, and a page making both is making one
+//      of them falsely.
+
+/** Non-vacuity floor: the shipped corpus holds exactly 553 decade-only pages
+ *  (measured 2026-08-31 from fct_decade_series — keys with a positive grain,
+ *  no PB2026 page, not an era procurement key, route-safe: 3,771 candidates
+ *  − 1,994 that already have a page − 1,214 era keys − 8 all-zero − 2
+ *  route-unsafe). A drop means either the predicate broke or the corpus
+ *  changed — RE-MEASURE and re-derive this number, never lower it to
+ *  whatever the build produced. */
+const MIN_DECADE_ONLY_PAGES = 553;
+
+/** The stable hook a decade page must carry. */
+const DECADE_ONLY_ATTR = "data-decade-only";
+
+/** Sentences every decade note must contain, whatever the page. */
+const DECADE_REQUIRED = [
+  "No FY2026 R-1/P-1 workbook line for this program element.",
+  "carry no row for it at all",
+  "The summary cards above read that one edition",
+];
+
+/** The renumber explanation — must render iff the line survived to PB2025. */
+const DECADE_RENUMBER =
+  "PB2026 renumbered program elements at scale across the services and defense agencies";
+/** Its mutually exclusive alternative. */
+const DECADE_NO_LATER =
+  "no later President's Budget edition in this corpus carries it";
+
+/** Successor clauses — shared verbatim with the #32(a) note (leg g). */
+const DECADE_SUCCESSOR_DENIAL = FY2026_SUCCESSOR_DENIAL;
+const DECADE_SUCCESSOR_POINTER = FY2026_SUCCESSOR_POINTER;
+
+/**
+ * Independent recompute of the exporter's `decade_absent` payload
+ * (src/govbudget/export_site.py, _decade_absent_block) from the sidecar's
+ * OWN decade_series — the exact points the page's decade grid draws.
+ */
+function recomputeDecadeAbsent(d) {
+  const editions = new Set();
+  const fys = new Set();
+  for (const points of Object.values(d.decade_series ?? {})) {
+    for (const p of points ?? []) {
+      if (p.edition != null) editions.add(Number(p.edition));
+      if (p.fy != null) fys.add(Number(p.fy));
+    }
+  }
+  if (editions.size === 0 || fys.size === 0) return null;
+  const lastEdition = Math.max(...editions);
+  return {
+    first_edition: Math.min(...editions),
+    last_edition: lastEdition,
+    edition_count: editions.size,
+    fy_min: Math.min(...fys),
+    fy_max: Math.max(...fys),
+    // PB2026 − 1. The note may blame the PB2026 renumbering only where the
+    // line was actually in the edition PB2026 replaced.
+    renumber: lastEdition === 2025,
+    has_successor: Boolean(d.lineage?.rail?.successors?.length),
+  };
+}
+
+/** First/last fiscal year the page's own decade grid draws a CITED figure
+ *  for — read from the rendered table, not from the sidecar. */
+function renderedDecadeFySpan(root) {
+  const fys = [];
+  const grid = root.querySelector('[data-testid="decade-grid"]');
+  if (!grid) return null;
+  for (const cell of grid.querySelectorAll("[data-decade-cell]")) {
+    if (!cell.querySelector("[data-amount]")) continue;
+    const m = /-(\d{4})$/.exec(cell.getAttribute("data-decade-cell") ?? "");
+    if (m) fys.push(Number(m[1]));
+  }
+  if (fys.length === 0) return null;
+  return { fy_min: Math.min(...fys), fy_max: Math.max(...fys) };
+}
+
+function runDecadeOnlyLeg({ errors, notes, sidecars }) {
+  // ── 1/2/3. the population and its premise, from the sidecars ────────────
+  const expected = new Map(); // slug -> recomputed block
+  let premiseBreaks = 0;
+  let blockDrift = 0;
+  for (const [slug, d] of sidecars) {
+    if (d.tier !== "decade") continue;
+
+    // 2. the premise. Each of these is what makes a sentence in the note
+    // true; report the first few and count the rest.
+    const why = [];
+    if ((d.budget_lines ?? []).length > 0) {
+      why.push(`${d.budget_lines.length} FY2026 workbook row(s)`);
+    }
+    if ((d.details ?? []).length > 0) {
+      why.push(`${d.details.length} J-book detail row(s)`);
+    }
+    const want = recomputeDecadeAbsent(d);
+    if (!want) why.push("no cited decade point");
+    if (why.length > 0) {
+      premiseBreaks++;
+      if (premiseBreaks <= 5) {
+        errors.push(
+          `program-skeleton(k): /program/${slug}/ is tier "decade" but has ${why.join(" and ")} — ` +
+            `the note says the FY2026 workbooks carry no row for this element and that its ` +
+            `figures come from earlier editions; that page contradicts it`,
+        );
+      }
+      continue;
+    }
+
+    // 3. the exporter's block vs. this recompute, field for field.
+    const got = d.decade_absent ?? null;
+    if (!got) {
+      blockDrift++;
+      if (blockDrift <= 5) {
+        errors.push(
+          `program-skeleton(k): /program/${slug}/ is tier "decade" but carries no ` +
+            `decade_absent block — the page would render its history with no statement ` +
+            `of why it stops`,
+        );
+      }
+      continue;
+    }
+    const diffs = Object.keys(want).filter((f) => want[f] !== got[f]);
+    if (diffs.length > 0) {
+      blockDrift++;
+      if (blockDrift <= 5) {
+        errors.push(
+          `program-skeleton(k): /program/${slug}/ decade_absent disagrees with the gate's own ` +
+            `recompute from this page's decade series on ${diffs.join(", ")} — ` +
+            `exporter ${JSON.stringify(got)}, recompute ${JSON.stringify(want)}`,
+        );
+      }
+      continue;
+    }
+    expected.set(slug, want);
+  }
+  if (premiseBreaks > 5) {
+    errors.push(
+      `program-skeleton(k): ${premiseBreaks} decade sidecars break the tier's premise in total ` +
+        `(first 5 listed)`,
+    );
+  }
+  if (blockDrift > 5) {
+    errors.push(
+      `program-skeleton(k): ${blockDrift} decade sidecars disagree with the recompute in total ` +
+        `(first 5 listed)`,
+    );
+  }
+
+  if (expected.size < MIN_DECADE_ONLY_PAGES) {
+    errors.push(
+      `program-skeleton(k): only ${expected.size} page(s) qualify as decade-only ` +
+        `(expected >= ${MIN_DECADE_ONLY_PAGES}) — the leg would be vacuous. Re-measure the ` +
+        `population from fct_decade_series and re-derive the floor; do not lower it to fit ` +
+        `the build`,
+    );
+    return;
+  }
+
+  // ── 4/5/6/7. one read pass over the WHOLE page universe ─────────────────
+  let withNote = 0;
+  let missing = 0;
+  let stray = 0;
+  let badNotes = 0;
+  let spanChecked = 0;
+  const renumberCounts = { renumber: 0, earlier: 0 };
+  for (const [slug, d] of sidecars) {
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) {
+      if (expected.has(slug)) {
+        errors.push(`program-skeleton(k): /program/${slug}/ not built`);
+      }
+      continue;
+    }
+    const html = fs.readFileSync(p, "utf8");
+    const marked = html.includes(DECADE_ONLY_ATTR);
+    const want = expected.get(slug) ?? null;
+
+    if (!want) {
+      // 1, negative direction. The note claims this element has no FY2026
+      // workbook line; on a page that has one, that is false about the
+      // page's own money.
+      if (marked) {
+        stray++;
+        if (stray <= 5) {
+          const fy26 = (d.budget_lines ?? []).filter((r) => r.fy === 2026).length;
+          const why = fy26 > 0
+            ? `its PB2026 workbook carries ${fy26} FY2026 row(s) on this page`
+            : `it is tier ${JSON.stringify(d.tier ?? "full")}, not the decade tier`;
+          errors.push(
+            `program-skeleton(k): /program/${slug}/ renders the decade-only note but ${why} — ` +
+              `the note is a false claim about this page`,
+          );
+        }
+      }
+      continue;
+    }
+
+    // 1, positive direction.
+    if (!marked) {
+      missing++;
+      if (missing <= 5) {
+        errors.push(
+          `program-skeleton(k): /program/${slug}/ publishes only PB${want.first_edition}–` +
+            `PB${want.last_edition} figures and renders no [${DECADE_ONLY_ATTR}] note — the ` +
+            `page shows a decade of money that stops, with nothing to say why (ROADMAP #28)`,
+        );
+      }
+      continue;
+    }
+
+    const root = parse(html, { comment: false });
+    const el = root.querySelector(`[${DECADE_ONLY_ATTR}]`);
+    if (!el) {
+      errors.push(
+        `program-skeleton(k): /program/${slug}/ mentions ${DECADE_ONLY_ATTR} but no element ` +
+          `carries it`,
+      );
+      continue;
+    }
+    const text = (el.text ?? "").replace(/\s+/g, " ").trim();
+    const say = (msg) => {
+      badNotes++;
+      if (badNotes <= 5) errors.push(msg);
+    };
+
+    // 7. the two absence notes are mutually exclusive.
+    if (html.includes(FY2026_ABSENT_ATTR)) {
+      say(
+        `program-skeleton(k): /program/${slug}/ carries BOTH the decade-only note and the ` +
+          `#32a renumber note — they are claims about different blank records (no row at ` +
+          `all vs. a blank FY2026 cell on a line that is listed), so one of them is false here`,
+      );
+    }
+
+    // 4. the fixed sentences.
+    for (const frag of DECADE_REQUIRED) {
+      if (!text.includes(frag)) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note is missing the required sentence ` +
+            `"${frag}" — got "${text.slice(0, 160)}…"`,
+        );
+      }
+    }
+    // 4. the year the record stops at, and the span the page publishes.
+    const lastFrag = `It last appears in the PB${want.last_edition} workbook`;
+    if (!text.includes(lastFrag)) {
+      say(
+        `program-skeleton(k): /program/${slug}/ note does not say "${lastFrag}" — it must name ` +
+          `the edition this page's own figures actually stop at (got "${text.slice(0, 160)}…")`,
+      );
+    }
+    const spanFrag = `FY${want.fy_min} to FY${want.fy_max}`;
+    if (!text.includes(spanFrag)) {
+      say(
+        `program-skeleton(k): /program/${slug}/ note does not report fiscal years ` +
+          `"${spanFrag}" — got "${text.slice(0, 160)}…"`,
+      );
+    }
+    if (want.edition_count > 1) {
+      const editionsFrag =
+        `cited to ${want.edition_count} President's Budget editions, the earliest ` +
+        `PB${want.first_edition} and the latest PB${want.last_edition}`;
+      if (!text.includes(editionsFrag)) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note does not state its edition span ` +
+            `("${editionsFrag}") — got "${text.slice(0, 200)}…"`,
+        );
+      }
+    } else if (!text.includes("that single edition")) {
+      say(
+        `program-skeleton(k): /program/${slug}/ publishes figures from exactly one edition but ` +
+          `the note does not say so — got "${text.slice(0, 160)}…"`,
+      );
+    }
+
+    // 4. the renumber clause, BOTH directions.
+    const saysRenumber = text.includes(DECADE_RENUMBER);
+    const saysNoLater = text.includes(DECADE_NO_LATER);
+    if (want.renumber) {
+      renumberCounts.renumber++;
+      if (!saysRenumber) {
+        say(
+          `program-skeleton(k): /program/${slug}/ last appears in PB2025 — the edition PB2026 ` +
+            `replaced — but the note omits the renumbering explanation`,
+        );
+      }
+      if (saysNoLater) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note says no later edition carries it, but its ` +
+            `own record runs to PB2025 and PB2026 is the only later edition — say which one it is`,
+        );
+      }
+    } else {
+      renumberCounts.earlier++;
+      if (saysRenumber) {
+        say(
+          `program-skeleton(k): /program/${slug}/ blames the PB2026 renumbering for a record that ` +
+            `stops at PB${want.last_edition} — the line was already gone ` +
+            `${2026 - want.last_edition} edition(s) before PB2026, so PB2026 did not do this. ` +
+            `This is the #32a defect (319 pages told the same story about their own year)`,
+        );
+      }
+      if (!saysNoLater) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note does not state that no later edition ` +
+            `carries this line — the limit must be stated, not left silent`,
+        );
+      }
+    }
+
+    // 4. the successor clause must agree with the page's own lineage rail.
+    if (want.has_successor) {
+      if (text.includes(DECADE_SUCCESSOR_DENIAL)) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note denies any document states a successor, ` +
+            `but this page renders a cited successor rail — both halves of that sentence are ` +
+            `false here`,
+        );
+      }
+      if (!text.includes(DECADE_SUCCESSOR_POINTER)) {
+        say(
+          `program-skeleton(k): /program/${slug}/ has a successor rail but the note does not ` +
+            `point the reader at it`,
+        );
+      }
+    } else if (!text.includes(DECADE_SUCCESSOR_DENIAL)) {
+      say(
+        `program-skeleton(k): /program/${slug}/ has no successor rail but the note omits the ` +
+          `denial — the limit must be stated, not left silent`,
+      );
+    }
+
+    // 6. it never claims an ending.
+    const bad = FY2026_ABSENT_FORBIDDEN.exec(text);
+    if (bad) {
+      say(
+        `program-skeleton(k): /program/${slug}/ note says "${bad[0]}" — absence from the ` +
+          `editions this corpus holds supports no such claim (this is the wording the 87 ` +
+          `withdrawn feed cards used)`,
+      );
+    }
+
+    // 6. it names no other program element.
+    const named = [...new Set(text.match(PE_TOKEN_RE) ?? [])].filter(
+      (c) => c !== slug && sidecars.has(c),
+    );
+    if (named.length > 0) {
+      say(
+        `program-skeleton(k): /program/${slug}/ note names program element(s) ${named.join(", ")} ` +
+          `— the corpus cannot prove a successor for a line that left the workbooks, so the ` +
+          `note must not name one`,
+      );
+    }
+
+    // 5. the FY span against the RENDERED grid, not only the sidecar.
+    const rendered = renderedDecadeFySpan(root);
+    if (!rendered) {
+      say(
+        `program-skeleton(k): /program/${slug}/ renders the decade-only note but its decade grid ` +
+          `draws no cited figure — the note describes figures the page does not show`,
+      );
+    } else {
+      spanChecked++;
+      if (
+        rendered.fy_min !== want.fy_min ||
+        rendered.fy_max !== want.fy_max
+      ) {
+        say(
+          `program-skeleton(k): /program/${slug}/ note reports FY${want.fy_min}–FY${want.fy_max} ` +
+            `but the decade grid on the page draws cited figures for ` +
+            `FY${rendered.fy_min}–FY${rendered.fy_max}`,
+        );
+      }
+    }
+
+    withNote++;
+  }
+
+  if (missing > 5) {
+    errors.push(
+      `program-skeleton(k): ${missing} decade-only pages render no note in total (first 5 listed)`,
+    );
+  }
+  if (stray > 5) {
+    errors.push(
+      `program-skeleton(k): ${stray} pages outside the decade tier render the note in total ` +
+        `(first 5 listed)`,
+    );
+  }
+  if (badNotes > 5) {
+    errors.push(
+      `program-skeleton(k): ${badNotes} note defects in total (first 5 listed)`,
+    );
+  }
+  notes.push(
+    `leg k: ${withNote}/${expected.size} decade-only page(s) state their absence ` +
+      `(${renumberCounts.renumber} last carried in PB2025 and say PB2026 renumbered; ` +
+      `${renumberCounts.earlier} stopped earlier and say no later edition carries them); ` +
+      `${spanChecked} FY spans matched against the page's own decade grid; ` +
+      `${stray} stray note(s) outside the tier`,
   );
 }

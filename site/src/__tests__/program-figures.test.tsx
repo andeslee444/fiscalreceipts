@@ -322,6 +322,106 @@ describe("ProgramFigures — PB2026 renumber note (ROADMAP #32a)", () => {
   });
 });
 
+describe("ProgramFigures — decade-only note (ROADMAP #28)", () => {
+  const DECADE = {
+    first_edition: 2017,
+    last_edition: 2024,
+    edition_count: 8,
+    fy_min: 2015,
+    fy_max: 2024,
+    renumber: false,
+    has_successor: false,
+  };
+  const noteText = (props: Record<string, unknown>) => {
+    const { container } = render(
+      <ProgramFigures program={PROGRAM} summary={SUMMARY} {...props} />,
+    );
+    const note = container.querySelector("[data-decade-only]");
+    return { container, note, text: note?.textContent?.replace(/\s+/g, " ").trim() };
+  };
+
+  it("renders nothing when the sidecar carries no decade_absent block", () => {
+    const { note } = noteText({});
+    expect(note).toBeNull();
+  });
+
+  it("names the blank record, the last edition, the span, and no successor", () => {
+    const { container, note, text } = noteText({ decadeAbsent: DECADE });
+    expect(note).not.toBeNull();
+    expect(text).toContain(
+      "No FY2026 R-1/P-1 workbook line for this program element.",
+    );
+    // The record that is blank is the WHOLE ROW, not an FY2026 cell — a
+    // different fact from #32(a)'s and therefore a different sentence.
+    expect(text).toContain("carry no row for it at all");
+    // The cards above it all read absent; the note says which edition they
+    // read so a reader cannot take them for a broader absence.
+    expect(text).toContain("The summary cards above read that one edition");
+    expect(text).toContain("It last appears in the PB2024 workbook");
+    expect(text).toContain(
+      "cited to 8 President's Budget editions, the earliest PB2017 and the latest PB2024",
+    );
+    expect(text).toContain("fiscal years FY2015 to FY2024");
+    expect(text).toContain(
+      "No ingested budget document in this corpus states a successor for this line.",
+    );
+    // No uncited figure in prose (gate 2), and no claim of an ending.
+    expect(text).not.toMatch(/\$\d/);
+    expect(text).not.toMatch(
+      /\b(zeroed|defunded|cancell?ed|cancellation|terminat(ed|ion))\b/i,
+    );
+    expect(container.querySelector('[data-note-kind="scope"]')).not.toBeNull();
+  });
+
+  it("blames the PB2026 renumbering ONLY where the line survived to PB2025", () => {
+    // The #32(a) defect, prevented: 319 pages were told "PB2026 renumbered
+    // at scale" as the reason their record stops. On a line last carried in
+    // PB2024 that attributes the disappearance to a later event.
+    const { text: earlier } = noteText({ decadeAbsent: DECADE });
+    expect(earlier).not.toContain("PB2026 renumbered program elements at scale");
+    expect(earlier).toContain(
+      "no later President's Budget edition in this corpus carries it",
+    );
+
+    const { text: renumbered } = noteText({
+      decadeAbsent: { ...DECADE, last_edition: 2025, renumber: true },
+    });
+    expect(renumbered).toContain("It last appears in the PB2025 workbook");
+    expect(renumbered).toContain("PB2026 renumbered program elements at scale");
+    expect(renumbered).not.toContain(
+      "no later President's Budget edition in this corpus carries it",
+    );
+  });
+
+  it("points at the lineage rail instead of denying a successor it has", () => {
+    const { text } = noteText({
+      decadeAbsent: { ...DECADE, has_successor: true },
+    });
+    expect(text).toContain(
+      "Where this line's funding went is recorded under Program Lineage below.",
+    );
+    expect(text).not.toContain(
+      "No ingested budget document in this corpus states a successor",
+    );
+  });
+
+  it("does not say 'editions' plural when the page publishes one", () => {
+    const { text } = noteText({
+      decadeAbsent: {
+        ...DECADE,
+        first_edition: 2019,
+        last_edition: 2019,
+        edition_count: 1,
+        fy_min: 2017,
+        fy_max: 2019,
+      },
+    });
+    expect(text).toContain("The figures below come from that single edition");
+    expect(text).toContain("fiscal years FY2017 to FY2019");
+    expect(text).not.toContain("the earliest PB2019 and the latest PB2019");
+  });
+});
+
 describe("ProgramFigures — summary union cards", () => {
   it("renders the union values with basis attributes + chip", () => {
     const { container } = render(

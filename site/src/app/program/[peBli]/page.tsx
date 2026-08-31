@@ -33,6 +33,8 @@ import type {
   WorkbookCitation,
 } from "@/lib/data";
 import {
+  decadeProgramRow,
+  isDecadeDetails,
   isIngestedServiceOrg,
   isRollupDetails,
   isZeroContentDetails,
@@ -113,15 +115,23 @@ export function generateStaticParams(): { peBli: string }[] {
 function resolveProgram(
   peBli: string,
   details: ProgramDetails,
-): { program: ProgramRow; tier: "full" | "rollup" } {
+): { program: ProgramRow; tier: "full" | "rollup" | "decade" } {
   const full = getProgramMap().get(peBli);
   if (full) return { program: full, tier: "full" };
   if (isRollupDetails(details)) {
     return { program: rollupProgramRow(peBli, details), tier: "rollup" };
   }
+  // ROADMAP #28 — the decade tier. Same synthesis path as rollup (no
+  // programs.json row exists for either), different exhibit-family source
+  // and, downstream of this, entirely different prose: a decade page's
+  // element is not in the FY2026 books at all.
+  if (isDecadeDetails(details)) {
+    return { program: decadeProgramRow(peBli, details), tier: "decade" };
+  }
   throw new Error(
-    `[program page] ${peBli} has a sidecar but is neither in programs.json ` +
-      `nor rollup-tier — export regression, refusing to render a broken page.`,
+    `[program page] ${peBli} has a sidecar but is in none of programs.json, ` +
+      `the rollup tier or the decade tier — export regression, refusing to ` +
+      `render a broken page.`,
   );
 }
 
@@ -599,6 +609,9 @@ export default async function ProgramPage({
     dossier,
     serviceOrg: details.service_org ?? "",
     serviceIngested,
+    // ROADMAP #28: the decade card names the edition the page's own decade
+    // table stops at. Absent on every other tier, where the branch is dead.
+    lastEdition: details.decade_absent?.last_edition ?? null,
   });
 
   return (
@@ -637,7 +650,7 @@ export default async function ProgramPage({
           plain text instead of a dead link (G1 contract).
           Rollup pages wrap the header in data-pagefind-body so their title /
           org / PE are deep-searchable (full pages index their narratives). */}
-      <div data-pagefind-body={tier === "rollup" ? "" : undefined}>
+      <div data-pagefind-body={tier === "full" ? undefined : ""}>
         <ProgramHeader
           program={program}
           category={category}
@@ -692,6 +705,7 @@ export default async function ProgramPage({
           summary={summary}
           fy26Split={fy26Split}
           fy2026Absent={details.fy2026_absent ?? null}
+          decadeAbsent={details.decade_absent ?? null}
         />
       </ProgramSection>
 
@@ -792,6 +806,22 @@ export default async function ProgramPage({
             </h2>
             <ServiceBooksNote serviceOrg={details.service_org ?? ""} />
           </div>
+        ) : tier === "decade" ? (
+          /* ROADMAP #28. The full-tier sentence below ("The J-book detail
+             for this line carries no separate mission or description
+             narrative — see the justification and line items below") is
+             FALSE here twice over: there is no J-book detail for this line
+             in this corpus, and there is no prose below to see. The rollup
+             note is false too — it names a service book that would carry
+             this element's narrative, and no FY2026 book carries this
+             element at all. */
+          <SectionEmpty title="Description">
+            No mission or description narrative for this line. Justification
+            narratives are ingested from the FY2026 President&apos;s Budget
+            books, and those carry no entry for this program element — the
+            figures on this page come from earlier editions, which this
+            corpus loads as workbook figures only.
+          </SectionEmpty>
         ) : (
           <SectionEmpty title="Description">
             The J-book detail for this line carries no separate mission or
@@ -826,6 +856,15 @@ export default async function ProgramPage({
               </>
             )}
           </SectionEmpty>
+        ) : tier === "decade" ? (
+          /* ROADMAP #28 — see the description section above for why neither
+             the full-tier nor the rollup-tier sentence is true here. */
+          <SectionEmpty title="Justification">
+            No accomplishments or planned-program narratives for this line.
+            The FY2026 President&apos;s Budget books, which are where this
+            corpus reads R-2/P-40 prose from, carry no entry for this program
+            element.
+          </SectionEmpty>
         ) : (
           <SectionEmpty title="Justification">
             No accomplishments or planned-program narratives in this
@@ -849,6 +888,17 @@ export default async function ProgramPage({
               reconKeys={reconKeySet(summary)}
             />
           </>
+        ) : tier === "decade" ? (
+          /* ROADMAP #28. "its figures appear only in the trajectory mart" is
+             false here in both halves: fct_budget_trajectory carries no row
+             for any element on this tier, and the figures are older-edition
+             workbook rows, each cited, rendered in the decade table above. */
+          <SectionEmpty title="Line Items">
+            No FY2026 line items: the FY2026 R-1/P-1 workbooks carry no row
+            for this program element. Its cited figures are the earlier
+            President&apos;s Budget editions&apos; own workbook rows, in the
+            decade table above.
+          </SectionEmpty>
         ) : (
           <SectionEmpty title="Line Items">
             No workbook or J-book line items are linked to this program
@@ -1294,7 +1344,7 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
     );
   }
 
-  if (card.source === "rollup") {
+  if (card.source === "rollup" || card.source === "decade") {
     return (
       <>
         <span data-program-name>{card.text}</span>{" "}

@@ -16,6 +16,10 @@ const MOCK = {
   // wrong one fails here.
   detailGrade: 1230,
   programPages: 1500,
+  // ROADMAP #28: the non-detail remainder is two tiers, deliberately
+  // UNEQUAL so a row that describes one and means both fails here. Their
+  // sum is programPages − detailGrade = 270 (the row asserts it).
+  tiers: { rollup: 190, decade: 80 },
   dossiers: 51,
   flows: 19,
   lineage: 47,
@@ -30,6 +34,7 @@ vi.mock("@/lib/data", () => ({
   getProgramsCount: () => MOCK.programs,
   getDetailGradeCount: () => MOCK.detailGrade,
   getProgramPagesCount: () => MOCK.programPages,
+  getTierPageCounts: () => MOCK.tiers,
   getDossierCount: () => MOCK.dossiers,
   getFlowsCount: () => MOCK.flows,
   getLineagePrograms: () => MOCK.lineage,
@@ -140,9 +145,27 @@ describe("coverage map — every number is read, never authored", () => {
     expect(r.numerator).toBe(MOCK.detailGrade);
     expect(r.denominator).toBe(MOCK.programPages);
     expect(r.covered).toContain("1,230 of 1,500");
-    // …and the rollup remainder is measured against the DETAIL tier, so a
-    // regression to the index count would move this by two.
-    expect(r.covered).toContain("270");
+    // …and the remainder is measured against the DETAIL tier, so a
+    // regression to the index count would move it by two. ROADMAP #28: it
+    // is now stated as TWO tiers, because they are different claims — a
+    // rollup page has FY2026 workbook figures and no R-2/P-40 narrative; a
+    // decade page has no FY2026 workbook line at all. Asserting both, and
+    // that neither is the undifferentiated 270, is what stops the row
+    // reverting to one sentence for both.
+    expect(r.covered).toContain("190");
+    expect(r.covered).toContain("80");
+    expect(r.covered).not.toContain("270");
+    expect(r.blocker).toContain("190");
+    expect(r.blocker).toContain("80");
+  });
+
+  it("program pages: a tier the row does not name is a build failure", () => {
+    // The two named tiers must account for the whole non-detail remainder.
+    // If a third page tier ever ships, neither sentence describes it, and
+    // this row would quietly under-report the corpus rather than say so.
+    expect(MOCK.tiers.rollup + MOCK.tiers.decade).toBe(
+      MOCK.programPages - MOCK.detailGrade,
+    );
   });
 
   it("dossiers, flows and lineage are all over the detail-grade corpus", () => {

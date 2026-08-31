@@ -38,8 +38,17 @@ interface ProgramHeaderProps {
    * Page tier (Phase 5F §2a). Rollup pages carry only R-1/P-1 workbook
    * figures — the reconciliation badge (a full-tier line-item concept) is
    * replaced by an honest "Summary figures" badge.
+   *
+   * ROADMAP #28's decade tier deliberately takes NEITHER branch below. Its
+   * pages fall through to the reconciled_in_scope === null case and render
+   * "No detail to reconcile", which is exactly right for them: there is no
+   * R-2/P-40 detail behind the line, so nothing was checked. The rollup
+   * badge would be wrong — its tooltip says "summary figures from the
+   * all-service R-1/P-1 workbooks", and the FY2026 workbooks carry no row
+   * for a decade-tier element at all. What kind of page it is, the
+   * DecadeOnlyNote and the WHAT-IT-IS tail say in words.
    */
-  tier?: "full" | "rollup";
+  tier?: "full" | "rollup" | "decade";
 }
 
 /**

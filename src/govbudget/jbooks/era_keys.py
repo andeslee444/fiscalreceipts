@@ -102,6 +102,26 @@ def p40_agency_org(service_agency: str | None) -> str:
     return org
 
 
+def is_era_procurement_key(pe_bli: str | None) -> bool:
+    """True when pe_bli is a namespaced era procurement key ('3010F-AF-L1').
+
+    The authoritative membership test for the key space this module MINTS —
+    exported so consumers stop re-inventing a `-L\\d+$` regex of their own.
+
+    ROADMAP #28 is the consumer that needed it. An era key is a P-1 DISPLAY
+    LINE inside one edition's workbook, not a program identity: the module
+    docstring above states outright that "cross-edition identity is
+    intentionally NOT claimed", because (account, org, line) is unstable
+    across editions. A /program/ page is a cross-edition identity claim by
+    construction — one URL, one title, a decade of figures under it — so
+    these keys must never become pages, however much money they carry
+    (1,214 of them in the shipped warehouse; '3010F-AF-L1' alone sums
+    $142.6B across PB2017-PB2023 because the era P-1 loader files an
+    account's rollup row under its first line number).
+    """
+    return bool(pe_bli) and _ERA_KEY_RE.match(pe_bli) is not None
+
+
 def era_key_anchor(pe_bli: str | None) -> str | None:
     """The page-text anchor for a namespaced era key: its P-1 line number.
 

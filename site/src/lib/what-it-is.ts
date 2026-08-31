@@ -30,6 +30,11 @@
  *   carries summary figures only because the ingested book has no matching
  *   R-2/P-40 detail for this line (or the book is not ingested yet).
  *
+ * Tier 4 — DECADE (ROADMAP #28: cited history, no PB2026 line at all).
+ *   Same field-only shape, and a tail that states what IS missing here —
+ *   the line itself, not its narrative. The rollup tail would be a false
+ *   sentence on these pages.
+ *
  * The rendered card declares its tier in `data-what-source` so the gate can
  * assert that a dossier program's card is dossier-sourced — i.e. that the
  * template stub is really gone and did not quietly come back.
@@ -111,7 +116,11 @@ export interface WhatItIsRollup {
   tail: string;
 }
 
-export type WhatItIsCard = WhatItIsDossier | WhatItIsFields | WhatItIsRollup;
+export type WhatItIsCard =
+  | WhatItIsDossier
+  | WhatItIsFields
+  | WhatItIsRollup
+  | WhatItIsDecade;
 
 /**
  * Pick the dossier claims that fit the card. Always at least the first claim
@@ -236,20 +245,79 @@ export function buildRollupCard(input: RollupCardInput): WhatItIsRollup {
   };
 }
 
+export interface WhatItIsDecade {
+  source: "decade";
+  /** The template sentence (title + family + org + last edition). */
+  text: string;
+  /** The tier's honest tail — why this page has no current figures. */
+  tail: string;
+}
+
+export interface DecadeCardInput {
+  peBli: string;
+  title: string;
+  /** Raw org code, humanized here — same contract as FieldCardInput.org. */
+  org: string;
+  exhibitFamily: string | null;
+  /** decade_absent.last_edition — the PB edition this line last appears in. */
+  lastEdition: number;
+}
+
+/**
+ * The decade card (ROADMAP #28, tier 4).
+ *
+ * The rollup tail ("Summary figures only: the {service} FY2026 book is
+ * ingested but carries no R-2/P-40 detail for this line") is FALSE here and
+ * must never be reused: this element is not in the FY2026 books at all, so
+ * there is no book that "carries no detail for" it — there is no line.
+ *
+ * Everything in the sentence is a field: the workbook title, the org the
+ * workbook filed it under when it last appeared, the R-1/P-1 majority across
+ * its own rows, and the edition number the page's own decade table stops at.
+ * No adjectives, no invention, and — deliberately — no successor, no cause,
+ * and none of the words that would turn an absence into an ending.
+ */
+export function buildDecadeCard(input: DecadeCardInput): WhatItIsDecade {
+  const org = serviceOrgName(input.org) || "DoD";
+  const family = answerFamilyPlain(input.exhibitFamily);
+  const article = /^[aeiou]/i.test(org) ? "an" : "a";
+  return {
+    source: "decade",
+    text:
+      `${input.title} (${input.peBli}) is ${article} ${org} ${family} line ` +
+      `last carried in the PB${input.lastEdition} R-1/P-1 workbooks.`,
+    tail:
+      "History only: the FY2026 President's Budget workbooks carry no line " +
+      "for this program element.",
+  };
+}
+
 export interface WhatItIsInput extends FieldCardInput {
-  tier: "full" | "rollup";
+  tier: "full" | "rollup" | "decade";
   /** The page's gated dossier, when it has one. */
   dossier: DossierFile | null;
   serviceOrg: string;
   serviceIngested: boolean;
+  /** ROADMAP #28: decade_absent.last_edition, decade tier only. */
+  lastEdition?: number | null;
 }
 
-/** Decide the card. Dossier wins; rollup keeps its tail; fields otherwise. */
+/** Decide the card. Dossier wins; rollup and decade keep their own tails;
+ *  fields otherwise. */
 export function whatItIsCard(input: WhatItIsInput): WhatItIsCard {
   const claims = input.dossier
     ? hoistDossierClaims(input.dossier.dossier.what_it_is.claims)
     : [];
   if (claims.length > 0) return { source: "dossier", claims };
+  if (input.tier === "decade" && input.lastEdition != null) {
+    return buildDecadeCard({
+      peBli: input.peBli,
+      title: input.title,
+      org: input.org,
+      exhibitFamily: input.exhibitFamily,
+      lastEdition: input.lastEdition,
+    });
+  }
   if (input.tier === "rollup") {
     return buildRollupCard({
       title: input.title,
