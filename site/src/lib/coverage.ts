@@ -21,8 +21,8 @@ import {
   getDetailGradeCount,
   getFlowsCount,
   getProgramsCount,
+  getPagesWithoutDetail,
   getProgramPagesCount,
-  getTierPageCounts,
   getDossierCount,
   getCompaniesCount,
   getCompaniesWithAwardsCount,
@@ -179,13 +179,13 @@ export function getCoverage(id: CoverageId): Coverage {
       // longer small, and 553 of it carries no FY2026 workbook figure at all
       // — those elements are not in the FY2026 books, so "publishes no
       // matching narrative" describes the wrong absence. Both counts derived
-      // (getTierPageCounts), so neither can rot into a literal.
-      const tiers = getTierPageCounts();
+      // (getPagesWithoutDetail), so neither can rot into a literal.
+      const remainder = getPagesWithoutDetail();
       return {
         id,
         numerator: num,
         denominator: den,
-        note: `Detailed J-book justification is ingested for ${formatCount(num)} of ${formatCount(den)} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in. ${formatCount(tiers.rollup)} pages carry cited FY2026 R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines); another ${formatCount(tiers.decade)} are history pages whose program element the FY2026 workbooks do not list at all, cited to the President's Budget editions that do carry it.`,
+        note: `Detailed J-book justification is ingested for ${formatCount(num)} of ${formatCount(den)} program pages — the FY2026 Navy, Army, and Air Force / Space Force books are all in. ${formatCount(remainder.workbookOnly)} pages carry cited FY2026 R-1/P-1 workbook figures for lines that publish no matching R-2/P-40 narrative (classified, SBIR, or spectrum lines); another ${formatCount(remainder.decadeOnly)} are history pages whose program element the FY2026 workbooks do not list at all, cited to the President's Budget editions that do carry it.`,
         emptyNote: null,
         anchor: "/methodology/#coverage-service-books",
         linkText: "why summary figures only? →",

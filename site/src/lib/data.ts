@@ -1087,30 +1087,54 @@ export function getProgramSitemapSlugs(): string[] {
   return _programSitemapSlugs;
 }
 
-let _tierPageCounts: { rollup: number; decade: number } | null = null;
+let _pagesWithoutDetail: PagesWithoutDetail | null = null;
 
 /**
- * Program pages by NON-FULL tier, counted from the sidecars themselves
- * (ROADMAP #28). Returns { rollup, decade }.
+ * The program pages that carry NO R-2/P-40 detail row, split by what they DO
+ * carry (ROADMAP #28). Returns { workbookOnly, decadeOnly }.
  *
- * The site's coverage prose used to say "the other N pages carry cited
- * R-1/P-1 workbook figures only", deriving N as programPages − detailGrade.
- * That subtraction was exact while the non-detail remainder was ONE thing.
- * #28 makes it two: the rollup tier (an FY2026 workbook line with no
- * matching R-2/P-40 narrative) and the decade tier (no FY2026 workbook line
- * at all). Left as a subtraction, every one of those sentences would have
- * become false for 553 pages the moment this tier shipped — the same "true
- * number, false label" shape three independent reviews found on this site.
+ * The site's coverage prose used to describe this whole remainder in one
+ * sentence — "the other N pages carry cited R-1/P-1 workbook figures only" —
+ * with N derived as programPages − detailGrade. #28 made that sentence false
+ * for 553 pages, whose program element has no FY2026 workbook line at all.
  *
- * Derived, never a literal: the tier is a field on the artifact the page
- * renders from. Cheap byte prefilter, like getDetailGradeCount above.
+ * SPLIT BY CONTENT, NOT BY TIER LABEL, and that distinction is load-bearing.
+ * A first cut of this function counted tier:"rollup" against tier:"decade"
+ * and asserted their sum was the remainder — which failed the build, exactly
+ * as it should have: TWO full-tier pages (0603115DHA and 0708083D, the
+ * backlog #17 trajectory-only programs, which have a programs.json row and
+ * no J-book detail) belong to neither tier and would have gone undescribed.
+ * They carry five FY2026 workbook rows each, so the workbook sentence is
+ * true of them; the tier label is what was not. Counting "does this page
+ * have FY2026 workbook rows" partitions the remainder with nothing left
+ * over, and `unclassified` exists so a future page that fits neither
+ * sentence fails loudly instead of being silently absorbed by one.
+ *
+ * Derived, never a literal: read from the artifact the pages render from.
+ * Cheap byte prefilter, like getDetailGradeCount below.
  */
-export function getTierPageCounts(): { rollup: number; decade: number } {
-  if (_tierPageCounts) return _tierPageCounts;
+export interface PagesWithoutDetail {
+  /** No J-book detail, but cited FY2026 R-1/P-1 workbook rows. */
+  workbookOnly: number;
+  /** No J-book detail and no FY2026 workbook row — the #28 decade tier. */
+  decadeOnly: number;
+  /** Slugs matching neither sentence. Non-empty is a defect, not a bucket. */
+  unclassified: string[];
+}
+
+export function getPagesWithoutDetail(): PagesWithoutDetail {
+  if (_pagesWithoutDetail) return _pagesWithoutDetail;
   const dir = join(jsonDir(), "program_details");
-  if (!existsSync(dir)) return (_tierPageCounts = { rollup: 0, decade: 0 });
-  let rollup = 0;
-  let decade = 0;
+  if (!existsSync(dir)) {
+    return (_pagesWithoutDetail = {
+      workbookOnly: 0,
+      decadeOnly: 0,
+      unclassified: [],
+    });
+  }
+  let workbookOnly = 0;
+  let decadeOnly = 0;
+  const unclassified: string[] = [];
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
     let raw: string;
     try {
@@ -1118,17 +1142,32 @@ export function getTierPageCounts(): { rollup: number; decade: number } {
     } catch {
       continue;
     }
-    if (!raw.includes('"tier"')) continue;
-    let tier: unknown;
+    // Same cheap reject getDetailGradeCount uses, so the two partition the
+    // sidecars on exactly one predicate and their counts must sum.
+    const hasDetailKey =
+      raw.includes('"details"') && !/"details":\s*\[\]/.test(raw);
+    let d: {
+      details?: unknown[];
+      budget_lines?: unknown[];
+      tier?: unknown;
+    };
     try {
-      tier = (JSON.parse(raw) as { tier?: unknown }).tier;
+      d = JSON.parse(raw);
     } catch {
-      continue; // malformed — leg d / getCorpus report it
+      continue; // malformed — getCorpus / gate 24 leg d report it
     }
-    if (tier === "rollup") rollup++;
-    else if (tier === "decade") decade++;
+    if (hasDetailKey && Array.isArray(d.details) && d.details.length > 0) {
+      continue;
+    }
+    if (Array.isArray(d.budget_lines) && d.budget_lines.length > 0) {
+      workbookOnly++;
+    } else if (d.tier === "decade") {
+      decadeOnly++;
+    } else {
+      unclassified.push(f.slice(0, -".json".length));
+    }
   }
-  return (_tierPageCounts = { rollup, decade });
+  return (_pagesWithoutDetail = { workbookOnly, decadeOnly, unclassified });
 }
 
 let _detailGradeCount: number | null = null;

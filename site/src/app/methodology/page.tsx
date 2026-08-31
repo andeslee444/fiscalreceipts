@@ -8,6 +8,7 @@ import {
   getDatasetManifest,
   getGaoCrosswalkStats,
   getFlowChartMeta,
+  getPagesWithoutDetail,
   getSiteMeta,
   getTitleOverrides,
 } from "@/lib/data";
@@ -79,6 +80,8 @@ export default function MethodologyPage() {
   const companyAwards = getCoverage("company-awards");
   const districts = getCoverage("districts");
   const serviceBooks = getCoverage("service-books");
+  // ROADMAP #28 — derived, so the sentence below cannot rot into a literal.
+  const decadeOnlyPages = getPagesWithoutDetail().decadeOnly;
   const flowBridge = getCoverage("flow-bridge");
   const flowMeta = getFlowChartMeta();
   // ROADMAP #30: the GAO program-crosswalk's own precision measurement, read
@@ -828,8 +831,17 @@ export default function MethodologyPage() {
               {formatCount(serviceBooks.denominator ?? 0)} program pages with full detail
             </h3>
             <p>
-              Every distinct program element in the budget workbooks has a
-              page — {formatCount(serviceBooks.denominator ?? 0)} in total. Full J-book detail
+              {/* ROADMAP #28. This read "Every distinct program element in
+                  the budget workbooks has a page" — a universal claim, and
+                  false in both directions: era P-1 display line numbers get
+                  no page (they are workbook rows, not program identities),
+                  and until #28 no element whose record stopped before FY2026
+                  got one either. It states the composition of the number
+                  instead, which is what a reader of this section needs. */}
+              {formatCount(serviceBooks.denominator ?? 0)} program pages in
+              total: the elements the FY2026 workbooks name, plus{" "}
+              {formatCount(decadeOnlyPages)} whose cited record stops in an
+              earlier President&apos;s Budget edition. Full J-book detail
               (mission prose, project tables, accomplishments) is ingested
               for {formatCount(serviceBooks.numerator ?? 0)} of them, whose justification books
               come from the sources already in the pipeline. As of Phase 5G

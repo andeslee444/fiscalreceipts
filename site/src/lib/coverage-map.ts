@@ -53,10 +53,10 @@ import {
   getFlowChartMeta,
   getFlowsCount,
   getLineagePrograms,
+  getPagesWithoutDetail,
   getProgramPagesCount,
   getProgramsCount,
   getSiteMeta,
-  getTierPageCounts,
 } from "@/lib/data";
 import { getFeedInventory } from "@/lib/feeds";
 import { formatCount } from "@/lib/format";
@@ -132,24 +132,32 @@ export function getCoverageMap(): CoverageMapRow[] {
   // lists trajectory-only lines. This page LEADS with this number, so it is
   // the worst possible place for the site to be two generous about itself.
   const detailGrade = getDetailGradeCount();
-  // ROADMAP #28: the non-detail remainder is TWO tiers now, and they are not
-  // the same claim. A rollup page HAS FY2026 R-1/P-1 figures and lacks the
-  // R-2/P-40 narrative behind them; a decade page has no FY2026 workbook row
-  // at all and publishes older editions' figures instead. `pages −
-  // detailGrade` used to be exactly "rollup", and every sentence below said
-  // so; keeping the subtraction would have made those sentences false for
-  // 553 pages on the day this tier shipped. Both halves are derived from the
-  // sidecars' own `tier` field, and their sum is asserted against the
-  // subtraction so a third tier cannot appear here unnoticed.
-  const tiers = getTierPageCounts();
-  const rollups = tiers.rollup;
-  const decadeOnly = tiers.decade;
+  // ROADMAP #28: the non-detail remainder is TWO claims now, not one. A page
+  // with FY2026 workbook rows and no R-2/P-40 detail is a different statement
+  // from a page whose element the FY2026 workbooks do not list at all, and
+  // `pages − detailGrade` — which used to be exactly the first — would have
+  // made the sentence below false for 553 pages the day the decade tier
+  // shipped. Both halves are derived from the sidecars' own content, and the
+  // three-way reconciliation is asserted so a page that fits NEITHER sentence
+  // fails the build instead of being quietly absorbed into one of them.
+  const remainder = getPagesWithoutDetail();
+  const rollups = remainder.workbookOnly;
+  const decadeOnly = remainder.decadeOnly;
+  if (remainder.unclassified.length > 0) {
+    throw new Error(
+      `[govbudget/coverage-map] ${remainder.unclassified.length} program page(s) ` +
+        `carry neither R-2/P-40 detail, nor FY2026 workbook rows, nor the ` +
+        `decade tier's marker: ${remainder.unclassified.slice(0, 5).join(", ")}. ` +
+        `Neither sentence below describes them, and this row would under-report ` +
+        `the corpus rather than say so.`,
+    );
+  }
   if (rollups + decadeOnly !== pages - detailGrade) {
     throw new Error(
       `[govbudget/coverage-map] ${pages} pages − ${detailGrade} detail-grade ` +
-        `leaves ${pages - detailGrade}, but the sidecars declare ` +
-        `${rollups} rollup + ${decadeOnly} decade. A page tier this row does ` +
-        `not name would be described by neither sentence below.`,
+        `leaves ${pages - detailGrade}, but the sidecars partition into ` +
+        `${rollups} workbook-only + ${decadeOnly} decade-only. The two counts ` +
+        `must exhaust the remainder or this row describes fewer pages than exist.`,
     );
   }
   const editions = getDecadeEditions();

@@ -16,10 +16,10 @@ const MOCK = {
   // wrong one fails here.
   detailGrade: 1230,
   programPages: 1500,
-  // ROADMAP #28: the non-detail remainder is two tiers, deliberately
+  // ROADMAP #28: the non-detail remainder is two claims, deliberately
   // UNEQUAL so a row that describes one and means both fails here. Their
   // sum is programPages − detailGrade = 270 (the row asserts it).
-  tiers: { rollup: 190, decade: 80 },
+  remainder: { workbookOnly: 190, decadeOnly: 80, unclassified: [] },
   dossiers: 51,
   flows: 19,
   lineage: 47,
@@ -34,7 +34,7 @@ vi.mock("@/lib/data", () => ({
   getProgramsCount: () => MOCK.programs,
   getDetailGradeCount: () => MOCK.detailGrade,
   getProgramPagesCount: () => MOCK.programPages,
-  getTierPageCounts: () => MOCK.tiers,
+  getPagesWithoutDetail: () => MOCK.remainder,
   getDossierCount: () => MOCK.dossiers,
   getFlowsCount: () => MOCK.flows,
   getLineagePrograms: () => MOCK.lineage,
@@ -159,13 +159,16 @@ describe("coverage map — every number is read, never authored", () => {
     expect(r.blocker).toContain("80");
   });
 
-  it("program pages: a tier the row does not name is a build failure", () => {
-    // The two named tiers must account for the whole non-detail remainder.
-    // If a third page tier ever ships, neither sentence describes it, and
-    // this row would quietly under-report the corpus rather than say so.
-    expect(MOCK.tiers.rollup + MOCK.tiers.decade).toBe(
+  it("program pages: a page the row does not describe is a build failure", () => {
+    // The two named halves must account for the whole non-detail remainder.
+    // A first cut of this split counted tier labels instead of page content
+    // and left the two backlog-#17 trajectory-only programs (a
+    // programs.json row, no J-book detail, five FY2026 workbook rows each)
+    // in neither — which failed the real build, correctly.
+    expect(MOCK.remainder.workbookOnly + MOCK.remainder.decadeOnly).toBe(
       MOCK.programPages - MOCK.detailGrade,
     );
+    expect(MOCK.remainder.unclassified).toHaveLength(0);
   });
 
   it("dossiers, flows and lineage are all over the detail-grade corpus", () => {

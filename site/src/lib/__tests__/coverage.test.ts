@@ -9,10 +9,14 @@ vi.mock("@/lib/data", () => ({
   // claiming "detail-grade" fails here.
   getDetailGradeCount: () => 418,
   getProgramPagesCount: () => 1900,
-  // ROADMAP #28: the non-detail remainder is two tiers, and the mock keeps
+  // ROADMAP #28: the non-detail remainder is two claims, and the mock keeps
   // them distinct AND summing to 1900 − 418 so a note that describes the
   // whole remainder as one of them fails here.
-  getTierPageCounts: () => ({ rollup: 1200, decade: 282 }),
+  getPagesWithoutDetail: () => ({
+    workbookOnly: 1200,
+    decadeOnly: 282,
+    unclassified: [],
+  }),
   getDossierCount: () => 50,
   getCompaniesCount: () => 200,
   getCompaniesWithAwardsCount: () => 18,
