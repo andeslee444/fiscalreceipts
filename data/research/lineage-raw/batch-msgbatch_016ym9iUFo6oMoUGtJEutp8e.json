@@ -1,0 +1,2869 @@
+{
+ "batch_id": "msgbatch_016ym9iUFo6oMoUGtJEutp8e",
+ "model": "claude-opus-5",
+ "submitted_at": "2026-08-31T22:31:12.221797+00:00",
+ "request_count": 213,
+ "estimated_usd": 2.010075,
+ "output_basis": "observed",
+ "clauses": [
+  {
+   "clause_id": "52926b77345465a1",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "17bd672749448cf8",
+   "page": 404,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "prev_sentence": "This project also focuses on integration of inlets, nozzles, engine- to-airframe compatibility, and power and thermal management subsystems technologies.",
+   "next_sentence": "",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "535dfc2d21bee672",
+   "pe_bli": "0604036A",
+   "fiscal_year": 2026,
+   "fact_id": "d3e814cc034a6348",
+   "page": null,
+   "sentence": "FY 2024 RDTE funding and execution is currently being realigned to 0604036A DD6.",
+   "prev_sentence": "These capabilities are enabled by emerging Artificial Intelligence/Machine Learning (AI/ML) processing and automated target recognition, autonomous sensor cross-cueing, sensor data correlation and resilient Joint All-Domain Command and Control (JADC2) compliant communications which shorten the sensor to shooter kill chain.",
+   "next_sentence": "0604036A BY9 has no funding request in FY 2026.",
+   "codes": [
+    "0604036A"
+   ]
+  },
+  {
+   "clause_id": "55c29c5bcdb36f58",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "In FY2021, PE 0708550F (Information Technology Services Management - Logistics), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "prev_sentence": "Funding allows for end-of-life replacement of end building node network, data and voice hardware that complies with AF cyber architecture enterprise standards.",
+   "next_sentence": "c.",
+   "codes": [
+    "0303005F",
+    "0708550F"
+   ]
+  },
+  {
+   "clause_id": "562e975ed357db9e",
+   "pe_bli": "0603758N",
+   "fiscal_year": 2026,
+   "fact_id": "784f2a8c7c1ea057",
+   "page": 819,
+   "sentence": "(1) Naval Warfare Prototype and Demonstration (investments previously funded in 0603758N/2918/Naval Warfare Experimentation) develops rapid prototypes through innovation operations, and transitions them to the warfighter for further iteration and technology incubation, aligned with Fleet demonstrations and exercises; (2) Technology Analysis, Development, and Investments (investments previously funded in 0603758N/2918/Operations Analysis) provides the Navy and Marine Corps the means to address capability gaps with technology solutions from the defense and commercial marketplaces, along with kickstart initial capital investment to mature the technology and integrate into the Naval mission architecture; (3) Innovation Agility (investments previously funded in 0603758N/2918/Swampworks) develops, demonstrates, and transitions newly invented or recently discovered technologies that address emergent and enduring operational problems in an accelerated timeframe, including digital environments that support innovation operations and Innovation Protection Policy (IPP); (4) Tech Bridges (investment previously funded in 0603758N/2918/Swampworks) cultivate local business ecosystems in order to facilitate tech scanning across non-traditional and small business startups to enable incubation, prototyping, and transition of technology solutions that rapidly address Fleet/Force needs; and (5) Innovation Operations (NRE) (investment previously funded in 0602123N/0000/Naval Research Enterprise) supports mission-driven problem solving within the Naval Research and Development Establishment (NR&DE) and academia in support of culture, organizational, and business changes to enable agile and rapid prototyping, development, and transition processes across the DON.",
+   "prev_sentence": "NavalX executes several lines of effort in support of its vision to materialize new Fleet capabilities through innovative product and solution development:",
+   "next_sentence": "",
+   "codes": [
+    "0602123N",
+    "0603758N"
+   ]
+  },
+  {
+   "clause_id": "564cc1f0957206cb",
+   "pe_bli": "0101226N",
+   "fiscal_year": 2026,
+   "fact_id": "94c05528b543be14",
+   "page": null,
+   "sentence": "Submarine Launch Unmanned Aerial System (SLUAS) transferred from RDTEN Program Element (PE) 0604562N in FY25.",
+   "prev_sentence": "",
+   "next_sentence": "Non-Traditional Acoustic Communications (NTAC) is a software-based solution that leverages existing hardware components on target platforms, including submarines, to provide advanced undersea acoustic communications.",
+   "codes": [
+    "0604562N"
+   ]
+  },
+  {
+   "clause_id": "56a70e36b362216d",
+   "pe_bli": "0303131F",
+   "fiscal_year": 2026,
+   "fact_id": "0e45fe2fd72d3228",
+   "page": null,
+   "sentence": "FAB-T FET was transferred from Space Force (PE 1203001SF / Project 673040 / Appropriation 3620 / Research, Development, Test, and Evaluation) to Air Force (PE 0303131F / Project 673040 / Appropriation 3600 / Research, Development, Test, and Evaluation), Transfer Memo signed 12 Nov 2024.",
+   "prev_sentence": "The Family of Advanced Beyond Line-of-Sight Terminals (FAB-T) Force Element Terminal (FET) program is not a New Start in FY 2026.",
+   "next_sentence": "The FAB-T FET program replaces the Ultra High Frequency (UHF) Milstar terminal and provides secure, protected, and survivable communications for the strategic warfighter through airborne-based Military Satellite Communication (MILSATCOM) terminals.",
+   "codes": [
+    "0303131F",
+    "1203001SF"
+   ]
+  },
+  {
+   "clause_id": "585a1ea321bc4ac7",
+   "pe_bli": "1160434BB",
+   "fiscal_year": 2017,
+   "fact_id": "7a7c03cbc58af35d",
+   "page": null,
+   "sentence": "Beginning in FY 2017 Unmanned ISR represents the approved consolidation of Special Applications for Contingencies Program Element (PE) 0304210BB; MQ-1 Unmanned Aerial Vehicle (UAV), PE 0305219BB; MQ-8 PE 0305231BB; RQ-11 UAV PE 1105232BB; and RQ-7 UAV, PE 1105233BB.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "0304210BB",
+    "0305219BB",
+    "0305231BB",
+    "1105232BB",
+    "1105233BB"
+   ]
+  },
+  {
+   "clause_id": "58ce733410f11c55",
+   "pe_bli": "FET000",
+   "fiscal_year": 2026,
+   "fact_id": "801d40472d4f2787",
+   "page": 57,
+   "sentence": "The Family of Advanced Beyond Line-of-Sight Terminals (FAB-T) Force Element Terminal (FET) program was transferred from Space Force (PE 1203001SF / WSC FET000 / Appropriation 3022 / PSF) to Air Force (PE 0303131F / WSC CVR000 / Appropriation 3010 / APAF).",
+   "prev_sentence": "",
+   "next_sentence": "Transfer Memo signed by the Space Force and Air Force Service Acquisition Executives (SAEs) on 12 Nov 2024.",
+   "codes": [
+    "0303131F",
+    "1203001SF"
+   ]
+  },
+  {
+   "clause_id": "596d75329f61ee93",
+   "pe_bli": "0604132D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "9e7a7310f888f2d9",
+   "page": 519,
+   "sentence": "In FY 2021, Missile Defeat Project residual resources and capabilities transferred to Program Element 0603338D8Z (Defense Modernization and Prototyping), Project Code 722, Time Sensitive Targeting and Defeat (TSTD), in support of an expanded Multi-Domain TSTD alignment of key technology development and modernization.",
+   "prev_sentence": "In order to carry out the important role initiated by Missile Defeat, in accordance with the 2017 National Defense Authorization Act, in FY 2019, the Missile Defeat Project transferred activities initiated under Missile Defeat to other stakeholders.",
+   "next_sentence": "Activities will be coordinated with the Services, appropriate Agencies, and the Combatant Commands to transition these developments into viable warfighting capabilities.",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "59ce6800a7fe76ec",
+   "pe_bli": "0304270A",
+   "fiscal_year": 2026,
+   "fact_id": "652493c1a35f4d2c",
+   "page": 332,
+   "sentence": "Administrative realignment of FY26 RDT&E funds for TLS EAB transferred to Budget Activity 9 (BA-9) 0609277A, Project Code:",
+   "prev_sentence": "Justification:",
+   "next_sentence": "A81 to the Agile Funding Pilot.",
+   "codes": [
+    "0609277A"
+   ]
+  },
+  {
+   "clause_id": "59d6c5dc83c25e0d",
+   "pe_bli": "0305158F",
+   "fiscal_year": 2026,
+   "fact_id": "82ffe2d12d91f8a0",
+   "page": null,
+   "sentence": "In FY2026, PE 0305158F, Tactical Terminal, Project 674139, Civilian Compensation efforts will be transferred to PE 0305158F, Tactical Terminal, Project 674395, Radio, in order to better align efforts with proper project.",
+   "prev_sentence": "In FY2025, 0.000M is forecasted for civilian pay expenses in this program element.",
+   "next_sentence": "",
+   "codes": [
+    "0305158F"
+   ]
+  },
+  {
+   "clause_id": "5b58a93b01212b5f",
+   "pe_bli": "0602203F",
+   "fiscal_year": 2026,
+   "fact_id": "83b554194515412a",
+   "page": 183,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "prev_sentence": "In FY 2025, the RDT&E Budget Activity 02 (BA02) Aerospace Vehicles Technologies efforts and activities under PE 0602201F, were transferred to PE 0602203F, Aerospace Propulsion for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404, Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "5f208cb268f2d716",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "727fc9a176cb501e",
+   "page": 397,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634093 Missile Rocket Propulsion Integ & Demo, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634093 Missile Rocket Propulsion Integ & Demo.",
+   "prev_sentence": "The efforts in this project are reviewed by a DoD level steering committee annually for relevance to DoD missions.",
+   "next_sentence": "",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "5f9b8739fffc3798",
+   "pe_bli": "0408011F",
+   "fiscal_year": 2026,
+   "fact_id": "8c37f0954c809ee2",
+   "page": null,
+   "sentence": "FY26 funding ($9.622M) for BA 07 0408011F was transferred to BA 07 Project 0207457F.",
+   "prev_sentence": "Due to the rapidly changing threat environment, the acquisition program manager has the authority to redirect funding as necessary to meet current slated and emerging requirements.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver weapon system capability.",
+   "codes": [
+    "0207457F",
+    "0408011F"
+   ]
+  },
+  {
+   "clause_id": "5fb6d8c1469e744b",
+   "pe_bli": "0604014N",
+   "fiscal_year": 2026,
+   "fact_id": "2f8cf86237e3dcea",
+   "page": null,
+   "sentence": "IRST was previously funded under Program Element 0204136N F/A-18 Squadrons and has been transferred to Program Element 0604014N F/A-18 Infrared Search and Track.",
+   "prev_sentence": "The redesign will yield a more reliable configuration with potential production cost avoidances due to less usage of higher cost materials.",
+   "next_sentence": "",
+   "codes": [
+    "0204136N",
+    "0604014N"
+   ]
+  },
+  {
+   "clause_id": "60b14584bf63354a",
+   "pe_bli": "CVR000",
+   "fiscal_year": 2026,
+   "fact_id": "368f5c3d6a2edbfa",
+   "page": null,
+   "sentence": "FAB-T FET was transferred from Space Force (PE 1203001SF / WSC FET000 / Appropriation 3022 / PSF) to Air Force (PE 0303131F / WSC CVR000 / Appropriation 3010 / APAF), Transfer Memo signed 12 Nov 2024.",
+   "prev_sentence": "The Family of Advanced Beyond Line-of-Sight Terminals (FAB-T) Force Element Terminal (FET) program is not a New Start in FY 2026.",
+   "next_sentence": "Activities funded in this program continue to pay for AN/USQ-225 weapons system modernization, integration into multiple legacy systems, other ongoing NC3 acquisition programs, and future capabilities for the overall AF NC3 WS.",
+   "codes": [
+    "0303131F",
+    "1203001SF"
+   ]
+  },
+  {
+   "clause_id": "62e2058d190e0968",
+   "pe_bli": "1160434BB",
+   "fiscal_year": 2024,
+   "fact_id": "d086e1a30d5683a4",
+   "page": null,
+   "sentence": "Beginning in FY 2023 and beyond, SAFC funding has been consolidated into Expeditionary Organic Tactical Airborne ISR Capability Set (EOTACS) / Small Unmanned Systems (SUMS) under PE 1160405BB, Project S400, Special Operations Intelligence Systems.",
+   "prev_sentence": "The SAFC applies focused Research & Development (R&D) for relatively low cost solutions to provide short lead-time contingency planning requirements where focused R&D will allow for test and evaluation of leading edge solutions to emergent problem sets.",
+   "next_sentence": "",
+   "codes": [
+    "1160405BB"
+   ]
+  },
+  {
+   "clause_id": "636f242ac0656c14",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "1e02b57e643fe616",
+   "page": 145,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404 Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "It matures and applies modeling and numerical simulation methods for fast and affordable aerodynamics prediction and integrates and demonstrates multi-disciplinary advances in airframe, propulsion, weapon, and air vehicle control integration.",
+   "next_sentence": "",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "6390d0b76a2f4541",
+   "pe_bli": "0605090S",
+   "fiscal_year": 2022,
+   "fact_id": "b946360745f6f925",
+   "page": null,
+   "sentence": "Moved baseline funding from DRAS2 to LOG R&D PE 0603712S.",
+   "prev_sentence": "",
+   "next_sentence": "DRAS2 was still under development when the program was terminated.",
+   "codes": [
+    "0603712S"
+   ]
+  },
+  {
+   "clause_id": "639104937ec1c509",
+   "pe_bli": "0101226N",
+   "fiscal_year": 2026,
+   "fact_id": "4537766c2322ed69",
+   "page": null,
+   "sentence": "SLUAS transfers from RDTEN Program Element (PE) 0604562N beginning of FY25.",
+   "prev_sentence": "SLUAS extends the sensor range of the submarine via launch of an unmanned aerial vehicle (UAV).",
+   "next_sentence": "",
+   "codes": [
+    "0604562N"
+   ]
+  },
+  {
+   "clause_id": "63cbb8a92c2862e9",
+   "pe_bli": "833570",
+   "fiscal_year": 2026,
+   "fact_id": "9022ea0b535bf704",
+   "page": 295,
+   "sentence": "Legacy PEs 0101324F Integrated Strategic Planning & Analysis Network (ISPAN) and 0301112F Nuclear Planning & Execution System (NPES) / National Leadership Command Capability (NLCC) Decision Support Service (DSS) have been consolidated into one SMPES PE 0304100F.",
+   "prev_sentence": "This budget line funds Strategic Mission Planning and Execution System (SMPES) Program Element (PE).",
+   "next_sentence": "SMPES is an integrated enterprise solution software system providing the U.",
+   "codes": [
+    "0101324F",
+    "0301112F",
+    "0304100F"
+   ]
+  },
+  {
+   "clause_id": "648b52cc2e2fe6ae",
+   "pe_bli": "0603767E",
+   "fiscal_year": 2022,
+   "fact_id": "abe204912e1b4200",
+   "page": 244,
+   "sentence": "Building on technologies developed in the Efficient Ultra-Compact Laser Integrated Devices (EUCLID) program, previously budgeted in PE 0603739E, Project MT-15, Painter will translate efficiency benefits from critical laser components into compact optical sources.",
+   "prev_sentence": "The Painter program seeks to create revolutionary advancements in laser technologies for future active optical systems.",
+   "next_sentence": "The objective of Painter is to simultaneously increase the power and decrease the size of laser sources compared to state of the art.",
+   "codes": [
+    "0603739E"
+   ]
+  },
+  {
+   "clause_id": "655c386607fb8dcf",
+   "pe_bli": "0604741A",
+   "fiscal_year": 2026,
+   "fact_id": "810d66a745cea8e5",
+   "page": 325,
+   "sentence": "Beginning FY 2026, C-sUAS RDTE funding has been realigned to new PE 0609135A/A33, Counter Unmanned Aerial Systems (UAS) Agile Development.",
+   "prev_sentence": "Agile funding supports the Army Transformation Initiative, which provides enhanced force protection capabilities by fostering innovation and accelerated deployment of promising technology.",
+   "next_sentence": "This funding supports the Army's Next Generation Command and Control (NGC2) initiative to modernize Command and Control (C2) systems.",
+   "codes": [
+    "0609135A"
+   ]
+  },
+  {
+   "clause_id": "655cdddea42f7dd7",
+   "pe_bli": "0601103N",
+   "fiscal_year": 2026,
+   "fact_id": "cc8f03a0871ebe6e",
+   "page": 72,
+   "sentence": "All research activities under the MRI project were moved to the Defense Research Sciences (DRS) PE 0601153N starting in FY 2024.",
+   "prev_sentence": "- The Minerva Research Initiative (MRI) is a partnership with the Office of the Secretary of Defense (OSD) to support basic social science and multi-disciplinary research aimed at improving national security and international stability.",
+   "next_sentence": "- The ONR Graduate Student and Postdoctoral Research (GSPR) Fellow Support project supports the participation of graduate students and postdoctoral fellows in DON-related research.",
+   "codes": [
+    "0601153N"
+   ]
+  },
+  {
+   "clause_id": "6736596ec9748611",
+   "pe_bli": "0208088F",
+   "fiscal_year": 2026,
+   "fact_id": "faf52a1da98412e3",
+   "page": null,
+   "sentence": "In FY25, PE 0208088F, AF Defensive Cyberspace Operations, Project 677821 (CVA/H,) Project 677822 (CDA), and Project 677823 (AFCERT), were transferred to PE 0208088F, AF Defensive Cyberspace Operations, Project 677824 (IDCS), in order to distinguish IDCS from previous efforts.",
+   "prev_sentence": "In FY24 0.953M was expended for civilian pay expenses in this program element, and in FY25 3.237M is forecasted for civilian pay expenses in this program element.",
+   "next_sentence": "",
+   "codes": [
+    "0208088F"
+   ]
+  },
+  {
+   "clause_id": "67574ddeec98e6fd",
+   "pe_bli": "0603680D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "fbb3989ad350afe8",
+   "page": null,
+   "sentence": "This is a congressional add transferred from Defense Logistics Agency's Generic Logistics R&D Technology Demonstrations Program, PE 0603712S00",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0603712S00"
+   ]
+  },
+  {
+   "clause_id": "67cba2f2eba18956",
+   "pe_bli": "0604132D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "945c0e5bdc31426f",
+   "page": null,
+   "sentence": "In FY 2021 residual resources and capabilities are transferred to Program Element 0603338D8Z (Defense Modernization and Prototyping) in support of an expanded Multi-Domain Time Sensitive Targeting and Defeat (TSTD) alignment of key technology development and modernization effort.",
+   "prev_sentence": "In order to carry out the important role initiated by Missile Defeat, in accordance with the National Defense Authorization Act for FY 2017, the Missile Defeat Project transferred activities initiated under Missile Defeat to other stakeholders starting in FY 2019.",
+   "next_sentence": "Activities will be coordinated with the Services, appropriate Agencies, and the Combatant Commands to transition these developments into viable warfighting capabilities.",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "67ea37f85995b205",
+   "pe_bli": "CVR000",
+   "fiscal_year": 2026,
+   "fact_id": "6d797db22ed5dfe3",
+   "page": null,
+   "sentence": "FAB-T FET funding increase of $79.836M is due to service transfer from Space Force (PE 1203001SF / WSC FET000 / Appropriation 3022 / PSF) to Air Force (PE 0303131F / WSC CVR000 / Appropriation 3010 / APAF), Transfer Memo signed 12 Nov 2024.",
+   "prev_sentence": "P-3A Mod - 9850, FAB-T FET, is not a New Start.",
+   "next_sentence": "In FY 2026, FAB-T FET includes production activities to procure 6 terminals in the budget year and ultimately procure 83 FETs, including 76 for the B-52 platform, 7 terminals for training, labs, and depots as well as spares and miscellaneous hardware for sustainment, integration, testing, and training activities.",
+   "codes": [
+    "0303131F",
+    "1203001SF"
+   ]
+  },
+  {
+   "clause_id": "680d2a387b51248f",
+   "pe_bli": "1206772SF",
+   "fiscal_year": 2026,
+   "fact_id": "95466d91694b3d24",
+   "page": 805,
+   "sentence": "In FY 2026, Program Element (PE) 1206770SF, Enterprise Ground Services (EGS), efforts transferred to PE 1206772SF, Rapid Resilient Command and Control (R2C2), to consolidate functions for efficiency and improve transparency.",
+   "prev_sentence": "R2C2 will continue development and integration of the satellite operations ground segment solution (SatOps) to support the protect and defend mission set, including, but not limited to, capabilities and services needed to perform mission control.",
+   "next_sentence": "There was a one-time technical adjustment in FY 2025 approved by Congress that moved EGS funding from PE 1206770SF to PE 1206857SF, Space Rapid Capabilities Office, which improved funding execution in FY 2025.",
+   "codes": [
+    "1206770SF",
+    "1206772SF"
+   ]
+  },
+  {
+   "clause_id": "6915efdf949ea11e",
+   "pe_bli": "1206442SF",
+   "fiscal_year": 2026,
+   "fact_id": "9cb3c55409ad046c",
+   "page": 455,
+   "sentence": "Due to funding transfers to segregate Next-Gen OPIR into other Program Elements, PE 1206442SF is now comprised of two projects:",
+   "prev_sentence": "The program will deliver prototypes and demonstrations of novel Missile Warning/Missile Tracking (MW/MT) approaches and technologies; invest in critical industrial base gaps to meet future production needs; mature advanced target tracking and typing concepts to meet emerging threats; and an integration effort will identify, plan, manage and execute integration activities at the enterprise level.",
+   "next_sentence": "1.",
+   "codes": [
+    "1206442SF"
+   ]
+  },
+  {
+   "clause_id": "696e3725e93ecc70",
+   "pe_bli": "0305208F",
+   "fiscal_year": 2026,
+   "fact_id": "883efb510ca39b10",
+   "page": null,
+   "sentence": "Efforts within this PE align with USAF investment in ABMS (0604003F), Tech Transition - Air (0604858F), and ISR Transport and Processing (0305240F), formerly Support to DCGS Enterprise, to deliver the Long Range Fires architecture for the DAF BATTLE NETWORK.",
+   "prev_sentence": "The SWP structure is scheduled to begin in FY 2026 and will be known as the AF DCGS Software Acquisition Pathway Program in budgeting documents.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver weapon system capability.",
+   "codes": [
+    "0305240F",
+    "0604003F",
+    "0604858F"
+   ]
+  },
+  {
+   "clause_id": "6a377c66406ad39d",
+   "pe_bli": "0603699D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "7c1b33d2896cdc8b",
+   "page": null,
+   "sentence": "In FY 2021, Project 7905 transfers to PE 0603338D8Z Defense Modernization and Prototyping.",
+   "prev_sentence": "Additional information is available upon request.",
+   "next_sentence": "",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "6a416dc14d577677",
+   "pe_bli": "0605142D8Z",
+   "fiscal_year": 2026,
+   "fact_id": "4487a344218201a2",
+   "page": 1151,
+   "sentence": "In FY 2025, the Under Secretary of Defense for Research & Engineering (USD(R&E)) realigned funding from Project Code 842 to Mission Engineering and Integration (ME&I) Program Element 0603142D8Z, Project Code 123 to fund the Office of Mission Integration (MI).",
+   "prev_sentence": "",
+   "next_sentence": "This funding structure, which separated funding for MI from funding for the Office of Systems Engineering and Architecture (SE&A), better reflects the organizational structure of the Office of the Under Secretary of Defense for Research and Engineering.",
+   "codes": [
+    "0603142D8Z"
+   ]
+  },
+  {
+   "clause_id": "6aaa2efb957121f0",
+   "pe_bli": "0604270A",
+   "fiscal_year": 2026,
+   "fact_id": "7c294885f06b6d05",
+   "page": 72,
+   "sentence": "Administrative realignment of FY26 RDT&E funds for MFEW-AL transferred to  Budget Activity-9 (BA-9) Program Element (PE) 0609345A:",
+   "prev_sentence": "DX6 / Multi-Function Electronic Warfare (FEW) is a part of the Department of Defense Capability Based (Agile) Funding pilot, which provides enhanced capabilities by fostering innovation and accelerated deployment of promising technology.",
+   "next_sentence": "Unmanned Aerial Systems Launched Effects Agile Systems Development; Project Code:",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "6b40bc8596dcb9b8",
+   "pe_bli": "0305193D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "9d2d5357159ab62c",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funds moved to PE 0305245D8Z, Intelligence Capabilities and Innovation.",
+   "prev_sentence": "",
+   "next_sentence": "Intelligence Support to Cyber Operations funded development, testing, prototyping, and demonstration of innovative intelligence capabilities to integrate intelligence and counterintelligence activities across numerous domains and technical areas.",
+   "codes": [
+    "0305245D8Z"
+   ]
+  },
+  {
+   "clause_id": "6b50cc1471b49e20",
+   "pe_bli": "0604820A",
+   "fiscal_year": 2026,
+   "fact_id": "c373e6a2b87322e2",
+   "page": null,
+   "sentence": "Funding realigned from PE 0604741A / Air Defense Command Control and Intelligence - Eng Dev, Project 126 /PEO Electronic Protect for the design, development, integration, and test of ALPS.",
+   "prev_sentence": "In FY 2025, Project PS1 /Army Long Range Persistent Surveillance (ALPS) was a new effort realigned within PE 0604820A / Radar Development.",
+   "next_sentence": "",
+   "codes": [
+    "0604741A"
+   ]
+  },
+  {
+   "clause_id": "6ca0c85e0f6e1a24",
+   "pe_bli": "1206895C",
+   "fiscal_year": 2025,
+   "fact_id": "1b890d8311f19277",
+   "page": 903,
+   "sentence": "This represents a continuation of efforts previously funded in PE 1206893C.",
+   "prev_sentence": "Space Applications for Missile Defense (SAMD) is a consolidation of functional elements of Missile Defense Agency Contractor Support Services, Federally Funded Research and Development Center/University Affiliated Research Center, and Civilian manpower into a single entity that provides acquisition, financial, and technical support across the Missile Defense Agency Space Sensors enterprise.",
+   "next_sentence": "",
+   "codes": [
+    "1206893C"
+   ]
+  },
+  {
+   "clause_id": "6cd402094b08ccb7",
+   "pe_bli": "0604617F",
+   "fiscal_year": 2026,
+   "fact_id": "85e47844ed822c70",
+   "page": null,
+   "sentence": "In FY 2023, PE 0207522F, Airbase Air Defense Systems (ABADS), Project 675218, Applications Development efforts are transferred to PE 0604617F, Agile Combat Support (ACS), Project 675218, Applications Development.",
+   "prev_sentence": "This program is part of the overarching Kessel Run portfolio.",
+   "next_sentence": "Global all-hazards/threats to Department of the Air Force (DAF) installations continues to generate substantial risk to tactical, operational, and strategic missions.",
+   "codes": [
+    "0207522F",
+    "0604617F"
+   ]
+  },
+  {
+   "clause_id": "6e66141ae5f23e7d",
+   "pe_bli": "0604113A",
+   "fiscal_year": 2026,
+   "fact_id": "3aeaf5b74eb302df",
+   "page": null,
+   "sentence": "FUAS funding is realigned to PE 0609346A A53 starting in FY26.",
+   "prev_sentence": "Program is a part of the Department of Defense Capability Based (Agile) Funding Pilot.",
+   "next_sentence": "Beginning in FY 2025, LE efforts were realigned within PE 0604113A / Future Tactical Unmanned Aircraft System (FTUAS) from Project EX8/Future Unmanned Aircraft System (FUAS) to project DH3/Air Launched Effects (ALE) to better capture LE funding and reporting.",
+   "codes": [
+    "0609346A"
+   ]
+  },
+  {
+   "clause_id": "6e750a75f948cd39",
+   "pe_bli": "0605384BP",
+   "fiscal_year": 2025,
+   "fact_id": "6493b8c967d05b49",
+   "page": null,
+   "sentence": "Beginning in FY24, Project DW6 will functionally transfer program and funding to the 2040 appropriation, PE 0605601A / Project WD1, West Desert Test Center.",
+   "prev_sentence": ", institutional civilian and contractor labor; repair and maintenance of test instrumentation, equipment, and facilities; and replacement of test equipment).",
+   "next_sentence": "",
+   "codes": [
+    "0605601A"
+   ]
+  },
+  {
+   "clause_id": "6ec67b0cf912a31b",
+   "pe_bli": "0604294D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "906bcdda2a0660d1",
+   "page": null,
+   "sentence": "FY 2019 funds in the amount of $2.000 million are being transferred from PE 0603826D8Z for the continuation of Joint Federated Assurance Center (JFAC) hardware and software assurance and integrity analysis activities planned across the Future Years Defense Program (FYDP).",
+   "prev_sentence": "This Program Element (PE) implements, maintains, and updates the DoD’s long-term microelectronics strategy and places emphasis on incentivizing and proving new microelectronics technology solutions.",
+   "next_sentence": "Recognizing that a trusted and assured supply of microelectronics is a U.",
+   "codes": [
+    "0603826D8Z"
+   ]
+  },
+  {
+   "clause_id": "6f20054997ef5d0a",
+   "pe_bli": "0300D-TJS-L44",
+   "fiscal_year": 2019,
+   "fact_id": "93d6044686aea929",
+   "page": null,
+   "sentence": "In 2018, the Joint Staff Information Network (JSIN) resources permanently transferred to the JSP (DISA PE 0305830K).",
+   "prev_sentence": "The Deputy Secretary of Defense (DepSecDef) approved the alignment of common IT services in the Pentagon and the National Capital Region to the Joint Service Provider (JSP) operating as a field service activity in Defense Information Systems Agency (DISA).",
+   "next_sentence": "The overall effect to the Department was a net-zero profile change for FY 2018 and beyond.",
+   "codes": [
+    "0305830K"
+   ]
+  },
+  {
+   "clause_id": "6f91b587c7397b7e",
+   "pe_bli": "0203728A",
+   "fiscal_year": 2026,
+   "fact_id": "b3123c07e825d2d8",
+   "page": null,
+   "sentence": "FY 2026 funding for Project EF8 was realigned to PE 0604818A / Army Tactical Command & Control Hardware & Software, Projects EJ6 and EK9, in support of the Army's Next Generation Command and Control (NGC2) initiative to modernize Command and Control (C2) systems, for the Data and Application Layers.",
+   "prev_sentence": "Funding also supports alignment with Nett Warrior architecture changes for Precision Fires software to integrate with Mounted Mission Command-Software (MMC-S) and operate within the MCE, as well as vehicle integration into the Fire Support Team Bradley-Fire Support Team (BFIST) and Stryker platforms.",
+   "next_sentence": "The capability being developed under this project remains critical and relevant to the Warfighter.",
+   "codes": [
+    "0604818A"
+   ]
+  },
+  {
+   "clause_id": "709823336f5204d5",
+   "pe_bli": "0603680D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "a55b80e1c3f44dea",
+   "page": null,
+   "sentence": "This is a congressional add transferred from Defense Logistics Agency's Generic Logistics R&D Technology Demonstrations Program, PE 0603712S00",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0603712S00"
+   ]
+  },
+  {
+   "clause_id": "70d13d007300426a",
+   "pe_bli": "0604112N",
+   "fiscal_year": 2026,
+   "fact_id": "53145db91fb44536",
+   "page": null,
+   "sentence": "This Program Element (PE) and associated projects represent a continuation of efforts previously funded under PE 0603512N projects 2208 and 4004 in FY 2014 and earlier and PE 0604567N projects 3179, 3180, and 4007 in FY 2023 and earlier.",
+   "prev_sentence": "The EMALS program will undergo future system improvements to address safety, obsolescence, and reliability.",
+   "next_sentence": "",
+   "codes": [
+    "0603512N",
+    "0604567N"
+   ]
+  },
+  {
+   "clause_id": "73986e0f8a93db95",
+   "pe_bli": "0603648D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "3968cd1d20132e85",
+   "page": null,
+   "sentence": "India Science & Technology baseline funding transfers to Emerging Capabilities Technology Development, Program Element 0603699D8Z in FY 2018 to enable proper alignment and execution of the effort.",
+   "prev_sentence": "Further, development of vibrant S&T cooperation is a key step in building an enduring partnership.",
+   "next_sentence": "",
+   "codes": [
+    "0603699D8Z"
+   ]
+  },
+  {
+   "clause_id": "76127f3e5ef2bb9d",
+   "pe_bli": "0305193D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "ea7e9d07517192b1",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funds moved to PE 0305245D8Z, Intelligence Capabilities and Innovation.",
+   "prev_sentence": "",
+   "next_sentence": "Intelligence Support to Cyber Operations funded development, testing, prototyping, and demonstration of innovative intelligence capabilities to integrate intelligence and counterintelligence activities across numerous domains and technical areas.",
+   "codes": [
+    "0305245D8Z"
+   ]
+  },
+  {
+   "clause_id": "76a86a5b34309a5b",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "de39ecc4edaa0b2f",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts, to be used for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "In a partnership endeavor across the Office of the Secretary of Defense (OSD), Joint Staff, Combatant Commands (CCMDs), the Services, the Intelligence Community (IC), and other U.",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "77ecbcabf875295f",
+   "pe_bli": "0602702E",
+   "fiscal_year": 2025,
+   "fact_id": "18ba7b0481978508",
+   "page": 113,
+   "sentence": "Building upon earlier technology efforts, including the Arrays at Commercial Timescales (ACT) program (previously budgeted in PE 0602716E/Project ELT-01), which focused on hardware-based limitations such as bandwidth and dynamic range, BLiP is focusing on the software and signal processing to fundamentally enhance all radars.",
+   "prev_sentence": "The Beyond Linear Signal Processing (BLiP) program is performing a fundamental redevelopment of the radar signal processing chain with the intent that smaller radar apertures will operate with the performance of much larger, more expensive radar systems.",
+   "next_sentence": "Multiple recent developments show that non-linear and iterative estimation algorithms can out-perform our current linear radar signal processing algorithms.",
+   "codes": [
+    "0602716E"
+   ]
+  },
+  {
+   "clause_id": "792210db89455bfb",
+   "pe_bli": "0901579D8Z",
+   "fiscal_year": 2026,
+   "fact_id": "ab27132d2aa3b72c",
+   "page": 902,
+   "sentence": "•\tIn FY2025, $20.000M was transferred from PE 0901579D8Z to DoD Credit Program Account (PE 0902199D8Z) for CTLP Program.",
+   "prev_sentence": "•\tIn FY2024, there were no funds for CTLP Program.",
+   "next_sentence": "•\tBeginning in FY 2026, funds for CTLP Program will be budgeted to DoD Credit Program Account (PE 0902199D8Z).",
+   "codes": [
+    "0901579D8Z",
+    "0902199D8Z"
+   ]
+  },
+  {
+   "clause_id": "7b9a62999f651212",
+   "pe_bli": "0604123D8Z",
+   "fiscal_year": 2026,
+   "fact_id": "81c4e53fe173adea",
+   "page": 917,
+   "sentence": "For FY2026, AI/ML Scaffolding funds were realigned to PE 0604133D8Z (Alpha-1).",
+   "prev_sentence": "The mission of the AI/ML Scaffolding project was developing, providing, brokering, and advising on the infrastructure, data, tools, services, and best practices needed to accelerate appropriate AI/ML development and adoption.",
+   "next_sentence": "",
+   "codes": [
+    "0604133D8Z"
+   ]
+  },
+  {
+   "clause_id": "7bc9252cf6baf5ed",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "122e5070554facba",
+   "page": 137,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622405, High Speed Systems Technology, was transferred to PE 0602203F, Aerospace Propulsion, Project 622405 High Speed Systems Technology.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404, Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver science & technology capabilities.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "7c5a72727e9b727c",
+   "pe_bli": "1206616SF",
+   "fiscal_year": 2026,
+   "fact_id": "ce0fb98c48eddad6",
+   "page": 79,
+   "sentence": "This funding will be realigned USSF RDT&E Budget Activity (BA) 03, PE 1206616SF, (Space Advanced Technology Development/Demo), Project 634868, (Maui Space Surveillance System) for proper execution following enactment.",
+   "prev_sentence": "$2.591 million was erroneously programmed into Budget Activity (BA) 02, PE 1206616SF (Space Advanced Technology Development/Demo), Project 621010 (Space Survivability and Surveillance).",
+   "next_sentence": "This program is in Budget Activity 2, Applied Research because this budget activity includes studies, investigations, and non-system specific technology efforts directed toward general military needs with a view toward developing and evaluating the feasibility and practicality of proposed solutions and determining their parameters.",
+   "codes": [
+    "1206616SF"
+   ]
+  },
+  {
+   "clause_id": "7d0185dafddf015e",
+   "pe_bli": "0604840M",
+   "fiscal_year": 2026,
+   "fact_id": "9b87cc5960ab18a7",
+   "page": null,
+   "sentence": "PE 0604840M/N replaced PE 0604810M/N beginning in FY2019 due to budget being moved from BA05 to BA07.",
+   "prev_sentence": "Foreign Military Sales are ongoing separately.",
+   "next_sentence": "Beginning in FY2022, separate, distinct project units were established within the Continuous Capability Development & Delivery (C2D2) Program Element, per Congressional direction, to provide traceability between execution and budget requests.",
+   "codes": [
+    "0604810M",
+    "0604840M"
+   ]
+  },
+  {
+   "clause_id": "7d1a6f5622a9be33",
+   "pe_bli": "837170",
+   "fiscal_year": 2026,
+   "fact_id": "c8f6ffce8b3ec81e",
+   "page": 588,
+   "sentence": "The FY 2026 efforts in this Program Element (PE) were transferred to PE 0207279F Isolated Personnel Survivability and Recovery, Project 65412B in order to support higher Air Force priorities",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0207279F"
+   ]
+  },
+  {
+   "clause_id": "7e4beb18d9863615",
+   "pe_bli": "0204228N",
+   "fiscal_year": 2026,
+   "fact_id": "d8ee9448c1a9ce9c",
+   "page": null,
+   "sentence": "Effective in FY 2026, Project 3311 Navigation Systems moved from PE 0204228N to PE 0607658N as part of the PE/BLI consolidation effort in the DoD Implementation Plan from the Commission on PPBE Reform Final Report.",
+   "prev_sentence": "",
+   "next_sentence": "Through FY 2025, the focus of PE 0204228N (Surface Support) is for the research, design, development, integration testing, and documentation of the Inertial Navigation System (INS) AN/WSN-12 for all Navy ships and submarines.",
+   "codes": [
+    "0204228N",
+    "0607658N"
+   ]
+  },
+  {
+   "clause_id": "7ff56e31616fee85",
+   "pe_bli": "0603767E",
+   "fiscal_year": 2022,
+   "fact_id": "efef02c6cc0e7986",
+   "page": null,
+   "sentence": "Based on technologies developed under the Automatic Target Recognition (ATR) Technology program (previously budgeted in 0603767E, SEN-02), the Moving Target Recognition (MTR) program seeks to enable the use of synthetic aperture radar (SAR) sensors to detect, track, image, and automatically recognize moving ground targets within an area of interest.",
+   "prev_sentence": "",
+   "next_sentence": "SAR sensors provide the capability to detect and identify high-value targets in all weather conditions but only when the targets are stationary due to limitations in traditional SAR processing.",
+   "codes": [
+    "0603767E"
+   ]
+  },
+  {
+   "clause_id": "8181e63ce70776c9",
+   "pe_bli": "0604294D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "b440d9d3a038381d",
+   "page": null,
+   "sentence": "This project was previously funded in PE 0605140D8Z BA 5 and has been transferred to this BA 4 PE to correctly align funding in support of the mission.",
+   "prev_sentence": ", trustworthy designs and supply chains.",
+   "next_sentence": "",
+   "codes": [
+    "0605140D8Z"
+   ]
+  },
+  {
+   "clause_id": "820b0a5f72999d02",
+   "pe_bli": "0605001E",
+   "fiscal_year": 2017,
+   "fact_id": "a8c7c086965ed099",
+   "page": null,
+   "sentence": "Mission support administrative costs were previously budgeted in PE 0605898E, Project MH-01.",
+   "prev_sentence": "The funds provide personnel compensation for mission support civilians as well as costs for building rent, physical security, travel, supplies and equipment, communications, printing and reproduction.",
+   "next_sentence": "",
+   "codes": [
+    "0605898E"
+   ]
+  },
+  {
+   "clause_id": "8534532e83707e8c",
+   "pe_bli": "0608648D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "fbc0e9c9340b6332",
+   "page": null,
+   "sentence": "DAVE investments were previously funded with RDT&E in PE 0603821D8Z.",
+   "prev_sentence": "",
+   "next_sentence": "DAVE will replace numerous costly and outdated legacy systems.",
+   "codes": [
+    "0603821D8Z"
+   ]
+  },
+  {
+   "clause_id": "855a9e3be04d6a72",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "PE 0804701F ADVANCED PILOT TRAINING T-7A \nAdvanced Pilot Training (APT) T-7A (formerly known as T-X) Program will develop, test, acquire, and sustain an affordable, agile, and integrated APT System consisting of 351 aircraft, Ground Based Training System, Maintenance Training System, support, infrastructure, and personnel to meet Air Education and Training Command's (AETC) training needs.",
+   "prev_sentence": "The VC-25B Program Office will deliver a new fleet of aircraft to meet the requirements for the President to execute the duties of Commander-in-Chief, Head of State, and Chief Executive.",
+   "next_sentence": "PE 0205219F MQ-9 UAV \nMQ-9 Reaper Squadron Operations Centers (SOCs) enable Remote Split Operations (RSO), provide critical mission data and tasking information to the aircrew and disseminate and/or exchange mission data with decision-makers and the intelligence community.",
+   "codes": [
+    "0804701F"
+   ]
+  },
+  {
+   "clause_id": "855b06cda968c146",
+   "pe_bli": "1160434BB",
+   "fiscal_year": 2018,
+   "fact_id": "6246a8b778f30f4f",
+   "page": null,
+   "sentence": "Beginning in FY 2017 Unmanned ISR represents the approved consolidation of Special Applications for Contingencies Program Element (PE) 0304210BB; MQ-1 Unmanned Aerial Vehicle (UAV), PE 0305219BB; MQ-8, PE 0305231BB; RQ-11, UAV PE 1105232BB; and RQ-7 UAV, PE 1105233BB.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "0304210BB",
+    "0305219BB",
+    "0305231BB",
+    "1105232BB",
+    "1105233BB"
+   ]
+  },
+  {
+   "clause_id": "85a266d586543ca0",
+   "pe_bli": "832070",
+   "fiscal_year": 2026,
+   "fact_id": "8dae5fc5b13f1120",
+   "page": 135,
+   "sentence": "PE 0305220F RQ-4\nFY24 funds will be used to procure ground sites infrastructure needed for SATCOM modernization known as Open Remote Split Operations (RSO) Architecture (ORA).",
+   "prev_sentence": "Funding for this exhibit contained in PE 0305221F.",
+   "next_sentence": "Modernization will increase capability from 8 to 28 independent links, increase reliability and resiliency.",
+   "codes": [
+    "0305220F"
+   ]
+  },
+  {
+   "clause_id": "875eb4067c4cfd3f",
+   "pe_bli": "0604562N",
+   "fiscal_year": 2026,
+   "fact_id": "d49e1818ac60b96d",
+   "page": null,
+   "sentence": "Effective FY 2026, Project 0236 is moving from PE 0604562N to PE 0604503N as part of the PE/BLI consolidation effort in the DoD Implementation Plan from the Commission on Planning, Programming, Budgeting, and Execution (PPBE) Reform Final Report in an effort to rapidly increase Navy Lethality in the Submarine and Surface Fleet.",
+   "prev_sentence": "",
+   "next_sentence": "The AN/BYG-1 is the combat control system common across all submarine platforms which incorporates tactical control, weapon/payload control and Tactical Local Area Network (TacLAN) functions into a single procurement program.",
+   "codes": [
+    "0604503N",
+    "0604562N"
+   ]
+  },
+  {
+   "clause_id": "87c45989ba516036",
+   "pe_bli": "1105232BB",
+   "fiscal_year": 2018,
+   "fact_id": "744ba95ced3ae3b0",
+   "page": null,
+   "sentence": "Beginning in FY2017, this Program Element has been consolidated into SOCOM Program Element 1160434BB, Unmanned ISR.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program.",
+   "codes": [
+    "1160434BB"
+   ]
+  },
+  {
+   "clause_id": "87d71009711bebd5",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "defd09540363560f",
+   "page": 417,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "prev_sentence": "In FY 2025, the RDT&E Budget Activity 03 (BA03) Aerospace Propulsion and Power Technology efforts and activities under PE 0603216F, was transferred to PE 0603211F, Aerospace Technology Dev/Demo for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634093 Missile Rocket Propulsion Integ & Demo, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634093 Missile Rocket Propulsion Integ & Demo.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "884a89da307650d5",
+   "pe_bli": "1203609SF",
+   "fiscal_year": 2026,
+   "fact_id": "ab61c355fa572f67",
+   "page": 717,
+   "sentence": "This funding will be realigned back to PE 1203154SF & 1206427SF for proper execution following enactment.",
+   "prev_sentence": "In FY 2026, funds were erroneously transferred into Program Element (PE) 1203609SF, pLEO SATCOM (MILNET) from PEs 1203154SF, Long Rang Kill Chains & 1206427SF Space Systems Prototype Transitions.",
+   "next_sentence": "",
+   "codes": [
+    "1203154SF",
+    "1206427SF"
+   ]
+  },
+  {
+   "clause_id": "8964388ad52bbbd9",
+   "pe_bli": "0207418F",
+   "fiscal_year": 2026,
+   "fact_id": "b1f9b5dabc5eebf8",
+   "page": null,
+   "sentence": "FY26 funding ($4.108M) for BA 07 Project 0207418F was transferred to BA 07 Project 0207457F.",
+   "prev_sentence": "Implement requirements and standards defined under the Simulator Common Architecture Requirements and Standards initiative.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver JTC TRS capability.",
+   "codes": [
+    "0207418F",
+    "0207457F"
+   ]
+  },
+  {
+   "clause_id": "8b76f109407dd28a",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "b21ec3a013d650a3",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "8bc0716bce1a5a60",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "7de3da4d02df2897",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "8d16683ddc83ee80",
+   "pe_bli": "0603758N",
+   "fiscal_year": 2026,
+   "fact_id": "784f2a8c7c1ea057",
+   "page": 819,
+   "sentence": "Investments in Project 1097 were previously funded in this same PE under pieces of several projects spread across Project 2918 and in PE 0602123N/0000.",
+   "prev_sentence": "Through intentional innovation operations in the pursuit of novel and decisive capabilities for our Sailors and Marines, NavalX is focused on delivering disruptive capabilities that address operational problems within 5 years.",
+   "next_sentence": "This new Project was created to promote greater transparency for NavalX execution and investments across innovation lines of effort.",
+   "codes": [
+    "0602123N"
+   ]
+  },
+  {
+   "clause_id": "8df02abef0fb9f7d",
+   "pe_bli": "0603833D8Z",
+   "fiscal_year": 2017,
+   "fact_id": "12fb8262fdc17868",
+   "page": 373,
+   "sentence": "(1) the Modeling and Simulation Management Office project previously funded from PE 0603832D8Z; (2) the Systems Engineering Research Center (SERC), previously funded in PE 0605142D8Z; and (3) the Engineered Resilient Systems effort, previously funded in PE 0602251D8Z, Applied Research for the Advancement of S&T Priorities.",
+   "prev_sentence": "This Program Element (PE) was created in FY 2016 to better align the following efforts previously funded in other PE’s:",
+   "next_sentence": "These three activities have been re-aligned to this new PE, Engineering Science and Technology, in order to address Defense Research and Engineering priorities to advance engineering state of the practice, and address complex defense systems challenges through development of engineering capabilities to improve acquisition quality.",
+   "codes": [
+    "0602251D8Z",
+    "0603832D8Z",
+    "0605142D8Z"
+   ]
+  },
+  {
+   "clause_id": "8e4ec3edf26fce2e",
+   "pe_bli": "0604659N",
+   "fiscal_year": 2026,
+   "fact_id": "70913d1ebd62165c",
+   "page": null,
+   "sentence": "SLCM funds were transferred to new PE 0105519N starting in FY26.",
+   "prev_sentence": "SLCM-N is scoped to deliver an integrated flight system and to continue to advance SLCM-N capabilities to fully address requirements identified in the 2018 Nuclear Posture Review, SLCM-N Initial Capabilities Document, and examined in the Analysis of Alternatives to mitigate a lack of a sea based tactical nuclear based system.",
+   "next_sentence": "PROJ 9999:",
+   "codes": [
+    "0105519N"
+   ]
+  },
+  {
+   "clause_id": "90d6b7f89bfdc4fb",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "122e5070554facba",
+   "page": 137,
+   "sentence": "In FY 2025, the RDT&E Budget Activity 02 (BA02) Aerospace Vehicles Technologies efforts and activities under PE 0602201F, was transferred to PE 0602203F, Aerospace Propulsion for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "The Nuclear System Technology project provides science and technology to preserve nuclear deterrence for future generations.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "9118791eda9d658e",
+   "pe_bli": "1160434BB",
+   "fiscal_year": 2019,
+   "fact_id": "16890f8e381da9a8",
+   "page": null,
+   "sentence": "Unmanned Intelligence, Surveillance, and Reconnaissance (ISR) includes the consolidation of Special Applications for Contingencies (previously Program Element (PE) 0304210BB); MQ-1 Unmanned Aerial Vehicle (UAV), (previously PE 0305219BB); MQ-8, (previously PE 0305231BB); RQ-11, UAV (previously PE 1105232BB); and RQ-7 UAV, (previously PE 1105233BB).",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "0304210BB",
+    "0305219BB",
+    "0305231BB",
+    "1105232BB",
+    "1105233BB"
+   ]
+  },
+  {
+   "clause_id": "91e0dcaa8b37fa25",
+   "pe_bli": "0603639A",
+   "fiscal_year": 2026,
+   "fact_id": "89ecc78c7a05980c",
+   "page": 86,
+   "sentence": "FY 2026 funding for LRPM transferred to PE 0609345A/Project A46.",
+   "prev_sentence": "LRPM will provide Army Aviation and Ground Forces with a precise long range munition system to rapidly respond in a combat environment to improve the lethality and stand-off of Warfighters and aviation platforms in an Anti-Access Area Denial (A2AD) and positioning, navigation, and timing (PNT) denied environment.",
+   "next_sentence": "",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "91ee1edf613577ae",
+   "pe_bli": "0603618D8Z",
+   "fiscal_year": 2020,
+   "fact_id": "893755ec98ce542b",
+   "page": null,
+   "sentence": "This effort will be realigned and funded out of the 0603699D8Z Emerging Capabilities Technology Development (ECTD) Program Element beginning in FY 2020.",
+   "prev_sentence": "Follow-on venues will address similar compelling capabilities, approaches, and threats.",
+   "next_sentence": "ATD/V explores, matures, integrates, and demonstrates emerging technologies and approaches to address compelling EW and EW-Cyber warfighting needs.",
+   "codes": [
+    "0603699D8Z"
+   ]
+  },
+  {
+   "clause_id": "92ba4afa22a273b9",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "In FY2021, PE 0305550F (Information Technology Services Management - Other), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "prev_sentence": "PE 0303005F EIT END USER DEVICES \nIn FY2021, PE 0208550F (Information Technology Services Management - Tactical Air Forces), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "next_sentence": "a.",
+   "codes": [
+    "0303005F",
+    "0305550F"
+   ]
+  },
+  {
+   "clause_id": "956d058c4d661894",
+   "pe_bli": "834010",
+   "fiscal_year": 2026,
+   "fact_id": "c15a67b0c3c36a22",
+   "page": 303,
+   "sentence": "PE 0207573F National Technical Nuclear Forensics - P-40A\nContinues efforts previously funded by OSD for Prompt Diagnostics.",
+   "prev_sentence": "Funding for this exhibit contained in PE 0207448F.",
+   "next_sentence": "Procures terrestrial-based sensors and communications for prompt diagnostics, collection, analysis, and evaluation of a nuclear detonation.",
+   "codes": [
+    "0207573F"
+   ]
+  },
+  {
+   "clause_id": "95c9aeb32c6c1456",
+   "pe_bli": "0604132D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "70097cbde615dc72",
+   "page": null,
+   "sentence": "•\tFY 2021 residual resources are transferred to Program Element 0603338D8Z (Defense Modernization and Prototyping), Project Code 722, Time Sensitive Targeting and Defeat (TSTD).",
+   "prev_sentence": "•\tDemonstrated the deployment of synthetic aperture radar and C2 payloads during JB18 to show case the evolution of future warfare.",
+   "next_sentence": "",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "963f762f853ef1b9",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "PE 0401319F VC-25B \nThe VC-25B Program, formerly known as the Presidential Aircraft Recapitalization (PAR) Program, will replace the Presidential VC-25A fleet as it reaches the end of its planned 30-year life-cycle.",
+   "prev_sentence": "This funding will be executed by HQ AFSPC or associated space units.",
+   "next_sentence": "The VC-25B Program Office will deliver a new fleet of aircraft to meet the requirements for the President to execute the duties of Commander-in-Chief, Head of State, and Chief Executive.",
+   "codes": [
+    "0401319F"
+   ]
+  },
+  {
+   "clause_id": "96d32af1c4c95986",
+   "pe_bli": "0602303E",
+   "fiscal_year": 2017,
+   "fact_id": "a2c05884359c6306",
+   "page": 113,
+   "sentence": "This program was previously funded in PE 0602702E, Project TT-13.",
+   "prev_sentence": "UMI implementations will be developed and demonstrated in next-generation decision-support and autonomous systems.",
+   "next_sentence": "",
+   "codes": [
+    "0602702E"
+   ]
+  },
+  {
+   "clause_id": "97827c48ab6768ba",
+   "pe_bli": "0604033F",
+   "fiscal_year": 2026,
+   "fact_id": "72ad8e95e94d6276",
+   "page": null,
+   "sentence": "In FY 2022, PE 0101101F, Project ARRW00/AGM-183A Air-Launched Rapid Response Weapon, efforts were transferred to PE 0604033F, Hypersonics Prototyping, Project 643882, Air-Launched Rapid Response Weapon, in order to mitigate the testing shortfall (PE 0604033F remains RDT&E only).",
+   "prev_sentence": "Investing in hypersonics development will enable the collection of valuable data, building of capacity and capability, allowing hypersonic programs to leverage and build upon each other, and project the overall technology forward.",
+   "next_sentence": "In FY 2026, ARRW Procurement is being added to PE 0101101F.",
+   "codes": [
+    "0101101F",
+    "0604033F"
+   ]
+  },
+  {
+   "clause_id": "9893a66c6dd36cb3",
+   "pe_bli": "0128B63000",
+   "fiscal_year": 2026,
+   "fact_id": "061ebfb0816b8b31",
+   "page": null,
+   "sentence": "FY 2025 funding in the amount of $16.144 million was realigned to BA-08 PE 0608041A Project CD1 Defensive Cyber Software Prototype Development.",
+   "prev_sentence": "* DCO - Garrison DCO Platform - (PEO EIS) - Base Level\n* DCO - Deployable Defensive Systems - (PEO EIS) - Tactical/Command Post Level\n* DCO Development Environment - (PEO EIS) - Armory\n\nNote:",
+   "next_sentence": "",
+   "codes": [
+    "0608041A"
+   ]
+  },
+  {
+   "clause_id": "992cd92922901f67",
+   "pe_bli": "0604827A",
+   "fiscal_year": 2026,
+   "fact_id": "d8880a9bd4ffc28a",
+   "page": null,
+   "sentence": "Realignment starting FY 2026 to Lethal Semi-Autonomous Aerial Unmanned Sys-Eng Dev (0609345A/A49) funding line.",
+   "prev_sentence": "The funding contained within this budget line and project will be used to conduct evaluations of technologies and capabilities in the loitering munitions capability space, hardware and system architecture engineering and integration activities, and testing and evaluation activities.",
+   "next_sentence": "S65 - Soldier Power:",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "99b641331ce9e69c",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "dda0c16a903d8bed",
+   "page": 393,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "prev_sentence": "In FY 2025, the RDT&E Budget Activity 03 (BA03) Aerospace Propulsion and Power Technology efforts and activities under PE 0603216F, were transferred to PE 0603211F, Aerospace Technology Dev/Demo for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634093 Missile Rocket Propulsion Integ & Demo, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634093 Missile Rocket Propulsion Integ & Demo.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "99e09d581cfe9af5",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "defd09540363560f",
+   "page": 417,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 635098 Advanced Aerospace Propulsion, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634926 High Speed Systems Integ & Demo.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver science & technology capabilities.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "9b680debe89bad93",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "In FY2021, PE 0408550F (Information Technology Services Management - Mobility Air Forces), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "prev_sentence": "This is a continuing requirement.",
+   "next_sentence": "d.",
+   "codes": [
+    "0303005F",
+    "0408550F"
+   ]
+  },
+  {
+   "clause_id": "9c998ecb726ad2df",
+   "pe_bli": "0605142D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "7f6627e2af42c956",
+   "page": null,
+   "sentence": "In FY 2020, funding from this project will transfer to the Maintaining Technology Advantage PE 0605797D8Z, in alignment with the DD, STP&E mission.",
+   "prev_sentence": "These activities will be promulgated in defense acquisition as a fundamental element of the DD, STP&E systems engineering and technical reviews.",
+   "next_sentence": "",
+   "codes": [
+    "0605797D8Z"
+   ]
+  },
+  {
+   "clause_id": "9ca36d62cfebf9d0",
+   "pe_bli": "834190",
+   "fiscal_year": 2026,
+   "fact_id": "fdd59f96ff88ac92",
+   "page": 427,
+   "sentence": "In FY 2025 3080 funding in PE 0207604 supporting Combat Training Ranges was transferred to PE 0207429F.",
+   "prev_sentence": "Funding for this exhibit contained in PE 0207429F Combat Training Ranges and PE 0207604 Readiness Training Ranges Operations and Maintenance.",
+   "next_sentence": "",
+   "codes": [
+    "0207429F",
+    "0207604"
+   ]
+  },
+  {
+   "clause_id": "9d18b1529b5fb3ca",
+   "pe_bli": "0605140D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "1a38050b8dcbcc7e",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funding for this project has been transferred to BA 5 PE 0605294D8Z, P812, to continue execution of funds in support of the mission.",
+   "prev_sentence": "This capability will address trusted masks at technology node sizes less than 130 nanometers (nm) down to 14nm.",
+   "next_sentence": "",
+   "codes": [
+    "0605294D8Z"
+   ]
+  },
+  {
+   "clause_id": "9daeffc9edd880c3",
+   "pe_bli": "0605457A",
+   "fiscal_year": 2026,
+   "fact_id": "ff964951c4fa7431",
+   "page": null,
+   "sentence": "In FY 2026, funds were realigned to PE 0606118A, AIAMD Software Development & Integration to support entering into the Software Pathway.",
+   "prev_sentence": "Funding in FY 2026 also supports convergence of AMDPCS into the IBCS hardware baseline.",
+   "next_sentence": "AIAMD is directly aligned to the U.",
+   "codes": [
+    "0606118A"
+   ]
+  },
+  {
+   "clause_id": "9fb59fbc6b9ef9bf",
+   "pe_bli": "0207444F",
+   "fiscal_year": 2026,
+   "fact_id": "ffe454d97c72d3fe",
+   "page": null,
+   "sentence": "FY26 funding ($12.038M) for BA 07 0207444F was transferred to BA 07 Project 0207457F.",
+   "prev_sentence": "Items developed during execution may change based on critical equipment needed to support current Air Force mission requirements.",
+   "next_sentence": "This program element may include necessary civilian pay expenses required to manage, execute, and deliver weapon system capability.",
+   "codes": [
+    "0207444F",
+    "0207457F"
+   ]
+  },
+  {
+   "clause_id": "9fcf80e17a2d72bb",
+   "pe_bli": "0604317F",
+   "fiscal_year": 2026,
+   "fact_id": "51a08d6367ce5e60",
+   "page": null,
+   "sentence": "Beginning in FY 2024, PE 0604317F, Technology Transfer, Project 646030, AFWERX efforts were transferred to PE 0604009F, AFWERX Prime, Project 640856 AFWERX Operations and Support.",
+   "prev_sentence": "This focus helps guide technologies through transition across the valley from idea to scaled and sustained capability.",
+   "next_sentence": "",
+   "codes": [
+    "0604009F",
+    "0604317F"
+   ]
+  },
+  {
+   "clause_id": "a16df9a34b9e7a07",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "dda0c16a903d8bed",
+   "page": 393,
+   "sentence": "In FY 2025, the RDT&E Budget Activity 03 (BA03) Aerospace Propulsion and Power Technology efforts and activities under PE 0603216F, were transferred to PE 0603211F, Aerospace Technology Dev/Demo for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "Develops and demonstrates adaptive power and thermal management components, controls and systems for high-power payloads enabling aerospace systems to deliver strike capabilities while integrating autonomy and control technologies to enable affordable mass in the fight and revolutionary autonomous collaborative platform capabilities.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "a1f15b9d0f54cdb7",
+   "pe_bli": "TITLE3",
+   "fiscal_year": 2026,
+   "fact_id": "6f1a89cc5f1f6389",
+   "page": 19,
+   "sentence": "When compared to the FY 2025 President's Budget Request (PBR 2025), changes to the FY 2026 discretionary budget includes a reduction of $227.000 million resulting from realigning funding for Bioindustrial Manufacturing investments to the Office of the Under Secretary of Defense for Research and Engineering (OUSD(R&E)) PE 0603680D8Z, Project Code 549, Defense-Wide Manufacturing Science and Technology Program.",
+   "prev_sentence": "Further information for this reconciliation request is provided in Chapter 2 of the Reconciliation Exhibit.",
+   "next_sentence": "Additionally, a decrease of $4.454 million was made to meet target Departmental reductions, while an increase of $75.000 million was made for Department identified defense industrial base priorities.",
+   "codes": [
+    "0603680D8Z"
+   ]
+  },
+  {
+   "clause_id": "a45c135a23628899",
+   "pe_bli": "1160403BB",
+   "fiscal_year": 2026,
+   "fact_id": "07a0a37dd4d59436",
+   "page": 79,
+   "sentence": "Beginning in FY 2025, all A2E RDT&E funding has been consolidated under PE 1160403BB, SF100.",
+   "prev_sentence": "A2E will operationalize the Air Force’s Uncrewed Aircraft Systems (UAS) strategy to present exquisite, attributable, and expendable UAS for collaborative operations within permissive, contested, and denied environments.",
+   "next_sentence": "PR.",
+   "codes": [
+    "1160403BB"
+   ]
+  },
+  {
+   "clause_id": "a48144b9cddbc2fa",
+   "pe_bli": "0605140D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "aca0e6fa3d9db6e4",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funding for this project has been transferred to BA 5 PE 0605294D8Z, P812, to continue execution of funds in support of the mission.",
+   "prev_sentence": "This capability will address trusted masks at technology node sizes less than 130 nanometers (nm) down to 14nm.",
+   "next_sentence": "",
+   "codes": [
+    "0605294D8Z"
+   ]
+  },
+  {
+   "clause_id": "a4e2045dd064ff7d",
+   "pe_bli": "0206313M",
+   "fiscal_year": 2026,
+   "fact_id": "518892798447f0d9",
+   "page": null,
+   "sentence": "MA-DOSS was previously funded in PE 0206625M, Project 2272 in FY 2023.",
+   "prev_sentence": "2270 Exp Indirect Fire Gen Supt Wpn Sys.",
+   "next_sentence": "The Marine Corps Joint Battle Command Platform (JBC-P) - The JBC-P Family of Systems (FoS) is a joint, digital, battle command information FoS that provides enhanced map imagery and integrated, on-the-move, timely, and relevant Command and Control (C2)/Situational Awareness (SA) information to tactical combat, combat support, and combat service support commanders, leaders, and small unit leaders.",
+   "codes": [
+    "0206625M"
+   ]
+  },
+  {
+   "clause_id": "a50ccf4e1706934c",
+   "pe_bli": "0603699D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "879593414c677a02",
+   "page": null,
+   "sentence": "In FY 2021, SH transfers to the Defense Modernization and Prototyping (DM&P) Program Element, 0603338D8Z for further development.",
+   "prev_sentence": "In FY 2020, SH completed the concept development and experimenter outreach phases; conducted the Concept Development Meeting; and prepared for the experiment-planning phase by coordinating efforts for the Initial Planning Meeting.",
+   "next_sentence": "",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "a57ced3f5d4c7784",
+   "pe_bli": "0602203F",
+   "fiscal_year": 2026,
+   "fact_id": "83b554194515412a",
+   "page": 183,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404, Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622403, Flight Controls and Pilot-Vehicle Interface, was transferred to PE 0602203F, Aerospace Propulsion, Project 622403 Flight Controls and Pilot-Vehicle Interface.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "a5b519e678bed45d",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "PE 0303005F EIT END USER DEVICES \nIn FY2021, PE 0208550F (Information Technology Services Management - Tactical Air Forces), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "prev_sentence": "In FY2021, PE 0207436F (Engineering and Installation Support AF), efforts were transferred to PE 0303004F (EIT Connect), in order to align resources under the Enterprise Information Technology portfolio.",
+   "next_sentence": "In FY2021, PE 0305550F (Information Technology Services Management - Other), efforts were transferred to PE 0303005F (EIT End Devices), in order to align resources under the Enterprise Information Technology portfolio.",
+   "codes": [
+    "0208550F",
+    "0303005F"
+   ]
+  },
+  {
+   "clause_id": "a5b92a0e40153bc6",
+   "pe_bli": "0208059JCY",
+   "fiscal_year": 2026,
+   "fact_id": "b6baa5d1f0213d90",
+   "page": 25,
+   "sentence": "The remaining $19.8M from Project CY04 CYBERCOM Activities was realigned to PE 0306250JCY, Cyber Operations Technology Support, BA 08, Project CY50D1 \"Data Sensors DMSS Kits\"",
+   "prev_sentence": "In FY 2025, $35.7M was realigned from to project CY04 CYBERCOM Activities to Project CY59A1 CYBERCOM Activities.",
+   "next_sentence": "",
+   "codes": [
+    "0306250JCY"
+   ]
+  },
+  {
+   "clause_id": "a5c9fa7c69dbeefa",
+   "pe_bli": "0603553N",
+   "fiscal_year": 2026,
+   "fact_id": "cc19b93b3a44aa7c",
+   "page": null,
+   "sentence": "Effective FY 2026, Project 1704 moves from PE 0603553N to PE 0603561N as part of the PE/BLI consolidation effort in the DoD Implementation Plan from the Commission on Planning, Programming, Budgeting, and Execution (PPBE) Reform Final Report in an effort to rapidly increase Navy Lethality in the Submarine and Surface Fleet.",
+   "prev_sentence": "",
+   "next_sentence": "The objective of this Program Element (PE) is to pursue the development of technologies with the goal of improving Anti-Submarine Warfare (ASW) effectiveness to the point of rendering the enemy submarine irrelevant against U.",
+   "codes": [
+    "0603553N",
+    "0603561N"
+   ]
+  },
+  {
+   "clause_id": "a5dabed02e8a2a02",
+   "pe_bli": "0305245D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "677e97fd412c45d7",
+   "page": 871,
+   "sentence": "These funds were transferred from PE 0305193D8Z, Cyber Intelligence in order to support the expansion from a predominantly cyber focus to include broader intelligence capabilities activities.",
+   "prev_sentence": "",
+   "next_sentence": "Intelligence Capabilities and Innovation funds development, testing, prototyping and demonstration of innovative intelligence capabilities to integrate intelligence and counterintelligence activities across numerous domains and technical areas including signals intelligence (SIGINT), measurements and signature intelligence (MASINT), electronic warfare, cyber, geospatial intelligence (GEOINT), multi-sensor integration, biometrics, identity management, collection management, special communications, clandestine operations, and tagging, tracking and locating.",
+   "codes": [
+    "0305193D8Z"
+   ]
+  },
+  {
+   "clause_id": "a84d442aa43c2fe4",
+   "pe_bli": "0605142D8Z",
+   "fiscal_year": 2020,
+   "fact_id": "b04b295046e4aad2",
+   "page": null,
+   "sentence": "In FY 2020, funding from this project will transfer to the Maintaining Technology Advantage PE 0605797D8Z, in alignment with the DD, STP&E mission.",
+   "prev_sentence": "These activities will be promulgated in defense acquisition as a fundamental element of the DD, STP&E systems engineering and technical reviews.",
+   "next_sentence": "",
+   "codes": [
+    "0605797D8Z"
+   ]
+  },
+  {
+   "clause_id": "a8b3134db6a5c69b",
+   "pe_bli": "0603618D8Z",
+   "fiscal_year": 2020,
+   "fact_id": "e59a1463d8b6f526",
+   "page": null,
+   "sentence": "This effort will be realigned and funded out of the 0603699D8Z Emerging Capabilities Technology Development (ECTD) Program Element beginning in FY 2020.",
+   "prev_sentence": "(1) Experimentation/Demonstration efforts utilize innovative field and laboratory experimentation venues to fully understand current and future threats and more rapidly and thoroughly explore, mature, and demonstrate potential countermeasures and overmatch opportunities.",
+   "next_sentence": "(2) Advanced Technology Development/Verification efforts investigate mature technologies and approaches to counter advanced threats in innovative ways and provide powerful new warfighting capabilities.",
+   "codes": [
+    "0603699D8Z"
+   ]
+  },
+  {
+   "clause_id": "aa6502bedbeb2c73",
+   "pe_bli": "1203154SF",
+   "fiscal_year": 2026,
+   "fact_id": "10a4acbaa3270c74",
+   "page": 647,
+   "sentence": "In FY 2026, Project Moving Target Indicator is transferred to Program Element 1203155SF to better align efforts with the USSF mission areas.",
+   "prev_sentence": "",
+   "next_sentence": "In FY 2026, Project Auxiliary Payloads was erroneously transferred to Program Element 1203609SF.",
+   "codes": [
+    "1203155SF"
+   ]
+  },
+  {
+   "clause_id": "aaa00ed16a002e66",
+   "pe_bli": "0604501N",
+   "fiscal_year": 2026,
+   "fact_id": "292ffcdc7e59186b",
+   "page": null,
+   "sentence": "Starting in FY25, funding has been realigned within PE 0604501N from PU 3232 to 3301 to gain contractual efficiencies and program flexibility.",
+   "prev_sentence": "MMSP/AEGIS Linear Processing System (ALPS) integration provides adjunct processing for data collection.",
+   "next_sentence": "Shipboard Passive Electro-Optical/ Infrared (SPEIR) Block I provide surface ships a common 360-degree EO/IR Electronic Support (ES) capability that will passively find, fix, track, and target current/emerging threats in support of the following warfare missions:",
+   "codes": [
+    "0604501N"
+   ]
+  },
+  {
+   "clause_id": "ad6c46a8dc2ab87b",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "98d8b8af63df505b",
+   "page": 413,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "prev_sentence": "Modeling and simulation, integration, and technology demonstrations in a near-operational environment reduce the risk and time required to transition technologies into existing and future aerospace systems.",
+   "next_sentence": "",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "ae4a528469fbba2e",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2018,
+   "fact_id": "42af52bff541c4fb",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "-- Reductions to DTIC’s HQ staffing levels continue, reducing civilian full time equivalents (FTEs) below FY 2017 levels.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "ae4e170db825ffca",
+   "pe_bli": "2209",
+   "fiscal_year": 2026,
+   "fact_id": "9be4b8a98316c62c",
+   "page": 116,
+   "sentence": "Procurement funding in FY 2026 through FY 2030 was realigned to the RDT&E budget (PE 0207161N, PU 0457) for AIM-9X digital fuze and Systems Improvement Program (SIP) IV efforts, including development of hardware and software improvements.",
+   "prev_sentence": "Additionally, FY 2026 continues procurement of upgraded Inertial Measurement Unit Guidance Units.",
+   "next_sentence": "FY 2024 and FY 2025 quantities of 387 and 157, respectively, are properly displayed on the P-5.",
+   "codes": [
+    "0207161N"
+   ]
+  },
+  {
+   "clause_id": "b2ff0fb4c31cb39e",
+   "pe_bli": "0304210BB",
+   "fiscal_year": 2017,
+   "fact_id": "16047b295c3198ce",
+   "page": null,
+   "sentence": "Beginning in FY 2017, this Program Element has been consolidated into SOCOM Program Element 1160434BB, Unmanned ISR.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "1160434BB"
+   ]
+  },
+  {
+   "clause_id": "b424a25861a08c32",
+   "pe_bli": "0607828J",
+   "fiscal_year": 2017,
+   "fact_id": "25f7603eb737c7b4",
+   "page": 87,
+   "sentence": "In FY2016 this PE will be realigned to PE 0604826J - Joint C5 Capability Development, Integration and Interoperability Assessments.",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0604826J"
+   ]
+  },
+  {
+   "clause_id": "b425f05504ea1a89",
+   "pe_bli": "0603680D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "c965ebe231aee988",
+   "page": null,
+   "sentence": "This is a congressional add transferred from Defense Logistics Agency's Generic Logistics R&D Technology Demonstrations Program, PE 0603712S00",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0603712S00"
+   ]
+  },
+  {
+   "clause_id": "b47dd20de2c1ad56",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "41660b47299babd3",
+   "page": null,
+   "sentence": "This funding line which is not a new program was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "b4e03b455bced3e6",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "122e5070554facba",
+   "page": 137,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622403, Flight Controls and Pilot-Vehicle Interface, was transferred to PE 0602203F, Aerospace Propulsion, Project 622403 Flight Controls and Pilot-Vehicle Interface.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404, Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "b852a3f515b77cd6",
+   "pe_bli": "0603826D8Z",
+   "fiscal_year": 2020,
+   "fact_id": "e679e32a62c8a851",
+   "page": null,
+   "sentence": "In 2020, the Joint Rapid Acquisition Cell Support will transfer to PE 0903399D8Z.",
+   "prev_sentence": "To meet these objectives, JRAC leverages contingency and other rapid acquisition authorities.",
+   "next_sentence": "The SMA supports senior leadership within the CCMDs, Joint Force Commanders, and other government agencies by assessing complex operational and technical challenges, which require collaborative multi-agency and multi-disciplinary approaches.",
+   "codes": [
+    "0903399D8Z"
+   ]
+  },
+  {
+   "clause_id": "ba3b037be3c316f5",
+   "pe_bli": "0603270F",
+   "fiscal_year": 2026,
+   "fact_id": "7ebdb52dde3f0119",
+   "page": 434,
+   "sentence": "In FY 2023 and prior this Thrust was titled \"Radio Frequency Electronic Warfare Demonstrator\"\nThis change was made to accommodate the transfer of funding and technical work to this Effort from \"Program Element 0603270F, Electronic Combat Technology, Project 634335, Cyber Concepts, effort Resilient and Agile Mission Systems Architecture\" and \"Program Element 0603270F, Electronic Combat Technology, Project 63691X, EO/IR Warning & Countermeasures Tech, effort Advanced Electro-Optical/Infrared Warning and Countermeasure Technologies\" in order to execute these converging efforts in the Multi-Spectral domain.",
+   "prev_sentence": "Note:",
+   "next_sentence": "",
+   "codes": [
+    "0603270F"
+   ]
+  },
+  {
+   "clause_id": "ba632afea5e839c5",
+   "pe_bli": "1160434BB",
+   "fiscal_year": 2021,
+   "fact_id": "323ef473f7493e02",
+   "page": null,
+   "sentence": "Unmanned Intelligence, Surveillance, and Reconnaissance (ISR) includes the consolidation of Special Applications for Contingencies (SAFC) (previously Program Element (PE) 0304210BB); MQ-1 Unmanned Aerial Vehicle (UAV), (previously PE 0305219BB); MQ-8, (previously PE 0305231BB); RQ-11, UAV (previously PE 1105232BB); and RQ-7 UAV, (previously PE 1105233BB).",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "0304210BB",
+    "0305219BB",
+    "0305231BB",
+    "1105232BB",
+    "1105233BB"
+   ]
+  },
+  {
+   "clause_id": "ba7925224fbf8a40",
+   "pe_bli": "0604113A",
+   "fiscal_year": 2026,
+   "fact_id": "2b0ca27f388338e4",
+   "page": null,
+   "sentence": "Beginning in FY 2025, LE efforts were realigned from PE 0604113A/Future Tactical Unmanned Aircraft System (FTUAS), DH3/Air Launched Effects (ALE) to 0609346A/UAS Launched Effects Agile Development , A54/Air Launched Effects (ALE) to better capture LE funding and reporting.",
+   "prev_sentence": "",
+   "next_sentence": "This program is a part of the Department of Defense Capability Based (Agile) funding pilot, which provides enhanced capabilities by fostering innovation and accelerated deployment of promising technology.",
+   "codes": [
+    "0604113A",
+    "0609346A"
+   ]
+  },
+  {
+   "clause_id": "bb41f8135c18034f",
+   "pe_bli": "0101226N",
+   "fiscal_year": 2026,
+   "fact_id": "5268ce2965848d97",
+   "page": null,
+   "sentence": "Submarine Launch Unmanned Aerial System (SLUAS) funds transfer from RDTEN PE 0604562N beginning in FY25.",
+   "prev_sentence": "Additional details are available at the classified level.",
+   "next_sentence": "SLUAS extends the sensor range of the submarine.",
+   "codes": [
+    "0604562N"
+   ]
+  },
+  {
+   "clause_id": "bb7e408fcfee77b7",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "defd09540363560f",
+   "page": 417,
+   "sentence": "In FY 2025, the RDT&E Budget Activity 03 (BA03) Aerospace Propulsion and Power Technology efforts and activities under PE 0603216F, was transferred to PE 0603211F, Aerospace Technology Dev/Demo for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "The Missile Rocket Propulsion project develops and demonstrates innovative rocket propulsion technologies, propellants, and manufacturing techniques.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "bb98a06ed2cabc84",
+   "pe_bli": "837300",
+   "fiscal_year": 2026,
+   "fact_id": "595b7bc230776350",
+   "page": 607,
+   "sentence": "PE 0205219F MQ-9 UAV \nMQ-9 Reaper Squadron Operations Centers (SOCs) enable Remote Split Operations (RSO), provide critical mission data and tasking information to the aircrew and disseminate and/or exchange mission data with decision-makers and the intelligence community.",
+   "prev_sentence": "PE 0804701F ADVANCED PILOT TRAINING T-7A \nAdvanced Pilot Training (APT) T-7A (formerly known as T-X) Program will develop, test, acquire, and sustain an affordable, agile, and integrated APT System consisting of 351 aircraft, Ground Based Training System, Maintenance Training System, support, infrastructure, and personnel to meet Air Education and Training Command's (AETC) training needs.",
+   "next_sentence": "PE 0303004F EIT CONNECT \nAir Combat Command (ACC) Lead Command Base Communications Infrastructure:",
+   "codes": [
+    "0205219F"
+   ]
+  },
+  {
+   "clause_id": "bbb757f0f43b8ba5",
+   "pe_bli": "1203154SF",
+   "fiscal_year": 2026,
+   "fact_id": "4463b2c7d7fb314e",
+   "page": 654,
+   "sentence": "In FY 2026, Project 67113 Auxiliary Payloads was erroneously transferred to Program Element 1203609SF.",
+   "prev_sentence": "",
+   "next_sentence": "This funding will be realigned back to PE 1203154SF for proper execution following enactment.",
+   "codes": [
+    "1203609SF"
+   ]
+  },
+  {
+   "clause_id": "bbf823c041ef75aa",
+   "pe_bli": "0604503N",
+   "fiscal_year": 2026,
+   "fact_id": "4254577004cb3aa6",
+   "page": null,
+   "sentence": "Beginning in FY26, funding for the following projects will realign to this PE 0604503N:",
+   "prev_sentence": "Sustained and significant improvements to submarine EW systems are required to maintain tactical ship safety and operational effectiveness.",
+   "next_sentence": "PE 0604562N Project 0236 - SSN Comb Cont Sys Imprvmnt (ENG)\n     PE 0604777N Project 0253 - Nav & Electro-Optical Supt",
+   "codes": [
+    "0604503N"
+   ]
+  },
+  {
+   "clause_id": "bdd0c113659591ae",
+   "pe_bli": "1206895C",
+   "fiscal_year": 2024,
+   "fact_id": "1f80d9a8b2fa38e6",
+   "page": null,
+   "sentence": "This represents a continuation of efforts previously funded in PE 1206893C.",
+   "prev_sentence": "SAMD is a consolidation of functional elements of Missile Defense Agency (MDA) Contractor Support Services (CSS), Federally Funded Research and Development Center (FFRDC)/University Affiliated Research Center (UARC), and Civilian manpower into a single entity that provides acquisition, financial, and technical support across the MDA Space Sensors enterprise.",
+   "next_sentence": "",
+   "codes": [
+    "1206893C"
+   ]
+  },
+  {
+   "clause_id": "bed0294bdc368c7c",
+   "pe_bli": "0604518N",
+   "fiscal_year": 2026,
+   "fact_id": "bcff05e0e0053e76",
+   "page": null,
+   "sentence": "Effective FY 2026, Projects 3094 and 3439 move from PE 0604518N to PE 0603561N as part of the PE/BLI consolidation effort in the DoD Implementation Plan from the Commission on Planning, Programming, Budgeting, and Execution (PPBE) Reform Final Report in an effort to rapidly increase Navy Lethality in the Submarine and Surface Fleet.",
+   "prev_sentence": "",
+   "next_sentence": "This Program Element (PE) addresses the development and integration of new and improved technologies into the Anti-Submarine Warfare (ASW) and Theater Undersea Warfare (TUSW) Command & Control (C2) systems supporting the warfighter.",
+   "codes": [
+    "0603561N",
+    "0604518N"
+   ]
+  },
+  {
+   "clause_id": "c0c54398f073a91d",
+   "pe_bli": "0604827A",
+   "fiscal_year": 2026,
+   "fact_id": "6aab476b399490a8",
+   "page": null,
+   "sentence": "Realignment starting FY 2026 to Lethal Semi-Autonomous Aerial Unmanned Sys-Eng Dev (0609345A/A49) funding line.",
+   "prev_sentence": "The funding contained within this budget line and project will be used to conduct evaluations of technologies and capabilities in the loitering munitions capability space, hardware and system architecture engineering and integration activities, and testing and evaluation activities.",
+   "next_sentence": "",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "c11dfec507fed2ee",
+   "pe_bli": "0605140D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "31354d3e462e7755",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funding for this project has been transferred to BA 4 PE 0604294D8Z and BA 5 PE 0605294D8Z.",
+   "prev_sentence": "The project would also support using a repository of third-party IP to expedite circuit design and transition promising technologies to use.",
+   "next_sentence": "",
+   "codes": [
+    "0604294D8Z",
+    "0605294D8Z"
+   ]
+  },
+  {
+   "clause_id": "c20ab5175dfad851",
+   "pe_bli": "0604120A",
+   "fiscal_year": 2026,
+   "fact_id": "5447b43733489db8",
+   "page": null,
+   "sentence": "Starting in FY 2026 the CMFF APNT Card effort was realigned ($5.365M) to Budget Activity-5 (BA-5) DL9 Project Code APNT Cards C5ISR Mounted Form Factor (CMFF) within PE 0604805A Command, Control, Communications Systems - Eng Dev.",
+   "prev_sentence": "Section 1611).",
+   "next_sentence": "(EH8) - PE 0604120/EH8 has no Base funds requested in FY 2026.",
+   "codes": [
+    "0604805A"
+   ]
+  },
+  {
+   "clause_id": "c230b9e359f3f7d6",
+   "pe_bli": "0604009F",
+   "fiscal_year": 2026,
+   "fact_id": "03a99849811b7f98",
+   "page": null,
+   "sentence": "Beginning in FY 2024, Program 0604317F, Technology Transfer, Project 646030, AFWERX and Project 64317A, Technology Transfer Add were transferred to Program 0604009F, AFWERX Prime, Project 640856 AFWERX Operations and Support.",
+   "prev_sentence": "This focus helps guide technologies through transition across the valley from idea to scaled and sustained capability.",
+   "next_sentence": "",
+   "codes": [
+    "0604009F",
+    "0604317F"
+   ]
+  },
+  {
+   "clause_id": "c2cd9a8ed4ba21ce",
+   "pe_bli": "0604113A",
+   "fiscal_year": 2026,
+   "fact_id": "3aeaf5b74eb302df",
+   "page": null,
+   "sentence": "Beginning in FY 2025, LE efforts were realigned within PE 0604113A / Future Tactical Unmanned Aircraft System (FTUAS) from Project EX8/Future Unmanned Aircraft System (FUAS) to project DH3/Air Launched Effects (ALE) to better capture LE funding and reporting.",
+   "prev_sentence": "FUAS funding is realigned to PE 0609346A A53 starting in FY26.",
+   "next_sentence": "FTUAS development efforts are based on requirements from the AROC approved Abbreviated Capability Development Document (A-CDD) signed 12 August 2021.",
+   "codes": [
+    "0604113A"
+   ]
+  },
+  {
+   "clause_id": "c55d5a67fdbd90c8",
+   "pe_bli": "0604270F",
+   "fiscal_year": 2026,
+   "fact_id": "76c131e6f01ef8fa",
+   "page": null,
+   "sentence": "In FY 2026 PE 0604270F, Project 653891 Electromagnetic Battle Management (EMBM) efforts were transferred to PE 0207407F and Cognitive Electromagnetic Warfare efforts were transferred to PE 0207039F.",
+   "prev_sentence": "In FY 2024 $0M was expended for civilian pay expenses om this program element, and in FY 2025 $0M is forecasted for civilian pay expenses in this program element.",
+   "next_sentence": "The FY 2026 request was reduced by $202 thousand for Advisory and Assistance Services to promote efficiencies and advance the policies of the Administration in alignment with Executive Order 14222, \"Implementing the President's Department of Government Efficiency Cost Efficiency Initiative.",
+   "codes": [
+    "0207039F",
+    "0207407F",
+    "0604270F"
+   ]
+  },
+  {
+   "clause_id": "c610adff8c905e20",
+   "pe_bli": "0304210BB",
+   "fiscal_year": 2018,
+   "fact_id": "63005ad0725bceb8",
+   "page": null,
+   "sentence": "Beginning in FY 2017, this Program Element has been consolidated into SOCOM Program Element 1160434BB, Unmanned ISR.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program (MIP).",
+   "codes": [
+    "1160434BB"
+   ]
+  },
+  {
+   "clause_id": "c68d2590d82a7f3c",
+   "pe_bli": "0605247A",
+   "fiscal_year": 2026,
+   "fact_id": "e09eba9031a07a35",
+   "page": null,
+   "sentence": "Administrative realignment of FY26 RDT&E funds for Spectrum Situational Awareness System (S2AS) was transferred to budget Activity-9 (BA-9) Program Element (PE) 0609278A:",
+   "prev_sentence": "Justification:",
+   "next_sentence": "Project Code A93 to the Agile Funding Pilot",
+   "codes": [
+    "0609278A"
+   ]
+  },
+  {
+   "clause_id": "c6a2d5c156d5e089",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2020,
+   "fact_id": "8ecae19f716f49fb",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "-- Reductions to DTIC’s HQ staffing levels continue, reducing civilian full time equivalents (FTEs) below FY 2017-2019 levels.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "c7223b8eb1e643bb",
+   "pe_bli": "0603342D8W",
+   "fiscal_year": 2020,
+   "fact_id": "c2525b4ffa4c811e",
+   "page": null,
+   "sentence": "Effective FY 2020, DIU will transfer from WHS PE 0603342D8W to OSD PE 0603342D8Z with a functional realignment to OUSD(R&E).",
+   "prev_sentence": "In August 2018, DIUx was re-designated the Defense Innovation Unit (DIU) to signify a permanence of the program.",
+   "next_sentence": "The DIU program will fund the development of novel leading-edge technologies emerging from high-tech companies that are not traditional defense contractors.",
+   "codes": [
+    "0603342D8W",
+    "0603342D8Z"
+   ]
+  },
+  {
+   "clause_id": "c7a691ed8b4969c4",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "fc98aba5d54069ab",
+   "page": 420,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, is transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "prev_sentence": "This project is integrated into energy optimized aircraft efforts and power and thermal programs.",
+   "next_sentence": "",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "c81829d574e61cf7",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2017,
+   "fact_id": "6774af9d2e980f35",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "-- Reductions to DTIC’s HQ staffing levels continue, reducing civilian full time equivalents (FTEs) below FY 2016 levels.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "c8e57f36ffa5a670",
+   "pe_bli": "0603032F",
+   "fiscal_year": 2026,
+   "fact_id": "2dd4e2e06168c406",
+   "page": 344,
+   "sentence": "This thrust was realigned under US Space Force Account 3620, Program 1206616SF Advanced Technology Development (ATD), Project 630321 Space Warfighter Technologist Capabilities:",
+   "prev_sentence": "The demonstration includes a space-based test vehicle, ground-based enterprise command and control, and agile software defined receivers for the user.",
+   "next_sentence": "1.",
+   "codes": [
+    "1206616SF"
+   ]
+  },
+  {
+   "clause_id": "c910c3273b361ab7",
+   "pe_bli": "0605142D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "a4a524ffcfb48b6b",
+   "page": null,
+   "sentence": "Additionally, the Test & Evaluation Policy Workforce is transferred from Development Test & Evaluation (PE 0605804D8Z) to Systems Engineering (PE 0605142D8Z).",
+   "prev_sentence": "Beginning in FY 2021, DoD Modeling and Simulation Management Office (MSMO) funding, Engineering Resilient Systems (ERS), and Systems Engineering Research Center (SERC) activities aligned with the national defense modernization priorities and transitioned from Engineering Science and Technology (PE 0603833D8Z) to Systems Engineering (PE 0605142D8Z).",
+   "next_sentence": "",
+   "codes": [
+    "0605142D8Z",
+    "0605804D8Z"
+   ]
+  },
+  {
+   "clause_id": "cb572c5663bf9d25",
+   "pe_bli": "2176",
+   "fiscal_year": 2026,
+   "fact_id": "fd4f66e31985cef1",
+   "page": null,
+   "sentence": "Through USW-DSS Tech Refreshes, targeted architecture improvements developed under USW-DSS RDT&EN Program Element 0604518N Project 3094 via Build 3 Fleet Capability Release (FCR) will facilitate the migration of key components of USW-DSS onto existing installed systems for Fleet use.",
+   "prev_sentence": "Starting in FY 2025, this line will include Tech Refreshes for Build 3 afloat systems.",
+   "next_sentence": "USW-DSS Tech Refreshes will include the latest cybersecurity patches, mitigate/resolve obsolescence issues, and improve software scalability, while installing the latest integrated, near-real time, netcentric ASW Common Tactical Picture (CTP) and Common Operational Picture (COP) on an electronic Master Tactical Plot (eMTP).",
+   "codes": [
+    "0604518N"
+   ]
+  },
+  {
+   "clause_id": "cb64fe914bcb7ce3",
+   "pe_bli": "1105232BB",
+   "fiscal_year": 2017,
+   "fact_id": "56b71cb6d94ae2d5",
+   "page": null,
+   "sentence": "Beginning in FY2017, this Program Element has been consolidated into SOCOM Program Element 1160434BB, Unmanned ISR.",
+   "prev_sentence": "NOTE:",
+   "next_sentence": "This program element is part of the Military Intelligence Program.",
+   "codes": [
+    "1160434BB"
+   ]
+  },
+  {
+   "clause_id": "cc34ea1e2849808b",
+   "pe_bli": "846080",
+   "fiscal_year": 2026,
+   "fact_id": "f4b32d73d0e6662d",
+   "page": 809,
+   "sentence": "Detailed information on PE 0305240F, ISR Transport and Processing (formerly known as Support to DoD DCGS Enterprise), remains classified and will be provided on a need-to-know basis.",
+   "prev_sentence": "The SWP structure is scheduled to begin in FY 2026 and will be known as the AF DCGS Software Acquisition Pathway Program in budgeting documents.",
+   "next_sentence": "Funding for this exhibit Line Item # 846080 is contained in PEs 0305208F and 0305240F.",
+   "codes": [
+    "0305240F"
+   ]
+  },
+  {
+   "clause_id": "cc9be6f843f2bf65",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "122e5070554facba",
+   "page": 137,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "prev_sentence": "In FY 2025, the RDT&E Budget Activity 02 (BA02) Aerospace Vehicles Technologies efforts and activities under PE 0602201F, was transferred to PE 0602203F, Aerospace Propulsion for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622403, Flight Controls and Pilot-Vehicle Interface, was transferred to PE 0602203F, Aerospace Propulsion, Project 622403 Flight Controls and Pilot-Vehicle Interface.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "ce10dc378f2f8e38",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "8ad01bbb63e5d058",
+   "page": null,
+   "sentence": "This funding line which is not a new program was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "cf14bd1b3bd297b8",
+   "pe_bli": "0605220N",
+   "fiscal_year": 2026,
+   "fact_id": "1daecfc9bf9d52d2",
+   "page": null,
+   "sentence": "This effort was previously funded under PE 0604567N under projects 3133 and 3137 (FY 2014 and prior).",
+   "prev_sentence": "Note:",
+   "next_sentence": "",
+   "codes": [
+    "0604567N"
+   ]
+  },
+  {
+   "clause_id": "cfa7191227284573",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2022,
+   "fact_id": "b07375d658c87e88",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "- Financial Management and Comptroller.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "d0a7b0318a9c90ed",
+   "pe_bli": "0604787J",
+   "fiscal_year": 2017,
+   "fact_id": "570f0aef9f608c6e",
+   "page": null,
+   "sentence": "In FY2016 this program element will be consolidated with PE 0604826J - Joint C5 (Joint Command, Control, Communications, Computers and Cyber) Capability Development, Integration, and Interoperability Assessments.",
+   "prev_sentence": "pioneer new ways to combine and employ emergent capabilities, drive Jointness deeper, sooner in capability development, move quickly toward Joint information and simulation networks that support secure and agile command and control, expand the envelope of interagency and international cooperation, and promote multilateral security approaches and architectures.",
+   "next_sentence": "",
+   "codes": [
+    "0604826J"
+   ]
+  },
+  {
+   "clause_id": "d1ac6481610eb732",
+   "pe_bli": "0603680D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "1f9981b2dc0aa6a3",
+   "page": null,
+   "sentence": "This is a congressional add transferred from Defense Logistics Agency's Generic Logistics R&D Technology Demonstrations Program, PE 0603712S00",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0603712S00"
+   ]
+  },
+  {
+   "clause_id": "d245fead3aefa674",
+   "pe_bli": "1203154SF",
+   "fiscal_year": 2026,
+   "fact_id": "b17841a47e9da57f",
+   "page": 649,
+   "sentence": "Moved to PE 1203155SF to align with the rest of the program's budget.",
+   "prev_sentence": "The Department of the Air Force will maximize partnerships with the Intelligence Community (IC) and use of mature commercial technologies to accelerate the acquisition timeline and meet the GMTI needs of the warfighter.",
+   "next_sentence": "",
+   "codes": [
+    "1203155SF"
+   ]
+  },
+  {
+   "clause_id": "d3b8e37c3962ab23",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "0b46da00d681a24e",
+   "page": 146,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622405 High Speed Systems Technology, was transferred to PE 0602203F, Aerospace Propulsion, Project 622405 High Speed Systems Technology for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "These technologies will enable future high speed weapons and platforms; intelligence, surveillance, and reconnaissance systems; and space access vehicles.",
+   "next_sentence": "",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "d3ce7a04af726e8d",
+   "pe_bli": "1203609SF",
+   "fiscal_year": 2026,
+   "fact_id": "5968a75997b4ae02",
+   "page": 711,
+   "sentence": "In FY 2026, 236.720M was erroneously transferred from PE 1203154SF, Project 671113, Auxillary Payloads to Project 670009:",
+   "prev_sentence": "",
+   "next_sentence": "Auxillary Payloads.",
+   "codes": [
+    "1203154SF"
+   ]
+  },
+  {
+   "clause_id": "d42dea1c3d755a60",
+   "pe_bli": "0401221F",
+   "fiscal_year": 2026,
+   "fact_id": "7754c0e98ec99621",
+   "page": null,
+   "sentence": "Efforts were transferred to PE 0401221F, KC-46A Tanker Squadrons, Project 650013, Tanker Production Extension.",
+   "prev_sentence": "This thrust was funded in PE 0605164F, Air Refueling Capability Modernization, Project 645164F, Continued Tanker Recapitalization RDT&E.",
+   "next_sentence": "",
+   "codes": [
+    "0401221F"
+   ]
+  },
+  {
+   "clause_id": "d5ef2775603303da",
+   "pe_bli": "0602702E",
+   "fiscal_year": 2024,
+   "fact_id": "08bf512e277b8593",
+   "page": 131,
+   "sentence": "Based on technologies developed in the Resilient Synchronized Planning and Assessment for the Contest Environment (RSPACE) program (previously budgeted in PE 0603766E, Project NET-01), ACK will assist users with selecting sensors, effectors, and support elements across military domains (space, air, land, surface, subsurface, and cyber) to form and adapt kill chains to deliver desired effects on targets.",
+   "prev_sentence": "The Adapting Cross-domain Kill-Webs (ACK) program is assisting military decision makers with rapidly identifying and selecting options for tasking and re-tasking assets within and across organizational boundaries.",
+   "next_sentence": "Today's Command and Control (C2) organizations and processes cannot support multi-domain warfighting concepts, especially during joint operations.",
+   "codes": [
+    "0603766E"
+   ]
+  },
+  {
+   "clause_id": "d793ea61e4b6e840",
+   "pe_bli": "0604818A",
+   "fiscal_year": 2026,
+   "fact_id": "968fdbf2d3d81fa5",
+   "page": null,
+   "sentence": "FY 2026 funding was realigned to PE 0604818A / Army Tactical Command & Control Hardware & Software, Projects EJ6 and EK9, in support of the Army's Next Generation Command and Control (NGC2) initiative to modernize Command and Control (C2) systems, for the Data and Applications Layers.",
+   "prev_sentence": "The TSI provides the converged computing and data storage hardware/software required to host the warfighting mission area applications, MPE capabilities, Common Operating Environment (COE) Cross-Cutting Capabilities and enables a collaborative work environment.",
+   "next_sentence": "The capabilities being developed under this project remain critical and relevant to the Warfighter.",
+   "codes": [
+    "0604818A"
+   ]
+  },
+  {
+   "clause_id": "d7b7e0d018e6ae83",
+   "pe_bli": "0604028N",
+   "fiscal_year": 2026,
+   "fact_id": "ff8d384fbb1a83d9",
+   "page": null,
+   "sentence": "(U) The TETRA program is a continuation of efforts, realigned from Program Element (PE) 0604029N (UUV Core Technologies) Project Unit (PU) 4053 (UxS Platform) to PE 0604028N (Small/Medium Unmanned Undersea Vehicles) PU 1036 (TETRA) in FY25, and also includes payload development addressing emergent operational requirements.",
+   "prev_sentence": "",
+   "next_sentence": "(U) This is the sole project unit that enables deployment of TETRA, which is an operationally relevant Remotely Operated Vehicle (ROV) that is launched, and recovered, from submarine torpedo tubes.",
+   "codes": [
+    "0604028N",
+    "0604029N"
+   ]
+  },
+  {
+   "clause_id": "d855fb504dad0feb",
+   "pe_bli": "0305193D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "34812efef24b5bdd",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funds moved to PE 0305245D8Z, Intelligence Capabilities and Innovation.",
+   "prev_sentence": "",
+   "next_sentence": "Intelligence Support to Cyber Operations funded development, testing, prototyping, and demonstration of innovative intelligence capabilities to integrate intelligence and counterintelligence activities across numerous domains and technical areas.",
+   "codes": [
+    "0305245D8Z"
+   ]
+  },
+  {
+   "clause_id": "da0614362c068570",
+   "pe_bli": "0603767E",
+   "fiscal_year": 2023,
+   "fact_id": "374d1dd3fb52e66e",
+   "page": 254,
+   "sentence": "The program builds upon technology developed as a part of the Resilient Synchronized Planning and Assessment Contested Environment (RSPACE) program, previously budgeted in PE 0603766E/Project NET-01.",
+   "prev_sentence": "The program will create methods for optimal balancing of battlespace awareness and survivability by leveraging existing networked sensors and local platform sensors.",
+   "next_sentence": "Key attributes of this program are survivability, information latency, reliability, and endurance.",
+   "codes": [
+    "0603766E"
+   ]
+  },
+  {
+   "clause_id": "da48f7bcc5e6e199",
+   "pe_bli": "0605142D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "a8333298eed5f30b",
+   "page": null,
+   "sentence": "Additionally, the Test & Evaluation Policy Workforce transferred from Development Test & Evaluation (PE 0605804D8Z) to Systems Engineering (PE 0605142D8Z).",
+   "prev_sentence": "In FY 2021, DoD Modeling and Simulation Coordination Office (MSCO) funding, Engineered Resilient Systems (ERS), and Systems Engineering Research Center (SERC) activities aligned with the national defense modernization priorities and transitioned from Engineering Science and Technology (PE 0603833D8Z) to Systems Engineering (PE 0605142D8Z).",
+   "next_sentence": "",
+   "codes": [
+    "0605142D8Z",
+    "0605804D8Z"
+   ]
+  },
+  {
+   "clause_id": "daaf5eb585787477",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "50f9c598507eea1c",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "dab9d7328521fd69",
+   "pe_bli": "0304100F",
+   "fiscal_year": 2026,
+   "fact_id": "7916c6c64970c6e1",
+   "page": null,
+   "sentence": "Legacy PEs 0101324F ISPAN and 0301112F NPES and NLCC DSS have been consolidated into one SMPES PE 0304100F.",
+   "prev_sentence": "This budget line funds the SMPES PE.",
+   "next_sentence": "The SMPES PE is comprised of two Budget, Program, and Activity Codes (BPAC):",
+   "codes": [
+    "0101324F",
+    "0301112F",
+    "0304100F"
+   ]
+  },
+  {
+   "clause_id": "dc178680b0f3dcb1",
+   "pe_bli": "0603826D8Z",
+   "fiscal_year": 2020,
+   "fact_id": "eea691d5219adbdd",
+   "page": null,
+   "sentence": "In FY 2020, QRF funds will transfer to PE 0603699D8Z Emerging Capabilities Technology Development to facilitate prototyping and experimentation to support the DoD’s modernization priorities.",
+   "prev_sentence": "QRF projects are selected in the year of execution based on Department, CCMD, Service, and other government organization identified threats and opportunities.",
+   "next_sentence": "Recent success stories and significant transitions of note include:",
+   "codes": [
+    "0603699D8Z"
+   ]
+  },
+  {
+   "clause_id": "deb18a8605b7d5d5",
+   "pe_bli": "0604132D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "589f0ad3491d8590",
+   "page": null,
+   "sentence": "The residual resources are transferred to Program Element 0603338D8Z (Defense Modernization and Prototyping) to provide alignment and focus supporting development of key technologies and modernization within OUSD(R&E) identified capability thrust priorities.",
+   "prev_sentence": "The Time Sensitive Target Defeat (TSTD) transferred all initiated activities to the Office of Under Secretary of Defense for Research and Engineering (OUSD(R&E)), Time Sensitive Target Defeat Office in FY 2019.",
+   "next_sentence": "",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "df31cf8d6cf54a1a",
+   "pe_bli": "0604805A",
+   "fiscal_year": 2026,
+   "fact_id": "3f8b7c10b075e80f",
+   "page": null,
+   "sentence": "Project 593 funding in FY 2026 and beyond was realigned to PE 0604818A / Army Tactical Command & Control Hardware & Software, Projects EJ6 and EK9, in support of the Army's Next Generation Command and Control (NGC2) initiative to modernize Command and Control (C2) systems, for the Data and Application Layers.",
+   "prev_sentence": "",
+   "next_sentence": "The capability being developed under this project remains critical and relevant to the Warfighter.",
+   "codes": [
+    "0604818A"
+   ]
+  },
+  {
+   "clause_id": "e16f137c83bf9cf3",
+   "pe_bli": "0604294D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "96b81866f1682420",
+   "page": null,
+   "sentence": "Funding for this project has been transferred from BA 5 PE 0605140D8Z.",
+   "prev_sentence": "The project would also support using a repository of third-party IP to expedite circuit design and transition promising technologies to use.",
+   "next_sentence": "",
+   "codes": [
+    "0605140D8Z"
+   ]
+  },
+  {
+   "clause_id": "e236e8d9be3d20e6",
+   "pe_bli": "0203728A",
+   "fiscal_year": 2026,
+   "fact_id": "dbf8468a777e8380",
+   "page": null,
+   "sentence": "FY 2026 funding was realigned to PE 0604818A / Army Tactical Command & Control Hardware & Software, Projects EJ6 and EK9, in support of the Army's Next Generation Command and Control (NGC2) initiative to modernize Command and Control (C2) systems, for the Data and Application Layers.",
+   "prev_sentence": "The FSCB is a converged baseline that will enable individual Fires programs to avoid rework and duplication of efforts by providing a common framework upon which to support the development of unique capabilities and characteristics of individual Fires program.",
+   "next_sentence": "",
+   "codes": [
+    "0604818A"
+   ]
+  },
+  {
+   "clause_id": "e274e402b4c20cdb",
+   "pe_bli": "0605140D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "3c953aea64992eae",
+   "page": null,
+   "sentence": "Beginning in FY 2018, funding for this project has been transferred to BA 4 PE 0604294D8Z, P645, to accurately reflect execution of funds in support of the mission.",
+   "prev_sentence": ", assured designs and supply chains.",
+   "next_sentence": "",
+   "codes": [
+    "0604294D8Z"
+   ]
+  },
+  {
+   "clause_id": "e2c4739477bd4546",
+   "pe_bli": "1203609SF",
+   "fiscal_year": 2026,
+   "fact_id": "14e4c6fd189309c1",
+   "page": 712,
+   "sentence": "In FY 2026, funds were erroneously transferred into Program Element (PE) 1203609SF, pLEO SATCOM (MILNET) from PEs 1203154SF, Long Rang Kill Chains & 1206427SF Space Systems Prototype Transitions.",
+   "prev_sentence": "",
+   "next_sentence": "This funding will be realigned back to PE 1203154SF & 1206427SF for proper execution following enactment.",
+   "codes": [
+    "1203154SF",
+    "1203609SF",
+    "1206427SF"
+   ]
+  },
+  {
+   "clause_id": "e33474eeeea17e69",
+   "pe_bli": "0603758N",
+   "fiscal_year": 2026,
+   "fact_id": "f9d15eb7077ae739",
+   "page": 834,
+   "sentence": "Investments in Swampworks have been transferred under the same Program Element 0603758N in FY 2025 to Project 1097 R-2 Activity titles Innovation Agility (NavalX), Tech Bridges (NavalX), and Innovation Operations (NavalX).",
+   "prev_sentence": "",
+   "next_sentence": "",
+   "codes": [
+    "0603758N"
+   ]
+  },
+  {
+   "clause_id": "e49303a920a003d1",
+   "pe_bli": "0602115E",
+   "fiscal_year": 2024,
+   "fact_id": "70777a680f7a9ea9",
+   "page": null,
+   "sentence": "* Formerly Neuroprotection from Brain Injury\n\nBuilding upon technologies discovered under the Restoring Cognitive Capability program (budgeted in PE 0602715E, Project MBT-02), the Neurological Assessment and Protection from Brain Injury program will transform our current detection and protection strategies against traumatic brain injury (TBI), such as injury from blast exposure.",
+   "prev_sentence": "",
+   "next_sentence": "This program will develop multi-sensory fieldable TBI assessment tools and prophylactic countermeasures to prevent severe brain injury.",
+   "codes": [
+    "0602715E"
+   ]
+  },
+  {
+   "clause_id": "e4b2cba8d7debd2e",
+   "pe_bli": "0604317F",
+   "fiscal_year": 2026,
+   "fact_id": "df4fb8d8d8dd1c11",
+   "page": null,
+   "sentence": "Beginning in FY 2024, PE 0604317F, Technology Transfer, Project 64317A, Technology Transfer Add efforts were transferred to PE 0604009F, AFWERX Prime, Project 640856 AFWERX Operations and Support.",
+   "prev_sentence": "This focus helps guide technologies through transition across the valley from idea to scaled and sustained capability.",
+   "next_sentence": "",
+   "codes": [
+    "0604009F",
+    "0604317F"
+   ]
+  },
+  {
+   "clause_id": "e51bfb3b72fb60f1",
+   "pe_bli": "0603178C",
+   "fiscal_year": 2018,
+   "fact_id": "11741c2604b3c308",
+   "page": 99,
+   "sentence": "Divert and Attitude Control System (DACS) was transferred to PE 0603294C Common Kill Vehicle Technology beginning in FY 2018.",
+   "prev_sentence": "The Agency will make the directed energy technology developed under this PE available to industry for incorporation into the Low Power Laser Demonstrator and for further laser scaling development to power levels required for robust, speed of light missile defense.",
+   "next_sentence": "",
+   "codes": [
+    "0603294C"
+   ]
+  },
+  {
+   "clause_id": "e5502592d13371c6",
+   "pe_bli": "0603032F",
+   "fiscal_year": 2026,
+   "fact_id": "67a24cedb0e6f29b",
+   "page": 345,
+   "sentence": "This thrust was realigned under US Space Force Account 3620, Program 1206616SF Advanced Technology Development (ATD), Project 630321 Space Warfighter Technologist Capabilities:",
+   "prev_sentence": "Investments will also determine the ability to airdrop cargo after reentry, will assess in-flight communications to the rocket, will test cargo environments and novel cargo \"loadmaster” designs for rapid load/unload, and will evaluate rocket detectability and vulnerability.",
+   "next_sentence": "1.",
+   "codes": [
+    "1206616SF"
+   ]
+  },
+  {
+   "clause_id": "e5735e76daeac782",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "832ee45adcb4847e",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts, to be used for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "e5de94599ff75726",
+   "pe_bli": "0602702E",
+   "fiscal_year": 2023,
+   "fact_id": "8d57bb81f96f1461",
+   "page": null,
+   "sentence": "Based on technologies developed in the Resilient Synchronized Planning and Assessment for the Contest Environment (RSPACE) program (previously budgeted in PE 0603766E, Project NET-01), ACK will assist users with selecting sensors, effectors, and support elements across military domains (space, air, land, surface, subsurface, and cyber) to form and adapt kill chains to deliver desired effects on targets.",
+   "prev_sentence": "The Adapting Cross-domain Kill-Webs (ACK) program is assisting military decision makers with rapidly identifying and selecting options for tasking and re-tasking assets within and across organizational boundaries.",
+   "next_sentence": "Today's Command and Control (C2) organizations and processes cannot support multi-domain warfighting concepts, especially during joint operations.",
+   "codes": [
+    "0603766E"
+   ]
+  },
+  {
+   "clause_id": "e6f6343280bba3de",
+   "pe_bli": "0603176BR",
+   "fiscal_year": 2026,
+   "fact_id": "3120aba012fc1435",
+   "page": 67,
+   "sentence": "Funds in program element 0603176BR Project RR were realigned to Project RR in PE 0603160BR during FY 2025 to better integrate this activity administratively into the RDT&E portfolio.",
+   "prev_sentence": "The NAG provides an independent review/analysis and reporting of operational assessments, capability demonstrations, and test events.",
+   "next_sentence": "",
+   "codes": [
+    "0603160BR",
+    "0603176BR"
+   ]
+  },
+  {
+   "clause_id": "e732654a7c5867b3",
+   "pe_bli": "1206895C",
+   "fiscal_year": 2023,
+   "fact_id": "539d850da45c50d4",
+   "page": null,
+   "sentence": "This represents a continuation of efforts previously funded in PE 1206893C.",
+   "prev_sentence": "SAMD is a consolidation of functional elements of Missile Defense Agency (MDA) Contractor Support Services (CSS), Federally Funded Research and Development Center (FFRDC)/University Affiliated Research Center (UARC), and Civilian manpower into a single entity that provides acquisition, financial, and technical support across the MDA Space Sensors enterprise.",
+   "next_sentence": "",
+   "codes": [
+    "1206893C"
+   ]
+  },
+  {
+   "clause_id": "e7d68e26305b31b2",
+   "pe_bli": "0602203F",
+   "fiscal_year": 2026,
+   "fact_id": "41cb8f6f66f500d5",
+   "page": 223,
+   "sentence": "In FY 2025, Lubricant Technologies efforts transferred from PE 0602203F, Aerospace Propulsion, Project 623048, Combustion and Mechanical Systems, to 623066 Turbine Engine Technology project, to align resources to Aerospace Systems priorities.",
+   "prev_sentence": "FY 2026 change - due to administrative transfer of work and funding to system level thrusts versus component level to enable acceleration of integrated system capabilities and capture realistic representation of work.",
+   "next_sentence": "",
+   "codes": [
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "eb487ebd3dfca2b0",
+   "pe_bli": "0603699D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "b597c8e0d11654d3",
+   "page": null,
+   "sentence": "In FY 2021, Multi-domain Experimentation and Demonstration Venues transfers to the Defense Modernization and Prototyping (DM&P) Program Element, 0603338D8Z.",
+   "prev_sentence": "The demonstration and experimentation venues also provided 72 small businesses and non-traditional innovators with warfighter feedback critical to rapidly mature their technologies into viable prototypes.",
+   "next_sentence": "",
+   "codes": [
+    "0603338D8Z"
+   ]
+  },
+  {
+   "clause_id": "eb80f3201f145501",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2021,
+   "fact_id": "2d63dc8aef337a45",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "-- Reductions to DTIC’s MHA staffing levels continue, reducing civilian full time equivalents (FTEs) below FY 2020 levels.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "ec5ce68db4d6c709",
+   "pe_bli": "0605998KA",
+   "fiscal_year": 2025,
+   "fact_id": "adb434d5f2429fa0",
+   "page": null,
+   "sentence": "These activities were consolidated as a means to improve efficiencies throughout DTIC, and are essential to the operation of DTIC’s primary PE 0605801KA.",
+   "prev_sentence": "Most of the specialized functions and skill-sets described below are centralized activities within the PE, yet support the larger organization and its employees.",
+   "next_sentence": "- Financial Management and Comptroller.",
+   "codes": [
+    "0605801KA"
+   ]
+  },
+  {
+   "clause_id": "edf3cd994b78b200",
+   "pe_bli": "0300D-SDA-L51",
+   "fiscal_year": 2023,
+   "fact_id": "8fb1a97759850d81",
+   "page": null,
+   "sentence": "This line item received a $12.000 million increase due to a Congressional Directed Transfer from SDA's RDT&E PE 1206410SDA (Project 001 Transport).",
+   "prev_sentence": "SDA began to procure launch services for Tranche 1 satellites in Fiscal Year 2022.",
+   "next_sentence": "",
+   "codes": [
+    "1206410SDA"
+   ]
+  },
+  {
+   "clause_id": "ee500259071581c5",
+   "pe_bli": "0300D-TJS-L43",
+   "fiscal_year": 2018,
+   "fact_id": "1ee904cf2cff076a",
+   "page": null,
+   "sentence": "In 2018, JSIN resources will permanently transfer to JSP (DISA PE 0305830K).",
+   "prev_sentence": "Deputy Secretary of Defense (DepSecDef) approved the alignment of IT services in the Pentagon and the National Capital Region (NCR) to the Joint Service Provider (JSP) operating as a field service activity in Defense Information Systems Agency (DISA).",
+   "next_sentence": "The overall effect to the Department is a net-zero profile change for FY 2018.",
+   "codes": [
+    "0305830K"
+   ]
+  },
+  {
+   "clause_id": "ef253469315e7010",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "dda0c16a903d8bed",
+   "page": 393,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634093 Missile Rocket Propulsion Integ & Demo, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634093 Missile Rocket Propulsion Integ & Demo.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "f03e117972cc503b",
+   "pe_bli": "0603211F",
+   "fiscal_year": 2026,
+   "fact_id": "dda0c16a903d8bed",
+   "page": 393,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 635098 Advanced Aerospace Propulsion, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634926 High-Speed Systems Integ & Demo.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "next_sentence": "Efforts in this program have been coordinated through the Department of Defense (DoD) Science and Technology (S&T) Executive Committee process to harmonize efforts and eliminate duplication.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "f0b36db43ee1d338",
+   "pe_bli": "0603562N",
+   "fiscal_year": 2026,
+   "fact_id": "d8f0b812e0ad65c4",
+   "page": null,
+   "sentence": "Effective FY 2026, Projects 0770 and 1739 move from PE 0603562N to PE 0603561N as part of the PE/BLI consolidation effort in the DoD Implementation Plan from the Commission on Planning, Programming, Budgeting, and Execution (PPBE) Reform Final Report in an effort to rapidly increase Navy Lethality in the Submarine and Surface Fleet.",
+   "prev_sentence": "",
+   "next_sentence": "This Program Element (PE) addresses advanced submarine technology areas in support of the Navy's strategic objective of Assured Access and Combat Credibility.",
+   "codes": [
+    "0603561N",
+    "0603562N"
+   ]
+  },
+  {
+   "clause_id": "f0e398b2216ed4ff",
+   "pe_bli": "0603639A",
+   "fiscal_year": 2026,
+   "fact_id": "c3673f7366e03930",
+   "page": 81,
+   "sentence": "FY 2026 funding for LRPM transferred to PE 0609345A/Project A46.",
+   "prev_sentence": "LRPM will provide Army Aviation and Ground Forces with a precise long range munition system to rapidly respond in a combat environment to improve the lethality and stand-off of Warfighters and aviation platforms in an Anti-Access Area Denial (A2AD) and positioning, navigation, and timing (PNT) denied environment.",
+   "next_sentence": "Project DK5 - The 155 millimeter (mm) High Explosive Conventional Artillery Modernization Project is focused on the design and development of common artillery projectiles capable of accurate delivery of multiple payloads to deliver the Army's Field Artillery operational efficiencies.",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "f102d9821945e811",
+   "pe_bli": "1203609SF",
+   "fiscal_year": 2026,
+   "fact_id": "14e4c6fd189309c1",
+   "page": 712,
+   "sentence": "This funding will be realigned back to PE 1203154SF & 1206427SF for proper execution following enactment.",
+   "prev_sentence": "In FY 2026, funds were erroneously transferred into Program Element (PE) 1203609SF, pLEO SATCOM (MILNET) from PEs 1203154SF, Long Rang Kill Chains & 1206427SF Space Systems Prototype Transitions.",
+   "next_sentence": "",
+   "codes": [
+    "1203154SF",
+    "1206427SF"
+   ]
+  },
+  {
+   "clause_id": "f1b44f01c6cd99bc",
+   "pe_bli": "2136",
+   "fiscal_year": 2026,
+   "fact_id": "fdfb6e4c0432ecc0",
+   "page": null,
+   "sentence": "Through USW-DSS Tech Refreshes, targeted architecture improvements developed under USW-DSS RDT&EN Program Element 0604518N Project 3094 via Build 3 Fleet Capability Release (FCR) will facilitate the migration of key components of USW-DSS onto existing installed systems for Fleet use.",
+   "prev_sentence": "Starting in FY 2025, this line will include Tech Refreshes for Build 3 afloat systems.",
+   "next_sentence": "USW-DSS Tech Refreshes will include the latest cybersecurity patches, mitigate/resolve obsolescence issues, and improve software scalability, while installing the latest integrated, near-real time, netcentric ASW Common Tactical Picture (CTP) and Common Operational Picture (COP) on an electronic Master Tactical Plot (eMTP).",
+   "codes": [
+    "0604518N"
+   ]
+  },
+  {
+   "clause_id": "f26c918b9f086de3",
+   "pe_bli": "1206616SF",
+   "fiscal_year": 2026,
+   "fact_id": "2c0664ce2d7c488c",
+   "page": 101,
+   "sentence": "In the FY 2024 appropriation and FY 2025 enactment, the USSF S&T Vanguard efforts and associated activities, including Rocket Cargo and Navigation Technology Satellite 3 (NTS-3), were Congressionally directed transferred from RDT&E, AF, PE 603020F, Future AF Integrated Technology Demos to PE 1206616SF, Space Advanced Technology Development/Demo, Project 633834, Integrated Space Technology Demonstrations.",
+   "prev_sentence": "",
+   "next_sentence": "In FY 2026, the Rocket Cargo effort and associated funding transferred within this Program Element to Project 630321, Space Warfighter Technologist Capabilities, to provide increased transparency and traceability of USSF S&T Vanguard and WARTECH efforts and activities.",
+   "codes": [
+    "1206616SF"
+   ]
+  },
+  {
+   "clause_id": "f388c9a96038c71e",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "4b4413aae590a9ac",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts, to be used for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "f4475f156224bbb4",
+   "pe_bli": "0605804D8Z",
+   "fiscal_year": 2022,
+   "fact_id": "e5c326205aec79f0",
+   "page": null,
+   "sentence": "- Beginning in FY 2021, USD(R&E) consolidated all policy and workforce efforts under the SE Program Element 0605142D8Z.",
+   "prev_sentence": "- Beginning in FY 2021, Cybersecurity efforts in this project were moved to project 048.",
+   "next_sentence": "T&E Policy and Workforce efforts will be managed and funded from that PE with support from this PE.",
+   "codes": [
+    "0605142D8Z"
+   ]
+  },
+  {
+   "clause_id": "f6010396b9592c8d",
+   "pe_bli": "1206895C",
+   "fiscal_year": 2023,
+   "fact_id": "565e4e2405ec34d1",
+   "page": null,
+   "sentence": "SAMD consolidates MDA resources (including those efforts previously planned in PE 1206893C) to provide strategic planning, program integration, contracting, acquisition, engineering, financial management, and program assessments for development and acquisition of space applications.",
+   "prev_sentence": "Space Applications for Missile Defense (SAMD):",
+   "next_sentence": "This PE also funds Cybersecurity efforts necessary to support BMDS Space Programs.",
+   "codes": [
+    "1206893C"
+   ]
+  },
+  {
+   "clause_id": "f6101fcba46260b6",
+   "pe_bli": "1206895C",
+   "fiscal_year": 2024,
+   "fact_id": "c436f6f04b5a1fcc",
+   "page": null,
+   "sentence": "SAMD consolidates MDA resources (including those efforts previously planned in PE 1206893C) to provide strategic planning, program integration, contracting, acquisition, engineering, financial management, and program assessments for development and acquisition of space applications.",
+   "prev_sentence": "Space Applications for Missile Defense (SAMD):",
+   "next_sentence": "This PE also funds Cybersecurity efforts necessary to support Missile Defense System Space Programs.",
+   "codes": [
+    "1206893C"
+   ]
+  },
+  {
+   "clause_id": "f6bdc9232d51ed99",
+   "pe_bli": "0605384BP",
+   "fiscal_year": 2025,
+   "fact_id": "1d02a53b253997c7",
+   "page": null,
+   "sentence": "In FY24, Project DW6 realigned from appropriation 0400, PE 0605384BP Chemical & Biological Defense Program (RDT&E Management Support) to the 2040 appropriation, PE 0605601A / Project WD1, West Desert Test Center.",
+   "prev_sentence": "WDTC also provides test ranges, to include fully instrumented outdoor ranges, for TTPD activities and testing with simulants that can be correlated to the laboratory testing with live agents to ensure reliable and repeatable data are generated to support acquisition decisions of CB defense equipment.",
+   "next_sentence": "",
+   "codes": [
+    "0605384BP",
+    "0605601A"
+   ]
+  },
+  {
+   "clause_id": "f83b3e7b4f507fa6",
+   "pe_bli": "0602203F",
+   "fiscal_year": 2026,
+   "fact_id": "83b554194515412a",
+   "page": 183,
+   "sentence": "In FY 2025, the RDT&E Budget Activity 02 (BA02) Aerospace Vehicles Technologies efforts and activities under PE 0602201F, were transferred to PE 0602203F, Aerospace Propulsion for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "Evaluates fuels and related technologies to enable increased performance and affordability of high-speed and munition capabilities.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622401 Structures, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "f8774c188e0242b7",
+   "pe_bli": "0303010F",
+   "fiscal_year": 2026,
+   "fact_id": "d479bad2ed910f95",
+   "page": null,
+   "sentence": "New Program Element FY25\n\nCongressional technical adjustment transferred 18.733M from CAIS PE 0207431F in RDT&E for FY25.",
+   "prev_sentence": "",
+   "next_sentence": "The mission of Air Force (AF) Intelligence Surveillance Reconnaissance (ISR) Digital Infrastructure (DI) (AF ISR DI) is to provide the secure commercial cloud-based infrastructure, platform and data services, to be scaled with tenant funding to meet requirements for Sensitive Compartmented Information (SCI) and ISR cloud, platform and data services, globally, including at the edge with a focus on Artifical Intelligence and Machine Learning (AI/AL).",
+   "codes": [
+    "0207431F"
+   ]
+  },
+  {
+   "clause_id": "f8a946cb5debdf02",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "122e5070554facba",
+   "page": 137,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622404, Aeromechanics, was transferred to PE 0602203F, Aerospace Propulsion, Project 622401 Structures.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622403, Flight Controls and Pilot-Vehicle Interface, was transferred to PE 0602203F, Aerospace Propulsion, Project 622403 Flight Controls and Pilot-Vehicle Interface.",
+   "next_sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622405, High Speed Systems Technology, was transferred to PE 0602203F, Aerospace Propulsion, Project 622405 High Speed Systems Technology.",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "f96273eb609f72ac",
+   "pe_bli": "0603270F",
+   "fiscal_year": 2026,
+   "fact_id": "37a22ec843167daf",
+   "page": 429,
+   "sentence": "In FY 2026, in order to better plan, execute, and demonstrate integrated sensing and spectrum dominance technologies/capabilities, funding and technical work was transferred from this program into Program Element 0603203F, Advanced Aerospace Sensors, Project 63665A, Advanced Aerospace Sensors Technology.",
+   "prev_sentence": "necessary civilian pay expenses; expenses to support the operation and maintenance of facilities; as well as expenses related to travel, supplies, IT hardware, software and support, administrative contractor services, etc.",
+   "next_sentence": "This program is in Budget Activity 3, Advanced Technology Development because this budget activity includes development of subsystems and components and efforts to integrate subsystems and components into system prototypes for field experiments and/or tests in a simulated environment.",
+   "codes": [
+    "0603203F"
+   ]
+  },
+  {
+   "clause_id": "f9924ce7fdba57b7",
+   "pe_bli": "0605205A",
+   "fiscal_year": 2026,
+   "fact_id": "23bb19f04b04caaa",
+   "page": null,
+   "sentence": "This funding is realigned to 0609345A - Unmanned Aerial Systems Launched Effects Agile Systems Development\n\nThe Family of Small Uncrewed Aircraft systems are critical to the Army's Transformation in Contact.",
+   "prev_sentence": "",
+   "next_sentence": "These systems ensure Army formations have the best existing and emerging technology at Battalion and below to allow ground-based forces to project power from land into other domains to defeat highly capable enemies, secure terrain, and consolidate gains.",
+   "codes": [
+    "0609345A"
+   ]
+  },
+  {
+   "clause_id": "fb9ccf68ab3762a2",
+   "pe_bli": "1203609SF",
+   "fiscal_year": 2026,
+   "fact_id": "5968a75997b4ae02",
+   "page": 711,
+   "sentence": "In FY 2026, 40.687M was erroneously transferred from PE 1206427SF, Project 645601 / Space Defense Capabilities (Title:",
+   "prev_sentence": "The funds will be transferred back for proper execution following enactment.",
+   "next_sentence": "Space-To-Space Communications) to Project 670010:",
+   "codes": [
+    "1206427SF"
+   ]
+  },
+  {
+   "clause_id": "fbe91dbdea501c50",
+   "pe_bli": "0300D-SDA-L51",
+   "fiscal_year": 2023,
+   "fact_id": "8fb1a97759850d81",
+   "page": null,
+   "sentence": "In FY 2023, Line Item NSSL01, Major Equipment SDA, was transferred to Appropriation 3022, Procurement, Space Force, PE 1203954SF, WSC SDALCH, from Appropriation 0300, Procurement, Defense-Wide.",
+   "prev_sentence": "",
+   "next_sentence": "In accordance with the William M.",
+   "codes": [
+    "1203954SF"
+   ]
+  },
+  {
+   "clause_id": "fd5e5c8b74c4fc15",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2019,
+   "fact_id": "90b56daf14abb8d5",
+   "page": null,
+   "sentence": "This funding line was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts, to be used for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "fd7b10bfba9a64f4",
+   "pe_bli": "0605804D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "062f7e33f2e7aaaa",
+   "page": null,
+   "sentence": "- Beginning in FY 2021, USD(R&E) consolidated all policy and workforce efforts under the SE Program Element 0605142D8Z.",
+   "prev_sentence": "- Beginning in FY 2021, Cybersecurity efforts in this project will be moved to project 048.",
+   "next_sentence": "T&E Policy and Workforce efforts will be managed and funded from that PE with support from this PE.",
+   "codes": [
+    "0605142D8Z"
+   ]
+  },
+  {
+   "clause_id": "fe0c912fa7efcc96",
+   "pe_bli": "0602201F",
+   "fiscal_year": 2026,
+   "fact_id": "3a45f9deeca7bdb9",
+   "page": 143,
+   "sentence": "In FY 2025, the entirety of PE 0602201F, Aerospace Vehicle Technologies, Project 622403 Flight Controls and Pilot-Vehicle Interface, was transferred to PE 0602203F, Aerospace Propulsion, Project 622403 Flight Controls and Pilot-Vehicle Interface for increased integration between airframe, flight control, propulsion, electrical, power and thermal management.",
+   "prev_sentence": "Resulting technologies contribute significantly towards the development of reliable autonomous or remotely piloted air vehicles, hypersonic aircraft, and extended-life legacy aircraft.",
+   "next_sentence": "",
+   "codes": [
+    "0602201F",
+    "0602203F"
+   ]
+  },
+  {
+   "clause_id": "fe2924ccfa0a4ea5",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "defd09540363560f",
+   "page": 417,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634093 Missile Rocket Propulsion Integ & Demo, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634093 Missile Rocket Propulsion Integ & Demo.",
+   "prev_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 633035 Aerospace Power Technology, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634927 Flight Systems Control.",
+   "next_sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, was transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "fee6ee0b7772e1b1",
+   "pe_bli": "0603767E",
+   "fiscal_year": 2017,
+   "fact_id": "39ed10e4abb73d94",
+   "page": null,
+   "sentence": "Building on technologies developed in the Adaptable Navigation Systems (ANS) program, budgeted in PE 0603767E, Project SEN-01, the Spatial, Temporal and Orientation Information for Contested Environments (STOIC) program will enable precision cooperative effects by developing global time transfer and synchronization systems independent of GPS.",
+   "prev_sentence": "",
+   "next_sentence": "As a corollary to time synchronization, this program will also enable GPS-independent positioning to maintain precise time synchronization between collaborating mobile users.",
+   "codes": [
+    "0603767E"
+   ]
+  },
+  {
+   "clause_id": "ff1a1e9d19cb55f5",
+   "pe_bli": "0603216F",
+   "fiscal_year": 2026,
+   "fact_id": "91e03e0befd118ee",
+   "page": 424,
+   "sentence": "In FY 2025, the entirety of PE 0603216F, Aerospace Propulsion and Power Technology, Project 634921 Aircraft Propulsion Subsystems Int, is transferred to PE 0603211F, Aerospace Technology Dev/Demo, Project 634921 Aircraft Propulsion Subsystems Int.",
+   "prev_sentence": "In FY 2023, Core Engine Technologies, High Pressure Ratio Core Engine Technologies, and Adaptive Turbine Engine Core Technology efforts transferred from Program 0603216F, Aerospace Propulsion & Power Technology, Project 63681B, Advanced Turbine Engine Gas Generator to Program 0603216F, Aerospace Propulsion and Power Technology, Project 634921, Aircraft Propulsion Subsystems Integration in order to effectively and efficiently align resources to Aerospace Systems Core Technical Competencies.",
+   "next_sentence": "",
+   "codes": [
+    "0603211F",
+    "0603216F"
+   ]
+  },
+  {
+   "clause_id": "ff2e276d192f8d16",
+   "pe_bli": "0208088F",
+   "fiscal_year": 2026,
+   "fact_id": "2b330bdccba6f120",
+   "page": null,
+   "sentence": "In FY25, PE 0208088F, AF Defensive Cyberspace Operations, Project 677821, Cyberspace Vulnerability Assessment, Project 677822, Cyber Defense Analysis, and Project 677823, AFCERT efforts were transferred to PE 0208088F, AF Defensive Cyberspace Operations, Project 677824, Integrated Defensive Cyber System, in order to distinguish IDCS from previous efforts.",
+   "prev_sentence": "In FY24 0.953M was expended for civilian pay expenses in this program element, and in FY25 3.237M is forecasted for civilian pay expenses in this program element.",
+   "next_sentence": "The FY 2026 request was reduced by $.",
+   "codes": [
+    "0208088F"
+   ]
+  },
+  {
+   "clause_id": "ff43de85ce847b75",
+   "pe_bli": "0603291D8Z",
+   "fiscal_year": 2021,
+   "fact_id": "4670cc133c9822fe",
+   "page": null,
+   "sentence": "This funding line which is not a new program was established in FY 2018 from transferred funds from PE 0603289D8Z / Advanced Innovative Analysis and Concepts for MHA related endeavors.",
+   "prev_sentence": "security posture.",
+   "next_sentence": "",
+   "codes": [
+    "0603289D8Z"
+   ]
+  },
+  {
+   "clause_id": "fff85bb26ed3d770",
+   "pe_bli": "0605294D8Z",
+   "fiscal_year": 2018,
+   "fact_id": "e5a05dde568aae0c",
+   "page": 697,
+   "sentence": "Baseline efforts for this Program Element (PE) were previously funded in PE 0605140D8Z BA 5 and have been transferred to this BA 5 PE to:",
+   "prev_sentence": "",
+   "next_sentence": "(1) change the title from \"Trusted Foundry\" to \"Trusted and Assured Microelectronics\"; and (2) correctly align funding in support of the mission.",
+   "codes": [
+    "0605140D8Z"
+   ]
+  }
+ ]
+}
