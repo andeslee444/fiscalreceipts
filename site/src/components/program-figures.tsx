@@ -427,7 +427,7 @@ export function DecadeOnlyNote({
           </>
         ) : (
           <>
-            {`The figures below are cited to ${count} President\u2019s Budget editions, the earliest PB${first} and the latest PB${last}, and report fiscal years FY${fyMin} to FY${fyMax}.`}
+            {`The figures below are cited to ${count} President's Budget editions, the earliest PB${first} and the latest PB${last}, and report fiscal years FY${fyMin} to FY${fyMax}.`}
           </>
         )}{" "}
         {hasSuccessor ? (
