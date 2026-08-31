@@ -109,11 +109,19 @@ export interface CoverageMapRow {
 }
 
 /**
- * The date this map was last reviewed — rendered so a stale page is visible.
- * (Was TARGETS_SET_ON; the targets are undated now, but the review date is
- * exactly the thing a reader needs to judge whether the map is current.)
+ * The date this map's PROSE was last reviewed — rendered so a stale page is
+ * visible. (Was TARGETS_SET_ON; the targets are undated now, but the review
+ * date is exactly the thing a reader needs to judge whether the map is
+ * current.)
+ *
+ * Every FIGURE on the page is recomputed at build time and cannot go stale.
+ * The prose — blockers, targets, the reasons a row has no date — is written
+ * by hand and can. Those are different guarantees and the page now says so,
+ * because on 2026-08-27 this constant read 2026-08-05 while the detail-grade
+ * row's blocker was being rewritten: the date understated one row and
+ * overstated the other eleven at the same time.
  */
-export const MAP_REVIEWED_ON = "2026-08-05";
+export const MAP_REVIEWED_ON = "2026-08-29";
 
 export function getCoverageMap(): CoverageMapRow[] {
   const programs = getProgramsCount();

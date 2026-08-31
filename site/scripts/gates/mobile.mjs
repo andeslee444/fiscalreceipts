@@ -698,14 +698,24 @@ export async function runMobileLeg({ baseUrl, browser }) {
     }
   } finally {
     await context.close();
-    if (ownBrowser) await b.close();
+    // NOT `if (ownBrowser) await b.close()` here. m4 and m5 below both drive
+    // `b`, so closing it at this point killed the browser out from under
+    // them. Gate 3 never saw it because gate 3 passes its OWN browser
+    // (ownBrowser === false) — the bug only fired when the leg owned one,
+    // i.e. exactly when run standalone, which is how a new leg gets its
+    // proof-can-fail. A gate whose proving tool is broken quietly raises the
+    // cost of every future leg. Ownership is released after m5 instead.
   }
 
-  // ── (m4) the site's own navigation is usable at 390 ────────────────────
-  await runNavLeg({ baseUrl, browser: b, errors, notes });
+  try {
+    // ── (m4) the site's own navigation is usable at 390 ────────────────────
+    await runNavLeg({ baseUrl, browser: b, errors, notes });
 
-  // ── (m5) no page-level horizontal overflow in the 768–1023 tablet band ──
-  await runTabletOverflowLeg({ baseUrl, browser: b, errors, notes });
+    // ── (m5) no page-level horizontal overflow in the 768–1023 tablet band ──
+    await runTabletOverflowLeg({ baseUrl, browser: b, errors, notes });
+  } finally {
+    if (ownBrowser) await b.close();
+  }
 
   notes.push(
     `mobile leg: ${overflowOk}/${sample.length} pages free of page-level horizontal overflow; ${valueElements} value element(s) measured across ${valuePages} value-bearing page(s); ${pairElements} label/value pair(s) checked for collision across ${pairPages} page(s)`

@@ -109,7 +109,9 @@ export default function CoveragePage() {
           {dated === 0
             ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
             : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
-          This map was last reviewed on{" "}
+          Every figure above is recomputed at build time. The wording around
+          them — blockers, targets, the reasons a row carries no date — is
+          written by hand and was last reviewed on{" "}
           <time dateTime={MAP_REVIEWED_ON}>{MAP_REVIEWED_ON}</time>.
         </p>
 
