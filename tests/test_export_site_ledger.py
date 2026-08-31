@@ -496,7 +496,7 @@ def _make_lobbyist_fixture(tmp_path: Path, *, with_parquets=True) -> tuple[Path,
             " filing_type varchar, income_usd varchar, expenses_usd varchar,"
             " family_key_guess varchar, match_method varchar",
             [
-                (u, f"https://lda.senate.gov/api/v1/filings/{u}/",
+                (u, f"https://lda.gov/filings/public/filing/{u}/print/",
                  "CLIENT", "REG", "2024", "Q1", "Q1", None, None, "FAM", "exact")
                 for u in (_UUID_1, _UUID_2, _UUID_3)
             ],
@@ -544,7 +544,7 @@ class TestExportDimLobbyists:
     def test_disclosing_url_from_filings_parquet(self, tmp_path):
         rows, _ = self._run(tmp_path)
         jane = next(r for r in rows if r[0] == "JANE DOE")
-        assert jane[5] == f"https://lda.senate.gov/api/v1/filings/{_UUID_2}/"
+        assert jane[5] == f"https://lda.gov/filings/public/filing/{_UUID_2}/print/"
 
     def test_missing_parquets_null_columns(self, tmp_path):
         rows, _ = self._run(tmp_path, with_parquets=False)
@@ -571,7 +571,7 @@ class TestLobbyistCitationRows:
         row = by_fid[jane_fid]
         assert row[_CIT_IDX["kind"]] == "lda_filing"
         assert row[_CIT_IDX["official_url"]] == (
-            f"https://lda.senate.gov/api/v1/filings/{_UUID_2}/"
+            f"https://lda.gov/filings/public/filing/{_UUID_2}/print/"
         )
 
     def test_rows_pass_verify_lda(self, tmp_path):
@@ -613,7 +613,7 @@ def _make_site_with_lobbyist_citation(site_dir: Path, *, corrupt=False) -> str:
     disclosing = _UUID_2
     minted_from = _UUID_3 if corrupt else disclosing
     fid = fact_id_lda_lobbyist(minted_from, name)
-    url = f"https://lda.senate.gov/api/v1/filings/{minted_from}/"
+    url = f"https://lda.gov/filings/public/filing/{minted_from}/print/"
 
     # fct_program_lobbying.parquet must exist for the lda branch to arm
     _write_parquet(
@@ -631,7 +631,7 @@ def _make_site_with_lobbyist_citation(site_dir: Path, *, corrupt=False) -> str:
         " revolving_door boolean, disclosing_filing_uuid varchar,"
         " disclosing_filing_url varchar, fact_id varchar",
         [(name, "Chief of Staff, Sen. X", 3, True, disclosing,
-          f"https://lda.senate.gov/api/v1/filings/{disclosing}/",
+          f"https://lda.gov/filings/public/filing/{disclosing}/print/",
           fact_id_lda_lobbyist(disclosing, name))],
     )
 

@@ -441,16 +441,16 @@ def _make_lda_filings_duckdb_and_parquet(tmp_path: Path) -> tuple[Path, Path]:
         " match_method varchar",
         [
             ("a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-             "https://lda.senate.gov/api/v1/filings/a1b2c3d4-e5f6-7890-abcd-ef1234567890/",
+             "https://lda.gov/filings/public/filing/a1b2c3d4-e5f6-7890-abcd-ef1234567890/print/",
              "CLIENT A", "REG A", "2024", "Q1", "Q1", "50000", "", "FAM-A", "exact"),
             ("b2c3d4e5-f6a7-8901-bcde-f12345678901",
-             "https://lda.senate.gov/api/v1/filings/b2c3d4e5-f6a7-8901-bcde-f12345678901/",
+             "https://lda.gov/filings/public/filing/b2c3d4e5-f6a7-8901-bcde-f12345678901/print/",
              "CLIENT B", "REG B", "2024", "Q2", "Q2", "", "30000", "FAM-B", "exact"),
             ("c3d4e5f6-a7b8-9012-cdef-012345678902",
-             "https://lda.senate.gov/api/v1/filings/c3d4e5f6-a7b8-9012-cdef-012345678902/",
+             "https://lda.gov/filings/public/filing/c3d4e5f6-a7b8-9012-cdef-012345678902/print/",
              "CLIENT C", "REG C", "2024", "Q3", "Q3", "20000", "15000", "FAM-C", "exact"),
             ("d4e5f6a7-b8c9-0123-defa-123456789012",
-             "https://lda.senate.gov/api/v1/filings/d4e5f6a7-b8c9-0123-defa-123456789012/",
+             "https://lda.gov/filings/public/filing/d4e5f6a7-b8c9-0123-defa-123456789012/print/",
              "CLIENT D", "REG D", "2024", "Q4", "Q4", None, None, "FAM-D", "exact"),
         ],
     )
@@ -525,8 +525,14 @@ class TestFilingLdaCitationRows:
         assert len(row) == 27, f"expected 27-element tuple, got {len(row)}"
         assert row[1] == "lda_filing", f"kind should be lda_filing, got {row[1]}"
         official_url = row[17]  # index 17 = official_url
-        assert official_url and "lda.senate.gov" in official_url, \
-            f"official_url should be lda.senate.gov URL: {official_url}"
+        # Host-only was the WEAK check that let an API endpoint pass as an
+        # "official_url" for months (fixed 2026-08-29): lda.senate.gov now
+        # 301s to lda.gov, and both hosts are acceptable — what is not is an
+        # /api/ path, which returns JSON a reader cannot read.
+        assert official_url and (
+            "lda.gov" in official_url or "lda.senate.gov" in official_url
+        ) and "/api/" not in official_url, \
+            f"official_url should be a readable LDA filing page: {official_url}"
         recorded_value = row[23]  # index 23 = recorded_value
         assert recorded_value == "50000", f"recorded_value should be '50000', got {recorded_value}"
 

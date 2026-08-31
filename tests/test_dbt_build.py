@@ -296,8 +296,8 @@ def make_lake(data_dir: Path):
     influence.mkdir(parents=True, exist_ok=True)
     duckdb.sql(
         f"copy (select * from (values "
-        f"('uuid-lda-001','https://lda.senate.gov/api/v1/filings/uuid-lda-001/','ACME PARENT INC','OUTSIDE FIRM LLC','2024','first_quarter','Q1','150000','','ACME PARENT','exact_family'),"
-        f"('uuid-lda-002','https://lda.senate.gov/api/v1/filings/uuid-lda-002/','ACME PARENT INC','ACME PARENT INC','2024','second_quarter','Q2','','50000','ACME PARENT','exact_family')"
+        f"('uuid-lda-001','https://lda.gov/filings/public/filing/uuid-lda-001/print/','ACME PARENT INC','OUTSIDE FIRM LLC','2024','first_quarter','Q1','150000','','ACME PARENT','exact_family'),"
+        f"('uuid-lda-002','https://lda.gov/filings/public/filing/uuid-lda-002/print/','ACME PARENT INC','ACME PARENT INC','2024','second_quarter','Q2','','50000','ACME PARENT','exact_family')"
         f") t(filing_uuid, url, client_name, registrant_name, filing_year, filing_period, filing_type,"
         f" income_usd, expenses_usd, family_key_guess, match_method))"
         f" to '{influence}/lda_filings.parquet' (format parquet)"
