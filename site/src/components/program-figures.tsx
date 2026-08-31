@@ -410,14 +410,14 @@ export function DecadeOnlyNote({
         do carry this line.{" "}
         {renumber ? (
           <>
-            It last appears in the PB{last} workbook, the edition immediately
+            It last appears in the {`PB${last} workbook`}, the edition immediately
             before this one. PB2026 renumbered program elements at scale
             across the services and defense agencies, so this work may
             continue under a different number.{" "}
           </>
         ) : (
           <>
-            It last appears in the PB{last} workbook; no later President&apos;s
+            It last appears in the {`PB${last} workbook`}; no later President&apos;s
             Budget edition in this corpus carries it.{" "}
           </>
         )}
@@ -428,8 +428,8 @@ export function DecadeOnlyNote({
           </>
         ) : (
           <>
-            The figures below are cited to {count} President&apos;s Budget
-            editions, the earliest PB{first} and the latest PB{last}, and
+            The figures below are cited to {`${count} President\u2019s Budget`}
+            {` editions, the earliest PB${first} and the latest PB${last}, and`}
             report fiscal years FY{fyMin} to FY{fyMax}.
           </>
         )}{" "}
