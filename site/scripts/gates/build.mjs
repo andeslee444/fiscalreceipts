@@ -146,9 +146,9 @@ export const PAGE_WEIGHT_BUDGET = [
   // rule the Sprint E entry above established (re-baselining to the CURRENT
   // proportional headroom hands the next change the same cliff): 3,150,000
   // is 6.32% over the raw measurement, 330,000 is 7.05% over the gzip one.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,635 / 308,268" },
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "32,908 / 6,596" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,332 / 78,754" },
+  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,749 / 308,295" },
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "33,035 / 6,652" },
+  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,535 / 78,822" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 1,260,784 / 80,771 -> 1,389,568 / 89,557, breaching both.
   //
@@ -163,8 +163,8 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 1,475,000 is 6.16% over raw,
   // 95,000 is 7.88% over gzip.
-  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,357 / 88,060" },
-  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "683,878 / 67,163" },
+  { label: "/", file: "index.html", maxRaw: 1_475_000, maxGzip: 95_000, measured: "1,389,228 / 88,022" },
+  { label: "/companies/", file: "companies/index.html", maxRaw: 710_000, maxGzip: 69_000, measured: "684,005 / 67,188" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -205,9 +205,9 @@ export const PAGE_WEIGHT_BUDGET = [
   // DISTINCT content: 98 evidence sentences, 154 identity labels, 101 edge
   // descriptions, none of which repeat. No amount of markup tidying reaches
   // 36,000, and removing a citation to fit a ceiling is not on the table.
-  { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "539,883 / 50,438" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,524 / 28,199" },
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,712 / 25,520" },
+  { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "539,950 / 50,468" },
+  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,693 / 28,240" },
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,840 / 25,565" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
   // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
@@ -220,7 +220,7 @@ export const PAGE_WEIGHT_BUDGET = [
   //
   // ~6% headroom against the new measurement: 101,000 is 6.34% over raw,
   // 14,450 is 6.02% over gzip.
-  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "94,741 / 13,619" },
+  { label: "/data/", file: "data/index.html", maxRaw: 101_000, maxGzip: 14_450, measured: "94,830 / 13,678" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -262,7 +262,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // agents mis-measuring this table with the wrong tool; the numbers above
   // are the gate's, read by importing PAGE_WEIGHT_BUDGET and calling its
   // weigh().)
-  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,213 / 50,601" },
+  { label: "/agency/", file: "agency/index.html", maxRaw: 204_000, maxGzip: 53_700, measured: "192,327 / 50,615" },
   // Re-baselined 2026-08-08 (Sprint A′). The 2026-08-08 corrections table added
   // ~16.3 KB raw / ~4.1 KB gzip: six was/now rows recording the figures this
   // sprint moved (district $8.01B→$5.58B, mentions 34,538→10,447, the /programs/
@@ -336,7 +336,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // states them, so growing the corpus grows the page. Nothing was trimmed;
   // headroom restored to ~6% (the /programs/ convention) rather than to the
   // breach. Raw was NOT raised: 135,373 of 136,500 is comfortable.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 39_100, measured: "135,373 / 36,908" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 39_100, measured: "135,635 / 36,943" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -376,14 +376,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // So the ceiling moves, on the breach this change caused, restored to ~6%
   // against the current measurement (101,500 is 5.99% over raw, 18,750 is
   // 5.97% over gzip) rather than to the 0.03% it had drifted to.
-  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "95,766 / 17,694" },
+  { label: "/coverage/", file: "coverage/index.html", maxRaw: 101_500, maxGzip: 18_750, measured: "96,898 / 18,105" },
   // Templated classes — the heaviest built instance of each.
   // The heaviest instance is /agency/N/ since Wave 5, not /agency/F/ — the
   // Navy overtook the Air Force on this page class for the same reason it
   // overtook it on the index: 183 more programs.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,582 / 120,667 (/agency/N/)" },
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,705 / 142,798 (/program/0601102A/)" },
-  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "379,703 / 22,254 (/company/boeing/)" },
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,791,697 / 120,681 (/agency/N/)" },
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,110,842 / 142,829 (/program/0601102A/)" },
+  { label: "/company/*/ (heaviest)", dir: "company", maxRaw: 545_000, maxGzip: 25_000, measured: "378,129 / 22,330 (/company/boeing/)" },
   // RAISED 2026-08-29, 325,000 -> 347,500 raw. Justified by the change that
   // needed it, per this file's own rule -- not pre-emptively. Two changes
   // landed together: Wave 5's Navy ingestion gave 183 more programs a
@@ -395,7 +395,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // gzip is UNCHANGED at 27,500 and is not close: 22,532, 18% headroom. Only
   // the raw ceiling moved, restored to ~6% headroom (the /programs/ Sprint E
   // convention) rather than to the drift.
-  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 347_500, maxGzip: 27_500, measured: "327,702 / 22,532" },
+  { label: "/filing/*/ (heaviest)", dir: "filing", maxRaw: 347_500, maxGzip: 27_500, measured: "327,829 / 22,572" },
 ];
 
 /** raw + gzip(level 9) bytes of one built file. */
