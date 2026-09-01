@@ -31,7 +31,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { companyDisplay } from "../src/lib/company-name.mjs";
+import { companyLabel } from "../src/lib/company-name.mjs";
 import {
   buildFeedTargets,
   companyWatchPeBlis,
@@ -119,7 +119,9 @@ export function collectFeedInputs() {
       slug: e.slug,
       // §P2-4: the feed title is a DISPLAY surface — a subscriber's
       // reader shows it verbatim, so it gets the same casing as the page.
-      displayName: companyDisplay(e.display_name),
+      // …and the curated published label where there is one (#10 A), so a
+      // subscriber’s reader and the page agree on what the company is called.
+      displayName: companyLabel(e.display_name, e.label),
       familyKey: e.family_key,
       ...watch,
     });

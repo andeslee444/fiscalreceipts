@@ -84,6 +84,8 @@ export interface MemberArrival {
 export interface FamilyMember {
   family_key: string;
   display_name: string;
+  /** Curated published label (#10 A) — absent for all but a curated few. */
+  label?: string;
   slug: string;
   /** True when this member is in the top-200 export (has a /company/ page). */
   has_page: boolean;
@@ -127,6 +129,12 @@ export interface CompanyRow {
   key: string;
   /** The name in the first column. */
   displayName: string;
+  /**
+   * Curated published label for an UNMERGED row (#10 A). Null on a merged
+   * row: a merge already renders the curated FAMILY label, which is not a
+   * registry string and carries no `data-company-name` marker.
+   */
+  label: string | null;
   /** Registry rows folded into this line (1 for an unmerged row). */
   members: FamilyMember[];
   totalObligation: number;
@@ -157,6 +165,7 @@ function entityToMember(e: EntityTop): FamilyMember {
   return {
     family_key: e.family_key,
     display_name: e.display_name,
+    label: e.label,
     slug: e.slug,
     has_page: true,
     total_obligation: e.total_obligation,
@@ -259,6 +268,7 @@ export function mergeCompanies(
       rows.push({
         key: company.slug,
         displayName: company.display_name,
+        label: company.label ?? null,
         members: [entityToMember(company)],
         totalObligation: company.total_obligation,
         factId: company.total_obligation_fact_id,
@@ -275,6 +285,7 @@ export function mergeCompanies(
     rows.push({
       key: fam.slug,
       displayName: fam.label,
+      label: null,
       members: fam.members,
       totalObligation: fam.combined_obligation!,
       factId: fam.combined_obligation_fact_id,

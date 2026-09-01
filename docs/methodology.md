@@ -116,11 +116,25 @@ answers and 100% citation resolution before shipping.
 
 **Company families — registry fact vs. name inference.** When we say a company
 received a total figure across its subsidiaries, we rely on one of two methods.
-*High confidence* (registry fact): SAM.gov records a common registered parent
-name for the subsidiaries. *Medium confidence* (name inference): slightly
-different legal-name variants normalize to the same string (e.g., "THE BOEING
-COMPANY" and "BOEING COMPANY, THE (INC)"). Both tiers appear on screen; the
-method is always disclosed.
+*High confidence* (registry fact): the subsidiaries share one registered parent
+UEI in SAM.gov, so the *grouping* is a registry fact rather than a guess.
+*Medium confidence* (name inference): slightly different legal-name variants
+normalize to the same string (e.g., "THE BOEING COMPANY" and "BOEING COMPANY,
+THE (INC)"). Both tiers appear on screen; the method is always disclosed.
+
+**The tier grades the grouping, never the name.** A family's label is the
+registered parent name of whichever member holds the most money — an argmax
+that knows nothing about how close the runner-up was, or about which
+registration the registrant still uses. 15 of the 200 families we publish carry
+a label that beat its runner-up by under 15%. The largest is a family that is
+97% Raytheon Company obligations and was titled "ROCKWELL COLLINS AUSTRALIA PTY
+LIMITED": a common registered parent name, recorded in SAM.gov, at high
+confidence, and wrong — RTX had already reverted that registration. Every
+family inside that margin now carries a reviewed label from a hand-curated seed
+(`data-seeds/entity_display_aliases.csv`), each row recording whether it
+corrects the name or merely pins the argmax winner, and the build fails if a
+new one appears unreviewed. The registered name stays visible on every company
+page beneath the heading, because that is the string USAspending answers to.
 
 **Budget-to-contract links.** Connecting a budget program element to the
 contracts that funded it is an inference, not a direct database join. We use

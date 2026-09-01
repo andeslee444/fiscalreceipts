@@ -203,6 +203,7 @@ describe("assertNoDoubleCount", () => {
       {
         key: "rtx-solo",
         displayName: "RTX CORP",
+        label: null,
         members: [member("RTX", RTX.total_obligation)],
         totalObligation: RTX.total_obligation,
         factId: "fid-rtx",

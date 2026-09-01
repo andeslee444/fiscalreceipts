@@ -127,9 +127,19 @@
  *        - its rendered text equals displayCompanyName(that value).display —
  *          computed HERE from the attribute, so a page that hand-cased a
  *          name, or a rule that quietly changed, both fail;
+ *        - UNLESS the element declares a curated label in [data-company-label]
+ *          (ROADMAP #10 A), in which case the text must equal THAT attribute
+ *          verbatim — an authored string is not derivable from the registry
+ *          one, and pretending otherwise would either fail every relabelled
+ *          family or exempt them from the leg. The attribute is not taken on
+ *          trust: gate 24 leg (l) checks each value against the curated seed
+ *          data-seeds/entity_display_aliases.csv, so neither gate can be
+ *          satisfied by a name somebody made up at the render site;
  *        - the raw string is never DISCARDED: on a /company/ page (whose
  *          subject IS one registry name) the visible [data-registry-note]
- *          must carry it verbatim whenever the display differs.
+ *          must carry it verbatim whenever the display differs — and ALWAYS
+ *          when a curated label is on the h1, because then the heading is not
+ *          even claiming to be the registered name.
  *      Non-vacuity: zero [data-company-name] elements site-wide FAILS.
  *
  * (dv) DERIVATION STRIPS REPRODUCE (§P2-8). "The PB2024 book requested $5.28B
@@ -1090,12 +1100,32 @@ export async function runRenderStaticGate() {
         });
         continue;
       }
-      const want = displayCompanyName(registry).display;
+      // #10 A: an authored label wins over the derived casing, and must be
+      // rendered verbatim. An EMPTY marker is a failure of its own — it would
+      // silently disable the check for that element.
+      const curated = el.getAttribute("data-company-label");
+      if (curated !== undefined && curated !== null && curated.trim() === "") {
+        companyNameFailures.push({
+          file: relPath,
+          issue: `[data-company-label] is empty on registry ${JSON.stringify(registry)} — a curated label must be the string it publishes`,
+        });
+        continue;
+      }
+      const derived = displayCompanyName(registry).display;
+      const want = curated ?? derived;
       const got = el.text.replace(/\s+/g, " ").trim();
       if (got !== want) {
         companyNameFailures.push({
           file: relPath,
-          issue: `renders ${JSON.stringify(got)} for registry ${JSON.stringify(registry)}; the rule says ${JSON.stringify(want)}`,
+          issue: curated
+            ? `renders ${JSON.stringify(got)} but declares the curated label ${JSON.stringify(curated)}`
+            : `renders ${JSON.stringify(got)} for registry ${JSON.stringify(registry)}; the rule says ${JSON.stringify(want)}`,
+        });
+      }
+      if (curated && curated === registry) {
+        companyNameFailures.push({
+          file: relPath,
+          issue: `[data-company-label] repeats the registry string ${JSON.stringify(registry)} — a label that changes nothing should not be declared`,
         });
       }
     }
@@ -1105,12 +1135,17 @@ export async function runRenderStaticGate() {
       const h1 = root.querySelector("h1 [data-company-name]");
       if (h1) {
         const registry = h1.getAttribute("data-company-name") ?? "";
-        const shown = displayCompanyName(registry).display !== registry;
+        const curated = h1.getAttribute("data-company-label");
+        // A curated label ALWAYS owes the reader the registry string: the
+        // heading is no longer a casing of it, so a tooltip would not do.
+        const shown = !!curated || displayCompanyName(registry).display !== registry;
         const note = root.querySelector("[data-registry-note]");
         if (shown && (!note || !note.text.includes(registry))) {
           companyNameFailures.push({
             file: relPath,
-            issue: `h1 displays a cased name but no visible [data-registry-note] carries ${JSON.stringify(registry)}`,
+            issue: curated
+              ? `h1 publishes the curated label ${JSON.stringify(curated)} but no visible [data-registry-note] carries ${JSON.stringify(registry)}`
+              : `h1 displays a cased name but no visible [data-registry-note] carries ${JSON.stringify(registry)}`,
           });
         }
       }

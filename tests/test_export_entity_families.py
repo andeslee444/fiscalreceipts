@@ -151,3 +151,102 @@ def test_a_missing_member_fact_fails_rule_4a():
     row = combined_row([FID_A, FID_B], f"{RAYTHEON + RTX:.3f}")
     reason = _verify_derived(row, IDX, [row], IDX)
     assert reason is not None and "not found in citations" in reason
+
+
+# ── Published labels (ROADMAP #10, option A) ────────────────────────────────
+#
+# The other half of the naming problem the curated seed cannot reach. The merge
+# above fixes which families are ONE family; this fixes what a family is
+# CALLED. `dim_entities.display_name` is an argmax over registered parent names,
+# and `ROCKWELL COLLINS AUSTRALIA PTY LIMITED` titled a family that is 97.3%
+# RAYTHEON COMPANY because that registration beat `RAYTHEON COMPANY` by 3.1%.
+
+
+SEED_HEADER = (
+    "family_key,display_name,evidence,source_url,source_form,source_date,"
+    "measured_on,note\n"
+)
+SEED_NOTE = "x" * 200
+
+
+def _alias_seed(tmp_path, *rows: str):
+    p = tmp_path / "aliases.csv"
+    p.write_text(SEED_HEADER + "".join(rows), encoding="utf-8")
+    return p
+
+
+def test_display_labels_load_and_key_on_family_key(tmp_path, monkeypatch):
+    from govbudget import export_site
+
+    con = warehouse(tmp_path)
+    seed = _alias_seed(
+        tmp_path, f'RTX,"RTX Corporation",measured,,,,2026-09-01,"{SEED_NOTE}"\n'
+    )
+    monkeypatch.setattr(export_site, "_entity_display_aliases_csv", lambda: seed)
+    assert export_site._entity_display_labels(con) == {"RTX": "RTX Corporation"}
+
+
+def test_display_labels_raise_on_a_key_a_REAL_warehouse_does_not_have(
+    tmp_path, monkeypatch
+):
+    """A typo'd key must not ship looking like a fix that landed."""
+    from govbudget import export_site
+    from govbudget.entity_display_aliases import DisplayAliasError
+
+    con = warehouse(tmp_path)
+    # Fill past _REAL_WAREHOUSE_FAMILIES so this is the corpus path, not the
+    # fixture path — the distinction the tolerance turns on.
+    con.executemany(
+        "insert into dim_entities values (?, ?, 1, 1.0, 'high')",
+        [(f"FILLER {i}", f"FILLER {i}") for i in range(export_site._REAL_WAREHOUSE_FAMILIES)],
+    )
+    seed = _alias_seed(
+        tmp_path, f'RTX CORPORATION,"RTX Corporation",measured,,,,2026-09-01,"{SEED_NOTE}"\n'
+    )
+    monkeypatch.setattr(export_site, "_entity_display_aliases_csv", lambda: seed)
+    with pytest.raises(DisplayAliasError, match="not in dim_entities"):
+        export_site._entity_display_labels(con)
+
+
+def test_display_labels_filter_rather_than_raise_on_a_fixture(tmp_path, monkeypatch):
+    """Three hand-written rows are not this corpus, and must not fail a build.
+
+    The hole this could leave is closed elsewhere, not left open: gate 24 leg
+    (l) re-checks every seeded key against the BUILT site.
+    """
+    from govbudget import export_site
+
+    con = warehouse(tmp_path)
+    seed = _alias_seed(
+        tmp_path,
+        f'RTX,"RTX Corporation",measured,,,,2026-09-01,"{SEED_NOTE}"\n',
+        f'NOT A FAMILY,"Not a family",measured,,,,2026-09-01,"{SEED_NOTE}"\n',
+    )
+    monkeypatch.setattr(export_site, "_entity_display_aliases_csv", lambda: seed)
+    assert export_site._entity_display_labels(con) == {"RTX": "RTX Corporation"}
+
+
+def test_display_labels_go_inert_without_dim_entities(tmp_path):
+    """Same rule as the curated merge: nothing to label, so label nothing."""
+    from govbudget import export_site
+
+    con = duckdb.connect(str(tmp_path / "empty.duckdb"))
+    assert export_site._entity_display_labels(con) == {}
+
+
+def test_shipped_seed_resolves_against_the_live_warehouse():
+    """Every shipped alias names a family this warehouse actually publishes."""
+    from pathlib import Path
+
+    from govbudget.config import ROOT
+    from govbudget.entity_display_aliases import assert_keys_known, load_display_aliases
+
+    db = ROOT / "data" / "duckdb" / "govbudget.duckdb"
+    if not db.exists():
+        pytest.skip("no live warehouse")
+    con = duckdb.connect(str(db), read_only=True)
+    known = {r[0] for r in con.execute("select family_key from dim_entities").fetchall()}
+    assert_keys_known(
+        load_display_aliases(Path(ROOT / "data-seeds" / "entity_display_aliases.csv")),
+        known,
+    )

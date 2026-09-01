@@ -110,11 +110,11 @@ function MemberName({ m }: { m: FamilyMember }) {
       href={`/company/${m.slug}/`}
       className="hover:text-foreground hover:underline"
     >
-      <CompanyName raw={m.display_name} />
+      <CompanyName raw={m.display_name} label={m.label} />
     </Link>
   ) : (
     <span title="Outside the top-200 list — counted in the total, no profile page">
-      <CompanyName raw={m.display_name} />
+      <CompanyName raw={m.display_name} label={m.label} />
     </span>
   );
 }
@@ -224,6 +224,7 @@ function CombinedArithmetic({ row }: { row: CompanyRow }) {
             <span>
               <CompanyName
                 raw={m.display_name}
+                label={m.label}
                 className="text-muted-foreground"
               />{" "}
               <span className="whitespace-nowrap">
@@ -290,9 +291,13 @@ export function CompaniesTable({
           [
             r.displayName,
             companyDisplay(r.displayName),
+            // #10 A: a relabelled family must stay findable by BOTH names —
+            // the one on screen and the registry string a reader arrived with.
+            r.label ?? "",
             ...r.members.flatMap((m) => [
               m.display_name,
               companyDisplay(m.display_name),
+              m.label ?? "",
             ]),
           ]
             .join(" ")
@@ -499,7 +504,7 @@ export function CompaniesTable({
                       href={`/company/${r.members[0].slug}/`}
                       className="font-medium hover:underline text-foreground"
                     >
-                      <CompanyName raw={r.displayName} />
+                      <CompanyName raw={r.displayName} label={r.label} />
                     </Link>
                   )}
                 </td>

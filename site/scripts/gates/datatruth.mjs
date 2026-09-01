@@ -80,6 +80,21 @@
  *      corpus-shaped claim on the singleton pages to equal one of them. Same
  *      class as the stale `measured:` annotation and the outlived docstring.
  *      See leg k's own block at the bottom.
+ *  (l) FAMILY LABELS THAT WON A COIN FLIP (ROADMAP #10, option A). A family's
+ *      published name is `dim_entities.display_name` — an argmax over its
+ *      dominant member's registered parent names. `ROCKWELL COLLINS AUSTRALIA
+ *      PTY LIMITED` titled a family that is 97.3% RAYTHEON COMPANY because
+ *      that registration beat `RAYTHEON COMPANY` by 3.1%, and RTX had already
+ *      reverted it in FY2026 — so the site published a label the registrant
+ *      had corrected. Nothing in the pipeline knew, because `confidence`
+ *      grades MERGE risk and no gate graded LABEL risk. This leg recomputes
+ *      the margin for every published family from the lake
+ *      (familylabel-recompute.py, mirroring entity_graph._PICK_SQL) and FAILS
+ *      when one that won by less than 15% carries no row in
+ *      data-seeds/entity_display_aliases.csv. It then checks the built pages
+ *      render exactly the label the seed authored. Generalised on purpose:
+ *      the rule catches the 16th such family the next data drop adds, which
+ *      is how this one arrived. See leg l's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -98,6 +113,7 @@ import { parse } from "node-html-parser";
 import { createRequire } from "module";
 import { feedGuid, FR_NS } from "../../src/lib/feed-model.mjs";
 import { exemptFromNotationSweep } from "./source-text-kinds.mjs";
+import { displayCompanyName } from "../../src/lib/company-name.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -576,6 +592,9 @@ export async function runDataTruthGate() {
 
   // ── leg k: corpus-count provenance (tri-persona Wave 4, item 4) ───────────
   runCorpusCountLeg(errors, notes);
+
+  // ── leg l: family labels that won a coin flip (ROADMAP #10 A) ─────────────
+  runFamilyLabelLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -2092,6 +2111,332 @@ function runCorpusCountLeg(errors, notes) {
         `declared count (` +
         ids.map((id) => `${id}=${expected[id].toLocaleString("en-US")}`).join(", ") +
         `) ✓`,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg l — family labels that won a coin flip (ROADMAP #10, option A)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT. `/companies/families/` and `/company/{slug}/` publish
+// `dim_entities.display_name`, which is the registered `recipient_parent_name`
+// of the family member holding the most money — chosen by an argmax that has
+// no notion of "close" and no notion of "current". `ROCKWELL COLLINS AUSTRALIA
+// PTY LIMITED` was the <h1> of a family that is 97.3% RAYTHEON COMPANY
+// ($18.93B of $19.47B, all 15 members sharing parent UEI EGAVSJTA2D81); it won
+// by 3.1% over `RAYTHEON COMPANY`, and RTX reverted that registration in
+// FY2026. The site was publishing a label the registrant had already
+// corrected. Every existing gate passed: the grouping was right, the dollars
+// were right, the citation was right. Only the string was wrong, and nothing
+// graded strings — `confidence` grades whether a family spans two parent UEIs,
+// which is a different question.
+//
+// THE RULE, stated so it catches the NEXT one rather than this one:
+//
+//   A PUBLISHED FAMILY WHOSE LABEL WON ITS PARENT-REGISTRATION ARGMAX BY LESS
+//   THAN 15% MUST CARRY A ROW IN data-seeds/entity_display_aliases.csv.
+//
+// The row may RELABEL the family or merely PIN the argmax winner — the seed's
+// `evidence` column types which — but a near-tie must have been looked at by a
+// human, and the looking must be written down. 15 published families ($255.2B,
+// 9.7% of published family dollars) are inside the threshold today.
+//
+// Everything is recomputed rather than read back:
+//   * the margins come from familylabel-recompute.py (DuckDB over the award
+//     lake, mirroring entity_graph._PICK_SQL's parent_pick ranking). It never
+//     reads the seed, entities_top.json or the built HTML;
+//   * the labels come from the SEED, parsed here;
+//   * what the site SHOWS comes from the built HTML.
+// A pipeline that dropped an alias cannot satisfy this leg by also dropping it
+// from the payload, and a page that hand-typed a name cannot satisfy it at all.
+//
+// Vacuity guards, all structural — no pinned literals, because a literal here
+// would have to be updated by the same person who broke the thing it pins:
+// the recompute must cover ≥100 families, at least one must be inside the
+// threshold, and the seed must resolve ≥1 relabel onto a built page.
+
+const DISPLAY_ALIAS_SEED = path.resolve(
+  repoRoot,
+  "data-seeds",
+  "entity_display_aliases.csv",
+);
+
+/**
+ * The margin below which a label is a coin-flip win. Deliberately the same
+ * number the spike measured the blast radius at
+ * (docs/superpowers/reviews/10-entity-resolution-spike.md §1) — lowering it to
+ * make a family pass is the one edit this constant must never see.
+ */
+const NEAR_TIE_MARGIN = 0.15;
+
+/** Slug for a warehouse family_key — export_site.py's own derivation. */
+function familySlug(familyKey) {
+  return familyKey.toLowerCase().replace(/ /g, "-");
+}
+
+function familyLabelMargins() {
+  const script = path.resolve(__dirname, "familylabel-recompute.py");
+  const res = spawnSync("uv", ["run", "python", script], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 600000,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  if (res.status !== 0) {
+    throw new Error(
+      `familylabel-recompute.py failed (status ${res.status}): ${
+        (res.stderr || "").slice(-800)
+      }`,
+    );
+  }
+  const parsed = JSON.parse(res.stdout);
+  if (parsed.__error__) throw new Error(parsed.__error__);
+  return parsed;
+}
+
+function runFamilyLabelLeg(errors, notes) {
+  // ── the seed ────────────────────────────────────────────────────────────
+  //
+  // A missing or empty seed is an error, but NOT an early return: with no
+  // aliases every near-tie family is unreviewed, which is precisely the
+  // pre-fix state, and a reader of this gate's output needs to be told WHICH
+  // families and by what margin. A leg that answers "seed missing" and stops
+  // hides the very finding it exists to surface.
+  const seedRows = fs.existsSync(DISPLAY_ALIAS_SEED)
+    ? parseCsv(fs.readFileSync(DISPLAY_ALIAS_SEED, "utf8"))
+    : (errors.push(
+        `leg l: display-alias seed missing at ${DISPLAY_ALIAS_SEED} — every ` +
+          `near-tie family below is unreviewed`,
+      ),
+      []);
+  const aliases = new Map();
+  for (const r of seedRows) {
+    const key = (r.family_key || "").trim();
+    const label = (r.display_name || "").trim();
+    const evidence = (r.evidence || "").trim();
+    if (!key || !label || !evidence) {
+      errors.push(
+        `leg l: seed row ${JSON.stringify(r.family_key ?? "")} is missing ` +
+          `family_key, display_name or evidence`,
+      );
+      continue;
+    }
+    if (aliases.has(key)) {
+      errors.push(`leg l: seed aliases ${key} twice`);
+      continue;
+    }
+    aliases.set(key, { label, evidence });
+  }
+  if (aliases.size === 0 && seedRows.length > 0) {
+    errors.push("leg l: the display-alias seed resolved no rows");
+  }
+
+  // ── the recompute ───────────────────────────────────────────────────────
+  let truth;
+  try {
+    truth = familyLabelMargins();
+  } catch (e) {
+    errors.push(`leg l: ${e.message}`);
+    return;
+  }
+  const families = truth.families ?? [];
+  if (families.length < 100) {
+    errors.push(
+      `leg l: the margin recompute covered only ${families.length} published ` +
+        `families — under 100, so the leg would pass by seeing nothing`,
+    );
+    return;
+  }
+
+  // ── THE RULE ────────────────────────────────────────────────────────────
+  const nearTies = families.filter((f) => f.margin < NEAR_TIE_MARGIN);
+  if (nearTies.length === 0) {
+    errors.push(
+      `leg l: no published family is inside the ${(NEAR_TIE_MARGIN * 100).toFixed(0)}% ` +
+        `margin (vacuous) — the recompute is not measuring what this leg checks`,
+    );
+    return;
+  }
+  const nearTieDollars = nearTies.reduce((n, f) => n + f.total_obligation, 0);
+  for (const f of nearTies.sort((a, b) => a.margin - b.margin)) {
+    if (aliases.has(f.family_key)) continue;
+    errors.push(
+      `leg l: ${f.family_key} publishes "${f.display_name}" ` +
+        `($${(f.total_obligation / 1e9).toFixed(2)}B), a label that won its ` +
+        `parent-registration argmax by only ${(f.margin * 100).toFixed(1)}% — ` +
+        `$${(f.won_dollars / 1e9).toFixed(3)}B as "${f.won}" over ` +
+        `$${(f.runner_up_dollars / 1e9).toFixed(3)}B as "${f.runner_up}" on its ` +
+        `dominant member ${f.dominant_name} (${f.dominant_uei}). A label decided ` +
+        `by that margin is not a fact the pipeline read; it must be reviewed and ` +
+        `recorded in data-seeds/entity_display_aliases.csv (relabel it, or pin ` +
+        `the winner with evidence=pin) before it is published`,
+    );
+  }
+
+  // ── the seed points at real published families ──────────────────────────
+  const byKey = new Map(families.map((f) => [f.family_key, f]));
+  for (const [key, a] of aliases) {
+    const f = byKey.get(key);
+    if (!f) {
+      errors.push(
+        `leg l: the seed aliases ${key} to "${a.label}", but no published ` +
+          `family has that key — the row relabels nothing and ships looking ` +
+          `like it had`,
+      );
+      continue;
+    }
+    // A `pin` asserts the argmax winner IS the label; it must therefore change
+    // nothing the casing rule would not already have produced. A `pin` that
+    // moves the string is a relabel wearing the wrong evidence kind.
+    const derived = displayCompanyName(f.display_name).display;
+    if (a.evidence === "pin" && a.label !== derived) {
+      errors.push(
+        `leg l: ${key} is seeded evidence=pin with label "${a.label}", but the ` +
+          `casing rule renders "${derived}" — a pin records that the argmax ` +
+          `winner is right, so it cannot change what is on screen`,
+      );
+    }
+    if (a.evidence !== "pin" && a.label === derived) {
+      errors.push(
+        `leg l: ${key} is seeded evidence=${a.evidence} with label "${a.label}", ` +
+          `which is exactly what the casing rule already renders — that is a ` +
+          `pin, and typing it as a relabel overstates what the row did`,
+      );
+    }
+  }
+
+  // ── what the built pages actually show ──────────────────────────────────
+  const relabelled = [...aliases.entries()].filter(
+    ([key, a]) =>
+      byKey.has(key) &&
+      a.label !== displayCompanyName(byKey.get(key).display_name).display,
+  );
+  const seedLabels = new Set([...aliases.values()].map((a) => a.label));
+
+  // (1) No page may publish a company label the seed did not author. Swept
+  //     site-wide: gate 2 leg (tc) checks a label element against its OWN
+  //     attribute, which a hand-typed name would satisfy.
+  let labelled = 0;
+  for (const file of walkHtml(outDir)) {
+    const html = fs.readFileSync(file, "utf8");
+    if (!html.includes("data-company-label")) continue;
+    const root = parse(html);
+    for (const el of root.querySelectorAll("[data-company-label]")) {
+      labelled += 1;
+      const value = el.getAttribute("data-company-label") ?? "";
+      if (!seedLabels.has(value)) {
+        errors.push(
+          `leg l (${path.relative(outDir, file)}): renders the company label ` +
+            `${JSON.stringify(value)}, which no row of ` +
+            `data-seeds/entity_display_aliases.csv authored`,
+        );
+      }
+    }
+  }
+
+  // (2) Every relabelled family's own page must publish the label AND keep the
+  //     registry string visible. The relabel is only honest with both.
+  let pagesChecked = 0;
+  for (const [key, a] of relabelled) {
+    const f = byKey.get(key);
+    const url = `/company/${familySlug(key)}/`;
+    const root = readHtml(url);
+    if (!root) {
+      errors.push(`leg l (${url}): built page missing for a relabelled family`);
+      continue;
+    }
+    pagesChecked += 1;
+    const h1 = root.querySelector("h1");
+    const shown = (h1?.text ?? "").replace(/\s+/g, " ").trim();
+    if (shown !== a.label) {
+      errors.push(
+        `leg l (${url}): <h1> renders ${JSON.stringify(shown)}, but the seed ` +
+          `publishes ${JSON.stringify(a.label)} for ${key}`,
+      );
+    }
+    const note = root.querySelector("[data-registry-note]");
+    if (!note || !note.text.includes(f.display_name)) {
+      errors.push(
+        `leg l (${url}): the registry string ${JSON.stringify(f.display_name)} ` +
+          `is not visible on the page that stopped using it as its heading — a ` +
+          `relabel without the registered name is a name the reader cannot check`,
+      );
+    }
+  }
+
+  // (3) /companies/ must agree with the page it links to.
+  const companies = readHtml("/companies/");
+  if (!companies) {
+    errors.push("leg l: built /companies/ missing");
+  } else {
+    const rendered = new Set(
+      companies
+        .querySelectorAll("[data-company-label]")
+        .map((el) => el.getAttribute("data-company-label") ?? ""),
+    );
+    for (const [key, a] of relabelled) {
+      if (!rendered.has(a.label)) {
+        errors.push(
+          `leg l (/companies/): ${key} is relabelled to ${JSON.stringify(a.label)} ` +
+            `on its own page but that label is not rendered on the index — one ` +
+            `company spelled two ways is the defect this seed exists to close`,
+        );
+      }
+    }
+  }
+
+  if (relabelled.length === 0) {
+    errors.push(
+      "leg l: the seed relabels nothing (vacuous) — every row is a pin, so no " +
+        "built page exercises the render path this leg checks",
+    );
+  }
+
+  // (4) /methodology/ states the size of this problem in prose. A true
+  //     sentence that has rotted is the Sprint-3 defect species — a real
+  //     number carrying a claim that stopped being true — so the two counts
+  //     in it are read back and compared to the recompute, not trusted.
+  const method = readHtml("/methodology/");
+  if (!method) {
+    errors.push("leg l: built /methodology/ missing");
+  } else {
+    const text = method.text.replace(/\s+/g, " ");
+    const m = text.match(
+      /([\d,]+) of the ([\d,]+) families we publish carry a label that beat its runner-up by under (\d+)%/i,
+    );
+    if (!m) {
+      errors.push(
+        "leg l (/methodology/): the near-tie sentence is missing or reworded — " +
+          "the page explains why a family carries a curated label, and this leg " +
+          "cannot check a claim it cannot find",
+      );
+    } else {
+      const [stated, denom, pct] = m.slice(1).map((v) => Number(v.replace(/,/g, "")));
+      if (stated !== nearTies.length || denom !== families.length) {
+        errors.push(
+          `leg l (/methodology/): states "${m[0]}", but the recompute finds ` +
+            `${nearTies.length} of ${families.length}`,
+        );
+      }
+      if (pct !== NEAR_TIE_MARGIN * 100) {
+        errors.push(
+          `leg l (/methodology/): states a ${pct}% margin; the gate enforces ` +
+            `${NEAR_TIE_MARGIN * 100}%`,
+        );
+      }
+    }
+  }
+
+  if (errors.every((e) => !e.startsWith("leg l"))) {
+    notes.push(
+      `leg l: ${nearTies.length} of ${families.length} published families ` +
+        `($${(nearTieDollars / 1e9).toFixed(1)}B) carry a label that won its ` +
+        `argmax by <${(NEAR_TIE_MARGIN * 100).toFixed(0)}%; all are curated in ` +
+        `entity_display_aliases.csv (${relabelled.length} relabelled, ` +
+        `${aliases.size - relabelled.length} pinned), ${labelled} rendered ` +
+        `label element(s) all match the seed, ${pagesChecked} company page(s) ` +
+        `publish it beside their registry string ✓`,
     );
   }
 }

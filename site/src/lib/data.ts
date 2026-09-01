@@ -1319,6 +1319,12 @@ const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export interface EntityTop {
   display_name: string;
+  /**
+   * The curated published label (ROADMAP #10 A), present only for the
+   * families whose registry name was decided by a near-tie argmax. Absent
+   * means "the registry name is the label" — see lib/company-name.mjs.
+   */
+  label?: string;
   family_key: string;
   slug: string;
   total_obligation: number;

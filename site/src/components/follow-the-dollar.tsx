@@ -7,6 +7,7 @@ import {
   type FlowSidecar,
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
+import { companyLabel } from "@/lib/company-name.mjs";
 import { Cite } from "@/components/cite";
 import { ChartFigure, chartDescId } from "@/components/chart-figure";
 import { CoverageNote } from "@/components/coverage-note";
@@ -145,7 +146,15 @@ export function FollowTheDollar({ data }: Props) {
     if (!familyName.has(a.family_slug)) {
       familySlugs.push(a.family_slug);
       const entity = entityMap.get(a.family_slug);
-      familyName.set(a.family_slug, entity?.display_name ?? a.recipient_name);
+      // #10 A: the flow chart names companies, so it reads the published
+      // label where a family has one. Falls back to the award's own recipient
+      // name for a family outside the top-200 export.
+      familyName.set(
+        a.family_slug,
+        entity
+          ? companyLabel(entity.display_name, entity.label)
+          : a.recipient_name,
+      );
     }
   }
 

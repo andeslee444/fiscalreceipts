@@ -433,11 +433,11 @@ export default function CompanyFamiliesPage() {
                           href={`/company/${m.slug}/`}
                           className="hover:text-foreground hover:underline"
                         >
-                          <CompanyName raw={m.display_name} />
+                          <CompanyName raw={m.display_name} label={m.label} />
                         </Link>
                       ) : (
                         <span title="Outside the top-200 list — counted in the total, no profile page">
-                          <CompanyName raw={m.display_name} />
+                          <CompanyName raw={m.display_name} label={m.label} />
                         </span>
                       )}
                     </span>

@@ -8,7 +8,11 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
-import { displayCompanyName, companyDisplay } from "../company-name.mjs";
+import {
+  displayCompanyName,
+  companyDisplay,
+  companyLabel,
+} from "../company-name.mjs";
 
 const JSON_DIR = path.resolve(process.cwd(), "..", "data", "site", "json");
 
@@ -163,4 +167,50 @@ describe("the shipped corpus", () => {
       expect(words(r.display).split(" ").length).toBe(words(r.registry).split(" ").length);
     }
   });
+});
+
+describe("companyLabel — the curated published label (ROADMAP #10 A)", () => {
+  const entitiesPath = path.join(JSON_DIR, "entities_top.json");
+  const haveData = fs.existsSync(entitiesPath);
+
+  it("renders a curated label verbatim, casing rule untouched", () => {
+    // The rule would title-case nothing here; the point is that it does not
+    // get a vote at all. An authored label is authored.
+    expect(
+      companyLabel(
+        "ROCKWELL COLLINS AUSTRALIA PTY LIMITED",
+        "RTX (Raytheon Company registrations)",
+      ),
+    ).toBe("RTX (Raytheon Company registrations)");
+  });
+
+  it("falls through to the casing rule with no label", () => {
+    for (const label of [undefined, null, "", "   "]) {
+      expect(companyLabel("LOCKHEED MARTIN CORPORATION", label)).toBe(
+        "Lockheed Martin Corporation",
+      );
+    }
+  });
+
+  it("never invents a label for a name the rule refuses", () => {
+    // A refusal renders the registry string; a missing label must not change
+    // that, because "publish the raw string" is the safe outcome.
+    const raw = "ZQXJ";
+    expect(displayCompanyName(raw).refused).toBe(true);
+    expect(companyLabel(raw, null)).toBe(raw);
+  });
+
+  it.runIf(haveData)(
+    "every label the exporter shipped is used as-is by the helper",
+    () => {
+      const entities = JSON.parse(fs.readFileSync(entitiesPath, "utf8"));
+      const labelled = entities.filter(
+        (e: { label?: string }) => typeof e.label === "string",
+      );
+      expect(labelled.length).toBeGreaterThan(0);
+      for (const e of labelled) {
+        expect(companyLabel(e.display_name, e.label)).toBe(e.label);
+      }
+    },
+  );
 });

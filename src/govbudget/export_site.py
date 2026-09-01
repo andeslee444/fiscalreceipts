@@ -2428,6 +2428,68 @@ def _entity_family_events_csv() -> Path:
     return ROOT / "data-seeds" / "entity_family_events.csv"
 
 
+def _entity_display_aliases_csv() -> Path:
+    """Path to the published-label seed (resolved lazily, same as above)."""
+    from govbudget.config import ROOT
+
+    return ROOT / "data-seeds" / "entity_display_aliases.csv"
+
+
+#: Below this many families, a warehouse is a fixture rather than this corpus
+#: (the real one carries ~114,800). See _entity_display_labels for why that
+#: distinction is load-bearing.
+_REAL_WAREHOUSE_FAMILIES = 1000
+
+
+def _entity_display_labels(con) -> dict[str, str]:
+    """``{family_key: published label}`` from the curated alias seed (#10 A).
+
+    `dim_entities.display_name` is an argmax over registered parent names, and
+    15 of the 200 published families carry a label that beat its runner-up by
+    under 15% — including `ROCKWELL COLLINS AUSTRALIA`, which is 97.3% RAYTHEON
+    COMPANY and won by 3.1% with a registration RTX reverted in FY2026. This is
+    the ONE place the correction enters the build.
+
+    Loud on every defect the SEED can have — a malformed row, an unknown
+    evidence kind, a source on a row that claims none, a duplicate key — and,
+    on the real corpus, on a key dim_entities does not have: an alias that
+    resolves to nothing is a typo, and a typo that is quietly dropped is
+    indistinguishable from a fix that shipped.
+
+    FIXTURE TOLERANCE. A warehouse of three hand-written rows cannot be
+    expected to carry the fifteen keys the real one does, so below
+    _REAL_WAREHOUSE_FAMILIES the unknown-key check is skipped and unresolved
+    keys are filtered instead. That is not a hole: gate 24 leg (l) re-checks
+    every seeded key against the BUILT site, which is where a typo would
+    actually reach a reader, and tests/test_export_entity_families.py checks
+    the shipped seed against the live warehouse directly.
+    """
+    from govbudget.entity_display_aliases import (
+        alias_map,
+        assert_keys_known,
+        load_display_aliases,
+    )
+
+    try:
+        known = {
+            r[0] for r in con.execute("select family_key from dim_entities").fetchall()
+        }
+    except Exception:
+        return {}
+    if not known:
+        return {}
+    aliases = load_display_aliases(_entity_display_aliases_csv())
+    if len(known) >= _REAL_WAREHOUSE_FAMILIES:
+        assert_keys_known(aliases, known)
+    labels = {k: v for k, v in alias_map(aliases).items() if k in known}
+    if len(labels) != len(aliases):
+        print(
+            f"display aliases: {len(labels)} of {len(aliases)} seeded labels "
+            f"resolved against a {len(known)}-family warehouse"
+        )
+    return labels
+
+
 def _resolved_entity_families(con):
     """Curated families resolved against this warehouse's dim_entities.
 
@@ -5627,6 +5689,7 @@ def _build_lobbied_by(
     named_primes_by_pe: dict,
     awards_by_pe: dict,
     entity_rows: list,
+    entity_labels: dict[str, str] | None = None,
 ) -> dict[str, dict]:
     """WHO-GETS-IT third tier (tri-persona Wave 3): the companies whose
     Senate LDA filings name this program, for programs where the award
@@ -5680,7 +5743,13 @@ def _build_lobbied_by(
         print(f"who-gets-it: fct_program_lobbying unavailable ({exc}); lobbying tier skipped")
         return {}
 
-    display_by_key = {r[0]: (r[1] or r[0]) for r in entity_rows}
+    # The card NAMES a company, so it reads the curated published label where
+    # one exists (#10 A) and the registry string otherwise — the same rule, and
+    # the same map, as /company/{slug}/, so the two can never spell one company
+    # two ways. `display_by_key` keeps its second job unchanged: membership in
+    # it is the top-200 test that decides whether the name is linkable.
+    _labels = entity_labels or {}
+    display_by_key = {r[0]: (_labels.get(r[0]) or r[1] or r[0]) for r in entity_rows}
 
     grouped: dict[str, list] = {}
     for pe_bli, family_key, evidence_kind, filings in rows:
@@ -7252,6 +7321,13 @@ def _write_all_sidecars(
                 entry["fact_id"] = narr_fid
             narr_by_pe[pe_bli].append(entry)
 
+    # Curated published labels (ROADMAP #10 option A). Loaded ONCE, here, and
+    # threaded into every payload that NAMES a family to a reader. It never
+    # replaces `display_name`: that field keeps meaning "the string USAspending
+    # registered", because it is what a reader searches USAspending with and
+    # what `awards_by_display` joins on. The label rides beside it.
+    entity_labels = _entity_display_labels(con)
+
     # dim_entities top-200 (ordered by total_obligation desc)
     entity_rows = con.execute(
         "select family_key, display_name, uei_count, total_obligation, worst_confidence"
@@ -7924,6 +8000,7 @@ def _write_all_sidecars(
         named_primes_by_pe=named_primes_by_pe,
         awards_by_pe=awards_by_pe,
         entity_rows=entity_rows,
+        entity_labels=entity_labels,
     )
 
     def _summary_block(pe_bli: str, slug: str) -> dict:
@@ -8430,7 +8507,7 @@ def _write_all_sidecars(
     for r in entity_rows:
         family_key, display_name, uei_count, total_obligation, worst_confidence = r
         slug = family_key.lower().replace(" ", "-")
-        entities_list.append({
+        entity = {
             "display_name": display_name,
             "family_key": family_key,
             "slug": slug,
@@ -8438,7 +8515,12 @@ def _write_all_sidecars(
             "total_obligation_fact_id": _entity_total_fid(family_key, total_obligation),
             "uei_count": uei_count,
             "worst_confidence": worst_confidence,
-        })
+        }
+        # Emitted only when curated — 15 of 200 families today, and an absent
+        # key reads the same as a null to the site while costing no bytes.
+        if family_key in entity_labels:
+            entity["label"] = entity_labels[family_key]
+        entities_list.append(entity)
 
     _write_json(json_dir / "entities_top.json", entities_list)
     n_files += 1
@@ -8489,6 +8571,16 @@ def _write_all_sidecars(
                 # thing a reporter will search for. Same source (dim_entities)
                 # for members inside and outside the top-200 export.
                 "display_name": display,
+                # …and, where curated, the label the site PUBLISHES for it
+                # (#10 A). Present on the member row for exactly the same
+                # families as on entities_top, including members below the
+                # top-200 cut, so /companies/ and /companies/families/ can
+                # never disagree about what a family is called.
+                **(
+                    {"label": entity_labels[key]}
+                    if key in entity_labels
+                    else {}
+                ),
                 "slug": slug,
                 # has_page: only top-200 members have /company/{slug}/ pages.
                 "has_page": row is not None,
@@ -8886,8 +8978,23 @@ def _write_all_sidecars(
         search_docs.append({
             "id": f"c:{slug}",
             "kind": "company",
-            "title": display_name,
+            # Search titles NAME the company, so a curated label wins here for
+            # the same reason it wins in the <h1> the result links to. The
+            # registry string stays searchable via the page itself.
+            "title": entity_labels.get(family_key, display_name),
             "url": f"/company/{slug}/",
+        })
+        # A relabelled family would otherwise become unfindable by the string
+        # a reporter has in hand from USAspending, which is the one string we
+        # promised stays reachable. Same standalone-doc mechanism the curated
+        # search aliases use below (no MiniSearch field-config change), so the
+        # registry name keeps resolving to the page it always did.
+        if entity_labels.get(family_key, display_name) != display_name:
+            search_docs.append({
+                "id": f"alias:registry-{slug}",
+                "kind": "alias",
+                "title": display_name,
+                "url": f"/company/{slug}/",
         })
 
     # Agency docs

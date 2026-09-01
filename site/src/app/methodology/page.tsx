@@ -482,13 +482,14 @@ export default function MethodologyPage() {
               before their citations do.
             </p>
           </div>
-          <div>
+          <div id="company-families" className="scroll-mt-16">
             <h3 className="font-semibold text-foreground mb-1">
               Company families — registry fact vs. name inference
             </h3>
             <p>
-              <em>High confidence</em> (registry fact): SAM.gov records a
-              common registered parent name for the subsidiaries.{" "}
+              <em>High confidence</em> (registry fact): the subsidiaries share
+              one registered parent UEI in SAM.gov, so the GROUPING is a
+              registry fact rather than a guess.{" "}
               <em>Medium confidence</em> (name inference): slightly different
               legal-name variants normalize to the same string. Both tiers
               appear on screen; the method is always disclosed. Where the
@@ -499,6 +500,23 @@ export default function MethodologyPage() {
               , every family of which resolves by name inference — the per-row
               chip is suppressed and the method is stated once in the header,
               because a badge that never varies tells the reader nothing.
+            </p>
+            <p className="mt-2">
+              <strong>The tier grades the grouping, never the name.</strong>{" "}
+              A family&rsquo;s label is the registered parent name of whichever
+              member holds the most money — an argmax that knows nothing about
+              how close the runner-up was, or about which registration the
+              registrant still uses. 15 of the 200 families we publish carry a
+              label that beat its runner-up by under 15%. The largest is a
+              family that is 97% Raytheon Company obligations and was titled
+              &ldquo;ROCKWELL COLLINS AUSTRALIA PTY LIMITED&rdquo;: a common
+              registered parent name, high confidence, and wrong — RTX had
+              already reverted that registration. Every family inside that
+              margin now carries a reviewed label from a hand-curated seed,
+              each row recording whether it corrects the name or merely pins
+              the winner, and a build fails if a new one appears unreviewed.
+              The registered name stays on every company page beneath the
+              heading, because that is the string USAspending answers to.
             </p>
           </div>
           <div>
