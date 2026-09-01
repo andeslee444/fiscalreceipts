@@ -1,0 +1,266 @@
+[
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q19C0050",
+  "recipient": "BLUEHALO LABS, LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602025E",
+  "piid": "N6660418F3011",
+  "recipient": "SEACORP, LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0601122E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high"
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HDTRA119P0026",
+  "recipient": "ARRAY INFORMATION TECHNOLOGY INC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0106",
+  "recipient": "PERATON LABS INC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "FA875018C0043",
+  "recipient": "PERATON LABS INC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0020",
+  "recipient": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+  "conf": "high"
+ },
+ {
+  "pe": "0602025E",
+  "piid": "SP470119C0003",
+  "recipient": "LOGISTICS MANAGEMENT INSTITUTE",
+  "conf": "high"
+ },
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q17C0065",
+  "recipient": "ACCELINT AI, LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602025E",
+  "piid": "HR001118C0145",
+  "recipient": "GROUP W INC",
+  "conf": "high"
+ },
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q18C0055",
+  "recipient": "NOVATEUR RESEARCH SOLUTIONS LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0603760E",
+  "piid": "HQ079618F8600",
+  "recipient": "AMENTUM TECHNOLOGY, INC.",
+  "conf": "high"
+ },
+ {
+  "pe": "0602025E",
+  "piid": "HR001118C0062",
+  "recipient": "KUDU DYNAMICS LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0603767E",
+  "piid": "W909MY12D0008",
+  "recipient": "QINETIQ INC.",
+  "conf": "high"
+ },
+ {
+  "pe": "0602716E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high"
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001118C0019",
+  "recipient": "REGENTS OF THE UNIVERSITY OF MICHIGAN",
+  "conf": "medium"
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001118F0012",
+  "recipient": "YOUR RECRUITING COMPANY, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602023E",
+  "piid": "HR001119C0018",
+  "recipient": "SIERRA NEVADA COMPANY, LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0027",
+  "recipient": "ADVENTIUM ENTERPRISES, LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602702E",
+  "piid": "HR001119C0118",
+  "recipient": "SPATIAL INTEGRATED SYSTEMS INC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603767E",
+  "piid": "HR001117C0016",
+  "recipient": "THE BOEING COMPANY",
+  "conf": "medium"
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001115C0113",
+  "recipient": "RTX BBN TECHNOLOGIES, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HR001119C0105",
+  "recipient": "MERCURY SYSTEMS INC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0038",
+  "recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+  "conf": "medium"
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HR001118F0033",
+  "recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603739E",
+  "piid": "HR001119C0098",
+  "recipient": "SIGNATURE SCIENCE LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602702E",
+  "piid": "HR001118C0122",
+  "recipient": "INTERNATIONAL BUSINESS MACHINES CORPORATION",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603760E",
+  "piid": "HR001118C0036",
+  "recipient": "THE CORPORATION OF HAVERFORD COLLEGE",
+  "conf": "medium"
+ },
+ {
+  "pe": "0605898E",
+  "piid": "HR001119F0016",
+  "recipient": "STRATEGIC ANALYSIS, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602716E",
+  "piid": "HR001119F0026",
+  "recipient": "UNIVERSITY OF MARYLAND, COLLEGE PARK",
+  "conf": "medium"
+ },
+ {
+  "pe": "0601101E",
+  "piid": "HR001115C0113",
+  "recipient": "RTX BBN TECHNOLOGIES, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602026E",
+  "piid": "HR001118F0028",
+  "recipient": "FOUR POINTS TECHNOLOGY, L.L.C.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603739E",
+  "piid": "HR001118C0140",
+  "recipient": "PHYSICAL SCIENCES INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603287E",
+  "piid": "HR001119C0119",
+  "recipient": "ACCELINT AI, LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602716E",
+  "piid": "HR001117C0007",
+  "recipient": "FIBERTEK, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602026E",
+  "piid": "HR001117C0065",
+  "recipient": "DRS NETWORK & IMAGING SYSTEMS LLC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0051",
+  "recipient": "THE CHARLES STARK DRAPER LABORATORY, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0603287E",
+  "piid": "HR001118F0002",
+  "recipient": "MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602024E",
+  "piid": "HR001119C0052",
+  "recipient": "TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA, THE",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602023E",
+  "piid": "HR001119C0130",
+  "recipient": "APTIMA INC",
+  "conf": "medium"
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0112",
+  "recipient": "SRI INTERNATIONAL",
+  "conf": "high"
+ },
+ {
+  "pe": "0602702E",
+  "piid": "N0017817F3013",
+  "recipient": "BOWHEAD PROFESSIONAL SOLUTIONS LLC",
+  "conf": "high"
+ },
+ {
+  "pe": "0602025E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high"
+ },
+ {
+  "pe": "0603760E",
+  "piid": "W900KK16D0001",
+  "recipient": "RAYTHEON COMPANY",
+  "conf": "high"
+ }
+]

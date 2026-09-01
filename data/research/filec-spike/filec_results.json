@@ -1,0 +1,1850 @@
+[
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q19C0050",
+  "recipient": "BLUEHALO LABS, LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_W31P4Q19C0050_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 499997.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602025E",
+  "piid": "N6660418F3011",
+  "recipient": "SEACORP, LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_N6660418F3011_9700_N0017804D4122_9700",
+  "n_rows": 174,
+  "program_activities": [
+   {
+    "account": "017-1804",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": 1974547.4199999997,
+    "outlay": 2029794.77,
+    "rows": 46
+   },
+   {
+    "account": "017-1804",
+    "pa_code": "0004",
+    "pa_name": "ADMINISTRATION AND SERVICE-WIDE ACTIVITIES",
+    "obligated": -1856964.68,
+    "outlay": 5473639.350000001,
+    "rows": 35
+   },
+   {
+    "account": "017-1804",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 3203934.0999999996,
+    "outlay": 0.0,
+    "rows": 22
+   },
+   {
+    "account": "017-1804",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 2529501.1599999997,
+    "outlay": 573498.8400000001,
+    "rows": 18
+   },
+   {
+    "account": "057-3080",
+    "pa_code": "0003",
+    "pa_name": "COMMUNICATIONS AND ELECTONICS EQUIPMENT",
+    "obligated": -877054.09,
+    "outlay": 877054.09,
+    "rows": 8
+   },
+   {
+    "account": "057-3080",
+    "pa_code": "0004",
+    "pa_name": "OTHER BASE MAINTENANCE AND SUPPORT EQUIPMENT",
+    "obligated": -64419.84,
+    "outlay": 64419.84,
+    "rows": 6
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "0001",
+    "pa_name": "SUPPORT VEHICLES AND EQUIPMENT",
+    "obligated": 196990.86,
+    "outlay": 412009.14,
+    "rows": 6
+   },
+   {
+    "account": "017-1810",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 889647.72,
+    "outlay": 0.0,
+    "rows": 6
+   },
+   {
+    "account": "017-1804",
+    "pa_code": "0004",
+    "pa_name": "ADMINISTRATION AND SERVICEWIDE ACTIVITIES",
+    "obligated": -455092.83999999997,
+    "outlay": 453421.74,
+    "rows": 4
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 132630.96,
+    "outlay": 11144.04,
+    "rows": 4
+   },
+   {
+    "account": "017-1319",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 80154.19,
+    "outlay": 0.0,
+    "rows": 3
+   },
+   {
+    "account": "057-3600",
+    "pa_code": "00RB",
+    "pa_name": "REIMBURSABLE PROGRAM",
+    "obligated": -1521.06,
+    "outlay": 1521.06,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": -77.23,
+    "outlay": 77.23,
+    "rows": 2
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "0008",
+    "pa_name": "SPARES AND REPAIR PARTS",
+    "obligated": -132769.98,
+    "outlay": 132769.98,
+    "rows": 2
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "0020",
+    "pa_name": "UNDISTRIBUTED",
+    "obligated": 99801.27,
+    "outlay": 130198.73,
+    "rows": 2
+   },
+   {
+    "account": "017-1319",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -148524.81,
+    "outlay": 148524.81,
+    "rows": 2
+   },
+   {
+    "account": "017-1319",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -155103.54,
+    "outlay": 155103.54,
+    "rows": 2
+   },
+   {
+    "account": "057-3600",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -7292.73,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "057-3080",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 700000.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "057-3600",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 299910.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 310000.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0601122E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high",
+  "gid": "CONT_AWD_FA251718C8000_9700_-NONE-_-NONE-",
+  "n_rows": 74,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0003",
+    "pa_name": "ADVANCED TECHNOLOGY DEVELOPMENT",
+    "obligated": 3769727.4000000004,
+    "outlay": 5958612.16,
+    "rows": 18
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": -21835816.82,
+    "outlay": 4537998.13,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 104334398.73,
+    "outlay": 0.0,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -12845307.95,
+    "outlay": 13256891.95,
+    "rows": 12
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 648278.28,
+    "outlay": 372988.72000000003,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0007",
+    "pa_name": "OPERATIONAL SYSTEM DEVELOPMENT",
+    "obligated": -5122.17,
+    "outlay": 29.9,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -8406.0,
+    "outlay": 8406.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3410",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": 4238565.0,
+    "outlay": 74436.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3080",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 164950.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1278020.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": 0.0,
+    "outlay": 15818.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "009S",
+    "pa_name": "MISCELLANEOUS",
+    "obligated": 0.0,
+    "outlay": 1579.32,
+    "rows": 1
+   },
+   {
+    "account": "097-0300",
+    "pa_code": "0002",
+    "pa_name": "SPECIAL OPERATIONS COMMAND",
+    "obligated": 0.0,
+    "outlay": 600731.39,
+    "rows": 1
+   },
+   {
+    "account": "057-3021",
+    "pa_code": "0001",
+    "pa_name": "SPACE PROCUREMENT",
+    "obligated": 0.0,
+    "outlay": 52621.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HDTRA119P0026",
+  "recipient": "ARRAY INFORMATION TECHNOLOGY INC",
+  "conf": "high",
+  "gid": "CONT_AWD_HDTRA119P0026_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 150000.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0106",
+  "recipient": "PERATON LABS INC",
+  "conf": "high",
+  "gid": "CONT_AWD_HR001119C0106_9700_-NONE-_-NONE-",
+  "n_rows": 7,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 1087329.03,
+    "outlay": 655118.28,
+    "rows": 5
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 2181149.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "FA875018C0043",
+  "recipient": "PERATON LABS INC",
+  "conf": "high",
+  "gid": "CONT_AWD_FA875018C0043_9700_-NONE-_-NONE-",
+  "n_rows": 27,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 699775.1699999999,
+    "outlay": 2072513.0699999998,
+    "rows": 18
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -273944.27,
+    "outlay": 693144.27,
+    "rows": 6
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 2507824.0,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0020",
+  "recipient": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+  "conf": "high",
+  "gid": "CONT_AWD_HR001118C0020_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 167095.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602025E",
+  "piid": "SP470119C0003",
+  "recipient": "LOGISTICS MANAGEMENT INSTITUTE",
+  "conf": "high",
+  "gid": "CONT_AWD_SP470119C0003_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 273449.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q17C0065",
+  "recipient": "ACCELINT AI, LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_W31P4Q17C0065_9700_-NONE-_-NONE-",
+  "n_rows": 2,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": -3493.2,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 499888.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602025E",
+  "piid": "HR001118C0145",
+  "recipient": "GROUP W INC",
+  "conf": "high",
+  "gid": "CONT_AWD_HR001118C0145_9700_-NONE-_-NONE-",
+  "n_rows": 8,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 422390.14,
+    "outlay": 337562.86,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1717590.0,
+    "outlay": 0.0,
+    "rows": 4
+   }
+  ]
+ },
+ {
+  "pe": "0605502E",
+  "piid": "W31P4Q18C0055",
+  "recipient": "NOVATEUR RESEARCH SOLUTIONS LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_W31P4Q18C0055_9700_-NONE-_-NONE-",
+  "n_rows": 4,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "00CA",
+    "pa_name": "N/A",
+    "obligated": 0.0,
+    "outlay": 445214.25,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 0.0,
+    "outlay": 47341.24,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 499998.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0603760E",
+  "piid": "HQ079618F8600",
+  "recipient": "AMENTUM TECHNOLOGY, INC.",
+  "conf": "high",
+  "gid": "CONT_AWD_HQ079618F8600_9700_HQ079617D0001_9700",
+  "n_rows": 142,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0003",
+    "pa_name": "ADVANCED TECHNOLOGY DEVELOPMENT",
+    "obligated": -4847212.899999999,
+    "outlay": 4282900.79,
+    "rows": 36
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -2277513.51,
+    "outlay": 1378050.6400000001,
+    "rows": 36
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": -1136650.43,
+    "outlay": 2510892.0,
+    "rows": 32
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 19902164.0,
+    "outlay": 0.0,
+    "rows": 19
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -1847507.3099999998,
+    "outlay": 2219842.31,
+    "rows": 12
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0007",
+    "pa_name": "ADVANCED COMPONENT DEVELOPMENT AND PROTOTYPES",
+    "obligated": -18715.26,
+    "outlay": 18715.26,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0007",
+    "pa_name": "OPERATIONAL SYSTEM DEVELOPMENT",
+    "obligated": -1143.94,
+    "outlay": 1143.94,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0006",
+    "pa_name": "MANAGEMENT SUPPORT",
+    "obligated": -4312.35,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602025E",
+  "piid": "HR001118C0062",
+  "recipient": "KUDU DYNAMICS LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_HR001118C0062_9700_-NONE-_-NONE-",
+  "n_rows": 29,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -137261.6399999999,
+    "outlay": 795361.1299999999,
+    "rows": 19
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -677208.69,
+    "outlay": 677208.69,
+    "rows": 8
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1750000.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0603767E",
+  "piid": "W909MY12D0008",
+  "recipient": "QINETIQ INC.",
+  "conf": "high",
+  "gid": "CONT_IDV_W909MY12D0008_9700",
+  "n_rows": 95,
+  "program_activities": [
+   {
+    "account": "021-2040",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 21246641.369999997,
+    "outlay": 0.0,
+    "rows": 29
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1291048.1600000001,
+    "outlay": 0.0,
+    "rows": 13
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -67958.38,
+    "outlay": 267958.38,
+    "rows": 12
+   },
+   {
+    "account": "021-2020",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 17667907.769999996,
+    "outlay": 0.0,
+    "rows": 12
+   },
+   {
+    "account": "021-2040",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -458786.03,
+    "outlay": 19671.53,
+    "rows": 7
+   },
+   {
+    "account": "017-1319",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -152186.59000000003,
+    "outlay": 152186.59000000003,
+    "rows": 4
+   },
+   {
+    "account": "097-2093",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 1849.8,
+    "outlay": -1849.8,
+    "rows": 4
+   },
+   {
+    "account": "057-3600",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 0.0,
+    "outlay": 0.0,
+    "rows": 4
+   },
+   {
+    "account": "021-2031",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 765000.0,
+    "outlay": 0.0,
+    "rows": 4
+   },
+   {
+    "account": "097-2093",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 569000.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0100",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": -65000.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "021-2035",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 245839.51,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "017-1319",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 330000.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "057-3400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 76532.67,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602716E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high",
+  "gid": "CONT_AWD_FA251718C8000_9700_-NONE-_-NONE-",
+  "n_rows": 74,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0003",
+    "pa_name": "ADVANCED TECHNOLOGY DEVELOPMENT",
+    "obligated": 3769727.4000000004,
+    "outlay": 5958612.16,
+    "rows": 18
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": -21835816.82,
+    "outlay": 4537998.13,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 104334398.73,
+    "outlay": 0.0,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -12845307.95,
+    "outlay": 13256891.95,
+    "rows": 12
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 648278.28,
+    "outlay": 372988.72000000003,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0007",
+    "pa_name": "OPERATIONAL SYSTEM DEVELOPMENT",
+    "obligated": -5122.17,
+    "outlay": 29.9,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -8406.0,
+    "outlay": 8406.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3410",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": 4238565.0,
+    "outlay": 74436.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3080",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 164950.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1278020.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": 0.0,
+    "outlay": 15818.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "009S",
+    "pa_name": "MISCELLANEOUS",
+    "obligated": 0.0,
+    "outlay": 1579.32,
+    "rows": 1
+   },
+   {
+    "account": "097-0300",
+    "pa_code": "0002",
+    "pa_name": "SPECIAL OPERATIONS COMMAND",
+    "obligated": 0.0,
+    "outlay": 600731.39,
+    "rows": 1
+   },
+   {
+    "account": "057-3021",
+    "pa_code": "0001",
+    "pa_name": "SPACE PROCUREMENT",
+    "obligated": 0.0,
+    "outlay": 52621.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001118C0019",
+  "recipient": "REGENTS OF THE UNIVERSITY OF MICHIGAN",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0019_9700_-NONE-_-NONE-",
+  "n_rows": 4,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -642488.23,
+    "outlay": 152488.23,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1160282.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001118F0012",
+  "recipient": "YOUR RECRUITING COMPANY, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118F0012_9700_HR001116A0003_9700",
+  "n_rows": 3,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 113626.59999999998,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0602023E",
+  "piid": "HR001119C0018",
+  "recipient": "SIERRA NEVADA COMPANY, LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0018_9700_-NONE-_-NONE-",
+  "n_rows": 23,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -1828046.8000000003,
+    "outlay": 1764809.0500000003,
+    "rows": 15
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -1218037.23,
+    "outlay": 1218037.23,
+    "rows": 6
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 6076961.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0027",
+  "recipient": "ADVENTIUM ENTERPRISES, LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0027_9700_-NONE-_-NONE-",
+  "n_rows": 2,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 149938.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602702E",
+  "piid": "HR001119C0118",
+  "recipient": "SPATIAL INTEGRATED SYSTEMS INC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0118_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 343710.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0603767E",
+  "piid": "HR001117C0016",
+  "recipient": "THE BOEING COMPANY",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001117C0016_9700_-NONE-_-NONE-",
+  "n_rows": 2,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 605130.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0601117E",
+  "piid": "HR001115C0113",
+  "recipient": "RTX BBN TECHNOLOGIES, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001115C0113_9700_-NONE-_-NONE-",
+  "n_rows": 9,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -56627.66,
+    "outlay": 61594.39,
+    "rows": 6
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1400000.0,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HR001119C0105",
+  "recipient": "MERCURY SYSTEMS INC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0105_9700_-NONE-_-NONE-",
+  "n_rows": 13,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 3269553.86,
+    "outlay": 1219307.78,
+    "rows": 10
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 4909577.0,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001118C0038",
+  "recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0038_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 0.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0605502E",
+  "piid": "HR001118F0033",
+  "recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118F0033_9700_HR001117D0001_9700",
+  "n_rows": 5,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1239928.0,
+    "outlay": 0.0,
+    "rows": 3
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -183019.7,
+    "outlay": 183019.7,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0603739E",
+  "piid": "HR001119C0098",
+  "recipient": "SIGNATURE SCIENCE LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0098_9700_-NONE-_-NONE-",
+  "n_rows": 4,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1574031.0,
+    "outlay": 0.0,
+    "rows": 3
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -223057.18,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602702E",
+  "piid": "HR001118C0122",
+  "recipient": "INTERNATIONAL BUSINESS MACHINES CORPORATION",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0122_9700_-NONE-_-NONE-",
+  "n_rows": 11,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 1213023.5599999998,
+    "outlay": 891652.7,
+    "rows": 6
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 272412.0800000001,
+    "outlay": 1347263.92,
+    "rows": 3
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 4712628.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0603760E",
+  "piid": "HR001118C0036",
+  "recipient": "THE CORPORATION OF HAVERFORD COLLEGE",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0036_9700_-NONE-_-NONE-",
+  "n_rows": 9,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -348375.78,
+    "outlay": 348375.78,
+    "rows": 8
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1446908.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0605898E",
+  "piid": "HR001119F0016",
+  "recipient": "STRATEGIC ANALYSIS, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119F0016_9700_HR001116A0002_9700",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": -40404.73,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602716E",
+  "piid": "HR001119F0026",
+  "recipient": "UNIVERSITY OF MARYLAND, COLLEGE PARK",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119F0026_9700_HQ003418D0005_9700",
+  "n_rows": 9,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 769079.96,
+    "outlay": 46457.04,
+    "rows": 5
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1427005.0,
+    "outlay": 0.0,
+    "rows": 4
+   }
+  ]
+ },
+ {
+  "pe": "0601101E",
+  "piid": "HR001115C0113",
+  "recipient": "RTX BBN TECHNOLOGIES, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001115C0113_9700_-NONE-_-NONE-",
+  "n_rows": 9,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -56627.66,
+    "outlay": 61594.39,
+    "rows": 6
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1400000.0,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0602026E",
+  "piid": "HR001118F0028",
+  "recipient": "FOUR POINTS TECHNOLOGY, L.L.C.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118F0028_9700_NNG15SC74B_8000",
+  "n_rows": 5,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -2366815.58,
+    "outlay": 755153.68,
+    "rows": 3
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 0.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0603739E",
+  "piid": "HR001118C0140",
+  "recipient": "PHYSICAL SCIENCES INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118C0140_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 297716.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0603287E",
+  "piid": "HR001119C0119",
+  "recipient": "ACCELINT AI, LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0119_9700_-NONE-_-NONE-",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 263725.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602716E",
+  "piid": "HR001117C0007",
+  "recipient": "FIBERTEK, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001117C0007_9700_-NONE-_-NONE-",
+  "n_rows": 2,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 190476.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602026E",
+  "piid": "HR001117C0065",
+  "recipient": "DRS NETWORK & IMAGING SYSTEMS LLC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001117C0065_9700_-NONE-_-NONE-",
+  "n_rows": 8,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -568808.88,
+    "outlay": 568808.88,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1683053.0,
+    "outlay": 0.0,
+    "rows": 4
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0051",
+  "recipient": "THE CHARLES STARK DRAPER LABORATORY, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0051_9700_-NONE-_-NONE-",
+  "n_rows": 8,
+  "program_activities": [
+   {
+    "account": "057-3600",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 225002.06,
+    "outlay": 21047.94,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -2262.79,
+    "outlay": 2262.79,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -49216.64,
+    "outlay": 49216.64,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1166683.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0603287E",
+  "piid": "HR001118F0002",
+  "recipient": "MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001118F0002_9700_GS00Q14OADU124_4732",
+  "n_rows": 5,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 5889284.24,
+    "outlay": 0.0,
+    "rows": 5
+   }
+  ]
+ },
+ {
+  "pe": "0602024E",
+  "piid": "HR001119C0052",
+  "recipient": "TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA, THE",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0052_9700_-NONE-_-NONE-",
+  "n_rows": 3,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1106721.0,
+    "outlay": 0.0,
+    "rows": 3
+   }
+  ]
+ },
+ {
+  "pe": "0602023E",
+  "piid": "HR001119C0130",
+  "recipient": "APTIMA INC",
+  "conf": "medium",
+  "gid": "CONT_AWD_HR001119C0130_9700_-NONE-_-NONE-",
+  "n_rows": 14,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 928046.3500000001,
+    "outlay": 1815146.4299999997,
+    "rows": 8
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -445166.05000000005,
+    "outlay": 445166.05000000005,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 2771469.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602303E",
+  "piid": "HR001119C0112",
+  "recipient": "SRI INTERNATIONAL",
+  "conf": "high",
+  "gid": "CONT_AWD_HR001119C0112_9700_-NONE-_-NONE-",
+  "n_rows": 13,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": 1327244.17,
+    "outlay": 554316.83,
+    "rows": 11
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1898571.0,
+    "outlay": 0.0,
+    "rows": 2
+   }
+  ]
+ },
+ {
+  "pe": "0602702E",
+  "piid": "N0017817F3013",
+  "recipient": "BOWHEAD PROFESSIONAL SOLUTIONS LLC",
+  "conf": "high",
+  "gid": "CONT_AWD_N0017817F3013_9700_N0017814D7204_9700",
+  "n_rows": 209,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -220034.02999999997,
+    "outlay": 256485.21,
+    "rows": 30
+   },
+   {
+    "account": "017-1319",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 1290492.47,
+    "outlay": 2771772.53,
+    "rows": 26
+   },
+   {
+    "account": "017-1319",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 6160836.07,
+    "outlay": 0.0,
+    "rows": 19
+   },
+   {
+    "account": "097-0460",
+    "pa_code": "0006",
+    "pa_name": "MANAGEMENT SUPPORT",
+    "obligated": 57162.69,
+    "outlay": 10678.05,
+    "rows": 16
+   },
+   {
+    "account": "017-1319",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -337491.97,
+    "outlay": 589714.81,
+    "rows": 15
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 265289.04000000004,
+    "outlay": 100010.95999999999,
+    "rows": 14
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": -30380.929999999997,
+    "outlay": 3350.1,
+    "rows": 13
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "00CA",
+    "pa_name": "N/A",
+    "obligated": -22712.58,
+    "outlay": 9884.5,
+    "rows": 11
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 649290.0,
+    "outlay": 0.0,
+    "rows": 9
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "009S",
+    "pa_name": "MISCELLANEOUS",
+    "obligated": -639.6399999999994,
+    "outlay": 56899.04,
+    "rows": 7
+   },
+   {
+    "account": "057-3600",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -288684.19,
+    "outlay": 231938.15000000002,
+    "rows": 7
+   },
+   {
+    "account": "017-1507",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -412522.54,
+    "outlay": 412522.54,
+    "rows": 6
+   },
+   {
+    "account": "057-3600",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 244200.0,
+    "outlay": 0.0,
+    "rows": 6
+   },
+   {
+    "account": "057-3600",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 275264.5,
+    "outlay": 34735.5,
+    "rows": 5
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 646725.8,
+    "outlay": -1345.8000000000002,
+    "rows": 5
+   },
+   {
+    "account": "097-0460",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -43455.7,
+    "outlay": 5655.700000000001,
+    "rows": 4
+   },
+   {
+    "account": "017-1810",
+    "pa_code": "0001",
+    "pa_name": "SUPPORT VEHICLES AND EQUIPMENT",
+    "obligated": -1652.1799999999998,
+    "outlay": 168.1,
+    "rows": 3
+   },
+   {
+    "account": "017-1611",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 148270.0,
+    "outlay": 0.0,
+    "rows": 3
+   },
+   {
+    "account": "097-0300",
+    "pa_code": "0020",
+    "pa_name": "UNDISTRIBUTED",
+    "obligated": -4443.74,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-2093",
+    "pa_code": "0001",
+    "pa_name": "N/A",
+    "obligated": -5877.09,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "017-1611",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -228339.84,
+    "outlay": 228339.84,
+    "rows": 2
+   },
+   {
+    "account": "017-1804",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 50000.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "017-1507",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 0.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "017-1810",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 0.0,
+    "outlay": 0.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0460",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 30000.0,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0602025E",
+  "piid": "FA251718C8000",
+  "recipient": "INDYNE, INC.",
+  "conf": "high",
+  "gid": "CONT_AWD_FA251718C8000_9700_-NONE-_-NONE-",
+  "n_rows": 74,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0003",
+    "pa_name": "ADVANCED TECHNOLOGY DEVELOPMENT",
+    "obligated": 3769727.4000000004,
+    "outlay": 5958612.16,
+    "rows": 18
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": -21835816.82,
+    "outlay": 4537998.13,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 104334398.73,
+    "outlay": 0.0,
+    "rows": 13
+   },
+   {
+    "account": "057-3400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": -12845307.95,
+    "outlay": 13256891.95,
+    "rows": 12
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "OPTN",
+    "pa_name": "FIELD IS OPTIONAL PRIOR TO FY21",
+    "obligated": 648278.28,
+    "outlay": 372988.72000000003,
+    "rows": 4
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0007",
+    "pa_name": "OPERATIONAL SYSTEM DEVELOPMENT",
+    "obligated": -5122.17,
+    "outlay": 29.9,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -8406.0,
+    "outlay": 8406.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3410",
+    "pa_code": "0001",
+    "pa_name": "OPERATING FORCES",
+    "obligated": 4238565.0,
+    "outlay": 74436.0,
+    "rows": 2
+   },
+   {
+    "account": "057-3080",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 164950.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": null,
+    "pa_name": null,
+    "obligated": 1278020.0,
+    "outlay": 0.0,
+    "rows": 2
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "0099",
+    "pa_name": "N/A",
+    "obligated": 0.0,
+    "outlay": 15818.0,
+    "rows": 1
+   },
+   {
+    "account": "097-0400",
+    "pa_code": "009S",
+    "pa_name": "MISCELLANEOUS",
+    "obligated": 0.0,
+    "outlay": 1579.32,
+    "rows": 1
+   },
+   {
+    "account": "097-0300",
+    "pa_code": "0002",
+    "pa_name": "SPECIAL OPERATIONS COMMAND",
+    "obligated": 0.0,
+    "outlay": 600731.39,
+    "rows": 1
+   },
+   {
+    "account": "057-3021",
+    "pa_code": "0001",
+    "pa_name": "SPACE PROCUREMENT",
+    "obligated": 0.0,
+    "outlay": 52621.0,
+    "rows": 1
+   }
+  ]
+ },
+ {
+  "pe": "0603760E",
+  "piid": "W900KK16D0001",
+  "recipient": "RAYTHEON COMPANY",
+  "conf": "high",
+  "gid": "CONT_IDV_W900KK16D0001_9700",
+  "n_rows": 1,
+  "program_activities": [
+   {
+    "account": "097-0400",
+    "pa_code": "0001",
+    "pa_name": "BASIC RESEARCH",
+    "obligated": -4447.56,
+    "outlay": 0.0,
+    "rows": 1
+   }
+  ]
+ }
+]
