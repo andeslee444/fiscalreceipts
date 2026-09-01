@@ -78,7 +78,33 @@ PROJECTION = {
     "entity_xwalk": "recipient_uei, family_key",
 }
 
-TOL = 0.01  # dollars; recorded_value is emitted at 3dp
+# Agreement is RELATIVE, with an absolute floor -- never absolute alone.
+#
+# DuckDB sums in parallel and float addition is not associative, so the same
+# query over the same rows returns a slightly different total depending on how
+# the reduction tree happened to be scheduled.  Measured on this corpus (235
+# entity facts, threads=1 vs threads=8): the worst spread is 6.6 cents on
+# LOCKHEED MARTIN's $502.1B, and the worst relative divergence is 3.2e-13.  A
+# flat $0.01 is therefore a coin flip on the largest families -- leg d1 passed
+# standalone and failed inside the full suite against an identical build,
+# because load changed the scheduling, not the figures.
+#
+# This is the argument leg d0 already makes in basis.mjs, and the declared-window
+# check at the bottom of this file already used the relative form; only the
+# reproduction check did not, so the file contradicted itself.  One constant now
+# serves both.
+#
+# 1e-9 relative is $502 on that Lockheed fact: ~7,600x the observed noise and
+# ~3,100x the worst relative noise, yet far below any divergence worth catching
+# -- the stale crosswalk this leg exists to catch understated that same fact by
+# $366B, a relative error of 0.73.
+TOL = 0.01  # dollars; recorded_value is emitted at 3dp -- the floor for small facts
+REL_TOL = 1e-9  # dominates once a fact clears ~$10M
+
+
+def _tolerance(value: float) -> float:
+    """Largest difference from `value` that still counts as agreement."""
+    return max(TOL, abs(value) * REL_TOL)
 
 
 def _newest_input() -> dict:
@@ -171,7 +197,7 @@ def main() -> int:
                 failures.append({**row, "query_value": None, "error": str(e)[:200]})
                 continue
             got = 0.0 if got is None else float(got)
-            if abs(got - float(recorded_value)) > TOL:
+            if abs(got - row["recorded_value"]) > _tolerance(row["recorded_value"]):
                 failures.append({**row, "query_value": got})
         out["reproduce_failures"] = failures
         out["n_by_surface"] = counts
@@ -217,7 +243,7 @@ def main() -> int:
             err = abs(running - target) / abs(target) if target else float("inf")
             if best_err is None or err < best_err:
                 best_k, best_err = k, err
-            if window_end is None and abs(running - target) <= max(TOL, abs(target) * 1e-9):
+            if window_end is None and abs(running - target) <= _tolerance(target):
                 window_end = k
         out["window_fit"] = window_fit
         out["xwalk_window_end"] = window_end
