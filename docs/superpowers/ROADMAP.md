@@ -493,6 +493,17 @@ docs/superpowers/ROADMAP.md`.
 7. **FEC → CongressionalAddDetail chain** (money in → marks → money out) —
    post-5B; the J-book XML already carries the add elements.
 
+   **Status: CLOSED — DEFERRED AS A NON-GOAL, owner decision 2026-08-29.**
+   Not deferred for cost. This entry would introduce a new CLAIM TYPE — campaign
+   money in, congressional marks, money out — into a site whose entire
+   credibility rests on every figure tracing to a primary budget document. An
+   FEC→add inference is politically charged, and the 24-gate architecture checks
+   *number ↔ citation*, which cannot police it: the three-persona review of
+   2026-08-27 found six false claims live precisely because every number was
+   correct and no gate checked the claim wrapped around it. One contested
+   inference here would cost more credibility than the feature adds. Reopen only
+   with its own spec and a distinct visual tier, the way Inferred lineage is kept
+   separate from Stated. *(Original marker below.)*
    **Status: OPEN** — swept 2026-08-24. Never scoped: named out of scope at the
    top of `docs/superpowers/plans/2026-08-07-backlog-drawdown.md`, and no
    commit in the history references it. Verified at HEAD: no FEC or
@@ -571,6 +582,18 @@ docs/superpowers/ROADMAP.md`.
     district spend distribution and force-directed entity graph; deferred pending
     D3/Mapbox integration decision.
 
+    **Status: CLOSED — DEFERRED AS A NON-GOAL, owner decision 2026-08-29.**
+    Measured 2026-08-29 before deciding: `fct_district_totals` covers **106 of 435
+    districts** and **$5.58B** of linkable obligations. A choropleth would render a
+    map roughly three-quarters blank, and **readers read blank as zero, not as
+    unknown** — so the most visual page on the site would be its least honest one.
+    The layman review of 2026-08-27 already named `/district/` the largest gap
+    between promise and delivery ("See what a district builds" → $940.8K of DARPA
+    money in CA-11); a map widens that gap rather than closing it. Blocked on
+    COVERAGE, not on visualization: it becomes worth building when award linkage
+    improves, and USAspending not publishing the program element on award records
+    (see #30, whose crosswalk reaches 24 of 1,753 programs) is why it has not.
+    *(Original marker below.)*
     **Status: OPEN** — swept 2026-08-24. Never scoped: named out of scope in
     the drawdown plan; no commit references it. Verified at HEAD: no choropleth
     or Mapbox code anywhere under `site/src`.
