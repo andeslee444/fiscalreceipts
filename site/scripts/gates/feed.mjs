@@ -220,13 +220,13 @@ export async function runFeedGate() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Non-vacuity floor: the shipped corpus holds exactly 21 hhi feed cards.
- * Re-measured 2026-09-01 after the hand-adjudication correction shrank the
- * high-confidence crosswalk (408 → 60 links, 24 → 7 PEs); concentration
- * cards derive from high-tier links, so the card population shrank with it.
- * Was 84 before the correction.
+ * Non-vacuity floor: re-measured 2026-09-01 against the FINAL published
+ * corpus (84 mechanical → 21 post-adjudication → ~580 post-FPDS-AP-
+ * expansion). Floor at ~80% of actual so the leg keeps teeth. (The
+ * same-day 21 was measured against the intermediate state — peer review
+ * caught the drift before it fossilized.)
  */
-const MIN_HHI_CARDS = 21;
+const MIN_HHI_CARDS = 460;
 
 /**
  * leg l — see this file's top doc-comment for the full rationale. Reads

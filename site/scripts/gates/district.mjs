@@ -30,10 +30,14 @@ const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
 const EXPECTED_DISTRICTS = 106;
 const SAMPLE_SIZE = 10;
 const TOL_DOLLARS = 0.01;
-// Re-measured 2026-09-01 after the hand-adjudication correction: 41 districts
-// carry transactions on adjudicated-high-linked awards (was 106 mechanical).
-// Verified against fct_award_transactions ⋈ fct_budget_to_awards at load time.
-const MIN_DISTRICTS_RESOLVED = 41;
+// Re-measured 2026-09-01 (twice — the ground moved twice that day): 106
+// mechanical → 41 after the hand-adjudication correction → 181 after the
+// FPDS-AP expansion. The floor tracks the FINAL published corpus at ~80%
+// so the leg keeps teeth: a silent collapse below 150 districts is a real
+// regression, not noise. (An earlier same-day re-measure to 41 was made
+// against the intermediate state — caught by a peer review before it
+// could fossilize.)
+const MIN_DISTRICTS_RESOLVED = 150;
 
 /** Spawn the python recompute helper over the shipped parquet (#51 leg e). */
 function recomputeDistrictTotals() {

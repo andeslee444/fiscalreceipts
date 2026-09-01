@@ -1,0 +1,6 @@
+{
+  "$comment": "Git-triggered deployments are disabled: the Vercel project (govbudget) is git-linked to the standalone repo, whose root has no buildable site — every push created a READY-but-empty production deployment and 404'd fiscalreceipts.com (observed 2026-09-01). Production deploys happen exclusively via scripts/launch/deploy.sh (CLI, prebuilt site/out).",
+  "git": {
+    "deploymentEnabled": false
+  }
+}
