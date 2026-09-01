@@ -794,6 +794,19 @@ docs/superpowers/ROADMAP.md`.
     other tiers. Deferred — verify the exact eligible set and its editorial
     value before building.
 
+    **Status: CLOSED 2026-08-29.** Shipped `9545546`/`6b51030`/`92789cc`/`bfa575f`
+    and live: **553 decade-only pages**, not the 624 measured on 08-27 — Wave 5's
+    Navy ingestion gave 71 of them an FY2026 line in between, which is exactly why
+    the implementer was told to re-measure. Four follow-on defects came with it and
+    are fixed: `program_pages` summed two loops' INPUTS so a third loop published
+    2,009 against 2,562 sidecars on disk (caught by gate 24 leg (k), the "a corpus
+    count must derive from a declared source" leg added in Wave 4 — its first catch
+    of something nobody anticipated); the zero-content detector read a decade of
+    cited history as empty because `figures.every(v => v === 0)` is TRUE on an empty
+    array; the coverage cell printed a split whose parts were not asserted to sum;
+    and React dropped the space beside every interpolation so readers saw
+    "PB2023workbook". `/methodology/` gzip 36,900 → 39,100, justified by the 553
+    pages that moved the corpus counts the page states. *(Original markers below.)*
     **Status: APPROVED 2026-08-27, queued.** The entry asked for the eligible set
     to be verified and its editorial value decided before building; both are now
     done. **Measured population: 624 real program elements** with a decade of cited
@@ -846,6 +859,35 @@ docs/superpowers/ROADMAP.md`.
     no-supersession; 8/8 PASS. **(a) LLM extraction APPROVED by the owner
     2026-08-27** (~$2 pilot, ~$10–20 full pass) — the only paid item in the
     backlog. *(Original marker below.)*
+    **Status: CLOSED 2026-08-29 — all four parts.**
+    **(a) LLM extraction** `3e465a7`/`4a8401f`/`319025a`: precision methodology
+    pre-registered and committed BEFORE the first API call and unedited since.
+    Pilot **19/21 = 90.5%, under the ≥95% bar — nothing published on it**; both
+    failures bought generalising rules (V11: a clause calling its own move
+    "one-time" is not lineage; V10: an adversarial second read quoting verbatim),
+    then **32/32 on held-out pairs the rules were never tuned against**. Stated
+    edges **49 → 98**, families 32 → 52, family PEs 80 → 148. **199 of 248
+    proposals refused, zero fabrications** — candidates are pre-filtered to clauses
+    already containing a PE token, so a model is never asked to supply an endpoint.
+    Two refusals worth keeping: numeric line items permanently (pe_bli is not
+    unique for them — "1350" is both *Infantry Weapons Ammunition* and *Missile
+    Industrial Facilities*), and a clause naming `0604840M` where the corpus PE is
+    `0604840N`, a phantom one character from a real node. **$2.60** against a
+    $10–20 budget. The entry's "~1,950 prose transfers" did not reproduce: the
+    extractable subset is **313 clauses**.
+    **(b) multi-edition citations** `b9d0804`: the PB2026 fence was the whole
+    problem — pre-2026 narratives were already in Postgres, not missing.
+    **(c) lineage Sankey** `2601c43`: `/lineage/`, 32 families, every ribbon a
+    constant 8.0 units because `portion_amount` is null on every row; the exporter
+    RAISES if that premise breaks.
+    **(d) cross-appropriation: SHIPPED NOTHING**, and that is the result — 11
+    candidates, 33 verifier agents, all refuted. Co-funding is normal (Aegis BMD's
+    RDT&E line RISES to $3,888.4M in FY2026 while procurement falls to $796.5M);
+    procurement key renumbering fabricates a rise from zero; and the corpus already
+    contradicted one edge in a cited narrative. Written up in
+    `docs/superpowers/reviews/29d-cross-appropriation-negative-result.md` so the
+    rule is not rebuilt. **#32(b) is absorbed here and also closed.**
+    *(Original marker below.)*
     **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task D3; never
     executed. Verified at HEAD: `src/govbudget/lineage/extract.py:5` still says
     prose transfers without an adjacent PE code "are left for the Inferred tier
@@ -868,6 +910,23 @@ docs/superpowers/ROADMAP.md`.
     statement on the page is exactly what it now says: no program-specific GAO
     finding for this line is in the ingested data.
 
+    **Status: CLOSED 2026-08-27.** Shipped `de19aa2`/`e642c83`/`d99d015` and live.
+    One HTTP GET (GAO-25-107569), 65/65 Appendix I assessments + 68 bibliography
+    reports. **62 of 63 crosswalks accepted = 98.4% precision**, every candidate
+    adjudicated BY HAND against a second source — the budget line's own J-book
+    narrative, not its title. The single refusal is the argument: GAO assessed
+    *Small Diameter Bomb Increment II*; the matcher proposed `SDB000`, whose
+    narrative opens *"GBU-39/B: Small Diameter Bomb Increment I"* — a different
+    weapon, so SDB II ships **no crosswalk at all** rather than a wrong one.
+    Service-rule ablation: with it 1 wrong of 63, without it 3 of 65 — and the two
+    it suppresses are #55's exact species (GAO's *Air Force* "LGM-35A Sentinel"
+    reaching the *Army's* "Sentinel Mods"). 48 pages gained a finding; **1,957
+    correctly still state that no program-specific GAO finding is ingested**.
+    `pypdf` was rejected for splitting words across line breaks — "Production Is
+    sues" — on the grounds that a verbatim quote reassembled from broken words is
+    not verbatim. **The entry's own flagship example did not reproduce:**
+    GAO-25-107569 contains no F-35 assessment; the F-35's three reports come from
+    the bibliography tier. *(Original marker below.)*
     **Status: OPEN** — swept 2026-08-24. Assigned to drawdown Task D4; never
     executed. Verified at HEAD: no GAO program-level mart under
     `dbt/models/marts/`, so the honest statement described in the last sentence
@@ -967,6 +1026,10 @@ docs/superpowers/ROADMAP.md`.
     components (SOCOM 6, MDA 6, DISA 3, DCSA 3, DTRA 2, DEFW 2, and one each for
     DCAA, CYBER, TJS, CBDP, DHA, DLA) that the entry never enumerated.
 
+    **Status: CLOSED 2026-08-29.** Half (a) closed 2026-08-26; half (b) was handed
+    to #29 and #29 is now closed, so this entry is closed with it. Note what (b)
+    actually became: #29(a)'s LLM extraction over renumber-era narratives, which
+    doubled the stated tier to 98 edges. *(Original marker below.)*
     **Status: PARTIAL — half (a) CLOSED 2026-08-26, half (b) handed to #29.**
 
     **(a) SHIPPED.** 319 program pages carry the note, gated by **gate 21 leg
