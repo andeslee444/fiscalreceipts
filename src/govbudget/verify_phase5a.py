@@ -4,7 +4,7 @@ Gates (CLI: verify-phase5a):
   1. provenance_gate5a  — every row in lda_filings has a non-empty uuid AND url;
                           at least 1 row present.
   2. match_gate5a       — of the top-50 families by obligation (same ordering as
-                          pull_top_families), ≥80% have ≥1 filing row matched
+                          pull_top_families), ≥85% have ≥1 filing row matched
                           (match_method != 'none'). Reports unmatched families
                           for Phase 5B alias work.  Also validates that every
                           existing 'normalized'-stamped row passes the
@@ -37,29 +37,61 @@ _MART_TABLES = ("fct_influence", "fct_program_lobbying", "dim_lobbyists")
 _MATCH_TOP_N = 50
 
 # Thresholds
+#
+# _MATCH_THRESHOLD is NOT a per-match similarity score.  `_match_method()`
+# returns one of six categorical tiers (exact_family / curated_alias /
+# normalized / family_raw_name / suffix_residue / none) and lda_filings.parquet
+# carries no numeric score column at all.  This constant is compared once, at
+# the bottom of match_gate5a, against matched_count / top_n — an aggregate
+# COVERAGE FLOOR over the top-50 families.  Raising it cannot drop a true
+# match; it only changes when the gate fires.
+#
 # _MATCH_THRESHOLD history:
-#   0.80 — Phase 5A launch spec (gate passed at exactly 40/50). CURRENT.
-#   STAGED (5A backlog #1, 2026-07): curated aliases for Booz Allen, ADS
-#          Tactical, Vertex (V2X fka), and Shell E&P are in
-#          client_aliases.csv, with client-name spellings verified against
-#          the live LDA API (each has ≥1 filing in 2024–2026).  The aliases
-#          only take effect at the next `govbudget influence pull` — the
-#          Booz Allen / ADS / Shell filings were never returned by the
-#          original pull's query strings, so no offline restamp can match
-#          them.  After that re-pull lands (and its downstream: dbt
-#          influence marts, mentions, export-site, dossier-citation check),
-#          raise this to 0.85 (expected floor 44/50 = 88%; 0.85 leaves
-#          one-family headroom for obligation-ranking drift).  Caveat found
-#          in review: the pull's global UUID dedup attributes a filing to
-#          the FIRST family whose query returns it, even at match 'none' —
-#          the fka-Vertex filings are currently consumed by VECTRUS's 'V2X'
-#          query, so the Vertex match depends on obligation ordering.  The
-#          remaining 6 unmatched families were verified against the live
-#          LDA API as having zero 2024–2026 filings under any client-name
-#          spelling (Bell Boeing JPO, Domestic Awardees (Undisclosed),
-#          Northrop Grumman Innovation Systems, Fluor Marine Propulsion,
-#          MacAndrews & Forbes, Health Net).
-_MATCH_THRESHOLD = 0.80
+#   0.80 — Phase 5A launch spec (gate passed at exactly 40/50).
+#   0.85 — CURRENT (backlog #19, raised 2026-09-01).  The curated aliases for
+#          Booz Allen, ADS Tactical and Vertex (V2X fka) sat in
+#          client_aliases.csv unusable until a fresh `govbudget influence
+#          pull`: the original pull's query strings never returned those
+#          filings, so no offline restamp could match them.  That corpus is
+#          now in place — data/parquet/influence/lda_filings.parquet, 5,393
+#          filings, 2024 Q1 through 2026 Q3 — repaired by the #19 pull work
+#          (7d03475, 2026-08-27, guarded a pull that had been silently
+#          fetching nothing; f83feca, 2026-08-29, re-cited the filing page
+#          over the JSON resource).
+#          MEASURED 2026-09-01 against that corpus: 46/50 = 92%.  The floor
+#          0.85 requires is 43/50, so three families of headroom.  (The
+#          staged prediction was 44/50 = 88%; it under-called by two.)  Booz
+#          Allen (70 filings), ADS Tactical (18) and Vertex Aerospace
+#          Services (11) now all match at the 'curated_alias' tier, and the
+#          first-query-wins hazard flagged when the aliases were staged is
+#          gone: VECTRUS and VERTEX AEROSPACE SERVICES both resolve.  Against
+#          the pre-alias backup corpus (_pre_a3_backup, 4,258 filings) the
+#          same gate scores 39/50 = 78% and FAILS — that seven-family swing
+#          is what the aliases plus the re-pull bought.
+#          The four families still unmatched at 92%: ROCKWELL COLLINS
+#          AUSTRALIA PTY LIMITED (rank 21), AMENTUM GOVERNMENT SERVICES
+#          HOLDINGS LLC (26), BELL BOEING JOINT PROJECT OFFICE (27),
+#          IDEMITSU KOSAN CO.,LTD. (47).  None has a single filing in this
+#          corpus under any spelling (ROCKWELL / AMENTUM / BELL / IDEMITSU
+#          each return zero client_name rows); Bell Boeing JPO was
+#          separately checked against the live LDA API and has no 2024–2026
+#          filing under any client-name spelling.
+#          CAVEAT — write this down, it is the cost of the raise: at 0.85
+#          this gate is partly sensitive to obligation-RANKING churn, not
+#          only to matching quality.  Ranks 51–60 are 7 of 10 unmatched, and
+#          the rank-50/51 obligation gap is only 3.2% ($7.370B → $7.131B),
+#          so a single boundary swap on a USAspending refresh can cost a
+#          match.  A future FAIL in the 43–45 band is therefore triaged
+#          against this gate's own `unmatched_families` output — are the
+#          newly unmatched names new entrants to the top-50? — BEFORE it is
+#          called a matching regression.
+#          NOT COVERED: this gate has no freshness leg.  A frozen corpus
+#          scores 92% forever, which is exactly how the failure #19 actually
+#          found (lda.senate.gov 301ing, every request falling into a warning
+#          handler, the corpus stale since 2026-07-03) stayed invisible here.
+#          A max(filing_year, filing_period) recency assertion belongs on
+#          this same gate and is separate work.
+_MATCH_THRESHOLD = 0.85
 _MIN_FAMILIES_WITH_BOTH = 30
 _MIN_MENTION_ROWS = 10
 _MIN_MENTION_PE_BLI = 3
@@ -115,7 +147,7 @@ def provenance_gate5a(filings_parquet_path: Path) -> dict:
 
 
 def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
-    """Gate 2: of top-50 families by obligation, ≥80% have ≥1 matched filing.
+    """Gate 2: of top-50 families by obligation, ≥85% have ≥1 matched filing.
 
     'Matched' means the filing carries that family's family_key_guess with
     match_method != 'none'.  Families with zero filings or only 'none'-method
@@ -136,7 +168,7 @@ def match_gate5a(duckdb_path: Path, filings_parquet_path: Path) -> dict:
         top_n: int                   — how many families were evaluated
         matched_count: int
         matched_fraction: float      — matched_count / top_n
-        threshold: float             — always 0.80
+        threshold: float             — the coverage floor, _MATCH_THRESHOLD (0.85)
         unmatched_families: list[str] — display_names of unmatched families
         bad_normalized_rows: list[tuple[str,str]] — (client_name, family_key_guess)
                              pairs stamped 'normalized' that fail re-validation

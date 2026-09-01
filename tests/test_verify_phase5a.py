@@ -222,7 +222,7 @@ class TestMatchGate5a:
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is True
-        assert result["matched_fraction"] >= 0.80
+        assert result["matched_fraction"] == pytest.approx(1.0)
         assert result["unmatched_families"] == []
 
     def test_fail_below_threshold(self, tmp_path):
@@ -245,34 +245,35 @@ class TestMatchGate5a:
         assert result["matched_fraction"] == pytest.approx(0.2)
         assert len(result["unmatched_families"]) == 8
 
-    def test_pass_boundary_80_pct(self, tmp_path):
-        """Exactly 80% match (40 of 50) → PASS.
+    def test_pass_boundary_86_pct(self, tmp_path):
+        """43 of 50 = 86% → PASS. The lowest count that clears the 0.85 floor.
 
-        NOTE (5A backlog #1, 2026-07): a raise to 0.85 is STAGED, not live —
-        the curated aliases for Booz Allen / ADS Tactical / Vertex / Shell E&P
-        only take effect at the next `govbudget influence pull` (those filings
-        were never returned by the original pull's query strings, so the live
-        floor is still 40/50). Move this boundary to 43/50 = 86% when the
-        re-pull lands and _MATCH_THRESHOLD moves to 0.85.
+        0.85 x 50 = 42.5, so 43 is the floor; live coverage is 46/50.
         """
         db = tmp_path / "t.duckdb"
         n = 50
         entities = self._make_entities(n)
         make_duckdb_with_influence(db, dim_entities_rows=entities)
-        # Match exactly 40 families (80%)
+        # Match exactly 43 families (86%)
         filings_rows = [
             (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
              "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
-            for i in range(40)
+            for i in range(43)
         ]
         filings_p = tmp_path / "lda_filings.parquet"
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is True
-        assert result["matched_fraction"] == pytest.approx(0.80)
+        assert result["matched_fraction"] == pytest.approx(0.86)
 
-    def test_fail_boundary_78_pct(self, tmp_path):
-        """39 of 50 = 78% < 80% → FAIL (proof the threshold bites)."""
+    def test_fail_boundary_84_pct(self, tmp_path):
+        """42 of 50 = 84% < 85% → FAIL.
+
+        This is the discriminating case: 42/50 PASSES at the old 0.80 floor and
+        FAILS at 0.85, so it is the only assertion in this file that can tell
+        the two thresholds apart. A test that fails under both (e.g. 39/50)
+        proves the gate bites but proves nothing about the raise.
+        """
         db = tmp_path / "t.duckdb"
         n = 50
         entities = self._make_entities(n)
@@ -280,13 +281,13 @@ class TestMatchGate5a:
         filings_rows = [
             (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
              "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
-            for i in range(39)
+            for i in range(42)
         ]
         filings_p = tmp_path / "lda_filings.parquet"
         make_filings(filings_p, filings_rows)
         result = match_gate5a(db, filings_p)
         assert result["ok"] is False
-        assert result["matched_fraction"] == pytest.approx(0.78)
+        assert result["matched_fraction"] == pytest.approx(0.84)
 
     def test_match_method_none_not_counted(self, tmp_path):
         """Filings with match_method='none' do NOT count as matched."""
@@ -577,8 +578,8 @@ class TestMatchGate5aHardening:
         The gate re-validates and must fail with that pair listed.
         """
         db = tmp_path / "t.duckdb"
-        # Need enough families to be above 80% threshold so the ONLY failure is
-        # the bad_normalized sub-assertion. Use 10 families, all matched.
+        # Need coverage above the _MATCH_THRESHOLD floor so the ONLY failure is
+        # the bad_normalized sub-assertion. Use 10 families, all matched (100%).
         n = 10
         entities = self._make_entities(n)
         make_duckdb_with_influence(db, dim_entities_rows=entities)

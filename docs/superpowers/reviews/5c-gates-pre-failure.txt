@@ -12170,3 +12170,246 @@ files were left alone. The Analytics client reference costs a UNIFORM +276 raw
 / ~+85 gzip on every page, which is why the table above is quoted from the
 build that did not contain it: the two changes are separable and this one
 should not carry the other's bytes, in either direction.
+
+================================================================================
+ROADMAP #19 — LDA MATCH COVERAGE FLOOR 0.80 -> 0.85
+(verify-phase5a gate 2, match_gate5a — a LEG on an existing gate, no 25th)
+2026-09-01
+================================================================================
+
+THE ENTRY'S FRAMING IS WRONG AND THE FIX IS NOT WHAT IT ASKED FOR. The entry
+reads as though `_MATCH_THRESHOLD` were a per-match similarity score, and asks
+which true matches sit in the 0.80-0.85 band. There is no such band and there
+are no such matches. `_match_method()` (src/govbudget/influence/lda.py:264-334)
+returns one of six CATEGORICAL tiers — exact_family / curated_alias /
+normalized / family_raw_name / suffix_residue / none — and the filings parquet
+has no numeric score column at all:
+
+  describe select * from 'data/parquet/influence/lda_filings.parquet'
+  -> filing_uuid, url, client_name, registrant_name, filing_year, filing_period,
+     filing_type, income_usd, expenses_usd, family_key_guess, match_method
+
+`_MATCH_THRESHOLD` is read in exactly one comparison, at the bottom of
+match_gate5a, against `matched_count / top_n`. It is an aggregate COVERAGE
+FLOOR over the top-50 families. Raising it cannot drop a true match; it only
+changes when the gate fires. The question "which matches would the raise lose"
+cannot be answered as posed, and no distribution was invented to answer it.
+
+THE MEASUREMENT THAT WAS ACTUALLY OWED, taken read-only at HEAD before any
+edit (data/parquet/influence/lda_filings.parquet, 5,393 filings):
+
+  ok=True  top_n=50  matched_count=46  matched_fraction=0.92  threshold=0.8
+  bad_normalized_rows=[]
+  unmatched: ROCKWELL COLLINS AUSTRALIA PTY LIMITED (rank 21, $19.47B)
+             AMENTUM GOVERNMENT SERVICES HOLDINGS LLC (26, $17.38B)
+             BELL BOEING JOINT PROJECT OFFICE        (27, $16.68B)
+             IDEMITSU KOSAN CO.,LTD.                 (47, $7.58B)
+
+0.85 x 50 = 42.5, so the floor 0.85 requires is matched_count >= 43. Actual is
+46 — three families of headroom. The staged entry predicted "44/50 = 88%,
+one-family headroom"; the corpus beat its own forecast by two.
+
+Match QUALITY is not the fragile part. Strongest tier across the 46:
+exact_family 36, curated_alias 8, normalized 1, family_raw_name 1. Only KBR
+rests on family_raw_name and it carries 10 filings; the thinnest matched family
+of all is MITRE at 4 filings. The corpus contains ZERO suffix_residue rows. The first-query-wins
+hazard recorded when the aliases were staged is dead: VECTRUS ('V2X',
+curated_alias, 12 filings) and VERTEX AEROSPACE SERVICES (curated_alias, 11)
+both resolve.
+
+--------------------------------------------------------------------------------
+PROOF-CAN-FAIL — AND IT HAD TO BE THE DISCRIMINATING CASE
+--------------------------------------------------------------------------------
+
+The old `test_fail_boundary_78_pct` (39/50) fails under BOTH 0.80 and 0.85. It
+proves the gate bites; it proves nothing about the raise. Shipped unchanged it
+would have been a green test that cannot detect whether the constant moved at
+all. It was replaced by the only fixture that separates the two thresholds:
+42/50 = 0.84, which PASSES the gate at 0.80 and FAILS it at 0.85.
+
+FAIL — the new discriminating test run with `_MATCH_THRESHOLD` temporarily put
+back to 0.80 (everything else identical). Verbatim, in full:
+
+$ uv run pytest tests/test_verify_phase5a.py::TestMatchGate5a::test_fail_boundary_84_pct \
+                tests/test_verify_phase5a.py::TestMatchGate5a::test_pass_boundary_86_pct -v
+
+tests/test_verify_phase5a.py::TestMatchGate5a::test_pass_boundary_86_pct PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ TestMatchGate5a.test_fail_boundary_84_pct ___________________
+
+self = <test_verify_phase5a.TestMatchGate5a object at 0x107629bb0>
+tmp_path = PosixPath('/private/var/folders/zl/6tmk03md4x705ylx6qrc54wr0000gn/T/pytest-of-andeslee/pytest-334/test_fail_boundary_84_pct0')
+
+    def test_fail_boundary_84_pct(self, tmp_path):
+        """42 of 50 = 84% < 85% → FAIL.
+
+        This is the discriminating case: 42/50 PASSES at the old 0.80 floor and
+        FAILS at 0.85, so it is the only assertion in this file that can tell
+        the two thresholds apart. A test that fails under both (e.g. 39/50)
+        proves the gate bites but proves nothing about the raise.
+        """
+        db = tmp_path / "t.duckdb"
+        n = 50
+        entities = self._make_entities(n)
+        make_duckdb_with_influence(db, dim_entities_rows=entities)
+        filings_rows = [
+            (f"uuid-{i}", f"https://lda.senate.gov/f/{i}", f"Family {i} Inc",
+             "Firm", "2025", "Q1", "LD2", "100", "", f"family_{i}", "exact_family")
+            for i in range(42)
+        ]
+        filings_p = tmp_path / "lda_filings.parquet"
+        make_filings(filings_p, filings_rows)
+        result = match_gate5a(db, filings_p)
+>       assert result["ok"] is False
+E       assert True is False
+
+tests/test_verify_phase5a.py:289: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_verify_phase5a.py::TestMatchGate5a::test_fail_boundary_84_pct
+========================= 1 failed, 1 passed in 0.30s ==========================
+
+Note the failure line: `assert True is False`. At 0.80 the gate PASSES a 42/50
+corpus. That is the whole point of the raise.
+
+The constant was then restored and the restored file diffed byte-for-byte
+against the pre-experiment copy — identical.
+
+PASS — same two tests, `_MATCH_THRESHOLD = 0.85`. Verbatim, in full:
+
+$ uv run pytest tests/test_verify_phase5a.py::TestMatchGate5a::test_fail_boundary_84_pct \
+                tests/test_verify_phase5a.py::TestMatchGate5a::test_pass_boundary_86_pct -v
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /Users/andeslee/Documents/Cursor-Projects/GovBudget/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/andeslee/Documents/Cursor-Projects/GovBudget
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collecting ... collected 2 items
+
+tests/test_verify_phase5a.py::TestMatchGate5a::test_fail_boundary_84_pct PASSED [ 50%]
+tests/test_verify_phase5a.py::TestMatchGate5a::test_pass_boundary_86_pct PASSED [100%]
+
+============================== 2 passed in 0.47s ===============================
+
+$ uv run pytest tests/test_verify_phase5a.py -q
+...............................                                          [100%]
+31 passed in 1.33s
+
+--------------------------------------------------------------------------------
+REAL-CORPUS CONFIRMATION — THE GATE BITES ON DEGRADED DATA, NOT ONLY ON FIXTURES
+--------------------------------------------------------------------------------
+
+A synthetic 42/50 proves the arithmetic. It does not prove the gate would catch
+a real matching regression. match_gate5a was therefore run against a genuinely
+worse real corpus — the pre-alias backup, kept on disk — with today's
+dim_entities unchanged:
+
+  data/parquet/influence/_pre_a3_backup/lda_filings.parquet   4,258 filings
+    ok=False  matched=39  fraction=0.78                        -> FAIL
+  data/parquet/influence/lda_filings.parquet (live)            5,393 filings
+    ok=True   matched=46  fraction=0.92                        -> PASS
+
+The seven families that flip from unmatched to matched between those two
+corpora are ADS TACTICAL, PFIZER, CENTENE, BOOZ ALLEN HAMILTON HOLDING,
+MODERNATX, VERTEX AEROSPACE SERVICES, SPACE EXPLORATION TECHNOLOGIES. Three of
+them (Booz Allen 70 filings, ADS Tactical 18, Vertex Aerospace Services 11) are
+exactly the curated aliases the entry staged in client_aliases.csv and could
+never activate offline. They now match at the 'curated_alias' tier.
+
+--------------------------------------------------------------------------------
+THE COST OF THE RAISE, WRITTEN DOWN RATHER THAN DISCOVERED LATER
+--------------------------------------------------------------------------------
+
+At 0.85 this gate becomes partly sensitive to obligation-RANKING churn, not
+only to matching quality. Matched fraction by ranking window, measured:
+
+  N=40  0.925    N=50  0.920    N=60  0.817
+  N=45  0.933    N=55  0.873    N=70  0.786
+
+Headroom above 0.85 is gone by roughly N=58. Ranks 51-60 are 7 of 10 UNMATCHED
+(MacAndrews & Forbes, Government of Canada, Francisco Partners, Serco, W S
+Darley, Patriot Team, Accredo), and the rank-50/51 obligation gap is only
+$7.370B -> $7.131B = 3.2%. So ONE boundary swap on a USAspending refresh costs
+one family; losing all three of the headroom families needs roughly a 5-6%
+reshuffle across three adjacent pairs. Plausible over time, unlikely in one
+refresh.
+
+Consequence for whoever sees this gate go red: a FAIL in the 43-45 band is
+triaged against the gate's own `unmatched_families` output FIRST — are the
+newly unmatched names new ENTRANTS to the top-50? — before it is called a
+matching regression. That instruction is now in the constant's own comment
+block, where the next reader will find it.
+
+--------------------------------------------------------------------------------
+WHAT THIS GATE STILL DOES NOT COVER, SAID OUT LOUD
+--------------------------------------------------------------------------------
+
+There is no freshness leg. A frozen corpus scores 92% forever. That is exactly
+how the failure #19 actually found stayed invisible: lda.senate.gov started
+301ing, every request fell into a warning handler, and the corpus sat stale
+from 2026-07-03 while this gate reported PASS the entire time. Corpus recency
+today is 2024: 2,016 filings / 2025: 2,250 / 2026: 1,127, latest period
+2026 third_quarter (4 filings). A `max(filing_year, filing_period)` recency
+assertion is the higher-value leg and belongs on this same gate — it is
+separate work and was deliberately NOT smuggled into a one-constant change.
+
+--------------------------------------------------------------------------------
+WHAT DID NOT REPRODUCE FROM THE SCOPING
+--------------------------------------------------------------------------------
+
+The scoping credits the 39/50 -> 46/50 swing to "the re-pull" landing at
+7d03475 (2026-08-27). Measured, that attribution is off by one pull. The
+backup taken immediately before the #19 work — `_pre_19_backup`, 5,392 filings
+— ALREADY scores 46/50 = 0.92 against today's dim_entities, and the diff of
+matched top-50 families between it and the live corpus is EMPTY. The #19 pull
+repair (7d03475 "the pull has been fetching nothing; guard the corpus", then
+f83feca 2026-08-29 "cite the filing page a reader can open") changed the corpus
+by exactly +1 filing and moved the match count by zero. The alias activation
+came from the earlier pull that followed 9aa3a80 (2026-08-12, "the curated
+aliases were never loaded"). The seven-family swing is real and is measured
+above; it is the aliases plus that pull, not the #19 guard commit. The comment
+block now attributes it that way.
+
+Also: Shell E&P, one of the four staged aliases, produces no rows at all —
+`family_key_guess like '%SHELL%'` returns nothing. It is not among the top-50
+families, so it is outside this gate's scope either way. Only three of the four
+staged aliases are load-bearing here.
+
+--------------------------------------------------------------------------------
+GATE COUNT, BLAST RADIUS, PAGE WEIGHT
+--------------------------------------------------------------------------------
+
+GATE COUNT unchanged -> 24. `grep -c "gateResults.push" site/scripts/verify.mjs`
+prints 24. This is a LEG on match_gate5a inside verify-phase5a, which is
+already in `_ASSEMBLY_PHASES` (src/govbudget/verify_phase5.py:130) and
+therefore already runs inside the verify-phase5 assembly. Nothing to wire.
+
+BLAST RADIUS. `grep -rn '_MATCH_THRESHOLD|MATCH_THRESHOLD' src/ site/ scripts/
+tests/` hits verify_phase5a.py (5 lines) and one test docstring. NO new
+hard-coded literal was introduced: cli.py:1310 already derives the printed
+"(threshold: ≥85%)" from `mg['threshold']`, so it moved on its own. Three stale
+"80%" prose literals inside verify_phase5a.py — module docstring line 7, the
+match_gate5a docstring, and "threshold: float — always 0.80" — were the only
+things that needed hand-editing, and the last was replaced with a pointer to
+the constant rather than a fresh literal. The "80%" at cli.py:2728 belongs to a
+different gate and was left alone.
+
+PAGE WEIGHT: no page changed. Nothing in site/ reads this constant; /coverage/
+describes the matching RULE (site/src/lib/coverage-map.ts:494-516) and
+publishes no match percentage. No ceiling was raised and none was needed.
+
+BEHAVIOUR AFTER THE CHANGE, verbatim from the CLI:
+
+$ NEXT_PUBLIC_SITE_URL=https://fiscalreceipts.com uv run python -m govbudget verify-phase5a
+gate 1 provenance: filings=5393 violations=0 → PASS
+gate 2 match: top_n=50 matched=46 fraction=92.0% (threshold: ≥85%) bad_normalized=0 → PASS
+  unmatched families (4) — candidates for Phase 5B alias work:
+    ROCKWELL COLLINS AUSTRALIA PTY LIMITED
+    AMENTUM GOVERNMENT SERVICES HOLDINGS LLC
+    BELL BOEING JOINT PROJECT OFFICE
+    IDEMITSU KOSAN CO.,LTD.
+gate 3 influence: families_with_both=71 (threshold: ≥30) negative_rows=0 bad_columns=0 → PASS
+gate 4 mentions: total=14016 distinct_pe_bli=499 orphans=0 → PASS
+verify-phase5a: PASS
+(exit 0)
