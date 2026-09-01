@@ -82,7 +82,7 @@ export default function CompaniesPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Companies" }]}
       />
-      <div className="mb-6">
+      <div className="page-header mb-6">
         <h1 className="text-3xl font-bold mb-2">Top Defense Contractors</h1>
         {/* §P1-6: "FY2017–FY2025" was authored here and was a year short of
             the data. The range is now derived from fct_award_transactions and

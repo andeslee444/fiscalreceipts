@@ -85,7 +85,7 @@ export default function DataPage() {
         items={[{ label: "Home", href: "/" }, { label: "Data Explorer" }]}
       />
 
-      <div className="mb-8">
+      <div className="page-header mb-8">
         <h1 className="text-3xl font-bold mb-3">Data Explorer</h1>
         <p className="text-muted-foreground">
           Browse and query all {DATASET_INVENTORY.length} Fiscal Receipts datasets

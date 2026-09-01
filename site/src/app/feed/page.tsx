@@ -405,7 +405,7 @@ export default function FeedPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Anomaly Feed" }]}
         />
-        <div className="mb-6">
+        <div className="page-header mb-6">
           <h1 className="text-3xl font-bold mb-2">Anomaly Feed</h1>
           <p className="text-muted-foreground">
             {formatCount(total)}{" "}automated signals across{" "}

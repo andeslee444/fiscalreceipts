@@ -90,7 +90,7 @@ export default function DownloadsPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Downloads" }]}
         />
-        <div className="mb-6">
+        <div className="page-header mb-6">
           <h1 className="text-3xl font-bold mb-2">Data Downloads</h1>
           <p className="text-muted-foreground">
             All {meta.counts.citations.toLocaleString("en-US")} source
