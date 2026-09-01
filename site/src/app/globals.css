@@ -381,6 +381,111 @@
   margin-block-start: 0;
 }
 
+/* THE DOCUMENT LAYOUT (#42 follow-up, second half).  An INDEX route fills the
+   width beside its measure with a second column of prose; a DOCUMENT route
+   cannot, because reading to the foot of column one and scrolling back up is
+   worse than the empty space it fixes.  So the space becomes navigation.
+
+   The <h1> stays OUTSIDE this grid, directly on the spine.  That is not a
+   detail: gate 3 leg (s1) derives the expected content edge from the header
+   wordmark and fails if a route's h1 sits anywhere else, so the heading has to
+   keep the same left edge every other route has.  Only the body splits.
+
+   The prose column is 1fr rather than the measure.  Paragraphs inside it are
+   still capped at 54ch by the rule above — unchanged, so gate 3's per-line
+   assertion measures exactly what it measured before — but the tables and
+   figures on /methodology/ and /lineage/ are not prose and use the whole
+   column.  Sizing this column to the measure would have squeezed those.
+
+   Hidden below 1024px, deliberately.  The rail exists to spend horizontal space
+   that only a desktop viewport has.  On a phone there is none to spend, and
+   /methodology/'s 43 entries above the article would push the article itself
+   under the fold. */
+.doc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+@media (min-width: 64rem) {
+  .doc-layout {
+    grid-template-columns: minmax(0, 1fr) 16rem;
+    column-gap: 3rem;
+    align-items: start;
+  }
+  /* Source order is prose-then-rail so a screen reader and a narrow viewport
+     both get the article first; the placement here is presentational only. */
+  .doc-layout > [data-doc-prose] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .doc-layout > .doc-toc {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+.doc-toc {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .doc-toc {
+    display: block;
+    position: sticky;
+    /* Clears the h-14 header plus a little air. */
+    top: 5rem;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    padding-left: 1rem;
+  }
+}
+
+.doc-toc-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The rail is a list of destinations, not prose — it takes no measure and no
+   marker. */
+.doc-toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: none;
+}
+
+.doc-toc-list > li[data-level="3"] {
+  padding-left: 0.75rem;
+}
+
+.doc-toc-link {
+  display: block;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.doc-toc-link:hover {
+  color: var(--foreground);
+}
+
+.doc-toc-link[aria-current="true"] {
+  color: var(--foreground);
+  border-left-color: var(--foreground);
+  font-weight: 500;
+}
+
 /* Smooth transitions for interactive elements — token-driven (Task 11) */
 @layer base {
   a, button, [role="button"] {
