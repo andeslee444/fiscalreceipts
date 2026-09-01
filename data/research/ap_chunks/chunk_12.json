@@ -1,0 +1,430 @@
+[
+ {
+  "ap_code": "376",
+  "ap_description": "B-2 RMP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8119"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "D56",
+  "ap_description": "ASV",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "THIS NO COST MODIFICATION IS TO INCORPORATE THE CORRECT TRANSPORTATION ACCOUNT CODE (TAC) SO THE CONTRACTOR CAN SHIP THE PARTS TO IRAQ."
+ },
+ {
+  "ap_code": "L6G",
+  "ap_description": "DSO",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4701"
+  ],
+  "sample_description": "DOCUMENT SERVICES ONLINE (DSO) SUSTAINMENT AND INTEGRATION SUPPORT - SAF REMOVAL"
+ },
+ {
+  "ap_code": "N86",
+  "ap_description": "AFIPPS",
+  "awards": 5,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA5270",
+   "FA7014"
+  ],
+  "sample_description": "UPDATE VENDOR'S CAGE CODE"
+ },
+ {
+  "ap_code": "611",
+  "ap_description": "SLUAS PHASE 1",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRDL1"
+  ],
+  "sample_description": "GENERATOR"
+ },
+ {
+  "ap_code": "07D",
+  "ap_description": "NGA MAVEN",
+  "awards": 2,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00189",
+   "W912P9"
+  ],
+  "sample_description": "BOSS SINGLE LINK 16 LICENSE SUPPORT PLAN"
+ },
+ {
+  "ap_code": "464",
+  "ap_description": "DCGS-N INC 2",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N65236"
+  ],
+  "sample_description": "THIS WORK WILL CONSIST OF THAT EFFORT REQUIRED TO PROVIDE REQUIREMENTS MANAGEMENT, SYSTEM, SOFTWARE AND INTEROPERABILITY TESTING AND QUALITY ASSURANCE QA SUPPORT FOR SPACE AND NAVAL WARFARE SYSTEMS CENTER ATLANTIC SSC ATLANTIC IN SUPPORT OF THE DISTRIBUTED COMMON GROUND STATION  MARINE CORPS DCGS-MC GEOINT PROGRAM OF RECORD."
+ },
+ {
+  "ap_code": "M52",
+  "ap_description": "AIE INC3",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W909MY"
+  ],
+  "sample_description": "THIS REQUIREMENT IS FOR EQUIPMENT AND INSTALLATION OF BASE ENTRY PROTECTION SYSTEMS FOR THE PROGRAM AUTOMATED INSTALLATION ENTRY."
+ },
+ {
+  "ap_code": "N21",
+  "ap_description": "GCCS-AF",
+  "awards": 91,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0031",
+   "0112",
+   "0113",
+   "0119",
+   "0121",
+   "0131"
+  ],
+  "sample_description": "VMWARE PURCHASE"
+ },
+ {
+  "ap_code": "394",
+  "ap_description": "MPS",
+  "awards": 3,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2318",
+   "W58P05"
+  ],
+  "sample_description": "THIS EFFORT ENCOMPASSES WEAPONS PLANNING CAPABILITIES IN THE NOMS ENVIRONMENT TO SUPPORT STRIKE AIRCRAFT. WHEN REQUIRED, CHANGES TO LEGACY JMPS SOFTWARE MAY BE REQUIRED TO SUPPORT THE LARGER WEAPONS ART REQUIREMENTS."
+ },
+ {
+  "ap_code": "F55",
+  "ap_description": "CBRN DRS",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W911QY"
+  ],
+  "sample_description": "INTEGRATED FOOTWEAR SYSTEM (IFS) IS A SOCK/LINER SYSTEM WORN UNDER NORMAL COMBAT FOOTWEAR TO PROTECT THE FOOT AGAINST CHEMICAL AND BIOLOGICAL HAZARDS."
+ },
+ {
+  "ap_code": "SBP",
+  "ap_description": "CARRIER AIRCRAFT NUCLEAR-CVAN",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "MODIFICATION IS TO ADD FUNDING TO CLOSEOUT CONTRACT N00024-99-C-8503."
+ },
+ {
+  "ap_code": "HFS",
+  "ap_description": "LMOC",
+  "awards": 5,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8210"
+  ],
+  "sample_description": "TICKET MANAGEMENT SYSTEM SOFTWARE THAT PROVIDES HELP DESK FUNCTIONALITY FOR THE LIVE MISSION OPERATIONAL CAPABILITY (LMOC) PLATFORM SUPPORTING AIRCRAFT TRAINING RANGES."
+ },
+ {
+  "ap_code": "499",
+  "ap_description": "NEXT GEN OPIR SPACE RP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8051"
+  ],
+  "sample_description": "WATER UFCS AND UFGS"
+ },
+ {
+  "ap_code": "111",
+  "ap_description": "ALCM",
+  "awards": 10,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy",
+   "U.S. Special Operations Command"
+  ],
+  "office_prefixes": [
+   "0001",
+   "BZ15",
+   "BZ16",
+   "BZ17",
+   "FA2835",
+   "FA2860"
+  ],
+  "sample_description": "SAGE EAGLE 25-4 ROLE PLAYER SUPPORT"
+ },
+ {
+  "ap_code": "235",
+  "ap_description": "AN/BSY-1",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRMM1"
+  ],
+  "sample_description": "TACHOMETER ASSY"
+ },
+ {
+  "ap_code": "N75",
+  "ap_description": "AFNET INC 1",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8571"
+  ],
+  "sample_description": "EMERGING TECHNOLOGY-SBIR PHASE III, PERFORMANT DISTRIBUTED LEDGERS"
+ },
+ {
+  "ap_code": "513",
+  "ap_description": "JSTARS RECAP",
+  "awards": 3,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8501",
+   "KX01",
+   "KZ19"
+  ],
+  "sample_description": "TO REOBLIGATE FUNDING FOR TEST AND INPSECT"
+ },
+ {
+  "ap_code": "9PJ",
+  "ap_description": "NCMC_MW/MT ENHANCEMENT",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8723"
+  ],
+  "sample_description": "SEE ATTACHMENT 03- IDSS PWS_20250813 FINALIZED FOR REQUIREMENTS DESCRIPTIONS AND THE MOST UP TO DATE REQUIREMENTS."
+ },
+ {
+  "ap_code": "S41",
+  "ap_description": "HACM",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8656"
+  ],
+  "sample_description": "THE HACM PROGRAM REQUIRES A BLOW-DOWN WIND TUNNEL FACILITY CAPABLE OF MATCHING ALTITUDE VERSUS VELOCITY CONDITIONS."
+ },
+ {
+  "ap_code": "N78",
+  "ap_description": "BITI WIRED",
+  "awards": 2,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "FA8726"
+  ],
+  "sample_description": "MICROSOFT 2501"
+ },
+ {
+  "ap_code": "860",
+  "ap_description": "ITN - RP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8003"
+  ],
+  "sample_description": "INFORMATION TECHNOLOGY (IT) SUPPORT FOR AIR FORCE SECURITY FORCES CENTER, INCLUDING PROGRAM MGMT., REQUIREMENTS & TEST, SERVICE DESK, IT ASSET & SOFTWARE MGMT., CYBERSECURITY, DATA MGMT. & ANALYTICS, ENTERPRISE ARCHITECTURE, AND MOBILE TECHNOLOGY."
+ },
+ {
+  "ap_code": "388",
+  "ap_description": "NAVY UCAS",
+  "awards": 2,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00104",
+   "N64498"
+  ],
+  "sample_description": "VALVE,LINEAR,DIRECT"
+ },
+ {
+  "ap_code": "337",
+  "ap_description": "SSGN",
+  "awards": 3,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0005",
+   "N00030",
+   "N00164"
+  ],
+  "sample_description": "OHIO CLASS BATTERY AND PACKAGING"
+ },
+ {
+  "ap_code": "246",
+  "ap_description": "HMMLTV",
+  "awards": 72,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W911N2"
+  ],
+  "sample_description": "VEHICLE STORAGE FEES FOR KENYA"
+ },
+ {
+  "ap_code": "Y88",
+  "ap_description": "F16 M CODE",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8232"
+  ],
+  "sample_description": "ROMANIA F-16 LSS"
+ },
+ {
+  "ap_code": "273",
+  "ap_description": "C-5 AMP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8525"
+  ],
+  "sample_description": "C-5 ALTERNATIVE MODIFICATION INSTALLATION (AMI)"
+ },
+ {
+  "ap_code": "M41",
+  "ap_description": "T-38 AVIONICS",
+  "awards": 8,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8118"
+  ],
+  "sample_description": "REMANUFACTURE OF T38 PUMP"
+ },
+ {
+  "ap_code": "271",
+  "ap_description": "MQ-1B UAS PREDATOR",
+  "awards": 3,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8528",
+   "N00421",
+   "W58RGZ"
+  ],
+  "sample_description": "UPDATE WAWF ROUTING TABLE"
+ },
+ {
+  "ap_code": "CNQ",
+  "ap_description": "ZAGM-63 MISSILE",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0010",
+   "0012",
+   "0015",
+   "0016"
+  ],
+  "sample_description": "SP"
+ }
+]

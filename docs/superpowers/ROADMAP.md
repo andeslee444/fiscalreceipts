@@ -66,6 +66,33 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-09-01: crosswalk hand-adjudication (correction) + FPDS-AP expansion
+  (coverage), one deploy.** All 10,091 published (pe, award) pairs were
+  individually adjudicated (688 award investigations, 28 agents, two
+  adversarial refuter lenses per proposed pin): the mechanical high tier
+  measured **9.1% precise** (37/408) — corrected to 60 adjudicated-high /
+  9,212 medium, 819 low/reject pairs unpublished (migration 010 overlay;
+  mechanical tags retained as `crosswalk_confidence`, supersede-not-delete).
+  Ground-truth rejects incl. SSPARS (5 false high links on one AF radar-O&M
+  contract), NSWC Dahlgren, CTEIP. Coverage then rebuilt on stronger
+  evidence: all 746 FPDS acquisition-program codes hand-mapped to J-book
+  lines (674/879 mappings survived both lenses; 267 honestly unmapped),
+  awards narrowed per-line by funding-account color — **1,020 high + 857
+  medium pair-rows across 186 PEs, all services** (F-35, Virginia class,
+  Sentinel get first award tables); 23k AP-tagged awards with only
+  non-J-book money (O&M) deliberately unlinked. Districts 106→41→181.
+  Species lessons, each now structural: **keyed sidecar dirs must
+  prune-before-emit** (stale `flows/` kept publishing a REJECTED award at
+  "high"; districts/breakdowns same; `copyDir` now mirrors); **collision
+  pe_blis excluded from link targets** (account-narrowing unioned both
+  programs' accounts — a "high" could hit the wrong program); synthetic
+  `-L` keys excluded; empty sidecars not written; gate 12 rescoped to
+  renderable pages + non-vacuity floor; leg-j designator exemption (DDG
+  1000 ≠ a count); File C ruled out separately
+  (docs/superpowers/reviews/filec-program-activity-spike.md). Follow-ups
+  filed: /feed/ pagination (ceiling raised with do-not-raise-again note),
+  Leg 2 name-lexicon + Leg 3 (SAM solicitations, FSRS, defense.gov
+  announcements) in flight via parallel sessions.
 - **2026-07-02: product rebranded to Fiscal Receipts** (site display name; infra
   identifiers unchanged).
 - **47.3% of FY2025 DoD obligations ($232.4B) were not competed** — surfaced by

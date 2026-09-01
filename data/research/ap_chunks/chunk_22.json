@@ -1,0 +1,415 @@
+[
+ {
+  "ap_code": "S89",
+  "ap_description": "LSV",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91QVP"
+  ],
+  "sample_description": "HUSBANDRY SERVICES FOR LSV-4 AND LSV-8 JAPAN."
+ },
+ {
+  "ap_code": "2EBJ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200206!021496!1700!BZ004 !NAVAL SEA SYSTEMS COMMAND       !N0002402C4065  !A!N! !N!                   !20020308!20040307!059677856!059677856!059677856!N!MCNALLY INDUSTRIES, INC       !340 W  BENSON AVE         !GRANTSBURG          !WI!54840!30450!013!55!GRANTSBURG          !BURNETT               !WISCONSIN !+000002981061!N!N!000000000000!1020!GUNS, OVER 125 MM THROUGH 150 MM                  !A5 !"
+ },
+ {
+  "ap_code": "K80",
+  "ap_description": "LIGHT & HEAVY LOADER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2823"
+  ],
+  "sample_description": "TRANSPORT BEDS WILD FIRE"
+ },
+ {
+  "ap_code": "2EBE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "WRR RECONCILIATION"
+ },
+ {
+  "ap_code": "CNY",
+  "ap_description": "BGM-109 TOMAHAWK",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019",
+   "N00032"
+  ],
+  "sample_description": "199912!1700!1201!AT717!NAVAL AIR SYSTEMS COMMAND       !N0003286C6201  !A!*!P00038             !19980302!19991231!057762320!057762320!001280726!N!8A683!UNIDYNAMICS/ST LOUIS INC      !188 FM 3083 RD            !CONROE              !TX!77301!16432!339!48!CONROE              !MONTGOMERY            !TEXAS     !0001!+000000059930!N!N!000000000000!7690!MISCELLANEOUS PRINTED MATTER                      !"
+ },
+ {
+  "ap_code": "3CNF",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "SD03"
+  ],
+  "sample_description": "CONTRACT CLOSEOUT PURPOSES"
+ },
+ {
+  "ap_code": "490",
+  "ap_description": "MNVR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPE7L1"
+  ],
+  "sample_description": "8505134333!LUMP SUM SETTLEMENT - INCREAS"
+ },
+ {
+  "ap_code": "CPS",
+  "ap_description": "TOMAHAWK STRIKE COOR MDLE (TSCM)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00178"
+  ],
+  "sample_description": "ENGINEERING SERVICES"
+ },
+ {
+  "ap_code": "GHY",
+  "ap_description": "E-6A (TACAMO)",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO DEOBLIGATE EXCESS FUNDS FROM CLINS 0408, 0409, AND ACRN AS"
+ },
+ {
+  "ap_code": "DAL",
+  "ap_description": "STRYKER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0018"
+  ],
+  "sample_description": "STRYKER FAMILY OF ARMORED VEHICLES/EMD/CONTRACTOR SUPPORT TO GOVERNMENT TEST"
+ },
+ {
+  "ap_code": "3BST",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0010"
+  ],
+  "sample_description": "200308!000043!5700!GU57  !ASC/LPK  BLDG 28 ROOM 207       !F3365799D2051  !A!N! !N!0010               !20021223!20031231!001447952!835551474!001344142!N!UNITED TECHNOLOGIES CORP      !400 MAIN STREET           !EAST HARTFORD       !CT!06108!22700!003!09!EAST HARTFORD       !HARTFORD              !CONN      !+000016371630!N!N!000000000000!2840!GAS TURBINES AND JET ENGINES, ACFT&COMPS        !A1B!AI"
+ },
+ {
+  "ap_code": "2ZBC",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0022"
+  ],
+  "sample_description": "DEOBLIGATE TO CLOSE OUT"
+ },
+ {
+  "ap_code": "GYB",
+  "ap_description": "IDHS INTELLIGENCE DATA HANDL",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F30602"
+  ],
+  "sample_description": "INFORMATION TECHNOLOGY EQUIPMENT SYSTEM CONFIGURATION"
+ },
+ {
+  "ap_code": "G70",
+  "ap_description": "HQAES",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W9124P"
+  ],
+  "sample_description": "AMCOM CIO/G6 HAS A REQUIREMENT TO RENEW TEN (10) SOFTWARE LICENSES AND MAINTENANCE SUPPORT WITH A PERIOD OF PERFORMANCE OF 25 SEP 2025 TO 24 SEP 2026."
+ },
+ {
+  "ap_code": "AEC",
+  "ap_description": "E-3A",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0005",
+   "0006",
+   "F34601",
+   "SD11"
+  ],
+  "sample_description": "JAPAN AIRBORNE WARNING AND CONTROL SYSTEM"
+ },
+ {
+  "ap_code": "E27",
+  "ap_description": "WIRELESS",
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC",
+   "W56KGY",
+   "W912L2",
+   "W912LQ"
+  ],
+  "sample_description": "WIRELESS SERVICES AND DATA PLANS FOR 150 CELLULAR DEVICES AND 100 MIFIS; TO CONTINUE SERVICES ON EXISTING DEVICES WITH AT_T MOBILITY LLC FOR A PERIOD OF THREE (3) MONTHS, WITH THE OPTION TO EXTEND SERVICES FOR ONE (1) ADDITIONAL MONTH."
+ },
+ {
+  "ap_code": "A96",
+  "ap_description": "ILS-S SM-RP",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA7014",
+   "W912CN"
+  ],
+  "sample_description": "PKH-ROMO-JONES-AWARD OF STORM CLUSTER WORKSTATION REFRESH 2023. PDS ERROR IS EXEMPT. CAR VALIDATED. FUNDING ADDED."
+ },
+ {
+  "ap_code": "DJN",
+  "ap_description": "ABRAMS SERIES (M1/M1A1/M1A2)",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0042",
+   "DAAE07",
+   "DAAE20"
+  ],
+  "sample_description": "VEHICULAR POWER TRANSMISSION COMPONENTS"
+ },
+ {
+  "ap_code": "579",
+  "ap_description": "MPF",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "PROCUREMENT FOR VARIOUS BIG KAISER MILL COMPONENTS FOR MILLING OPERATIONS."
+ },
+ {
+  "ap_code": "AIA",
+  "ap_description": "BLACKHAWK",
+  "awards": 11,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0080",
+   "DAAB07",
+   "DAAE07",
+   "DAAH01",
+   "DAAH23"
+  ],
+  "sample_description": "TRANSFER GOVERNMENT FURNISHED PROPERTY/CONTRACTOR ACQUIRED PROPERTY TO MY9 CONTRACT NUMBER W58RGZ-17-C-0009"
+ },
+ {
+  "ap_code": "BSJ",
+  "ap_description": "TF-39",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "SD31"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO REALIGN FUNDING."
+ },
+ {
+  "ap_code": "GYY",
+  "ap_description": "OSWV",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0006"
+  ],
+  "sample_description": "UPDATE ADMINISTRATIVE OFFICE AND PAYMENT OFFICE"
+ },
+ {
+  "ap_code": "GHR",
+  "ap_description": "LW MAN-TRANSP RADIO DIR FND SYS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "ELECTRONIC COUNTERMEASURES, COUNTER-COUNTERMEASURES AND QUICK REACTION CAPABILITY EQUIPMENT"
+ },
+ {
+  "ap_code": "N18",
+  "ap_description": "DADS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "HDTRA1"
+  ],
+  "sample_description": "BASE PERIOD (12 MONTH PERIOD)"
+ },
+ {
+  "ap_code": "M85",
+  "ap_description": "BSM",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00039",
+   "NS07"
+  ],
+  "sample_description": "NAVY ERP IMPLEMENTATION AND SUSTAINMENT"
+ },
+ {
+  "ap_code": "3GDE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "200303!000005!5700!CZ62  !SMC/PKJ LOS ANGELES AFB         !F0470196C0023  !A!N! !N!P00114             !20021028!20030930!872978978!834951691!834951691!N!LOCKHEED MARTIN CORPORATION   !1111 LOCKHEED MARTIN WAY  !SUNNYVALE           !CA!94089!77000!085!06!SUNNYVALE           !SANTA CLARA           !CALIFORNIA!+000000500000!N!N!000000000000!1820!SPACE VEHICLE COMPONENTS                          !A1A!"
+ },
+ {
+  "ap_code": "2SKM",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0003"
+  ],
+  "sample_description": "200111 NAVAL SEA SYSTEMS COMMAND"
+ },
+ {
+  "ap_code": "M12",
+  "ap_description": "TC-AIMS II (LEGACY)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA9451"
+  ],
+  "sample_description": "CLOSEOUT FILES TRANSPORTATION AND STORAGE"
+ },
+ {
+  "ap_code": "300",
+  "ap_description": "MAVERICK (LASER)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4528"
+  ],
+  "sample_description": "THE PURPOSE OF THIS REQUIREMENT IS TO SUPPLY PORTABLE TOILETS FOR THE GLOBAL THUNDER EXERCISE FOR FY26."
+ },
+ {
+  "ap_code": "2ZDE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0210"
+  ],
+  "sample_description": "CLOSEOUT MODIFICATION FOR CTO 0210 FOR FY02 PROGRAM MANAGEMENT OFFICE"
+ }
+]

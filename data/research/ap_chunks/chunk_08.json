@@ -1,0 +1,460 @@
+[
+ {
+  "ap_code": "643",
+  "ap_description": "NPES RECAP RP",
+  "awards": 1,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2217"
+  ],
+  "sample_description": "SOFTWARE DEVELOPMENT SERVICES FOR THE NUCLEAR PLANNING & EXECUTION SYSTEM RECAPITALIZATION"
+ },
+ {
+  "ap_code": "F58",
+  "ap_description": "MALD-J",
+  "awards": 1,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8520"
+  ],
+  "sample_description": "MALD CLS ORDER"
+ },
+ {
+  "ap_code": "359",
+  "ap_description": "MINUTEMAN II",
+  "awards": 5,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0004",
+   "0005",
+   "FA8204"
+  ],
+  "sample_description": "THE PURPOSE OF THIS EFFORT IS TO PROVIDE ENGINEERING SERVICES."
+ },
+ {
+  "ap_code": "100",
+  "ap_description": "GPALS (SDS)",
+  "awards": 15,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024",
+   "N66604",
+   "S0701A",
+   "SPMYM1",
+   "W519TC",
+   "W911RQ"
+  ],
+  "sample_description": "XTDAS ENGINEERING SERVICES"
+ },
+ {
+  "ap_code": "X34",
+  "ap_description": "ABV",
+  "awards": 2,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRDL1",
+   "W912CH"
+  ],
+  "sample_description": "PROCUREMENT OF 50 EACH SENSOR GIMBAL GS207'S."
+ },
+ {
+  "ap_code": "501",
+  "ap_description": "GCSS-A INC 2",
+  "awards": 2,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC",
+   "W56HZV"
+  ],
+  "sample_description": "THIS MODIFICATION IS AN ADMINISTRATIVE ONLY, TO CORRECT THE PAY OFFICE DODAAC FROM HQ0490 TO HQ0338."
+ },
+ {
+  "ap_code": "2000",
+  "ap_description": null,
+  "awards": 176,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "UPDATE PAY OFFICE TO LOCAL PAY"
+ },
+ {
+  "ap_code": "467",
+  "ap_description": "IPPS-A INC 2",
+  "awards": 5,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "2T02",
+   "W15QKN",
+   "W91CRB"
+  ],
+  "sample_description": "UPDATE THE WIDE AREA WORKFLOW PAYMENT INSTRUCTIONS CLAUSE"
+ },
+ {
+  "ap_code": "AIC",
+  "ap_description": "APACHE (AH-64) ADV ATTACK",
+  "awards": 5,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "DAAH01",
+   "DAAH23"
+  ],
+  "sample_description": "TDA RESEARCH"
+ },
+ {
+  "ap_code": "A01",
+  "ap_description": "CHRS",
+  "awards": 4,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8509",
+   "N00421"
+  ],
+  "sample_description": "THE PALOMAR SCS 3.0 INTEGRATES THE DISTRIBUTION, CONDITIONING AND CONTROL OF DIGITAL AUDIO AND DATA SIGNALS AMONGST AIRCREW MEMBERS, GROUND PERSONNEL AND VARIOUS AIRCRAFT EQUIPMENT OF 2UNIT TYPES: A DIGITAL SWITCHING UNIT AND DIGITAL CREW UNITS."
+ },
+ {
+  "ap_code": "U99",
+  "ap_description": "M200A1",
+  "awards": 8,
+  "obligated_millions": 11,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "UPDATE SHIPPING ADDRESS"
+ },
+ {
+  "ap_code": "331",
+  "ap_description": "ALAM",
+  "awards": 2,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8534"
+  ],
+  "sample_description": "CARGO NETS"
+ },
+ {
+  "ap_code": "143",
+  "ap_description": "ROLAND",
+  "awards": 2,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "PRODUCTION SPECIFICATION REVIEW"
+ },
+ {
+  "ap_code": "171",
+  "ap_description": "JTIDS (NAVY)",
+  "awards": 3,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0010",
+   "N00014",
+   "N00039"
+  ],
+  "sample_description": "OGF::OT::IGF"
+ },
+ {
+  "ap_code": "B72",
+  "ap_description": "SENTINEL A3",
+  "awards": 2,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4613",
+   "FA8219"
+  ],
+  "sample_description": "PROVIDE TEMPORARY ENGINEERING SERVICES AT 90TH CIVIL ENGINEER SQUADRON IN SUPPORT OF THE SENTINEL MISSION THROUGHOUT THE SENTINEL BEDDOWN."
+ },
+ {
+  "ap_code": "A07",
+  "ap_description": "EAS",
+  "awards": 8,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2263",
+   "FA8726",
+   "W519TC"
+  ],
+  "sample_description": "TO INCORPORATE INCREMENTAL FUNDING ON OPTION CLINS FOR OFFICE OF THE DEPUTY ASSISTANT SECRETARY OF THE ARMY FOR PROCUREMENT (DASA(P)) FOR INTELLIGENT AUTOMATION TECHNICAL SUPPORT SERVICES (IATSS)"
+ },
+ {
+  "ap_code": "F98",
+  "ap_description": "B-2 CVR",
+  "awards": 3,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8735"
+  ],
+  "sample_description": "VLF STRATCOM KGR-72"
+ },
+ {
+  "ap_code": "724",
+  "ap_description": "TMC",
+  "awards": 9,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA3002",
+   "SPE7M4",
+   "W31P4Q"
+  ],
+  "sample_description": "TWO HUNDRED AND THIRTY-TWO (232) 34-IN CURVED MONITORS, AND SIX (6) 49-IN CURVED MONITORS FOR THE HQ AIR FORCE RECRUITING SERVICE (AFRS), JBSA RANDOLPH TEXAS AND AIR NATIONAL GUARD (ANG)."
+ },
+ {
+  "ap_code": "768",
+  "ap_description": "EW-RFCM",
+  "awards": 1,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8523"
+  ],
+  "sample_description": "ALQ-172"
+ },
+ {
+  "ap_code": "438",
+  "ap_description": "SPACE FENCE INC 1",
+  "awards": 4,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8709",
+   "FA8807",
+   "FA8808"
+  ],
+  "sample_description": "TERMINATE BY MUTUAL AGREEMENT OF THE PARTIES"
+ },
+ {
+  "ap_code": "W9B",
+  "ap_description": "LSM",
+  "awards": 2,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "TECHNICAL DATA PACKAGE"
+ },
+ {
+  "ap_code": "330",
+  "ap_description": "AESA",
+  "awards": 20,
+  "obligated_millions": 10,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0010",
+   "0017",
+   "0024",
+   "0036",
+   "0047",
+   "0048"
+  ],
+  "sample_description": "UPDATING PAYMENT OFFICE TO CLEAR CDR CN35863"
+ },
+ {
+  "ap_code": "W57",
+  "ap_description": "FEAMS",
+  "awards": 2,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "FUNCTIONAL EXECUTIVE AGENT MEDICAL SUPPORT (FEAMS) SOFTWARE DEVELOPMENT AND SUSTAINMENT"
+ },
+ {
+  "ap_code": "286",
+  "ap_description": "RMS",
+  "awards": 5,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0016",
+   "0019",
+   "0021",
+   "N00104",
+   "W56HZV"
+  ],
+  "sample_description": "THIS ACTION CHANGES THE DELIVERY DATE FOR CLIN 3001AA, REMOVES CLIN 3001AA NARRATIVES E001 AND E002, ADDS CLIN 3001AA NARRATIVE F001 AND CHANGES THE SHIPPING ADDRESS."
+ },
+ {
+  "ap_code": "NT7",
+  "ap_description": "DML-ES",
+  "awards": 2,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W81K04"
+  ],
+  "sample_description": "US ARMY MEDICAL MATERIEL AGENCY (USAMMA), FORCE PROJECTION DIRECTORATE (FPD) REQUIREMENTS- MEDICAL LOGISTICS SUPPORT SERVICES"
+ },
+ {
+  "ap_code": "152",
+  "ap_description": "TACFIRE",
+  "awards": 4,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA5000",
+   "S0701A"
+  ],
+  "sample_description": "SUPPLY CONTRACTS AND PRICED ORDERS"
+ },
+ {
+  "ap_code": "512",
+  "ap_description": "ACWS",
+  "awards": 90,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0004",
+   "W31P4Q",
+   "W50S78",
+   "W50S85",
+   "W50S9D"
+  ],
+  "sample_description": "WILLIAM H. HARSHA LAKE BRIDGE FALL PROTECTION INSTALLATION."
+ },
+ {
+  "ap_code": "U71",
+  "ap_description": "FMS",
+  "awards": 3,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N3596A",
+   "W56HZV",
+   "W909MY"
+  ],
+  "sample_description": "SHIP TO ADDRESS CHANGE."
+ },
+ {
+  "ap_code": "M87",
+  "ap_description": "ILS-S",
+  "awards": 1,
+  "obligated_millions": 9,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "THIS IS THE LOSING CONTRACT IN A GFP TRANSFER OF 1 ITEM"
+ },
+ {
+  "ap_code": "948",
+  "ap_description": "AVENGER (FAADS LOS-R)",
+  "awards": 3,
+  "obligated_millions": 8,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRRA2",
+   "W31P4Q"
+  ],
+  "sample_description": "UNLIQUIDATED OBLIGATION (ULO)"
+ }
+]

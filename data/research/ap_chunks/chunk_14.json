@@ -1,0 +1,403 @@
+[
+ {
+  "ap_code": "M49",
+  "ap_description": "DTS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "NW02"
+  ],
+  "sample_description": "DTS SUPPORT SERVICES FOR OFFICE OF COMPTROLLER, NPS MONTEREY"
+ },
+ {
+  "ap_code": "V52",
+  "ap_description": "F-16 MMC/PDG",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8222"
+  ],
+  "sample_description": "THIS REQUIREMENT IS TO PROVIDE THE F-16 BLOCK 40 AND BLOCK 50 PROGRAM WITH ANNUAL SUPPORT FOR GREENHILLS LICENSES. THE GREENHILLS LICENSES ALLOW FOR THE PROGRAMS MODULAR MISSION COMPUTER(MMC) TO CAPTURE, ANALYZE, AND STORE FLIGHT DATA."
+ },
+ {
+  "ap_code": "SKM",
+  "ap_description": "RESCUE AND SALVAGE SHIP",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200208!022821!1700!BZ006 !NAVAL SEA SYSTEMS COMMAND       !N0002402C6202  !A!N! !N!                   !20020517!20070517!844741178!844741178!055147490!N!OCEANEERING INTERNATIONAL, INC!804 INDUSTRIAL AVE, SUITE !CHESAPEAKE          !VA!23324!16000!550!51!CHESAPEAKE          !CHESAPEAKE (CITY)     !VIRGINIA  !+000000300000!N!N!000000000000!2090!MISCELLANEOUS SHIP AND MARINE EQUIPMENT           !A3 !"
+ },
+ {
+  "ap_code": "397",
+  "ap_description": "E-2C",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRPA1"
+  ],
+  "sample_description": "TORQUE TUBE ASSEMBL"
+ },
+ {
+  "ap_code": "2CPK",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "200306!000001!1700!AT722 !NAVAL AIR SYSTEMS COMMAND       !N0001902C3116  !A!N! !N!P00001             !20020916!20050228!008391203!008255408!016435559!N!NORTHROP GRUMMAN SYSTEMS CORPO!17066 GOLDENTOP ROAD      !SAN DIEGO           !CA!92127!59416!073!06!RANCHO BERNARDO     !SAN DIEGO             !CALIFORNIA!+000000679660!N!N!000000000000!AC23!RDTE/MISSILE AND SPACE SYSTEMS-ADV TECH DEV       !A2 !"
+ },
+ {
+  "ap_code": "291",
+  "ap_description": "AF DCGS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Information Systems Agency"
+  ],
+  "office_prefixes": [
+   "HC1013"
+  ],
+  "sample_description": "RXCO000186EBM NIPRNET SERVICE AT 1GB"
+ },
+ {
+  "ap_code": "963",
+  "ap_description": "NMD",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8726",
+   "N00164"
+  ],
+  "sample_description": "LITHIUM OXYHALIDE"
+ },
+ {
+  "ap_code": "917",
+  "ap_description": "F-16 ADTE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8212"
+  ],
+  "sample_description": "PROCURE F-16 CIRCUIT CARD ASSYS"
+ },
+ {
+  "ap_code": "3GAE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0016"
+  ],
+  "sample_description": "NA"
+ },
+ {
+  "ap_code": "909",
+  "ap_description": "CAV AF",
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2521",
+   "FA4528"
+  ],
+  "sample_description": "THIS IS A NON-PERSONAL SERVICE CONTRACT TO SUPPORT THE MUSIC COMPONENT OF THE CATHOLIC COMMUNITY WORSHIP. THE CATHOLIC MUSIC PROGRAM WILL ENCOMPASS THE NEEDS OF THE RESPECTIVE CONGREGATIONS AND CHOIRS OF THE SEASIDE CHAPEL ON PATRICK SFB AND THE SOUT"
+ },
+ {
+  "ap_code": "313",
+  "ap_description": "A-7D",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "DEOBLIGATION OF FUNDS"
+ },
+ {
+  "ap_code": "CNT",
+  "ap_description": "MLRS - MULTIPLE LAUNCH ROCKET SYS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "MULTIPLE LAUNCH ROCKET SYSTEM (MLRS) FAMILY OF MUNITIONS (MFOM) COMMON TEST DEVICE (MCTD) AND TRAINER"
+ },
+ {
+  "ap_code": "GHT",
+  "ap_description": "AN/ALR-67 COUNT WARNING SYSTEM",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAB07"
+  ],
+  "sample_description": "NOVATION"
+ },
+ {
+  "ap_code": "N04",
+  "ap_description": "ISPAN BK 1",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0004"
+  ],
+  "sample_description": "SOFTWARE"
+ },
+ {
+  "ap_code": "2HDK",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199711!1700!1253!BZ004!NAVAL SEA SYSTEMS COMMAND       !N0002494C4015  !A!*!P00017             !19961114!19970930!053837365!053837365!001367960!N!07842!GENERAL ELECTRIC COMPANY INC  !1400 COMPUTER DR          !WESTBOROUGH         !MA!01581!15000!061!39!CINCINNATI          !HAMILTON              !OHIO      !0001!+000001149000!N!N!000000000000!AC36!RDTE/SHIPS-MANAGEMENT SUPPORT                     !"
+ },
+ {
+  "ap_code": "3CMD",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001"
+  ],
+  "sample_description": "SP"
+ },
+ {
+  "ap_code": "GDE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "BILATERAL MODIFICATION ISSUED PURSUANT TO FAR 42.302(B)(65) TO ADMINISTRATIVELY CLOSE THIS CONTRACT.  MODIFICATION WAS ISSUED TO REALLOCATE WIP LINES INTO CONTROL LINES AND ZERO OUT REMAINING ULO ($14,464,232.00).  AS AGREED TO BY DCMA, LMSSC, AND SMC, THE FINAL AMOUNT PAID TO THE CONTRACTOR IS $806,028,170.96.  THE CONTRACTOR WAS PAID IN FULL AND NO FURTHER BILLINGS ARE FORTHCOMING.  ALL CONTRACT"
+ },
+ {
+  "ap_code": "K25",
+  "ap_description": "CRS-H",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "COMMON ROBOTICS SYSTEM - HEAVY (CRS-H). TASK ORDER TO FUND REFURBISHMENT EVALUATION OF TWO TEST SYSTEMS."
+ },
+ {
+  "ap_code": "123",
+  "ap_description": "F-14D",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC"
+  ],
+  "sample_description": "CALENDAR YEAR (CY) 2025 DEER CONTROL AND WILDLIFE PLANTINGS AT THE IOWA ARMY AMMUNITION PLANT (IAAAP)"
+ },
+ {
+  "ap_code": "498",
+  "ap_description": "ICBM FUZE MOD",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8206"
+  ],
+  "sample_description": "NSN: 5340-01-266-1066 NB BRACKET,DOUBLEANGLE CABLE CLAMP POSITIONING CLIP FOR THE MINUTEMAN III"
+ },
+ {
+  "ap_code": "A48",
+  "ap_description": "M777",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "SIGHT, BORE, MUZZLE"
+ },
+ {
+  "ap_code": "610",
+  "ap_description": "FAB-T FET",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2293"
+  ],
+  "sample_description": "THE PURPOSE OF THIS DELIVERY ORDER (DO) IS TO IDENTIFY OPPORTUNITIES TO REDUCE RISK AND SHORTEN SCHEDULE IN THE FAB-T FET PRODUCTION CONTRACT."
+ },
+ {
+  "ap_code": "ET9",
+  "ap_description": "CCS-C",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2543"
+  ],
+  "sample_description": "THIS REQUIREMENT IS FOR PHYSICAL HARDWARE FOR THE INSTALLATION OF 19 JWICS CONSOLES TO THE MISSION CONTROL STATION (MCS)."
+ },
+ {
+  "ap_code": "568",
+  "ap_description": "SMART-T",
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0005",
+   "0011",
+   "0038"
+  ],
+  "sample_description": "TO DE-OBLIGATE FUNDS IN THE AMOUNT OF $207,398.00 FROM THE FOLLOWING: 0026AH, 0027AJ, 0028AF, 0029AC, 0030AD AND 0030AE FOR A TOTAL DEOB OF ($207,398.00)"
+ },
+ {
+  "ap_code": "W76",
+  "ap_description": "ECWCS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4407"
+  ],
+  "sample_description": "SFS INITIAL GEAR ISSUE"
+ },
+ {
+  "ap_code": "4CAA",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DASG60"
+  ],
+  "sample_description": "SV"
+ },
+ {
+  "ap_code": "N58",
+  "ap_description": "FIRES",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4610",
+   "FA4625",
+   "FA4819",
+   "FA5613"
+  ],
+  "sample_description": "PURCHAS OF A 1000 GALLON FOAM RESUPPLY TRAILER."
+ },
+ {
+  "ap_code": "Y97",
+  "ap_description": "REMIS",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8770"
+  ],
+  "sample_description": "TECH REFRESH MONITORS"
+ },
+ {
+  "ap_code": "N01",
+  "ap_description": "GIG BE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "RS30"
+  ],
+  "sample_description": "JTEP SYSTEM SUSTAINMENT TASK ORDER"
+ },
+ {
+  "ap_code": "W55",
+  "ap_description": "PBES",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8770"
+  ],
+  "sample_description": "PBES SI RED HAT ENTERPRISE LINUX (RHEL) LICENSES"
+ }
+]

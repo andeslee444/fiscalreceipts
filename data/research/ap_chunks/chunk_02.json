@@ -1,0 +1,563 @@
+[
+ {
+  "ap_code": "150",
+  "ap_description": "STINGER",
+  "awards": 10,
+  "obligated_millions": 1916,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "S0305A",
+   "W31P4Q"
+  ],
+  "sample_description": "UPDATE THE DELIVERY SCHEDULE FOR CLIN 0010AA DUE TO THE ARM SWITCH FAILURE."
+ },
+ {
+  "ap_code": "278",
+  "ap_description": "CH-47F",
+  "awards": 279,
+  "obligated_millions": 1915,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WHEEL, LANDING GEAR NSN: 1630-01-290-3442 MFR PART NUMBER: 9543362-2"
+ },
+ {
+  "ap_code": "386",
+  "ap_description": "G/ATOR",
+  "awards": 9,
+  "obligated_millions": 1914,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0006",
+   "M67854",
+   "N61340",
+   "W56KGZ"
+  ],
+  "sample_description": "UPDATE THE PERFORMANCE BASED SCHEDULE ATTACHMENT IN THE CONTRACT."
+ },
+ {
+  "ap_code": "252",
+  "ap_description": "RQ-4A/B GLOBAL HAWK",
+  "awards": 76,
+  "obligated_millions": 1758,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WEATHER RADAR, EXERCISE OPTION"
+ },
+ {
+  "ap_code": "523",
+  "ap_description": "MROI",
+  "awards": 91,
+  "obligated_millions": 1680,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "FA2860",
+   "FA4686",
+   "FA5710",
+   "FA8121",
+   "FA8125"
+  ],
+  "sample_description": "WEEKLY UPDATE TO ATTACHMENT 16/17 REFLECTING ALL AUTHORIZED GROWTH WORK."
+ },
+ {
+  "ap_code": "277",
+  "ap_description": "AWACS BLK 40/45 UPGRADE",
+  "awards": 133,
+  "obligated_millions": 1626,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0014",
+   "0016",
+   "0017",
+   "0102",
+   "0103",
+   "0105"
+  ],
+  "sample_description": "XILINX FIELD PROGRAMMABLE GATE ARRAYS (FPGAS)"
+ },
+ {
+  "ap_code": "121",
+  "ap_description": "EPS",
+  "awards": 19,
+  "obligated_millions": 1585,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0005",
+   "FA8808",
+   "FA8811",
+   "FA8823"
+  ],
+  "sample_description": "V CORPS AND INCREMENTAL FUNDING."
+ },
+ {
+  "ap_code": "460",
+  "ap_description": "ABRAMS MOD",
+  "awards": 16,
+  "obligated_millions": 1564,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "W56HZV-21-D-0001 W56HZV-23-F-0005 P00005 INCORPORATES 90B PBP PLAN, UPDATES SECTION B, SECTION F, SECTION G AND SECTION J TO SUPPORT REPRIORITIZATION EFFORTS AND THE PCO LETTER 24-003 GDLS & USG AGREEMENT."
+ },
+ {
+  "ap_code": "576",
+  "ap_description": "MK21A REENTRY VEHICLE",
+  "awards": 3,
+  "obligated_millions": 1472,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8204",
+   "FA8219"
+  ],
+  "sample_description": "UNILATERAL MODIFICATION TO REALLOCATE SECTION H FUNDING AND ADD SECTION J DOCUMENTS: SECTION H CLAUSES AND SECTION J INDEX. THIS MODIFICATION WILL NOT RESULT IN AN INCREASE TO MK21A EMD CONTRACT VALUE."
+ },
+ {
+  "ap_code": "582",
+  "ap_description": "CEC",
+  "awards": 26,
+  "obligated_millions": 1470,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0007",
+   "L602"
+  ],
+  "sample_description": "XILINX VIRTEX-II PRO FPGA IC"
+ },
+ {
+  "ap_code": "326",
+  "ap_description": "WGS",
+  "awards": 19,
+  "obligated_millions": 1426,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Information Systems Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0038",
+   "0039",
+   "0047",
+   "0053",
+   "FA8307",
+   "FA8730"
+  ],
+  "sample_description": "XENON ION PROPULSION SYSTEM ORIFICE WELD REWORK REQUEST FOR EQUITABLE ADJUSTMENT"
+ },
+ {
+  "ap_code": "384",
+  "ap_description": "AMDR",
+  "awards": 41,
+  "obligated_millions": 1424,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0013"
+  ],
+  "sample_description": "US MARINE REPLACEMENT RADAR"
+ },
+ {
+  "ap_code": "562",
+  "ap_description": "MH-139A",
+  "awards": 5,
+  "obligated_millions": 1415,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA6800",
+   "FA8739",
+   "W58RGZ"
+  ],
+  "sample_description": "UH1N(R) FUSL ASSET OPTION"
+ },
+ {
+  "ap_code": "850",
+  "ap_description": "XM30 MTA RP",
+  "awards": 2,
+  "obligated_millions": 1372,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "XM30 PHASE III/IV FUNDING ACTION."
+ },
+ {
+  "ap_code": "437",
+  "ap_description": "AH-64E NEW BUILD",
+  "awards": 243,
+  "obligated_millions": 1305,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0006",
+   "0010"
+  ],
+  "sample_description": "VERSION 4 RETROFIT KITS DEFINITIZATION MOD UNDER THE APACHE LOT 3/4 PRODUCTION CONTRACT."
+ },
+ {
+  "ap_code": "ZDE",
+  "ap_description": "DERP",
+  "awards": 873,
+  "obligated_millions": 1252,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "XZ66 DATABASE IMPROVEMENTS FOR MARINE SPECIES IN THE GULF OF ALAS"
+ },
+ {
+  "ap_code": "182",
+  "ap_description": "UH-72 LUH",
+  "awards": 2,
+  "obligated_millions": 1251,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "WIPER MODIFICATION REQUEST FOR DEVIATION"
+ },
+ {
+  "ap_code": "ZSE",
+  "ap_description": "EPA SUPERFUND",
+  "awards": 312,
+  "obligated_millions": 1243,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WVNS 9, 10, 11, 12, 15, 16, 17, 18, & 19"
+ },
+ {
+  "ap_code": "124",
+  "ap_description": "F-15",
+  "awards": 96,
+  "obligated_millions": 1233,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "261",
+  "ap_description": "AEHF",
+  "awards": 11,
+  "obligated_millions": 1231,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2293",
+   "FA8705",
+   "FA8726",
+   "FA8808"
+  ],
+  "sample_description": "UPDATED GOVERNMENT FURNISHED PROPERTY (GFP) LIST"
+ },
+ {
+  "ap_code": "417",
+  "ap_description": "CANES",
+  "awards": 180,
+  "obligated_millions": 1223,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0004",
+   "0005",
+   "0006",
+   "N00039",
+   "N45854"
+  ],
+  "sample_description": "X TB DPX BLOCK LEVEL PROTECTION"
+ },
+ {
+  "ap_code": "368",
+  "ap_description": "AGM-88E AARGM",
+  "awards": 41,
+  "obligated_millions": 1058,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0007",
+   "0009",
+   "0011",
+   "0013"
+  ],
+  "sample_description": "UPDATING THE PERIOD OF PERFORMANCE, DELIVERY ADDRESS, AND TRANSPORTATION PRIORITY 1."
+ },
+ {
+  "ap_code": "349",
+  "ap_description": "WIN-T INC 2",
+  "awards": 121,
+  "obligated_millions": 1050,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0007",
+   "0008",
+   "0010",
+   "0012",
+   "0013",
+   "0021"
+  ],
+  "sample_description": "YEAR 11 CFSR (CONTRACTOR FIELD SUPPORT SERVICES) TO SUPPORT MISSION NETWORK."
+ },
+ {
+  "ap_code": "148",
+  "ap_description": "PAC-3",
+  "awards": 352,
+  "obligated_millions": 951,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "VARIOUS MISSILE SPARES"
+ },
+ {
+  "ap_code": "191",
+  "ap_description": "MH-60R",
+  "awards": 423,
+  "obligated_millions": 942,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YOKE AND HOUSING"
+ },
+ {
+  "ap_code": "586",
+  "ap_description": "ESS",
+  "awards": 9,
+  "obligated_millions": 935,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8807",
+   "FA8808"
+  ],
+  "sample_description": "THIS CONTRACT PROVIDES ADVANCED RESEARCH EFFORTS FOR THE ARCHITECTURAL DESIGN AND TECHNOLOGY READINESS OF GROUND COMMUNICATION CAPABILITIES AND TECHNOLOGY MATURATION CONCEPTS."
+ },
+ {
+  "ap_code": "130",
+  "ap_description": "MLRS",
+  "awards": 31,
+  "obligated_millions": 919,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0016",
+   "0022",
+   "0183",
+   "N63394",
+   "SPRDL1",
+   "SPRRA2"
+  ],
+  "sample_description": "UPDATE GFP LIST"
+ },
+ {
+  "ap_code": "ZRS",
+  "ap_description": "RSA DINING FACILITY",
+  "awards": 1278,
+  "obligated_millions": 919,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WTC RMC MEALS 17NOV-22NOV. 50 BREAKFAST, 40 LUNCH, 50 DINNER MEALS."
+ },
+ {
+  "ap_code": "487",
+  "ap_description": "ITEP",
+  "awards": 3,
+  "obligated_millions": 864,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPE7M1",
+   "W31P4Q",
+   "W58RGZ"
+  ],
+  "sample_description": "THIS COST PLUS FIXED FEE CONTRACT IS FOR THE ENGINEERING AND MANUFACTURING DEVELOPMENT PHASE OF THE IMPROVED TURBINE ENGINE PROGRAM."
+ },
+ {
+  "ap_code": "125",
+  "ap_description": "F-16",
+  "awards": 502,
+  "obligated_millions": 827,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "V9 RADAR REPAIR AND RETURN; OMAN NEW TASK ORDER; LOA: MU-D-QAO/052"
+ }
+]

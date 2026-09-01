@@ -779,9 +779,18 @@ function runCoverageMapLeg(errors, notes) {
         "leg cm[bridge]: the blocker must name account-code coarseness as the reason — that sentence is what makes the gap a methodology limit rather than an excuse",
       );
     }
-    if (!/DARPA/.test(blocker)) {
+    // 2026-09-01: the old expectation here ("must name DARPA as the structure
+    // where account codes DO resolve") enshrined an inaccurate sentence — all
+    // 24 DARPA PEs share one account; sub-agency + adjudicated evidence do the
+    // resolving. Replaced (not dropped) with the hand-adjudication anchors.
+    if (!/hand-adjudicated/i.test(blocker)) {
       errors.push(
-        "leg cm[bridge]: the blocker must name DARPA as the structure where account codes DO resolve — the exception is what makes the rule checkable",
+        "leg cm[bridge]: the blocker must say every published link was hand-adjudicated — the method is what makes the published tiers checkable",
+      );
+    }
+    if (!/adversarial/i.test(blocker)) {
+      errors.push(
+        "leg cm[bridge]: the blocker must name the adversarial review step — high-tier links are only defensible because two independent reviewers failed to refute them",
       );
     }
     if (xw.querySelector("[data-coverage-target]")?.getAttribute("data-target-kind") !== "none") {

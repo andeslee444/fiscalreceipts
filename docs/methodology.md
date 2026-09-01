@@ -1,6 +1,6 @@
 # Methodology
 
-**Last updated:** 2026-06-12
+**Last updated:** 2026-09-01
 
 ---
 
@@ -137,13 +137,34 @@ new one appears unreviewed. The registered name stays visible on every company
 page beneath the heading, because that is the string USAspending answers to.
 
 **Budget-to-contract links.** Connecting a budget program element to the
-contracts that funded it is an inference, not a direct database join. We use
-three tiers. *High*: the award's federal account code matches the budget line's
-appropriation, and program-title keywords overlap substantially between the
-budget document and the contract description. *Medium*: account matches and the
-contracting sub-agency matches the budget organization. *Low*: only the account
-matches. Low-tier links are useful for exploring which contracts drew from a
-given appropriation but are not evidence of a program-to-program connection.
+contracts that funded it is an inference, not a direct database join. As of
+September 2026 every published link was individually hand-adjudicated: each
+award's contract descriptions were investigated against the program's J-book
+narratives and project titles, and every proposed program-level link was then
+challenged by two independent adversarial reviewers — a link publishes as
+high only if neither could refute it. *High*: affirmative program-level
+evidence — the contract names a program the budget line's own J-book pages
+also name, adversarially verified. *Medium*: the award drew from the same
+appropriation account and was awarded by the program's agency; an
+agency-and-account association, not evidence this specific program paid for
+the contract. *Low*: only the account matches — never published. The earlier
+automated high tier (account match plus keyword overlap) measured 9.1%
+precise under this adjudication (37 of 408 confirmed) and was corrected on
+2026-09-01; superseded links are retained in the correction record.
+
+A second evidence path covers major acquisition programs. Some DoD contract
+records carry an FPDS "Program, System, or Equipment" tag naming the
+acquisition program (F-35, Virginia class, Sentinel). We hand-mapped every
+such program (746 in our corpus; 449 mappable) to its J-book budget lines,
+each mapping challenged by the same two-reviewer adversarial process, then
+linked a tagged award to a specific line only when the award's own funding
+accounts match that line's appropriation. *High* means the accounts select
+exactly one verified line; *medium* means the award is program-verified but
+its money spans several of the program's lines. Tagged awards whose funding
+is entirely outside the program's J-book accounts (e.g. O&M sustainment) are
+not linked. The FPDS tag is DoD-entered and sparse (well under 1% of awards,
+concentrated in the largest programs), so absence of a link never means
+absence of spending.
 
 **Derived figures are labeled derived.** Any figure computed from published
 rates or published subtotals — rather than directly reported in a source

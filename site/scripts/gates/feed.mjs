@@ -219,8 +219,14 @@ export async function runFeedGate() {
 // leg (l) — HHI claim vs. destination (backlog #57)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Non-vacuity floor: the shipped corpus holds exactly 84 hhi feed cards. */
-const MIN_HHI_CARDS = 84;
+/**
+ * Non-vacuity floor: the shipped corpus holds exactly 21 hhi feed cards.
+ * Re-measured 2026-09-01 after the hand-adjudication correction shrank the
+ * high-confidence crosswalk (408 → 60 links, 24 → 7 PEs); concentration
+ * cards derive from high-tier links, so the card population shrank with it.
+ * Was 84 before the correction.
+ */
+const MIN_HHI_CARDS = 21;
 
 /**
  * leg l — see this file's top doc-comment for the full rationale. Reads

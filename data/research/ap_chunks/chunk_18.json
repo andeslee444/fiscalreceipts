@@ -1,0 +1,410 @@
+[
+ {
+  "ap_code": "AFX",
+  "ap_description": "F-18 HORNET",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "DEOBLIGATE CANCELLED FUNDS"
+ },
+ {
+  "ap_code": "M07",
+  "ap_description": "TMIP-J INC 2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0064"
+  ],
+  "sample_description": "IGF::OT::IGF NON-PERSONAL SERVICE"
+ },
+ {
+  "ap_code": "12",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPE7M3"
+  ],
+  "sample_description": "8504670669!ELBOW,PIPE"
+ },
+ {
+  "ap_code": "2DBL",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "M67854"
+  ],
+  "sample_description": "199811!1700!0400!F9999!MARINE CORPS SYSTEMS COMMAND    !M6785498C2075  !A!*!*                  !19980708!20030709!085302958!824825459!175406842!N!80212!UNITED DEFENSE                !2830 DE LA CRUZ BLVD      !SANTA CLARA         !CA!95050!01052!095!13!ALBANY              !DOUGHERTY             !GEORGIA   !0001!+000001768241!N!N!000000000000!2350!COMBAT ASSAULT&TACTICAL VEH, TRACKED            !A4"
+ },
+ {
+  "ap_code": "AUJ",
+  "ap_description": "U-2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0002"
+  ],
+  "sample_description": "CONTRACT CLOSEOUT"
+ },
+ {
+  "ap_code": "T66",
+  "ap_description": "FEM",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army",
+   "U.S. Cyber Command"
+  ],
+  "office_prefixes": [
+   "HB0001",
+   "W9124D"
+  ],
+  "sample_description": "VIDEO MAINTENANCE SERVICE"
+ },
+ {
+  "ap_code": "H55",
+  "ap_description": "LGM-30G EEETS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W90VN6"
+  ],
+  "sample_description": "RADIO AND TELEVISION, WIRELESS COMMUNICATION BASE PRODUCT"
+ },
+ {
+  "ap_code": "241",
+  "ap_description": "SSDS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00164",
+   "W15P7T"
+  ],
+  "sample_description": "TO DE-OBLIGATE FUNDS FROM CLIN 0001BC"
+ },
+ {
+  "ap_code": "K82",
+  "ap_description": "MES-H2F",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N68171"
+  ],
+  "sample_description": "IFAKS- CNIC"
+ },
+ {
+  "ap_code": "M98",
+  "ap_description": "PKI",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4705"
+  ],
+  "sample_description": "TO DE-OBLIGATE FUNDS IN THE AMOUNT OF $8,716.00"
+ },
+ {
+  "ap_code": "208",
+  "ap_description": "HHD-60",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "4005",
+   "4060"
+  ],
+  "sample_description": "MH-60R/S SOFTWARE SUPPORT ACTIVITY CAPABILITY DEFECT PACKAGE"
+ },
+ {
+  "ap_code": "AVQ",
+  "ap_description": "V22 VERTICAL LIFT AIRCRAFT",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0002",
+   "N00019"
+  ],
+  "sample_description": "SUPPLY CONTRACTS AND PRICED ORDERS"
+ },
+ {
+  "ap_code": "GHL",
+  "ap_description": "AIRBORNE RECON LOW (ARL)",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAB07",
+   "DAAH01"
+  ],
+  "sample_description": "PURCHASE OF ONE IMPROVED GNAT (I-GNAT) UNMANNED AIRCRAFT SYSTEM WHICH CONSISTS OF THREE PROTOTYPE IGNAT AIR VEHICLES WITH PAYLOADS, SYSTEM RELIABILITY, SPARE PARTS, LOGISTICS SUPPORT AND FLIGHT OPERATOR PERSONNEL."
+ },
+ {
+  "ap_code": "M16",
+  "ap_description": "SPS",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N44852",
+   "W9124C",
+   "W9124P"
+  ],
+  "sample_description": "UAC RATIFICATION FOR THE 282ND BUS TRANSPORTATION"
+ },
+ {
+  "ap_code": "2CLB",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "3CAA",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0003",
+   "F04701",
+   "F29601"
+  ],
+  "sample_description": "CLOSEOUT"
+ },
+ {
+  "ap_code": "254",
+  "ap_description": "COMANCHE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "REPAIR OF CIRCUIT CARD ASSEMBLY FOR TAIWAN FMS"
+ },
+ {
+  "ap_code": "381",
+  "ap_description": "ASDS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0004"
+  ],
+  "sample_description": "NDAA MOD"
+ },
+ {
+  "ap_code": "AAK",
+  "ap_description": "A-10",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "QPC2"
+  ],
+  "sample_description": "200312!000250!5700!GE35  !OO-ALC/PKC/LCK                  !F0460698D0002  !A!N! !N!QPC2               !20030929!20060201!002232973!002232973!834951691!N!LOCKHEED MARTIN CORPORATION   !1801 STATE RT 17C         !OWEGO               !NY!13827!55882!107!36!OWEGO               !TIOGA                 !NEW YORK  !+000010461385!N!N!000000000000!R414!SYSTEMS ENGINEERING SERVICES                      !A1C!"
+ },
+ {
+  "ap_code": "2CMG",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "200312!000028!1700!AT722 !NAVAL AIR SYSTEMS COMMAND       !N0001903C0042  !A!N! !N!                   !20030930!20050831!008391203!008255408!016435559!N!NORTHROP GRUMMAN SYSTEMS CORPO!17066 GOLDENTOP ROAD      !SAN DIEGO           !CA!92127!59416!073!06!RANCHO BERNARDO     !SAN DIEGO             !CALIFORNIA!+000001355225!N!N!000002546647!1550!DRONES                                            !A2 !"
+ },
+ {
+  "ap_code": "2FTL",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "CLOSEOUT OF IRRECONCILABLE CONTRACT UNDER NDAA CLOSEOUT AUTHORITY, ISSUED AS A CLASS DEVIATION 5/4/18"
+ },
+ {
+  "ap_code": "C93",
+  "ap_description": "PHOENIX (SHF TERM)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4407"
+  ],
+  "sample_description": "JWICS DESKTOPS"
+ },
+ {
+  "ap_code": "0AS",
+  "ap_description": "C-32  SLC3S",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPMYM2",
+   "SPMYM4"
+  ],
+  "sample_description": "SCREW,CAP,SOCKET HE"
+ },
+ {
+  "ap_code": "141",
+  "ap_description": "NATO PHM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Threat Reduction Agency"
+  ],
+  "office_prefixes": [
+   "0006"
+  ],
+  "sample_description": "BUDGET AND FINANCE SUPPORT SERVICES"
+ },
+ {
+  "ap_code": "511",
+  "ap_description": "SLAT (AQM-127A)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15QKN"
+  ],
+  "sample_description": "CONTRACT CLOSEOUT"
+ },
+ {
+  "ap_code": "543",
+  "ap_description": "CSSCS (ATCCS)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "COMPRESSOR,RECIPROC"
+ },
+ {
+  "ap_code": "Z72",
+  "ap_description": "VCE",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15QKN"
+  ],
+  "sample_description": "THE PURPOSE OF CONTRACT W52P1J-20-D-0051, DELIVERY ORDER W15QKN23F0544 IS TO PROCURE RED HAT RENEWALS AND MAINTENANCE LICENSE RENEWALS IN SUPPORT TO THE VIRTUAL CONTRACTING ENTERPRISE."
+ },
+ {
+  "ap_code": "3ZOP",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0013",
+   "0040",
+   "0204"
+  ],
+  "sample_description": "UTILITY SYSTEM REPAIRS AT NIAGARA FALLS ARS, NEW YORK AND GRISSOM ARB,  INDIANA"
+ },
+ {
+  "ap_code": "3GBN",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0012"
+  ],
+  "sample_description": "FUNDING ACTION ONLY."
+ },
+ {
+  "ap_code": "2CMP",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200203!020243!1700!BZ005 !NAVAL SEA SYSTEMS COMMAND       !N0002402C5319  !A!N! !N!                   !20011221!20040930!794598573!794598573!001339159!N!RAYTHEON SYSTEMS CO           !1151 E HERMANS RD         !TUCSON              !AZ!85706!77000!019!04!TUCSON              !PIMA                  !ARIZONA   !+000000911111!N!N!000258674573!1410!GUIDED MISSILES                                   !A2 !"
+ }
+]

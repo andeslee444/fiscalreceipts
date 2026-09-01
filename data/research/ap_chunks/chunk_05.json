@@ -1,0 +1,477 @@
+[
+ {
+  "ap_code": "282",
+  "ap_description": "MH-60S",
+  "awards": 130,
+  "obligated_millions": 93,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WHEEL ASSEMBLY"
+ },
+ {
+  "ap_code": "414",
+  "ap_description": "CVN-68",
+  "awards": 2,
+  "obligated_millions": 92,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "TO PROCURE HARDWARE AND SERVICES IN SUPPORT OF UNITED STATES GOVERNMENT AND FOREIGN MILITARY SALES."
+ },
+ {
+  "ap_code": "574",
+  "ap_description": "B-52 RMP",
+  "awards": 6,
+  "obligated_millions": 87,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8107",
+   "FA8628",
+   "FA8640"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "369",
+  "ap_description": "AOC-WS",
+  "awards": 59,
+  "obligated_millions": 86,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0004",
+   "0032",
+   "0037",
+   "FA8612"
+  ],
+  "sample_description": "WITHIN SCOPE MODIFICATION TO INCORPORATE REVISED WORK PLAN. WORK PLAN DETAILS GOVERNMENT REQUESTED CHANGES TO THE ORIGINAL PROGRAMMING STANDARDS DELIVERABLE."
+ },
+ {
+  "ap_code": "357",
+  "ap_description": "LAIRCM",
+  "awards": 3,
+  "obligated_millions": 86,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8638"
+  ],
+  "sample_description": "LARGE AIRCRAFT INFRARED COUNTERMEASURES INDIA 777 PHASE II"
+ },
+ {
+  "ap_code": "367",
+  "ap_description": "HIMARS",
+  "awards": 7,
+  "obligated_millions": 85,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W31P4Q",
+   "W9124P"
+  ],
+  "sample_description": "W31P4Q-14-C-0136 IS A SERVICE CONTRACT PROVIDING MAINTENANCE ON THE TEST LAUNCHER FLEET.  P00019 IS EXECUTED TO CLEAN UP ADMIN ERRORS ON P00018."
+ },
+ {
+  "ap_code": "456",
+  "ap_description": "OCX",
+  "awards": 1,
+  "obligated_millions": 83,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "SUBMARINE HARDWARE AND ENGINEERING EFFORT"
+ },
+ {
+  "ap_code": "515",
+  "ap_description": "EFV (AAAV)",
+  "awards": 12,
+  "obligated_millions": 82,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0036",
+   "M67854"
+  ],
+  "sample_description": "SUPPORT EMD 9"
+ },
+ {
+  "ap_code": "276",
+  "ap_description": "E-2C REPRODUCTION",
+  "awards": 25,
+  "obligated_millions": 76,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0010",
+   "0012",
+   "0017",
+   "0022",
+   "0029"
+  ],
+  "sample_description": "USB ENTR KITS (FY12)"
+ },
+ {
+  "ap_code": "308",
+  "ap_description": "TOW",
+  "awards": 9,
+  "obligated_millions": 75,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0013",
+   "0014",
+   "0015",
+   "SPRRA2",
+   "W31P4Q"
+  ],
+  "sample_description": "TUBE-LAUNCHED, OPTICALLY-TRACKED, WIRELESS-GUIDED (TOW) ENGINEERING SERVICES (ES) IDIQ"
+ },
+ {
+  "ap_code": "527",
+  "ap_description": "MOP",
+  "awards": 32,
+  "obligated_millions": 74,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8681",
+   "W56HZV"
+  ],
+  "sample_description": "VALVE COUPLINGS"
+ },
+ {
+  "ap_code": "522",
+  "ap_description": "ISPAN INC 5",
+  "awards": 29,
+  "obligated_millions": 70,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Office of the Inspector General"
+  ],
+  "office_prefixes": [
+   "FA2217",
+   "FA8730",
+   "HF1026"
+  ],
+  "sample_description": "SONATYPE NEXUS DISCONNECTED ENVIRONMENT HEALTH CHECK PACK"
+ },
+ {
+  "ap_code": "168",
+  "ap_description": "B1-B",
+  "awards": 39,
+  "obligated_millions": 66,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0013"
+  ],
+  "sample_description": "TRANSMITTER,RATE OF"
+ },
+ {
+  "ap_code": "601",
+  "ap_description": "BRADLEY UPGRADE",
+  "awards": 3,
+  "obligated_millions": 66,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "W56HZV"
+  ],
+  "sample_description": "VARIOUS ADMINISTRATIVE ACTIONS"
+ },
+ {
+  "ap_code": "484",
+  "ap_description": "MASPO",
+  "awards": 24,
+  "obligated_millions": 65,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "THIS ACQUISITION BY CARGO INTERNATIONAL PROGRAM OFFICE IS FOR THE PURCHASE OF TWO 412 EXP AIRCRAFT FOR NEPAL."
+ },
+ {
+  "ap_code": "F22",
+  "ap_description": "B-1 ADTS",
+  "awards": 1,
+  "obligated_millions": 64,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8611"
+  ],
+  "sample_description": "F22 TECHNOLOGY ENABLER RAPTOR EVRIRONMENT FOR CLOUD COMPUTE SERVICES II"
+ },
+ {
+  "ap_code": "D88",
+  "ap_description": "GLOBAL ASNT INC 1",
+  "awards": 1,
+  "obligated_millions": 64,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8735"
+  ],
+  "sample_description": "ORDER FOR THE PROCUREMENT OF INTERIM CONTRACTOR SUPPORT TO PROVIDE LOGISTICS SUPPORT FOR A NUCLEAR COMMAND, CONTROL AND COMMUNICATIONS INTEGRATION SYSTEM."
+ },
+ {
+  "ap_code": "N12",
+  "ap_description": "GCSS-MC LCM INC 1",
+  "awards": 23,
+  "obligated_millions": 64,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0085",
+   "M67854",
+   "MU13",
+   "MUT1"
+  ],
+  "sample_description": "TRAVEL AND OTHER DIRECT COSTS"
+ },
+ {
+  "ap_code": "T15",
+  "ap_description": "RIG-360",
+  "awards": 2,
+  "obligated_millions": 64,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W31P4Q"
+  ],
+  "sample_description": "TO FOR PARTIALLY-FUNDED UCA CONTRACT W31P4Q-25-D-0020 TO FUND FOT&E EXECUTION AND POST-PROCESSING AND YEAR 1&2 ABS KIT-AIRBOURNE SENSOR."
+ },
+ {
+  "ap_code": "783",
+  "ap_description": "C130 MODS RP",
+  "awards": 4,
+  "obligated_millions": 62,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8509",
+   "FA8625"
+  ],
+  "sample_description": "UNITED STATES AIR FORCE C-130J LARGE AIRCRAFT INFRARED COUNTERMEASURES BLOCK 20 TO 30 GROUP A KIT NON-RECURRING ENGINEERING AND TRIAL KIT INSTALLATION - OVER & ABOVE PROCEDURES WILL BE NEGOTIATED AND AN OVER & ABOVE CLIN ADDED"
+ },
+ {
+  "ap_code": "316",
+  "ap_description": "F-5E",
+  "awards": 5,
+  "obligated_millions": 61,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "UN01",
+   "Z501",
+   "Z502",
+   "Z503",
+   "Z504"
+  ],
+  "sample_description": "IGF::OT::IGF F-5 DEPOT MAINTENANCE - FIRM-FIXED-PRICE, COST-PLUS-FIXED-FEE, COST REIMBURSEMENT, INDEFINITE-DELIVERY, INDEFINITE-QUANTITY CONTRACT FOR THE DEPOT MAINTENANCE SERVICES OF 44 NAVY AND MARINE CORPS RESERVE F-5N/F AIRCRAFT.  THE SERVICES WILL INCLUDE DEPOT LEVEL MAINTENANCE, AIRCRAFT INSPECTIONS, REPAIRS, OVERHAULS, EMERGENCY REPAIRS, MODIFICATIONS, ENGINEERING SUPPORT, AND PROCUREMENT O"
+ },
+ {
+  "ap_code": "307",
+  "ap_description": "HAWK IMPROVED",
+  "awards": 30,
+  "obligated_millions": 58,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0006",
+   "0007",
+   "0008",
+   "0009",
+   "0010",
+   "0011"
+  ],
+  "sample_description": "WAREHOUSE MANAGEMENT SUPPORT FOR THE HAWK PROGRAM OFFICE."
+ },
+ {
+  "ap_code": "WBN",
+  "ap_description": "MRC MTA RP",
+  "awards": 2,
+  "obligated_millions": 57,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W31P4Q"
+  ],
+  "sample_description": "THE CONTRACTOR SHALL PROVIDE THE CAPABILITIES, SERVICES, MATERIALS, FACILITIES, AND PERSONNEL NECESSARY TO SUPPORT MID-RANGE CAPABILITY (MRC) FOR TALISMAN SABER 2025 (TS25) TEST EVENT."
+ },
+ {
+  "ap_code": "193",
+  "ap_description": "SCOUT",
+  "awards": 11,
+  "obligated_millions": 53,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0055",
+   "0057",
+   "0058",
+   "0059",
+   "0118"
+  ],
+  "sample_description": "TO PROVIDE STORAGE SUPPORT AND LABOR FOR THE ASH PO."
+ },
+ {
+  "ap_code": "108",
+  "ap_description": "LASER HELLFIRE",
+  "awards": 6,
+  "obligated_millions": 52,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRRA2",
+   "W31P4Q"
+  ],
+  "sample_description": "ULO EXCESS FUNDS"
+ },
+ {
+  "ap_code": "V14",
+  "ap_description": "C-17 RHUD",
+  "awards": 1,
+  "obligated_millions": 51,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8557"
+  ],
+  "sample_description": "THE CONTRACTOR SHALL PROCURE AND DELIVER RHUD KIT MATERIAL AND SPARES TO RETROFIT AND SUSTAIN C-17 UNITED STATES AIR FORCE (USAF) AND FOREIGN MILITARY SALES (FMS)AIRCRAFT."
+ },
+ {
+  "ap_code": "87C",
+  "ap_description": "ARMY IGNITED",
+  "awards": 18,
+  "obligated_millions": 50,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC",
+   "W58RGZ",
+   "W912CH",
+   "W91QF4"
+  ],
+  "sample_description": "YEAR 6 ORDERING DO"
+ },
+ {
+  "ap_code": "J29",
+  "ap_description": "MK19",
+  "awards": 5,
+  "obligated_millions": 49,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15QKN"
+  ],
+  "sample_description": "UPDATE COMMODITY NAME FOR CLIN 0006AD, CLIN 0006AE"
+ },
+ {
+  "ap_code": "W38",
+  "ap_description": "C-17 BLOS 1",
+  "awards": 2,
+  "obligated_millions": 48,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8557"
+  ],
+  "sample_description": "C-177GLOBEMASTER BEYOND LINE OF SITE (BLOS) RETROFIT KITS MATERIALS"
+ },
+ {
+  "ap_code": "N08",
+  "ap_description": "NAVY ERP",
+  "awards": 173,
+  "obligated_millions": 46,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "EH01",
+   "EH02",
+   "N00039",
+   "N00104",
+   "N00167",
+   "N00189"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ }
+]

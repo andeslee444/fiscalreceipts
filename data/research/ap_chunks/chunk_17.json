@@ -1,0 +1,422 @@
+[
+ {
+  "ap_code": "578",
+  "ap_description": "NAVY AREA TBMD",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N402"
+  ],
+  "sample_description": "TO N00178-05-D-4167-N402"
+ },
+ {
+  "ap_code": "3BSG",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "SD03"
+  ],
+  "sample_description": "DEOB"
+ },
+ {
+  "ap_code": "Y85",
+  "ap_description": "M119",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRDL1",
+   "W519TC"
+  ],
+  "sample_description": "THE RIA JMTC M119 BUFFER PROGRAM REQUIREMENT FOR STEEL BAR ROUND 4340 IS 504 TOTAL FEET, AND STEEL BAR ROUND 4140 IS 74 TOTAL FEET."
+ },
+ {
+  "ap_code": "AHL",
+  "ap_description": "HH-53 SUPER JOLLY",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0022"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "M01",
+  "ap_description": "GCCS-J",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "EX02"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "D10",
+  "ap_description": "CIDS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA7014"
+  ],
+  "sample_description": "A3/A3OD TOTAL INTEGRATION MOBILIZATION EXECUTION SYSTEM (TIMES) AGILE SOFTWARE DEVELOPMENT COMMERCIAL PROFESSIONAL SERVICES"
+ },
+ {
+  "ap_code": "2GST",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200112!018653!1700!BZ006 !NAVAL SEA SYSTEMS COMMAND       !N0002401C6237  !A!N!*!N!                   !20010928!20031231!019710586!019710586!834951691!N!LOCKHEED MARTIN CORPORATION   !9500 GOODWIN DR           !MANASSAS            !VA!20110!48952!683!51!MANASSAS            !MANASSAS (CITY)       !VIRGINIA  !+000003604723!N!N!000000000000!AJ25!RDTE/MATH&COMPUTER SCIENCES - ENG/MANUF DEVEL   !A7 !EL"
+ },
+ {
+  "ap_code": "1AHK",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0021"
+  ],
+  "sample_description": "200010!2100!003464!AB07  !USA COMMUNICATIONS-ELECTRONICS  !DAAB0700DE252  !A!*!0021               !20000707!20000919!043991108!009581091!009581091!N!52939!COMPUTER SCIENCES CORPORATION !3160 FAIRVIEW PARK DRIVE  !FALLS CHURCH        !VA!22042!27200!610!51!FALLS CHURCH        !FALLS CHURCH (CITY)   !VIRGINIA  !0001!+000000249856!N!N!000000000000!R406!POLICY REVIEW/DEVELOPMENT SERVICES              "
+ },
+ {
+  "ap_code": "761",
+  "ap_description": "HFAJ",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0014"
+  ],
+  "sample_description": "IGF::CL::IGF    DE-OBLIGATION OF EXCESS FUNDS."
+ },
+ {
+  "ap_code": "355",
+  "ap_description": "JAGM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W911N2"
+  ],
+  "sample_description": "AIR FORCE AND NAVY 3006046-2 CABLE ASSEMBLY (W-17) PROGRAM PARTS TO TEST AND REPROGRAM RAYTHEON AIR INTERCEPT MISSILE-120 ADVANCED MEDIUM-RANGE AIR-TO-AIR MISSILE DURING IN-CONTAINER OPERATIONS, IN SUPPORT OF THE CURRENT W-17 CABLE PROGRAM AT LEAD."
+ },
+ {
+  "ap_code": "1DKE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAE07"
+  ],
+  "sample_description": "200212!003801!2100!AE07  !TACOM - WARREN                  !DAAE0702CT016  !A!N! !N!                   !20020919!20041230!040901068!040901068!824825459!N!UNITED DEFENSE LP             !1805 COLEMAN RD           !ANNISTON            !AL!36207!87048!133!42!YORK                !YORK                  !PENN      !+000001705017!N!N!000000000000!2530!VEHICULAR BRAKE, STEERING, AXLE WHEEL COMP        !A4A!"
+ },
+ {
+  "ap_code": "3BJD",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F41608"
+  ],
+  "sample_description": "199709!5700!0689!GF40 !SAN ANTONIO ALC/LPK             !F4160893C0856  !A!*!P00014             !19970624!19961230!804754141!804754141!210908687!N!63005!ALLISON ENGINE COMPANY INC    !2001 S TIBBS AVE          !INDIANAPOLIS        !IN!46241!36000!097!18!INDIANAPOLIS        !MARION                !INDIANA   !0001!+000000084042!Y!N!000000000000!R407!PROGRAM EVALUATION SERVICES                       !"
+ },
+ {
+  "ap_code": "R53",
+  "ap_description": "MTRS INC II",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "MAN TRANSPORTABLE ROBOTIC SYSTEM INCREMENT II (MTRS INC II) DELIVERY ORDER W912CH-24-F-0296 OF CONTRACT W56HZV-17-D-0063 IS TO AND FUND PRODUCTION MTRS, BII & ASL."
+ },
+ {
+  "ap_code": "1F3",
+  "ap_description": "OGFP",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N62789"
+  ],
+  "sample_description": "OXYGEN EQUIPMENT CLEANING SERVICES."
+ },
+ {
+  "ap_code": "320",
+  "ap_description": "AR/LSB",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00421"
+  ],
+  "sample_description": "TESTRAULICS LOAD FRAME FOR ORGANIZATION 4.3.2 FY: 2025, AMS: N00421-25-SIMACQ-432000A-0020"
+ },
+ {
+  "ap_code": "255",
+  "ap_description": "MSE",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0003",
+   "BR01",
+   "W91QV1"
+  ],
+  "sample_description": "WIRELESS SERVICES"
+ },
+ {
+  "ap_code": "782",
+  "ap_description": "B-52 OAS/CMI MODS",
+  "awards": 8,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0006",
+   "0009",
+   "FA8117",
+   "FA8119",
+   "FA8122"
+  ],
+  "sample_description": "REPAIR OF CONTROLLER MOTOR FOR THE B-52 AIRCRAFT."
+ },
+ {
+  "ap_code": "297",
+  "ap_description": "HAEUAV",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0051",
+   "0112"
+  ],
+  "sample_description": "MQ-9, AIRBORNE SIGNALS INTELLIGENCE PAYLOAD PHASE II"
+ },
+ {
+  "ap_code": "2CMB",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "200308!000015!1700!AA423 !NAVAL AIR SYSTEMS COMMAND       !N0001901C0008  !A!N! !Y!P00003             !20010412!20021030!794598573!794598573!001339159!N!RAYTHEON COMPANY              !1151 EAST HERMANS ROAD    !TUCSON              !AZ!85706!77000!019!04!TUCSON              !PIMA                  !ARIZONA   !+000003530967!Y!N!000000000000!J014!MAINT&REPAIR OF EQ/GUIDED MISSILES              !A2 !MI"
+ },
+ {
+  "ap_code": "1CPJ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "199904!2100!0082!AH01 !USA AVIATION AND MISSILE COMMAND!DAAH0199C0003  !A!*!*                  !19981102!19991031!008324949!004179453!004179453!N!0J198!TRW INC                       !1 SPACE PARK BLVD         !REDONDO BEACH       !CA!90278!11530!037!06!CARSON              !LOS ANGELES           !CALIFORNIA!0001!+000000900000!N!N!000000000000!1550!DRONES                                            !"
+ },
+ {
+  "ap_code": "358",
+  "ap_description": "SBR",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "FA8820"
+  ],
+  "sample_description": "200511!000021!5700!FA8820!SMC/SBK                         !FA882005C0003  !A!N! !Y!             !      !20050920!20060824!047939504!047939504!047939504!N!INTEGRITY APPLICATIONS INCORPO!5180 PARKSTONE DR, SUITE 2!CHANTILLY           !VA!20151!14744!059!51!CHANTILLY           !FAIRFAX               !VIRGINIA  !+000000405971!N!N!000007080610!R425!ENGINEERING TECHNICAL SERVICES                    !A2 "
+ },
+ {
+  "ap_code": "5000",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "CF02",
+   "DACW01",
+   "DACW38"
+  ],
+  "sample_description": "THIS MODIFICATION REDUCES FUNDING TO ACCOMMODATE CONTRACT CLOSEOUT."
+ },
+ {
+  "ap_code": "2AAC",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0116",
+   "N00019"
+  ],
+  "sample_description": "200307!001863!1700!D910B !NAVAL COMMAND CONTROL & OCEAN SU!N6523601D3818  !A!N! !N!0116               !20030416!20030630!058621996!058621996!001339159!N!RAYTHEON TECHNICAL SERVICES CO!2555 ELLSMERE AVENUE      !NORFOLK             !VA!23513!57000!710!51!NORFOLK             !NORFOLK (CITY)        !VIRGINIA  !+000000099404!N!N!000000000000!J058!MAINT & REPAIR OF EQ/COMMUNICATION EQUIPMENT      !S1 !"
+ },
+ {
+  "ap_code": "3ACD",
+  "ap_description": null,
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0021",
+   "0041",
+   "4008",
+   "F09603"
+  ],
+  "sample_description": "THE BOEING COMPANY            !626 ANCHORS ST  NW        !FORT WALTON BE   FORT WALTON BEACH   OKALOOSA              !FLORIDA ACFT MAINT & REPAIR SHOP SPECIALIZED EQUIP AIRFRAMES AND SPARES          C-130 HERCULES"
+ },
+ {
+  "ap_code": "3ABK",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0006"
+  ],
+  "sample_description": "199812!5700!0061!GU22 !ASC/YSK                         !F3365797D0012  !A!*!0006               !19980828!19981012!065390122!008255408!008255408!N!1W025!NORTHROP GRUMMAN CORPORATION  !8900 WASHINGTON BLVD      !PICO RIVERA         !CA!90660!56924!037!06!PICO RIVERA         !LOS ANGELES           !CALIFORNIA!0001!+000044500000!N!N!000000000000!1510!AIRCRAFT FIXED WING                               !"
+ },
+ {
+  "ap_code": "2AHV",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019",
+   "N00164"
+  ],
+  "sample_description": "200204!T00278!1700!BW17A !NAVAL SURFACE WARFARE CENTER    !N0016402C0008  !A!N! !N!                   !20011023!20060930!016556495!008898884!008898843!N!L-3 COMMUNICATIONS CORPORATION!15825 ROXFORD ST          !SYLMAR              !CA!91342!77546!037!06!SYLMAR              !LOS ANGELES           !CALIFORNIA!+000005214470!N!N!000009900000!5895!MISCELLANEOUS COMMUNICATION EQUIPMENT             !A7 !"
+ },
+ {
+  "ap_code": "AEB",
+  "ap_description": "E-2 HAWKEYE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "199809!1700!0683!AA412!NAVAL AIR SYSTEMS COMMAND       !N0001997C0147  !A!*!*                  !19980511!20020430!944747195!008255408!008255408!N!26512!NORTHROP GRUMMAN CORPORATION  !S OYSTER BAY RD           !BETHPAGE            !NY!11714!06387!059!36!BETHPAGE            !NASSAU                !NEW YORK  !0001!+000049535000!N!N!000000000000!1510!AIRCRAFT FIXED WING                               !"
+ },
+ {
+  "ap_code": "153",
+  "ap_description": "AN/SQQ-89",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "GT20",
+   "N00024",
+   "N63394"
+  ],
+  "sample_description": "REDUCE CONTRACT QUANTITY BY 2 EACH  HELICOPTER ROTOR BLADES, DRIVE MECHANISMS AND COMPONENTS"
+ },
+ {
+  "ap_code": "L8U",
+  "ap_description": "CCS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2521"
+  ],
+  "sample_description": "SURFACE PRO TABLETS AND ACCESSORIES"
+ },
+ {
+  "ap_code": "310",
+  "ap_description": "CONDOR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "PERIOD OF PERFORMANCE EXTENSION IN SECTION F TO ITEMS 0001BC AND 0001CE."
+ }
+]

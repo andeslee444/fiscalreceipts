@@ -49,6 +49,13 @@ EXPORTS: dict[str, str] = {
         " recipient_name, recipient_uei, matched_obligation, method, confidence,"
         " score, rationale from budget_line_awards"
     ),
+    "award_adjudications": (
+        # hand-adjudication overlay (migration 010) — the mart coalesces
+        # adjudicated_confidence over the mechanical crosswalk confidence
+        "select award_piid, pe_bli, adjudicated_confidence, award_verdict,"
+        " pair_reason, basis, evidence, refuter_lenses_passed, method,"
+        " adjudicated_at from award_pe_adjudications"
+    ),
     "documents": (
         # rel_path relativizes the machine-specific absolute file_path
         "select id, org, exhibit_family, fiscal_year, title, source_url, sha256,"

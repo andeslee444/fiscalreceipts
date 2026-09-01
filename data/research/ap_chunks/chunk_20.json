@@ -1,0 +1,414 @@
+[
+ {
+  "ap_code": "133",
+  "ap_description": "HARPOON",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO TRANSFER GFP."
+ },
+ {
+  "ap_code": "112",
+  "ap_description": "AN/TTC-39",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRRA1"
+  ],
+  "sample_description": "CLUTCH ASSEMBLY,CEN"
+ },
+ {
+  "ap_code": "544",
+  "ap_description": "PCTE",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N63407"
+  ],
+  "sample_description": "LARGE HIGH SECURITY SHREDDER ABLE TO TAKE IN 500-1000 SHEETS OF PAPER."
+ },
+ {
+  "ap_code": "86L",
+  "ap_description": "130G HEAVY GRADER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8203"
+  ],
+  "sample_description": "FLANGE, COMPANION, C-130, NSN 1680-01-678-0514 LE"
+ },
+ {
+  "ap_code": "USR",
+  "ap_description": "CMFF MCI - RP",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15P7T"
+  ],
+  "sample_description": "SEVERAL MAGICDRAW CAMEO ENTERPRISE SOFTWARE LICENSES FOR THE ARMY ARCADIE TEAM PURCHASED BY PDM CMFF VIA CHESS."
+ },
+ {
+  "ap_code": "1DAF",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAE07"
+  ],
+  "sample_description": "199902!2100!0077!AE07 !USA TANK-AUTOMOTIVE&ARMAMENTS !DAAE0798CM005  !A!*!*                  !19981014!20031231!557414000!007932783!007932783!N!0FW39!STEWART&STEVENSON SERVICES, !5000 INTERSTATE 10 W      !SEALY               !TX!77474!66464!015!48!SEALY               !AUSTIN                !TEXAS     !0001!+000027046877!N!N!000000000000!2320!TRUCKS AND TRUCK TRACTORS, WHEELED                !A4B!"
+ },
+ {
+  "ap_code": "461",
+  "ap_description": "LX(R)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N55236"
+  ],
+  "sample_description": "LHA/LHD C420 USS AMERICA (LHA-6) FY19 EM SSSD-HM&E-19-0138 NEW WORK"
+ },
+ {
+  "ap_code": "415",
+  "ap_description": "CVN-69",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "4T01",
+   "4T02",
+   "4T06",
+   "4T13",
+   "4T26",
+   "4T73"
+  ],
+  "sample_description": "STE MANPOWER"
+ },
+ {
+  "ap_code": "3ABH",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003"
+  ],
+  "sample_description": "ELECTRICAL AND ELECTRONIC ASSEMBLIES, BOARDS, CARDS, AND ASSOCIATED HARDWARE"
+ },
+ {
+  "ap_code": "2AFE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N68520"
+  ],
+  "sample_description": "199708!1700!8303!AM653!NAVAL AIR SYSTEMS COMMAND       !N6852095C0038  !A!*!P00036             !19970503!19970930!006265946!006265946!009256819!N!53855!MCDONNELL DOUGLAS CORPORATION !LAMBERT ST LOUIS AIRPORT  !SAINT LOUIS         !MO!63103!65000!510!29!ST. LOUIS           !ST. LOUIS (CITY)      !MISSOURI  !0001!+000000270778!N!N!000000000000!J015!MAINT&REPAIR OF EQ/AIRCRAFT STRUCTURAL COMPS    !A1"
+ },
+ {
+  "ap_code": "ACC",
+  "ap_description": "C-3",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0006"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "3GFK",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "200411!000007!5700!CZ62  !SMC/PKJ LOS ANGELES AFB         !F0470192C0049  !A!N! !N!             !P00345!20031031!20040601!872978978!834951691!834951691!N!LOCKHEED MARTIN CORPORATION   !1111 LOCKHEED MARTIN WAY  !SUNNYVALE           !CA!94089!77000!085!06!SUNNYVALE           !SANTA CLARA           !CALIFORNIA!+000003540541!N!N!000000000000!1810!SPACE VEHICLES                                    !A2 "
+ },
+ {
+  "ap_code": "2CNY",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "200210!001778!1700!AT711 !NAVAL AIR SYSTEMS COMMAND       !N0001993C0045  !A!N! !N!P00070             !20010718!20020718!794598573!794598573!001339159!N!RAYTHEON SYSTEMS CO           !1151 E HERMANS RD         !TUCSON              !AZ!85706!77000!019!04!TUCSON              !PIMA                  !ARIZONA   !-000000076172!N!N!000000000000!J014!MAINT&REPAIR OF EQ/GUIDED MISSILES              !A2 !MI"
+ },
+ {
+  "ap_code": "BSR",
+  "ap_description": "F-100",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F34601"
+  ],
+  "sample_description": "DEOB"
+ },
+ {
+  "ap_code": "709",
+  "ap_description": "TE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "U.S. Special Operations Command"
+  ],
+  "office_prefixes": [
+   "H92239"
+  ],
+  "sample_description": "TARGET REPLACEMENT PARTS"
+ },
+ {
+  "ap_code": "ACS",
+  "ap_description": "C-141 STARLIFTER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0025"
+  ],
+  "sample_description": "FUNDING ACTION ONLY."
+ },
+ {
+  "ap_code": "3BJL",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0007"
+  ],
+  "sample_description": "200209!001097!5700!GD60  !OKLAHOMA CITY ALC/LPD           !F3365799D2050  !A!N! !N!0007               !20020301!20031231!137488664!137488664!001367960!N!GENERAL ELECTRIC COMPANY INC  !1 NEUMANN WAY             !CINCINNATI          !OH!45215!15000!061!39!CINCINNATI          !HAMILTON              !OHIO      !+000003095000!N!N!000000000000!2840!GAS TURBINES AND JET ENGINES, ACFT & COMPS        !A1C!"
+ },
+ {
+  "ap_code": "802",
+  "ap_description": "MRAP RF",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRDL1"
+  ],
+  "sample_description": "NAME:  SHIPPING AND STORAGE CONTAINERS NSN:  8145-01-658-2695 QTY:  12 W/100% OPTION"
+ },
+ {
+  "ap_code": "C86",
+  "ap_description": "ARMS SUP V7.0",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8771"
+  ],
+  "sample_description": "THE ARMS PMO FUNCTIONALITY CONTRIBUTES SIGNIFICANTLY TO THE HAF/A30 MISSION AND RELIES ON THE EMBEDDED TIBCO JASPERSOFT AD HOC REPORTING TOOL SOFTWARE AND SUPPORT TO ACCOMPLISH THAT FUNCTIONALITY."
+ },
+ {
+  "ap_code": "667",
+  "ap_description": "NGFWH",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8606"
+  ],
+  "sample_description": "NGFWH WINDBLAST TESTING"
+ },
+ {
+  "ap_code": "227",
+  "ap_description": "OTH-B RADAR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8217"
+  ],
+  "sample_description": "IGF::OT::IGF SERVICE - FMS CONTRACTOR TECHNICAL SUPPORT SERVICES FOR TPS AND FPS RADARS FOR ROYAL JORDANIAN AIR FORCE (RJAF)."
+ },
+ {
+  "ap_code": "1AHA",
+  "ap_description": null,
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0015",
+   "0016",
+   "0017",
+   "DAAH23",
+   "N61339"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO TRANSFER PURCHASING OFFICE RESPONSIBILITY FROM W15P7T(ACC-APG DIVISION B) TO W56JSR(ACC-APG DIVISION E)."
+ },
+ {
+  "ap_code": "GRU",
+  "ap_description": "SINCGARS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0008",
+   "DAAB07"
+  ],
+  "sample_description": "FINAL VOUCHER IN THE AMOUNT OF $301,680.60 ON PWD 1G1M10181G."
+ },
+ {
+  "ap_code": "2CPE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "PROPERTY TRANSFER"
+ },
+ {
+  "ap_code": "A10",
+  "ap_description": "VBOT",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00383",
+   "N62841"
+  ],
+  "sample_description": "RELOCATION OF OFFICE FURNITURE FROM TRAILERS FOR ORGANIZATION SPP-NAVAL ORDNANCE TEST UNIT FY: 2026, AMS: N62841-26-SIMACQ-SPP-0001"
+ },
+ {
+  "ap_code": "C65",
+  "ap_description": "ATP-MP",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8540"
+  ],
+  "sample_description": "24 POD REPAIR TEARDOWN AND EVALUATIONS"
+ },
+ {
+  "ap_code": "N30",
+  "ap_description": "TDC",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8307",
+   "FA8726"
+  ],
+  "sample_description": "REDCOM 2501- TDC FY25 SOFTWARE RENEWAL"
+ },
+ {
+  "ap_code": "A86",
+  "ap_description": "FORCE PROVIDER",
+  "awards": 14,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W911N2",
+   "W9124P"
+  ],
+  "sample_description": "THE UNITED STATES GOVERNMENT (USG), ACTING ON BEHALF OF THE KINGDOM OF MOROCCO, REQUIRES A SUPPORT SERVICE CONTRACT FOR PROGRAM MANAGEMENT REVIEW #6 THAT IS SCHEDULED TO TAKE PLACE FROM AUGUST 4, 2025, TO AUGUST 8, 2025, IN ORLANDO, FLORIDA."
+ },
+ {
+  "ap_code": "573",
+  "ap_description": "MLV III",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91QVN"
+  ],
+  "sample_description": "NTV PARTS"
+ },
+ {
+  "ap_code": "2DBK",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0034",
+   "0035",
+   "0041"
+  ],
+  "sample_description": "200309!000295!1700!F9999 !MARINE CORPS SYSTEMS COMMAND    !M6785498D0079  !A!N! !Y!0041               !20030127!20030930!083070925!065262573!043271568!N!EG&G TECHNICAL SERVICES, INC  !900 CLOPPER ROAD          !GAITHERSBURG        !MD!20878!87312!153!51!WOODBRIDGE          !PRINCE WILLIAM        !VIRGINIA  !+000000088193!N!N!000000000000!R425!ENGINEERING TECHNICAL SERVICES                    !S1 !"
+ }
+]

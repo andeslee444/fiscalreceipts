@@ -1,0 +1,453 @@
+[
+ {
+  "ap_code": "L24",
+  "ap_description": "TH-1H HUEY II MOD",
+  "awards": 2,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8552"
+  ],
+  "sample_description": "TO INDUCT AIRCRAFT #70-16451 FOR PROGRAM DEPOT MAINTENANCE"
+ },
+ {
+  "ap_code": "N11",
+  "ap_description": "CCIC2S",
+  "awards": 1,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M67854"
+  ],
+  "sample_description": "IGF::OT::IGF CAC2S DEVELOPMENTAL SYSTEM."
+ },
+ {
+  "ap_code": "346",
+  "ap_description": "WIN-T INC 1",
+  "awards": 11,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRBL1",
+   "W15P7T"
+  ],
+  "sample_description": "TRAVEL CEILING INCREASE"
+ },
+ {
+  "ap_code": "4EB",
+  "ap_description": "AVIATION",
+  "awards": 9,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ",
+   "W911S0",
+   "W9124P"
+  ],
+  "sample_description": "THE UHPO HAS A REQUIREMENT TO PURCHASE DELL LATITUDE 7350 TABLETS TO UPDATE OFFICE IT EQUIPMENT."
+ },
+ {
+  "ap_code": "A60",
+  "ap_description": "40MM HEAB",
+  "awards": 3,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00104",
+   "N00164"
+  ],
+  "sample_description": "MJU-77/B"
+ },
+ {
+  "ap_code": "616",
+  "ap_description": "C-SUAS PHASE 0 RF",
+  "awards": 1,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2381"
+  ],
+  "sample_description": "UPDATE EW SYSTEM BLOCK 1 AT FIVE (5) OUTSIDE OF THE CONTINENTAL UNITED STATES (OCONUS) LOCATIONS."
+ },
+ {
+  "ap_code": "5R0",
+  "ap_description": "ISV",
+  "awards": 9,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "THIS PROCUREMENT OF ONE AUTHORIZED STOCKAGE LIST (ASL) TO SUPPORT THE FIELDING AT FT LIBERTY NC."
+ },
+ {
+  "ap_code": "DUZ",
+  "ap_description": "DSS",
+  "awards": 2,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "CLOTHING AND TEXTILE (C&T) RECRUIT TRAINING CENTER (RTC) SUSTAINMENT SUPPORT"
+ },
+ {
+  "ap_code": "529",
+  "ap_description": "AAG",
+  "awards": 5,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0004",
+   "FA5422",
+   "N00019",
+   "N68335"
+  ],
+  "sample_description": "UPDATE SECTION J"
+ },
+ {
+  "ap_code": "433",
+  "ap_description": "KC-130J",
+  "awards": 11,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0418",
+   "0501",
+   "0567",
+   "4Y04",
+   "N00421"
+  ],
+  "sample_description": "TRANSDUCER, ULTRASONIC TEST IGF::OT::IGF"
+ },
+ {
+  "ap_code": "284",
+  "ap_description": "JTN",
+  "awards": 34,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0004",
+   "0005",
+   "0006",
+   "FA5209",
+   "FA8709"
+  ],
+  "sample_description": "TRANSFERRING PURCHASING OFFICE RESPONSIBILITY FROM W56JSR (ARMY CONTRACTING COMMAND - ABERDEEN PROVING GROUND DIVISION E) TO W56KGY (ARMY CONTRACTING COMMAND - ABERDEEN PROVING GROUND DIVISION C)."
+ },
+ {
+  "ap_code": "CHA",
+  "ap_description": "VSECK",
+  "awards": 2,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "THIS IS A MODIFICATION TO REVISE THE DELIVERY ORDER DATE FOR CLIN 0022AA ON DELIVERY ORDER FOR VERTICAL SKILLS ENGINEERING CONSTRUCTION KITS (VSECK)."
+ },
+ {
+  "ap_code": "N39",
+  "ap_description": "SPACE C2",
+  "awards": 2,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8819",
+   "W9124P"
+  ],
+  "sample_description": "THE PROGRAM EXECUTIVE OFFICE, MISSILES AND SPACE (PEO MS) OFFICE OF THE CHIEF INFORMATION OFFICER (OCIO) HAS A REQUIREMENT TO PURCHASE DELL POWEREDGE SERVERS AND SWITCH FOR THE IFMC PROJECT OFFICE."
+ },
+ {
+  "ap_code": "W14",
+  "ap_description": "U-2 AIRCRAFT BLK 20.1",
+  "awards": 1,
+  "obligated_millions": 4,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8528"
+  ],
+  "sample_description": "U-2 AIRFRAME FORECASTING DASHBOARD A.I. TOOL"
+ },
+ {
+  "ap_code": "444",
+  "ap_description": "SSBN 826",
+  "awards": 3,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00167",
+   "N64498",
+   "N66001"
+  ],
+  "sample_description": "TRACKING OSCILLATOR CLOCK MODULE RM"
+ },
+ {
+  "ap_code": "102",
+  "ap_description": "A-10",
+  "awards": 42,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0006",
+   "0007",
+   "0008"
+  ],
+  "sample_description": "THUNDERBOLT LIFECYCLE PROGRAM SUPPORT (TLPS).  THIS CONTRACT WILL PROVIDE FOR THE TESTING, INTEGRATION, AND DELIVERY OF 154 PARKING BRAKE KITS FOR THE AIR FORCE RESERVE AND AIR NATIONAL GUARD."
+ },
+ {
+  "ap_code": "216",
+  "ap_description": "LCAC",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N69316"
+  ],
+  "sample_description": "LCAC 100 CLASS POST-DELIVERY SUPPORT - HMR 001 FSR DELIVERY ORDER"
+ },
+ {
+  "ap_code": "483",
+  "ap_description": "GCSS-J INC 8",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M67854"
+  ],
+  "sample_description": "ORACLE ENGINEERED HARDWARE - XADATA STACK"
+ },
+ {
+  "ap_code": "132",
+  "ap_description": "HARM (AIR FORCE)",
+  "awards": 8,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "2027",
+   "FA8520"
+  ],
+  "sample_description": "WIFI SERVICES FOR EBW"
+ },
+ {
+  "ap_code": "X00",
+  "ap_description": "C-130J LAIRCM - BLOCK 30",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8504"
+  ],
+  "sample_description": "LAIRCM C-130H BLOCK 30"
+ },
+ {
+  "ap_code": "D29",
+  "ap_description": "E2FDS",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "EARLY ENTRY FLUID DISTRIBUTION SYSTEM (E2FDS) DELIVERY ORDER W912CH-25-F-0231 UNDER CONTRACT W56HZV-17-D-0008 TO FUND TEST ASSET REPLACEMENT CLINS."
+ },
+ {
+  "ap_code": "600",
+  "ap_description": "DEOS",
+  "awards": 9,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of Defense Education Activity",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "HE1254",
+   "N63082",
+   "N68335",
+   "W912BU"
+  ],
+  "sample_description": "THREAT RADAR BOT PROTECTION SERVICES"
+ },
+ {
+  "ap_code": "258",
+  "ap_description": "SSN 21 / AN/BSY-2",
+  "awards": 13,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0005",
+   "0029",
+   "0030",
+   "0044",
+   "0063",
+   "0068"
+  ],
+  "sample_description": "USN TI-22 PRODUCTION, SURGE & SPARES"
+ },
+ {
+  "ap_code": "EI5",
+  "ap_description": "EMILPO",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00189"
+  ],
+  "sample_description": "NIPO SNPO PROGRAM MANAGEMENT"
+ },
+ {
+  "ap_code": "7Y3",
+  "ap_description": "FLIS",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "LCDS FLIS LEGACY SUSTAINMENT"
+ },
+ {
+  "ap_code": "C88",
+  "ap_description": "GSAK",
+  "awards": 1,
+  "obligated_millions": 3,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION WAS TO PROVIDE ADDITIONAL SERVICENOW LICENSES"
+ },
+ {
+  "ap_code": "H32",
+  "ap_description": "CALSETS",
+  "awards": 7,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W9124P"
+  ],
+  "sample_description": "USATA HAS A REQUIREMENT TO PROCURE ONE (1) TORQUE GUN CALIBRATOR"
+ },
+ {
+  "ap_code": "481",
+  "ap_description": "ISPAN INC 4",
+  "awards": 7,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2217",
+   "FA8730"
+  ],
+  "sample_description": "INTERNET SERVICE"
+ },
+ {
+  "ap_code": "395",
+  "ap_description": "HISTORICAL MQ-9 REAPER",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M00318"
+  ],
+  "sample_description": "CHASE PLANE SERVICES - RIMPAC"
+ },
+ {
+  "ap_code": "S01",
+  "ap_description": "AGM-86B INE",
+  "awards": 4,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA7014",
+   "N00014",
+   "W911YP",
+   "W912PB"
+  ],
+  "sample_description": "VOLUMETRIC AIR DEPLOYABLE ACTIVE RECEIVER (VADAR) RISK REDUCTION AND INTEGRATION"
+ }
+]

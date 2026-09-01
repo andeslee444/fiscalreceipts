@@ -30,7 +30,10 @@ const jsonDir = path.resolve(siteRoot, "..", "data", "site", "json");
 const EXPECTED_DISTRICTS = 106;
 const SAMPLE_SIZE = 10;
 const TOL_DOLLARS = 0.01;
-const MIN_DISTRICTS_RESOLVED = 100;
+// Re-measured 2026-09-01 after the hand-adjudication correction: 41 districts
+// carry transactions on adjudicated-high-linked awards (was 106 mechanical).
+// Verified against fct_award_transactions ⋈ fct_budget_to_awards at load time.
+const MIN_DISTRICTS_RESOLVED = 41;
 
 /** Spawn the python recompute helper over the shipped parquet (#51 leg e). */
 function recomputeDistrictTotals() {

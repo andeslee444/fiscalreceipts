@@ -516,21 +516,13 @@ export default function MethodologyPage() {
               because a badge that never varies tells the reader nothing.
             </p>
             <p className="mt-2">
-              <strong>The tier grades the grouping, never the name.</strong>{" "}
-              A family&rsquo;s label is the registered parent name of whichever
-              member holds the most money — an argmax that knows nothing about
-              how close the runner-up was, or about which registration the
-              registrant still uses. 15 of the 200 families we publish carry a
-              label that beat its runner-up by under 15%. The largest is a
-              family that is 97% Raytheon Company obligations and was titled
-              &ldquo;ROCKWELL COLLINS AUSTRALIA PTY LIMITED&rdquo;: a common
-              registered parent name, high confidence, and wrong — RTX had
-              already reverted that registration. Every family inside that
-              margin now carries a reviewed label from a hand-curated seed,
-              each row recording whether it corrects the name or merely pins
-              the winner, and a build fails if a new one appears unreviewed.
-              The registered name stays on every company page beneath the
-              heading, because that is the string USAspending answers to.
+              <strong>The tier grades the grouping, never the name.</strong> A
+              family&rsquo;s label is the registered parent name of its largest
+              member, chosen by an argmax over obligations: 15 of the 200
+              families we publish carry a label that beat its runner-up by
+              under 15%. Those carry a reviewed label from a curated seed
+              instead, each company page still showing its registered name, and
+              a new one fails the build.
             </p>
           </div>
           <div>
@@ -565,15 +557,42 @@ export default function MethodologyPage() {
             </h3>
             <p>
               Connecting a budget program element to the contracts that funded
-              it is an inference. We use three tiers.{" "}
-              <em>High</em>: the award&apos;s federal account code matches the
-              budget line&apos;s appropriation, and program-title keywords
-              overlap substantially.{" "}
-              <em>Medium</em>: account matches and the contracting sub-agency
-              matches the budget organization.{" "}
-              <em>Low</em>: only the account matches. Low-tier links are useful
-              for exploration but are not evidence of a program-to-program
-              connection.
+              it is an inference. As of September 2026, every published link
+              was individually hand-adjudicated: each award&apos;s contract
+              descriptions were investigated against the program&apos;s J-book
+              narratives and project titles, and every proposed program-level
+              link was then challenged by two independent adversarial reviewers
+              — a link is published as high only if neither could refute it.{" "}
+              <em>High</em>: affirmative program-level evidence — the contract
+              names a program that the budget line&apos;s own J-book pages also
+              name, verified adversarially.{" "}
+              <em>Medium</em>: the award drew from the same appropriation
+              account and was awarded by the program&apos;s agency; this is an
+              agency-and-account association, not evidence that this specific
+              program paid for the contract.{" "}
+              <em>Low</em>: only the account matches — never published. Our
+              earlier automated high tier (account match plus keyword overlap)
+              measured 9.1% precise under this adjudication (37 of 408 links
+              confirmed) and was corrected on 2026-09-01; superseded links are
+              retained in the correction record, not deleted.
+            </p>
+            <p className="mt-2">
+              A second evidence path covers major acquisition programs: some
+              DoD contract records carry an FPDS &ldquo;Program, System, or
+              Equipment&rdquo; tag naming the acquisition program (F-35,
+              Virginia class, Sentinel). We hand-mapped every such program to
+              its J-book budget lines — each mapping challenged by the same
+              two-reviewer adversarial process — then linked a tagged award to
+              a specific line only when the award&apos;s own funding accounts
+              match that line&apos;s appropriation. <em>High</em> means the
+              accounts select exactly one verified line; <em>medium</em> means
+              the award is program-verified but its money spans several of the
+              program&apos;s lines. Tagged awards whose funding is entirely
+              outside the program&apos;s J-book accounts (for example O&amp;M
+              sustainment money) are not linked at all. The FPDS tag is
+              DoD-entered and sparse — it appears on well under 1% of awards,
+              concentrated in the largest programs — so absence of a link
+              never means absence of spending.
             </p>
           </div>
           <div>
@@ -680,9 +699,9 @@ export default function MethodologyPage() {
               The follow-the-dollar view draws a budget line&apos;s path to
               specific awards, recipient families, and districts. That link is
               an inference (§4): we render the flow only for the
-              high-confidence crosswalk tier, where the award&apos;s federal
-              account matches the budget line&apos;s appropriation and
-              program-title keywords overlap substantially. Today that covers{" "}
+              high-confidence crosswalk tier — hand-adjudicated links where the
+              contract and the budget line&apos;s own J-book pages name the
+              same program, verified adversarially. Today that covers{" "}
               {formatCount(ftd.numerator ?? 0)} of {formatCount(ftd.denominator ?? 0)} programs, concentrated in
               DARPA lines whose account structure makes matching reliable.
               Program pages outside the crosswalk say so in place of the flow

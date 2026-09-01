@@ -31,6 +31,9 @@ sources:
       - name: jbook_awards
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/budget_line_awards.parquet')"
+      - name: jbook_award_adjudications
+        meta:
+          external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/jbooks/award_adjudications.parquet')"
       - name: entity_xwalk_src
         meta:
           external_location: "read_parquet('{{ env_var('GOVBUDGET_DATA', 'data') }}/parquet/entities/entity_xwalk.parquet')"

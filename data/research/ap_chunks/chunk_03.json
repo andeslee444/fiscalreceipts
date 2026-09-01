@@ -1,0 +1,513 @@
+[
+ {
+  "ap_code": "446",
+  "ap_description": "CIRCM",
+  "awards": 19,
+  "obligated_millions": 726,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "THAZ",
+   "W56KGU",
+   "W58RGZ"
+  ],
+  "sample_description": "UPDATE TO B-KIT UNIT PRICING PER UPDATED IDIQ ATTACHMENT 0005"
+ },
+ {
+  "ap_code": "J56",
+  "ap_description": "COMMUNICATIONS MODERNIZATION PHASE I",
+  "awards": 10,
+  "obligated_millions": 686,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2398",
+   "W15P7T"
+  ],
+  "sample_description": "UPDATE TOBYHANNA DODAAC ON FULL RATE PRODUCTION 4"
+ },
+ {
+  "ap_code": "280",
+  "ap_description": "JAVELIN",
+  "awards": 9,
+  "obligated_millions": 665,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00019",
+   "W31P4Q"
+  ],
+  "sample_description": "WAWF, POINT OF CONTACT CHANGE FOR JAVELIN PRODUCTION CONTRACT, W31P4Q-13-C-0129."
+ },
+ {
+  "ap_code": "199",
+  "ap_description": "FAB-T",
+  "awards": 9,
+  "obligated_millions": 603,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2293",
+   "FA7014",
+   "FA8705",
+   "FA8735",
+   "SPRRA1",
+   "W91CRB"
+  ],
+  "sample_description": "THERMAL ANALYSIS"
+ },
+ {
+  "ap_code": "156",
+  "ap_description": "BLACK HAWK (UH-60A/L)",
+  "awards": 299,
+  "obligated_millions": 598,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WALKING BEAM ASSEMB"
+ },
+ {
+  "ap_code": "766",
+  "ap_description": "JSOW",
+  "awards": 43,
+  "obligated_millions": 568,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0012",
+   "0015",
+   "0024",
+   "0040",
+   "0044",
+   "0064"
+  ],
+  "sample_description": "WIN 10 EFFORT, POP EXTENSION CLIN 0203"
+ },
+ {
+  "ap_code": "393",
+  "ap_description": "3DELRR MTA RP",
+  "awards": 2,
+  "obligated_millions": 555,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "THREE-DIMENSIONAL EXPEDITIONARY LONG-RANGE RADAR SYSTEM"
+ },
+ {
+  "ap_code": "429",
+  "ap_description": "VH-92A",
+  "awards": 67,
+  "obligated_millions": 512,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00019",
+   "N00189",
+   "N00421",
+   "N68335"
+  ],
+  "sample_description": "WAWF CLAUSE FILL-INS"
+ },
+ {
+  "ap_code": "443",
+  "ap_description": "LCS MM",
+  "awards": 6,
+  "obligated_millions": 505,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0003",
+   "N00024",
+   "N00178",
+   "N00421"
+  ],
+  "sample_description": "UPDATE SHIPPING/ ACCEPTANCE DODAAC INFORMATION"
+ },
+ {
+  "ap_code": "545",
+  "ap_description": "ATACMS-BAT",
+  "awards": 2,
+  "obligated_millions": 465,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAH01",
+   "W31P4Q"
+  ],
+  "sample_description": "PROVIDE ENGINEERING SERVICES"
+ },
+ {
+  "ap_code": "A64",
+  "ap_description": "PALADIN",
+  "awards": 5,
+  "obligated_millions": 459,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "SYSTEM TECHNICAL SUPPORT FOR SELF PROPELLED HOWITZER VEHICLES. THIS ACTION SUPPORTS EXTENDED RANGE CANNON ARTILLERY REQUIREMENTS, ESTABLISHING A WORK DIRECTIVE FOR TOWING TIE DOWN AND LIFTING EYES ENHANCEMENTS"
+ },
+ {
+  "ap_code": "E10",
+  "ap_description": "JSM",
+  "awards": 3,
+  "obligated_millions": 451,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8681"
+  ],
+  "sample_description": "NAVSTRIKE GPS RECEIVER"
+ },
+ {
+  "ap_code": "379",
+  "ap_description": "SHILLELAGH MISSILE",
+  "awards": 1,
+  "obligated_millions": 428,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8621"
+  ],
+  "sample_description": "TSSC MOB 1 & 2 DE-OBLIGATION"
+ },
+ {
+  "ap_code": "524",
+  "ap_description": "AWACS RSIP (E-3)",
+  "awards": 30,
+  "obligated_millions": 418,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0021",
+   "0023",
+   "0024",
+   "0026",
+   "0049",
+   "0067"
+  ],
+  "sample_description": "VERSION 4.0 CONFIGURATION."
+ },
+ {
+  "ap_code": "418",
+  "ap_description": "IDECM",
+  "awards": 17,
+  "obligated_millions": 390,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Threat Reduction Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0035",
+   "8Z01",
+   "FA4661",
+   "FA8307",
+   "N00019",
+   "N00164"
+  ],
+  "sample_description": "UPDATE SOW TO RELEASE PAYMENT WITHHOLD AND EXTEND DATA CLINS 0005 AND 0105"
+ },
+ {
+  "ap_code": "205",
+  "ap_description": "IAMD",
+  "awards": 54,
+  "obligated_millions": 375,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0004",
+   "0005",
+   "FA8730",
+   "HQ0034",
+   "HQ0147"
+  ],
+  "sample_description": "WARRANTY EXTENSION COVID GAT DELAY"
+ },
+ {
+  "ap_code": "472",
+  "ap_description": "ACV FOV",
+  "awards": 41,
+  "obligated_millions": 374,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M67854",
+   "W911N2"
+  ],
+  "sample_description": "YEAR 1 DELIVERY/TASK ORDER SUPPORT - MK44 TRAINING"
+ },
+ {
+  "ap_code": "292",
+  "ap_description": "GPS III",
+  "awards": 24,
+  "obligated_millions": 368,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "FA6648",
+   "FA8540",
+   "FA8807",
+   "FA8823",
+   "N00174"
+  ],
+  "sample_description": "URKAINE DELETING CLIN 0003AA, HARDWARE WAS BROKEN OUT INTO \"EACH\" INSTEAD OF A LOT CLIN."
+ },
+ {
+  "ap_code": "200",
+  "ap_description": "C-17A",
+  "awards": 69,
+  "obligated_millions": 356,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "VARIOUS COMPOSITE REFERENCE STANDARDS FOR C-17 NON-DESTRUCTIVE INSPECTIONS"
+ },
+ {
+  "ap_code": "253",
+  "ap_description": "MQ-8 FIRE SCOUT",
+  "awards": 66,
+  "obligated_millions": 354,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0009",
+   "1257",
+   "1270",
+   "1272",
+   "1273"
+  ],
+  "sample_description": "YEAR 4: PULLER ASSEMBLY"
+ },
+ {
+  "ap_code": "451",
+  "ap_description": "RQ-7B SHADOW",
+  "awards": 4,
+  "obligated_millions": 345,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ",
+   "W911QY"
+  ],
+  "sample_description": "W58RGZ-21-C-0013, ADD 65 GETAC 110C LAPTOPS AND 20 AN/PRC-148 V4C RADIOS AS GFE."
+ },
+ {
+  "ap_code": "845",
+  "ap_description": "SKR",
+  "awards": 6,
+  "obligated_millions": 336,
+  "sub_agencies": [
+   "U.S. Special Operations Command"
+  ],
+  "office_prefixes": [
+   "H92408"
+  ],
+  "sample_description": "UPDATE WAWF"
+ },
+ {
+  "ap_code": "521",
+  "ap_description": "JOMIS",
+  "awards": 31,
+  "obligated_millions": 332,
+  "sub_agencies": [
+   "Defense Health Agency"
+  ],
+  "office_prefixes": [
+   "HT0038"
+  ],
+  "sample_description": "TRAVAX ENTERPRISE SOFTWARE LICENSE&MAINTENANCE"
+ },
+ {
+  "ap_code": "ME1",
+  "ap_description": "COYOTE",
+  "awards": 1,
+  "obligated_millions": 325,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W31P4Q"
+  ],
+  "sample_description": "COYOTE INTERCEPTORS"
+ },
+ {
+  "ap_code": "345",
+  "ap_description": "MUOS",
+  "awards": 15,
+  "obligated_millions": 301,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA5606",
+   "FA8807",
+   "N00039",
+   "NS07",
+   "NS39",
+   "W15P7T"
+  ],
+  "sample_description": "THIS SEAPORT-E TASK ORDER (TO) WILL PROVIDE PEO SS WITH PROGRAM AND ACQUISITION MANAGEMENT (PM/AM), BUSINESS AND FINANCIAL MANAGEMENT, AND LOGISTICS MANAGEMENT."
+ },
+ {
+  "ap_code": "602",
+  "ap_description": "AN/TPQ-53",
+  "awards": 4,
+  "obligated_millions": 299,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56KGY"
+  ],
+  "sample_description": "UPDATING THE CDRLS AND PWS FOR MDE III DDREX NRE I"
+ },
+ {
+  "ap_code": "549",
+  "ap_description": "F/A-18 E/F",
+  "awards": 138,
+  "obligated_millions": 295,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WRA SHIPPING CONTAINER ASSEMBLY"
+ },
+ {
+  "ap_code": "115",
+  "ap_description": "CH-47D",
+  "awards": 187,
+  "obligated_millions": 295,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WRENCH SET, TORQUE 5120-01-616-2990 ATP1000-HHP-100"
+ },
+ {
+  "ap_code": "181",
+  "ap_description": "KC-135R",
+  "awards": 42,
+  "obligated_millions": 278,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WINDOWS 10 CLIN OPTION EXERCISE CLIN 0634AD&0734AF"
+ },
+ {
+  "ap_code": "A00",
+  "ap_description": "NIWCD",
+  "awards": 4,
+  "obligated_millions": 255,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N66604",
+   "W15QKN"
+  ],
+  "sample_description": "MIX-MOLDER SYSTEM BUNDLE; CAPACITY CHANGE OVER KIT; MACHINE MIXING TOOL; ALUMINUM MOLD BLANK"
+ }
+]

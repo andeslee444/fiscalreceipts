@@ -1,0 +1,245 @@
+{
+ "0601101E": {
+  "titles": [
+   "Defense Research Sciences"
+  ],
+  "projects": [
+   "BEYOND SCALING SCIENCES",
+   "BIO/INFO/MICRO SCIENCES",
+   "CYBER SCIENCES",
+   "ELECTRONIC SCIENCES",
+   "MATERIALS SCIENCES",
+   "MATH AND COMPUTER SCIENCES",
+   "TRANSFORMATIVE SCIENCES"
+  ]
+ },
+ "0601117E": {
+  "titles": [
+   "Basic Operational Medical Research Science"
+  ],
+  "projects": [
+   "BASIC OPERATIONAL MEDICAL SCIENCE"
+  ]
+ },
+ "0601122E": {
+  "titles": [
+   "Emerging Opportunities"
+  ],
+  "projects": [
+   "BASIC OPERATIONAL MEDICAL SCIENCE",
+   "DISRUPTIVE MICROTECHNOLOGIES SCIENCES",
+   "EMERGING OPPORTUNITIES SUPPORT",
+   "MATERIALS SCIENCES",
+   "MATH AND COMPUTER SCIENCES"
+  ]
+ },
+ "0602023E": {
+  "titles": [
+   "Access and Awareness"
+  ],
+  "projects": [
+   "ACCESS AND AWARENESS SUPPORT",
+   "ALL DOMAIN TACTICAL TECHNOLOGIES"
+  ]
+ },
+ "0602024E": {
+  "titles": [
+   "Warfighting Performance"
+  ],
+  "projects": [
+   "BIOLOGICALLY BASED MATERIALS AND DEVICES",
+   "BIOMEDICAL TECHNOLOGY",
+   "WARFIGHTING PERFORMANCE SUPPORT"
+  ]
+ },
+ "0602025E": {
+  "titles": [
+   "Making, Maintaining, Supply Chain and Logistics"
+  ],
+  "projects": [
+   "ARTIFICIAL INTELLIGENCE AND HUMAN-MACHINE SYMBIOSIS",
+   "CYBER SECURITY",
+   "DISRUPTIVE MICROTECHNOLOGIES",
+   "ELECTRONIC TECHNOLOGY",
+   "MAKING, MAINTAINING, SUPPLY CHAIN AND LOGISTICS SUPPORT",
+   "MATERIALS PROCESSING TECHNOLOGY",
+   "QUANTUM TECHNOLOGIES"
+  ]
+ },
+ "0602026E": {
+  "titles": [
+   "Effects"
+  ],
+  "projects": [
+   "EFFECTS",
+   "EFFECTS SUPPORT"
+  ]
+ },
+ "0602115E": {
+  "titles": [
+   "Biomedical Technology"
+  ],
+  "projects": [
+   "BIOMEDICAL TECHNOLOGY"
+  ]
+ },
+ "0602303E": {
+  "titles": [
+   "Information & Communications Technology"
+  ],
+  "projects": [
+   "ARTIFICIAL INTELLIGENCE AND HUMAN-MACHINE SYMBIOSIS",
+   "CYBER SECURITY",
+   "CYBER TECHNOLOGY",
+   "HIGH PRODUCTIVITY, HIGH-PERFORMANCE RESPONSIVE ARCHITECTURES",
+   "INFORMATION ASSURANCE AND SURVIVABILITY",
+   "LANGUAGE UNDERSTANDING AND SYMBIOTIC AUTOMATION"
+  ]
+ },
+ "0602702E": {
+  "titles": [
+   "Tactical Technology"
+  ],
+  "projects": [
+   "ADVANCED LAND SYSTEMS TECHNOLOGY",
+   "ADVANCED TACTICAL TECHNOLOGY",
+   "AERONAUTICS AND SPACE TECHNOLOGY",
+   "AERONAUTICS TECHNOLOGY",
+   "INFORMATION ANALYTICS TECHNOLOGY",
+   "NAVAL WARFARE TECHNOLOGY",
+   "NETWORK CENTRIC ENABLING TECHNOLOGY"
+  ]
+ },
+ "0602715E": {
+  "titles": [
+   "Materials and Biological Technology"
+  ],
+  "projects": [
+   "BIOLOGICALLY BASED MATERIALS AND DEVICES",
+   "MATERIALS PROCESSING TECHNOLOGY"
+  ]
+ },
+ "0602716E": {
+  "titles": [
+   "Electronics Technology"
+  ],
+  "projects": [
+   "BEYOND SCALING TECHNOLOGY",
+   "ELECTRONIC TECHNOLOGY",
+   "ELECTRONICS TECHNOLOGY"
+  ]
+ },
+ "0603286E": {
+  "titles": [
+   "Advanced Aerospace Systems"
+  ],
+  "projects": [
+   "ADVANCED AEROSPACE SYSTEMS"
+  ]
+ },
+ "0603287E": {
+  "titles": [
+   "Space Programs and Technology"
+  ],
+  "projects": [
+   "SPACE PROGRAMS AND TECHNOLOGY"
+  ]
+ },
+ "0603467E": {
+  "titles": [
+   "DARPA Advanced Technology Development"
+  ],
+  "projects": [
+   "ADVANCED SYSTEMS",
+   "DARPA ADVANCED TECHNOLOGY DEVELOPMENT",
+   "DARPA ADVANCED TECHNOLOGY DEVELOPMENT SUPPORT",
+   "ISR AND SENSORS"
+  ]
+ },
+ "0603468E": {
+  "titles": [
+   "Advanced Complex Systems"
+  ],
+  "projects": [
+   "ADVANCED COMPLEX SYSTEMS",
+   "ADVANCED COMPLEX SYSTEMS SUPPORT"
+  ]
+ },
+ "0603469E": {
+  "titles": [
+   "Advanced Enabling Technologies"
+  ],
+  "projects": [
+   "ADVANCED C4 SYSTEMS",
+   "ADVANCED CYBER SYSTEMS",
+   "ADVANCED DISRUPTIVE MICROTECHNOLOGIES",
+   "ADVANCED ENABLING TECHNOLOGIES SUPPORT"
+  ]
+ },
+ "0603739E": {
+  "titles": [
+   "Advanced Electronics Technologies"
+  ],
+  "projects": [
+   "BEYOND SCALING ADVANCED TECHNOLOGIES",
+   "MEMS AND INTEGRATED MICROSYSTEMS TECHNOLOGY",
+   "MIXED TECHNOLOGY INTEGRATION"
+  ]
+ },
+ "0603760E": {
+  "titles": [
+   "Command, Control and Communications Systems"
+  ],
+  "projects": [
+   "COMMAND, CONTROL AND COMMUNICATION SYSTEMS",
+   "CYBER SYSTEMS",
+   "INFORMATION INTEGRATION SYSTEMS",
+   "SECURE INFORMATION AND NETWORK SYSTEMS"
+  ]
+ },
+ "0603766E": {
+  "titles": [
+   "Network-Centric Warfare Technology"
+  ],
+  "projects": [
+   "JOINT WARFARE SYSTEMS",
+   "MARITIME SYSTEMS",
+   "NETWORK-CENTRIC WARFARE TECHNOLOGY"
+  ]
+ },
+ "0603767E": {
+  "titles": [
+   "Sensor Technology"
+  ],
+  "projects": [
+   "EXPLOITATION SYSTEMS",
+   "SENSOR TECHNOLOGY",
+   "SENSORS AND PROCESSING SYSTEMS",
+   "SURVEILLANCE AND COUNTERMEASURES TECHNOLOGY"
+  ]
+ },
+ "0605001E": {
+  "titles": [
+   "Mission Support"
+  ],
+  "projects": [
+   "MISSION SUPPORT"
+  ]
+ },
+ "0605502E": {
+  "titles": [
+   "Small Business Innovative Research"
+  ],
+  "projects": [
+   "SMALL BUSINESS INNOVATION RESEARCH"
+  ]
+ },
+ "0605898E": {
+  "titles": [
+   "Management HQ - R&D"
+  ],
+  "projects": [
+   "MANAGEMENT HQ - R&D"
+  ]
+ }
+}

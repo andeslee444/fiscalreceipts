@@ -363,15 +363,16 @@ export function getCoverageMap(): CoverageMapRow[] {
       derivation:
         "the bridge band of flow_chart.json: crosswalked and universe PE counts, and the unbridged share of the request.",
       blocker:
-        "Account codes are too coarse to attribute awards to program elements " +
-        "outside DARPA's structure. An award record carries a Treasury account " +
-        "and an appropriation; one appropriation account funds dozens to " +
-        "hundreds of program elements, and nothing else on the record narrows " +
-        "it. DARPA is the exception because its program elements line up almost " +
-        "one-to-one with its offices, so its account codes do resolve. " +
-        "Everywhere else, asserting a link would mean guessing which of an " +
-        "account's program elements paid — and a guess wearing a citation " +
-        "is worse than an honest absence.",
+        "Account codes are too coarse to attribute awards to program elements. " +
+        "An award record carries a Treasury account and an appropriation; one " +
+        "appropriation account funds dozens to hundreds of program elements, " +
+        "and nothing else on the record narrows it. Every published link was " +
+        "hand-adjudicated (September 2026): high means the contract and the " +
+        "program's own J-book pages name the same program, verified by two " +
+        "independent adversarial reviewers; medium means only that the award " +
+        "drew on the same account and agency. Where evidence pinned an award " +
+        "to a different organization's program, the link was removed — a " +
+        "guess wearing a citation is worse than an honest absence.",
       targetKind: "none",
       target:
         "No dated target, because this is a methodology limit and not a backlog " +

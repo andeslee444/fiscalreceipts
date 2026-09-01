@@ -148,7 +148,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // is 6.32% over the raw measurement, 330,000 is 7.05% over the gzip one.
   { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,962,749 / 308,295" },
   { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "33,035 / 6,652" },
-  { label: "/feed/", file: "feed/index.html", maxRaw: 1_700_000, maxGzip: 92_000, measured: "1,503,535 / 78,822" },
+  // Re-baselined 2026-09-01 (FPDS-AP expansion): the crosswalked-PE universe
+  // grew 24 → ~186 and the feed derives from it — cards 160 → ~720. Corpus
+  // growth, not template bloat (the per-card markup is unchanged). Ceilings
+  // follow the ~6% convention over the expansion build's measure. A 4MB raw
+  // feed is at the edge of reasonable — pagination is filed as follow-up,
+  // and this ceiling must NOT be raised again without it.
+  { label: "/feed/", file: "feed/index.html", maxRaw: 4_230_000, maxGzip: 193_400, measured: "3,989,520 / 182,378" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 1,260,784 / 80,771 -> 1,389,568 / 89,557, breaching both.
   //
@@ -206,8 +212,14 @@ export const PAGE_WEIGHT_BUDGET = [
   // descriptions, none of which repeat. No amount of markup tidying reaches
   // 36,000, and removing a citation to fit a ceiling is not on the table.
   { label: "/lineage/", file: "lineage/index.html", maxRaw: 585_000, maxGzip: 54_500, measured: "539,950 / 50,468" },
-  { label: "/district/", file: "district/index.html", maxRaw: 265_000, maxGzip: 30_000, measured: "262,693 / 28,240" },
-  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 226_000, maxGzip: 26_000, measured: "223,840 / 25,565" },
+  // Re-baselined 2026-09-01 (FPDS-AP expansion): district universe 41 → 181
+  // pages and the index states them all. Same corpus-growth rationale as
+  // /feed/ above; ~6% convention over the expansion build's measure.
+  { label: "/district/", file: "district/index.html", maxRaw: 442_700, maxGzip: 42_100, measured: "417,612 / 39,675" },
+  // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
+  // ordinary curated-events/table growth (#10 relabel note, adjudication
+  // tier changes), tipping a 159-byte breach. ~6% convention.
+  { label: "/companies/families/", file: "companies/families/index.html", maxRaw: 239_700, maxGzip: 27_900, measured: "226,159 / 26,340" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 93,911 / 13,340 -> 94,741 / 13,619, and the gate's own run on the
   // pre-fix build read 13,657 against a 13,500 ceiling — over by 157, with 259
@@ -336,7 +348,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // states them, so growing the corpus grows the page. Nothing was trimmed;
   // headroom restored to ~6% (the /programs/ convention) rather than to the
   // breach. Raw was NOT raised: 135,373 of 136,500 is comfortable.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 136_500, maxGzip: 39_100, measured: "135,635 / 36,943" },
+  // Re-baselined 2026-09-01: §4 gained two disclosure paragraphs (the
+  // hand-adjudication method with its 9.1% measured precision, and the
+  // FPDS-AP acquisition-program evidence path). Deliberate prose growth on
+  // the page whose job is to disclose method; ~6% convention over the
+  // expansion build's measure.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 149_200, maxGzip: 41_100, measured: "140,780 / 38,746" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //

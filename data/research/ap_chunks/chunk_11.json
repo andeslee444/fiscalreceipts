@@ -1,0 +1,445 @@
+[
+ {
+  "ap_code": "581",
+  "ap_description": "AIM-9X",
+  "awards": 22,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "VERSION 8.3XX SOFTWARE"
+ },
+ {
+  "ap_code": "827",
+  "ap_description": "MH60 MOD",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00421"
+  ],
+  "sample_description": "DENMARK FMS REQUIREMENT FOR PMA 299"
+ },
+ {
+  "ap_code": "240",
+  "ap_description": "T-45TS",
+  "awards": 15,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0113",
+   "1503",
+   "1505"
+  ],
+  "sample_description": "WINDOWS 10 PERIOD OF PERFORMANCE EXTENDED"
+ },
+ {
+  "ap_code": "530",
+  "ap_description": "AV-8B REMANUFACTURE",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N68936"
+  ],
+  "sample_description": "MDC-3780 REPORT"
+ },
+ {
+  "ap_code": "45K",
+  "ap_description": "SMPES",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W9124P"
+  ],
+  "sample_description": "VULCAN SOFTWARE RENEWAL"
+ },
+ {
+  "ap_code": "3G2",
+  "ap_description": "JTMS",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "USTRANSCOM"
+  ],
+  "office_prefixes": [
+   "HTC711"
+  ],
+  "sample_description": "JTMS IMPLEMENTATION IN ACCORDANCE WITH THE OFFERORS PROPOSED 90-DAY PLAN."
+ },
+ {
+  "ap_code": "217",
+  "ap_description": "LHD 1",
+  "awards": 10,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "7F01",
+   "EHP9",
+   "M804",
+   "M805",
+   "N64498",
+   "N68836"
+  ],
+  "sample_description": "USS IWO JIMA (LHD 7) SERM-064-26"
+ },
+ {
+  "ap_code": "K47",
+  "ap_description": "CYBER SU",
+  "awards": 3,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "U.S. Cyber Command"
+  ],
+  "office_prefixes": [
+   "FA5641",
+   "HB0001"
+  ],
+  "sample_description": "THIS DELIVERY ORDER IS BEING ISSUED AGAINST THE NAVY DOD MICROSOFT ENTERPRISE SOFTWARE AGREEMENT (MS ESA) BLANKET PURCHASE AGREEMENT (BPA) NO. N66001-21-A-0083. ALL OF THE TERMS AND CONDITIONS OF BPA NO. N66001-21-A-0083 ARE APPLICABLE TO THIS ORDER."
+ },
+ {
+  "ap_code": "M09",
+  "ap_description": "JCALS",
+  "awards": 4,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Health Agency"
+  ],
+  "office_prefixes": [
+   "0177",
+   "BG01",
+   "W81K04"
+  ],
+  "sample_description": "THE PURPOSE OF THIS TASK ORDER IS TO PROVIDE ENGINEERING AND TECHNICAL SUPPORT SERVICES FOR THE JOINT COMPUTER-AIDED ACQUISITION AND LOGISTICS SUPPORT (JCALS)"
+ },
+ {
+  "ap_code": "771",
+  "ap_description": "MCM 1",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "USS WARRIOR (MCM-10) FY 12 EXCESS FUNDS"
+ },
+ {
+  "ap_code": "231",
+  "ap_description": "CV HELO (SH-60F)",
+  "awards": 3,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N68335"
+  ],
+  "sample_description": "RHM MODIFICATION"
+ },
+ {
+  "ap_code": "590",
+  "ap_description": "GPS IIIF",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8807"
+  ],
+  "sample_description": "TIQKER OPTICAL CLOCK TECHNOLOGY"
+ },
+ {
+  "ap_code": "5L3",
+  "ap_description": "MH-139A JMPS",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8692"
+  ],
+  "sample_description": "HONEYWELL INTERNATIONAL, SOFTWARE DEVELOPMENT KIT TO INTEGRATE JMPS INTO PRIMUS EPIC"
+ },
+ {
+  "ap_code": "J28",
+  "ap_description": "BCS-F MOD 1",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "CONTRACT FOR NSN: 3815014236535 WITH A QUANTITY OF 233 EA."
+ },
+ {
+  "ap_code": "717",
+  "ap_description": "CUS RF",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "FIVE-YEAR INDEFINITE DELIVERY/INDEFINITE QUANTITY (IDIQ) PRODUCTION CONTRACT FOR SMALL MUTLIPURPOSE EQUIPMENT  TRANSPORT (SMET) SYSTEMS. THIS MODIFICATION CHANGES THE DELIVER ORDER SCHEDULE ON CLIN 0011AB AND ADDS 11 SYSTEMS FOR REFURBISHMENT."
+ },
+ {
+  "ap_code": "203",
+  "ap_description": "DMSP",
+  "awards": 4,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8803",
+   "FA8823"
+  ],
+  "sample_description": "TRANSFER OF GOVERNMENT PROPERTY FOR DEFENSE METEOROLOGICAL SATELLITE PROGRAM SENSORS SUPPORT AND SERVICES CONTRACT"
+ },
+ {
+  "ap_code": "468",
+  "ap_description": "B61 MOD 12 LEP TKA",
+  "awards": 2,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8204",
+   "FA9422"
+  ],
+  "sample_description": "THIS REQUIREMENT IS FOR THE REPAIR AND MAINTENANCE OF THE B61-12 TAIL KIT ASSEMBLY VARIANT AND EQUIPMENT, AND TECHNICAL PROGRAM MANAGEMENT SERVICES."
+ },
+ {
+  "ap_code": "352",
+  "ap_description": "HPCM",
+  "awards": 4,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2543",
+   "FA4484",
+   "FA5004",
+   "FA8730"
+  ],
+  "sample_description": "LAPTOPS AND DOCKING STATIONS TO OUTFIT THE COMBAT SERVICE SUPPORT."
+ },
+ {
+  "ap_code": "G97",
+  "ap_description": "BACN E-11A",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2291"
+  ],
+  "sample_description": "TO INSTALL A GEN6 COCKPIT ARC-210 RADIO ON THE E-11A GLOBAL 6000 CONFIGURATION TO THE REMAINING FOUR (4) GLOBAL 6000 AIRCRAFT WITH THE NEW SUPPLEMENTAL TYPE CERTIFICATE AND AMEND THE SUPPLEMENTAL TYPE CERTIFICATE FOR THE GLOBAL XRS AIRCRAFT."
+ },
+ {
+  "ap_code": "N40",
+  "ap_description": "DCGS-N INC 1",
+  "awards": 1,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56JSR"
+  ],
+  "sample_description": "IGF::CL,CT::IGF  THE PURPOSE OF THIS MODIFICATION P00004 IS TO ADD \"SPILLAGE\" LANGUAGE TO PERFORMANCE WORK STATEMENT.  THIS CONTRACT PROVIDES SYSTEMS ENGINEERING AND TECHNICAL ASSISTANCE (SETA) TO SUPPORT THE SOFTWARE ENGINEERING CENTER (SEC) INTELLIGENCE FUSION SYSTEMS' (IFS) DIVISION LOCATED AT FORT HUACHUCA, ARIZONA."
+ },
+ {
+  "ap_code": "302",
+  "ap_description": "MINUTEMAN III GRP",
+  "awards": 6,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0053",
+   "0057",
+   "FA8250",
+   "N00030"
+  ],
+  "sample_description": "UK FUNDING - ADMIN ACTION ONLY"
+ },
+ {
+  "ap_code": "502",
+  "ap_description": "DCGS-A INC 2",
+  "awards": 15,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8730",
+   "W56KGY"
+  ],
+  "sample_description": "WIRELESS CELL PHONE SERVICES AND CELL PHONE PURCHASE.  BASE PERIOD 12 MONTHS PLUS THREE OPTION PERIODS OF 12 MONTHS EACH AND AN ADDITIONAL 6 MONTH PERIOD FOR EXTENSION."
+ },
+ {
+  "ap_code": "290",
+  "ap_description": "NMT",
+  "awards": 3,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Defense Information Systems Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "GT03",
+   "HC1013",
+   "N57100"
+  ],
+  "sample_description": "TNC MALE CRIMP P/N RFT-1202-3, TNC FEMALE CRIMP P/N RFT-1212-B, BNC FEMALE CRIMP P/N RFB-1123-1"
+ },
+ {
+  "ap_code": "N62",
+  "ap_description": "PKI INC 2",
+  "awards": 3,
+  "obligated_millions": 2,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00242",
+   "N33191"
+  ],
+  "sample_description": "REPAIR PERIMETER ACCESS ROAD, CAMP LEMONNIER, DJIBOUTI"
+ },
+ {
+  "ap_code": "537",
+  "ap_description": "NAS",
+  "awards": 5,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8650",
+   "GM03",
+   "RSDB",
+   "W91151"
+  ],
+  "sample_description": "TECHNICAL SUPPORT FOR NAVAL AIRCRAFT COMPONENT RELIABILITY STUDIES"
+ },
+ {
+  "ap_code": "T90",
+  "ap_description": "LCU-2000",
+  "awards": 3,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "SYSTEMS TECHNICAL SUPPORT - ARMY WATERCRAFT"
+ },
+ {
+  "ap_code": "B68",
+  "ap_description": "KR ADCP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "THE PURPOSE OF THIS AWARD IS TO  1. PROVIDE AN ENTERPRISE-WIDE KESSEL-RUN SPECIFIC, CHANGE AND RELEASE MANAGEMENT BLUEPRINT TO SUPPORT THE SYSTEM INTEGRATOR IMPLEMENTATION OF SERVICE NOW AND USE OF CLOUD TECHNOLOGIES.2. THIS ACTION IS IAW ESI BPA #"
+ },
+ {
+  "ap_code": "8BC",
+  "ap_description": "DLA MAP",
+  "awards": 1,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W9126G"
+  ],
+  "sample_description": "ARCHITECT AND ENGINEER (A-E) SERVICES TO CONDUCT FACILITY CONDITION ASSESSMENT (FCA) IN SUPPORT OF DEFENSE LOGISTICS AGENCY (DLA) FACILITIES NORFOLK"
+ },
+ {
+  "ap_code": "999",
+  "ap_description": "SOF CD PROPULSION",
+  "awards": 7,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA4427",
+   "FA8052",
+   "W31P4Q"
+  ],
+  "sample_description": "THIS IS FOR THE PARAMEDIC INITIAL CERTIFICATION COURSE FROM 2 MAY TO 9 SEPT."
+ },
+ {
+  "ap_code": "452",
+  "ap_description": "T-AO 205 CLASS",
+  "awards": 20,
+  "obligated_millions": 1,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N62786"
+  ],
+  "sample_description": "THERMAL IMAGING CAMERA"
+ }
+]

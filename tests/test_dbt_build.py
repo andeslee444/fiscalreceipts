@@ -196,6 +196,17 @@ def make_lake(data_dir: Path):
         f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account'))"
         f" t({JBOOK_AWARD_COLS})) to '{jbooks}/budget_line_awards.parquet' (format parquet)"
     )
+    # Hand-adjudication overlay (migration 010): the mart coalesces this over
+    # the mechanical confidence — the fixture row exercises exactly that path
+    # (mechanical 'high' confirmed as adjudicated 'high').
+    duckdb.sql(
+        f"copy (select * from (values ('HR001124C0001','0601101E','high','pinned',"
+        f"'pinned-here','narrative-grep','fixture evidence','2','hand-adjudication-v1',"
+        f"'2026-09-01T00:00:00Z'))"
+        f" t(award_piid, pe_bli, adjudicated_confidence, award_verdict, pair_reason,"
+        f" basis, evidence, refuter_lenses_passed, method, adjudicated_at))"
+        f" to '{jbooks}/award_adjudications.parquet' (format parquet)"
+    )
     write_parquet(
         data_dir / "parquet/contracts/fy=2017",
         f"select * from (values "

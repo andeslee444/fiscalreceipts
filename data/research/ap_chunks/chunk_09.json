@@ -1,0 +1,454 @@
+[
+ {
+  "ap_code": "A53",
+  "ap_description": "ITAS",
+  "awards": 7,
+  "obligated_millions": 8,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "U.S. Cyber Command"
+  ],
+  "office_prefixes": [
+   "FA8212",
+   "FA8554",
+   "HB0001"
+  ],
+  "sample_description": "VMWARE SOFTWARE"
+ },
+ {
+  "ap_code": "N06",
+  "ap_description": "GFEBS",
+  "awards": 3,
+  "obligated_millions": 8,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "THIS TASK ORDER IS FOR THE SUPPORT OF CALIBRATION REPAIRS OF THE IFR 6015."
+ },
+ {
+  "ap_code": "238",
+  "ap_description": "JPALS",
+  "awards": 4,
+  "obligated_millions": 8,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8119",
+   "M801",
+   "N65236",
+   "SPE7MC"
+  ],
+  "sample_description": "REQUIREMENTS DEFINITION AND ENGINEERING SUPPORT FOR THE JPALS AND N-UCAS PROGRAM"
+ },
+ {
+  "ap_code": "691",
+  "ap_description": "SAOC",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "WORK CALLED FOR BY THE CONTRACT LINE ITEMS SHALL BE PERFORMED IN ACCORDANCE WITH ALL EXHIBITS AND ATTACHMENTS IN SECTION J."
+ },
+ {
+  "ap_code": "138",
+  "ap_description": "MK 48 ADCAP",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "UPDATE SECTION J ATTACHMENTS"
+ },
+ {
+  "ap_code": "Y49",
+  "ap_description": "C-130J BU",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8629"
+  ],
+  "sample_description": "PILOT PORTABLE MISSION DISPLAY /REINSTALLATION/ENGINE PRESERVATION."
+ },
+ {
+  "ap_code": "837",
+  "ap_description": "DCGS (SOF)",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8527"
+  ],
+  "sample_description": "THE CREW COMMUNICATIONS SUSTAINMENT REQUIREMENT PROVIDES CRITICAL SUSTAINMENT SUPPORT AND SERVICES TO KEEP THE DISTRIBUTED COMMON GROUND SYSTEM (DCGS) AVAILABLE AND OPERATIONAL."
+ },
+ {
+  "ap_code": "825",
+  "ap_description": "IRCM",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "UPDATE OF THE CDRL DISTRIBUTION"
+ },
+ {
+  "ap_code": "136",
+  "ap_description": "M198 TOWED HOWITZER (155MM)",
+  "awards": 11,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0005",
+   "BR01",
+   "SPRDL1",
+   "W15QKN",
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "UKRAINE SUPPORT - 385 EACH WITH ONE YEAR BUYING OPTION"
+ },
+ {
+  "ap_code": "900",
+  "ap_description": "APUC",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC"
+  ],
+  "sample_description": "UPGRADE TO ROCKET PROPELLANT MANUFACTURING AT RADFORD ARMY AMMUNITION PLANT. UPGRADES INCLUDE EVENSPEED AREA AND CNC AREA TO PRODUCE THE MK90 GRAIN AND OTHER CALIBER GRAINS IN A MORE EFFICIENT AND SAFE ENVIRONMENT."
+ },
+ {
+  "ap_code": "S25",
+  "ap_description": "WATER BISON",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "WATER BISON SYSTEM (BISON) MODIFICATION P00001 TO DELIVERY ORDER W912CH25F0015, OF CONTRACT W912CH25D0003. FUNDING FOR TDP, IMDP, AND I&KPT."
+ },
+ {
+  "ap_code": "A20",
+  "ap_description": "M1128",
+  "awards": 4,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00030",
+   "N64709",
+   "W58RGZ"
+  ],
+  "sample_description": "VERTICAL MAST LIGHT RENTAL/LEASE"
+ },
+ {
+  "ap_code": "738",
+  "ap_description": "BOOKER",
+  "awards": 1,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "M10 BOOKER SPARES FOR INITIAL FIELDING"
+ },
+ {
+  "ap_code": "103",
+  "ap_description": "E-3A",
+  "awards": 27,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0008"
+  ],
+  "sample_description": "VALVE ASSEMBLY"
+ },
+ {
+  "ap_code": "EJ1",
+  "ap_description": "ACWS",
+  "awards": 54,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W50S7V",
+   "W50S85",
+   "W9124D",
+   "W912J7",
+   "W912JA"
+  ],
+  "sample_description": "YRRP EVENT 17-19 MAY 24 (LODGING, MEALS, CONFERENCE SPACE, CHILD CARE, A/V EQUIPMENT) IAW THE DOS"
+ },
+ {
+  "ap_code": "159",
+  "ap_description": "CG-47",
+  "awards": 10,
+  "obligated_millions": 7,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0062",
+   "N4523A",
+   "S615",
+   "S616",
+   "S617",
+   "S618"
+  ],
+  "sample_description": "SHIP SHAFT"
+ },
+ {
+  "ap_code": "224",
+  "ap_description": "B-2 EHF INC 1",
+  "awards": 15,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "ROTARY ACTUATOR"
+ },
+ {
+  "ap_code": "575",
+  "ap_description": "ABRAMS UPGRADE",
+  "awards": 15,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0009",
+   "0015",
+   "0155",
+   "M67854"
+  ],
+  "sample_description": "UNILATERAL MODIFICATION TO UPDATE ADMINISTRATION OFFICE FROM DCMA CHICAGO (S1403A) TO ACC-DTA (W56HZV)."
+ },
+ {
+  "ap_code": "W91",
+  "ap_description": "ENVG",
+  "awards": 1,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W909MY"
+  ],
+  "sample_description": "THIS CONTRACT IS TO PROVIDE CONFIGURATION MANAGEMENT SUPPORT TO INCLUDE SYSTEMS ENGINEERING,TECHNICAL ASISTANCE (SETA) AND SUSTAINMENT ENGINEERING SUPPORT."
+ },
+ {
+  "ap_code": "H17",
+  "ap_description": "STUDIES AND DEVELOPMENT",
+  "awards": 21,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA7014"
+  ],
+  "sample_description": "VMWARE CLOUD FOUNDATION 5"
+ },
+ {
+  "ap_code": "476",
+  "ap_description": "JOINT C2",
+  "awards": 3,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8529"
+  ],
+  "sample_description": "JSTARTS SES RELOCATION"
+ },
+ {
+  "ap_code": "N55",
+  "ap_description": "AISG",
+  "awards": 1,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8770"
+  ],
+  "sample_description": "REQUIREMENT FOR A FOLLOW-ON CONTRACT FOR CONTINUED SUPPORT AND SUSTAINMENT OF AISG/CDRS/JDRS SYSTEMS."
+ },
+ {
+  "ap_code": "592",
+  "ap_description": "T-AKE",
+  "awards": 23,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024",
+   "N32205",
+   "N40442"
+  ],
+  "sample_description": "USNS AMELIA EARHART,IGF::OT::IGF"
+ },
+ {
+  "ap_code": "E9C",
+  "ap_description": "JCXS",
+  "awards": 2,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "JOINT CONTINGENCY AND EXPEDITIONARY SERVICES (JCXS) SUSTAINMENT DEVELOPMENT SERVICES"
+ },
+ {
+  "ap_code": "P38",
+  "ap_description": "3KW TQG",
+  "awards": 3,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRBL1"
+  ],
+  "sample_description": "THIS IS TO PURCHASE REFURBISHED 60HZ CONVERTERS IN SUPPORT THE 3KW PROGRAM."
+ },
+ {
+  "ap_code": "A18",
+  "ap_description": "PROPHET",
+  "awards": 6,
+  "obligated_millions": 6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00383",
+   "W31P4Q"
+  ],
+  "sample_description": "SUPPORT OF STINGER MISSILE PROGRAM (REPAIR & RETURN)"
+ },
+ {
+  "ap_code": "56F",
+  "ap_description": "C-17 TRAINING SYSTEM (TRAINING MODS)",
+  "awards": 5,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPE4A7",
+   "SPE7M1"
+  ],
+  "sample_description": "8511452382!RESISTOR,FIXED,FILM"
+ },
+ {
+  "ap_code": "BLP",
+  "ap_description": "F-16 HUD",
+  "awards": 1,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8212"
+  ],
+  "sample_description": "F-16 HUD COMBINER ASSEMBLY SPARES BUY"
+ },
+ {
+  "ap_code": "C90",
+  "ap_description": "F-15E MUOS/SATURN",
+  "awards": 4,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4801",
+   "FA5682",
+   "FA6703",
+   "SPE7L1"
+  ],
+  "sample_description": "TRANSIENT ALERT (TA) SERVICES TO SUPPORT AIRCRAFT, WHICH ARE NOT ASSIGNED TO DOBBINS ARB, GA THAT ARE EN-ROUTE FROM ONE LOCATION TO ANOTHER AND MAY REQUIRE ROUTINE SERVICING."
+ },
+ {
+  "ap_code": "247",
+  "ap_description": "EPF",
+  "awards": 2,
+  "obligated_millions": 5,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024",
+   "N32205"
+  ],
+  "sample_description": "USNS SPEARHEAD TRANSPORTATION DEVICES FY25"
+ }
+]

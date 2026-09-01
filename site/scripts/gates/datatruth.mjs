@@ -736,6 +736,14 @@ function runCountNotationLeg(errors, notes) {
             if (!raw) continue;
             const n = Number(raw);
             if (isYear(n)) continue;
+            // Equipment designators are names, not counts: "DDG 1000 award
+            // concentration" (Zumwalt class) must not be rewritten "DDG
+            // 1,000". Exempt a number immediately preceded by a 2-4 letter
+            // uppercase hull/type prefix (DDG, SSN, CVN, LPD, KC, CH…).
+            // Added 2026-09-01 when the FPDS-AP expansion put ship-class
+            // program titles into feed headlines for the first time.
+            const before = t.slice(Math.max(0, m.index - 6), m.index);
+            if (/(^|[^A-Za-z])[A-Z]{2,4}[- ]$/.test(before)) continue;
             failures.push({
               file: rel,
               snippet: t
@@ -839,7 +847,9 @@ const SORT_CONTRACTS = [
   ["/companies/", "companies", "total_obligation:desc", 100],
   ["/programs/", "programs", "fy2026_total:desc", 100],
   ["/filings/", "filings", "mentions_then_year_desc_then_client:asc", 25],
-  ["/district/CO-05/", "district-programs", "total_obligation:desc", 3],
+  // CO-05 dropped out of the built district set in the 2026-09-01
+  // hand-adjudication correction; VA-11 is a surviving district with 3 rows.
+  ["/district/VA-11/", "district-programs", "total_obligation:desc", 3],
 ];
 
 /** Directories under out/ swept for the monotonicity check, and how many. */

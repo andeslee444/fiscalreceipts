@@ -1,0 +1,461 @@
+[
+ {
+  "ap_code": "ABK",
+  "ap_description": "B-2 STEALTH",
+  "awards": 9,
+  "obligated_millions": -4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0008",
+   "0020",
+   "0021",
+   "F34601",
+   "SD11"
+  ],
+  "sample_description": "TRANSFER GOVERNMENT FURNISHED PROPERTY (GFP) FROM CONTRACT F3365799D0028 TO CONTRACT FA811917D0002"
+ },
+ {
+  "ap_code": "755",
+  "ap_description": "B-2A",
+  "awards": 80,
+  "obligated_millions": -5,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0012",
+   "0025",
+   "0031"
+  ],
+  "sample_description": "SUPPLEMENTAL WORK WITHIN SCOPE FOR CY13 B-2 PERFORMANCE BASED LOGISTICS (PBL) SOFTWARE SUSTAINMENT (SWS)- SUPPLIES"
+ },
+ {
+  "ap_code": "CNJ",
+  "ap_description": "UGM-96 TRIDENT",
+  "awards": 13,
+  "obligated_millions": -5,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "F04704",
+   "N00030"
+  ],
+  "sample_description": "THE PURPOSE OF THE MODIFICATION PURSUANT TO PCO AUTHORIZATION IN EMAIL DATED 27 APRIL 2017 AND 42.302(B)(4) IS TO DEOBLIGATE EXCESS FUNDS OF $94,623.34. PCO FURTHER CONCURS IN EMAIL DATED 27 APRIL 2017 THAT THE REMAINING CANCELED FUNDS OF $1,574,056.97 TO BE REMOVED VIA Q-FINAL UPON CLOSEOUT"
+ },
+ {
+  "ap_code": "2CNJ",
+  "ap_description": null,
+  "awards": 10,
+  "obligated_millions": -6,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00030"
+  ],
+  "sample_description": "NO"
+ },
+ {
+  "ap_code": "288",
+  "ap_description": "B1-B CMUP",
+  "awards": 5,
+  "obligated_millions": -6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0058",
+   "SD13",
+   "SD21",
+   "SD22",
+   "SD24"
+  ],
+  "sample_description": "N/A"
+ },
+ {
+  "ap_code": "ADG",
+  "ap_description": "C-17 CARGO TRANSPORT",
+  "awards": 3,
+  "obligated_millions": -6,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F33657"
+  ],
+  "sample_description": "199912!5700!0008!GU21 !ASC/PKFH                        !F3365792C0030  !A!*!P00091             !19990811!19990329!781650619!781650619!009256819!N!88277!BOEING COMPANY, THE (INC)     !2401 E WARDLOW RD         !LONG BEACH          !CA!90807!43000!037!06!LONG BEACH          !LOS ANGELES           !CALIFORNIA!0001!-000000213708!N!N!000000000000!1510!AIRCRAFT FIXED WING                               !"
+ },
+ {
+  "ap_code": "371",
+  "ap_description": "ACS",
+  "awards": 5,
+  "obligated_millions": -6,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "L601",
+   "N00024",
+   "W15P7T"
+  ],
+  "sample_description": "THIS BILATERAL SUPPLEMENTAL AGREEMENT FOR WORK WITHIN SCOPE MODIFICATION"
+ },
+ {
+  "ap_code": "201",
+  "ap_description": "C-5B",
+  "awards": 46,
+  "obligated_millions": -7,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0009",
+   "0011",
+   "0012"
+  ],
+  "sample_description": "WORKSTATION"
+ },
+ {
+  "ap_code": "SDN",
+  "ap_description": "SUBMARINE NUCLEAR - SSN",
+  "awards": 1,
+  "obligated_millions": -7,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "TRANSFER OF GP FROM N00024-03-C-2101"
+ },
+ {
+  "ap_code": "324",
+  "ap_description": "P-3C",
+  "awards": 38,
+  "obligated_millions": -9,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "ZONE 5 MATERIAL REPLACEMENT FOR A/C 225 AND 507, ORDERING WORK"
+ },
+ {
+  "ap_code": "CNX",
+  "ap_description": "THAAD-THEATER HIGH ALT AIR DEF",
+  "awards": 1,
+  "obligated_millions": -9,
+  "sub_agencies": [
+   "Missile Defense Agency"
+  ],
+  "office_prefixes": [
+   "DASG60"
+  ],
+  "sample_description": "MODIFICATION TO UPDATE ATTACHMENT 44-CAP ACCEPTANCE LIST"
+ },
+ {
+  "ap_code": "116",
+  "ap_description": "C/MH-53E",
+  "awards": 14,
+  "obligated_millions": -9,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "3871",
+   "5146",
+   "5150",
+   "5377",
+   "HR01"
+  ],
+  "sample_description": "TANK,HYDRAULIC FLUI"
+ },
+ {
+  "ap_code": "3000",
+  "ap_description": null,
+  "awards": 112,
+  "obligated_millions": -13,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WORKLOAD TRANSFER"
+ },
+ {
+  "ap_code": "311",
+  "ap_description": "POSEIDON",
+  "awards": 3,
+  "obligated_millions": -16,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "4Y01",
+   "N00019"
+  ],
+  "sample_description": "[PID N00019-17-NORFP-PMA-290-0163] THIS NO CHANGE IN PRICE MODIFICATION RENAMES THE SYSTEM SAFETY HAZARD ANALYSIS CDRL D010 REFERENCED IN P00141 TO CDRL D011 SINCE CDRL D010 WAS ALREADY ON CONTRACT AS A PART OF P00111. THIS MODIFICATION ALSO UPDATES THE ATTACHMENT 5 - STATEMENT OF WORK TO REFLECT THE REVISED CDRL NUMBER."
+ },
+ {
+  "ap_code": "AFH",
+  "ap_description": "F-16 FALCON",
+  "awards": 14,
+  "obligated_millions": -16,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0030",
+   "0049",
+   "F33657",
+   "F42600",
+   "F42620",
+   "F42630"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO TRANSFER ACCOUNTABILITY OF THE CONTRACT PROPERTY ITEMS FROM THE LOSING CONTRACT NO. F33657-88-C-0037 (A00058) TO THE GAINING CONTRACT NO. F33657-02-H-2016 (A00045)."
+ },
+ {
+  "ap_code": "122",
+  "ap_description": "E-4 (AABNCP)",
+  "awards": 12,
+  "obligated_millions": -20,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0018",
+   "0026",
+   "0031",
+   "0034",
+   "0035",
+   "0037"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO ESTABLISH CLINS 6002 AND 6003 AND ESTABLISH AND FUND SUBCLINS 6002AA AND 6003AA ON CONTRACT FA8106-06-D-0001-0038."
+ },
+ {
+  "ap_code": "526",
+  "ap_description": "AFATDS (ATCCS)",
+  "awards": 1,
+  "obligated_millions": -22,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002"
+  ],
+  "sample_description": "MAINT/REPAIR"
+ },
+ {
+  "ap_code": "158",
+  "ap_description": "APACHE (AH-64A)",
+  "awards": 68,
+  "obligated_millions": -23,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "W58RGZ13D0196 0001 IS FOR OVERHAUL OF THE AH-64 ACTUATOR.  THIS MODIFICATION IS FOR A NO COST TERMINATION FOR CONVENIENCE OF THE REMAINING QUANTITIES."
+ },
+ {
+  "ap_code": "213",
+  "ap_description": "KC-10A",
+  "awards": 13,
+  "obligated_millions": -24,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0008",
+   "0010",
+   "0013",
+   "0014",
+   "0017",
+   "0020"
+  ],
+  "sample_description": "TO OBLIGATE FY14 FUNDING FOR ENGINE OVERHAULS TO SUPPORT THE KC-10/KDC-10 PROGRAM."
+ },
+ {
+  "ap_code": "SCY",
+  "ap_description": "DESTROYER DDG-51",
+  "awards": 8,
+  "obligated_millions": -29,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "THIS STANDALONE CAR IS FOR THE CLOSEOUT OF THE CONTRACT. THE ONLY ITEM IN SPS IS THE AWARD. THERE ARE NO OTHER MODIFICATIONS IN SPS."
+ },
+ {
+  "ap_code": "128",
+  "ap_description": "BRADLEY FVS",
+  "awards": 38,
+  "obligated_millions": -37,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0009",
+   "0010",
+   "0014",
+   "0016",
+   "0019",
+   "0027"
+  ],
+  "sample_description": "UNILATERAL ADMINISTRATIVE MODIFICATION"
+ },
+ {
+  "ap_code": "272",
+  "ap_description": "TACTICAL UAV",
+  "awards": 28,
+  "obligated_millions": -44,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0012",
+   "0016",
+   "0026",
+   "0032",
+   "0090",
+   "FA8730"
+  ],
+  "sample_description": "VIDEO SCOUT TRAIN THE TRAINER COURSE"
+ },
+ {
+  "ap_code": "106",
+  "ap_description": "PATRIOT",
+  "awards": 68,
+  "obligated_millions": -66,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "W31P4Q-12-C-0002 PAC-3 PRODUCTION MOD P00074 100% OF FEE FOR CLIN 0006AD."
+ },
+ {
+  "ap_code": "174",
+  "ap_description": "KIOWA WARRIOR",
+  "awards": 98,
+  "obligated_millions": -69,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "TRANSMISSION, MECHAN NSN: 1615-01-443-4904"
+ },
+ {
+  "ap_code": "301",
+  "ap_description": "FCS",
+  "awards": 11,
+  "obligated_millions": -97,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "1008",
+   "N00014",
+   "N00024",
+   "N68936",
+   "W56HZV"
+  ],
+  "sample_description": "TERMINATION SETTLEMENT MODIFICATION"
+ },
+ {
+  "ap_code": "1000",
+  "ap_description": null,
+  "awards": 167,
+  "obligated_millions": -198,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Finance and Accounting Service",
+   "Defense Threat Reduction Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WORK IN ACCORDANCE WITH THE STATEMENT OF WORK"
+ }
+]

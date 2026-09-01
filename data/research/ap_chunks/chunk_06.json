@@ -1,0 +1,453 @@
+[
+ {
+  "ap_code": "234",
+  "ap_description": "STANDARD MISSILE 2 (SM 2)",
+  "awards": 19,
+  "obligated_millions": 46,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024",
+   "N42082",
+   "W31P4Q"
+  ],
+  "sample_description": "TRANFER OF GFP SPECIAL TOOLING TO N00024-10-C-5427"
+ },
+ {
+  "ap_code": "775",
+  "ap_description": "SURTASS (T-AGOS)",
+  "awards": 1,
+  "obligated_millions": 44,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00039"
+  ],
+  "sample_description": "SURVEILLANCE TOWED ARRAY SENSOR SYSTEM OPERATIONS AND MAINTENANCE CREWS AND FIELD SUPPORT TEAMS"
+ },
+ {
+  "ap_code": "519",
+  "ap_description": "WAS",
+  "awards": 1,
+  "obligated_millions": 44,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "WIDE AREA SURVEILLANCE S2 ICS"
+ },
+ {
+  "ap_code": "S86",
+  "ap_description": "HIPPO",
+  "awards": 3,
+  "obligated_millions": 44,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "HIPPO PRODUCTION UNIT"
+ },
+ {
+  "ap_code": "296",
+  "ap_description": "WIN-T",
+  "awards": 38,
+  "obligated_millions": 39,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0008"
+  ],
+  "sample_description": "YEARLY SERVICES FOR YEAR 4"
+ },
+ {
+  "ap_code": "Q85",
+  "ap_description": "PIEE",
+  "awards": 8,
+  "obligated_millions": 38,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4701",
+   "SP4709"
+  ],
+  "sample_description": "PROCUREMENT INTEGRATED ENTERPRISE ENVIRONMENT TIER 2 HELP DESK SUPPORT SERVICES"
+ },
+ {
+  "ap_code": "D37",
+  "ap_description": "SPACE C2",
+  "awards": 14,
+  "obligated_millions": 38,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2521",
+   "W9124P"
+  ],
+  "sample_description": "THE PEO MS OCIO HAS A REQUIREMENT TO RENEW MATLAB SOFTWARE LICENSES. PERIOD OF PERFORMANCE IS 01 SEP 2025 TO 31 AUG 2026."
+ },
+ {
+  "ap_code": "470",
+  "ap_description": "JMS INC 2",
+  "awards": 4,
+  "obligated_millions": 37,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8819",
+   "W911N2"
+  ],
+  "sample_description": "UPDATED STATEMENT OF WORK"
+ },
+ {
+  "ap_code": "N26",
+  "ap_description": "KMI INC 2",
+  "awards": 9,
+  "obligated_millions": 37,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA4830",
+   "N00244",
+   "N65236"
+  ],
+  "sample_description": "TO EXERCISE OPTION YEAR 1 AND TO PROVIDE INCREMENTAL FUNDING IN THE AMOUNT OF $2,459,605.00."
+ },
+ {
+  "ap_code": "F97",
+  "ap_description": "PEAK",
+  "awards": 3,
+  "obligated_millions": 37,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "PETROLEUM EXPEDITIONARY ANALYSIS KIT (PEAK) OY1 DELIVERY ORDER W912CH-25-F-0148 OF CONTRACT W56HZV-24-D-0014 TO FUND 26 ADDITIONAL LRIP SYSTEMS AND THE CALIBRATION AND TRANSPORTATION OF THOSE SYSTEMS."
+ },
+ {
+  "ap_code": "237",
+  "ap_description": "GBS",
+  "awards": 25,
+  "obligated_millions": 36,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0004",
+   "0007",
+   "0009",
+   "0013"
+  ],
+  "sample_description": "UPDATE ADDRESS AND PAYING OFFICE"
+ },
+ {
+  "ap_code": "3YD",
+  "ap_description": "C2BMC",
+  "awards": 3,
+  "obligated_millions": 36,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2383",
+   "W9124P"
+  ],
+  "sample_description": "THE PROGRAM EXECUTIVE OFFICE MISSILES AND SPACE OFFICE OF THE CHIEF INFORMATION OFFICER (CIO) HAS A REQUIREMENT TO PURCHASE LAPTOPS FOR THE IF-D PROJECT OFFICE."
+ },
+ {
+  "ap_code": "336",
+  "ap_description": "SAFEGUARD",
+  "awards": 1,
+  "obligated_millions": 36,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRRA1"
+  ],
+  "sample_description": "FIRM-FIXED-PRICE (FFP) ONE-TIME BUY (OTB) CONTRACT FOR 996 EACH OF NOUN: CONTROL UNIT, ENGINE, ENHANCED DIGITAL (EDECU) NSN: 2925-01-680-3143 PN:4155T12P09 (TRIUMPH PN: 11607-05C5-17)."
+ },
+ {
+  "ap_code": "M89",
+  "ap_description": "GCCS-M INC 2",
+  "awards": 3,
+  "obligated_millions": 35,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0045",
+   "KY10",
+   "N65236"
+  ],
+  "sample_description": "THIS TASKING WILL PROVIDE ENGINEERING AND TECHNICAL SUPPORT FOR THE DEVELOPMENT, TESTING, INTEGRATION AND FIELDING OF IMAGERY APPLICATIONS"
+ },
+ {
+  "ap_code": "A29",
+  "ap_description": "2GEN FLIR",
+  "awards": 13,
+  "obligated_millions": 32,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8554",
+   "FA8818"
+  ],
+  "sample_description": "UPDATE TOID AND INC FUNDING"
+ },
+ {
+  "ap_code": "473",
+  "ap_description": "IFPC INC 2",
+  "awards": 1,
+  "obligated_millions": 30,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "FAMILY OF HEAVY TACTICAL VEHICLES (FHTV) V 5-YEAR FIXED-PRICE WITH ECONOMIC PRICE ADJUSTMENT (FPEPA) REQUIREMENTS CONTRACT. DELIVERY ORDER TO PROCURE 32 - M1075A1S, 8 - M985A4 GMTS, AND 8 - M1076A0S."
+ },
+ {
+  "ap_code": "MBA",
+  "ap_description": "PTS-G",
+  "awards": 4,
+  "obligated_millions": 30,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8807"
+  ],
+  "sample_description": "PTS-G DESIGN AND DEMONSTRATIONS THE CONTRACTOR SHALL PROVIDE REQUIREMENTS IN ACCORDANCE WITH CLIN 0100 PTS-G DESIGN AND DEMONSTRATIONS AND AS OUTLINED IN IDIQ SOW (SECTION J, ATTACHMENT 1)."
+ },
+ {
+  "ap_code": "N61",
+  "ap_description": "NGEN INC 1",
+  "awards": 2,
+  "obligated_millions": 29,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8771",
+   "N00242"
+  ],
+  "sample_description": "NEXT GERNERATION INFORMATION TECHNOLOGY (NEXGEN)"
+ },
+ {
+  "ap_code": "J97",
+  "ap_description": "A3M",
+  "awards": 5,
+  "obligated_millions": 29,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4452",
+   "FA8807"
+  ],
+  "sample_description": "UPDATE TO ATTACHMENT 1, STATEMENT OF WORK."
+ },
+ {
+  "ap_code": "N09",
+  "ap_description": "JMPS",
+  "awards": 3,
+  "obligated_millions": 29,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0004",
+   "0005",
+   "0285"
+  ],
+  "sample_description": "NO COST EXT AUSTRALIA C-27J DATA TRANSFER STUDY"
+ },
+ {
+  "ap_code": "547",
+  "ap_description": "NAVY EPS",
+  "awards": 32,
+  "obligated_millions": 28,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00014",
+   "N00039",
+   "N00072",
+   "N00174",
+   "N00189",
+   "N00242"
+  ],
+  "sample_description": "UPGRADE 288 ENHANCED DIGITAL ENGINE CONTROL UNITS (EDECU)."
+ },
+ {
+  "ap_code": "9WQ",
+  "ap_description": "FEDMALL",
+  "awards": 1,
+  "obligated_millions": 28,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "FEDMALL SUSTAINMENT AND DEVELOPMENT SERVICES"
+ },
+ {
+  "ap_code": "W40",
+  "ap_description": "B-2 ACS",
+  "awards": 1,
+  "obligated_millions": 28,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8616"
+  ],
+  "sample_description": "ADAPTABLE COMMUNICATIONS SUITE (ACS) 4.0 PRODUCTION PHASE"
+ },
+ {
+  "ap_code": "366",
+  "ap_description": "EXCALIBUR",
+  "awards": 11,
+  "obligated_millions": 28,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WORK WITHIN SCOPE"
+ },
+ {
+  "ap_code": "Z03",
+  "ap_description": "AF DCGS DATA LINKS-1",
+  "awards": 2,
+  "obligated_millions": 28,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2398"
+  ],
+  "sample_description": "THE PURPOSE OF THIS TASK ORDER (TO) IS TO PROVIDE PROGRAM MANAGEMENT, ENGINEERING, AND TECHNICAL SERVICES FOR ONGOING SUPPORT AND SUSTAINMENT OF THE MAVERICK SYSTEMS."
+ },
+ {
+  "ap_code": "675",
+  "ap_description": "E-3 ACIP-MTA RP",
+  "awards": 1,
+  "obligated_millions": 27,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2371"
+  ],
+  "sample_description": "AIRBORNE WARNING AND CONTROL SYSTEM (AWACS) COMMUNICATIONS INTEGRATION PROGRAM (ACIP) RAPID FIELDING"
+ },
+ {
+  "ap_code": "425",
+  "ap_description": "VC-25B",
+  "awards": 2,
+  "obligated_millions": 26,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA5570",
+   "FA8641"
+  ],
+  "sample_description": "VC-25B SBIR PHASE II OPTION EXERCISE"
+ },
+ {
+  "ap_code": "139",
+  "ap_description": "MK 48 TORPEDO",
+  "awards": 5,
+  "obligated_millions": 25,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "EH04",
+   "EH05",
+   "N00253",
+   "N65726"
+  ],
+  "sample_description": "YORKTOWN IMA"
+ },
+ {
+  "ap_code": "BF01",
+  "ap_description": "LADS (2)",
+  "awards": 1,
+  "obligated_millions": 25,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15QKN"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO UPDATE THE SHIP TO DODAAC UNDER CLINS 0001AB AND 0001AC TO MATCH THE F NARRATIVE SHIP TO INFORMATION."
+ },
+ {
+  "ap_code": "Y19",
+  "ap_description": "MC2S MOD - BLOCK 05",
+  "awards": 14,
+  "obligated_millions": 24,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2217"
+  ],
+  "sample_description": "YARD SALE"
+ }
+]

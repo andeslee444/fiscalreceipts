@@ -75,6 +75,7 @@ def test_export_facts_writes_parquet(pg_dsn, tmp_path):
     reconcile_document(pg_dsn, document_id=doc_id, extraction_run_id=run_id)
     paths = export_facts(pg_dsn, parquet_dir=tmp_path)
     assert [p.name for p in paths] == [
+        "award_adjudications.parquet",
         "budget_line_awards.parquet",
         "budget_lines.parquet",
         "detail_narratives.parquet",

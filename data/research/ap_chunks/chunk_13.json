@@ -1,0 +1,414 @@
+[
+ {
+  "ap_code": "248",
+  "ap_description": "MINUTEMAN III PRP",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "FA8219",
+   "FA8650",
+   "FA8750"
+  ],
+  "sample_description": "R&D- DEFENSE SYSTEM: ELECTRONICS/COMMUNICATION EQUIPMENT (APPLIED RESEARCH/EXPLORATORY DEVELOPMENT)"
+ },
+ {
+  "ap_code": "N36",
+  "ap_description": "CAC2S INC 1",
+  "awards": 7,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00383",
+   "W91ZRS"
+  ],
+  "sample_description": "REPAIR FOR SPAIN"
+ },
+ {
+  "ap_code": "365",
+  "ap_description": "COBRA JUDY REPLACEMENT",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0006",
+   "0009",
+   "N00014",
+   "N00024"
+  ],
+  "sample_description": "TRANSFER ACCOUNTABILITY OF CONTRACT PROPERTY."
+ },
+ {
+  "ap_code": "3AFF",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0002"
+  ],
+  "sample_description": "200210!000159!5700!GJ60  !WARNER ROBINS ALC/LFK           !F0960302D0055  !A!N! !N!0002               !20020702!20041231!060897063!060897063!001339159!N!RAYTHEON COMPANY              !2000 E IMPERIAL HWY       !EL SEGUNDO          !CA!90245!65968!153!13!ROBINS AFB          !HOUSTON               !GEORGIA   !+000002770000!N!N!000000000000!R414!SYSTEMS ENGINEERING SERVICES                      !A1A!"
+ },
+ {
+  "ap_code": "535",
+  "ap_description": "NAVY NGAD",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8213"
+  ],
+  "sample_description": "NSN 1377001192055ES  MK92  ROCKET  MOTOR"
+ },
+ {
+  "ap_code": "3GYB",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00039"
+  ],
+  "sample_description": "200306!026580!1700!D0222 !SPACE AND NAVAL WARFARE SYSTEMS !N0003902C3241  !A!N! !N!                   !20021220!20030115!035529804!035529804!035529804!N!EPSILON SYSTEMS SOLUTIONS, INC!1565 HOTEL CIRCLE SOUTH   !SAN DIEGO           !CA!92108!66000!073!06!SAN DIEGO           !SAN DIEGO             !CALIFORNIA!+000000016177!N!N!000002999772!D306!ADP SYSTEMS ANALYSIS SERVICES                     !S1 !"
+ },
+ {
+  "ap_code": "183",
+  "ap_description": "C-27J",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0013",
+   "N55321"
+  ],
+  "sample_description": "PURCHASE OF 7 AIRCRAFT AND 7 OPTIONAL KITS"
+ },
+ {
+  "ap_code": "409",
+  "ap_description": "M60A2 TANK",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRDL1"
+  ],
+  "sample_description": "THE PURPOSE OF MODIFICATION P00001 IS TO INCORPORATE APPROVED REQUEST FOR VARIANCE (RFV) L17T7001-1 INTO SECTION J OF THE CONTRACT AND EXTEND THE DELIVERY SCHEDULES."
+ },
+ {
+  "ap_code": "2AFU",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "7007",
+   "N00383"
+  ],
+  "sample_description": "200309!2P5795!1700!JA10B !NAVAL INVENTORY CONTROL POINT   !N0038302M031P  !A!N! !N!                   !20020711!20030711!008370470!008370470!024744476!N!PACIFIC SCIENTIFIC INSTRUMENTS!481 CALIFORNIA AVE        !GRANTS PASS         !DC!97526!30550!033!41!GRANTS PASS         !JOSEPHINE             !OREGON    !+000000039000!N!N!000000000000!6680!LIQ & GAS FLOW, LIQ LVL, & MECH MOTION MEAS INSTRU!A1A!"
+ },
+ {
+  "ap_code": "361",
+  "ap_description": "DE 1052",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912QR"
+  ],
+  "sample_description": "DEVELOPMENT AND IMPLEMENTATION FOR GROUNDWATER ASSESSMENT PLAN (GAP) AT THE SOLID WASTE MANAGEMENT UNIT FTKX-02 AT FORT KNOX, KY"
+ },
+ {
+  "ap_code": "3GYY",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0032"
+  ],
+  "sample_description": "199805!5700!0160!GH50 !SACRAMENTO ALC/LMK              !F0460695D0033  !A!*!0032               !19980223!19990831!877147066!041014242!139691877!N!15151!ALLIEDSIGNAL TECHNICAL SERVICE!5904 RICHMOND HWY         !ALEXANDRIA          !VA!22303!19125!027!24!COLUMBIA            !HOWARD                !MARYLAND  !0001!+000008966128!N!N!000000000000!R425!ENGINEERING TECHNICAL SERVICES                    !"
+ },
+ {
+  "ap_code": "Z90",
+  "ap_description": "AFGIMS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA7014"
+  ],
+  "sample_description": "PKH-ROMO-JONES PROCUREMENT OF VERTIV CYBEX SCM185DPH SECURE DESKTOP MATRIX KVM AND PERIPHIALS"
+ },
+ {
+  "ap_code": "2SFF",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "THIS IS FOR THE CLOSEOUT OF THE SUBJECT CONTRACT."
+ },
+ {
+  "ap_code": "0",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "0104"
+  ],
+  "sample_description": "8504514310!SPINDLE,WHEEL,DRIVI"
+ },
+ {
+  "ap_code": "GHI",
+  "ap_description": "AN/UYQ-21 NTDS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0010",
+   "0011"
+  ],
+  "sample_description": "200305!V00633!1700!BW17A !NAVAL SURFACE WARFARE CENTER    !N0016499D0009  !A!N! !N!0011               !20030228!20030725!005899794!112820840!001339159!N!RAYTHEON TECHNICAL SERVICES CO!1665 HUGHES WAY           !LONG BEACH          !CA!90810!43000!037!06!LONG BEACH          !LOS ANGELES           !CALIFORNIA!+000000058000!N!N!000000000000!J059!MAINT&REPAIR OF EQ/ELECTRICAL&ELCT EQUIP COMPS!S1 !SERV"
+ },
+ {
+  "ap_code": "2AFX",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019",
+   "N00383"
+  ],
+  "sample_description": "200302!2P7837!1700!JA10D !NAVAL INVENTORY CONTROL POINT   !N0038303M009H  !A!N! !N!                   !20021024!20031223!085957876!085957876!085957876!N!THE NORDAM GROUP INC          !11200 E  PINE STREET      !TULSA               !OK!74116!75000!143!40!TULSA               !TULSA                 !OKLAHOMA  !+000000092500!N!N!000000000000!1560!AIRFRAME STRUCTURAL COMPONENTS                    !A1B!"
+ },
+ {
+  "ap_code": "M13",
+  "ap_description": "AHLTA",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00140"
+  ],
+  "sample_description": "IT AND TELECOM - OTHER IT AND TELECOMMUICATION"
+ },
+ {
+  "ap_code": "426",
+  "ap_description": "DON-LAIRCM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00174"
+  ],
+  "sample_description": "CORD GRIP STEEL, FLOOR MOUNTS , STAINLESS STELL NYLON INSERT LOCKNUTS"
+ },
+ {
+  "ap_code": "H50",
+  "ap_description": "NAVSTAR GPS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8576"
+  ],
+  "sample_description": "EMBEDDED GLOBAL POSITIONING SYSTEM (GPS)/INERTIAL NAVIGATION SYSTEM (INS) (EGI) AND EGI-MODERINIZED (EGI-M) PRODUCTION AND SUSTATINMENT"
+ },
+ {
+  "ap_code": "4000",
+  "ap_description": null,
+  "awards": 17,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0006",
+   "0026",
+   "0031",
+   "0033"
+  ],
+  "sample_description": "MISCELLANEOUS ELECTRIC POWER AND DISTRIBUTION EQUIPMENT"
+ },
+ {
+  "ap_code": "295",
+  "ap_description": "ADV WIDEBAND",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "FA8727"
+  ],
+  "sample_description": "R&D- DEFENSE SYSTEM: ELECTRONICS/COMMUNICATION EQUIPMENT (BASIC RESEARCH)"
+ },
+ {
+  "ap_code": "AIG",
+  "ap_description": "LONGBOW APACHE",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAH23"
+  ],
+  "sample_description": "THIS IS A DEOBLIGATION OF CANCELLED FUNDS REQUIRED IN ORDER FOR DCMA TO CLOSEOUT THE CONTRACT"
+ },
+ {
+  "ap_code": "E88",
+  "ap_description": "MUNITIONS LCM",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91QVN"
+  ],
+  "sample_description": "BPA GENERAL CARGO"
+ },
+ {
+  "ap_code": "3BJJ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F34601"
+  ],
+  "sample_description": "ENGINEERING SERVICES J79 TIGERS"
+ },
+ {
+  "ap_code": "2GHJ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00039"
+  ],
+  "sample_description": "199804!1700!0076!D0232!SPACE AND NAVAL WARFARE SYSTEMS !N0003998C0033  !A!*!BASIC              !19980115!20031231!193049236!001339159!001339159!N!3Y193!RAYTHEON COMPANY INC          !1001 BOSTON POST RD E     !MARLBOROUGH         !MA!01752!38715!017!25!MARLBOROUGH         !MIDDLESEX             !MASS      !0001!+000010150000!N!N!000000000000!5985!ANTENNAS, WAVEGUIDES & RELATED EQUIPMENT          !"
+ },
+ {
+  "ap_code": "137",
+  "ap_description": "MAVERICK (IR)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "FA8213"
+  ],
+  "sample_description": "IGF::OT::IGF TO ESTABLISH A CONTRACT FOR CRYOENGINE REPAIRS TO SUPPORT THE MAVERICK MISSILE PROGRAM."
+ },
+ {
+  "ap_code": "E30",
+  "ap_description": "KNIGHT",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W90VN9"
+  ],
+  "sample_description": "VTC SYSTEM AND INSTALLATION"
+ },
+ {
+  "ap_code": "3BTD",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001"
+  ],
+  "sample_description": "R&D T56"
+ },
+ {
+  "ap_code": "B70",
+  "ap_description": "HH-60G LCM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA5682"
+  ],
+  "sample_description": "THE WEAPON SONIC CLEANER WILL BE USED TO CLEAN OUT HH-60 WEAPONS SYSTEMS. THEY WILL ALSO BE USED TO TEST FOR ENGINES AND HELICOPTER COMPONENTS FOR FUTURE EXPANSION."
+ },
+ {
+  "ap_code": "3CNM",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F08635"
+  ],
+  "sample_description": "CONTRACT CLOSEOUT MODIFICATION ACTION/RAR"
+ }
+]

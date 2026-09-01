@@ -9,10 +9,21 @@
 -- separate, not-yet-built feature (E3/owner call), not something this
 -- table can silently half-implement by picking whichever dim_programs row
 -- wins an unstated tiebreak.
+-- Hand-adjudication overlay (2026-09-01): every published (pe, award) pair was
+-- hand-adjudicated (award-level evidence investigation + two adversarial
+-- refuter lenses; see docs/superpowers/reviews/ and migration 010). The
+-- published confidence is the adjudicated one when present; the mechanical
+-- crosswalk tag is retained as crosswalk_confidence, never rewritten.
+-- Pairs adjudicated low/reject drop out of the mart (and the site) here.
 with programs as (
     select pe_bli, min(title) as title
     from {{ ref('dim_programs') }}
     group by pe_bli
+),
+adjudications as (
+    select award_piid, pe_bli, adjudicated_confidence, award_verdict,
+           pair_reason, basis as adjudication_basis
+    from {{ source('lake', 'jbook_award_adjudications') }}
 )
 select
     a.pe_bli,
@@ -23,9 +34,17 @@ select
     a.recipient_name,
     a.recipient_uei,
     a.method,
-    a.confidence,
+    coalesce(adj.adjudicated_confidence, a.confidence) as confidence,
+    a.confidence as crosswalk_confidence,
+    case when adj.award_piid is not null then 'adjudicated' else 'mechanical' end
+        as confidence_source,
+    adj.award_verdict,
+    adj.pair_reason,
+    adj.adjudication_basis,
     p.title as program_title
 from {{ source('lake', 'jbook_awards') }} a
+left join adjudications adj
+  on adj.award_piid = a.award_piid and adj.pe_bli = a.pe_bli
 left join programs p
   on p.pe_bli = a.pe_bli
-where a.confidence in ('high', 'medium')
+where coalesce(adj.adjudicated_confidence, a.confidence) in ('high', 'medium')

@@ -1,0 +1,404 @@
+[
+ {
+  "ap_code": "1AIC",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0009",
+   "DAAH01"
+  ],
+  "sample_description": "200010!2100!005118!AH01  !USA AVIATION AND MISSILE COMMAND!DAAH0100CA105  !A!*!*                  !20000323!20000930!041158320!041158320!008255408!N!0G5P5!STERLING SOFTWARE (U.S.), INC.!1650 TYSONS BOULEVARD, SUI!MCLEAN              !VA!22102!53000!095!12!ORLANDO             !ORANGE                !FLORIDA   !0001!+000000366000!N!N!000000000000!AC66!RDTE/ELECTRONICS&COMMUNICATION EQ-MGMT SUPPORT  "
+ },
+ {
+  "ap_code": "UAJ",
+  "ap_description": "BINOD",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91CRB"
+  ],
+  "sample_description": "THE PURPOSE OF THIS FIRM FIXED PRICE CONTRACT TO PROCURE AVS-9 ACCESSORIES CARRYING ASSEMBLY AND LOW PROFILE POWER PACK TO ISRAEL IN SUPPORT OF FOREIGN MILITARY SALES (FMS) CASE IS-B-VCH."
+ },
+ {
+  "ap_code": "2FTJ",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200306!034123!1700!BZ006 !NAVAL SEA SYSTEMS COMMAND       !N0002403C6109  !A!N! !N!                   !20030328!20060930!007590276!007590276!001339159!N!RAYTHEON COMPANY              !BLDG  894, 610 DOWELL STRE!KEYPORT             !WA!98345!35625!035!53!KEYPORT             !KITSAP                !WASHINGTON!+000003828087!Y!N!000000000000!1355!TORPEDO INERT COMPONENTS                          !A5 !"
+ },
+ {
+  "ap_code": "370",
+  "ap_description": "JOINT COMMON MISSILE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "GM01"
+  ],
+  "sample_description": "COST GROWTH AND INCREMENTAL FUNDING"
+ },
+ {
+  "ap_code": "AFC",
+  "ap_description": "F-4 PHANTOM II",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F34601"
+  ],
+  "sample_description": "MAINT/REPAIR/REBUILD OF EQUIPMENT- COMMUNICATION, DETECTION, AND COHERENT RADIATION EQUIPMENT"
+ },
+ {
+  "ap_code": "480",
+  "ap_description": "CROWS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "DELIVERY ORDER FOR COMMON REMOTELY OPERATED WEAPON STATION (CROWS) BUSTLE RACKS FOR STRYKER FAMILY OF VEHICLES (FOV)."
+ },
+ {
+  "ap_code": "CNU",
+  "ap_description": "M6",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "N02",
+  "ap_description": "DJC2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "HR01"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "H71",
+  "ap_description": "VPS SIGMAN",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV"
+  ],
+  "sample_description": "DELIVERY ORDER OF (20) 200 ML KITS. 10 TO FT. STEWART, 10 TO ANAD"
+ },
+ {
+  "ap_code": "0MR",
+  "ap_description": "NIIS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4484"
+  ],
+  "sample_description": "JBMDL/MCGUIRE AFB/NJ/USA CUSTOMER HAS REQUESTED AN IDS PROPOSAL FOR (20) NEW MSA IGLOO(S) AND (1) MAINTENANCE BAY. THESE NEW STRUCTURES WILL BE AN ADD TO THE EXISTING MUNITIONS STORAGE AREA ON JBMDL."
+ },
+ {
+  "ap_code": "GAE",
+  "ap_description": "AN/ALQ-135",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001"
+  ],
+  "sample_description": "CONVERTERS, ELECTRICAL, NONROTATING"
+ },
+ {
+  "ap_code": "GCA",
+  "ap_description": "AN/SLQ-25 TORPEDO CM TRANS SYS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199805!1700!1637!BZ006!NAVAL SEA SYSTEMS COMMAND       !N0002498C6111  !A!*!*                  !19980227!20010130!070413489!070413489!070413489!N!16786!F E L CORPORATION             !& CENTRAL AVE RR 547      !FARMINGDALE         !NJ!07727!22950!025!34!FARMINGDALE         !MONMOUTH              !NEW JERSEY!0001!+000001660821!Y!N!000000000000!5865!ELCT CNTRMSRS, CNTR-CNTR-MSRS & QCK RCTN CPBLTY EQ!"
+ },
+ {
+  "ap_code": "F59",
+  "ap_description": "M939A2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W564KV"
+  ],
+  "sample_description": "PASSENGER NON-TACTICAL VEHICLES(NTVS) - CLAIMS MOD FOR DAMAGES"
+ },
+ {
+  "ap_code": "3ADG",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F33657"
+  ],
+  "sample_description": "200110!000101!5700!GU30  !ASC/YCK                         !F3365789C0001  !A!N!*!N!P00158             !20010725!20010525!781650619!781650619!009256819!N!MCDONNELL DOUGLAS CORPORATION,!2401 E  WARDLOW ROAD      !LONG BEACH          !CA!90807!43000!037!06!LONG BEACH          !LOS ANGELES           !CALIFORNIA!-000000030245!N!N!000000000000!1510!AIRCRAFT FIXED WING                               !A1A!"
+ },
+ {
+  "ap_code": "D01",
+  "ap_description": "C-17 FDR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Information Systems Agency"
+  ],
+  "office_prefixes": [
+   "HC1019"
+  ],
+  "sample_description": "IPTS000481EBM 50MB SERVICE"
+ },
+ {
+  "ap_code": "347",
+  "ap_description": "GCSS ARMY",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001"
+  ],
+  "sample_description": "IGF::OT::IGF  PDTE MAINTENANCE SERVICES"
+ },
+ {
+  "ap_code": "1BTN",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH23"
+  ],
+  "sample_description": "200210!000845!2100!AH23  !USA AVIATION AND MISSILE COMMAND!DAAH2302C0122  !A!N! !N!                   !20020131!20061231!122607435!122607435!122607435!N!LIGHT HELICOPTER TURBINE ENGIN!9238 MADISON BLVD STE 119 !MADISON             !AL!35758!36000!097!18!INDIANAPOLIS        !MARION                !INDIANA   !+000018351469!N!N!000000000000!2840!GAS TURBINES AND JET ENGINES, ACFT & COMPS        !A1B!"
+ },
+ {
+  "ap_code": "262",
+  "ap_description": "B-1 CMUP-COMPUTER UPGRADE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Health Agency"
+  ],
+  "office_prefixes": [
+   "HT0011"
+  ],
+  "sample_description": "25EUD073 PRINTERS PURCHASE AGAINST DHAS NASA SEWP PRINTING IMAGING CATALOG IN SUPPORT OF TRIPLER ARMY MEDICAL CENTER (AMC)"
+ },
+ {
+  "ap_code": "2CNS",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F42600"
+  ],
+  "sample_description": "199712!1700!1270!AA4L0!NAVAL AIR SYSTEMS COMMAND       !F4260090C1586  !A!*!P00005             !19970922!19980930!097382592!097382592!097382592!N!61420!VER-VAL ENTERPRISES INC       !91 HILL AVE INDUSTRIAL PA !FORT WALTON BE      !FL!32548!24475!091!12!FORT WALTON BEACH   !OKALOOSA              !FLORIDA   !0001!-000000108480!N!N!000000000000!8140!AMMUN&NUCLR ORDNCE BXS, PKGS&SPL CONTAINERS   !A2 !"
+ },
+ {
+  "ap_code": "U30",
+  "ap_description": "HDT",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912PB"
+  ],
+  "sample_description": "THREE WAY TIPPER DUMP TRUCK"
+ },
+ {
+  "ap_code": "2CMN",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199805!1700!1507!BZ005!NAVAL SEA SYSTEMS COMMAND       !N0002498C5362  !A!*!*                  !19980217!19990216!926674318!926674318!926674318!N!038E6!STANDARD MISSILE COMPANY, LLC !1505 FARM CREDIT DR       !MC LEAN             !VA!22102!48376!059!51!MCLEAN              !FAIRFAX               !VIRGINIA  !0001!+000007157626!N!N!000000000000!1338!GUIDE MSL AND SP VEH INERT UN, FUEL, COMP         !"
+ },
+ {
+  "ap_code": "275",
+  "ap_description": "SFW",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "R-DEX, ALONG WITH TENNLAB, PROPOSES THE DEVELOPMENT OF ULTRAFAST NEUROMORPHIC ALGORITHMS FOR DRONE DETECTION. THE TEAM AIMS TO INTEGRATE ULTRA-FAST SPIKING NEURAL NETWORKS INTO NEUROMORPHIC HARDWARE TO ACHIEVE LOWPOWER, HIGH-SPEED DRONE DETECTION."
+ },
+ {
+  "ap_code": "C09",
+  "ap_description": "MPS GMSM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N68520"
+  ],
+  "sample_description": "BREATHING AIR SAMPLES"
+ },
+ {
+  "ap_code": "551",
+  "ap_description": "NESP",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0002"
+  ],
+  "sample_description": "200609!063131!1700!N00039!SPACE AND NAVAL WARFARE SYSTEMS !N0003906D0004  !A!N! !Y!0002         !      !20060620!20061230!193049236!193049236!001339159!N!RAYTHEON COMPANY              !1001 BOSTON POST RD E     !MARLBOROUGH         !MA!01752!38715!017!25!MARLBOROUGH         !MIDDLESEX             !MASS      !+000000375000!N!N!000000000000!L058!TECH REP SVCS/COMMUNICATION EQUIPMENT             !A7 "
+ },
+ {
+  "ap_code": "3CMU",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0029",
+   "F42610"
+  ],
+  "sample_description": "BOEING NORTH AMERICAN, INC    IRVING WICK DR W NEWARK              LICKING               OHIO      ELECTRICAL & ELCT BOARDS, CARDS & ASSCTED HRDWRE  AIRFRAMES AND SPARES          MINUTEMAN"
+ },
+ {
+  "ap_code": "2ATS",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "CHANGE ISSUED BY OFFICE"
+ },
+ {
+  "ap_code": "151",
+  "ap_description": "SURTASS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00039"
+  ],
+  "sample_description": "SBIR PHASE III AWARD FOR R&D ENGINEERING AND RELATED SERVICES IN THE AREA OF ADVANCED SURVEILLANCE TOWED ARRAY SENSOR SYSTEM (SURTASS) FOR THE MARITIME SURVEILLANCE SYSTEMS."
+ },
+ {
+  "ap_code": "3ACA",
+  "ap_description": null,
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0009",
+   "0011",
+   "0014",
+   "0032",
+   "0061"
+  ],
+  "sample_description": "SUPPORT- PROFESSIONAL: ENGINEERING/TECHNICAL"
+ },
+ {
+  "ap_code": "CNA",
+  "ap_description": "RIM 7-H-2 NATO SEA SPARROW",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01",
+   "N00024"
+  ],
+  "sample_description": "REPLACE CDRL PACKAGE."
+ },
+ {
+  "ap_code": "ZHK",
+  "ap_description": "HURRICANE KATRINA",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Threat Reduction Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2860",
+   "HDTRA1"
+  ],
+  "sample_description": "UNITED STATES CODE ANNOTATED POCKET PART"
+ }
+]

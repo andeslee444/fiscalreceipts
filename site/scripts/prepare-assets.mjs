@@ -64,6 +64,12 @@ function copyDir(src, dest) {
     console.error(`❌  FATAL: source directory not found: ${src}`);
     process.exit(1);
   }
+  // MIRROR, not overlay: a file deleted upstream must disappear here too.
+  // Stale keyed sidecars (districts/, breakdowns/) survived an overlay copy
+  // and leaked retired fact-ids into built pages (2026-09-01, gate 2).
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest, { recursive: true, force: true });
+  }
   mkdirp(dest);
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const srcPath = path.join(src, entry.name);

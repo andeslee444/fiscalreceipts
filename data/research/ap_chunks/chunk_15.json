@@ -1,0 +1,415 @@
+[
+ {
+  "ap_code": "EDK",
+  "ap_description": "M109 155MM MED SP HOWITZER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DG01"
+  ],
+  "sample_description": "200312!002674!2100!AE20  !TACOM ROCK ISLAND               !DAAE3003D1003  !A!N! !N!DG01               !20030910!20040905!834476079!098060218!175406842!N!UNITED DEFENSE, L P           !1100 BAIRS ROAD           !YORK                !PA!17405!87048!133!42!YORK                !YORK                  !PENN      !+000001300000!N!N!000000000000!2350!COMBAT ASSAULT & TACTICAL VEH, TRACKED            !A4A!"
+ },
+ {
+  "ap_code": "735",
+  "ap_description": "SADARM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "7N01"
+  ],
+  "sample_description": "SOFTWARE ARCHITECTURE&ENGINEERING SERVICES FOR SOA IN SUPPORT OF DCGS-N"
+ },
+ {
+  "ap_code": "486",
+  "ap_description": "MGUE INC 2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91151"
+  ],
+  "sample_description": "SYNCSERVER S650 BASE CONFIG"
+ },
+ {
+  "ap_code": "3AHL",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F09603"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "177",
+  "ap_description": "TRIDENT II SUB",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00030",
+   "N00164"
+  ],
+  "sample_description": "UNITED STATES (US) STRATEGIC WEAPONS SYSTEM (SWS) FIRE CONTROL SUBSYSTEM (FCS) AND SSBN-REPLACEMENT COMMON MISSILE COMPARTMENT (CMC) ENGINEERING SUPPORT"
+ },
+ {
+  "ap_code": "FVH",
+  "ap_description": "AMMUNITION SIMULATORS, ALL TYPES",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00039",
+   "N61339"
+  ],
+  "sample_description": "200006!1700!005365!D0222 !SPACE AND NAVAL WARFARE SYSTEMS !N0003900C2208  !A!*!*                  !20000331!20040930!035529804!035529804!035529804!N!1HQ30!EPSILON SYSTEMS SOLUTIONS INC.!2550 5TH AVENUE SUITE 725 !SAN DIEGO           !CA!92103!66000!073!06!SAN DIEGO           !SAN DIEGO             !CALIFORNIA!0001!+000000037000!N!N!000000000000!AD96!RDTE/OTHER DEFENSE-MANAGEMENT SUPPORT           "
+ },
+ {
+  "ap_code": "571",
+  "ap_description": "ATS",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0008",
+   "0038",
+   "FA8517"
+  ],
+  "sample_description": "REPAIR OF ELECTRICAL PLUG-IN UNITS.  APPL:  AN/GSM-415(V)(1) UNIVERSAL AVIONICS TESTER IN SUPPORT OF F-15 ACFTS. MODIFICATION REDUCES QTY"
+ },
+ {
+  "ap_code": "M94",
+  "ap_description": "TELEPORT",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "RS92"
+  ],
+  "sample_description": "COMMUNICATION VAULT ENGINEERING"
+ },
+ {
+  "ap_code": "S20",
+  "ap_description": "JSAM APACHE",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N62473",
+   "W90VN6"
+  ],
+  "sample_description": "REPLACE METAL ROOF AND DOWN SPOUTS, BUILDING 530599, MARINE CORPS BASE, CAMP PENDLETON CA"
+ },
+ {
+  "ap_code": "335",
+  "ap_description": "MLP",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N62786",
+   "SPE7LX",
+   "SPRDL1"
+  ],
+  "sample_description": "HONEYWELL MODEL 5050B LEATHER STRUXIMITY FIREFIGHTING BOOTS FOR ESB 7 SHIP"
+ },
+ {
+  "ap_code": "CMN",
+  "ap_description": "RIM-66 STANDARD MISSILE (MED)",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "F33657",
+   "N00024"
+  ],
+  "sample_description": "PROPERTY TRANSFER"
+ },
+ {
+  "ap_code": "S9E",
+  "ap_description": "SPARES",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91249",
+   "W91QF4"
+  ],
+  "sample_description": "LAUNDRY AND DRY-CLEANING SERVICES FOR THE PRESIDIO OF MONTEREY, CA LRC. SERVICES INCLUDE LAUNDRY AND DRY CLEANING SERVICES AND MANNING OF THE LAUNDRY COLLECTION POINT."
+ },
+ {
+  "ap_code": "315",
+  "ap_description": "F-111A/D/E/F",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA4809"
+  ],
+  "sample_description": "SEYMOUR JOHNSON AFB, 335TH FS DEPLOYMENT GEAR; REFERENCE LCI QUOTE FOR LINE ITEM NAMING CONVENTIONS."
+ },
+ {
+  "ap_code": "AFF",
+  "ap_description": "F-15 EAGLE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F09603"
+  ],
+  "sample_description": "199707!5700!0207!GJ60 !WARNER ROBINS ALC/LFK           !F0960397C0210  !A!*!*                  !19970407!19980430!101918811!101918811!101918811!N!6Y852!TECHNICAL&MANAGEMENT SERVICE!4041 POWDER MILL RD       !BELTSVILLE          !MD!20705!80508!153!13!WARNER ROBINS       !HOUSTON               !GEORGIA   !0001!+000005290802!Y!N!000000000000!1650!ACFT HYDRAULIC, VACUUM&DE-ICING SYS COMP        !A1A!"
+ },
+ {
+  "ap_code": "G16",
+  "ap_description": "MTRCS",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Commissary Agency"
+  ],
+  "office_prefixes": [
+   "HQC005"
+  ],
+  "sample_description": "HOLIDAY TRAILERS FOR VARIOUS STORES/LOCATIONS"
+ },
+ {
+  "ap_code": "559",
+  "ap_description": "EWPMT",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W564KV"
+  ],
+  "sample_description": "P22-198 BOEBLINGEN PZ-HOUSING, B 3162"
+ },
+ {
+  "ap_code": "AHV",
+  "ap_description": "SH-60 SEAHAWK",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00383",
+   "N00421"
+  ],
+  "sample_description": "200512!437005!1700!N00421!NAVAL AIR WARFARE CENTER AIR DIV!GS10F0033K     !C!N! !N!N0042103F0230!P00008!20050928!20040202!131873457!131873457!131873457!N!WHITNEY, BRADLEY&BROWN, INC !1604 SPRING HILL RD # 200 !VIENNA              !VA!22182!03000!013!51!ARLINGTON           !ARLINGTON             !VIRGINIA  !-000000022633!N!N!000000000000!R408!PROGRAM MANAGEMENT/SUPPORT SERVICES               !S1 !S"
+ },
+ {
+  "ap_code": "3GAW",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F33657"
+  ],
+  "sample_description": "NDAA CLOSEOUT AUTHORITY"
+ },
+ {
+  "ap_code": "3ZDE",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0073",
+   "0133"
+  ],
+  "sample_description": "200209!000731!5700!GW05  !HSW/PKV                         !F4162400D8028  !A!N! !N!0133               !20020621!20040131!124645677!124252052!043271568!N!URS GROUP, INC                !10101 REUNION PLACE, SUITE!SAN ANTONIO         !TX!78216!53360!051!37!POPE AFB            !CUMBERLAND            !N CAROLINA!+000000460000!N!N!000000000000!C219!OTHER ARCHITECT&ENGINEERING SERVICES            !C9E!AL"
+ },
+ {
+  "ap_code": "1AHC",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0004"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO TRANSFER PURCHASING OFFICE RESPONSIBILITY FROM W15P7T (ACC-APG DIVISION B) TO W56JSR (ACC-APG DIVISION E)."
+ },
+ {
+  "ap_code": "ZZE",
+  "ap_description": "AVENGER (FAADS LOS-R)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRRA2"
+  ],
+  "sample_description": "DELIVERY ORDER SPRRA221D0007, NSN: 4720014762346"
+ },
+ {
+  "ap_code": "5ZSE",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0007"
+  ],
+  "sample_description": "CPFF -PERF. STDS. FOR HUDSON RIVER PCB'S"
+ },
+ {
+  "ap_code": "51E",
+  "ap_description": "CBA",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2823"
+  ],
+  "sample_description": "109 SETS OF CIVILIAN BODY ARMOR"
+ },
+ {
+  "ap_code": "2SED",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199708!1700!7708!BZ004!NAVAL SEA SYSTEMS COMMAND       !N0002495C4079  !A!*!P00006             !19970527!19981031!618019632!008898884!008898843!N!11447!L-3 COMMUNICATIONS CORPORATION!1 FEDERAL ST              !CAMDEN              !NJ!08103!10000!007!34!CAMDEN              !CAMDEN                !NEW JERSEY!0001!+000019444000!N!N!000000000000!1911!AMPHIBIOUS ASSAULT SHIPS                          !"
+ },
+ {
+  "ap_code": "2SEA",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0009"
+  ],
+  "sample_description": "200210!024543!1700!BZ005 !NAVAL SEA SYSTEMS COMMAND       !N0002401D7023  !A!N! !N!0009               !20020307!20070607!064993314!064993314!064993314!N!JOHN J MC MULLEN ASSOCIATES IN!4300 KING ST 400          !ALEXANDRIA          !VA!22302!50000!001!11!WASHINGTON          !DISTRICT OF COLUMBIA  !D.C.      !+000000026500!N!N!000000000000!R499!OTHER PROFESSIONAL SERVICES                       !S1 !"
+ },
+ {
+  "ap_code": "3AFB",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "F33657"
+  ],
+  "sample_description": "GFP TRANSFER FROM F33657-91-C-0006 TO FA8650-17-C-5275"
+ },
+ {
+  "ap_code": "P28",
+  "ap_description": "B-52 LCM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8628"
+  ],
+  "sample_description": "B-52 LIB FIRE CONTAINMENT KITS VIA COTS GSA PROCUREMENT"
+ },
+ {
+  "ap_code": "1CNE",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0015",
+   "DAAH01"
+  ],
+  "sample_description": "PAC3 IPF PRODUCTION"
+ },
+ {
+  "ap_code": "SDR",
+  "ap_description": "TRIDENT SUBMARINE",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "TRANSFER GFP TO ANOTHER  CONTRACT"
+ },
+ {
+  "ap_code": "2GSS",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "200209!024057!1700!BZ006 !NAVAL SEA SYSTEMS COMMAND       !N0002402C6313  !A!N! !N!                   !20020628!20100228!130956345!787662220!834951691!N!LOCKHEED MARTIN CORPORATION   !ELECTRONICS PARKWAY BLDG 7!SYRACUSE            !NY!13221!73000!067!36!SYRACUSE            !ONONDAGA              !NEW YORK  !+000018540464!N!N!000000000000!2090!MISCELLANEOUS SHIP AND MARINE EQUIPMENT           !A3 !"
+ }
+]

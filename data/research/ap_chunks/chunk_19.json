@@ -1,0 +1,424 @@
+[
+ {
+  "ap_code": "M08",
+  "ap_description": "HPCM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8706"
+  ],
+  "sample_description": "DEOBLIGATION WEB BASED LEARNING"
+ },
+ {
+  "ap_code": "167",
+  "ap_description": "AV-8B",
+  "awards": 8,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0005",
+   "0015",
+   "0019",
+   "0020"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "293",
+  "ap_description": "MP RTIP",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0056",
+   "0065"
+  ],
+  "sample_description": "THE CONTRACTOR SHALL FURNISH THE NECESSARY PERSONNEL AND FACILITATED TO CONDUCT THE RESEARCH WORK DESCRIBED IN SECTION C AND PROVIDE REPORTS AND DATA IN ACCORDANCE WITH EXHIBIT A."
+ },
+ {
+  "ap_code": "3GAF",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F09603"
+  ],
+  "sample_description": "AMPLIFIERS"
+ },
+ {
+  "ap_code": "B90",
+  "ap_description": "LBS",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W911KF"
+  ],
+  "sample_description": "PURCHASE ELECTRICAL SUPPLIES"
+ },
+ {
+  "ap_code": "206",
+  "ap_description": "EA-6B",
+  "awards": 15,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0004",
+   "0005",
+   "0006",
+   "0007",
+   "0008"
+  ],
+  "sample_description": "SERVICE CONTRACTS"
+ },
+ {
+  "ap_code": "780",
+  "ap_description": "ITMS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "R55575"
+  ],
+  "sample_description": "COMPUTER SUPPLIES THAT ARE NEEDED FOR ADP/ APPROVED VIA AND ITPR BY CNAP."
+ },
+ {
+  "ap_code": "2GDL",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DO39"
+  ],
+  "sample_description": "200304!004613!1700!D0221 !SPACE AND NAVAL WARFARE SYSTEMS !N0003998D0027  !A!N! !N!DO39               !20030116!20030716!018619986!018619986!217304393!N!BAE SYSTEMS/ROCKWELL COLLINS  !350 COLLINSROAD NE        !CEDAR RAPIDS        !IA!52498!66022!073!06!SAN DIEGO NOSC      !SAN DIEGO             !CALIFORNIA!+000000128437!N!N!000000000000!J016!MAINT&REPAIR OF EQ/AIRCRAFT COMPS&ACCYS       !A7 !ELEC"
+ },
+ {
+  "ap_code": "2CNZ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199808!1700!2756!BZ004!NAVAL SEA SYSTEMS COMMAND       !N0002498C4013  !A!*!*                  !19980514!20031231!001922749!001922749!001922749!N!1B202!LITTON INDUSTRIES, INC        !21240 BURBANK BLVD        !WOODLAND HILLS      !CA!91367!86356!037!06!WOODLAND HILLS      !LOS ANGELES           !CALIFORNIA!0001!+000020684000!N!N!000000000000!2090!MISCELLANEOUS SHIP AND MARINE EQUIPMENT           !"
+ },
+ {
+  "ap_code": "M00",
+  "ap_description": "B-1 DCI",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00174"
+  ],
+  "sample_description": "REPLACING HOSES, OIL FILTER AND MORE"
+ },
+ {
+  "ap_code": "ACA",
+  "ap_description": "C-5 GALAXY",
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0007",
+   "0013",
+   "0031",
+   "0039"
+  ],
+  "sample_description": "SYSTEMS ENGINEERING SERVICES"
+ },
+ {
+  "ap_code": "3GYZ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "199812!5700!0052!GZ09 !SMC/PKW SAT SYSTEMS CONTRACTS   !F0470183C0030  !A!*!P00083             !19980716!19980930!872978978!872978978!872978978!N!18713!LOCKHEED MARTIN CORPORATION   !1111 LOCKHEED WAY A       !SUNNYVALE           !CA!94089!60900!021!34!PRINCETON           !MERCER                !NEW JERSEY!0001!-000000025905!N!N!000000000000!AC25!RDTE/MISSILE AND SPACE SYSTEMS-ENG/MANUF DEVEL    !"
+ },
+ {
+  "ap_code": "3GAJ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "THIS MODIFICATION IS TO CLOSE THE CONTRACT UNDER NDA PROCEDURES"
+ },
+ {
+  "ap_code": "E37",
+  "ap_description": "FMV",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA9550"
+  ],
+  "sample_description": "THE CREATION OF SIZZLE REELS THAT DESCRIBE THE HIGHLIGHTS OF AFOSR PROGRAMS. SIZZLE REELS ARE TO BE SENT TO UNIVERSITIES/EDUCATIONAL INSTITUTIONS AND CONFERENCES IN THE PLACE OF AFOSR PRESENCE."
+ },
+ {
+  "ap_code": "ASF",
+  "ap_description": "S-3 VIKING",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001"
+  ],
+  "sample_description": "200312!3P6060!1700!JA105 !NAVAL INVENTORY CONTROL POINT   !N0038303D013G  !A!N! !N!0001               !20030923!20060923!180605933!876861790!217304393!N!BAE SYSTEMS AIRCRAFT CONTROLS !5140 WEST GOLDLEAF CIRCLE !LOS ANGELES         !CA!90056!70000!037!06!SANTA MONICA        !LOS ANGELES           !CALIFORNIA!+000018304244!N!N!000000000000!5999!MISC ELECTRICAL&ELECTRONIC COMPONENTS           !A1C!OT"
+ },
+ {
+  "ap_code": "3BSP",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0002"
+  ],
+  "sample_description": "200004!5700!000029!GU57  !ASC/LPK  BLDGE 28, ROOM 207     !F3365799D2050  !A!*!0002               !19991223!20001231!137488664!001367960!001367960!N!07482!GENERAL ELECTRIC COMPANY INC  !1 NEUMANN WAY             !CINCINNATI          !OH!45215!15000!061!39!CINCINNATI          !HAMILTON              !OHIO      !0001!+000004824100!N!N!000000000000!2840!GAS TURBINES AND JET ENGINES, ACFT & COMPS      "
+ },
+ {
+  "ap_code": "1CMZ",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "200211!002829!2100!AH01  !USA AVIATION AND MISSILE COMMAND!DAAH0102C0066  !A!N! !Y!                   !20020719!20041231!008324949!008324949!004179453!N!TRW INC                       !1 SPACE PARK BLVD         !REDONDO BEACH       !CA!90278!11530!037!06!CARSON              !LOS ANGELES           !CALIFORNIA!+000001791522!N!N!000000000000!AD21!RDTE/SERVICES-BASIC RESEARCH                      !S1 !"
+ },
+ {
+  "ap_code": "1ZN",
+  "ap_description": "STE-IS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W50S8B"
+  ],
+  "sample_description": "WIPING CLOTHS AND COVERALLS CLEANING SERVICE"
+ },
+ {
+  "ap_code": "3AFH",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0407",
+   "F33657",
+   "F42630"
+  ],
+  "sample_description": "SP"
+ },
+ {
+  "ap_code": "1CMC",
+  "ap_description": null,
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "NDAA CLOSEOUT MOD"
+ },
+ {
+  "ap_code": "S11",
+  "ap_description": "KG-3X CRYPTO",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army",
+   "Washington Headquarters Services"
+  ],
+  "office_prefixes": [
+   "FA3300",
+   "HQ0034",
+   "W9124P"
+  ],
+  "sample_description": "RENTAL OF FOUR STALL RESTROOM TRAILER"
+ },
+ {
+  "ap_code": "1CAA",
+  "ap_description": null,
+  "awards": 12,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Missile Defense Agency"
+  ],
+  "office_prefixes": [
+   "0104",
+   "0108",
+   "0116",
+   "0117",
+   "3001",
+   "DASG60"
+  ],
+  "sample_description": "IGF::OT::IGF RE-ESTABLISH ELECTRONIC PROCESSING WITH DFAS IN ORDER TO GENERATE PAYMENT REQUEST FOR CONTRACTOR VOUCHERS."
+ },
+ {
+  "ap_code": "287",
+  "ap_description": "LAND WARRIOR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "W91CRB"
+  ],
+  "sample_description": "LAND WARRIOR ENSEMBLES"
+ },
+ {
+  "ap_code": "211",
+  "ap_description": "ATACMS-APAM",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N68335"
+  ],
+  "sample_description": "CORRECT CDR CN125116"
+ },
+ {
+  "ap_code": "147",
+  "ap_description": "SPARROW (AIM-7M) (N)",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "LOE CLAUSE UPDATE"
+ },
+ {
+  "ap_code": "3ACR",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F34601"
+  ],
+  "sample_description": "OKLAHOMA CITY ALC/LAD           !F3460192C1230  !A!*!P00042             !19970523!19970930!008478711!008478711!008478711!N!18118!TOLO INCORPORATED             !18341 JAMBOREE RD         !IRVINE              !CA!92612!36770!059!06!IRVINE              !ORANGE                !CALIFORNIA!0001!+000000030000!N!N!000000000000!1560!AIRFRAME STRUCTURAL COMPONENTS                    !A1A!AIRFRAMES AND SPARE"
+ },
+ {
+  "ap_code": "1DBV",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAE07"
+  ],
+  "sample_description": "IDC"
+ },
+ {
+  "ap_code": "B10",
+  "ap_description": "FORS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CL"
+  ],
+  "sample_description": "DELIVERY OF BOTTLED WATER TO DESIGNATED AREA IN SUPPORT OF TW-25 TTO."
+ },
+ {
+  "ap_code": "1CNM",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "IMPROVED BRADLEY ACQUISITION SUBSYSTEM TOW MISSILE LAUNCHER REFURBISHMENT."
+ },
+ {
+  "ap_code": "DKE",
+  "ap_description": "UNIVERSAL (FT) W/DOZER",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAE07"
+  ],
+  "sample_description": "199712!2100!2125!AE07 !USA TANK-AUTOMOTIVE&ARMAMENTS !DAAE0797CX071  !A!*!*                  !19970910!19970930!834476079!834476079!824825459!N!06085!UNITED DEFENSE                !1100 BAIRS RD             !YORK                !PA!17405!87048!133!42!YORK                !YORK                  !PENN      !0001!+000045670682!N!N!000000000000!2530!VEHICULAR BRAKE, STEERING, AXLE WHEEL COMP        !A4"
+ }
+]

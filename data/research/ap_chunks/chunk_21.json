@@ -1,0 +1,410 @@
+[
+ {
+  "ap_code": "AHA",
+  "ap_description": "UH-1 IROQUOIS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "200011!2100!002393!AH01  !USA AVIATION AND MISSILE COMMAND!DAAH0100CR214  !A!*!*                  !20000810!20030815!048384205!048384205!048384205!N!1JVC3!SOLERS, INC.                  !1611 NORTH KENT STREET    !ARLINGTON           !VA!22209!03000!013!51!ARLINGTON           !ARLINGTON             !VIRGINIA  !0001!+000000550000!N!N!000000000000!AD92!RDTE/OTHER DEFENSE-APPLIED RESEARCH             "
+ },
+ {
+  "ap_code": "DNC",
+  "ap_description": "LOADER A/C 40K",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0067"
+  ],
+  "sample_description": "FUNDING ACTION ONLY"
+ },
+ {
+  "ap_code": "EI6",
+  "ap_description": "DTAS",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W15QKN"
+  ],
+  "sample_description": "THE FOLLOWING IS A SERVICE TO PROVIDE MAINTENANCE ON THE DTAS HARDWARE."
+ },
+ {
+  "ap_code": "H40",
+  "ap_description": "A-10 HRDS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00178"
+  ],
+  "sample_description": "DO 17 UNDER A MAC IDIQ FOR BMS GUN WEAPON SYSTEM COMPONENTS."
+ },
+ {
+  "ap_code": "2GQD",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M67854"
+  ],
+  "sample_description": "OTHER SCIENTIFIC AND TECHNICAL CONSULTING SERVICES"
+ },
+ {
+  "ap_code": "GNL",
+  "ap_description": "AN/TPQ-36",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAB07"
+  ],
+  "sample_description": "200206!000120!2100!AB07  !USA COMMUNICATIONS-ELECTRONICS  !DAAB0702CH302  !A!N! !N!                   !20011109!20050830!005128988!008255408!016435559!N!NORTHROP GRUMMAN SYSTEMS CORPO!500 HICKS RD 600          !ROLLING MEADOW      !IL!60008!65338!031!17!ROLLING MEADOWS     !COOK                  !ILLINOIS  !+000020825996!N!N!000000000000!5895!MISCELLANEOUS COMMUNICATION EQUIPMENT             !A7 !"
+ },
+ {
+  "ap_code": "M88",
+  "ap_description": "AFRIMS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA7014"
+  ],
+  "sample_description": "PKH-ROMO-JONES ONE YEAR LEASE OF ALTAIR GRID ENGINE SOFTWARE."
+ },
+ {
+  "ap_code": "GIH",
+  "ap_description": "AVIONICS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAB07"
+  ],
+  "sample_description": "200303!000869!2100!AB07  !USA COMMUNICATIONS-ELECTRONICS  !DAAB0703CG402  !A!N! !N!                   !20021211!20040307!079817755!079817755!079817755!N!ISLIP TRANSFORMER&METAL CO I!820 SHAMES DRIVE          !WESTBURY            !NY!11590!79433!011!36!WESTBURY            !CAYUGA                !NEW YORK  !+000000252425!N!N!000000000000!5820!RADIO&TV COMM EQUIPMENT, EXCEPT AIRBORNE        !A7 !ELEC"
+ },
+ {
+  "ap_code": "421",
+  "ap_description": "AMF JTRS",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0110",
+   "FA8615",
+   "FA8620"
+  ],
+  "sample_description": "MIDS-JTRS RISK REDUCTION STUDY FOR AWACS"
+ },
+ {
+  "ap_code": "2ACC",
+  "ap_description": null,
+  "awards": 5,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0008"
+  ],
+  "sample_description": "200210!025056!1700!BZ005 !NAVAL SEA SYSTEMS COMMAND       !N0002401D7023  !A!N! !N!0001               !20011203!20021009!064993314!064993314!064993314!N!JOHN J MC MULLEN ASSOCIATES IN!4300 KING ST 400          !ALEXANDRIA          !VA!22302!50000!001!11!WASHINGTON          !DISTRICT OF COLUMBIA  !D.C.      !+000000100000!N!N!000000000000!R706!LOGISTICS SUPPORT SERVICES                        !S1 !"
+ },
+ {
+  "ap_code": "J09",
+  "ap_description": "AIR SS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W9124P"
+  ],
+  "sample_description": "AIR WARRIOR PRODUCT OFFICE PRINTER REFRESH. CANNON IMAGERUNNER ADVANCE DX C5840IG, C3930IG, AND IMAGEPROGRAF GP-4600S PRINTERS.  THIS DELIVERY ORDER IS IN REFERENCE TO MICROTECH QUOTE # 1249768001"
+ },
+ {
+  "ap_code": "785",
+  "ap_description": "AC130J SMS",
+  "awards": 6,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8509"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "701",
+  "ap_description": "E-XX",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "UPDATE THE PAYMENT OFFICE"
+ },
+ {
+  "ap_code": "127",
+  "ap_description": "FFG-7",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0030",
+   "N64709"
+  ],
+  "sample_description": "HFC 134A SHIPALT INSTALLATIONS"
+ },
+ {
+  "ap_code": "3GCI",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0003"
+  ],
+  "sample_description": "IGF:CT:IGF 1X2 LAUNCHER CONTROLLER"
+ },
+ {
+  "ap_code": "328",
+  "ap_description": "SBSS BLOCK 10",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "W15P7T"
+  ],
+  "sample_description": "200411!005877!2100!W15P7T!USA COMMUNICATIONS-ELECTRONICS  !W15P7T04CP202  !A!N! !N!             !      !20040630!20170622!005149120!876861790!217304393!N!BAE SYSTEMS INFORMATION AND EL!65 SPIT BROOK ROAD        !NASHUA              !NH!03061!50260!011!33!NASHUA              !HILLSBOROUGH          !N.H.      !+000002325000!N!N!000000000000!AC61!RDTE/ELECTRONICS & COMMUNICATION EQ-BASIC RESEARCH!A7 "
+ },
+ {
+  "ap_code": "N88",
+  "ap_description": "IPPS-A INC 1",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "2T25"
+  ],
+  "sample_description": "DE-OBLIGATION AND CLOSEOUT"
+ },
+ {
+  "ap_code": "Z52",
+  "ap_description": "MWMSS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "MILLING MACHINE"
+ },
+ {
+  "ap_code": "D43",
+  "ap_description": "EBS-C",
+  "awards": 3,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W519TC"
+  ],
+  "sample_description": "COMMERCIAL AUTOMATIC IDENTIFICATION TECHNOLOGY FOR THE DOD, COAST GUARD, NORTH ATLANTIC TREATY ORGANIZATION, COALITION PARTNERS, OTHER FOREIGN MILITARY SALES, FEDERAL AGENCIES, AND CONTRACTOR PURCHASERS SUPPORTING DEPARTMENT OF DEFENSE."
+ },
+ {
+  "ap_code": "HL5",
+  "ap_description": "FMXC2",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91RUS"
+  ],
+  "sample_description": "HAZARDOUS MATERIAL STORAGE CONTAINER"
+ },
+ {
+  "ap_code": "F74",
+  "ap_description": "IRB",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "IMPROVED RIBBON BRIDGE (IRB) SPARES PARTS. ONE TIME CONTRACT TO PROCURE IRB SPARES"
+ },
+ {
+  "ap_code": "F67",
+  "ap_description": "M870A4 STLB",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SPRDL1"
+  ],
+  "sample_description": "FIRST DELIVERY ORDER QTY 411 NSN: 2530-01-610-6931 COMMODITY NAME: WHEEL ASSEMBLY, PNEUMATIC TIR CLIN CONTRACT TYPE: FIRM FIXED PRICE MFR CAGE: 19207 MFR PART NUMBER: 12565655"
+ },
+ {
+  "ap_code": "8WP",
+  "ap_description": "CTS",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Washington Headquarters Services"
+  ],
+  "office_prefixes": [
+   "HQ0034"
+  ],
+  "sample_description": "LIDAR SOFTWARE EQUIPMENT"
+ },
+ {
+  "ap_code": "BJM",
+  "ap_description": "F404-GE-400 OR 402",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00019"
+  ],
+  "sample_description": "200011!1700!000897!AA427 !NAVAL AIR SYSTEMS COMMAND       !N0001999C1427  !A!*!*                  !20000331!20020930!001408509!001367960!001367960!N!99207!GENERAL ELECTRIC COMPANY INC  !1000 WESTERN AVE          !LYNN                !MA!01910!37490!009!25!LYNN                !ESSEX                 !MASS      !0001!+000001169269!Y!N!000000000000!AC11!RDTE/AIRCRAFT-BASIC RESEARCH                    "
+ },
+ {
+  "ap_code": "AFN",
+  "ap_description": "F-111",
+  "awards": 2,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0022",
+   "F09603"
+  ],
+  "sample_description": "MODIFICATION IN PREPARATION FOR CLOSEOUT."
+ },
+ {
+  "ap_code": "2GFH",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00039"
+  ],
+  "sample_description": "199712!1700!0854!D0221!SPACE AND NAVAL WARFARE SYSTEMS !N0003997C0084  !A!*!*                  !19970618!19991231!027004886!027004886!052272044!N!56053!LOGICON INC                   !2100 WASHINGTON BLVD      !ARLINGTON           !VA!22204!03000!013!51!ARLINGTON           !ARLINGTON             !VIRGINIA  !0001!+000015498503!N!N!000000000000!5895!MISCELLANEOUS COMMUNICATION EQUIPMENT             !"
+ },
+ {
+  "ap_code": "M15",
+  "ap_description": "DMS",
+  "awards": 7,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0069",
+   "0089",
+   "0170",
+   "0172",
+   "0173",
+   "7N02"
+  ],
+  "sample_description": "UNDEFINITIZED ORDER"
+ },
+ {
+  "ap_code": "Z46",
+  "ap_description": "AFWAY",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA7014"
+  ],
+  "sample_description": "PKH-WESTON-JONES AWARD OF DARE TO LEAD SUPERVISOR TRAINING"
+ },
+ {
+  "ap_code": "372",
+  "ap_description": "JLENS",
+  "awards": 4,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "EH01",
+   "W9113M"
+  ],
+  "sample_description": "EAGLE EYE SYSTEMS ACQ (OPA FUNDS)"
+ },
+ {
+  "ap_code": "CNW",
+  "ap_description": "GBR - GROUND BASED RADAR",
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "SUPPORT- MANAGEMENT: LOGISTICS SUPPORT"
+ }
+]

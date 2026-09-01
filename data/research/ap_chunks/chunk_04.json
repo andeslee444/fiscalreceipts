@@ -1,0 +1,527 @@
+[
+ {
+  "ap_code": "462",
+  "ap_description": "MQ-25",
+  "awards": 10,
+  "obligated_millions": 249,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA9302",
+   "N00019",
+   "N00421",
+   "N68335"
+  ],
+  "sample_description": "UPDATING ETXT CLAUSE TO CHANGE THE INSPECTION AND ACCEPTANCE LOCATION FOR NON-CSI HARDWARE ITEMS."
+ },
+ {
+  "ap_code": "389",
+  "ap_description": "DCGS-A INC 1",
+  "awards": 11,
+  "obligated_millions": 243,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0057",
+   "KX05",
+   "KX06",
+   "KX07",
+   "KZ01",
+   "KZ02"
+  ],
+  "sample_description": "W15P7T-17-D-0142 TASK ORDER KZ01 MOD 07 IS TO REALIGN FUNDS TO ENABLE THE CONTRACTOR BOOZ ALLEN TO COMPLETE SUPPORT TO THE REMAINDER OF THE PERIOD OF PERFORMANCE 20 DEC 2018."
+ },
+ {
+  "ap_code": "ZBC",
+  "ap_description": "BRAC ACTIVITIES",
+  "awards": 154,
+  "obligated_millions": 243,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "XZ81 18 REGIONAL MULTI-INSTALLATION PFOA/PFAS PA/SI"
+ },
+ {
+  "ap_code": "684",
+  "ap_description": "F-22 RAPID PROTOTYPING",
+  "awards": 1,
+  "obligated_millions": 240,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8611"
+  ],
+  "sample_description": "F22 SEE PART B"
+ },
+ {
+  "ap_code": "257",
+  "ap_description": "HC/MC-130 RECAP",
+  "awards": 24,
+  "obligated_millions": 233,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy",
+   "Missile Defense Agency"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "FA8629",
+   "HQ0851",
+   "N00019",
+   "N00164"
+  ],
+  "sample_description": "UPDATE TO INCLUDE ADDITIONAL ENGINEERING STUDIES"
+ },
+ {
+  "ap_code": "303",
+  "ap_description": "SSC",
+  "awards": 3,
+  "obligated_millions": 232,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024",
+   "N61331",
+   "SPE7M8"
+  ],
+  "sample_description": "LEGACY LCAC AND LCS-100 CLASS MAINTENANCE AMENDMENT ONE"
+ },
+ {
+  "ap_code": "299",
+  "ap_description": "STRYKER (IAV)",
+  "awards": 106,
+  "obligated_millions": 224,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0004",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "X"
+ },
+ {
+  "ap_code": "539",
+  "ap_description": "M88A2 HERCULES",
+  "awards": 6,
+  "obligated_millions": 221,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRDL1",
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "UNILATERAL MOD TO UPDATE DODAAC"
+ },
+ {
+  "ap_code": "N87",
+  "ap_description": "DEAMS",
+  "awards": 80,
+  "obligated_millions": 214,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2550",
+   "FA3016",
+   "FA4654",
+   "FA5209",
+   "FA5613",
+   "FA8770"
+  ],
+  "sample_description": "WIRELESS SERVICE CELL PHONES AND IPADS"
+ },
+ {
+  "ap_code": "C20",
+  "ap_description": "C-130H T56 3.5 ENG MOD (SRM_RBT)",
+  "awards": 142,
+  "obligated_millions": 212,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA2860",
+   "FA4419",
+   "FA4608",
+   "FA4887",
+   "FA5000",
+   "FA5682"
+  ],
+  "sample_description": "X107 RENOVATION AND UPGRADE OF 8 GAZEBOS (BEQ)"
+ },
+ {
+  "ap_code": "746",
+  "ap_description": "FMTV",
+  "awards": 9,
+  "obligated_millions": 199,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "TRUCKS FOR IFMC, ARMY RESERVE, AND ARGENTINA (FMS CASE) EFFORTS"
+ },
+ {
+  "ap_code": "327",
+  "ap_description": "C-5 RERP",
+  "awards": 150,
+  "obligated_millions": 199,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0004",
+   "0008",
+   "0009",
+   "0010"
+  ],
+  "sample_description": "UCA IN SUPPORT OF C-5 APU REPAIRS"
+ },
+ {
+  "ap_code": "233",
+  "ap_description": "SINCGARS",
+  "awards": 21,
+  "obligated_millions": 192,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0017",
+   "0022",
+   "0043",
+   "0045",
+   "0054"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION 09 IS TO ADD REPLACEMENT FUND IN ORDER TO PAY FINAL VOUCHER."
+ },
+ {
+  "ap_code": "BQT",
+  "ap_description": "LUSIBCT",
+  "awards": 1,
+  "obligated_millions": 191,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W91CRB"
+  ],
+  "sample_description": "MISTRAL HERO-120 ALL-UP ROUND (AUR) SYSTEMS, FIRE CONTROL UNITS (FCUS), FIELD SERVICE REPRESENTATIVES, TRAINING, NON-REOCCURRING ENGINEERING AND ASSOCIATED SPARE PARTS."
+ },
+ {
+  "ap_code": "436",
+  "ap_description": "T-7 APT",
+  "awards": 8,
+  "obligated_millions": 190,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8617",
+   "FA8730",
+   "N00421"
+  ],
+  "sample_description": "TPS QE HU-16 CL 157 FLIGHT HR VX23"
+ },
+ {
+  "ap_code": "N16",
+  "ap_description": "BEC INC 1_",
+  "awards": 7,
+  "obligated_millions": 183,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "BD10",
+   "N66001",
+   "W15QKN",
+   "W909MY"
+  ],
+  "sample_description": "XPRESSFEED DATA"
+ },
+ {
+  "ap_code": "489",
+  "ap_description": "LRSO",
+  "awards": 4,
+  "obligated_millions": 174,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA2103",
+   "W44W9M"
+  ],
+  "sample_description": "PRODUCT SUPPORT BUSINESS CASE ANALYSIS PS-BCA MILESTONE C."
+ },
+ {
+  "ap_code": "431",
+  "ap_description": "B-2 DMS-M",
+  "awards": 21,
+  "obligated_millions": 173,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8110",
+   "FA8119",
+   "FA8212",
+   "FA8616",
+   "W9124P"
+  ],
+  "sample_description": "TO SUPPORT THE PERFORMANCE, SAFETY, RELIABILITY, AND MAINTAINABILITY OF NON-STANDARD MILITARY AND COMMERCIAL ASSETS FOR THE ARMY SECURITY ASSISTANCE ENTERPRISE (ASE) FOREIGN MILITARY SALES (FMS)."
+ },
+ {
+  "ap_code": "589",
+  "ap_description": "PTS RP",
+  "awards": 4,
+  "obligated_millions": 153,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8807",
+   "FA8808"
+  ],
+  "sample_description": "VENDOR ADDRESS CHANGE"
+ },
+ {
+  "ap_code": "M90",
+  "ap_description": "GCCS-M",
+  "awards": 6,
+  "obligated_millions": 134,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M804",
+   "M809",
+   "N00024",
+   "N00039",
+   "N68936"
+  ],
+  "sample_description": "THIS MODIFICATION EXTENDS THE POP FOR THE MATERIAL CLIN (9503) FROM 30 JUNE 2020 UNTIL 30 APRIL 2021.  THIS IS A NO-COST MODIFICATION."
+ },
+ {
+  "ap_code": "207",
+  "ap_description": "E-6A (TACAMO)",
+  "awards": 2,
+  "obligated_millions": 132,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M804",
+   "N00019"
+  ],
+  "sample_description": "UPDATE TO PBP AND PART NUMBERS UPDATED ON CLINS 0415, 0416, AND 0511."
+ },
+ {
+  "ap_code": "354",
+  "ap_description": "SDB",
+  "awards": 25,
+  "obligated_millions": 126,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0006",
+   "0008"
+  ],
+  "sample_description": "WEAPON SYSTEM SIMULATOR (WSS)"
+ },
+ {
+  "ap_code": "285",
+  "ap_description": "CHEM DEMIL-CMA",
+  "awards": 5,
+  "obligated_millions": 124,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0004",
+   "W15P7T",
+   "W52P1J"
+  ],
+  "sample_description": "THIS MODIFICATION UPDATES THE SHIP TO ADDRESS FOR THE OMFV CLINS"
+ },
+ {
+  "ap_code": "126",
+  "ap_description": "F/A-18A/B/C/D",
+  "awards": 70,
+  "obligated_millions": 115,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0004",
+   "0011",
+   "0019",
+   "0022",
+   "0030"
+  ],
+  "sample_description": "VARIOUS ATFLIR REPAIR REQUIREMENTS"
+ },
+ {
+  "ap_code": "769",
+  "ap_description": "LAV (NAVY)",
+  "awards": 18,
+  "obligated_millions": 112,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0011",
+   "0015",
+   "0038",
+   "W56HZV"
+  ],
+  "sample_description": "YUMA PROVING GROUNDS FSR"
+ },
+ {
+  "ap_code": "157",
+  "ap_description": "M1/M1A1 ABRAMS TANK",
+  "awards": 46,
+  "obligated_millions": 111,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0008",
+   "0009",
+   "0023"
+  ],
+  "sample_description": "XYZ"
+ },
+ {
+  "ap_code": "CSX",
+  "ap_description": "SECM-AVN",
+  "awards": 2,
+  "obligated_millions": 110,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W912CH"
+  ],
+  "sample_description": "THIS EFFORT IS TO PROCURE 2 HMMWV ASSETS."
+ },
+ {
+  "ap_code": "479",
+  "ap_description": "HH-60W",
+  "awards": 9,
+  "obligated_millions": 108,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0006",
+   "FA8692",
+   "FA8739",
+   "W58RGZ"
+  ],
+  "sample_description": "SOFTWARE DEVELOPMENT EFFORTS SUPPORTING LONG TERM CAPABILITIES UPGRADES ON THE USAF COMBAT RESCUE HELICOPTER."
+ },
+ {
+  "ap_code": "161",
+  "ap_description": "CVN 68",
+  "awards": 52,
+  "obligated_millions": 96,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0007",
+   "4T01",
+   "4T03",
+   "4T04",
+   "4T06",
+   "4T08"
+  ],
+  "sample_description": "YELLOW INK CARTRIDGE"
+ },
+ {
+  "ap_code": "A28",
+  "ap_description": "AMRAAM EPIP - BASIC",
+  "awards": 2,
+  "obligated_millions": 94,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8556"
+  ],
+  "sample_description": "LIFE OF TYPE OBSOLESCENCE BUY - WAVE 12A"
+ }
+]

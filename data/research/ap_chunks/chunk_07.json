@@ -1,0 +1,480 @@
+[
+ {
+  "ap_code": "H65",
+  "ap_description": "P5CTS",
+  "awards": 5,
+  "obligated_millions": 24,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8210"
+  ],
+  "sample_description": "PERMANENT INSTALLATION AND ACTIVATION OF THE P5CTS SECOND ISLAND CHAIN RANGE."
+ },
+ {
+  "ap_code": "X27",
+  "ap_description": "AN/TPQ-50",
+  "awards": 5,
+  "obligated_millions": 24,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56KGY"
+  ],
+  "sample_description": "UPDATE WAWF CLAUSE, PWS AND CDRLS"
+ },
+ {
+  "ap_code": "236",
+  "ap_description": "TOW-2",
+  "awards": 3,
+  "obligated_millions": 23,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRRA2",
+   "W31P4Q"
+  ],
+  "sample_description": "WITH REFERENCE TO (A) THE LIFETIME BUY (LTB) CONTRACT AND SPECIFICALLY CLIN 9356. THE PART NUMBER ORIGINALLY GIVEN TO THE USG WAS INCORRECT (R00004520-0001). THE CORRECT RAYTHEON PART NUMBER IS R20004520-0001."
+ },
+ {
+  "ap_code": "274",
+  "ap_description": "JSTARS",
+  "awards": 16,
+  "obligated_millions": 23,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0012",
+   "0023",
+   "0076",
+   "0118"
+  ],
+  "sample_description": "WEAPON SYSTEM MODIFICATIONS AND OTHER"
+ },
+ {
+  "ap_code": "155",
+  "ap_description": "TRIDENT SUB",
+  "awards": 8,
+  "obligated_millions": 23,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "L148",
+   "N00030",
+   "N00164",
+   "S0701A",
+   "S2206A",
+   "UG07"
+  ],
+  "sample_description": "UNITED STATES (US) AND UNITED KINGDOM (UK) STRATEGIC WEAPONS SYSTEM (SWS) SSBN FIRE CONTROL SUBSYSTEM AND SSGN ATTACK WEAPON CONTROL SYSTEM (AWCS) BASIC ORDERING AGREEMENT (BOA)"
+ },
+ {
+  "ap_code": "X03",
+  "ap_description": "JCC2",
+  "awards": 2,
+  "obligated_millions": 22,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8307"
+  ],
+  "sample_description": "THE C2IE PROGRAM MANAGEMENT OFFICE WILL UTILIZE THIS CONTRACT TO SUPPORT THE WARFIGHTER NEED FOR PROGRAM AND OPTIONALLY FUNDED COMMAND INTEGRATION LEADS (CIL)."
+ },
+ {
+  "ap_code": "154",
+  "ap_description": "TOMAHAWK",
+  "awards": 6,
+  "obligated_millions": 22,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00178",
+   "N00421",
+   "N430",
+   "N63394"
+  ],
+  "sample_description": "TOMAHAWK ENGINEERING SUPPORT"
+ },
+ {
+  "ap_code": "402",
+  "ap_description": "GCSS-A INC 1",
+  "awards": 6,
+  "obligated_millions": 22,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "M67854",
+   "SPE7M1",
+   "SPRDL1",
+   "W52P1J",
+   "W58RGZ"
+  ],
+  "sample_description": "TWO IBM FLASH SYSTEM 900S WITH ASSOCIATED 12 MONTH MAINTENANCE"
+ },
+ {
+  "ap_code": "179",
+  "ap_description": "ARH",
+  "awards": 8,
+  "obligated_millions": 21,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0081",
+   "0105",
+   "0123",
+   "0152",
+   "W58RGZ"
+  ],
+  "sample_description": "UPDATING SECURITY CLASSIFICATION GUIDE."
+ },
+ {
+  "ap_code": "A74",
+  "ap_description": "ABS",
+  "awards": 6,
+  "obligated_millions": 19,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA8539",
+   "FA8772",
+   "W31P4Q",
+   "W900KK"
+  ],
+  "sample_description": "TO PROCURE EQUIPMENT AND SUPPORT TO SATISFY AFSNS BITI RECAPITALIZATION WIRED INSTALLATIONS."
+ },
+ {
+  "ap_code": "G51",
+  "ap_description": "ADA TARGETS",
+  "awards": 11,
+  "obligated_millions": 19,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W900KK"
+  ],
+  "sample_description": "TASK ORDER FROM THE AERIAL REMOTELY PILOTED VEHICLE TARGET AND UNMANNED AIRCRAFT SYSTEM SERVICES CONTRACT."
+ },
+ {
+  "ap_code": "560",
+  "ap_description": "JPATS",
+  "awards": 14,
+  "obligated_millions": 19,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "T6 COMBS II"
+ },
+ {
+  "ap_code": "510",
+  "ap_description": "IRST",
+  "awards": 5,
+  "obligated_millions": 18,
+  "sub_agencies": [
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "N68936",
+   "W56HZV"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION 01 TO DELIVERY ORDER 0001 UNDER CONTRACT W58RGZ-17-D-0033 IS TO REVISE NARRATIVE E001 UNDER CONTRACT LINE ITEM NUMBER 10001AA."
+ },
+ {
+  "ap_code": "X86",
+  "ap_description": "F-15E DTM II",
+  "awards": 1,
+  "obligated_millions": 17,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8634"
+  ],
+  "sample_description": "F-15 DATA TRANSFER MODULE (DTM) II MERCURY MISSION SYSTEMS PRODUCTION."
+ },
+ {
+  "ap_code": "B57",
+  "ap_description": "T-6 ATD",
+  "awards": 2,
+  "obligated_millions": 16,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8621"
+  ],
+  "sample_description": "T-6 UPS"
+ },
+ {
+  "ap_code": "204",
+  "ap_description": "DSP",
+  "awards": 8,
+  "obligated_millions": 16,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA2401",
+   "SP7000",
+   "SPRBL1"
+  ],
+  "sample_description": "WARLOCK PROGRAM"
+ },
+ {
+  "ap_code": "876",
+  "ap_description": "E-3 STWF",
+  "awards": 2,
+  "obligated_millions": 16,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8102"
+  ],
+  "sample_description": "PROVIDE AN OBSOLESCENCE RESOLUTION FOR THE MISSION CRITICAL E-3G DAR-400 TO PREVENT MISSION IMPACT. THE PROVIDED SOLUTION WILL BE COMPLIANT WITH CURRENT DOD AND NSA MANDATES."
+ },
+ {
+  "ap_code": "552",
+  "ap_description": "WCS",
+  "awards": 26,
+  "obligated_millions": 16,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA3016",
+   "FA5004",
+   "N00421",
+   "N63407",
+   "N68171",
+   "SPE7M5"
+  ],
+  "sample_description": "WIRELESS TELECOMMUNICATION SVS FOR 470TH MIB"
+ },
+ {
+  "ap_code": "PPT",
+  "ap_description": "DMLSS-W",
+  "awards": 2,
+  "obligated_millions": 15,
+  "sub_agencies": [
+   "Defense Logistics Agency"
+  ],
+  "office_prefixes": [
+   "SP4709"
+  ],
+  "sample_description": "DEFENSE MEDICAL LOGISTICS SUSTAINMENT SUPPORT (DMLSS) SUSTAINMENT AND MODERNIZATION (SAM)"
+ },
+ {
+  "ap_code": "689",
+  "ap_description": "F-22 RAPID FIELDING",
+  "awards": 1,
+  "obligated_millions": 15,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8611"
+  ],
+  "sample_description": "F22 DO 0011 PERIOD OF PERFORMANCE EXTENSION"
+ },
+ {
+  "ap_code": "M73",
+  "ap_description": "TBMCS",
+  "awards": 13,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0020",
+   "0031",
+   "0035",
+   "0040",
+   "0042"
+  ],
+  "sample_description": "UNIT LEVEL - COMMAND AND CONTROL"
+ },
+ {
+  "ap_code": "514",
+  "ap_description": "JTUAV",
+  "awards": 3,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "TO INCORPORATE THE NEW ARMY CONTRACTING WRITING SYSTEMS. PHILIPPINES FOREIGN MILITARY SALES CASE PH-B-VCW."
+ },
+ {
+  "ap_code": "A1B",
+  "ap_description": "GQM-163A (FORMERLY SSSTTC)",
+  "awards": 12,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00421",
+   "SPE4A5",
+   "SPE4A7"
+  ],
+  "sample_description": "THE STATEMENT WORK IS WITHIN ATTACHMENT 1 IN SECTION J."
+ },
+ {
+  "ap_code": "351",
+  "ap_description": "C-5A",
+  "awards": 21,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0005",
+   "0009",
+   "0032",
+   "0033",
+   "0034"
+  ],
+  "sample_description": "WRM MAINTENANCE AND LOGISTICS SUPPORT AT ANDERSON AFB, GUAM"
+ },
+ {
+  "ap_code": "88E",
+  "ap_description": "FMS-ACES",
+  "awards": 5,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ",
+   "W81K04",
+   "W91CRB"
+  ],
+  "sample_description": "TO PURCHASE FIELD SERVICE REPRESENTATIVE"
+ },
+ {
+  "ap_code": "F14",
+  "ap_description": "CON-IT",
+  "awards": 13,
+  "obligated_millions": 14,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA3022",
+   "FA3029",
+   "FA4484",
+   "FA5587",
+   "FA7060"
+  ],
+  "sample_description": "XTLF 19-1016, UNACCOMPANIED OFFICER DORM F645. THIS PROJECT WILL BE EXECUTED IN ACCORDANCE WITH THE SPECIFICATIONS AND DRAWINGS."
+ },
+ {
+  "ap_code": "Y63",
+  "ap_description": "B-52 VLF/LF MODERNIZATION",
+  "awards": 2,
+  "obligated_millions": 13,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8735"
+  ],
+  "sample_description": "TASK ORDER 3, B-52 VLF SUSTAINMENT, SUSTAINMENT REACH BACK SUPPORT"
+ },
+ {
+  "ap_code": "558",
+  "ap_description": "AIR FORCE NGAD",
+  "awards": 23,
+  "obligated_millions": 13,
+  "sub_agencies": [
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA3300",
+   "FA4460",
+   "FA4484",
+   "FA4507",
+   "FA4600",
+   "FA4686"
+  ],
+  "sample_description": "WHITE GOODS REPLACEMENT ITEMS FOR BASE HOUSING."
+ },
+ {
+  "ap_code": "175",
+  "ap_description": "LAV (ARMY)",
+  "awards": 5,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W56HZV",
+   "W912CH"
+  ],
+  "sample_description": "UPDATE SECTION J TECHNICAL PUBLICATION DELIVERY SCHEDULE. NO COST ADMIN MOD."
+ },
+ {
+  "ap_code": "540",
+  "ap_description": "KMI INC 3",
+  "awards": 2,
+  "obligated_millions": 12,
+  "sub_agencies": [
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA4830",
+   "N65236"
+  ],
+  "sample_description": "THIS MOD PROVIDES NO-COST CV REALIGNMENT DE-OBLIGATION OF BASE YEAR UNUSED FUNDING INCREMENTAL FUNDING, RESULTING IN OVERALL TO FUNDED AMOUNT OF $70,000.01 CORRECT 5252.237-9601"
+ }
+]

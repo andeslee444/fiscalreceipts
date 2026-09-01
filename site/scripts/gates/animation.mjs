@@ -211,17 +211,43 @@ export async function runAnimationGate() {
     notes.push("chunk-set check: insufficient pages for comparison (skipped)");
   }
 
-  // ── (c) Flow SVG required on ALL 17 crosswalked pages ────────────────────
-  // Crosswalked programs = pe_blis for which flows/{pe_bli}.json exists.
+  // ── (c) Flow SVG required on crosswalked pages that can render it ────────
+  // Crosswalked programs = pe_blis for which flows/{pe_bli}.json exists AND
+  // carries at least one award. 2026-09-01 (FPDS-AP expansion): the "ALL 17
+  // pages" rule predates page tiers — decade/rollup-tier pages do not render
+  // section 7 by design, and a crosswalked PE can have zero district-bearing
+  // transactions (empty sidecar → no chart, correctly). The gate now expects
+  // the svg exactly where the template renders it: a non-empty sidecar AND a
+  // built page containing the follow-dollar section anchor.
   const flowsDir = path.join(jsonDir, "flows");
   let flowPeBlis = [];
   if (fs.existsSync(flowsDir)) {
     flowPeBlis = fs
       .readdirSync(flowsDir)
       .filter((f) => f.endsWith(".json"))
-      .map((f) => f.replace(".json", ""));
+      .map((f) => f.replace(".json", ""))
+      .filter((pbl) => {
+        try {
+          const sidecar = JSON.parse(
+            fs.readFileSync(path.join(flowsDir, `${pbl}.json`), "utf8"),
+          );
+          return (sidecar.awards ?? []).length > 0;
+        } catch {
+          return true; // unreadable sidecar: keep it in scope so the leg fails loudly
+        }
+      })
+      .filter((pbl) => {
+        const pagePath = path.join(programOutDir, pbl, "index.html");
+        if (!fs.existsSync(pagePath)) return true; // missing page: fail loudly below
+        return fs.readFileSync(pagePath, "utf8").includes('id="follow-the-dollar"');
+      });
   }
-  notes.push(`flows sidecar: ${flowPeBlis.length} crosswalked programs`);
+  notes.push(`flows sidecar: ${flowPeBlis.length} crosswalked full-tier programs in scope`);
+  if (flowPeBlis.length < 10) {
+    errors.push(
+      `animation_gate: only ${flowPeBlis.length} crosswalked pages in scope (<10) — the leg would be vacuous`,
+    );
+  }
 
   let flowSvgOk = 0;
   let flowSvgMissing = 0;

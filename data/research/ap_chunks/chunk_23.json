@@ -1,0 +1,478 @@
+[
+ {
+  "ap_code": "2SCY",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": 0,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "199706!1700!2925!BZ005!NAVAL SEA SYSTEMS COMMAND       !N0002492C5115  !A!*!P00071             !19970304!19970731!103933453!103933453!786429894!N!99789!TRACOR SYSTEM TECHNOLOGIES INC!1601 RESEARCH BLVD        !ROCKVILLE           !MD!20850!67675!031!24!ROCKVILLE           !MONTGOMERY            !MARYLAND  !0001!+000000115887!N!N!000000000000!R425!ENGINEERING TECHNICAL SERVICES                    !"
+ },
+ {
+  "ap_code": "580",
+  "ap_description": "FAAD C2I(ATCCS)",
+  "awards": 2,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0012",
+   "W31P4Q"
+  ],
+  "sample_description": "THIS MODIFICATION IS ISSUED TO DE-OBLIGATE A TOTAL AMOUNT OF $802,654.32 FROM THE CONTRACT FROM 5 CLIN(S)."
+ },
+ {
+  "ap_code": "187",
+  "ap_description": "LANTRIN",
+  "awards": 1,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0267"
+  ],
+  "sample_description": "IGF::CT::IGF"
+ },
+ {
+  "ap_code": "M91",
+  "ap_description": "GCSS-AF",
+  "awards": 4,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8721",
+   "FA8722"
+  ],
+  "sample_description": "SEWS FMS IS"
+ },
+ {
+  "ap_code": "3AEC",
+  "ap_description": null,
+  "awards": 1,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F34601"
+  ],
+  "sample_description": "199702!5700!0063!GD30 !OKLAHOMA CITY ALC/LAD           !F3460196C0311  !A!*!P00002             !19961127!19971231!008288375!008288375!008288375!N!02418!KEYSTONE ENGINEERING COMPANY I!1444 S SAN PEDRO ST       !LOS ANGELES         !CA!90015!44000!037!06!LOS ANGELES         !LOS ANGELES           !CALIFORNIA!0001!+000002036997!N!N!000000000000!1560!AIRFRAME STRUCTURAL COMPONENTS                    !"
+ },
+ {
+  "ap_code": "149",
+  "ap_description": "SSN 688",
+  "awards": 29,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0037",
+   "0040",
+   "4T40",
+   "EHP9",
+   "GA05",
+   "L103"
+  ],
+  "sample_description": "USS SPRINGFIELD (SSN-761) DSRA  CONTRACT CLOSEOUT MODIFICATION"
+ },
+ {
+  "ap_code": "298",
+  "ap_description": "C-130 AMP",
+  "awards": 7,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0007",
+   "0012",
+   "0295",
+   "FA8203",
+   "FA8625",
+   "N00019"
+  ],
+  "sample_description": "TO PURCHASE NSN 1620-01-598-3527LE PART NUMBER NAS1762K0608 ELBOW, REDUCER A SPARE FOR C 130 WEAPON SYSTEM."
+ },
+ {
+  "ap_code": "525",
+  "ap_description": "CGS (JSTARS GSM)",
+  "awards": 34,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0004",
+   "0009",
+   "0011",
+   "0012"
+  ],
+  "sample_description": "UV 14 (UNIFIED VISION)"
+ },
+ {
+  "ap_code": "404",
+  "ap_description": "B-1",
+  "awards": 4,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0004",
+   "SD23"
+  ],
+  "sample_description": "OTHER AIRCRAFT PART AND AUXILIARY EQUIPMENT REPAIR"
+ },
+ {
+  "ap_code": "BJL",
+  "ap_description": "J-85",
+  "awards": 1,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "SD02"
+  ],
+  "sample_description": "200304!000371!5700!GD60  !OKLAHOMA CITY ALC/LPD           !F3365799D2050  !A!N! !N!SD02               !20030113!20031231!137488664!137488664!001367960!N!GENERAL ELECTRIC COMPANY      !ONE NEUMANN WAY           !CINCINNATI          !OH!45215!15000!061!39!CINCINNATI          !HAMILTON              !OHIO      !+000004000000!N!N!000000000000!2840!GAS TURBINES AND JET ENGINES, ACFT & COMPS        !A1C!"
+ },
+ {
+  "ap_code": "EBE",
+  "ap_description": "MK15 CLOSE IN WPN SYS",
+  "awards": 3,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "GFP TRANSFER TO CURRENT CONTRACTS."
+ },
+ {
+  "ap_code": "N17",
+  "ap_description": "CITS",
+  "awards": 2,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "RS95",
+   "RSBH"
+  ],
+  "sample_description": "SOFTWARE/HARDWARE BUY"
+ },
+ {
+  "ap_code": "ACD",
+  "ap_description": "C-130 HERCULES",
+  "awards": 3,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0019",
+   "0033"
+  ],
+  "sample_description": "FUNDING ACTION ONLY"
+ },
+ {
+  "ap_code": "788",
+  "ap_description": "MILSTAR",
+  "awards": 5,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "1362",
+   "FA8808"
+  ],
+  "sample_description": "MILITARY SATELLITE COMMUNICATIONS ORBITAL OPERATIONS AND LOGISTICS SUSTAINMENT SUPPORT"
+ },
+ {
+  "ap_code": "294",
+  "ap_description": "FBCB2",
+  "awards": 13,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0006",
+   "0007",
+   "0009",
+   "0010",
+   "0011"
+  ],
+  "sample_description": "ULO DE-OBLIGATION TO REMOVE EXCESS FUNDS FROM THE PHYSICALLY COMPLETE TASK ORDER 0018."
+ },
+ {
+  "ap_code": "GTP",
+  "ap_description": "TOWED SONAR ARRAY",
+  "awards": 2,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "SV"
+ },
+ {
+  "ap_code": "541",
+  "ap_description": "LONGBOW HELLFIRE",
+  "awards": 4,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0018",
+   "DAAH01",
+   "W31P4Q"
+  ],
+  "sample_description": "THE PURPOSE OF THIS DOCUMENT IS TO ORDER EFFORT FUNDED FOR LINK 16 NETWORK CONFUSION AND TRACK FUNCTIONALITY LIMIATATION -CAPABILITY DEFECT PACKAGE (CDP)FOR H-60 PROGRAM."
+ },
+ {
+  "ap_code": "1AIA",
+  "ap_description": null,
+  "awards": 5,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0005",
+   "0007",
+   "0018",
+   "DAAE20",
+   "DAAH23"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO TRANSFER PURCHASING OFFICE RESPONSIBILITY FROM W15P7T(ACC-APG DIVISION B) TO W56JSR(ACC-APG DIVISION E)."
+ },
+ {
+  "ap_code": "184",
+  "ap_description": "AMRAAM (NAVY)",
+  "awards": 3,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "W58RGZ"
+  ],
+  "sample_description": "US ARMY, PROGRAM EXECUTIVE OFFICE AVIATION, FIXED WING PROJECT OFFICE. SERVICE CONTRACT FOR CONTRACTOR LOGISTICS SUPPORT OF 11 GOVERNMENT OWNED C-26 AIRCRAFT. MODIFICATION P00159 IS TO DEOBLIGATE CANCELLING FUNDS FROM FY12 AND CORRECT THE QTY ON CLIN 9009AA THAT WAS INADVERTENTLY CHANGED ON THE PREVIOUS MODIFICATION."
+ },
+ {
+  "ap_code": "380",
+  "ap_description": "JTRS AMF",
+  "awards": 5,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0049",
+   "0050",
+   "0058",
+   "0065",
+   "0070"
+  ],
+  "sample_description": "STUDY OF THE USE OF NAV CAPABILITIES ON THE ETHERNET FOR MIDS-LVT"
+ },
+ {
+  "ap_code": "3BSN",
+  "ap_description": null,
+  "awards": 2,
+  "obligated_millions": -1,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0006",
+   "0008"
+  ],
+  "sample_description": "GAS TURBINES AND JET ENGINES, AIRCRAFT, PRIME MOVING AND COMPONENTS"
+ },
+ {
+  "ap_code": "229",
+  "ap_description": "RPV (AQUILA)",
+  "awards": 1,
+  "obligated_millions": -2,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0258"
+  ],
+  "sample_description": "MOD 47 REDUCES THE QUANTITY BY 201, FROM 333 TO 132.  THE GOVERNMENT DOES NOT NEED 333 UPGRADED MESUS.  QUANTITY IS REDUCED AND EXCESS FUNDS DEOBLIGATED."
+ },
+ {
+  "ap_code": "553",
+  "ap_description": "THAAD",
+  "awards": 11,
+  "obligated_millions": -2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Missile Defense Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WARFIGHTER AND BMDS OPERATIONS SUPPORT"
+ },
+ {
+  "ap_code": "219",
+  "ap_description": "ATIRCMS/CMWS",
+  "awards": 84,
+  "obligated_millions": -2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "UPGRADE UH-60 A/L AND CH-47D FLIGHT SIMULATORS"
+ },
+ {
+  "ap_code": "164",
+  "ap_description": "SPARROW (AIM-7F) (N)",
+  "awards": 6,
+  "obligated_millions": -2,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0010",
+   "N00024"
+  ],
+  "sample_description": "UPDATE ADMINISTRATING OFFICE INFORMATION"
+ },
+ {
+  "ap_code": "GAJ",
+  "ap_description": "NAVSTAR",
+  "awards": 1,
+  "obligated_millions": -3,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "F04701"
+  ],
+  "sample_description": "SPACE VEHICLES"
+ },
+ {
+  "ap_code": "548",
+  "ap_description": "C-130H",
+  "awards": 23,
+  "obligated_millions": -3,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0003",
+   "0004",
+   "0005",
+   "0009",
+   "0010"
+  ],
+  "sample_description": "THIS DELIVERY ORDER IS FOR THE REPAIR OF THE MC-130H TALON II."
+ },
+ {
+  "ap_code": "3AUJ",
+  "ap_description": null,
+  "awards": 4,
+  "obligated_millions": -3,
+  "sub_agencies": [
+   "Defense Contract Management Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "F09604"
+  ],
+  "sample_description": "SPECIAL STUDIES/ANALYSIS- OTHER"
+ },
+ {
+  "ap_code": "CNP",
+  "ap_description": "AGM-88 HARM",
+  "awards": 1,
+  "obligated_millions": -3,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "DAAH01"
+  ],
+  "sample_description": "GUIDED MISSILES - CIRCUIT CARD ASSEMBLY"
+ },
+ {
+  "ap_code": "360",
+  "ap_description": "JTRS CLUSTER 1",
+  "awards": 5,
+  "obligated_millions": -4,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0188",
+   "FK02",
+   "H92222",
+   "W15P7T"
+  ],
+  "sample_description": "THE PURPOSE OF MODIFICATION P00468 IS TO DEOBLIGATE FUNDS FROM CONTRACT LINE ITEM NUMBERS (CLINS)&ACCOUNTING CLASSIFICATION REFERENCE NUMBERS (ACRNS): CLIN 0021, ACRN F5 CLIN 0024, G5 CLIN 0025, G5 CLIN 0116, ACRN G0 CLIN 0121, G4 CLIN 0314, ACRN G9 CLIN 0514, ACRN G8&CLIN 9001, ACRN F8."
+ }
+]

@@ -9095,13 +9095,18 @@ def _write_all_sidecars(
     for r in entity_rows:
         family_key, display_name, uei_count, total_obligation, worst_confidence = r
         slug = family_key.lower().replace(" ", "-")
+        # Search titles NAME the company, so a RELABELLED family wins here for
+        # the same reason it wins in the <h1> the result links to. A `pin` row
+        # does not: its label is what the casing rule already renders, so the
+        # only difference is case, and switching six of two hundred titles to
+        # cased form would leave this list inconsistent for no gain. Case is
+        # the whole test — the casing rule changes case, never letters.
+        _label = entity_labels.get(family_key)
+        _relabelled = _label is not None and _label.upper() != display_name.upper()
         search_docs.append({
             "id": f"c:{slug}",
             "kind": "company",
-            # Search titles NAME the company, so a curated label wins here for
-            # the same reason it wins in the <h1> the result links to. The
-            # registry string stays searchable via the page itself.
-            "title": entity_labels.get(family_key, display_name),
+            "title": _label if _relabelled else display_name,
             "url": f"/company/{slug}/",
         })
         # A relabelled family would otherwise become unfindable by the string
@@ -9109,13 +9114,13 @@ def _write_all_sidecars(
         # promised stays reachable. Same standalone-doc mechanism the curated
         # search aliases use below (no MiniSearch field-config change), so the
         # registry name keeps resolving to the page it always did.
-        if entity_labels.get(family_key, display_name) != display_name:
+        if _relabelled:
             search_docs.append({
                 "id": f"alias:registry-{slug}",
                 "kind": "alias",
                 "title": display_name,
                 "url": f"/company/{slug}/",
-        })
+            })
 
     # Agency docs
     for org in sorted(org_prog_count.keys()):
@@ -9397,6 +9402,13 @@ def _write_all_sidecars(
     # 11. flows/{pe_bli}.json  (17 crosswalked programs)                 #
     # ------------------------------------------------------------------ #
     flows_dir = json_dir / "flows"
+    # Prune before emit (same species as districts/breakdowns above): a PE
+    # whose high-confidence links die keeps its old flows file otherwise —
+    # 11 stale files from a pre-adjudication export kept publishing a
+    # REJECTED award at "high" (FA251718C8000 on 0601101E, found 2026-09-01).
+    if flows_dir.exists():
+        import shutil as _shutil
+        _shutil.rmtree(flows_dir)
     flows_dir.mkdir(exist_ok=True)
     n_flows = _emit_flows_sidecars(flows_dir=flows_dir, con=con)
     n_files += n_flows
@@ -9432,6 +9444,14 @@ def _write_all_sidecars(
     # 13. districts/index.json + districts/{pop_district}.json (Task 5)  #
     # ------------------------------------------------------------------ #
     dist_dir = json_dir / "districts"
+    # Prune before emit: this directory is keyed by pop_district and fully
+    # re-emitted each export. A district that drops out of the mart (the
+    # 2026-09-01 adjudication removed 65 of 106) must lose its sidecar, or
+    # the stale file leaks retired fact-ids into freshly built pages — the
+    # gate-2 failure mode found on 2026-09-01 (45 dead ids via AK-00 et al.).
+    if dist_dir.exists():
+        import shutil as _shutil
+        _shutil.rmtree(dist_dir)
     dist_dir.mkdir(exist_ok=True)
     n_dist = _emit_district_sidecars(
         dist_dir=dist_dir,
@@ -12116,6 +12136,13 @@ def _emit_breakdowns(
     from decimal import Decimal as D
 
     breakdown_dir = json_dir / "breakdowns"
+    # Prune before emit: hash-keyed files accumulate forever otherwise — a
+    # breakdown whose source row left the mart kept its old file and leaked
+    # retired fact-ids into built pages (same species as the districts prune
+    # above; see 2026-09-01 note there).
+    if breakdown_dir.exists():
+        import shutil as _shutil
+        _shutil.rmtree(breakdown_dir)
     breakdown_dir.mkdir(exist_ok=True)
 
     hex_re = _re.compile(r"^[0-9a-f]{16}$")
@@ -12583,6 +12610,13 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
             "org": meta.get("org"),
             "fy2026_total": traj_fy26.get(pe_bli),
         }
+
+        # No awards → no chart is renderable; an empty sidecar only creates a
+        # false expectation downstream (gate 12 reads the directory listing as
+        # the crosswalked set). A high-linked PE with zero district-bearing
+        # transactions is legitimately chartless (2026-09-01, FPDS-AP expansion).
+        if not awards:
+            continue
 
         obj = {"header": header, "awards": awards}
         _write_json(flows_dir / f"{pe_bli}.json", obj)

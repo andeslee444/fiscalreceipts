@@ -1,0 +1,568 @@
+[
+ {
+  "ap_code": "554",
+  "ap_description": "MIDS",
+  "awards": 451,
+  "obligated_millions": 5407,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "VARIOUS IBM STATISTICS SOFTWARE."
+ },
+ {
+  "ap_code": "329",
+  "ap_description": "PRV",
+  "awards": 1,
+  "obligated_millions": 5381,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8629"
+  ],
+  "sample_description": "WINDOWS 10 UPGRADE IN COMPONENTS AND SYSTEMS OF THE CRH"
+ },
+ {
+  "ap_code": "ZOP",
+  "ap_description": "OTHER ENVIRONMENTAL PROGRAMS",
+  "awards": 3345,
+  "obligated_millions": 5262,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Health Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "ZIVA CORPORATION  PHASE II YEAR ONE FUNDING"
+ },
+ {
+  "ap_code": "442",
+  "ap_description": "AIM-9X BLOCK II",
+  "awards": 82,
+  "obligated_millions": 5223,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0008",
+   "N00019",
+   "N68936",
+   "S0305A",
+   "S4420A"
+  ],
+  "sample_description": "WARFIGHTER TRAINING IN VA"
+ },
+ {
+  "ap_code": "289",
+  "ap_description": "TACTOM",
+  "awards": 455,
+  "obligated_millions": 4987,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "[PR 1300861937 PMT NO. N00019-20-NORFP-PMA-280-0238]  THE PURPOSE OF THIS MODIFICATION IS TO PROCURE LARGE UNMANNED SURFACE VESSEL (LUSV), SYSTEMS ENGINEERING SUPPORT"
+ },
+ {
+  "ap_code": "503",
+  "ap_description": "JDAM",
+  "awards": 267,
+  "obligated_millions": 4859,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0007",
+   "0009",
+   "0010"
+  ],
+  "sample_description": "[JOINT DIRECT ATTACK MUNITIONS] JDAM"
+ },
+ {
+  "ap_code": "373",
+  "ap_description": "MQ-4C TRITON",
+  "awards": 110,
+  "obligated_millions": 4774,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0005",
+   "0010",
+   "0018",
+   "0023",
+   "0034"
+  ],
+  "sample_description": "ZERO LOT MODIFICATION, INCREMENTAL FUNDING, AND SECTION J UPDATE."
+ },
+ {
+  "ap_code": "542",
+  "ap_description": "LPD 17",
+  "awards": 25,
+  "obligated_millions": 4758,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0005",
+   "0009",
+   "0032",
+   "7F02",
+   "EH07"
+  ],
+  "sample_description": "USS SAN ANTONIO (LPD-17) FY17 DPMA; SETTLED GROWTH WORK RCCS."
+ },
+ {
+  "ap_code": "471",
+  "ap_description": "AMPV",
+  "awards": 553,
+  "obligated_millions": 4545,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0006",
+   "0036",
+   "0037",
+   "0039",
+   "0041"
+  ],
+  "sample_description": "YPG MOBILE OFFICE RENTAL. THIS PURCHASE ORDER EXTENDS THE AGREEMENT FOR AN ADDITIONAL YEAR."
+ },
+ {
+  "ap_code": "202",
+  "ap_description": "AH-64E REMANUFACTURE",
+  "awards": 446,
+  "obligated_millions": 4206,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WORK-IN-KIND/CONSIDERATION OF THE ENHANCED STRAP PACKS AS A RESULT OF THE MISSION PROCESSOR (MP)/MULTI MISSION PROCESSOR (MMP) CREDIT AND THE REPLACEMENT OF UAS IMAGE GENERATORS UNDER THE APACHE LOT 5&6 PRODUCTION CONTRACT."
+ },
+ {
+  "ap_code": "210",
+  "ap_description": "SBIRS HIGH",
+  "awards": 1022,
+  "obligated_millions": 4165,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0011",
+   "0012",
+   "0107",
+   "FA2550",
+   "FA8650",
+   "FA8808"
+  ],
+  "sample_description": "XX"
+ },
+ {
+  "ap_code": "166",
+  "ap_description": "NAVSTAR GPS",
+  "awards": 50,
+  "obligated_millions": 4018,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0005",
+   "0014",
+   "0015",
+   "0025",
+   "0035",
+   "0036"
+  ],
+  "sample_description": "WEATHER SYSTEM FOLLOW-ON MICROWAVE AND ON-ORBIT OPERATIONS."
+ },
+ {
+  "ap_code": "101",
+  "ap_description": "H-1 UPGRADES",
+  "awards": 430,
+  "obligated_millions": 3847,
+  "sub_agencies": [
+   "Defense Commissary Agency",
+   "Defense Contract Management Agency",
+   "Defense Health Agency",
+   "Defense Human Resources Activity"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YEAR TWO P/N 3239AS1390-1"
+ },
+ {
+  "ap_code": "474",
+  "ap_description": "F-22 INC 3.2B MOD",
+  "awards": 38,
+  "obligated_millions": 3633,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0005",
+   "0006",
+   "0007",
+   "0008",
+   "0009",
+   "0010"
+  ],
+  "sample_description": "VSS RADAR CCP 525"
+ },
+ {
+  "ap_code": "550",
+  "ap_description": "FLRAA",
+  "awards": 9,
+  "obligated_millions": 3619,
+  "sub_agencies": [
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W58RGZ"
+  ],
+  "sample_description": "THIS TASK ORDER PROVIDES, ENGINEERING, LOGISTICS AND ACQUISITION STRATEGIC PLANNING PROFESSIONAL SERVICES IN SUPPORT OF THE FUTURE LONG RANGE ASSAULT AIRCRAFT (FLRAA) PROJECT MANAGEMENT OFFICE."
+ },
+ {
+  "ap_code": "577",
+  "ap_description": "CH-47F BLOCK II",
+  "awards": 655,
+  "obligated_millions": 3618,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0007",
+   "0066",
+   "0080",
+   "0082",
+   "BS1K",
+   "BS4V"
+  ],
+  "sample_description": "WIRING, HARNESS"
+ },
+ {
+  "ap_code": "496",
+  "ap_description": "DHMSM",
+  "awards": 113,
+  "obligated_millions": 3267,
+  "sub_agencies": [
+   "Defense Health Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA3300",
+   "FA5606",
+   "FA7000",
+   "FA9550",
+   "HT0011",
+   "HT0038"
+  ],
+  "sample_description": "UNITED STATES COAST GUARD SERVICE EXPANSION, HEALTHEINTENT, PREMIER PASS, POWER CHART TOUCH, AND TRAINING."
+ },
+ {
+  "ap_code": "439",
+  "ap_description": "SDB II",
+  "awards": 92,
+  "obligated_millions": 3210,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0022"
+  ],
+  "sample_description": "WEAPONS DATA LINK (WDL) REPROGRAMMING, PGI UPDATE"
+ },
+ {
+  "ap_code": "466",
+  "ap_description": "PIM",
+  "awards": 37,
+  "obligated_millions": 3002,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "W56HZV-17-C-0001 P00226 IS TO DELETE CD25 CLAUSES"
+ },
+ {
+  "ap_code": "391",
+  "ap_description": "SM-6",
+  "awards": 16,
+  "obligated_millions": 2971,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "FA8206",
+   "FA8226",
+   "N00024",
+   "N68936"
+  ],
+  "sample_description": "WAIVE DFARS 252.211-7003 FOR CLIN 0005"
+ },
+ {
+  "ap_code": "606",
+  "ap_description": "FFG(62)",
+  "awards": 1,
+  "obligated_millions": 2648,
+  "sub_agencies": [
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "N00024"
+  ],
+  "sample_description": "UPDATE TO J2 AND CDRL"
+ },
+ {
+  "ap_code": "110",
+  "ap_description": "AEGIS",
+  "awards": 14,
+  "obligated_millions": 2564,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy",
+   "Missile Defense Agency"
+  ],
+  "office_prefixes": [
+   "7F15",
+   "EH01",
+   "EH02",
+   "EH07",
+   "HQ0276",
+   "N00024"
+  ],
+  "sample_description": "[&#82069/&#820630/&#82062021 10:22 PM]  TENNEY, DEREK CIV MDA/ABS-K:   THE PURPOSE OF THIS MODIFICATION IS TO:  1)DE-OBLIGATE THE FUNDING ON SUBCLIN 006902 IN THE AMOUNT OF $147,746.00 PROVIDED UNDER P00401  2)ADJUST THE PERIOD OF PERFORMANCE (POP) ASSOCIATED WITH SUBCLIN 006902 BACK TO 30 OCT 2019 3) UPDATED ATTACHMENT J-13 - ALLOTMENT OF FUNDS   BASELINE 5.0"
+ },
+ {
+  "ap_code": "ZBL",
+  "ap_description": "PERFORMANCE BASED LOGISTICS (PBL)",
+  "awards": 84,
+  "obligated_millions": 2391,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WHOLESALE - DE-OBLIGATION OF FUNDS"
+ },
+ {
+  "ap_code": "197",
+  "ap_description": "DDG 1000",
+  "awards": 58,
+  "obligated_millions": 2380,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0019",
+   "0027",
+   "EH01"
+  ],
+  "sample_description": "WR25-336"
+ },
+ {
+  "ap_code": "385",
+  "ap_description": "HMS",
+  "awards": 31,
+  "obligated_millions": 2294,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "FA4427",
+   "FA8726"
+  ],
+  "sample_description": "USMC TEST ASSET PROCUREMENT"
+ },
+ {
+  "ap_code": "265",
+  "ap_description": "F/A-22",
+  "awards": 56,
+  "obligated_millions": 2221,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0015",
+   "0028"
+  ],
+  "sample_description": "THIS ORDER IS ISSUED AS F-22 RETROFIT FOR THE  RELIABILITY, AVAILABILITY, AND MAINTAINABILITY PROGRAM (RAMP) PROJECT EPS43R, MAIN GENERATOR IMPROVEMENT. MODIFICATION TO INCORPORATE CDRL PACKAGE AND MAKE ADMINISTRATIVE CHANGES."
+ },
+ {
+  "ap_code": "401",
+  "ap_description": "MINUTEMAN III",
+  "awards": 61,
+  "obligated_millions": 2183,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0004",
+   "0005",
+   "0009",
+   "0010",
+   "0011"
+  ],
+  "sample_description": "WSP REPAIR"
+ },
+ {
+  "ap_code": "707",
+  "ap_description": "E-7A RP",
+  "awards": 1,
+  "obligated_millions": 2093,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8730"
+  ],
+  "sample_description": "OPTION EXERCISE EXTENSION FOR CLINS 2010, 2020, 2030, 2031"
+ },
+ {
+  "ap_code": "494",
+  "ap_description": "PRSM",
+  "awards": 4,
+  "obligated_millions": 2030,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "S0305A",
+   "W31P4Q"
+  ],
+  "sample_description": "THIS MODIFICATION IS TO PROVIDE INCREMENTAL FUNDING FOR THE LAST TIME BUY OF THE VOLTAGE REGULATOR PART."
+ },
+ {
+  "ap_code": "492",
+  "ap_description": "PAC-3 MSE",
+  "awards": 1032,
+  "obligated_millions": 2026,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0004",
+   "0033",
+   "0034",
+   "SPRBL1",
+   "SPRRA2"
+  ],
+  "sample_description": "W31P4Q-14-C-0034 PAC-3 PRODUCTION CONTRACT MODIFICATION, P00123, TO INCORPORATE NUMEROUS REQUESTS FOR DEVIATIONS(RFD) AND TO CHANGE A DELIVERY DATE."
+ }
+]

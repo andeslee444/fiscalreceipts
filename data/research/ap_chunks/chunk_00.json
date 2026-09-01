@@ -1,0 +1,593 @@
+[
+ {
+  "ap_code": "198",
+  "ap_description": "F-35",
+  "awards": 1170,
+  "obligated_millions": 212969,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YEAR TWO PRODUCTION UNIT - MRSS"
+ },
+ {
+  "ap_code": "CAA",
+  "ap_description": "MDA SUPPORT",
+  "awards": 5516,
+  "obligated_millions": 68281,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Information Systems Agency",
+   "Defense Logistics Agency",
+   "Defense Threat Reduction Agency"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YSTEM ENGINEERING AND TECHNICAL ASSISTANCE SUPPORT PROGRAM - ASSESSMENT, SIMULATION, AND TRANSITION SUPPORT SERVICES."
+ },
+ {
+  "ap_code": "516",
+  "ap_description": "SSN 774",
+  "awards": 136,
+  "obligated_millions": 54058,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0016"
+  ],
+  "sample_description": "ZTP"
+ },
+ {
+  "ap_code": "180",
+  "ap_description": "DDG 51",
+  "awards": 283,
+  "obligated_millions": 29176,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WRR19-265 FMR 11518M"
+ },
+ {
+  "ap_code": "387",
+  "ap_description": "KC-46A",
+  "awards": 156,
+  "obligated_millions": 27574,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force"
+  ],
+  "office_prefixes": [
+   "FA8139",
+   "FA8609",
+   "FA8625",
+   "FA9302"
+  ],
+  "sample_description": "VH6028 AIRCRAFT ON THE GROUND (AOG) REPAIR"
+ },
+ {
+  "ap_code": "178",
+  "ap_description": "TRIDENT II MISSILE",
+  "awards": 2434,
+  "obligated_millions": 26260,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "ZEBRA ZT410 INDUSTRIAL PRINTER"
+ },
+ {
+  "ap_code": "505",
+  "ap_description": "LTAMDS",
+  "awards": 44,
+  "obligated_millions": 23191,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "W31P4Q",
+   "W91151",
+   "W911N2"
+  ],
+  "sample_description": "W31P4Q-20-C-0023 FY21-23 PAC-3 PRODUCTION"
+ },
+ {
+  "ap_code": "334",
+  "ap_description": "P-8A",
+  "awards": 1060,
+  "obligated_millions": 20665,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "[PMT:1300671377-0003]: THIS MODIFICATION ADDS RAAF FUNDING TO TASK ORDER 13."
+ },
+ {
+  "ap_code": "220",
+  "ap_description": "C-130J",
+  "awards": 935,
+  "obligated_millions": 19561,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YR 2"
+ },
+ {
+  "ap_code": "223",
+  "ap_description": "CVN 78",
+  "awards": 38,
+  "obligated_millions": 16985,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0004",
+   "EH04",
+   "EHQ6",
+   "FK01",
+   "N00019"
+  ],
+  "sample_description": "WAR ROOM PROGRAM SUPPORT"
+ },
+ {
+  "ap_code": "212",
+  "ap_description": "V-22",
+  "awards": 971,
+  "obligated_millions": 14982,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YOKE SUPPORT ADAPTER"
+ },
+ {
+  "ap_code": "555",
+  "ap_description": "JASSM",
+  "awards": 189,
+  "obligated_millions": 13649,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0004",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "ZONAL IMAGING NO COST POP EXTENSION"
+ },
+ {
+  "ap_code": "260",
+  "ap_description": "GMLRS/GMLRS AW",
+  "awards": 90,
+  "obligated_millions": 13605,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WE INCORPORATE LMS REQUESTED THAT THE 5 ASSEMBLIES ARE ADDED TO ATTACHMENT 10 LRHW LONG LEAD PARTS LM_DTS. ALSO, ANSWERED THE CDR CN120596. BY ADDING ATTACHMENT 11 THE MISSING MFR FOR PAYMENT INSTRUCTION OTHER THAN DFAR PGI 204.7108(D)(12)."
+ },
+ {
+  "ap_code": "364",
+  "ap_description": "E-2D AHE",
+  "awards": 468,
+  "obligated_millions": 12979,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0004",
+   "0007",
+   "0008",
+   "0009",
+   "0010"
+  ],
+  "sample_description": "WING CENTER SECTION REPAIRS FOR E-2/C-2 AIRCRAFT"
+ },
+ {
+  "ap_code": "ZSF",
+  "ap_description": "STATUS OF FORCES AGREEMENT",
+  "awards": 4188,
+  "obligated_millions": 12525,
+  "sub_agencies": [
+   "Defense Commissary Agency",
+   "Defense Information Systems Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "C026",
+   "FA5209",
+   "FA5270",
+   "FA5606",
+   "FA5685"
+  ],
+  "sample_description": "ZUTENDAAL APS SITE - BELGIUM"
+ },
+ {
+  "ap_code": "390",
+  "ap_description": "CH-53K",
+  "awards": 277,
+  "obligated_millions": 12424,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "4Y02",
+   "4Y03",
+   "5310",
+   "5311",
+   "5566",
+   "5743"
+  ],
+  "sample_description": "YEAR THREE"
+ },
+ {
+  "ap_code": "493",
+  "ap_description": "GBSD",
+  "awards": 7,
+  "obligated_millions": 11751,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "FA7014",
+   "FA8204",
+   "FA8219",
+   "W56HZV"
+  ],
+  "sample_description": "THE PURPOSE OF THIS MODIFICATION IS TO CHANGE PAYMENT ADDRESS CAGE CODE FROM HQ0337 TO HQ0338"
+ },
+ {
+  "ap_code": "378",
+  "ap_description": "EA-18G",
+  "awards": 377,
+  "obligated_millions": 11508,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0004",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "sample_description": "X"
+ },
+ {
+  "ap_code": "279",
+  "ap_description": "JLTV",
+  "awards": 57,
+  "obligated_millions": 11403,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "0037",
+   "0038",
+   "0042",
+   "0043",
+   "M67854"
+  ],
+  "sample_description": "WORK DIRECTIVE 45 REV 5 USAF MISSION EQUIPMENT INTEGRATION."
+ },
+ {
+  "ap_code": "374",
+  "ap_description": "LCS",
+  "awards": 861,
+  "obligated_millions": 10974,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0007",
+   "0010",
+   "0012"
+  ],
+  "sample_description": "ZERO COST ADMINISTRATIVE CHANGE."
+ },
+ {
+  "ap_code": "185",
+  "ap_description": "AMRAAM",
+  "awards": 353,
+  "obligated_millions": 9546,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "WINGS AND FINS APPLICABLE TO THE AIR MISSILES 120, CAPTIVE AIR TRAINING MISSILES 120 AND OTHER MISSILE"
+ },
+ {
+  "ap_code": "531",
+  "ap_description": "PATRIOT/MEADS CAP",
+  "awards": 150,
+  "obligated_millions": 7797,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "[MONDAY 12:57 PM] MARTIN, TISHA MICHELLE CIV USARMY ACC (USA) \"EXECUTE PHASED ARRAY TRACKING RADAR TO INTERCEPT ON TARGET (PATRIOT) ADVANCED CAPABILITY-3 (PAC-3) MISSILE PRODUCTION BY PROVIDING INCIDENTAL SERVICES, HARDWARE, FACILITIES, EQUIPMENT, AND TECHNICAL, PLANNING, MANAGEMENT, AND MANUFACTURING EFFORTS.\""
+ },
+ {
+  "ap_code": "176",
+  "ap_description": "EELV",
+  "awards": 40,
+  "obligated_millions": 7386,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "FA8811",
+   "FA8814",
+   "FA8816",
+   "N00030",
+   "N64709"
+  ],
+  "sample_description": "VULCAN NEXT GENERATION LAUNCHER SYSTEMS NEW ENTRANT CERTIFICATION SYSTEMS ENGINEERING INTEGRATION SERVICES"
+ },
+ {
+  "ap_code": "333",
+  "ap_description": "LHA 6",
+  "awards": 54,
+  "obligated_millions": 6743,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0003",
+   "0004",
+   "0005",
+   "0019",
+   "0038",
+   "7F01"
+  ],
+  "sample_description": "WFCS 080&081."
+ },
+ {
+  "ap_code": "424",
+  "ap_description": "MQ-9 REAPER",
+  "awards": 250,
+  "obligated_millions": 6505,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Air Force",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0006",
+   "0007",
+   "0009",
+   "0016",
+   "0019"
+  ],
+  "sample_description": "ZEUS SYSTEM MAINTENANCE AND TECHNICAL SUPPORT"
+ },
+ {
+  "ap_code": "564",
+  "ap_description": "PATRIOT P3I",
+  "awards": 28,
+  "obligated_millions": 6232,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "SPRBL1",
+   "SPRRA2",
+   "W31P4Q"
+  ],
+  "sample_description": "US PIAI"
+ },
+ {
+  "ap_code": "243",
+  "ap_description": "CHEM DEMIL-ACWA",
+  "awards": 10,
+  "obligated_millions": 6105,
+  "sub_agencies": [
+   "Defense Logistics Agency",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0007",
+   "SPE7LX",
+   "W52P1J",
+   "W58RGZ"
+  ],
+  "sample_description": "W52P1J09C0012 P00217 IS TO DE-OBLIGATE FUNDING FROM CLINS 0003AN AND 0003AT, TRANSFER GFP, AND EXTEND THE POP FOR CYBER SECURITY AT PUEBLO CHEMICAL AGENT DESTRUCTION PILOT PLANT(PCAPP)."
+ },
+ {
+  "ap_code": "341",
+  "ap_description": "UH-60M BLACK HAWK",
+  "awards": 3025,
+  "obligated_millions": 5901,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "YOKE&HOUSING"
+ },
+ {
+  "ap_code": "362",
+  "ap_description": "BMDS",
+  "awards": 169,
+  "obligated_millions": 5773,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Defense Logistics Agency",
+   "Department of the Air Force",
+   "Department of the Army"
+  ],
+  "office_prefixes": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006"
+  ],
+  "sample_description": "XBR O&STHIS EFFORT IS FOR DEPLOYMENT, OPERATIONS, AND SUPPORT OF MDA X-BAND RADARS AND OTHER SYSTEMS AT LOCATIONS DESIGNATED BY THE GOVERNMENT. THE ACTUAL EFFORT IS AUTHORIZED BY INDIVIDUAL TASK ORDERS. IGF::OT::IGF"
+ },
+ {
+  "ap_code": "420",
+  "ap_description": "MQ-1C GRAY EAGLE",
+  "awards": 79,
+  "obligated_millions": 5454,
+  "sub_agencies": [
+   "Defense Contract Management Agency",
+   "Department of the Army",
+   "Department of the Navy"
+  ],
+  "office_prefixes": [
+   "0002",
+   "N00164",
+   "W58RGZ"
+  ],
+  "sample_description": "YEARS 2019 - 2023 GRAY EAGLE PERFORMANCE BASED LOGISTICS"
+ }
+]
