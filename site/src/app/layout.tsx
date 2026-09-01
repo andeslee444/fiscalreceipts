@@ -9,6 +9,7 @@ import { CommandPalette, SearchTriggerButton } from "@/components/search/command
 import { MobileNav } from "@/components/mobile-nav";
 import { websiteJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { siteFeedLinks } from "@/lib/feeds";
+import { Analytics } from "@vercel/analytics/next";
 
 // Read built_at from site_meta.json at build time
 function getBuiltAt(): string {
@@ -341,6 +342,30 @@ export default function RootLayout({
             </div>
           </footer>
         </ReceiptsProvider>
+        {/* Vercel Web Analytics. Renders NOTHING — the component returns
+            null and appends <script defer src="/_vercel/insights/script.js">
+            from an effect — so it adds no markup to any page; its whole
+            page-weight cost is the client-reference the root layout now
+            carries in the RSC flight payload, weighed against gate 1's
+            budget in the same change that added it (see the note on
+            scripts/gates/build.mjs's PAGE_WEIGHT_BUDGET).
+
+            SAME-ORIGIN, AND COOKIELESS. In a production build the script
+            src is the relative /_vercel/insights/script.js and the beacon
+            posts to /_vercel/insights/* — no third-party host is contacted
+            from a reader's browser, so nothing here needs a CSP exception.
+            Vercel Web Analytics sets no cookies: a visitor is identified by
+            a hash derived from the incoming request, discarded after 24
+            hours (vercel.com/docs/analytics/privacy-policy). That is the
+            only reason it is acceptable on a public-interest transparency
+            site, and it is why this is Analytics alone — anything that sets
+            a cookie or collects PII does not go in this layout without
+            being argued for first.
+
+            The /next entry (not /react) is deliberate: it reads the
+            PARAMETERISED route from next/navigation, so 1,993 program pages
+            report as /program/[peBli] instead of 1,993 separate paths. */}
+        <Analytics />
       </body>
     </html>
   );

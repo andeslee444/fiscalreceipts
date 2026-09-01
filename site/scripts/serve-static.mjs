@@ -138,6 +138,38 @@ function handler(req, res) {
     return;
   }
 
+  // ── /_vercel/* → platform routes, stubbed ───────────────────────────────
+  // NOT a relaxed assertion — an environment-fidelity fix, the same species
+  // as /config.json above ("Gates must stay hermetic").
+  //
+  // Vercel Web Analytics loads /_vercel/insights/script.js and beacons to
+  // /_vercel/insights/*. Those paths are served by the Vercel platform and
+  // are BY CONSTRUCTION absent from the static export: deploy.sh uploads
+  // site/out/ prebuilt, so no build could ever place a file there. Serving
+  // out/ locally therefore 404s them, and Chromium logs a 404 subresource
+  // as a console ERROR — which gate 3 (render-live) collects with no
+  // allowlist and fails on, for every page it visits. Measured before this
+  // stub existed: injecting the exact tag @vercel/analytics builds produced
+  // `Failed to load resource: the server responded with a status of 404`,
+  // 1 console error, on a page that had zero.
+  //
+  // Gate 3's assertion is UNCHANGED and still zero-tolerance; this only
+  // stops the harness inventing an error the deployed site does not have.
+  // The body is empty on purpose: @vercel/analytics installs its own
+  // window.va queue stub before the script loads, so pageviews queue
+  // harmlessly and nothing leaves the machine during a gate run.
+  if (urlPath.startsWith("/_vercel/")) {
+    res.writeHead(200, {
+      "Content-Type": urlPath.endsWith(".js")
+        ? "application/javascript"
+        : "application/json",
+      "Content-Length": 0,
+      "Cache-Control": "no-cache",
+    });
+    res.end();
+    return;
+  }
+
   // ── /assets/ → ../data/site ────────────────────────────────────────────
   if (urlPath.startsWith("/assets/")) {
     const rel = urlPath.slice("/assets/".length);
