@@ -63,12 +63,22 @@ biennial.
 **Senate lobbying disclosures — lda.senate.gov.** The Senate Lobbying
 Disclosure Act database (`lda.senate.gov/api/v1`) contains filings
 for 2025 and prior years, each with a permanent UUID, registrant, client
-company, dollar amounts, agencies lobbied, and issue text that frequently names
-specific programs. We have linked LDA client names to our company-family
-database: 32,780 program mentions across 245 programs connect filings to budget
-lines. Lobbying income and expenditure by year are shown alongside federal
-obligations received — influence is presented side by side with outcomes, never
-as a causal claim.
+company, dollar amounts, agencies lobbied, and issue text. We link LDA client
+names to our company-family database and match each filing's issue text
+against our program titles for keyword co-occurrence — never a claim that the
+filing names the program. A mention qualifies only when the exact PE/BLI code
+appears, a curated alias appears, or at least two distinct, non-generic title
+words co-occur in the same filing; each row of the `fct_program_lobbying`
+dataset records which tier it qualified under (`evidence_kind`). The current
+mention count is derived from that dataset on every build and published on the
+live methodology page rather than restated here as a fixed number: an earlier
+revision of this document said "32,780 program mentions across 245 programs",
+a count produced by a since-withdrawn method that accepted a single shared
+common word as a match (correction 34,538 → 10,560, recorded in the site's
+corrections table). As of the 2026-08-31 build, the mart holds 14,016
+evidence-tiered mention rows across 499 program elements. Lobbying income and
+expenditure by year are shown alongside federal obligations received —
+influence is presented side by side with outcomes, never as a causal claim.
 
 **State checkbooks — California and Connecticut (pilot).** California's Open
 Fi$Cal and Connecticut's OpenCheckbook publish transaction-level government
@@ -104,11 +114,18 @@ SHA-256 matches the download manifest, and the XML element path resolves to a
 real node in that document. A number whose citation chain breaks does not
 render.
 
-**Per-build automated checks.** 197 automated test functions across 42 test
-modules, plus phase-level verification gates, plus 21 dbt data-model
-assertions run on every build. The analyst-agent evaluation set (45
-question-answer pairs covering every data domain) requires ≥41 correct
-answers and 100% citation resolution before shipping.
+**Per-build automated checks.** A Python test suite and a browser test suite
+both run green before any build ships, alongside the site verification gates
+and the dbt data-model assertions. The counts of gates, assertions, and
+evaluation questions are derived on every build from the artifacts that
+define them — dbt's compiled manifest, the `verify.mjs` gate registry, and
+the eval set with the gate's own threshold constant — and published in §3 of
+the live methodology page; this document does not pin them (an earlier
+revision's "197 test functions, 21 dbt assertions, 45 eval pairs, ≥41
+correct" had all drifted). As of the 2026-08-31 build: 24 site verification
+gates, 99 dbt data-model assertions, and a 48-question analyst-agent
+evaluation set requiring at least 44 correct answers and 100% citation
+resolution before shipping.
 
 ---
 
