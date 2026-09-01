@@ -11526,3 +11526,387 @@ gate samples 50 citations at random, which is why it surfaces intermittently.
 Fixing it means re-running `govbudget influence pull` against the live LDA
 API, which is out of this wave's scope. Recorded here rather than left for
 the next person to rediscover.
+
+================================================================================
+ROADMAP #29(a) — LLM LINEAGE EXTRACTION (2026-08-31)
+verify-lineage leg (j) ratification
+================================================================================
+
+WHAT THE ENTRY SAID, AND WHAT THE CORPUS ACTUALLY HOLDS. #29(a) is written as
+"LLM extraction over the ~1,950 prose transfers that name a move but carry no
+adjacent PE code", pilot ~$2 and full pass ~$10-20. The 1,950 reproduces as a
+POPULATION and not as extractable transfers. Measured over detail_narratives
+(all editions, not superseded, xml_path not null -- the same universe
+lineage/load.py reads), split by extract.py's own _SENT:
+
+  narrative rows                                       30,116
+  clauses                                             236,124
+  clauses with a transfer/rename/consolidation verb      5,002
+    ... with a PE/program-element-prefixed code            273
+    ... WITHOUT one                                      4,729   (FY2026: 1,756)
+
+Forty of the 4,729 were read by hand. The overwhelming majority are not budget
+identity moves at all: technology transfer ("Small Business Technology
+Transfer"), data transfer ("enables the transfer of intelligence information
+across multiple domains"), software migration ("migration to a government
+DevSecOps framework"), movement between PROJECTS inside one program element
+("realigned from Project EY7 to Project/EY8"), and SYSTEM re-brandings ("Next
+Generation Jammer Mid-Band (formerly known as Next Generation Jammer Increment
+1)") -- a system with two marketing names, not two funded identities.
+
+The extractable subset is 313 clauses that carry a program-element token but
+NOT adjacent to the verb, which is precisely where extract.py's _RULES cannot
+reach: 197 of them yield no directional match at all. The misses are
+mechanical, not semantic -- distance ("transferred to Budget Activity-9 (BA-9)
+Program Element (PE) 0609277A"), prefix shape ("Program 0604009F",
+"(0609345A/A49)"), and direction expressed without a preposition
+("Realignment starting FY 2026 to ... (0609345A/A49) funding line").
+
+--------------------------------------------------------------------------------
+THE PRECISION CHECK WAS WRITTEN AND COMMITTED BEFORE THE FIRST API CALL
+--------------------------------------------------------------------------------
+
+docs/superpowers/specs/2026-08-31-lineage-llm-extraction-precision.md, commit
+3e465a7, is a pre-registration: the population, the verifier's refusal rules,
+the adjudication key, the bar (>= 95%) and four refusals decided in advance.
+It has NOT been edited since, deliberately -- a pre-registration that is
+rewritten to match its outcome is not one. #30 reached 98.4% by designing its
+gate first; this is the same order.
+
+THE ADJUDICATION KEY, and it is never the extractor's own confidence. For each
+candidate the question is: does the cited clause, read inside its own
+paragraph, assert that this program's money or effort became that program's,
+in the direction the edge records? A "yes" needs all four of (1) a budget
+IDENTITY move, (2) the two endpoints the clause names, (3) the direction, (4)
+no retraction. Two independent corroborations are pulled for every one:
+  S1 the full narrative body around the clause, verbatim;
+  S2 the counterparty's own book -- its dim_pe_titles title and, where it
+     exists, its own narrative. This is #30's rule ("checked against the budget
+     line's own J-book narrative on that page, not its title") applied here.
+S2 is what settled 0604130V -> 0308609V, whose clause says "the funding for
+Enterprise Security Service transfers to PE 0308609V" while the narrating PE
+is titled "Enterprise Security SYSTEM (ESS)" -- one word apart. 0604130V's
+PB2025 book carries a NISS accomplishment block and 0308609V's PB2023 book is
+titled "National Industrial Security System Software Pilot Program" in BA-8.
+The NISS work left ESS for its own BA-8 line. Confirmed, not assumed.
+
+--------------------------------------------------------------------------------
+THE PILOT MEASURED 90.5% AND DID NOT CLEAR THE BAR
+--------------------------------------------------------------------------------
+
+100 clauses (a deterministic UNBIASED sample -- pending clauses ordered by
+clause_id, a sha256, so --limit takes a random draw rather than one service's
+book). 73 proposals -> 21 candidates after 52 deterministic refusals. Every one
+of the 21 adjudicated by hand against S1 and S2:
+
+  19 right, 2 wrong = 90.5%, against a pre-registered bar of 95%.
+
+NOTHING WAS PUBLISHED ON THAT NUMBER. Both failures are one species, and it is
+the species the tri-persona review named: a true, correctly-cited transfer
+wearing a label the sentence does not support.
+
+  1206770SF -> 1206857SF. The clause really does say EGS funding moved to
+  Space Rapid Capabilities Office. It also calls it "a one-time technical
+  adjustment in FY 2025 ... which improved funding execution in FY 2025", and
+  the sentence IMMEDIATELY BEFORE it names EGS's real successor: "In FY 2026,
+  PE 1206770SF, Enterprise Ground Services (EGS), efforts transferred to PE
+  1206772SF, Rapid Resilient Command and Control (R2C2)". A rail reading
+  "REALIGNED TO Space Rapid Capabilities Office" would be true in every figure
+  and false in what it asserts.
+
+  0603833D8Z -> 0605142D8Z. "approximately $2.000 million of Systems
+  Engineering (0605142D8Z) resources will be used to sustain SERC operations."
+  That is one program's money being SPENT on an activity, and the proposed
+  direction is the reverse of the only reading under which it is a transfer.
+
+TWO RULES BOUGHT WITH THAT 90.5%, both generalising, neither a blacklist:
+
+  V11 TRANSIENT (deterministic). A clause that calls its own move "one-time" or
+  "temporary" cannot carry the strongest evidence tier -- the same shape as
+  extract.py's NEGATION_CUES. "technical adjustment" is deliberately NOT a cue:
+  the pilot's 0207431F -> 0303010F is a *congressional technical adjustment*
+  that stood up a new program element out of an old one, which IS lineage. The
+  two clauses share the phrase and mean opposite things; only "one-time"
+  separates them.
+
+  V10 CONFIRMATION (a second, adversarial read). The extractor's four
+  adjudication questions, asked back about an edge it already proposed, with a
+  requirement to QUOTE the words: the supporting fragment must be a verbatim
+  substring of the sentence. Disagreement REFUSES and can never create or
+  repair an edge, so the stage can only raise precision.
+
+  V10's FIRST PROMPT REFUSED TWO TRUE EDGES and the fix is recorded rather than
+  hidden: it read "In FY 2018, funding was transferred from ..." as a one-time
+  move (budget prose always dates its moves -- an effective date is not a
+  temporary arrangement) and read "Project 3311 ... moved from PE X to PE Y" as
+  project-grain (the thing that moved is a project; the ENDPOINTS are still
+  program elements). Both clarifications went into the prompt and the v1 output
+  is kept as superseded-confirm-v1-*.jsonl, named out of the results glob so it
+  is evidence and not input.
+
+--------------------------------------------------------------------------------
+HELD OUT: 32 PAIRS THE RULES WERE NEVER TUNED AGAINST
+--------------------------------------------------------------------------------
+
+The remaining 213 clauses were then run with the tightened pipeline. "Held out"
+is defined by PAIR, not by clause -- a pair already adjudicated in the pilot is
+not held out merely because a different duplicate clause now represents it.
+
+  held-out candidates adjudicated by hand:   32
+  right:                                     32
+  wrong:                                      0     100.0%
+
+  full shipped candidate set:                49 y,  2 n  ->  96.1%
+  (`lineage-llm measure` reports this; the 2 n are the pilot's rejections and
+   they stay in the seed forever, as the single rejected row stays in
+   data-seeds/gao_program_xwalk.csv)
+
+ABLATION -- what the confirmation stage is worth, measured rather than asserted:
+
+  extraction + deterministic rules only (--ablate-confirm):  52 candidates
+  + confirmation stage:                                      49 candidates
+  removed: 3 -- one WRONG (0603833D8Z -> 0605142D8Z, the inverted spending
+  sentence) and two I judged RIGHT (0603648D8Z -> 0603699D8Z and 0603821D8Z ->
+  0608648D8Z). Precision without it 51/52 = 98.1%; with it 49/49.
+
+  The two true edges it costs are recorded in the seed as verdict 'r', a third
+  value that exists precisely so a refused-but-true edge need not be deleted
+  (losing the count of what caution costs) or called false (a lie about the
+  corpus). An 'r' is not an extraction error and is excluded from the precision
+  denominator; leg (j2) forbids it from shipping.
+
+NON-DETERMINISM FOUND AND CLOSED. The same sentence appears in more than one
+narrative, and the second read is a model: 2 of 52 pairs drew a SPLIT verdict
+across their duplicate clauses. Honouring the per-clause verdict would let a
+refused pair in through whichever duplicate happened to pass -- shopping for a
+clause that agrees. ANY REFUSAL NOW BINDS THE PAIR. That is what turns those
+two into 'r' rows instead of silently shipping them; it costs recall and cannot
+cost precision. Pinned by
+test_v10_any_refusal_wins_across_duplicate_clauses.
+
+--------------------------------------------------------------------------------
+THE REFUSALS, WHICH ARE THE VALUABLE HALF. 248 proposals, 199 refused.
+--------------------------------------------------------------------------------
+
+  104  V7-already-stated     the regex tier already mints this pair. 104
+                             proposals over 35 DISTINCT pairs of the 49 the
+                             regex tier states -- so the model independently
+                             re-derives 71% of the existing tier from the same
+                             prose. (The first draft of this section said "104
+                             independent corroborations", which counted
+                             proposals as pairs. Checked and corrected.)
+   40  V7-duplicate          the same link proposed from several clauses.
+   23  V3b-unknown-pe        an endpoint absent from the corpus PE universe.
+   17  V3-shape              not a program-element code.
+    7  V2-this-pairing       a rollup clause reporting on OTHER programs may not
+                             borrow the narrating PE as an endpoint.
+    6  V10-unconfirmed       the second read refused.
+    1  V11-transient         the clause calls its own move one-time.
+    1  V7-self-loop
+
+ZERO V1 FABRICATIONS, over 248 proposals. That is not luck: candidate clauses
+are pre-filtered to those that already contain a program-element token, so a
+model is never asked to supply an endpoint and never sees a clause it could
+invent one from.
+
+V2 FIRED SEVEN TIMES, AND THOSE SEVEN ARE A RECALL COST, NOT SEVEN CATCHES.
+This was checked rather than assumed, and the first draft of this section had
+it wrong. The seven come from just TWO clauses, and neither is the 5I rollup
+shape -- both are FIRST-PERSON consolidation lists naming several predecessors
+of the narrating line:
+
+  1160434BB: "Unmanned ISR includes the consolidation of Special Applications
+  for Contingencies (SAFC) (previously Program Element (PE) 0304210BB); MQ-1
+  Unmanned Aerial Vehicle (UAV), (previously ..." -- five predecessors.
+  0604112N: "This Program Element (PE) and associated projects represent a
+  continuation of efforts previously funded under PE 0603512N ... and PE
+  0604567N ..." -- two.
+
+V2 refuses all seven because it cannot tell a first-person consolidation list
+from the third-person rollup that fabricated 3 of 25 stated edges in the 5I
+review -- a clause naming several OTHER PEs, paired with `this`. Two of the
+seven pairs (0304210BB -> 1160434BB, 1105232BB -> 1160434BB) ship anyway,
+because each predecessor's OWN book states the same link in its own voice
+("Beginning in FY 2017, this Program Element has been consolidated into SOCOM
+Program Element 1160434BB, Unmanned ISR"). The other five -- 0305219BB,
+0305231BB, 1105233BB -> 1160434BB and 0603512N, 0604567N -> 0604112N -- are
+true links this pass declines to publish.
+
+That is the trade the guard exists to make, taken deliberately and stated
+plainly: five true edges lost to keep a shape that has already produced three
+false predecessors structurally impossible. Distinguishing the two shapes is
+the obvious next increment, and it is not attempted here on a measurement of
+two clauses.
+
+V3-SHAPE'S BIGGEST REFUSAL IS PERMANENT AND MEASURED. Procurement prose does
+name budget lines -- "Starting in FY 2026 funding transfers from Line Item (LI)
+1350 to LI 1250 and continues through the outyears" is a real identity move at
+the right grain. It is still refused, because pe_bli IS NOT UNIQUE for numeric
+lines: dim_programs has 1,936 rows and 1,922 distinct pe_bli, and the
+collisions are exactly here -- "1350" is both Navy 1508N *Infantry Weapons
+Ammunition* and 1507N *Missile Industrial Facilities*; "3050" is both *Ship
+Communications Automation* and *Medium Landing Ship*; "2101" is *Tomahawk* in
+two accounts. "LI 1250" names no one program page. 432 of 1,936 corpus programs
+are numeric-only, so this is the largest single thing the pass declines to do,
+and it is declined on a measured ambiguity rather than a hunch.
+
+V3b IS A TIGHTENING BEYOND THE PRE-REGISTRATION, and it earns it. The spec's V3
+required only the PE shape; requiring corpus membership as well was added after
+the pilot and is stricter, never looser. Case in point, from the refusals:
+"PE 0604840M/N replaced PE 0604810M/N beginning in FY2019 due to budget being
+moved from BA05 to BA07." Both codes ARE verbatim in the sentence -- and the
+real corpus PE is 0604840N. Shipping the model's (correct, verbatim) reading
+would have minted a phantom 0604840M node beside the real 0604840N. Five other
+true transfers are refused by the same rule (0901579D8Z -> 0902199D8Z twice,
+0903399D8Z -> 0608648D8Z, 0207436F -> 0303004F, 0207588F -> 0207589F); those
+are recall this pass declines rather than ship an endpoint a reader cannot
+open.
+
+--------------------------------------------------------------------------------
+BEFORE -> AFTER, on the live warehouse
+--------------------------------------------------------------------------------
+
+  stated edges       49 -> 98        families         32 -> 52
+  family PEs         80 -> 148       program_lineage rows  52 -> 101
+  /lineage/ identities  86 -> 154    ribbons drawn    52 -> 101
+  citations             125,451      inferred edges    3 (unchanged)
+  superseded_dropped: 0 -- no later edition takes any of the 49 new links back
+
+--------------------------------------------------------------------------------
+LEG (j) ratification -- FAIL FIRST, four clauses broken at once
+--------------------------------------------------------------------------------
+
+The break is not one injection but four, because leg (j) has five clauses and a
+run that exercises one proves nothing about the other four.
+
+  j1  a stated edge inserted into program_lineage that neither
+      extract_stated_edges derives nor the seed ratifies;
+  j2  a shipped verdict-'y' row re-adjudicated 'n' without a rebuild;
+  j3  a ratified pair repointed to a source the sentence does not name, in BOTH
+      the table AND the seed -- a curator rubber-stamping the 5I fabrication,
+      so only the SENTENCE can catch it;
+  j4  a ratified row's clause altered so it no longer binds to its narrative.
+
+RUN A. Verbatim, leg (j) only (legs a, b, e, g, i independently caught the same
+injections in the same run and are omitted here for length):
+
+  leg j ratification: stated=99 derived=49 ratified=48 seed_rows=53 failures=5 → FAIL
+    FAIL 0603270F->0603203F (realigned): evidence_sentence differs from the
+      ratified row — seed 'In FY 2026, in order to better plan, execute, and
+      demonstrate integrated sensing and spect', table 'In FY 2026, in order to
+      better plan, execute, and demonstrate integrated sensing and spect'
+    FAIL 0604827A->0609345A (realigned): a verdict-'n' row of the ratification
+      seed says this pair must not ship (judged FALSE by a curator), but the
+      table carries it
+    FAIL 0604818A->0605294D8Z (realigned): neither extract_stated_edges derives
+      this pair nor does a verdict-'y' row of lineage_llm_edges.csv ratify it —
+      it is a stated claim nobody derived and nobody signed
+    FAIL 0601999X->0609278A (realigned): endpoint 0601999X is not named in the
+      cited clause (clause names ['0609278A'], narrating PE 0605247A) — an
+      endpoint the sentence does not state is a fabrication, however well cited
+    FAIL 0603270F->0603203F (verdict y): the ratified clause is no longer
+      present in the narrative body it cites — re-adjudicate, do not carry the
+      verdict forward
+  verify-lineage: FAIL
+
+RUN B -- j5, the failure most likely to actually happen: the loader stops
+reading the seed. `build_lineage(..., seed_path=None)`, which is exactly what a
+refactor that drops the argument produces.
+
+  rebuilt WITHOUT the seed: {'stated': 49, 'inferred': 3, 'families': 32, 'edges': 52, ...}
+  leg j ratification: stated=49 derived=49 ratified=0 seed_rows=53 failures=49 → FAIL
+    FAIL 0204228N->0607658N (ratified): a verdict-'y' row whose clause still
+      exists is ABSENT from program_lineage, and neither the regex tier nor
+      supersession explains it — the build is not reading the ratification seed
+    FAIL 0205620N->0603561N (ratified): (same message)
+    FAIL 0207418F->0207457F (ratified): (same message)
+    ... 49 in total, one per silently dropped ratified edge
+  verify-lineage: FAIL
+
+Without j5 the leg would be VACUOUS against precisely this regression: j1-j4 all
+check rows that ARE in the table, so a build carrying none of them passes them
+all.
+
+RUN C -- non-vacuity, structural and not a pinned literal:
+
+  leg j ratification: ratification seed missing: .../data-seeds/no_such_seed.csv → FAIL
+  leg j ratification: lineage_llm_edges.csv carries no adjudicated row — the
+    ratified tier cannot be emptied without a deliberate decision → FAIL
+
+The leg knows no edge count. Its populations are the shipped stated set and the
+seed itself; emptying either FAILS, and j5's population IS the ratified set, so
+a table that quietly carries none of them cannot pass by having nothing to
+check.
+
+--------------------------------------------------------------------------------
+PASS, after restoring the table and the seed and re-staging the lake. Verbatim,
+same runner:
+--------------------------------------------------------------------------------
+
+  leg a stated-cite: checked=98 passed=98 failures=0 → PASS
+  leg b family-integrity: recomputed_pes=148 persisted_pes=148 failures=0 → PASS
+  leg c one-to-one-sum: families_checked=52 cyclic_fallbacks=0 dangling_terminals=1 failures=0 → PASS
+  leg d funding-point-value: files_scanned=2562 points_checked=1592 failures=0 → PASS
+  leg e lake-binding: lineage_rows_db=101 lineage_rows_lake=101 family_pes_db=148 family_pes_lake=148 failures=0 → PASS
+  leg f no-retraction: checked=98 passed=98 failures=0 → PASS
+  leg g artifact-cite: checked=98 rendered=93 unrendered=5 failures=0 → PASS
+  leg h no-supersession: checked=98 passed=98 failures=0 → PASS
+  leg i diagram-binding: edges=101 stated=98 nodes=154 amounts=92 failures=0 → PASS
+  leg j ratification: stated=98 derived=49 ratified=49 seed_rows=53 failures=0 → PASS
+  verify-lineage: PASS
+
+ONE RULE SET, NOT TWO. Leg (j) imports extract_stated_edges and
+superseded_reason rather than restating them, exactly as legs (f) and (h) do.
+That discipline is not stylistic: a note shipped false on 179 of 319 pages in
+this codebase because the exporter, its gate and its unit test each
+re-implemented one wrong scope and agreed with each other. The same rule
+governs the extractor side -- V9 refuses any proposal whose endpoints
+contradict extract.py's own sentence_named_pairs, so the seed can never carry a
+row leg (a) would reject.
+
+GATE COUNT: unchanged -> 24. `grep -c "gateResults.push" site/scripts/verify.mjs`
+prints 24. verify-lineage is its own CLI, as recorded for legs (g) and (h).
+
+PAGE WEIGHT. One ceiling raised, and the trimming experiment was run and
+measured BEFORE the number moved so nobody repeats it. /lineage/ draws the
+whole corpus and the corpus doubled: 539,883 / 50,438 against 340,000 / 36,000.
+Removing the two dominant repeated strings -- the `font-family` attribute on
+154 text elements and the 444-character Fact-ID chip class on 98 edges (that
+chip's weight is already backlog #43, a shared component, untouched here):
+
+  baseline           539,883 / 50,438
+  minus font-family  530,489 / 50,223   (-9,394 raw, -215 gzip)
+  minus chip class   496,469 / 49,957   (-43,414 raw, -481 gzip)
+  both               487,075 / 49,739   (-52,808 raw, -699 gzip)
+
+52,808 raw bytes buy 699 gzip bytes, because repeated identical strings are
+what gzip already collapses. The gzip weight is DISTINCT content -- 98 evidence
+sentences, 154 identity labels. Ceiling 585,000 / 54,500 at the file's own ~8%
+convention, measured by importing PAGE_WEIGHT_BUDGET and calling zlib.gzipSync
+level 9 on a build run WITH NEXT_PUBLIC_SITE_URL set, as that entry's own
+comment demands. No other ceiling moved; /lineage/ now sits at 92.5%.
+
+SPEND. $2.60 over 394 Batch requests on claude-opus-5 (plus ~$0.01 for one
+non-batch smoke test of the request shape), against a printed pre-flight of
+$8.74 on the CAP basis. The cap basis is a ceiling and said so: MAX_OUTPUT_TOKENS
+is 2,000 and the measured mean output was 429. Once the pilot was archived the
+estimator switched to the observed basis and printed "output predicted at
+389tok/request from archived runs". Prompt caching carried most of the input --
+756,886 cache-read tokens against 114,565 uncached. The entry budgeted $10-20
+for the full pass; it cost a fifth of the low end, because §1 and §6 of the
+spec removed most of the population before anything was sent.
+
+WHAT DID NOT REPRODUCE.
+  * The entry's "~1,950 prose transfers" is a real clause count and not a
+    population of extractable edges. See the top of this section.
+  * "$10-20 full pass" -- $2.60.
+  * The FIRST run of the confirmation stage refused two true edges; its prompt
+    was wrong about effective dates and about grain. Recorded above, and its
+    output is retained under superseded-confirm-v1-*.jsonl.
+  * `npm run verify` must be run with NEXT_PUBLIC_SITE_URL set, exactly as the
+    build must: gate 1 compares the built sitemap's origin against the gate
+    process's OWN environment, so a correct build read by a bare `npm run
+    verify` fails with "4779 URLs do not start with origin
+    https://govbudget-placeholder.example". Not a defect in this change; noted
+    because it cost a full 10-minute build cycle to diagnose.
+

@@ -247,3 +247,30 @@ MTok). One request per clause, so a wrong clause cannot contaminate its neighbou
 ceiling and is not raised to make a batch fit. Because the extractable population
 is 313 clauses rather than ~1,950 title-only ones, the expected spend is well under
 the entry's $10–20 — that is a consequence of §1 and §6, not a target.
+
+---
+
+## 9. Outcome (appended 2026-08-31; nothing above this line was edited)
+
+A pre-registration that is rewritten to match its result is not one, so §0–§8
+stand exactly as committed in `3e465a7`, before the first API call. What
+happened:
+
+* **Pilot: 19/21 = 90.5%, which does NOT clear §5's bar.** Nothing was published
+  on it. Both failures were one species — a true, correctly-cited transfer
+  wearing a label the sentence does not support — and both were suppressible by
+  a rule that generalises, which is §5's second condition.
+* Those rules are **V10** (an adversarial second read that must quote the words)
+  and **V11** (a clause that calls its own move "one-time" is not lineage).
+  Neither is in §2, because neither was foreseen; both are tightenings.
+* **Held out: 32/32** on pairs the rules were never tuned against.
+* Shipped: **49 accepted, 2 rejected, 2 judged true but refused downstream.**
+* §6.1's numeric-line-item refusal held. §6.2 (title-only endpoints) and §6.3
+  (project-to-project) were never attempted, as written.
+* One refusal was added beyond §2 and is stricter, never looser: **V3b**, an
+  endpoint absent from the corpus PE universe. It caught a clause naming
+  `0604840M` verbatim where the corpus PE is `0604840N`.
+
+Full evidence, every refusal counted, and the verbatim FAIL/PASS:
+`docs/superpowers/reviews/5c-gates-pre-failure.txt`, section
+"ROADMAP #29(a) — LLM LINEAGE EXTRACTION (2026-08-31)".
