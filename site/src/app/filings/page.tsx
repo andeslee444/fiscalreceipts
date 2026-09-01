@@ -31,7 +31,7 @@ export default function FilingsIndexPage() {
         items={[{ label: "Home", href: "/" }, { label: "Filings" }]}
       />
 
-      <div className="mb-6">
+      <div className="page-header mb-6">
         <h1 className="text-3xl font-bold mb-2">Lobbying Filings</h1>
         <p className="text-muted-foreground mb-2">
           {index.total.toLocaleString("en-US")} Senate LDA filings from

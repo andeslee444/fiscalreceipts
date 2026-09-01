@@ -82,7 +82,7 @@ export default function ProgramsPage() {
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Programs" }]}
       />
-      <div className="mb-6">
+      <div className="page-header mb-6">
         <h1 className="text-3xl font-bold mb-2">Program Elements</h1>
         {/* §P1-5: the table's own scope, stated as a scope — the corpus
             statement below carries the canonical counts, so this sentence

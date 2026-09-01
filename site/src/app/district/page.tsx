@@ -62,7 +62,7 @@ export default function DistrictIndexPage() {
             { label: "Congressional Districts" },
           ]}
         />
-        <div className="mb-6">
+        <div className="page-header mb-6">
           <h1 className="text-3xl font-bold mb-2">Congressional Districts</h1>
           <p className="text-muted-foreground mb-2">
             {index.total_districts} districts with linkable defense obligations

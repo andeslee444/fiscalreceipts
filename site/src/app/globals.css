@@ -335,6 +335,52 @@
   max-width: none;
 }
 
+/* THE INDEX-PAGE HEADER (#42 follow-up).  The measure above is right and stays:
+   54ch keeps a line under the 80 characters WCAG 1.4.8 AAA allows and gate 3's
+   spine leg asserts.  But on a route whose body is a TABLE, holding the header
+   to that measure left a 501px column of prose stacked above a 1,246px table —
+   measured on /programs/, /companies/, /district/ and /years/ — so the page
+   read as if its header had been shoved into the left third.  The prose was
+   right; the BLOCK was wrong.
+
+   The fix is the one typography has always used for this: keep the line short
+   and put the spare width to work as a second column.  `columns` takes a column
+   WIDTH, not a count, so --measure does double duty — the same custom property
+   that caps a line now sizes the column, and the two cannot drift apart.  The
+   count falls out of the width: one column under ~1,050px (so mobile and the
+   768–1023 band are untouched), two across the 1,280px spine.  No media query
+   states a breakpoint, because none is needed.
+
+   Line length is therefore UNCHANGED — a paragraph still renders at most 54ch,
+   so gate 3 measures exactly what it measured before.  What changes is that the
+   header now ends where the table ends.
+
+   Apply it to the header block of an INDEX page, never to a document body:
+   flowing /methodology/ or /about/ into columns would make the reader scroll
+   down and back up to finish a sentence. */
+.page-header {
+  columns: var(--measure);
+  column-gap: 3rem;
+}
+
+/* A heading introduces every column, not the first one. */
+.page-header > h1 {
+  column-span: all;
+}
+
+/* A note is a box; a box that breaks across a column boundary is a bug, not a
+   layout.  Same for the figures and callouts these headers carry. */
+.page-header > * {
+  break-inside: avoid;
+}
+
+/* Columns add their own leading gap at the top of column 2; the first child
+   must not inherit the stacked-layout top margin or the two columns start at
+   different heights. */
+.page-header > :first-child {
+  margin-block-start: 0;
+}
+
 /* Smooth transitions for interactive elements — token-driven (Task 11) */
 @layer base {
   a, button, [role="button"] {

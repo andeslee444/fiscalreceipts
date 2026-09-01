@@ -80,7 +80,7 @@ export default function AgencyIndexPage() {
       <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Agencies" }]} />
 
-        <div className="mb-6">
+        <div className="page-header mb-6">
           <h1 className="text-3xl font-bold mb-2">Agencies</h1>
           <p className="text-muted-foreground">
             {formatCount(sorted.length)} defense agencies with program-level

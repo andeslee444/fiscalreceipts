@@ -50,7 +50,7 @@ export default function YearsPage() {
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Years" }]}
         />
-        <div className="mb-4">
+        <div className="page-header mb-4">
           <h1 className="mb-2 text-3xl font-bold">Budget over time</h1>
           {/* Single template-literal child: an adjacent {expr} + text pair
               lost its joining space in the static export on this page (the
