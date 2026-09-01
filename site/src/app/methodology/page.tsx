@@ -101,6 +101,15 @@ export default function MethodologyPage() {
   // qualitatively instead of as literals that rot.
   const siteMeta = getSiteMeta();
   const buildChecks = siteMeta.build_checks ?? {};
+  // ROADMAP #8: a cadence line describes the SOURCE's schedule, and every
+  // one of these used to open with the word "Update" at the end of a paragraph
+  // whose subject was "we". USAspending publishes monthly and this corpus was
+  // 81 days old, so the sentence was true and its reading was false — the
+  // defect species Sprint 3 named, invisible to every number↔citation gate.
+  // The award card now states when we actually fetched, derived from
+  // data/manifest.jsonl at export; gate 24 leg m checks that rendered date
+  // against the manifest itself, so a literal here would fail rather than rot.
+  const usaspending = siteMeta.source_freshness?.groups?.usaspending;
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -175,7 +184,11 @@ export default function MethodologyPage() {
             <h3 className="font-semibold text-foreground mb-1">
               Federal awards — USAspending.gov
             </h3>
-            <p>
+            <p
+              data-source-freshness={
+                usaspending ? usaspending.datasets.join(",") : "unmetered"
+              }
+            >
               The official federal award database (contracts, grants, loans,
               and subawards), mandated by the DATA Act. We download bulk
               archive ZIP files from{" "}
@@ -184,8 +197,9 @@ export default function MethodologyPage() {
               </code>
               , convert them to compressed Parquet, and record the exact file
               name, URL, and SHA-256 hash of every file. Current scope:
-              Department of Defense agencies, FY2017 onward. Update cadence:
-              monthly.
+              Department of Defense agencies, FY2017 onward. Source cadence:{" "}
+              {usaspending?.declared_cadence ?? "monthly"}
+              {usaspending ? ` — this corpus was fetched ${usaspending.as_of}.` : "."}
             </p>
           </div>
 
@@ -203,7 +217,7 @@ export default function MethodologyPage() {
               budget line (P-40 exhibits) with program narratives,
               project-level cost tables, and congressional justifications.
             </p>
-            <p className="mt-2">
+            <p className="mt-2" data-source-freshness="unmetered">
               The Pentagon&apos;s budget system embeds its own database inside
               these PDFs: the full structured XML is attached inside the PDF
               itself. We extract that XML directly. For the rare document that
@@ -215,7 +229,7 @@ export default function MethodologyPage() {
               <Link href="/glossary/#toa" className="underline hover:text-foreground">
                 total obligational authority (TOA)
               </Link>
-              . Update cadence: annual.
+              . Source cadence: annual.
             </p>
             {/* Wave 4 item 3 — the aggregation decision behind every P-1
                 figure on the site, previously stated nowhere. Kept to one
@@ -239,13 +253,13 @@ export default function MethodologyPage() {
             <h3 className="font-semibold text-foreground mb-1">
               Improper-payment estimates — paymentaccuracy.gov
             </h3>
-            <p>
+            <p data-source-freshness="unmetered">
               Agencies are legally required to estimate and report
               payment-error rates. The dollar exposure figure we show per
               agency is derived by multiplying the published rate by the
               published outlay figure. The federal government reported
               approximately $186 billion in improper payments in FY2025. This
-              is a derived estimate and is labeled as such. Update cadence:
+              is a derived estimate and is labeled as such. Source cadence:
               annual.
             </p>
           </div>
@@ -254,11 +268,11 @@ export default function MethodologyPage() {
             <h3 className="font-semibold text-foreground mb-1">
               GAO high-risk list — gao.gov/high-risk-list
             </h3>
-            <p>
+            <p data-source-freshness="unmetered">
               The GAO&apos;s biennial list of federal programs at high risk for
               fraud, waste, or mismanagement. This list is a{" "}
               <em>department</em>-level designation, and program pages label it
-              as one. Update cadence: biennial.
+              as one. Source cadence: biennial.
             </p>
           </div>
 
@@ -266,14 +280,14 @@ export default function MethodologyPage() {
             <h3 className="font-semibold text-foreground mb-1">
               GAO Weapon Systems Annual Assessment — the program tier
             </h3>
-            <p>
+            <p data-source-freshness="unmetered">
               GAO&apos;s annual assessment of DOD&apos;s costliest weapon
               programs (GAO-25-107569, June 2025) carries a per-program
               assessment{gaoXwalk ? ` for ${formatCount(gaoXwalk.assessments_ingested)} programs` : ""}{" "}
               and a bibliography of{gaoXwalk ? ` ${formatCount(gaoXwalk.related_ingested)}` : ""}{" "}
               program-specific GAO reports. Both are ingested from the report
               PDF; the assessment text quoted on a program page is GAO&apos;s
-              own paragraph, unedited. Update cadence: annual.
+              own paragraph, unedited. Source cadence: annual.
             </p>
             <p className="mt-2">
               Which budget line each item belongs to, done badly, puts a real

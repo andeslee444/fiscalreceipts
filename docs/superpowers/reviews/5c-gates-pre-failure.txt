@@ -12413,3 +12413,75 @@ gate 3 influence: families_with_both=71 (threshold: ≥30) negative_rows=0 bad_c
 gate 4 mentions: total=14016 distinct_pe_bli=499 orphans=0 → PASS
 verify-phase5a: PASS
 (exit 0)
+
+
+================================================================================
+ROADMAP #8 — GATE 24 "datatruth", NEW LEG (m)
+DECLARED CADENCE vs. MEASURED INGEST AGE
+2026-09-01
+================================================================================
+
+WHAT THE LEG ASSERTS
+
+Every cadence claim the built site publishes ("Source cadence: monthly") must
+sit inside a [data-source-freshness] element naming the data/manifest.jsonl
+datasets it describes, and for each such claim EITHER the newest ingest of the
+stalest named dataset is within cadence x 1.5, OR the built page renders that
+dataset group's actual as-of date — and the rendered date must EQUAL the
+manifest's, not merely be a date.
+
+Ground truth is data/manifest.jsonl and the built HTML under site/out. The leg
+never reads site_meta.source_freshness: site_meta is what the PAGE renders
+from, so checking the page against it would only prove the exporter copied its
+own field forward. Same reason gate 24 reads out/ and the parquets rather than
+trusting the exporter's counts.
+
+Suite stays at 24 gates. This is a LEG on gate 24, whose charter (P1-5) is
+exactly this species: "the page lied about its own data, not the data about
+itself." Legs at HEAD ran a-l, not a-j as the backlog entry said (leg k =
+corpus-count provenance, leg l = family labels, both landed after the entry was
+written), so this one is m.
+
+--------------------------------------------------------------------------------
+PROOF-CAN-FAIL, STAGE 1 — THE LIVE DEFECT AT HEAD, NO FABRICATION NEEDED
+--------------------------------------------------------------------------------
+
+The leg was run against the built artifact as it stood, BEFORE any page change.
+site/out/methodology/index.html carried five "Update cadence:" lines and no
+as-of date anywhere; data/manifest.jsonl's newest record was
+2026-06-11T12:06:10Z, 81 days before the run. Verbatim:
+
+$ cd site && node -e "import('./scripts/gates/datatruth.mjs').then(...)"
+pass: false
+--- ERRORS ---
+leg f (/district/CO-05/): built page missing at /Users/andeslee/Documents/Cursor-Projects/GovBudget/site/out/district/CO-05/index.html
+leg m (/methodology/): 5 of 5 cadence claim(s) sit outside any [data-source-freshness] element. A cadence the site publishes without naming the datasets it describes cannot be checked against when we last fetched them — which is how "Update cadence: monthly" sat over an 81-day-old corpus.
+leg m: not one [data-source-freshness] marker was found on any built page carrying a cadence claim — the leg checked nothing
+
+(The leg f line is not this item's. That build was produced by a concurrent
+agent's in-flight working tree, which is also why /district/CO-05/ was absent.
+Recorded verbatim rather than trimmed, because trimming a gate's output to
+flatter one's own leg is the habit this file exists to prevent.)
+
+WHAT THAT FAILURE IS AND IS NOT. It is the structural precondition failing: at
+HEAD the site publishes five cadence claims and names no dataset for any of
+them, so the leg cannot even reach the age arithmetic. That is a true failure
+and it is the state that shipped. It is NOT yet a demonstration that the age
+check itself bites — a leg that only ever fires on "no markers" would be
+satisfied forever by adding five markers and no dates. Stages 2 and 2b below
+prove the age check and the equality check separately, each against a
+genuinely broken built page.
+
+MEASUREMENT BEHIND THE CLAIM (reproducible without the gate):
+
+$ python3 -c "group data/manifest.jsonl by dataset"
+assistance           n= 10 newest=2026-06-11T11:50:18.258787+00:00  FY2026_097_Assistance_Full_20260506.zip
+contracts            n= 10 newest=2026-06-11T11:50:15.996369+00:00  FY2026_097_Contracts_Full_20260506.zip
+mts_outlays          n=  1 newest=2026-06-10T15:59:17.877863+00:00  mts_table_5.parquet
+state_acfr_ca        n=  1 newest=2026-06-11T01:00:25.763037+00:00  ca_acfr_fy2023.pdf
+subawards            n= 10 newest=2026-06-11T12:06:10.273518+00:00  All_Subawards_2026-06-11_H11M50S19656398.zip
+
+Newest ingest of the three USAspending datasets: 2026-06-11. Run date
+2026-09-01. Age 81 days against a monthly claim (31 x 1.5 = 46.5-day window).
+The source snapshots are older still — FY2026_097_Contracts_Full_20260506.zip
+is a 2026-05-06 file.

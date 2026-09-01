@@ -95,6 +95,23 @@
  *      render exactly the label the seed authored. Generalised on purpose:
  *      the rule catches the 16th such family the next data drop adds, which
  *      is how this one arrived. See leg l's own block at the bottom.
+ *  (m) DECLARED CADENCE vs. MEASURED INGEST AGE (ROADMAP #8). Every leg above
+ *      asks whether a number on the page matches the data. This one asks
+ *      whether the page's account of HOW OLD the data is matches when we
+ *      actually fetched it. /methodology/ ended a paragraph whose subject is
+ *      "we" ("We download bulk archive ZIP files… convert them… record the
+ *      SHA-256 of every file") with "Update cadence: monthly", while the
+ *      newest record in data/manifest.jsonl was 2026-06-11 — 81 days old,
+ *      from a 2026-05-06 source snapshot. Nothing was wrong: the sentence is
+ *      true of USAspending, every figure derived from that corpus is true and
+ *      cited, and all 24 gates passed. The falsehood is the reading, and it is
+ *      the same species as the 87 "zeroed FY2026" cards and the entity_xwalk
+ *      understatement. Gate 23 leg d3 already fails a derived parquet older
+ *      than a partition it reads — INTERNAL staleness. This is the external
+ *      one: partitions against the cadence the site publishes. The leg reads
+ *      data/manifest.jsonl and the BUILT pages, never site_meta, and it
+ *      requires the rendered date to EQUAL the manifest's, so a literal
+ *      cannot satisfy it. See leg m's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -595,6 +612,9 @@ export async function runDataTruthGate() {
 
   // ── leg l: family labels that won a coin flip (ROADMAP #10 A) ─────────────
   runFamilyLabelLeg(errors, notes);
+
+  // ── leg m: declared cadence vs. measured ingest age (ROADMAP #8) ──────────
+  runSourceCadenceLeg(errors, notes);
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -2439,4 +2459,269 @@ function runFamilyLabelLeg(errors, notes) {
         `publish it beside their registry string ✓`,
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg m — declared cadence vs. measured ingest age (ROADMAP #8)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Cadence words the site is allowed to publish, in days.
+ *
+ * The gate owns this table on purpose. The PAGE states the cadence, the
+ * MANIFEST states when we last fetched, and this leg is the only place the
+ * two meet — if the exporter also owned the word→days map, the leg would be
+ * checking one mirror against another (the exporter/gate/test triple that
+ * shipped a note false on 179 of 319 pages here).
+ */
+const CADENCE_DAYS = {
+  monthly: 31,
+  quarterly: 92,
+  annual: 366,
+  biennial: 731,
+};
+
+/**
+ * How far past one cadence period an ingest may drift before the page has to
+ * say when it was actually fetched. 1.5 periods — a monthly source may run
+ * 46 days behind before the claim needs a date beside it. Not zero, because
+ * "monthly" never means "on the 1st"; not generous, because the corpus this
+ * leg was written against was 81 days old under a monthly claim.
+ */
+const CADENCE_SLACK = 1.5;
+
+/** Marker value meaning: no download-manifest record backs this cadence. */
+const UNMETERED = "unmetered";
+
+/**
+ * Per-dataset freshness, read from data/manifest.jsonl — the same file the
+ * ingestion CLIs append to, never from site_meta. site_meta.source_freshness
+ * is what the PAGE renders from; checking the page against it would only
+ * prove the exporter copied its own field forward.
+ */
+function manifestFreshness() {
+  const p = path.join(repoRoot, "data", "manifest.jsonl");
+  if (!fs.existsSync(p)) {
+    return { err: `leg m: data/manifest.jsonl missing at ${p} — the ingest ages are unknowable`, byDataset: {}, records: 0 };
+  }
+  const byDataset = {};
+  let records = 0;
+  for (const line of fs.readFileSync(p, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    let rec;
+    try {
+      rec = JSON.parse(line);
+    } catch {
+      return { err: `leg m: data/manifest.jsonl has an unparseable line — refusing to guess ingest ages`, byDataset: {}, records: 0 };
+    }
+    const ds = rec.dataset;
+    const at = rec.downloaded_at;
+    if (!ds || !at) continue;
+    records += 1;
+    const t = Date.parse(at);
+    if (!Number.isFinite(t)) continue;
+    const cur = byDataset[ds];
+    if (!cur || t > cur.t) {
+      byDataset[ds] = { t, iso: at, file: rec.file_name ?? "", n: (cur?.n ?? 0) + 1 };
+    } else {
+      cur.n += 1;
+    }
+  }
+  return { err: null, byDataset, records };
+}
+
+/** ISO date (YYYY-MM-DD) of a manifest timestamp. */
+function isoDay(iso) {
+  return String(iso).slice(0, 10);
+}
+
+function runSourceCadenceLeg(errors, notes) {
+  const { err, byDataset, records } = manifestFreshness();
+  if (err) {
+    errors.push(err);
+    return;
+  }
+  if (records === 0) {
+    errors.push(
+      "leg m: data/manifest.jsonl holds no download records — every check " +
+        "below would pass vacuously",
+    );
+    return;
+  }
+
+  // Site-wide, not a page list. A cadence claim is a claim wherever it is
+  // written, and pinning a roster of pages here would let the next one be
+  // written somewhere else. Cheap: a substring test on the raw file, and
+  // only files that hit get parsed.
+  const hits = [];
+  for (const file of walkHtml(outDir)) {
+    const raw = fs.readFileSync(file, "utf8");
+    if (raw.includes("cadence:") || raw.includes("cadence: ")) {
+      hits.push([path.relative(outDir, file), raw]);
+    }
+  }
+  if (hits.length === 0) {
+    errors.push(
+      "leg m: no built page states an update cadence at all — either the " +
+        "build is broken or /methodology/ stopped describing its sources. " +
+        "Both are failures; a silent pass is not available here.",
+    );
+    return;
+  }
+
+  let markers = 0;
+  let measured = 0;
+  const covered = new Set();
+
+  for (const [rel, raw] of hits) {
+    const root = parse(raw, { comment: false });
+    // The RSC flight payload repeats the page's prose inside <script>. Read
+    // the rendered document, the way a reader does.
+    for (const el of root.querySelectorAll("script, style, noscript, template")) {
+      el.remove();
+    }
+
+    const pageText = norm(root.text);
+    const totalClaims = (pageText.match(/\bcadence:/gi) ?? []).length;
+    if (totalClaims === 0) continue; // "cadence:" lived only in a script
+
+    const marked = root.querySelectorAll("[data-source-freshness]");
+    let coveredClaims = 0;
+    for (const el of marked) {
+      coveredClaims += (norm(el.text).match(/\bcadence:/gi) ?? []).length;
+    }
+    if (coveredClaims < totalClaims) {
+      errors.push(
+        `leg m (/${rel.replace(/index\.html$/, "")}): ${totalClaims - coveredClaims} of ` +
+          `${totalClaims} cadence claim(s) sit outside any [data-source-freshness] ` +
+          `element. A cadence the site publishes without naming the datasets it ` +
+          `describes cannot be checked against when we last fetched them — which ` +
+          `is how "Update cadence: monthly" sat over an 81-day-old corpus.`,
+      );
+    }
+
+    for (const el of marked) {
+      const text = norm(el.text);
+      const cad = /\bcadence:\s*([a-z-]+)/i.exec(text);
+      if (!cad) {
+        errors.push(
+          `leg m (/${rel.replace(/index\.html$/, "")}): a [data-source-freshness] ` +
+            `element states no cadence — got ${JSON.stringify(text.slice(0, 120))}`,
+        );
+        continue;
+      }
+      markers += 1;
+      const word = cad[1].toLowerCase();
+      if (!(word in CADENCE_DAYS)) {
+        errors.push(
+          `leg m (/${rel.replace(/index\.html$/, "")}): unknown cadence "${word}" — ` +
+            `this leg can only age-check ${Object.keys(CADENCE_DAYS).join(", ")}`,
+        );
+        continue;
+      }
+
+      const attr = norm(el.getAttribute("data-source-freshness"));
+      const isoDates = [...text.matchAll(/\b(\d{4}-\d{2}-\d{2})\b/g)].map((m) => m[1]);
+
+      if (attr === UNMETERED) {
+        // No manifest record backs this line, so it may not imply one.
+        if (isoDates.length > 0) {
+          errors.push(
+            `leg m (/${rel.replace(/index\.html$/, "")}): a cadence line marked ` +
+              `"${UNMETERED}" renders an as-of date (${isoDates.join(", ")}). ` +
+              `A date with nothing in data/manifest.jsonl behind it is exactly ` +
+              `the literal this leg exists to stop.`,
+          );
+        }
+        continue;
+      }
+
+      const names = attr.split(",").map((s) => s.trim()).filter(Boolean);
+      if (names.length === 0) {
+        errors.push(
+          `leg m (/${rel.replace(/index\.html$/, "")}): [data-source-freshness] is ` +
+            `empty — name the manifest dataset(s) this cadence describes, or "${UNMETERED}"`,
+        );
+        continue;
+      }
+      const unknown = names.filter((n) => !(n in byDataset));
+      if (unknown.length > 0) {
+        errors.push(
+          `leg m (/${rel.replace(/index\.html$/, "")}): cadence line names dataset(s) ` +
+            `absent from data/manifest.jsonl: ${unknown.join(", ")}`,
+        );
+        continue;
+      }
+      for (const n of names) covered.add(n);
+
+      // The group is only as current as its STALEST member: the oldest of the
+      // members' newest downloads. Taking the newest would let one fresh
+      // dataset vouch for two stale ones — publish the smaller true number.
+      let oldest = null;
+      for (const n of names) {
+        const d = byDataset[n];
+        if (!oldest || d.t < oldest.t) oldest = { ...d, name: n };
+      }
+      const ageDays = (Date.now() - oldest.t) / 86400000;
+      const windowDays = CADENCE_DAYS[word] * CADENCE_SLACK;
+      const asOf = isoDay(oldest.iso);
+
+      if (ageDays <= windowDays) {
+        measured += 1;
+        continue;
+      }
+
+      if (isoDates.length === 0) {
+        errors.push(
+          `leg m: ${names.join("+")} declares a ${word} cadence on ` +
+            `/${rel.replace(/index\.html$/, "")}; the newest ingest in ` +
+            `data/manifest.jsonl is ${oldest.iso} (${oldest.name}, ` +
+            `${oldest.file}), ${Math.floor(ageDays)} days ago, and no built ` +
+            `page states an as-of date. Either re-ingest or publish the date ` +
+            `the corpus was actually fetched.`,
+        );
+        continue;
+      }
+      // SECOND TEETH: a date is not enough — it has to be THE date. A leg
+      // satisfied by "some date is rendered" is the /years/ leg that once
+      // passed on a column of em-dashes.
+      const wrong = isoDates.filter((d) => d !== asOf);
+      if (wrong.length > 0) {
+        errors.push(
+          `leg m: ${names.join("+")} renders as-of date(s) ${wrong.join(", ")} on ` +
+            `/${rel.replace(/index\.html$/, "")}, but the newest ingest in ` +
+            `data/manifest.jsonl is ${asOf} (${oldest.name}, ${oldest.file}). ` +
+            `A hardcoded date rots; this one already has.`,
+        );
+        continue;
+      }
+      measured += 1;
+    }
+  }
+
+  if (markers === 0) {
+    errors.push(
+      "leg m: not one [data-source-freshness] marker was found on any built " +
+        "page carrying a cadence claim — the leg checked nothing",
+    );
+    return;
+  }
+  if (measured === 0) {
+    errors.push(
+      `leg m: all ${markers} cadence marker(s) are "${UNMETERED}" — no cadence ` +
+        `claim on this site is checked against data/manifest.jsonl, which makes ` +
+        `this leg decorative`,
+    );
+    return;
+  }
+
+  const uncovered = Object.keys(byDataset).filter((d) => !covered.has(d)).sort();
+  notes.push(
+    `leg m: ${measured} of ${markers} cadence claim(s) checked against ` +
+      `data/manifest.jsonl (${records} download records, ` +
+      `${Object.keys(byDataset).length} datasets) ✓` +
+      (uncovered.length > 0
+        ? ` — ${uncovered.length} manifest dataset(s) publish no cadence: ${uncovered.join(", ")}`
+        : ""),
+  );
 }

@@ -1423,6 +1423,7 @@ def cmd_influence(args) -> None:
         out_dir=out_dir,
         top_n=args.top_n,
         years=years,
+        allow_corpus_shrink=getattr(args, "allow_corpus_shrink", False),
     )
     print(f"influence pull: filings={filings_path} activities={activities_path} lobbyists={lobbyists_path}")
 
@@ -2621,6 +2622,10 @@ def main(argv=None) -> None:
                           help="Number of top families by obligation to query (default: 100)")
     inf_pull.add_argument("--years", default="2024,2025,2026",
                           help="Comma-separated filing years (default: 2024,2025,2026)")
+    inf_pull.add_argument("--allow-corpus-shrink", action="store_true",
+                          dest="allow_corpus_shrink",
+                          help="Permit a pull returning materially fewer filings than the "
+                               "corpus on disk to overwrite it (backlog #8 regression guard)")
     inf_pull.set_defaults(func=cmd_influence)
     inf_restamp = inf_sub.add_parser(
         "restamp",

@@ -1209,3 +1209,126 @@ class TestRestampFilings:
         assert "after" in result
         assert isinstance(result["before"], dict)
         assert isinstance(result["after"], dict)
+
+
+# ---------------------------------------------------------------------------
+# Pull regression guards (backlog #8)
+#
+# The 2026-08-27 empty-pull guard covers the TOTAL failure. These cover the
+# PARTIAL one: a pull where most queries fail, or which returns materially
+# less than the corpus it is about to overwrite, both of which returned
+# normally and wrote the survivors before this.
+# ---------------------------------------------------------------------------
+
+class TestPullRegressionGuards:
+
+    @staticmethod
+    def _mostly_failing_handler(ok_requests: int):
+        """200 for the first `ok_requests` calls, 500 for every one after."""
+        seen = {"n": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["n"] += 1
+            if seen["n"] <= ok_requests:
+                return httpx.Response(200, json={**_FIXTURE, "next": None})
+            return httpx.Response(500, json={"detail": "server error"})
+
+        return handler
+
+    def test_partial_pull_raises_over_failed_query_ceiling(self, tmp_path, monkeypatch):
+        """A pull where most queries fail must NOT return the survivors.
+
+        This is the exact 2026-08-27 shape, one notch back from total: the
+        empty-pull guard sees a non-empty list and passes it through.
+        """
+        db_path = _make_fixture_duckdb(tmp_path)
+        out_dir = tmp_path / "influence"
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        transport = httpx.MockTransport(self._mostly_failing_handler(ok_requests=1))
+        with httpx.Client(transport=transport) as mock_client:
+            with pytest.raises(RuntimeError) as exc:
+                pull_top_families(
+                    db_path, out_dir=out_dir, top_n=2, years=[2025],
+                    _client=mock_client,
+                )
+
+        msg = str(exc.value)
+        assert "queries failed" in msg, msg
+        # It must not have silently written a truncated corpus.
+        assert not (out_dir / "lda_filings.parquet").exists(), \
+            "a mostly-failed pull wrote a parquet"
+
+    def test_healthy_pull_reports_zero_failures_and_writes(self, tmp_path, monkeypatch):
+        """Non-vacuity: the guard does not fire on a clean pull."""
+        db_path = _make_fixture_duckdb(tmp_path)
+        out_dir = tmp_path / "influence"
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        pages = [{**_FIXTURE, "next": None}] * 10
+        with httpx.Client(transport=httpx.MockTransport(_make_page_handler(pages))) as c:
+            filings_path, _, _ = pull_top_families(
+                db_path, out_dir=out_dir, top_n=2, years=[2025], _client=c,
+            )
+        assert filings_path.exists()
+
+    def test_shrinking_pull_refuses_to_overwrite_larger_corpus(self, tmp_path, monkeypatch):
+        """A pull returning far fewer filings than are on disk must refuse."""
+        db_path = _make_fixture_duckdb(tmp_path)
+        out_dir = tmp_path / "influence"
+        filings_path = out_dir / "lda_filings.parquet"
+
+        # 100 filings already on disk; the mocked pull yields exactly 1.
+        prior = [
+            (f"uuid-{i}", f"https://lda.gov/f/{i}", "LOCKHEED MARTIN CORPORATION",
+             "Firm", "2025", "Q1", "LD2", "1000", "", "LOCKHEED MARTIN",
+             "exact_family")
+            for i in range(100)
+        ]
+        _write_filings_parquet(filings_path, prior)
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        pages = [{**_FIXTURE, "next": None}] * 10
+        with httpx.Client(transport=httpx.MockTransport(_make_page_handler(pages))) as c:
+            with pytest.raises(RuntimeError) as exc:
+                pull_top_families(
+                    db_path, out_dir=out_dir, top_n=2, years=[2025], _client=c,
+                )
+
+        msg = str(exc.value)
+        assert "retention floor" in msg, msg
+
+        # The prior corpus survived untouched — the point of the guard.
+        rcon = duckdb.connect()
+        surviving = rcon.execute(
+            f"select count(*) from read_parquet('{filings_path}')"
+        ).fetchone()[0]
+        rcon.close()
+        assert surviving == 100
+
+    def test_shrinking_pull_allowed_when_asked_for(self, tmp_path, monkeypatch):
+        """The deliberate shrink has a flag; it is not the default."""
+        db_path = _make_fixture_duckdb(tmp_path)
+        out_dir = tmp_path / "influence"
+        filings_path = out_dir / "lda_filings.parquet"
+        _write_filings_parquet(filings_path, [
+            (f"uuid-{i}", f"https://lda.gov/f/{i}", "LOCKHEED MARTIN CORPORATION",
+             "Firm", "2025", "Q1", "LD2", "1000", "", "LOCKHEED MARTIN",
+             "exact_family")
+            for i in range(100)
+        ])
+
+        monkeypatch.setattr("govbudget.influence.lda._REQUEST_FLOOR_S", 0)
+        pages = [{**_FIXTURE, "next": None}] * 10
+        with httpx.Client(transport=httpx.MockTransport(_make_page_handler(pages))) as c:
+            pull_top_families(
+                db_path, out_dir=out_dir, top_n=2, years=[2025],
+                allow_corpus_shrink=True, _client=c,
+            )
+
+        rcon = duckdb.connect()
+        after = rcon.execute(
+            f"select count(*) from read_parquet('{filings_path}')"
+        ).fetchone()[0]
+        rcon.close()
+        assert after == 1

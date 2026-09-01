@@ -71,6 +71,35 @@ GENERIC_RESIDUE = {
 # Path to the curated alias seed CSV (relative to this file's repo root).
 _ALIASES_CSV = Path(__file__).resolve().parents[3] / "dbt" / "seeds" / "client_aliases.csv"
 
+# ── PULL REGRESSION GUARDS (backlog #8, 2026-09-01) ─────────────────────────
+# The 2026-08-27 empty-pull guard in pull_top_families catches the TOTAL
+# failure — zero filings, refuse to write. It does not catch the PARTIAL one,
+# and the partial one is what this pipeline actually produces: every per-query
+# exception is swallowed by the bare `except Exception: ... continue` in
+# _pull_families_with_client, which prints a WARNING, keeps no counter, and
+# crosses no threshold. A pull in which 90% of the queries fail returns the
+# survivors, writes them over the existing corpus, and exits 0. That is the
+# silent-success failure the empty-pull guard's own commit message says a
+# scheduled refresh would have reported as healthy forever.
+#
+# TWO guards, because the healthy baseline for each is nothing like the other:
+#
+#  * FAILED-QUERY SHARE is absolute and can be. A healthy pull fails ~no
+#    queries; the 2026-08-27 host move failed EVERY one. 20% leaves room for
+#    transient 5xx and sits an order of magnitude below a host move.
+#
+#  * EMPTY-FAMILY SHARE CANNOT BE JUDGED ABSOLUTELY, and a guard that assumed
+#    otherwise would have been wrong on the first run. Measured against the
+#    shipped corpus on 2026-09-01: 127 of the top 200 families have ZERO LDA
+#    filings — 63.5%. Most defense-adjacent families genuinely do not lobby
+#    under a name the LDA client_name filter reaches, so any absolute
+#    threshold is either vacuous (>63.5%) or fails every healthy pull. The
+#    guard is therefore a REGRESSION check against what is already on disk:
+#    a pull that returns materially less than the corpus it is about to
+#    overwrite refuses to overwrite it.
+_MAX_FAILED_QUERY_SHARE = 0.20
+_MIN_CORPUS_RETENTION = 0.80
+
 # Match-tier ranking for cross-family attribution (lower = stronger claim).
 # When two families' queries return the same filing UUID (the LDA client_name
 # filter is contains-style, so this happens for name-sharing families like
@@ -469,6 +498,10 @@ def _pull_families_with_client(
     filings_by_uuid: dict[str, dict] = {}
     # uuid → (tier_rank, family_key, match_method) — the strongest claim so far
     best_claim: dict[str, tuple[int, str, str]] = {}
+    # backlog #8: the per-query failure counter the `except ... continue`
+    # below never had. See _MAX_FAILED_QUERY_SHARE.
+    queries_attempted = 0
+    queries_failed = 0
 
     family_keys = [fk for fk, _ in families if fk]
 
@@ -506,9 +539,14 @@ def _pull_families_with_client(
         family_seen_uuids: set[str] = set()
 
         for query_str in query_strings:
+            queries_attempted += 1
             try:
                 filings = fetch_client_filings(client, query_str, years=list(years))
             except Exception as exc:
+                # COUNTED, not just printed (backlog #8). This `continue` is
+                # where the 2026-08-27 host move went silent: it swallowed
+                # every request in the run and the caller could not tell.
+                queries_failed += 1
                 print(f"    WARNING: {query_str!r} -> {type(exc).__name__}: {exc}")
                 continue
 
@@ -537,6 +575,24 @@ def _pull_families_with_client(
                 prev = best_claim.get(uuid)
                 if prev is None or rank < prev[0]:
                     best_claim[uuid] = (rank, family_key_val, match_method)
+
+    # FAILED-QUERY GUARD (backlog #8). Raised BEFORE the emit pass, so a
+    # broken run never even builds the rows that would overwrite the corpus.
+    failed_share = queries_failed / queries_attempted if queries_attempted else 0.0
+    if failed_share > _MAX_FAILED_QUERY_SHARE:
+        raise RuntimeError(
+            f"LDA pull: {queries_failed} of {queries_attempted} queries failed "
+            f"({failed_share:.1%}) — over the {_MAX_FAILED_QUERY_SHARE:.0%} "
+            "ceiling. Refusing to return a partial pull: the survivors would "
+            "be written over the existing corpus and the run would report "
+            "success. Check whether the API host moved again (currently "
+            f"{LDA_BASE}); as of 2026-08-27 lda.senate.gov 301-redirects to "
+            "lda.gov. The per-query WARNING lines above name every failure."
+        )
+    print(
+        f"  LDA pull: {queries_attempted} queries, {queries_failed} failed "
+        f"({failed_share:.1%}), {len(filings_by_uuid)} distinct filings"
+    )
 
     # Emit pass: one row per UUID, attributed to the winning claim.
     all_filings: list[tuple] = []
@@ -673,6 +729,7 @@ def pull_top_families(
     out_dir: Path,
     top_n: int = 100,
     years: Sequence[int] = (2024, 2025, 2026),
+    allow_corpus_shrink: bool = False,
     _client: httpx.Client | None = None,
     _aliases_csv: Path | None = None,
 ) -> tuple[Path, Path, Path]:
@@ -698,6 +755,10 @@ def pull_top_families(
     starved by an earlier family's unmatched contains-hit (fix round A3,
     backlog #19 — VECTRUS/VERTEX finding 2026-07-02).
 
+    allow_corpus_shrink: permit a pull that returns materially fewer filings
+    than the corpus already on disk to overwrite it (backlog #8). Off by
+    default: the failure this pipeline produces is a PARTIAL pull that looks
+    successful, so shrinking has to be asked for.
     _client: optional injected httpx.Client (for testing; must already be open).
     _aliases_csv: optional path override for client_aliases.csv (for testing).
     Returns (filings_path, activities_path, lobbyists_path).
@@ -755,8 +816,45 @@ def pull_top_families(
             "lda.senate.gov 301-redirects to lda.gov."
         )
 
-    # Write lda_filings.parquet
     filings_path = out_dir / "lda_filings.parquet"
+
+    # CORPUS-REGRESSION GUARD (backlog #8, 2026-09-01). The guard above is a
+    # ZERO check; this is the SHRINK check. A pull that fetched 12% of the
+    # corpus is not an empty pull, passes the guard above unchanged, and the
+    # write below is still unconditional. Compared against what is actually
+    # on disk rather than against a threshold on the share of empty families,
+    # because 63.5% of the top 200 families legitimately return nothing
+    # (see _MIN_CORPUS_RETENTION).
+    #
+    # A DELIBERATE shrink — pulling fewer years, cutting --top-n — is a real
+    # operation, so it has a flag. It is not the default, because the whole
+    # point is that the path someone runs without watching must be the safe one.
+    if filings_path.exists() and not allow_corpus_shrink:
+        pcon = duckdb.connect()
+        try:
+            prior_rows = pcon.execute(
+                f"select count(*) from read_parquet('{filings_path}')"
+            ).fetchone()[0]
+        except Exception as exc:  # an unreadable prior corpus is not a veto
+            print(f"  WARNING: could not read prior corpus for regression check: {exc}")
+            prior_rows = 0
+        finally:
+            pcon.close()
+        floor = int(prior_rows * _MIN_CORPUS_RETENTION)
+        if prior_rows and len(all_filings) < floor:
+            raise RuntimeError(
+                f"LDA pull returned {len(all_filings):,} filings against the "
+                f"{prior_rows:,} already on disk "
+                f"({len(all_filings) / prior_rows:.1%}), under the "
+                f"{_MIN_CORPUS_RETENTION:.0%} retention floor of {floor:,}. "
+                "Refusing to overwrite a larger corpus with a smaller one. "
+                "This is what a partly-failed pull looks like: it is not "
+                "empty, so the empty-pull guard passes it. If the shrink is "
+                "intended (fewer years, smaller --top-n), re-run with "
+                "--allow-corpus-shrink."
+            )
+
+    # Write lda_filings.parquet
     wcon = duckdb.connect()
     try:
         wcon.execute(

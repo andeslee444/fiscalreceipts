@@ -124,6 +124,35 @@ export interface SiteMeta {
     eval_threshold?: number;
   };
   /**
+   * ROADMAP #8: when each ingested source was last FETCHED, read at export
+   * from data/manifest.jsonl. `built_at` above is when the SITE was built,
+   * and the two had drifted 81 days apart while /methodology/ published a
+   * monthly cadence. `groups[*].as_of` is the OLDEST of the group's
+   * per-dataset newest downloads — a group is only as current as its stalest
+   * member. Absent on pre-#8 exports.
+   */
+  source_freshness?: {
+    datasets?: Record<
+      string,
+      {
+        newest_downloaded_at: string;
+        newest_file_name: string;
+        declared_cadence: string | null;
+        files: number;
+      }
+    >;
+    groups?: Record<
+      string,
+      {
+        datasets: string[];
+        as_of: string;
+        newest_downloaded_at: string;
+        newest_file_name: string;
+        declared_cadence: string | null;
+      }
+    >;
+  };
+  /**
    * Trajectory metric → basis attribute map (single payload-level source for
    * the trajectory pivots' data-basis/fy/measure — never re-derive in TS).
    */

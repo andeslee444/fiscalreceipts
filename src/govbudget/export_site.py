@@ -604,6 +604,126 @@ def _build_award_fy_range(con) -> dict | None:
     }
 
 
+# ── SOURCE FRESHNESS (ROADMAP #8) ───────────────────────────────────────────
+# The cadence each source PUBLISHES on, per dataset in data/manifest.jsonl.
+# `None` means the site makes no cadence claim about that dataset — it is not
+# an omission, it is a decision, and it is recorded here so that adding a
+# dataset forces one.
+#
+# This is the site's claim about the SOURCE, never about us. That distinction
+# is the whole defect: /methodology/ ended a paragraph whose subject is "we"
+# ("We download bulk archive ZIP files… convert them… record the SHA-256 of
+# every file") with "Update cadence: monthly", and the newest record in the
+# manifest was 81 days old. Every word was true of USAspending and false of
+# this corpus, and no number-vs-citation gate could see it.
+_DECLARED_CADENCE: dict[str, str | None] = {
+    "assistance": "monthly",
+    "contracts": "monthly",
+    "subawards": "monthly",
+    # Ingested, not published: neither appears on any rendered page, so the
+    # site declares no cadence for them and gate 24 leg m has nothing to
+    # check. If either is ever surfaced, give it a cadence here first.
+    "mts_outlays": None,
+    "state_acfr_ca": None,
+}
+
+# Datasets the site describes with ONE sentence get ONE as-of date. The
+# /methodology/ USAspending card covers all three award archives.
+_FRESHNESS_GROUPS: dict[str, tuple[str, ...]] = {
+    "usaspending": ("assistance", "contracts", "subawards"),
+}
+
+
+def _source_freshness_block() -> dict:
+    """When each ingested source was last fetched, read from the manifest.
+
+    ROADMAP #8. `config.MANIFEST_PATH` has existed since Phase 1 and the
+    exporter never opened it: site_meta carried `built_at` — when the SITE
+    was built — and nothing at all about when the DATA underneath it was
+    downloaded. A build on 2026-08-31 over a corpus fetched 2026-06-11
+    therefore stamped 39,288 derived citations with the export date and the
+    reader had no way to tell.
+
+    Shape mirrors `build_checks`: additive, derived, and absent-rather-than-
+    guessed. Two views of the same records —
+
+      datasets: one entry per manifest dataset, with the newest download.
+      groups:   the units a PAGE renders as one sentence. `as_of` is the
+                OLDEST of the group's per-dataset newest downloads, because a
+                group is only as current as its stalest member — taking the
+                newest would let one fresh dataset vouch for two stale ones.
+                Publish the smaller true number.
+
+    Raises on a manifest dataset with no entry in `_DECLARED_CADENCE`. A new
+    source is a decision about what the site says about it, and defaulting it
+    to "no claim" would make that decision silently, which is how a claim
+    about one dataset ends up standing over three.
+    """
+    from govbudget import config
+
+    manifest_path = config.MANIFEST_PATH
+    if not manifest_path.exists():
+        return {"datasets": {}, "groups": {}}
+
+    newest: dict[str, dict] = {}
+    counts: dict[str, int] = {}
+    for line in manifest_path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        ds = rec.get("dataset")
+        at = rec.get("downloaded_at")
+        if not ds or not at:
+            continue
+        counts[ds] = counts.get(ds, 0) + 1
+        cur = newest.get(ds)
+        if cur is None or at > cur["downloaded_at"]:
+            newest[ds] = rec
+
+    undeclared = sorted(set(newest) - set(_DECLARED_CADENCE))
+    if undeclared:
+        raise ValueError(
+            "export-site: data/manifest.jsonl holds dataset(s) with no entry "
+            f"in _DECLARED_CADENCE: {', '.join(undeclared)}. Add each one with "
+            "the cadence its SOURCE publishes on, or None if the site makes no "
+            "cadence claim about it. Defaulting would make that decision "
+            "silently (ROADMAP #8)."
+        )
+
+    datasets = {
+        ds: {
+            "newest_downloaded_at": rec["downloaded_at"],
+            "newest_file_name": rec.get("file_name", ""),
+            "declared_cadence": _DECLARED_CADENCE.get(ds),
+            "files": counts[ds],
+        }
+        for ds, rec in sorted(newest.items())
+    }
+
+    groups: dict[str, dict] = {}
+    for name, members in _FRESHNESS_GROUPS.items():
+        present = [m for m in members if m in datasets]
+        if not present:
+            continue
+        stalest = min(present, key=lambda m: datasets[m]["newest_downloaded_at"])
+        cadences = {datasets[m]["declared_cadence"] for m in present}
+        groups[name] = {
+            "datasets": present,
+            "as_of": datasets[stalest]["newest_downloaded_at"][:10],
+            "newest_downloaded_at": datasets[stalest]["newest_downloaded_at"],
+            "newest_file_name": datasets[stalest]["newest_file_name"],
+            # One sentence may not span two cadences; if it ever does, the
+            # page must be split rather than the difference averaged away.
+            "declared_cadence": cadences.pop() if len(cadences) == 1 else None,
+        }
+
+    return {"datasets": datasets, "groups": groups}
+
+
 def _build_checks_block() -> dict:
     """Derive /methodology/ §3's "per-build automated checks" numbers.
 
@@ -9202,6 +9322,12 @@ def _write_all_sidecars(
         # export would be wrong) are deliberately absent: the page states those
         # qualitatively rather than shipping a literal that rots.
         "build_checks": _build_checks_block(),
+        # ROADMAP #8: when the DATA was last fetched, per dataset, read from
+        # data/manifest.jsonl. `built_at` above is when the SITE was built —
+        # the two had drifted 81 days apart while /methodology/ published a
+        # monthly cadence. Gate 24 leg m checks the rendered date against the
+        # manifest directly, never against this field.
+        "source_freshness": _source_freshness_block(),
         # PM Sprint 1 (P0-5): the canonical-toa hero figure + the corpus
         # scope qualifier every hero/OG/feed superlative must carry, and the
         # static trajectory-metric → (fy, measure) map (single payload-level
