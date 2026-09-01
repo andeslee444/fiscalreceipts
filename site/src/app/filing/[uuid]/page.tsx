@@ -112,7 +112,7 @@ export default async function FilingPage({ params }: Props) {
   return (
     <CitationPanelProvider citations={citationsSlice}>
       <div
-        className="container mx-auto px-4 py-8 max-w-4xl"
+        className="spine py-8"
         {...(hasMentions ? { "data-pagefind-body": true } : {})}
       >
         <Breadcrumbs

@@ -78,7 +78,7 @@ export default function ProgramsPage() {
     // exactly as they did before: the workbook INPUTS were never in the
     // embedded slice either, and they stay clickable on program pages.
     <CitationPanelProvider citations={{}}>
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="spine py-8">
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Programs" }]}
       />

@@ -125,7 +125,7 @@ export default function MethodologyPage() {
         method parameters, a tolerance, an outside body's published figure and
         worked examples — enumerated one by one, with reasons, in
         scripts/gates/prose-allowlist.json. */}
-    <div className="container mx-auto px-4 py-10 max-w-3xl">
+    <div className="spine py-10">
       {/* Round-3 judging: /methodology/ and /about/ were the only two pages
           on the site with no breadcrumb, so the one page every figure links
           out to had no way back that was not the browser's own. */}

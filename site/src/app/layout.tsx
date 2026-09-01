@@ -83,7 +83,13 @@ export default function RootLayout({
               chrome ghost through at mobile widths (visual-judge finding,
               years-390-scrolled). */}
           <header className="border-b border-border bg-background sticky top-0 z-40">
-            <div className="container mx-auto flex h-14 items-center px-4 gap-4 min-w-0">
+            {/* `spine`, not `container mx-auto px-4` — ROADMAP #42. The bar
+                and every page body now resolve their left edge from the same
+                three custom properties (globals.css), so the wordmark and the
+                page title line up at EVERY width rather than only where
+                Tailwind's breakpoint clamp happened to coincide with a page's
+                `max-w-*`. */}
+            <div className="spine flex h-14 items-center gap-4 min-w-0">
               {/* Brand — always visible */}
               <Link
                 href="/"
@@ -93,6 +99,14 @@ export default function RootLayout({
               </Link>
 
               {/* Desktop nav — hidden below lg.
+                  HISTORICAL, and the fix it describes STANDS (the switch is
+                  still at `lg`) — but the mechanism below is gone as of
+                  ROADMAP #42: this bar no longer uses Tailwind's `container`,
+                  and `.spine` has no breakpoint clamp, so 768–1023 now gets
+                  the full viewport width instead of a 768px box. The nav stays
+                  at `lg` because ten links plus the right-hand cluster is
+                  still more than a ~750px reading bar wants, not because of
+                  the clamp.
                   Was `md:flex` (768px). Tailwind's `container` (used here AND
                   by every page body, so the wordmark stays aligned with page
                   content) clamps max-width to the CURRENT breakpoint, so
@@ -240,7 +254,7 @@ export default function RootLayout({
 
           {/* ── Site Footer ── */}
           <footer className="border-t border-border mt-16 py-8 text-sm text-muted-foreground">
-            <div className="container mx-auto px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="spine flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <span className="font-medium text-foreground">{SITE_NAME}</span>
                 {" — "}

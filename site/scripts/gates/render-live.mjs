@@ -15,6 +15,13 @@
  * 390×844 pass is a second width of the same question rather than a 25th gate.
  * Its errors are this gate's errors: gate 3 goes red when the money leaves the
  * phone screen.
+ *
+ * LAYOUT-SPINE LEG (ROADMAP #42) — see gates/spine.mjs. Same argument at the
+ * other end of the range: 1440 and 1920, asserting that the content column
+ * starts on one declared left edge across every route the app declares, and
+ * that no line of prose in it runs past 80 characters. Unlike every other leg
+ * in the suite it is a property of the SITE rather than of a page — the six
+ * different left edges it caught were each individually fine.
  */
 
 import fs from "fs";
@@ -22,6 +29,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
 import { runMobileLeg } from "./mobile.mjs";
+import { runSpineLeg } from "./spine.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -265,6 +273,15 @@ export async function runRenderLiveGate(baseUrl) {
     notes.push(...mobile.notes);
   } catch (e) {
     errors.push(`mobile leg: crashed: ${e.message}`);
+  }
+
+  // ── Layout-spine leg (1440 and 1920), same browser ───────────────────────
+  try {
+    const spine = await runSpineLeg({ baseUrl, browser });
+    errors.push(...spine.errors);
+    notes.push(...spine.notes);
+  } catch (e) {
+    errors.push(`spine leg: crashed: ${e.message}`);
   } finally {
     await browser.close();
   }

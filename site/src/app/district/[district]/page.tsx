@@ -114,7 +114,7 @@ export default async function DistrictDetailPage({ params }: Props) {
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="spine py-8">
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },

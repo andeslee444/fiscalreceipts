@@ -65,12 +65,12 @@ export default function CoveragePage() {
   const dated = rows.filter((r) => r.targetKind === "dated").length;
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8">
+    <div className="spine py-8">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Coverage" }]} />
 
       {/* <h1> FIRST — gate 2 (nk) pins that no scope block precedes it. */}
       <h1 className="mb-3 text-3xl font-bold">Coverage</h1>
-      <p className="max-w-3xl leading-7 text-muted-foreground">
+      <p className="leading-7 text-muted-foreground">
         What this site covers, what it does not, and what would have to change
         for that to move. Each row gives the coverage this build actually
         shipped, the specific thing standing in the way, and where the work
@@ -105,7 +105,7 @@ export default function CoveragePage() {
         <h2 id="map-heading" className="mb-3 text-xl font-semibold">
           Feature by feature
         </h2>
-        <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-muted-foreground">
           {dated === 0
             ? "No row on this page carries a dated target, and that is a decision rather than an omission: a site that will not publish a figure it cannot recompute should not publish a schedule it has not committed to. Each row instead names the work that is planned and says the date is pending a roadmap decision. When a date is agreed it is added here — and a date that slips is moved here, not deleted."
             : `${dated} of the ${rows.length} rows carry a dated target; the rest say why they do not, and a date that slips is moved here rather than deleted.`}{" "}
@@ -212,7 +212,7 @@ export default function CoveragePage() {
         <h2 id="counts-heading" className="mb-3 text-xl font-semibold">
           How the corpus is counted
         </h2>
-        <p className="mb-4 max-w-3xl text-sm leading-7 text-muted-foreground">
+        <p className="mb-4 text-sm leading-7 text-muted-foreground">
           Five nested questions; the differences are the point.
         </p>
         {/* A LIST, AND EVERY SHARED CLASS ON THE <ul>. The table form of this
@@ -241,15 +241,15 @@ export default function CoveragePage() {
         <h2 id="crosswalk-heading" className="mb-3 text-xl font-semibold">
           The budget→award crosswalk is a methodology limit, not a backlog item
         </h2>
-        <p className="max-w-3xl leading-7 text-muted-foreground">
+        <p className="leading-7 text-muted-foreground">
           This is the site&apos;s largest and most visible gap, and it is worth
           being precise about what kind of gap it is. It is not work we have
           not got to. It is a limit of what the source records contain.
         </p>
-        <p className="mt-3 max-w-3xl leading-7 text-muted-foreground">
+        <p className="mt-3 leading-7 text-muted-foreground">
           {crosswalk.blocker}
         </p>
-        <p className="mt-3 max-w-3xl leading-7 text-muted-foreground">
+        <p className="mt-3 leading-7 text-muted-foreground">
           So the honest boundary is this: we assert a budget→award link only
           where the record supports one, and we publish the size of the
           remainder rather than leaving it to be inferred from an empty chart.{" "}
@@ -262,7 +262,7 @@ export default function CoveragePage() {
               a page that will eventually state it two ways (§P0-2). */}
           <span data-coverage-crosswalk>{crosswalk.covered}</span>
         </p>
-        <p className="mt-3 max-w-3xl leading-7 text-muted-foreground">
+        <p className="mt-3 leading-7 text-muted-foreground">
           {crosswalk.target}
         </p>
       </section>
@@ -272,7 +272,7 @@ export default function CoveragePage() {
         <h2 id="not-heading" className="mb-3 text-xl font-semibold">
           Where coverage is stated elsewhere
         </h2>
-        <p className="max-w-3xl leading-7 text-muted-foreground">
+        <p className="leading-7 text-muted-foreground">
           Every one of these gaps is also disclosed where a reader meets it: on
           the page, beside the figure, with a link to the reasoning. This page
           collects them so the shape of the whole is visible at once. For the

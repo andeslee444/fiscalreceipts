@@ -212,7 +212,7 @@ function StubPage({ peBli }: { peBli: string }) {
   const citationsSlice = collectCitationsWithInputs(pageFactIds);
   return (
     <CitationPanelProvider citations={citationsSlice}>
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="spine py-8">
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },
@@ -621,7 +621,7 @@ export default async function ProgramPage({
       // footnote head is `{title} ({pe_bli})`, never a re-derived page title.
       program={{ name: program.title, code: program.pe_bli }}
     >
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="spine py-8">
       {/* Breadcrumbs */}
       <Breadcrumbs
         items={[

@@ -42,8 +42,11 @@ export const metadata: Metadata = {
 export default function YearsPage() {
   return (
     <CitationPanelProvider citations={{}}>
-      {/* Wider container than detail pages — the grid is the point. */}
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+      {/* The site spine (ROADMAP #42). This page used to be one of only
+          three on `max-w-7xl`; now every page is, and the grid keeps the
+          width it had at 1440 while the rest of the site comes out to meet
+          it. */}
+      <div className="spine py-8">
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Years" }]}
         />

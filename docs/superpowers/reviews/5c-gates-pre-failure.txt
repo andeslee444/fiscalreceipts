@@ -11910,3 +11910,263 @@ WHAT DID NOT REPRODUCE.
     https://govbudget-placeholder.example". Not a defect in this change; noted
     because it cost a full 10-minute build cycle to diagnose.
 
+
+================================================================================
+ROADMAP #42 — LAYOUT SPINE + READING MEASURE (gate 3 render-live, leg "spine")
+2026-09-01
+================================================================================
+
+WHAT THE LEG ASSERTS. (s1) the content column starts at ONE declared left edge
+on every route the app declares, and that edge is the header wordmark's — any
+route that differs carries `data-spine-exception="<reason>"` on its <h1> or an
+ancestor, and every declared exception is printed in the notes on every run.
+(s2) no prose block renders a line past 80 characters, the WCAG 1.4.8 (AAA)
+ceiling. Measured at 1440 and 1920 in chromium, from a route sample DERIVED by
+walking src/app/**/page.tsx (dynamic segments resolved against the built out/),
+so a twenty-fifth route file is measured the day it lands. Nothing in the leg
+knows that the answer is 96: it reads the wordmark's own x on each page.
+
+GATE COUNT unchanged -> 24. `grep -c "gateResults.push" site/scripts/verify.mjs`
+prints 24. This is a LEG on gate 3, which already owns the browser harness and
+the question "does every page class render in a real browser"; the mobile leg
+sits at 390 and the tablet leg at 768-1000, and this one is the same question at
+the other end of the range.
+
+RE-MEASUREMENT OF THE ENTRY, BEFORE ANYTHING WAS CHANGED. The entry's five
+offsets all reproduced, and the site had grown a SIXTH since it was written:
+
+    96  /flow/ /years/                    <- and /lineage/, new since the entry
+   160  /companies/ /programs/
+   224  nine pages: /agency/{org}/ /companies/families/ /company/{slug}/
+        /coverage/ /data/ /district/ /feed/ /filings/ /program/{pe}/
+   288  / /filing/{uuid}/                 <- and /agency/, /district/{d}/,
+                                             /downloads/
+   352  /methodology/                     <- and /about/, /fact/, /glossary/
+   400  /404.html                         <- NOT in the entry: a sixth edge
+
+Twenty-four routes, six edges, header wordmark at 96. The entry's "nineteen
+route files" is twenty-three today (plus not-found.tsx). The reading measure
+re-measured WORSE than the panel's 136-165: 229 chars/line on /years/, 224 on
+/lineage/, 207 on /companies/, over 183 blocks on 22 routes.
+
+FAIL #1 — the leg as first written, run against the REAL pre-fix build
+(out/ at git_head 268d3e17, source identical to HEAD 40d3e9ce since the only
+commits between them touched docs and a data seed). Verbatim, in full:
+
+PASS: false
+NOTES:
+  spine leg @ [1440, 1920]px: 24 route(s) discovered from 23 route file(s) — / /404.html /about/ /agency/ /agency/A/ /companies/ /companies/families/ /company/aarcorp/ /coverage/ /data/ /district/ /district/AK-00/ /downloads/ /fact/ /feed/ /filing/00013780-4c7e-438d-9abc-4bf889af87cd/ /filings/ /flow/ /glossary/ /lineage/ /methodology/ /program/000042/ /programs/ /years/
+  spine (s2) 1440px: 152 of 181 prose block(s) across 23 page(s) run past 80 characters per line — see errors
+  spine: 0 declared exceptions — every route is on the one spine
+ERRORS:
+  ✗ spine 1440px /: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /: 5/6 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 149 chars/line (815px over 2 lines) — "Scope: largest single R&D or procurement pro…" | 124 chars/line (992px over 4 lines) — "Programs with the biggest funding swings bet…" | 108 chars/line (726px over 2 lines) — "All figures are cited to their exact source …"
+  ✗ spine 1440px /404.html: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /about/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /about/: 9/10 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 108 chars/line (689px over 3 lines) — "Fiscal Receipts shows lobbying expenditure a…" | 103 chars/line (687px over 2 lines) — "The budget-to-contract crosswalk is also an …" | 100 chars/line (734px over 4 lines) — "Fiscal Receipts makes federal defense spendi…"
+  ✗ spine 1440px /agency/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /agency/: 3/3 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 144 chars/line (832px over 2 lines) — "4 organizations in the FY2026 workbooks carr…" | 106 chars/line (846px over 2 lines) — "24 defense agencies with program-level budge…" | 104 chars/line (819px over 4 lines) — "These are totals this site has loaded, not w…"
+  ✗ spine 1440px /agency/A/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /agency/A/: 4/4 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 165 chars/line (958px over 2 lines) — "Aggregate totals are derived sums over this …" | 158 chars/line (964px over 2 lines) — "FY24 figures are P-1/R-1 TOA · PB2026 — tota…" | 155 chars/line (909px over 3 lines) — "96 of A’s 507programs carry an FY2024 figure…"
+  ✗ spine 1440px /companies/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /companies/: 5/5 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 207 chars/line (1110px over 2 lines) — "Lines that fold several registry names toget…" | 186 chars/line (1099px over 2 lines) — "Every figure in the obligations column is US…" | 163 chars/line (1106px over 3 lines) — "Obligation totals carry derived USAspending …"
+  ✗ spine 1440px /companies/families/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /companies/families/: 8/8 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 183 chars/line (980px over 2 lines) — "Every source above was opened and read again…" | 152 chars/line (992px over 3 lines) — "Each family below renders as one line on /co…" | 139 chars/line (987px over 4 lines) — "The seed for this table lives in the reposit…"
+  ✗ spine 1440px /company/aarcorp/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /company/aarcorp/: 1/1 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 170 chars/line (930px over 2 lines) — "The crosswalk mart contains R&D performers, …"
+  ✗ spine 1440px /coverage/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /coverage/: 8/9 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 153 chars/line (954px over 3 lines) — "Nothing here is typed by hand. Each coverage…" | 145 chars/line (941px over 3 lines) — "One figure is deliberately absent for the sa…" | 119 chars/line (763px over 5 lines) — "No row on this page carries a dated target, …"
+  ✗ spine 1440px /data/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /data/: 3/4 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 177 chars/line (991px over 3 lines) — "One row per (program element × amount type) …" | 134 chars/line (762px over 2 lines) — "Row counts and sizes are read from the parqu…" | 98 chars/line (649px over 2 lines) — "Corpus: 2,562 browsable program pages; 1,936…"
+  ✗ spine 1440px /district/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /district/: 4/4 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 162 chars/line (956px over 2 lines) — "Dollars are from high-confidence USAspending…" | 159 chars/line (965px over 4 lines) — "How these two dollar figures relate: the eve…" | 126 chars/line (901px over 2 lines) — "District data reflects only high-confidence …"
+  ✗ spine 1440px /district/AK-00/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /district/AK-00/: 4/4 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 144 chars/line (854px over 2 lines) — "Obligations are high-confidence USAspending …" | 114 chars/line (826px over 4 lines) — "Every program below is a DARPA line, and tha…" | 111 chars/line (828px over 4 lines) — "This crosswalk only resolves for a small sli…"
+  ✗ spine 1440px /downloads/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /downloads/: 3/19 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 119 chars/line (830px over 2 lines) — "Bundle built: August 31, 2026. Files are in …" | 116 chars/line (852px over 3 lines) — "Schemas & data dictionary: every Parquet fil…" | 108 chars/line (833px over 2 lines) — "All 125,451 source citations and 1,938 progr…"
+  ✗ spine 1440px /fact/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /fact/: 1/1 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 107 chars/line (701px over 4 lines) — "/fact/{id}resolves a fact id to the receipt …"
+  ✗ spine 1440px /feed/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /feed/: 4/5 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 154 chars/line (985px over 2 lines) — "Programs whose Herfindahl-Hirschman Index (H…" | 152 chars/line (969px over 2 lines) — "The largest gaps between what a President's …" | 147 chars/line (946px over 2 lines) — "Companies or families whose first award in t…"
+  ✗ spine 1440px /filing/00013780-4c7e-438d-9abc-4bf889af87cd/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /filing/00013780-4c7e-438d-9abc-4bf889af87cd/: 2/2 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 162 chars/line (856px over 2 lines) — "Source: U.S. Senate Lobbying Disclosure Act …" | 127 chars/line (828px over 2 lines) — "Medical Supply Chain Resiliency Act; Promoti…"
+  ✗ spine 1440px /filings/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /filings/: 1/1 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 137 chars/line (987px over 2 lines) — "5,393 Senate LDA filings from registrants wh…"
+  ✗ spine 1440px /flow/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /flow/: 5/6 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 195 chars/line (1211px over 3 lines) — "A request dollar is not an obligation dollar…" | 144 chars/line (882px over 2 lines) — "Budget lines and award records are linked on…" | 125 chars/line (894px over 3 lines) — "Both rivers key on program elements, and pro…"
+  ✗ spine 1440px /glossary/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /glossary/: 1/1 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 118 chars/line (714px over 2 lines) — "Every term below is one this site actually s…"
+  ✗ spine 1440px /lineage/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /lineage/: 9/9 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 224 chars/line (1213px over 2 lines) — "These links are inferred from program-elemen…" | 141 chars/line (885px over 4 lines) — "Stated links are extracted by pattern from t…" | 132 chars/line (853px over 2 lines) — "The one figure that is stated per identity —…"
+  ✗ spine 1440px /methodology/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /methodology/: 56/63 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 109 chars/line (722px over 2 lines) — "Corpus: 2,562 browsable program pages; 1,936…" | 103 chars/line (736px over 4 lines) — "If you find a number that appears wrong, sen…" | 102 chars/line (734px over 6 lines) — "Fiscal Receipts connects four things that li…"
+  ✗ spine 1440px /program/000042/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /program/000042/: 5/5 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 176 chars/line (964px over 2 lines) — "No predecessor/successor lineage was recorde…" | 175 chars/line (962px over 2 lines) — "J-book detail basis (R-2/P-40, USD millions)…" | 155 chars/line (990px over 13 lines) — "The Air Force Industrial Preparedness progra…"
+  ✗ spine 1440px /programs/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /programs/: 5/5 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 192 chars/line (1113px over 3 lines) — "Both money columns are stated on ONE basis —…" | 169 chars/line (1116px over 2 lines) — "Corpus: 2,562 browsable program pages; 1,936…" | 163 chars/line (1094px over 2 lines) — "4 organizations carry FY2026 money that no a…"
+  ✗ spine 1440px /years/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /years/: 6/6 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 229 chars/line (1247px over 2 lines) — "FY2026 request figures are the combined tota…" | 222 chars/line (1216px over 2 lines) — "0 = the book records zero for this line · <0…" | 214 chars/line (1228px over 3 lines) — "† These columns are filed under the row labe…"
+  ✗ spine (s1) 1440px: the content column starts at 6 different left edges — 96 (/flow/, /lineage/, /years/); 160 (/companies/, /programs/); 224 (/agency/A/, /companies/families/, /company/aarcorp/ +6 more); 288 (/, /agency/, /district/AK-00/ +2 more); 352 (/about/, /fact/, /glossary/, /methodology/); 400 (/404.html) — while the header wordmark sits at 96. One spine, or a data-spine-exception saying why this page is not on it.
+  ✗ spine 1920px /: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /404.html: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /about/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /agency/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /agency/A/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /companies/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /companies/families/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /company/aarcorp/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /coverage/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /data/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /district/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /district/AK-00/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /downloads/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /fact/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /feed/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /filing/00013780-4c7e-438d-9abc-4bf889af87cd/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /filings/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /flow/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /glossary/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /lineage/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /methodology/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /program/000042/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /programs/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1920px /years/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine (s1) 1920px: the content column starts at 6 different left edges — 336 (/flow/, /lineage/, /years/); 400 (/companies/, /programs/); 464 (/agency/A/, /companies/families/, /company/aarcorp/ +6 more); 528 (/, /agency/, /district/AK-00/ +2 more); 592 (/about/, /fact/, /glossary/, /methodology/); 640 (/404.html) — while the header wordmark sits at 208. One spine, or a data-spine-exception saying why this page is not on it.
+
+TWO LINES OF THE LEG CHANGED AFTER THAT RUN, and both only widen (s2):
+figure captions joined the prose scope (/years/ shipped a 1,248px one) and a
+block containing other blocks is now skipped as a container rather than a text
+block. Neither touches (s1). So FAIL #1 is conservative with respect to the
+shipped leg -- it would report MORE over-long prose, not less.
+
+FAIL #2 — the SHIPPED leg, against a deliberately reverted built artifact
+(the pattern run-mobile-leg.mjs's own docstring describes: revert a treatment
+in a scratch copy of out/, run, restore, run again). out/methodology/index.html
+had `class="spine py-10"` put back to `class="container mx-auto px-4 py-10
+max-w-3xl"`, in the markup and in the RSC flight payload. Verbatim:
+
+PASS: false
+NOTES:
+  spine leg @ [1440, 1920]px: 24 route(s) discovered from 23 route file(s) — / /404.html /about/ /agency/ /agency/A/ /companies/ /companies/families/ /company/aarcorp/ /coverage/ /data/ /district/ /district/AK-00/ /downloads/ /fact/ /feed/ /filing/00013780-4c7e-438d-9abc-4bf889af87cd/ /filings/ /flow/ /glossary/ /lineage/ /methodology/ /program/000042/ /programs/ /years/
+  spine (s1) 1440px: 24 route(s) all start at 96px, on the header wordmark ✓
+  spine (s2) 1440px: 57 of 203 prose block(s) across 23 page(s) run past 80 characters per line — see errors
+  spine: 0 declared exceptions — every route is on the one spine
+ERRORS:
+  ✗ spine 1440px /methodology/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine 1440px /methodology/: 57/57 prose block(s) run past 80 characters per line (WCAG 1.4.8) — 172 chars/line (1235px over 2 lines) — "When a program has no funding for a given fi…" | 172 chars/line (1244px over 4 lines) — "Dossiers exist for 50 of 1,938 programs, sel…" | 172 chars/line (1248px over 3 lines) — "Entity families whose first award year in th…"
+  ✗ spine 1920px /methodology/: declares no content spine element (.spine / [data-spine]) — every route states which column it is on
+  ✗ spine (s1) 1920px: the content column starts at 2 different left edges — 208 (/methodology/); 336 (/, /404.html, /about/ +20 more) — while the header wordmark sits at 336. One spine, or a data-spine-exception saying why this page is not on it.
+
+READ THAT SECOND FAILURE CAREFULLY, because it says something about the fix.
+At 1440 the reverted page still measured 96 and (s1) passed on it: Tailwind's
+`container` clamps to 1,280 at that width and `mx-auto` + `px-4` land on the
+same 96 the spine does -- which is exactly why six different left edges could
+coexist with a header that looked aligned on somebody's screen. At 1920 the
+clamp moves to 1,536 and the two come apart: 208 against the wordmark's 336.
+That is the width the leg exists to cover, and it is why SPINE_WIDTHS is two
+numbers and not one. `max-w-3xl` no longer resolves at all after the fix --
+Tailwind v4 only emits utilities it finds in source -- so the reverted page
+also ran its prose at the full 1,248px and tripped (s2) on 57 of 57 blocks at
+up to 172 characters per line.
+
+PASS — the shipped leg, the fixed build, restored artifact. Verbatim:
+
+PASS: true
+NOTES:
+  spine leg @ [1440, 1920]px: 24 route(s) discovered from 23 route file(s) — / /404.html /about/ /agency/ /agency/A/ /companies/ /companies/families/ /company/aarcorp/ /coverage/ /data/ /district/ /district/AK-00/ /downloads/ /fact/ /feed/ /filing/00013780-4c7e-438d-9abc-4bf889af87cd/ /filings/ /flow/ /glossary/ /lineage/ /methodology/ /program/000042/ /programs/ /years/
+  spine (s1) 1440px: 24 route(s) all start at 96px, on the header wordmark ✓
+  spine (s1) 1920px: 24 route(s) all start at 336px, on the header wordmark ✓
+  spine (s2) 1440px: 209 prose block(s) across 23 page(s), none past 80 characters per line ✓
+  spine: 0 declared exceptions — every route is on the one spine
+
+THE FIX, in one sentence: one `.spine` class (globals.css) carrying
+--spine-max: 80rem / --spine-gutter: 1rem, used by the header bar, the footer
+bar and the top-level container of every route; and one --measure: 54ch capping
+paragraphs, figure captions, marker lists and the note registers inside it.
+Tailwind's `container` is gone from src/ entirely.
+
+WHY NOT `container`. It clamps to the CURRENT breakpoint, so a header on bare
+`container` and a body on `max-w-7xl` agree at 1440 and diverge at 1536+. A
+fixed --spine-max agrees at every width, which is what "one spine" has to mean.
+It also retires the 768-1023 clamp behind ROADMAP #65: inside that band the
+spine is now the viewport rather than a 768px box, which is strictly more room,
+and gate 3's (m5) tablet leg confirms it -- 45/45 page x width checks clean at
+768/900/1000.
+
+WHY 54ch AGAINST AN 80-CHARACTER GATE. `ch` is the advance width of "0" --
+9.28px against a 6.8-8.2px average glyph on this font stack -- so N ch renders
+up to N x 1.37 characters. The 1.37 is measured, not assumed: the ch/mean-glyph
+ratio was taken over 183 paragraphs across 22 routes on the pre-fix build
+(p50 1.228, p90 1.287, p99 1.328, max 1.367). 54ch therefore lands at ~74
+rendered characters worst case, inside the 70-75 the ROADMAP entry asked for,
+with headroom under the 80 the gate holds. The gate's number is WCAG 1.4.8;
+the CSS number is what keeps it there.
+
+DECLARED EXCEPTIONS: zero. The entry contemplated two container widths
+(wide-for-matrix, narrow-for-prose), but a centred narrow container starts at a
+DIFFERENT left edge, which is the defect. So there is one column and two
+measures inside it: full width for tables and charts, --measure for prose, both
+starting at the same x. /years/ and /flow/ and /lineage/ keep the width they had
+at 1440; /methodology/, /about/ and /glossary/ keep the measure they had and
+move left to meet the wordmark.
+
+ONE THING THE FIRST CUT GOT WRONG, recorded because the screenshot is what
+caught it and no gate would have. Capping only <p> left the note registers as
+1,248px tinted panels wrapped around a 500px paragraph on /programs/,
+/coverage/, /years/, /district/ and /agency/ -- technically one spine and one
+measure, and visibly worse than what it replaced. `[data-note-kind]` now takes
+the measure plus its own 2rem of horizontal padding, so the text inside a note
+lands on the same column as the text above it.
+
+PAGE WEIGHT: NO CEILING RAISED, AND NONE NEEDED. `.spine py-8` is shorter than
+`container mx-auto px-4 py-8 max-w-5xl`, so the change is a net saving on every
+page that ships. Measured by importing PAGE_WEIGHT_BUDGET and calling
+zlib.gzipSync level 9, raw-heaviest for `dir:` entries, on builds run WITH
+NEXT_PUBLIC_SITE_URL set (gzip bytes, pre-fix -> post-fix):
+
+  /programs/            308,270 -> 308,216   (-54)
+  /years/                 6,596 ->   6,566   (-30)
+  /feed/                 78,769 ->  78,727   (-42)
+  /                      87,944 ->  87,931   (-13)
+  /companies/            67,162 ->  67,103   (-59)
+  /lineage/              50,437 ->  50,393   (-44)
+  /district/             28,214 ->  28,154   (-60)
+  /companies/families/   25,518 ->  25,479   (-39)
+  /data/                 13,622 ->  13,589   (-33)
+  /agency/               50,597 ->  50,523   (-74)
+  /methodology/          36,909 ->  36,854   (-55)
+  /coverage/             18,003 ->  18,022   (+19)
+  /agency/*/            120,672 -> 120,611   (-61)
+  /program/*/           142,789 -> 142,738   (-51)
+  /company/*/            22,294 ->  22,255   (-39)
+  /filing/*/             22,530 ->  22,469   (-61)
+
+Fifteen of sixteen got lighter. /coverage/ is the one that did not, by 19 bytes,
+and the reason is worth stating: nine identical `max-w-3xl` strings came OFF its
+paragraphs, which is 244 raw bytes saved and 19 gzip bytes lost, because
+repeated identical strings are what gzip already collapses. It sits at 18,022 of
+18,750 (96.1%, 728 bytes clear) -- tighter than before and not over. Nothing was
+trimmed and no ceiling moved.
+
+THE ENTRY'S OWN HEADROOM FIGURES DID NOT REPRODUCE, and they are the reason
+this section states its own. The task described "/data/ ~160 bytes headroom;
+/coverage/ ~63". Measured on the pre-fix build with the gate's logic: /data/
+828, /coverage/ 747. Those numbers predate the 2026-08-29 re-baselines recorded
+in build.mjs. The tightest page on this build is /companies/families/ at 482
+bytes, not either of them.
+
+MOBILE, MEASURED NOT ASSUMED. gate 3's mobile leg on the fixed build:
+15/15 pages free of page-level horizontal overflow at 390x844; 1,449 value
+elements on screen across 11 value-bearing pages; 228 label/value pairs with no
+collision; mobile nav 10 links in a 390px panel, none clipped; (m5) tablet band
+45/45 clean at 768, 900 and 1000. /lineage/ was not regressed -- 148 identity
+cells on screen, no overflow.
+
+CONCURRENT WORK IN THE TREE, disclosed rather than absorbed. While this ran, a
+second worker added Vercel Web Analytics to site/src/app/layout.tsx,
+site/package.json, site/package-lock.json and site/scripts/serve-static.mjs.
+Only the #42 hunks of layout.tsx were staged into this commit; the other four
+files were left alone. The Analytics client reference costs a UNIFORM +276 raw
+/ ~+85 gzip on every page, which is why the table above is quoted from the
+build that did not contain it: the two changes are separable and this one
+should not carry the other's bytes, in either direction.

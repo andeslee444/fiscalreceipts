@@ -71,7 +71,7 @@ export default function LineagePage() {
 
   return (
     <CitationPanelProvider citations={{}}>
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+      <div className="spine py-8">
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Lineage" }]}
         />
@@ -80,7 +80,7 @@ export default function LineagePage() {
           One funded line, all the names it wore
         </h1>
 
-        <p className="mb-3 max-w-4xl text-base leading-7 text-foreground sm:text-lg">
+        <p className="mb-3 text-base leading-7 text-foreground sm:text-lg">
           A program element is an accounting identity, and identities get
           renamed, realigned and folded into each other. When that happens the
           work carries on and the label does not, so a year-over-year comparison
@@ -92,7 +92,7 @@ export default function LineagePage() {
         </p>
 
         {/* The refusal, in the lede rather than in a footnote. */}
-        <ScopeNote className="mb-4 max-w-4xl" label="What the ribbons are not">
+        <ScopeNote className="mb-4" label="What the ribbons are not">
           <p className="text-sm leading-7">
             In a Sankey, a ribbon&rsquo;s width is an amount. Here it is
             not, and it must not be read as one:{" "}
@@ -124,7 +124,7 @@ export default function LineagePage() {
           </p>
         </ScopeNote>
 
-        <ScopeNote className="mb-6 max-w-4xl" label="How to read the columns">
+        <ScopeNote className="mb-6" label="How to read the columns">
           <p className="text-sm leading-7">
             The columns are <strong>lineage steps</strong>, not calendar years.
             That is a deliberate choice against the obvious one: the identities

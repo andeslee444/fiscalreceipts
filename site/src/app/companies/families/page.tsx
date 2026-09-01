@@ -128,7 +128,7 @@ export default function CompanyFamiliesPage() {
 
   return (
     <CitationPanelProvider citations={citationsSlice}>
-      <div className="container mx-auto max-w-5xl px-4 py-8">
+      <div className="spine py-8">
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },

@@ -144,7 +144,7 @@ export default async function AgencyPage({
           __html: safeJsonLd(governmentOrganizationJsonLd(org, pageUrl)),
         }}
       />
-      <div className="container mx-auto px-4 py-8 max-w-5xl" data-pagefind-body>
+      <div className="spine py-8" data-pagefind-body>
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },

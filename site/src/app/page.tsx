@@ -108,7 +108,7 @@ export default function HomePage() {
 
       {/* ── Hero (compact — keeps the receipt moment above the fold) ─────── */}
       <section className="bg-background pt-10 pb-8 md:pt-14 md:pb-10">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
+        <div className="spine text-center">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-balance text-foreground mb-4">
             Federal defense spending,{" "}
             <span className="text-primary">fully cited</span>
@@ -172,7 +172,7 @@ export default function HomePage() {
 
       {/* ── Receipt moment + persona row ─────────────────────────────────── */}
       <section className="bg-background border-b border-border pb-10 md:pb-12">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="spine">
           {receiptFact && (
             <>
               <ReceiptMoment
@@ -231,7 +231,7 @@ export default function HomePage() {
 
       {/* ── Stats band (every stat links to its surface) ─────────────────── */}
       <section className="border-b border-border bg-muted/40 py-10">
-        <Reveal className="container mx-auto px-4">
+        <Reveal className="spine">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <StatCard
               value={meta.counts.programs.toLocaleString("en-US")}
@@ -275,7 +275,7 @@ export default function HomePage() {
 
       {/* ── Top movers ───────────────────────────────────────────────────── */}
       <section className="py-12 border-b border-border">
-        <Reveal className="container mx-auto px-4 max-w-5xl">
+        <Reveal className="spine">
           <h2 className="text-2xl font-bold mb-2">Largest {TRAJECTORY_FY_LABEL} changes</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Programs with the biggest funding swings between FY2025 enacted and
@@ -407,7 +407,7 @@ export default function HomePage() {
 
       {/* ── Agency grid ──────────────────────────────────────────────────── */}
       <section id="agencies" className="py-12 scroll-mt-16">
-        <Reveal className="container mx-auto px-4 max-w-5xl">
+        <Reveal className="spine">
           <h2 className="text-2xl font-bold mb-2">Browse by agency</h2>
           <p className="text-sm text-muted-foreground mb-6">
             {agencies.length} defense agencies — click to see all program
@@ -494,7 +494,7 @@ export default function HomePage() {
       {/* ── Feed teaser ──────────────────────────────────────────────────── */}
       {feedTeaser.length > 0 && (
         <section className="py-12 border-b border-border">
-          <Reveal className="container mx-auto px-4 max-w-5xl">
+          <Reveal className="spine">
             <div className="flex items-baseline justify-between mb-2">
               <h2 className="text-2xl font-bold">Anomaly Feed</h2>
               <Link
@@ -553,7 +553,7 @@ export default function HomePage() {
 
       {/* ── Trust anchor ─────────────────────────────────────────────────── */}
       <section className="border-t border-border bg-muted/30 py-10">
-        <Reveal className="container mx-auto px-4 max-w-3xl text-center">
+        <Reveal className="spine text-center">
           <p className="text-muted-foreground text-sm">
             All figures are cited to their exact source document, page, API
             query, or derived formula — every published dataset carries a

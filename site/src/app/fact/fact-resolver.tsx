@@ -112,7 +112,7 @@ export function FactResolver() {
 
   return (
     <CitationPanelProvider citations={citationsMap}>
-      <div className="container mx-auto px-4 py-10 max-w-3xl">
+      <div className="spine py-10">
         <h1 className="text-3xl font-bold mb-2">Fact permalink</h1>
         <p className="text-sm text-muted-foreground mb-8">
           Every figure on {SITE_NAME} carries a permanent fact id linking it to

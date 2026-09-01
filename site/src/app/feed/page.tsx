@@ -401,7 +401,7 @@ export default function FeedPage() {
     // citation; the panel resolves the fact's shard first and shows the
     // declared loading/degraded states while it does.
     <CitationPanelProvider citations={{}}>
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="spine py-8">
         <Breadcrumbs
           items={[{ label: "Home", href: "/" }, { label: "Anomaly Feed" }]}
         />

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="container mx-auto px-4 py-10 max-w-3xl">
+    <div className="spine py-10">
       {/* Round-3 judging: the other of the two pages that had no breadcrumb. */}
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
       <h1 className="text-3xl font-bold mb-8">About {SITE_NAME}</h1>

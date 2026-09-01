@@ -65,8 +65,9 @@ export default function FlowPage() {
   const meta = getFlowChartMeta();
   return (
     <CitationPanelProvider citations={{}}>
-      {/* Wide container — like /years/, the chart is the point. */}
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+      {/* The site spine (ROADMAP #42) — same left edge and same width as
+          every other page; the chart was already sized for it. */}
+      <div className="spine py-8">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Flow" }]} />
         <div className="mb-5">
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -81,7 +82,7 @@ export default function FlowPage() {
           </div>
 
           {/* THE LEDE IS THE FINDING, not a caveat about the chart. */}
-          <p className="mb-3 max-w-4xl text-base leading-7 text-foreground sm:text-lg">
+          <p className="mb-3 text-base leading-7 text-foreground sm:text-lg">
             Two rivers, deliberately kept apart. What the Pentagon{" "}
             <em>asked for</em> and what it actually <em>put on contract</em> are
             recorded by two different measurement systems — and the useful

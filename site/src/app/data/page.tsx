@@ -80,14 +80,14 @@ export default function DataPage() {
   const uncitedDatasets = new Set(meta.uncited_datasets);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="spine py-8">
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "Data Explorer" }]}
       />
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-3">Data Explorer</h1>
-        <p className="text-muted-foreground max-w-2xl">
+        <p className="text-muted-foreground">
           Browse and query all {DATASET_INVENTORY.length} Fiscal Receipts datasets
           using SQL. Queries run entirely in your browser — no server receives
           your SQL or sees any intermediate results. Powered by{" "}
@@ -110,7 +110,7 @@ export default function DataPage() {
       {/* Dataset inventory table */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Dataset inventory</h2>
-        <p className="mb-3 text-xs text-muted-foreground max-w-3xl">
+        <p className="mb-3 text-xs text-muted-foreground">
           Row counts and sizes are read from the parquet files this build
           shipped — never authored by hand. Each scope line says what{" "}
           <em>one row</em> of that dataset is, so a row count can be compared
