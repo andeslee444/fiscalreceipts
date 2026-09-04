@@ -455,6 +455,39 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
+- **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
+  programs each (e.g. `3010`); all award links on them are excluded (53 wave-3
+  pairs incl. every ADNS link; earlier FPDS/DARPA exclusions). Needs
+  account-qualified program routes so a link can name which program.
+  **Status:** open (owner call, 2026-09-04).
+- **#71 Announcement source kind in the citation panel.** Announcement- and
+  subaward-derived links carry provenance in `rationale` text (article id,
+  date, URL / subaward number) but the cite panel has no first-class
+  "announcement" kind (URL + archive snapshot + sha256 from the manifest).
+  **Status:** open (2026-09-04).
+- **#72 Held-out precision study on the new link tiers.** The retired tier was
+  measured (9.1%); the FPDS-AP, announcement and subaward tiers rely on the
+  adversarial refute pass as their precision control. Run a hand-adjudicated
+  held-out sample and publish the number either way. **Status:** open.
+- **#73 /feed/ pagination UX.** The page is a 75-per-section digest with a
+  truncation note; a client-side expand (the ProgramAwards pattern) would let
+  readers reach the full set without RSS. **Status:** open (2026-09-02).
+- **#74 SAM.gov solicitations leg.** Official API key-gated; unauthenticated
+  search returns 0 for bare PE codes. Needs a real spike (archived-index
+  params, FBO-era Internet Archive fallback). Task chip filed with probe
+  notes. **Status:** open.
+- **#75 Mechanical crosswalk v1 debts (medium tier).** The 9,142 DARPA
+  `account+subagency` rows still carry v1 mechanics: hardcoded DARPA clause,
+  calendar-year (not federal FY) filter, full-award obligation attributed to
+  the account. Fix before any non-DARPA mechanical run. **Status:** open.
+- **#76 Program-count denominators.** 1,739 (parquet, correct per #35) vs
+  1,741/1,753 on some surfaces; reconcile to one build-derived value.
+  **Status:** open.
+- **#77 In-table medium caveat.** Related Awards tables disclose the tier on
+  the badge and /methodology/ only; a one-line in-table note ("same account +
+  same agency, not evidence this program paid") would stop presence-in-table
+  reading as attribution. **Status:** open.
+
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
 naming the sprint and/or commit that closed it and when, so an item's state is
