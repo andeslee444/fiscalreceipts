@@ -10,10 +10,27 @@ nothing is asserted silently. v1 is LLM-free by design (recorded decision).
 v1 links are account+evidence-scoped; FY attribution is explicit via
 fy_start/fy_end or all-loaded-years by default.
 """
+import csv
 import re
+from pathlib import Path
 
 import duckdb
 import psycopg
+
+# Sub-agency alias seed: data-seeds/org_subagency_aliases.csv, columns
+# organization,alias. Replaces a hardcoded DARPA-only clause (#75) — every
+# organization's medium-tier sub-agency match now comes from this file.
+# crosswalk.py -> jbooks -> govbudget -> src -> GovBudget (parents[3]).
+_ALIASES_CSV = Path(__file__).resolve().parents[3] / "data-seeds" / "org_subagency_aliases.csv"
+
+
+def _load_subagency_aliases() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    with open(_ALIASES_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            out.setdefault(row["organization"], []).append(row["alias"].lower())
+    return out
+
 
 # Trailing letter on budget accounts is the service designator and maps to
 # the treasury agency prefix USAspending uses (verified in the award lake:
@@ -63,6 +80,9 @@ def crosswalk_org(
         if pe_bli:
             title_tokens.setdefault(pe_bli, set()).update(_tokens(proj_title))
 
+    aliases = _load_subagency_aliases()
+    org_aliases = aliases.get(organization, [organization.lower()])
+
     con = duckdb.connect()
     upserts = 0
     try:
@@ -77,20 +97,25 @@ def crosswalk_org(
             agency = AGENCY_BY_LETTER.get(letter, treasury_agency)
             fed_account = f"{agency}-{numeric}"
 
-            # Optional FY filter on action_date
+            # Optional FY filter on action_date, using the FEDERAL fiscal year
+            # (Oct 1 - Sep 30): a Oct-Dec action_date belongs to the NEXT FY,
+            # not the calendar year its date string starts with (#75a).
             fy_filter = ""
             if fy_start is not None and fy_end is not None:
-                fy_filter = (
-                    f" and try_cast(substr(action_date,1,4) as integer)"
-                    f" between {fy_start} and {fy_end}"
+                fy_expr = (
+                    "(try_cast(substr(action_date,1,4) as integer)"
+                    " + case when try_cast(substr(action_date,6,2) as integer)"
+                    " >= 10 then 1 else 0 end)"
                 )
+                fy_filter = f" and {fy_expr} between {fy_start} and {fy_end}"
 
             rows = con.execute(
                 f"""
                 select award_id_piid,
                        any_value(recipient_name),
                        any_value(recipient_uei),
-                       sum(try_cast(federal_action_obligation as double)),
+                       sum(case when federal_accounts_funding_this_award = '{fed_account}'
+                                then try_cast(federal_action_obligation as double) end),
                        any_value(transaction_description),
                        any_value(prime_award_base_transaction_description),
                        any_value(awarding_sub_agency_name)
@@ -110,9 +135,8 @@ def crosswalk_org(
                 for piid, rname, ruei, obligation, desc1, desc2, sub_agency in rows:
                     award_tokens = _tokens(desc1) | _tokens(desc2)
                     overlap = len(pe_tokens & award_tokens)
-                    org_in_subagency = (
-                        organization.lower() in (sub_agency or "").lower()
-                        or "advanced research projects" in (sub_agency or "").lower()
+                    org_in_subagency = any(
+                        a in (sub_agency or "").lower() for a in org_aliases
                     )
                     if overlap >= min_overlap:
                         confidence, method = "high", "account+tokens"
@@ -136,6 +160,8 @@ def crosswalk_org(
                                       score=excluded.score,
                                       rationale=excluded.rationale,
                                       matched_obligation=excluded.matched_obligation
+                        where budget_line_awards.method in
+                              ('account', 'account+subagency', 'account+tokens')
                         """,
                         (pe_bli, exhibit, fy, organization, piid, rname, ruei,
                          obligation, method, confidence, overlap, rationale),

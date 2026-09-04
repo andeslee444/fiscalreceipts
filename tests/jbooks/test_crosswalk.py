@@ -34,6 +34,27 @@ def make_award_parquet(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def make_award_parquet_with_dates(tmp_path: Path, rows: list[tuple]) -> str:
+    """Award parquet fixture with caller-supplied rows (full AWARD_COLS tuples,
+    in AWARD_COLS order) so a test can control action_date precisely — needed
+    for federal-fiscal-year boundary tests. Unlike make_award_parquet, this
+    returns the ready-to-use glob string rather than the bare tmp_path.
+    """
+    out = tmp_path / "contracts" / "fy=2024"
+    out.mkdir(parents=True, exist_ok=True)
+    values_sql = ", ".join(
+        "(" + ", ".join("'" + str(v).replace("'", "''") + "'" for v in row) + ")"
+        for row in rows
+    )
+    duckdb.sql(
+        f"""
+        copy (select * from (values {values_sql}) t({AWARD_COLS}))
+        to '{out}/part.parquet' (format parquet)
+        """
+    )
+    return str(tmp_path / "contracts" / "*" / "*.parquet")
+
+
 def make_navy_award_parquet(tmp_path: Path) -> Path:
     """Navy parquet: one award under 017-1319, one under 097-1319 only."""
     out = tmp_path / "contracts" / "fy=2024"
@@ -118,6 +139,24 @@ def seed_navy_budget(pg_dsn):
             " ('R-1',2026,'1319N','NAVY','0601152N','NAVY RESEARCH SCIENCES',"
             " 'fy_2024_actuals',%s,%s)",
             (Decimal("50000"), doc_id),
+        )
+
+
+def seed_mda_budget(pg_dsn):
+    """Seed an MDA budget line whose account carries no service-letter suffix
+    (agency comes straight from the caller-supplied treasury_agency)."""
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into jbook_documents (org, exhibit_family, fiscal_year, title, source_url)"
+            " values ('MDA','rdte',2026,'mda.pdf','https://example.test/mda.pdf')"
+        )
+        doc_id = con.execute("select max(id) from jbook_documents").fetchone()[0]
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, organization,"
+            " pe_bli, title, amount_type, amount_thousands, source_document_id) values"
+            " ('R-1',2026,'0603870','MDA','0603870C','BALLISTIC MISSILE DEFENSE MIDCOURSE',"
+            " 'fy_2024_actuals',%s,%s)",
+            (Decimal("10000"), doc_id),
         )
 
 
@@ -217,3 +256,152 @@ def test_crosswalk_small_token_not_high_confidence(pg_dsn, tmp_path):
     # The award may or may not match (sub-agency gives medium) but must not be high
     for piid, conf in rows:
         assert conf != "high", f"Expected not-high for stopword-only match, got {conf} for {piid}"
+
+
+def test_fy_filter_uses_federal_fiscal_year(pg_dsn, tmp_path):
+    """Fix #75a: the FY filter must use the FEDERAL fiscal year (Oct-Dec belong
+    to the NEXT FY), not the calendar year of action_date.
+
+    action_date 2023-11-15 is federal FY2024: a 2024..2024 window must include
+    it, a 2023..2023 window must not.
+    """
+    seed_budget(pg_dsn)
+    glob = make_award_parquet_with_dates(
+        tmp_path,
+        [(
+            "K9", "HR001124C0009", "1", "097-0400", "X", "Y", "Z", "U",
+            "Defense Advanced Research Projects Agency", "2023-11-15",
+        )],
+    )
+    n_2024 = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2024, fy_end=2024,
+    )
+    n_2023 = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2023, fy_end=2023,
+    )
+    assert n_2024 == 1 and n_2023 == 0
+
+
+def test_fy_filter_september_stays_in_same_fy(pg_dsn, tmp_path):
+    """Boundary check the other side of the Oct-Dec rollover: a September
+    action_date belongs to the SAME calendar-year FY, not the next one."""
+    seed_budget(pg_dsn)
+    glob = make_award_parquet_with_dates(
+        tmp_path,
+        [(
+            "K10", "HR001124C0010", "1", "097-0400", "X", "Y", "Z", "U",
+            "Defense Advanced Research Projects Agency", "2024-09-15",
+        )],
+    )
+    n_2024 = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2024, fy_end=2024,
+    )
+    n_2025 = crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097", award_glob=glob,
+        fy_start=2025, fy_end=2025,
+    )
+    assert n_2024 == 1 and n_2025 == 0
+
+
+def test_multi_account_award_has_no_matched_obligation(pg_dsn, tmp_path):
+    """Fix #75b: an award funded from more than one federal account has no
+    single 'the' obligation for this account — matched_obligation must be
+    NULL rather than the (wrong) sum across every account on the award."""
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)   # K3 is funded from '021-1319;097-0400'
+    crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097",
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+    )
+    with psycopg.connect(pg_dsn) as pg:
+        ob = pg.execute(
+            "select matched_obligation from budget_line_awards"
+            " where award_piid='HR001124C0003'"
+        ).fetchone()[0]
+    assert ob is None
+
+
+def test_single_account_award_still_has_matched_obligation(pg_dsn, tmp_path):
+    """Companion to the multi-account fix: a single-account award must keep
+    its (real) obligation — the fix must not null out everything."""
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)   # K1 is funded from '097-0400' only
+    crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097",
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+    )
+    with psycopg.connect(pg_dsn) as pg:
+        ob = pg.execute(
+            "select matched_obligation from budget_line_awards"
+            " where award_piid='HR001124C0001'"
+        ).fetchone()[0]
+    assert ob == Decimal("5000000")
+
+
+def test_subagency_aliases_come_from_seed(pg_dsn, tmp_path):
+    """Fix #75c: sub-agency matching must come from data-seeds/
+    org_subagency_aliases.csv, not a hardcoded DARPA clause. An MDA budget
+    line matched against an award whose awarding_sub_agency_name is 'Missile
+    Defense Agency' should reach medium confidence ONLY because the seed maps
+    MDA -> 'missile defense agency' (the bare organization string 'mda' is
+    not a substring of 'missile defense agency', so the old
+    organization.lower()-in-sub_agency check alone would miss it)."""
+    seed_mda_budget(pg_dsn)
+    out = tmp_path / "contracts" / "fy=2024"
+    out.mkdir(parents=True)
+    duckdb.sql(
+        f"""
+        copy (select * from (values
+          ('M1','MDA0024C0001','2000000','097-0603870',
+           'UNRELATED DESCRIPTION ONE','UNRELATED DESCRIPTION TWO',
+           'INTERCEPT SYSTEMS LLC','UEIMDA1',
+           'Missile Defense Agency','2024-02-01')
+        ) t({AWARD_COLS})) to '{out}/part.parquet' (format parquet)
+        """
+    )
+    crosswalk_org(
+        pg_dsn, organization="MDA", treasury_agency="097",
+        award_glob=str(tmp_path / "contracts" / "*" / "*.parquet"),
+    )
+    with psycopg.connect(pg_dsn) as con:
+        row = con.execute(
+            "select method, confidence from budget_line_awards"
+            " where pe_bli='0603870C' and award_piid='MDA0024C0001'"
+        ).fetchone()
+    assert row is not None, "expected the MDA award to be linked via sub-agency alias"
+    assert row == ("account+subagency", "medium")
+
+
+def test_crosswalk_does_not_overwrite_non_mechanical_methods(pg_dsn, tmp_path):
+    """Addendum ruling 1: fpds-ap, announcement+lexicon and subaward+lexicon
+    links share the upsert key space with the mechanical crosswalk. A re-run
+    must never clobber one of those rows even when the mechanical pass would
+    also produce that exact (pe_bli, award) pair."""
+    seed_budget_with_detail(pg_dsn)
+    lake = make_award_parquet(tmp_path)
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(
+            "insert into budget_line_awards"
+            " (pe_bli, exhibit, fiscal_year, organization, award_piid,"
+            "  recipient_name, recipient_uei, matched_obligation, method,"
+            "  confidence, score, rationale)"
+            " values ('0601101E','R-1',2026,'DARPA','HR001124C0001',"
+            "  'ACME RESEARCH LLC','UEIDARPA1',5000000,'announcement+lexicon',"
+            "  'high',null,'defense.gov contract announcement 123456')"
+        )
+    # The mechanical crosswalk would also produce this pair as
+    # account+tokens/high (same as test_crosswalk_matches_by_account_and_scores_confidence);
+    # the guard must leave the pre-existing non-mechanical row untouched.
+    crosswalk_org(
+        pg_dsn, organization="DARPA", treasury_agency="097",
+        award_glob=str(lake / "contracts" / "*" / "*.parquet"),
+    )
+    with psycopg.connect(pg_dsn) as con:
+        method, confidence = con.execute(
+            "select method, confidence from budget_line_awards"
+            " where pe_bli='0601101E' and award_piid='HR001124C0001'"
+        ).fetchone()
+    assert (method, confidence) == ("announcement+lexicon", "high")

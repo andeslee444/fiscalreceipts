@@ -34,7 +34,20 @@ select
     a.recipient_name,
     a.recipient_uei,
     a.method,
-    coalesce(adj.adjudicated_confidence, a.confidence) as confidence,
+    -- 2026-09-04 (#75 addendum, ruling 3): demotion, not a drop. A mechanical
+    -- account+tokens/high pair that no human has adjudicated must never
+    -- publish as 'high' -- the crosswalk's token-overlap 'high' tier alone
+    -- is not evidence-graded. Demote the PUBLISHED confidence to 'medium';
+    -- crosswalk_confidence below keeps the raw mechanical tag untouched so
+    -- the demotion is auditable, not a silent loss of information ("publish
+    -- the smaller true number").
+    case
+        when adj.award_piid is null
+         and a.method = 'account+tokens'
+         and a.confidence = 'high'
+        then 'medium'
+        else coalesce(adj.adjudicated_confidence, a.confidence)
+    end as confidence,
     a.confidence as crosswalk_confidence,
     case when adj.award_piid is not null then 'adjudicated' else 'mechanical' end
         as confidence_source,
