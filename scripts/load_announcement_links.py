@@ -24,11 +24,16 @@ keys (dim_programs >1 row), no synthetic -L rollup keys.
 
 Source rows (2026-09-04, ROADMAP #71): alongside each published link the
 loader writes its evidence STRUCTURALLY to award_link_sources — article_id +
-article URL + the archived copy's Wayback URL/timestamp/sha256 for
-announcement links, subaward_number for subaward links — so export_site can
-mint a first-class kind='announcement' citation instead of pointing the
-reader at a generic derived crosswalk row. The rationale prose is unchanged;
-this is the same evidence in a shape a citation panel can render.
+article URL + the archived copy's Wayback URL/timestamp/sha256 + the packet's
+match_basis for announcement links, subaward_number for subaward links — so
+export_site can mint a first-class kind='announcement' citation instead of
+pointing the reader at a generic derived crosswalk row. The rationale prose
+is unchanged; this is the same evidence in a shape a citation panel can
+render. match_basis is carried through to the card because "the announcement
+names this program" is true only for the exact-name basis: for
+designator-normalized / llm-alias / llm-designator-variant / llm-description
+the announcement did NOT name the program as written, and the card must say
+so instead of collapsing every basis into the strongest sentence.
 
 Usage: uv run python scripts/load_announcement_links.py <wave_result.json>... [--dry-run]
 """
@@ -141,21 +146,33 @@ def source_row(piid: str, pe: str, packet: dict, method: str,
 
     Keyed off the SAME method the link was published with, so source_kind and
     budget_line_awards.method can never disagree. Returns None when the packet
-    names no source id (nothing to cite — never a placeholder row).
+    names no source id (nothing to cite — never a placeholder row), and None
+    for any method this loader does not own — the two methods are matched
+    explicitly rather than "not subaward, therefore announcement", which would
+    have minted a defense.gov article URL for a future third method.
+
+    match_basis records HOW the announcement's program text was matched to the
+    PE (exact-name / designator-normalized / llm-alias / …). NULL when the
+    packet recorded none — the citation card says "basis not recorded" rather
+    than defaulting to the strongest basis.
     """
+    basis = _packet_value(packet, "match_basis")
     if method == "subaward+lexicon":
         sub = _packet_value(packet, "subaward_number")
         if not sub:
             return None
         # No canonical public URL for an FSRS subaward record, and no archived
         # copy: the id is the whole citation until one exists.
-        return (piid, pe, "subaward", sub, None, None, None, None)
-    aid = _packet_value(packet, "article_id")
-    if not aid:
-        return None
-    snap = manifest.get(aid, {})
-    return (piid, pe, "announcement", aid, ANN_URL.format(id=aid),
-            snap.get("archive_url"), snap.get("archived_at"), snap.get("sha256"))
+        return (piid, pe, "subaward", sub, None, None, None, None, basis)
+    elif method == "announcement+lexicon":
+        aid = _packet_value(packet, "article_id")
+        if not aid:
+            return None
+        snap = manifest.get(aid, {})
+        return (piid, pe, "announcement", aid, ANN_URL.format(id=aid),
+                snap.get("archive_url"), snap.get("archived_at"),
+                snap.get("sha256"), basis)
+    return None
 
 
 def main() -> int:
@@ -278,9 +295,18 @@ def main() -> int:
           f"({sum(1 for r in src_rows if r[2] == 'announcement')} announcement, "
           f"{sum(1 for r in src_rows if r[2] == 'subaward')} subaward); "
           f"with archived copy: {n_archived}; links with no source id: {no_source_id}")
+    # The citation card states this in words, so the distribution is worth
+    # seeing at load time: an announcement matched by 'llm-description' is a
+    # weaker claim than one matched by 'exact-name'.
+    basis_counts = {}
+    for r in src_rows:
+        basis_counts[(r[2], r[8])] = basis_counts.get((r[2], r[8]), 0) + 1
+    print("match_basis:", sorted(
+        ((k[0], k[1] or "(null)", v) for k, v in basis_counts.items()),
+        key=lambda t: (t[0], -t[2])))
     if dry:
         for r in rows[:3]: print("  sample:", r[0], r[4], r[5], "|", r[11][:110])
-        for r in src_rows[:3]: print("  source:", r[2], r[3], r[4], "|", (r[7] or "")[:16])
+        for r in src_rows[:3]: print("  source:", r[2], r[3], r[4], "|", (r[7] or "")[:16], "|", r[8])
         return 0
     with pg:
         cur = pg.cursor()
@@ -302,17 +328,21 @@ def main() -> int:
         cur.executemany(
             """insert into award_link_sources
                (award_piid, pe_bli, source_kind, source_id, source_url,
-                archive_url, archived_at, sha256)
-               values (%s,%s,%s,%s,%s,%s,%s,%s)
+                archive_url, archived_at, sha256, match_basis)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                on conflict (award_piid, pe_bli, source_kind, source_id) do update set
                  source_url=excluded.source_url, archive_url=excluded.archive_url,
-                 archived_at=excluded.archived_at, sha256=excluded.sha256""", src_rows)
+                 archived_at=excluded.archived_at, sha256=excluded.sha256,
+                 match_basis=excluded.match_basis""", src_rows)
     with psycopg.connect(DSN) as pg2:
         print("loaded:", pg2.execute("select method, confidence, count(*) from budget_line_awards"
                                      " where method in ('announcement+lexicon','subaward+lexicon') group by 1,2").fetchall())
         print("sources:", pg2.execute("select source_kind, count(*),"
                                       " count(archive_url), count(sha256)"
                                       " from award_link_sources group by 1 order by 1").fetchall())
+        print("sources by basis:", pg2.execute(
+            "select source_kind, coalesce(match_basis, '(null)'), count(*)"
+            " from award_link_sources group by 1,2 order by 1, 3 desc").fetchall())
     return 0
 
 

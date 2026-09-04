@@ -8,7 +8,8 @@
  * workbook   — sha256, sheet, cells, amount_thousands, units, official_url, retrieved_at
  * lda_filing — official_url (LDA JSON API URL, uuid embedded)
  * announcement — official_url (defense.gov article), query_body
- *              ({article_id, archive_url, sha256}), sha256 of the archived copy
+ *              ({article_id, archive_url, match_basis, sha256}), sha256 of the
+ *              archived copy, formula (the link's method + confidence tier)
  *
  * Zero-amount jbook facts (1,004): NO citations row — the fact_id+xml_path
  * live in jbook_details rows with resolution='zero_amount'. These render as

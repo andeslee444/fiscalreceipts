@@ -4,13 +4,21 @@
  * announcement-card.tsx — Display card for announcement citations (#71).
  *
  * The evidence behind an 'announcement+lexicon' budget→award link: a
- * defense.gov daily Contracts article that names BOTH the contract number and
- * the program. Shows:
+ * defense.gov daily Contracts article naming the contract, matched to a
+ * program on a recorded basis. Shows:
  *   - The article link (the durable public artifact)
  *   - The Wayback snapshot of the copy the verification actually read, when
  *     one exists — the article defense.gov serves today may differ
  *   - That copy's sha256, so the archived bytes are checkable
- *   - What the citation does and does not assert
+ *   - HOW the program was matched, in words (match_basis)
+ *   - The link's method and confidence tier (formula), as the derived row
+ *     this replaced used to state
+ *
+ * The match basis is load-bearing, not decoration. Only 'exact-name' means
+ * the announcement named the program as written — 190 of the 701 published
+ * links. The other 511 (194 matched through a normalised designator or an LLM
+ * judgement, 317 with no recorded basis) must not be shown a card claiming the
+ * announcement named the program.
  *
  * Archive fields are optional on purpose: not every article was archived, and
  * this card renders the absence rather than inventing a snapshot.
@@ -23,15 +31,45 @@ export interface AnnouncementBody {
   article_id: string;
   archive_url?: string | null;
   sha256?: string | null;
+  /** How the announcement's program text was matched to this PE; null when
+   *  the verification packet recorded no basis. */
+  match_basis?: string | null;
 }
 
 interface AnnouncementCardProps {
   url: string;
   body: AnnouncementBody;
+  /** The link's provenance sentence (crosswalk method + confidence tier),
+   *  carried over from the derived row this citation replaced. */
+  formula?: string | null;
 }
 
-export function AnnouncementCard({ url, body }: AnnouncementCardProps) {
+/**
+ * Reader-facing phrase for each match basis the pipeline emits. Every phrase
+ * completes the sentence "Matched by: …".
+ *
+ * An unrecognised token renders VERBATIM rather than falling back to a
+ * flattering default — a new basis added upstream must show up as an odd
+ * string a reader can report, never be silently relabelled as an exact match.
+ */
+const MATCH_BASIS_PHRASES: Record<string, string> = {
+  "exact-name": "exact program name",
+  "designator-normalized": "normalized designator",
+  "llm-alias": "LLM-judged alias",
+  "llm-designator-variant": "LLM-judged designator variant",
+  "llm-description": "LLM-judged description",
+  "subaward-description-exact": "exact subaward description",
+};
+
+export function matchBasisPhrase(basis: string | null | undefined): string {
+  const token = (basis ?? "").trim();
+  if (!token) return "basis not recorded";
+  return MATCH_BASIS_PHRASES[token] ?? token;
+}
+
+export function AnnouncementCard({ url, body, formula }: AnnouncementCardProps) {
   const sha = body.sha256 ?? null;
+  const basisPhrase = matchBasisPhrase(body.match_basis);
 
   return (
     <div
@@ -105,11 +143,38 @@ export function AnnouncementCard({ url, body }: AnnouncementCardProps) {
         </p>
       )}
 
+      {/* How the program was matched — the claim this citation actually
+          supports, which is weaker than "the announcement names it" for every
+          basis except the exact one. */}
+      <div className="space-y-0.5">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block">
+          Match basis
+        </span>
+        <p className="text-sm" data-testid="announcement-match-basis">
+          Matched by: {basisPhrase}
+        </p>
+      </div>
+
+      {/* Method + confidence tier, as the derived row this replaced stated */}
+      {formula && (
+        <div>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">
+            Link
+          </span>
+          <p
+            className="rounded bg-muted px-2.5 py-2 font-mono text-xs text-foreground break-words leading-relaxed"
+            data-testid="announcement-formula"
+          >
+            {formula}
+          </p>
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground leading-relaxed">
-        The announcement names both this contract and this program; the link to
-        the budget line is an inference from that naming, not a figure quoted
-        from the announcement. Contract dollars come from award data, not from
-        this article.
+        The announcement names this contract, and this award is linked to the
+        program on the basis above — an inference from that match, not a figure
+        quoted from the announcement. Contract dollars come from award data,
+        not from this article.
       </p>
     </div>
   );

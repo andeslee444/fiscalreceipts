@@ -877,6 +877,31 @@ def _verify_jbook_narrative(row: tuple, idx: dict) -> str | None:
     return None
 
 
+# Anchored URL shapes for kind='announcement'. Substring tests
+# ("defense.gov" in url) are the defect this file already documents at the LDA
+# leg above — they pass on any URL that merely mentions the host.
+_ANNOUNCEMENT_URL_RE = re.compile(
+    r"https://www\.defense\.gov/News/Contracts/Contract/Article/"
+    r"(?P<article_id>\d+)/?"
+)
+# The ARCHIVED target is whatever URL the crawler fetched, not a URL this
+# codebase minted, and the real 701-row corpus varies in two harmless ways:
+#   - tracking suffixes on 101 snapshots ('…/Article/1081980//',
+#     '…/Article/3763548/?ref=utahmoneywatch.com',
+#     '…/Article/968629/source/GovDelivery/')
+#   - path casing ('…/Contracts/contract/article/2661059/' on one)
+# Those all name the same article, so the target is matched by PREFIX and
+# case-insensitively — but the article id must still end on a path boundary,
+# or '…/Article/1006508evil.com/' would read as article 1006508. official_url,
+# which the loader mints itself, stays strictly anchored and cased.
+_ANNOUNCEMENT_URL_PREFIX_RE = re.compile(
+    r"https://www\.defense\.gov/News/Contracts/Contract/Article/"
+    r"(?P<article_id>\d+)(?:/|$)",
+    re.IGNORECASE,
+)
+_WAYBACK_URL_RE = re.compile(r"https://web\.archive\.org/web/\d{14}/")
+
+
 def _verify_announcement(row: tuple, idx: dict) -> str | None:
     """Verify an announcement citation (shape-only, no network) — ROADMAP #71.
 
@@ -886,12 +911,16 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
     article URL and the archived copy identified by query_body + sha256.
 
     Rules:
-    1. official_url is a defense.gov article URL.
+    1. official_url matches the defense.gov Contracts article URL pattern
+       EXACTLY (anchored, article id is digits).
     2. query_body is JSON carrying a non-empty article_id, and that article_id
-       appears in official_url (the body must describe the URL it ships with —
-       a mismatch means the row was assembled from two different articles).
-    3. archive_url, when present, is a web.archive.org URL naming the same
-       article. Absent is fine: not every article was archived, and a null is
+       is the id IN official_url (the body must describe the URL it ships with
+       — a mismatch means the row was assembled from two different articles).
+    3. archive_url, when present, is an anchored Wayback snapshot URL
+       (https://web.archive.org/web/{14-digit stamp}/…) whose archived target
+       is a defense.gov Contracts article with the SAME article id (tracking
+       suffixes on the target are tolerated — 101 of 701 real snapshots carry
+       one). Absent is fine: not every article was archived, and a null is
        the honest answer.
     4. sha256, when present, is 64 lowercase hex and equals the sha256 in
        query_body (one hash, two places, never two hashes).
@@ -905,9 +934,17 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
 
     if not official_url:
         return "announcement: official_url is null or empty"
-    if "defense.gov" not in str(official_url):
-        return (f"announcement: official_url is not a defense.gov article:"
-                f" {official_url!r}")
+    # ANCHORED, not a substring test. The 2026-08-29 LDA tightening at the top
+    # of this module is the precedent: `"defense.gov" in url` accepts
+    # https://evil.example.com/?x=defense.gov and any defense.gov path at all,
+    # including a search page or an API resource, so it verifies nothing a
+    # reader could act on. The article id is captured here so rule 2 compares
+    # ids rather than asking whether one string occurs anywhere in the other.
+    url_m = _ANNOUNCEMENT_URL_RE.fullmatch(str(official_url))
+    if not url_m:
+        return (f"announcement: official_url is not a defense.gov Contracts"
+                f" article URL: {official_url!r}")
+    url_article_id = url_m.group("article_id")
 
     if not query_body:
         return "announcement: query_body is null or empty"
@@ -921,16 +958,26 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
     article_id = str(body.get("article_id") or "").strip()
     if not article_id:
         return "announcement: query_body carries no article_id"
-    if article_id not in str(official_url):
-        return (f"announcement: article_id {article_id!r} does not appear in"
-                f" official_url {official_url!r}")
+    if article_id != url_article_id:
+        return (f"announcement: query_body article_id {article_id!r} is not the"
+                f" article in official_url ({url_article_id!r}):"
+                f" {official_url!r}")
 
     archive_url = body.get("archive_url")
     if archive_url:
-        if "web.archive.org" not in str(archive_url):
-            return (f"announcement: archive_url is not a Wayback snapshot:"
+        arc = str(archive_url)
+        wayback_m = _WAYBACK_URL_RE.match(arc)
+        if not wayback_m:
+            return (f"announcement: archive_url is not a Wayback snapshot"
+                    f" (https://web.archive.org/web/<14-digit stamp>/…):"
                     f" {archive_url!r}")
-        if article_id not in str(archive_url):
+        # The snapshot must be OF this article: what follows the Wayback stamp
+        # is the archived target, matched by prefix (see the regex comment).
+        target_m = _ANNOUNCEMENT_URL_PREFIX_RE.match(arc[wayback_m.end():])
+        if not target_m:
+            return (f"announcement: archive_url does not snapshot a defense.gov"
+                    f" Contracts article: {archive_url!r}")
+        if target_m.group("article_id") != article_id:
             return (f"announcement: archive_url does not name article"
                     f" {article_id!r}: {archive_url!r}")
 

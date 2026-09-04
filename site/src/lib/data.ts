@@ -1798,15 +1798,25 @@ export interface JbookNarrativeCitation
 }
 
 /**
- * announcement — a defense.gov daily Contracts article that names BOTH the
- * contract number and the program, the evidence behind an
- * 'announcement+lexicon' budget→award crosswalk link (ROADMAP #71).
+ * announcement — a defense.gov daily Contracts article naming the contract
+ * behind an 'announcement+lexicon' budget→award crosswalk link (ROADMAP #71).
  *
  * official_url is the article URL; query_body is a JSON string
- * {article_id, archive_url, sha256} describing the ARCHIVED copy the
- * verification waves actually read, so the citation survives defense.gov
+ * {article_id, archive_url, match_basis, sha256} describing the ARCHIVED copy
+ * the verification waves actually read, so the citation survives defense.gov
  * reorganising its site. sha256 is that copy's hash, mirrored in query_body.
  * Both archive fields are null when no snapshot was taken (never invented).
+ *
+ * match_basis says HOW the announcement's program text was matched to this PE
+ * — 'exact-name' | 'designator-normalized' | 'llm-alias' |
+ * 'llm-designator-variant' | 'llm-description', or null when the verification
+ * packet recorded none. Only the exact basis means the announcement named the
+ * program as written, so the card states the basis in words rather than
+ * asserting the strongest reading for all of them.
+ *
+ * formula is the link's provenance sentence (crosswalk method + confidence
+ * tier) carried over from the derived row this citation replaces — the
+ * announcement supersedes that row's evidence, not its statement of method.
  *
  * recorded_value is null: the cited fact is the LINK itself, not a figure —
  * link dollars live at award grain.
@@ -1818,7 +1828,9 @@ export interface AnnouncementCitation
   official_url: string;
   query_body: string;
   recorded_value: null;
-  formula: null;
+  /** The crosswalk method + confidence tier; null on rows exported before the
+   *  formula was carried across. */
+  formula: string | null;
   inputs: null;
   /** The archived copy's sha256; null when the article was never archived. */
   sha256: string | null;

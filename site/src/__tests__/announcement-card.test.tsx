@@ -16,13 +16,17 @@ import React from "react";
 
 import { AnnouncementCard } from "@/components/citation-panel/announcement-card";
 import { isAnnouncement } from "@/lib/citations";
-import type { Citation } from "@/lib/data";
+import type { AnnouncementCitation, Citation } from "@/lib/data";
 
 const ARTICLE_URL =
   "https://www.defense.gov/News/Contracts/Contract/Article/1006508/";
 const ARCHIVE_URL =
   "https://web.archive.org/web/20250510074748/" + ARTICLE_URL;
 const SHA = "a".repeat(64);
+const FORMULA =
+  "crosswalk link: pe_bli=0601101E matched to award PIID HR001124C0001" +
+  " via method='announcement+lexicon', confidence='high'" +
+  " (dollars live at award grain in fct_award_transactions)";
 
 describe("AnnouncementCard", () => {
   it("renders the defense.gov article link under the announcement kind", () => {
@@ -102,16 +106,129 @@ describe("AnnouncementCard", () => {
     );
     expect(container.textContent).toContain("inference");
   });
+
+  it("never claims the announcement names the program", () => {
+    // The sentence this replaced ("The announcement names both this contract
+    // and this program") was false for every basis except exact-name — 511 of
+    // the 701 published links.
+    const { container } = render(
+      <AnnouncementCard
+        url={ARTICLE_URL}
+        body={{
+          article_id: "1006508",
+          archive_url: ARCHIVE_URL,
+          sha256: SHA,
+          match_basis: "llm-description",
+        }}
+      />,
+    );
+    expect(container.textContent).not.toContain("names both this contract");
+    expect(container.textContent).toContain("names this contract");
+    expect(container.textContent).toContain("Matched by: LLM-judged description");
+  });
+
+  it("renders the link's method and confidence tier when the row carries it", () => {
+    const { container } = render(
+      <AnnouncementCard
+        url={ARTICLE_URL}
+        body={{ article_id: "1006508", archive_url: null, sha256: null }}
+        formula={FORMULA}
+      />,
+    );
+    const el = container.querySelector('[data-testid="announcement-formula"]');
+    expect(el).not.toBeNull();
+    expect(el!.textContent).toContain("announcement+lexicon");
+    expect(el!.textContent).toContain("'high'");
+  });
+
+  it("renders no method block when the row carries no formula", () => {
+    const { container } = render(
+      <AnnouncementCard
+        url={ARTICLE_URL}
+        body={{ article_id: "1006508", archive_url: null, sha256: null }}
+      />,
+    );
+    expect(
+      container.querySelector('[data-testid="announcement-formula"]'),
+    ).toBeNull();
+  });
+});
+
+describe("AnnouncementCard match basis", () => {
+  const basisText = (match_basis: string | null | undefined) => {
+    const { container } = render(
+      <AnnouncementCard
+        url={ARTICLE_URL}
+        body={{
+          article_id: "1006508",
+          archive_url: ARCHIVE_URL,
+          sha256: SHA,
+          match_basis,
+        }}
+      />,
+    );
+    return container.querySelector('[data-testid="announcement-match-basis"]')!
+      .textContent;
+  };
+
+  // One case per basis the pipeline emits — a token that fell through to a
+  // flattering default would be an overclaim on a real citation.
+  it("says 'exact program name' for exact-name", () => {
+    expect(basisText("exact-name")).toBe("Matched by: exact program name");
+  });
+
+  it("says 'normalized designator' for designator-normalized", () => {
+    expect(basisText("designator-normalized")).toBe(
+      "Matched by: normalized designator",
+    );
+  });
+
+  it("says 'LLM-judged alias' for llm-alias", () => {
+    expect(basisText("llm-alias")).toBe("Matched by: LLM-judged alias");
+  });
+
+  it("says 'LLM-judged designator variant' for llm-designator-variant", () => {
+    expect(basisText("llm-designator-variant")).toBe(
+      "Matched by: LLM-judged designator variant",
+    );
+  });
+
+  it("says 'LLM-judged description' for llm-description", () => {
+    expect(basisText("llm-description")).toBe(
+      "Matched by: LLM-judged description",
+    );
+  });
+
+  it("says 'exact subaward description' for subaward-description-exact", () => {
+    expect(basisText("subaward-description-exact")).toBe(
+      "Matched by: exact subaward description",
+    );
+  });
+
+  it("says 'basis not recorded' when the packet recorded none", () => {
+    // 317 of the 701 published links — the loader's rationale prose defaults
+    // an absent basis to 'exact-name'; the card must not.
+    expect(basisText(null)).toBe("Matched by: basis not recorded");
+    expect(basisText(undefined)).toBe("Matched by: basis not recorded");
+    expect(basisText("   ")).toBe("Matched by: basis not recorded");
+  });
+
+  it("shows an unknown basis verbatim instead of relabelling it", () => {
+    expect(basisText("some-future-basis")).toBe("Matched by: some-future-basis");
+  });
 });
 
 describe("announcement citation kind", () => {
-  const ANNOUNCEMENT_CITATION = {
+  // Typed as AnnouncementCitation, not `as unknown as Citation`: the cast
+  // defeated the very interface this fixture is supposed to exercise, so a
+  // field the exporter stopped emitting would not have shown up here.
+  const ANNOUNCEMENT_CITATION: AnnouncementCitation = {
     kind: "announcement",
     amount_text: null,
     amount_thousands: null,
     bottom_pt: null,
     cells: null,
-    formula: null,
+    formula: FORMULA,
     hosted_pdf_url: null,
     inputs: null,
     official_url: ARTICLE_URL,
@@ -121,6 +238,7 @@ describe("announcement citation kind", () => {
     query_body: JSON.stringify({
       archive_url: ARCHIVE_URL,
       article_id: "1006508",
+      match_basis: "designator-normalized",
       sha256: SHA,
     }),
     recorded_value: null,
@@ -133,13 +251,22 @@ describe("announcement citation kind", () => {
     x0: null,
     x1: null,
     xml_path: null,
-  } as unknown as Citation;
+  };
 
   it("is recognised by the type guard the panel dispatches on", () => {
     expect(isAnnouncement(ANNOUNCEMENT_CITATION)).toBe(true);
-    expect(
-      isAnnouncement({ ...ANNOUNCEMENT_CITATION, kind: "derived" } as Citation),
-    ).toBe(false);
+    // The negative case is a real DerivedCitation (the tier these rows were
+    // promoted out of), not the announcement fixture with its kind swapped —
+    // that object satisfies neither interface.
+    const derived: Citation = {
+      ...ANNOUNCEMENT_CITATION,
+      kind: "derived",
+      formula: FORMULA,
+      inputs: "[]",
+      recorded_value: "high",
+      sha256: null,
+    };
+    expect(isAnnouncement(derived)).toBe(false);
   });
 
   it("carries a footnote source label (no fall-through to an unlabelled tier)", async () => {

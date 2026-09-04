@@ -6188,27 +6188,32 @@ def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
     derived row (an "official DoD contract announcement" card would be false
     for an FSRS sub's description), so their rows are provenance-only here.
 
-    Never fails export: an unreachable DB or a pre-012 schema → {}.
+    RAISES on failure, deliberately (fix round 1). This read used to swallow
+    every exception and return {} — a dead DB, a pre-012 schema, a truncated
+    table or a loader never re-run then produced a clean green export in which
+    all 701 announcement links had quietly reverted to generic derived rows,
+    indistinguishable from a correct one. Every other Postgres read in this
+    module is unguarded and raises; so is this one. See the missing-source
+    check in _build_budget_to_awards_citation_rows for the other half.
     """
     import psycopg
 
-    try:
-        with psycopg.connect(dsn) as pg:
-            rows = pg.execute(
-                "select award_piid, pe_bli, source_id, source_url,"
-                " archive_url, sha256 from award_link_sources"
-                " where source_kind = 'announcement'"
-            ).fetchall()
-    except Exception:
-        return {}
+    with psycopg.connect(dsn) as pg:
+        rows = pg.execute(
+            "select award_piid, pe_bli, source_id, source_url,"
+            " archive_url, sha256, match_basis from award_link_sources"
+            " where source_kind = 'announcement'"
+        ).fetchall()
     return {
         (piid, pe): {
             "source_id": source_id,
             "source_url": source_url,
             "archive_url": archive_url,
             "sha256": sha256,
+            "match_basis": match_basis,
         }
-        for piid, pe, source_id, source_url, archive_url, sha256 in rows
+        for piid, pe, source_id, source_url, archive_url, sha256, match_basis
+        in rows
     }
 
 
@@ -6222,13 +6227,22 @@ def _build_budget_to_awards_citation_rows(
       surface='budget_to_awards', key='{pe_bli}|{award_piid}', metric='link'.
 
     Announcement tier (ROADMAP #71): a link published via
-    method='announcement+lexicon' whose award_link_sources row carries a
-    defense.gov article URL mints kind='announcement' instead — the article
+    method='announcement+lexicon' mints kind='announcement' instead, its
+    award_link_sources row supplying the defense.gov article URL — the article
     IS the evidence, and a reader clicking that receipt should land on it, not
-    on a formula restating the method name. Every other method (including
-    'subaward+lexicon', whose evidence is an FSRS sub's description rather
-    than a DoD announcement) keeps the derived row below, as does an
-    announcement link with no source row — never a fabricated URL.
+    on a formula restating the method name. It keeps the derived row's formula
+    (so the card can still state the link's method and confidence tier) and
+    adds the source row's match_basis, which the card renders in words. Every
+    other method (including 'subaward+lexicon', whose evidence is an FSRS
+    sub's description rather than a DoD announcement) keeps the derived row.
+
+    RAISES when the mart holds an 'announcement+lexicon' link with no usable
+    source row (fix round 1). Falling back to the derived row for those links
+    made an out-of-step pipeline — migration unapplied, loader never re-run,
+    table truncated, Postgres pointed elsewhere — export green and silently
+    worse than the previous export. An export must fail until the loader has
+    run. (A link with a source row but no URL raises too: there is no honest
+    announcement citation to mint, and no fabricated URL is ever minted.)
 
     The fact_id is minted identically either way, so the flip cannot move a
     single program-page `data-fact-id` (gate 2's Cite-state contract).
@@ -6280,6 +6294,26 @@ def _build_budget_to_awards_citation_rows(
     if not link_rows:
         return rows
 
+    # Loud failure: every announcement+lexicon link in the mart must have a
+    # source row carrying a URL. Missing rows mean the loader has not run
+    # against this database (or the schema predates migration 012) — the one
+    # state in which the old code produced a clean, quietly degraded export.
+    sources = link_sources or {}
+    missing = sorted({
+        (piid, pe) for pe, piid, _org, mth, _conf in link_rows
+        if mth == "announcement+lexicon" and pe and piid
+        and not (sources.get((piid, pe)) or {}).get("source_url")
+    })
+    if missing:
+        raise RuntimeError(
+            f"{len(missing)} 'announcement+lexicon' link(s) in"
+            " fct_budget_to_awards have no award_link_sources row with a"
+            f" source_url (e.g. {missing[:3]}). Apply migrations and re-run"
+            " scripts/load_announcement_links.py before exporting — without"
+            " it these links would silently revert to generic derived"
+            " citation rows and the export would look correct (ROADMAP #71)."
+        )
+
     # Budget-side inputs: (pe_bli, workbook org) → budget_lines fact_ids.
     # bl_rows cols: (fact_id, exhibit, fiscal_year, account, account_title,
     #   organization, budget_activity, budget_activity_title, pe_bli, title,
@@ -6303,16 +6337,30 @@ def _build_budget_to_awards_citation_rows(
 
         fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
 
-        # Announcement tier: the defense.gov article itself, when this link
-        # was published from one AND we hold its source row.
-        src = (link_sources or {}).get((award_piid, pe_bli))
-        if method == "announcement+lexicon" and src and src.get("source_url"):
+        # The link's own provenance sentence — method + confidence tier. Both
+        # tiers carry it: the announcement row would otherwise drop the only
+        # place the panel states HOW the link was made and how strong it is.
+        formula = (
+            f"crosswalk link: pe_bli={pe_bli} matched to award PIID"
+            f" {award_piid} via method={method!r}, confidence={confidence!r}"
+            f" (dollars live at award grain in fct_award_transactions)"
+        )
+
+        # Announcement tier: the defense.gov article itself. The missing-source
+        # check above guarantees a source row with a URL for every
+        # announcement+lexicon link, so these subscripts are unguarded on
+        # purpose — if that invariant ever broke, an exception is the right
+        # outcome, not a silent fall-through to the derived row.
+        if method == "announcement+lexicon":
+            src = sources[(award_piid, pe_bli)]
             rows.append(_announcement_row(
                 fid,
                 article_id=str(src.get("source_id") or ""),
                 url=src["source_url"],
                 archive_url=src.get("archive_url"),
                 sha256=src.get("sha256"),
+                match_basis=src.get("match_basis"),
+                formula=formula,
             ))
             continue
 
@@ -6325,12 +6373,6 @@ def _build_budget_to_awards_citation_rows(
             "filters": {"award_ids": [award_piid]},
             "version": "2020-06-01",
         }, sort_keys=True)
-
-        formula = (
-            f"crosswalk link: pe_bli={pe_bli} matched to award PIID"
-            f" {award_piid} via method={method!r}, confidence={confidence!r}"
-            f" (dollars live at award grain in fct_award_transactions)"
-        )
 
         rows.append(_null_derived_row(
             fid, "derived", None,
@@ -9817,25 +9859,40 @@ def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
 
 
 def _announcement_row(fid: str, *, article_id: str, url: str,
-                      archive_url: str | None, sha256: str | None) -> tuple:
+                      archive_url: str | None, sha256: str | None,
+                      match_basis: str | None = None,
+                      formula: str | None = None) -> tuple:
     """Build a 27-element citation row for kind='announcement' (ROADMAP #71).
 
-    Cites the defense.gov daily Contracts article that names BOTH the contract
-    number and the program — the actual evidence behind an
+    Cites the defense.gov daily Contracts article behind an
     'announcement+lexicon' crosswalk link, which until now could only show the
     reader a generic derived row.
+
+    What the article establishes depends on match_basis. Only 'exact-name'
+    means the announcement named the program as written, and that is 190 of
+    the 701 published links: 194 matched through a normalised designator or an
+    LLM judgement ('designator-normalized', 'llm-alias',
+    'llm-designator-variant', 'llm-description') and 317 recorded no basis at
+    all. The basis rides in query_body so the card can state it in words
+    instead of asserting the strongest reading for every link.
 
     Same 27-column layout as _null_usaspending_row:
       official_url = the defense.gov article URL (the durable public artifact)
       sha256       = the archived copy's hash (null when nothing was archived)
-      query_body   = {article_id, archive_url, sha256} — the Wayback snapshot
-                     of the copy the verification waves actually read, so the
-                     citation survives defense.gov reorganising its site.
+      formula      = the link's provenance sentence (method + confidence
+                     tier), identical to the one the derived row carries — the
+                     announcement replaces the derived row's evidence, not its
+                     statement of how the link was made
+      query_body   = {article_id, archive_url, match_basis, sha256} — the
+                     Wayback snapshot of the copy the verification waves
+                     actually read, so the citation survives defense.gov
+                     reorganising its site, plus how the program was matched.
       recorded_value is None: the cited fact is the LINK, not a dollar figure
       (link dollars live at award grain in fct_award_transactions).
     """
     body = json.dumps({"article_id": article_id, "archive_url": archive_url,
-                       "sha256": sha256}, sort_keys=True)
+                       "match_basis": match_basis, "sha256": sha256},
+                      sort_keys=True)
     return (
         fid, "announcement", None,
         None,   # amount_text
@@ -9849,7 +9906,7 @@ def _announcement_row(fid: str, *, article_id: str, url: str,
         url,    # official_url
         None,   # xml_path
         None,   # retrieved_at
-        None,   # formula
+        formula,
         None,   # inputs
         body,   # query_body
         None,   # recorded_value

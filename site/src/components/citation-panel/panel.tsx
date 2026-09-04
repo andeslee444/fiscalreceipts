@@ -588,6 +588,9 @@ function parseAnnouncementBody(raw: string | null): AnnouncementBody | null {
       article_id: parsed.article_id,
       archive_url: parsed.archive_url ?? null,
       sha256: parsed.sha256 ?? null,
+      // Absent basis stays absent: the card says "basis not recorded" rather
+      // than defaulting to the strongest match it could have been.
+      match_basis: parsed.match_basis ?? null,
     };
   } catch {
     return null;
@@ -641,7 +644,13 @@ function CitationBody({
         </p>
       );
     }
-    return <AnnouncementCard url={citation.official_url} body={body} />;
+    return (
+      <AnnouncementCard
+        url={citation.official_url}
+        body={body}
+        formula={citation.formula}
+      />
+    );
   }
   // Should never reach here — exhaustive guard
   return (

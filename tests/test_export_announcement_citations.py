@@ -12,11 +12,16 @@ Scope rulings pinned here:
     hop removed (an FSRS sub's description, not a defense.gov article), so
     they keep the generic derived row — an announcement card claiming
     "Official DoD contract announcement" would be false for them.
-  - Fact-id minting is untouched: the same (pe_bli, award_piid) links mint the
-    same fact_ids whether or not a source row exists, so every program-page
-    `data-fact-id` resolves exactly as before.
+  - Fact-id minting is untouched: the announcement rows mint the same fact_ids
+    the derived rows did, so every program-page `data-fact-id` resolves
+    exactly as before.
   - A link with no `award_link_sources` row (or a source row with no URL)
-    falls back to the derived row — never a fabricated citation.
+    FAILS THE EXPORT (fix round 1). It used to fall back to the derived row,
+    which turned an out-of-step pipeline into a clean green export that was
+    silently worse than the last one.
+  - `match_basis` rides from packet → table → query_body → card, because only
+    the 'exact-name' basis means the announcement named the program as
+    written.
 """
 from __future__ import annotations
 
@@ -25,6 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from govbudget.export_site import (
     _announcement_row,
@@ -52,6 +58,11 @@ _ARCHIVE_URL = (
     "https://www.defense.gov/News/Contracts/Contract/Article/1006508/"
 )
 _SHA = "ff" * 32
+_FORMULA = (
+    "crosswalk link: pe_bli=0601101E matched to award PIID HR001124C0001"
+    " via method='announcement+lexicon', confidence='high'"
+    " (dollars live at award grain in fct_award_transactions)"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -73,15 +84,18 @@ def test_announcement_row_column_positions():
     """sha256/official_url/query_body sit where citations.parquet expects them."""
     row = _announcement_row("abcd1234abcd1234", article_id="1006508",
                             url=_ARTICLE_URL,
-                            archive_url=_ARCHIVE_URL, sha256=_SHA)
+                            archive_url=_ARCHIVE_URL, sha256=_SHA,
+                            match_basis="exact-name", formula=_FORMULA)
     assert row[_CIT_IDX["fact_id"]] == "abcd1234abcd1234"
     assert row[_CIT_IDX["kind"]] == "announcement"
     assert row[_CIT_IDX["sha256"]] == _SHA
     assert row[_CIT_IDX["official_url"]] == _ARTICLE_URL
+    assert row[_CIT_IDX["formula"]] == _FORMULA
     body = json.loads(row[_CIT_IDX["query_body"]])
     assert body == {
         "archive_url": _ARCHIVE_URL,
         "article_id": "1006508",
+        "match_basis": "exact-name",
         "sha256": _SHA,
     }
     # The cited fact is the LINK, not a dollar figure — no recorded value,
@@ -89,7 +103,6 @@ def test_announcement_row_column_positions():
     assert row[_CIT_IDX["recorded_value"]] is None
     assert row[_CIT_IDX["amount_text"]] is None
     assert row[_CIT_IDX["amount_thousands"]] is None
-    assert row[_CIT_IDX["formula"]] is None
     assert row[_CIT_IDX["page_number"]] is None
 
 
@@ -102,6 +115,18 @@ def test_announcement_row_missing_archive_is_null_not_invented():
     assert body["archive_url"] is None
     assert body["sha256"] is None
     assert body["article_id"] == "1006508"
+
+
+def test_announcement_row_unrecorded_basis_is_null_not_the_strongest_one():
+    """An absent match_basis must reach the card as null, not 'exact-name'.
+
+    The loader's rationale prose defaults an absent basis to 'exact-name';
+    the citation must not, or ~397 links would read as verbatim name matches
+    on the strength of a default.
+    """
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL, archive_url=None, sha256=None)
+    assert json.loads(row[_CIT_IDX["query_body"]])["match_basis"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +164,7 @@ _LINK_SOURCES = {
         "source_url": _ARTICLE_URL,
         "archive_url": _ARCHIVE_URL,
         "sha256": _SHA,
+        "match_basis": "llm-alias",
     },
 }
 
@@ -160,6 +186,33 @@ def test_announcement_link_gets_announcement_row(tmp_path):
     assert json.loads(ann[_CIT_IDX["query_body"]])["article_id"] == "1006508"
 
 
+def test_announcement_row_carries_the_match_basis_and_the_link_formula(tmp_path):
+    """The card can only be honest if both reach it (fix round 1)."""
+    rows = _build_budget_to_awards_citation_rows(
+        duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
+        link_sources=_LINK_SOURCES,
+    )
+    ann = next(r for r in rows if r[_CIT_IDX["fact_id"]] == _ANN_FID)
+    assert json.loads(ann[_CIT_IDX["query_body"]])["match_basis"] == "llm-alias"
+    formula = ann[_CIT_IDX["formula"]]
+    # The same provenance sentence the derived row carried: method + tier.
+    assert "announcement+lexicon" in formula
+    assert "'high'" in formula
+    assert "0601101E" in formula and "HR001124C0001" in formula
+
+
+def test_announcement_row_records_no_basis_when_the_source_row_has_none(tmp_path):
+    rows = _build_budget_to_awards_citation_rows(
+        duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
+        link_sources={("HR001124C0001", "0601101E"): {
+            "source_id": "1006508", "source_url": _ARTICLE_URL,
+            "archive_url": None, "sha256": None, "match_basis": None,
+        }},
+    )
+    ann = next(r for r in rows if r[_CIT_IDX["fact_id"]] == _ANN_FID)
+    assert json.loads(ann[_CIT_IDX["query_body"]])["match_basis"] is None
+
+
 def test_subaward_and_mechanical_links_keep_the_derived_row(tmp_path):
     """Ruling: only announcement+lexicon flips — the card says 'defense.gov'."""
     rows = _build_budget_to_awards_citation_rows(
@@ -174,37 +227,80 @@ def test_subaward_and_mechanical_links_keep_the_derived_row(tmp_path):
     assert "subaward+lexicon" in by_fid[_SUB_FID][_CIT_IDX["formula"]]
 
 
-def test_fact_ids_unchanged_by_the_kind_flip(tmp_path):
-    """Gate 2's Cite-state contract: program-page data-fact-ids must not move."""
-    db = _make_b2a_duckdb(tmp_path)
-    before = {r[_CIT_IDX["fact_id"]] for r in
-              _build_budget_to_awards_citation_rows(duckdb_path=db, bl_rows=[])}
-    after = {r[_CIT_IDX["fact_id"]] for r in
-             _build_budget_to_awards_citation_rows(
-                 duckdb_path=db, bl_rows=[], link_sources=_LINK_SOURCES)}
-    assert before == after == {_ANN_FID, _SUB_FID, _ACC_FID}
+def test_fact_ids_are_the_derived_ids_the_program_pages_already_reference(tmp_path):
+    """Gate 2's Cite-state contract: program-page data-fact-ids must not move.
 
-
-def test_announcement_link_without_a_source_row_falls_back_to_derived(tmp_path):
-    """No award_link_sources row → the generic derived row, never a fake URL."""
-    rows = _build_budget_to_awards_citation_rows(
-        duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[], link_sources={},
-    )
-    by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
-    assert by_fid[_ANN_FID][_CIT_IDX["kind"]] == "derived"
-    assert all(r[_CIT_IDX["kind"]] == "derived" for r in rows)
-
-
-def test_source_row_without_a_url_falls_back_to_derived(tmp_path):
+    Compared against fact_id_derived directly rather than against a
+    no-source-rows run, because that run now (correctly) raises.
+    """
     rows = _build_budget_to_awards_citation_rows(
         duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
-        link_sources={("HR001124C0001", "0601101E"): {
-            "source_id": "1006508", "source_url": None,
-            "archive_url": None, "sha256": None,
-        }},
+        link_sources=_LINK_SOURCES,
     )
-    by_fid = {r[_CIT_IDX["fact_id"]]: r for r in rows}
-    assert by_fid[_ANN_FID][_CIT_IDX["kind"]] == "derived"
+    assert {r[_CIT_IDX["fact_id"]] for r in rows} == {
+        _ANN_FID, _SUB_FID, _ACC_FID}
+    # and the flipped link keeps the id its derived row had
+    ann = next(r for r in rows if r[_CIT_IDX["kind"]] == "announcement")
+    assert ann[_CIT_IDX["fact_id"]] == fact_id_derived(
+        "budget_to_awards", "0601101E|HR001124C0001", "link")
+
+
+def test_announcement_link_without_a_source_row_fails_the_export(tmp_path):
+    """Loud failure: an unloaded award_link_sources must not export green.
+
+    This is the silent-degradation branch. Before the fix an empty source map
+    produced a complete, correct-looking export in which every announcement
+    link had quietly reverted to a generic derived row.
+    """
+    with pytest.raises(RuntimeError) as exc:
+        _build_budget_to_awards_citation_rows(
+            duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[], link_sources={},
+        )
+    msg = str(exc.value)
+    assert "1 'announcement+lexicon' link" in msg
+    assert "load_announcement_links.py" in msg
+
+
+def test_announcement_link_with_no_source_map_at_all_fails_the_export(tmp_path):
+    """The default (link_sources=None) is not an escape hatch either."""
+    with pytest.raises(RuntimeError):
+        _build_budget_to_awards_citation_rows(
+            duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
+        )
+
+
+def test_source_row_without_a_url_fails_the_export(tmp_path):
+    """A source row with no URL has no article to cite — also loud."""
+    with pytest.raises(RuntimeError):
+        _build_budget_to_awards_citation_rows(
+            duckdb_path=_make_b2a_duckdb(tmp_path), bl_rows=[],
+            link_sources={("HR001124C0001", "0601101E"): {
+                "source_id": "1006508", "source_url": None,
+                "archive_url": None, "sha256": None, "match_basis": None,
+            }},
+        )
+
+
+def test_a_mart_with_no_announcement_links_needs_no_source_rows(tmp_path):
+    """Proof the raise is scoped: mechanical links alone still export."""
+    db_path = tmp_path / "no_ann.duckdb"
+    con = duckdb.connect(str(db_path))
+    con.execute(
+        "CREATE TABLE fct_budget_to_awards ("
+        "  pe_bli varchar, exhibit varchar, fiscal_year integer,"
+        "  organization varchar, award_piid varchar, recipient_name varchar,"
+        "  recipient_uei varchar, method varchar, confidence varchar,"
+        "  program_title varchar)"
+    )
+    con.execute(
+        "INSERT INTO fct_budget_to_awards VALUES "
+        "('0602303E', 'R-2', 2026, 'Army', 'W911NF24C0002', 'GAMMA INC',"
+        " 'UEI3', 'account+tokens', 'high', 'Army Research')"
+    )
+    con.close()
+    rows = _build_budget_to_awards_citation_rows(
+        duckdb_path=db_path, bl_rows=[], link_sources={})
+    assert [r[_CIT_IDX["kind"]] for r in rows] == ["derived"]
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +350,103 @@ def test_verify_announcement_fails_on_a_malformed_sha256():
     assert "sha256" in reason
 
 
+@pytest.mark.parametrize("bad_url", [
+    # the substring check `"defense.gov" in url` passed every one of these
+    "https://evil.example.com/?ref=defense.gov&id=1006508",
+    "https://www.defense.gov/Search/?q=1006508",
+    "https://www.defense.gov/News/Contracts/Contract/Article/1006508/extra",
+    "http://www.defense.gov/News/Contracts/Contract/Article/1006508/",
+    "https://defense.gov/News/Contracts/Contract/Article/1006508/",
+])
+def test_verify_announcement_rejects_urls_the_substring_check_accepted(bad_url):
+    """Proof-it-can-fail: the anchored pattern, not `'defense.gov' in url`."""
+    row = list(_announcement_row("abcd1234abcd1234", article_id="1006508",
+                                 url=_ARTICLE_URL, archive_url=None,
+                                 sha256=None))
+    row[_CIT_IDX["official_url"]] = bad_url
+    reason = _verify_announcement(tuple(row), _CIT_IDX)
+    assert reason is not None
+    assert "official_url" in reason
+
+
+@pytest.mark.parametrize("bad_archive", [
+    "https://evil.example.com/web.archive.org/1006508",
+    "https://web.archive.org/1006508",                       # no /web/ stamp
+    "https://web.archive.org/web/2025/" + _ARTICLE_URL,      # stamp too short
+    "https://web.archive.org/web/20250510074748/https://example.com/1006508",
+])
+def test_verify_announcement_rejects_weak_archive_urls(bad_archive):
+    """Anchored Wayback pattern; the snapshot target must be the article."""
+    row = list(_announcement_row("abcd1234abcd1234", article_id="1006508",
+                                 url=_ARTICLE_URL, archive_url=_ARCHIVE_URL,
+                                 sha256=None))
+    body = json.loads(row[_CIT_IDX["query_body"]])
+    body["archive_url"] = bad_archive
+    row[_CIT_IDX["query_body"]] = json.dumps(body, sort_keys=True)
+    reason = _verify_announcement(tuple(row), _CIT_IDX)
+    assert reason is not None
+    assert "archive_url" in reason
+
+
+@pytest.mark.parametrize("suffix", [
+    "/", "?ref=utahmoneywatch.com", "source/GovDelivery/",
+])
+def test_verify_announcement_tolerates_tracking_suffixes_on_the_snapshot(suffix):
+    """The archived target is whatever the crawler fetched.
+
+    101 of the 701 real snapshots carry a trailing '/', a '?ref=' query or a
+    '/source/GovDelivery/' segment. They are the same article, and anchoring
+    the TARGET as strictly as official_url would fail every one of them.
+    """
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL,
+                            archive_url=_ARCHIVE_URL + suffix, sha256=None)
+    assert _verify_announcement(row, _CIT_IDX) is None
+
+
+def test_verify_announcement_tolerates_snapshot_path_casing():
+    """One real snapshot is '…/Contracts/contract/article/2661059/'."""
+    lower = ("https://web.archive.org/web/20250630111639/"
+             "https://www.defense.gov/News/Contracts/contract/article/2661059/")
+    row = _announcement_row(
+        "abcd1234abcd1234", article_id="2661059",
+        url="https://www.defense.gov/News/Contracts/Contract/Article/2661059/",
+        archive_url=lower, sha256=None)
+    assert _verify_announcement(row, _CIT_IDX) is None
+
+
+def test_verify_announcement_rejects_a_lookalike_article_segment():
+    """Tolerating suffixes must not tolerate '…/Article/1006508evil.com/'."""
+    bad = ("https://web.archive.org/web/20250510074748/"
+           "https://www.defense.gov/News/Contracts/Contract/Article/"
+           "1006508evil.com/")
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL, archive_url=bad, sha256=None)
+    reason = _verify_announcement(row, _CIT_IDX)
+    assert reason is not None
+    assert "archive_url" in reason
+
+
+def test_verify_announcement_fails_when_the_snapshot_is_of_another_article():
+    other = ("https://web.archive.org/web/20250510074748/"
+             "https://www.defense.gov/News/Contracts/Contract/Article/9999999/")
+    row = list(_announcement_row("abcd1234abcd1234", article_id="1006508",
+                                 url=_ARTICLE_URL, archive_url=other,
+                                 sha256=None))
+    reason = _verify_announcement(tuple(row), _CIT_IDX)
+    assert reason is not None
+    assert "does not name article" in reason
+
+
+def test_verify_announcement_accepts_a_row_carrying_basis_and_formula():
+    """The fix round's new fields must not fail the gate."""
+    row = _announcement_row("abcd1234abcd1234", article_id="1006508",
+                            url=_ARTICLE_URL, archive_url=_ARCHIVE_URL,
+                            sha256=_SHA, match_basis="llm-description",
+                            formula=_FORMULA)
+    assert _verify_announcement(row, _CIT_IDX) is None
+
+
 # ---------------------------------------------------------------------------
 # scripts/load_announcement_links.py — the award_link_sources writer
 # ---------------------------------------------------------------------------
@@ -282,17 +475,20 @@ def test_load_snapshot_manifest_missing_file_is_empty(tmp_path):
 def test_source_row_for_an_announcement_link(tmp_path):
     manifest = {"1006508": {"archive_url": _ARCHIVE_URL,
                             "archived_at": None, "sha256": _SHA}}
-    row = source_row("HR001124C0001", "0601101E", {"article_id": "1006508"},
+    row = source_row("HR001124C0001", "0601101E",
+                     {"article_id": "1006508", "match_basis": "exact-name"},
                      "announcement+lexicon", manifest)
     assert row == ("HR001124C0001", "0601101E", "announcement", "1006508",
-                   _ARTICLE_URL, _ARCHIVE_URL, None, _SHA)
+                   _ARTICLE_URL, _ARCHIVE_URL, None, _SHA, "exact-name")
 
 
 def test_source_row_for_an_unarchived_announcement_has_null_archive_fields():
     row = source_row("HR001124C0001", "0601101E", {"article_id": "1006508"},
                      "announcement+lexicon", {})
     assert row[4] == _ARTICLE_URL
-    assert row[5:] == (None, None, None)
+    # archive_url, archived_at, sha256, match_basis all absent — never
+    # defaulted to the strongest basis the packet could have carried.
+    assert row[5:] == (None, None, None, None)
 
 
 def test_source_row_for_a_subaward_link_records_the_subaward_number():
@@ -302,7 +498,28 @@ def test_source_row_for_a_subaward_link_records_the_subaward_number():
     row = source_row("N6833517C0392", "0605502N", packet,
                      "subaward+lexicon", {})
     assert row == ("N6833517C0392", "0605502N", "subaward", "000000821",
-                   None, None, None, None)
+                   None, None, None, None, "subaward-description-exact")
+
+
+def test_source_row_carries_every_match_basis_the_corpus_uses():
+    for basis in ("exact-name", "designator-normalized", "llm-alias",
+                  "llm-designator-variant", "llm-description"):
+        row = source_row("P1", "PE1", {"article_id": "1", "match_basis": basis},
+                         "announcement+lexicon", {})
+        assert row[8] == basis
+
+
+def test_source_row_returns_none_for_a_method_this_loader_does_not_own():
+    """'not subaward' must not mean 'announcement'.
+
+    A future third method would otherwise have been handed a fabricated
+    defense.gov article URL built from whatever article_id happened to be in
+    the packet.
+    """
+    assert source_row("P1", "PE1", {"article_id": "1006508"},
+                      "account+tokens", {}) is None
+    assert source_row("P1", "PE1", {"article_id": "1006508"},
+                      "fpds-ap", {}) is None
 
 
 def test_source_row_never_builds_a_url_out_of_the_string_none():
