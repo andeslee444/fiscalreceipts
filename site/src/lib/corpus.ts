@@ -114,7 +114,8 @@ export function getCorpus(): Corpus {
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // The site states its own size FIVE ways and every one of them is right for
-// its own denominator:
+// its own denominator (as measured 2026-08-29; the registry below is the
+// live value):
 //
 //   2,016  every indexable /program/ URL declared in sitemap.xml
 //   2,005  program_details sidecars — the browsable page universe

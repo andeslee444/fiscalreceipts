@@ -206,10 +206,11 @@ export default function CoveragePage() {
 
           {/* ── How the corpus is counted (tri-persona Wave 4, item 4) ──────────
               Five true numbers, five denominators, and until now nothing that
-              said so: sitemap.xml declared 2,016 program URLs while /programs/
-              said 1,755 and dim_programs published 1,753. Each row is DERIVED
-              (lib/corpus getCorpusCounts) — gate 24 leg k recomputes all five
-              from the shipped artifacts and rejects any corpus-shaped number on
+              said so. Each row is derived from the artifact that defines it
+              (lib/corpus getCorpusCounts; see the five-way list below); this
+              page never states a count it did not recompute. Gate 24 leg k
+              recomputes all five from the shipped artifacts and rejects any
+              corpus-shaped number on
               the singleton pages that is not one of them. */}
           <section className="mt-12" aria-labelledby="counts-heading" id="corpus-counts">
             <h2 id="counts-heading" className="mb-3 text-xl font-semibold">

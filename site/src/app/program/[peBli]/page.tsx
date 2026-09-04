@@ -1370,8 +1370,10 @@ function WhatItIsBody({ card }: { card: WhatItIsCard }) {
  * THE DEFECT. This card rendered "No award linkage at high confidence" on
  * /program/ATA000/ — the F-35 — on a page carrying 29 Lockheed Martin strings
  * in its own Lobbying Mentions section. USAspending does not publish the
- * program element on award records, so the crosswalk covers 24 of 1,741
- * programs and structurally always will: the dead end is permanent, and a
+ * program element on award records, so the crosswalk covers a build-derived
+ * subset of programs (see /coverage/); the 24-of-1,741 figure this comment
+ * used to quote was true on 2026-08-29 only. That subset is structural, not
+ * a to-do: the dead end is permanent, and a
  * reader who asks the one question everybody asks was being told no, in
  * jargon, on the most famous weapons programme in the world.
  *
