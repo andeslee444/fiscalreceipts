@@ -216,6 +216,17 @@ copyFile(
 );
 console.log("✓  programs_excluded.json → public/json/");
 
+// ── 5g. Copy the feed sidecar (Task 6, #73 — /feed/ client-side expand) ─────
+// feed.json is the exporter's full card set (the section digest on /feed/
+// renders only the top FEED_SECTION_CAP per event type). The client expand
+// button (feed-section-expand.tsx) fetches this same-origin, same as
+// generate-feeds.mjs already reads it at build time for the RSS/Atom feeds.
+copyFile(
+  path.join(jsonDir, "feed.json"),
+  path.join(jsonDestDir, "feed.json")
+);
+console.log("✓  feed.json → public/json/");
+
 // ── 6. Generate llms.txt ──────────────────────────────────────────────────────
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://govbudget-placeholder.example";
