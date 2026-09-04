@@ -128,6 +128,106 @@ function spreadSample(slugs, n) {
   return [...new Set([...head, ...tail])];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// leg m — the in-table medium caveat is true of EVERY medium species
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT (#77, corrected by the 2026-09-04 final review, finding C3). The
+// caveat under a Related Awards table said medium rows "drew from the same
+// appropriation account and agency as this program". That is true of the
+// account/sub-agency species (~8,800 mart rows) and FALSE of the ~2,300 that
+// rest on an FPDS acquisition-program tag (1,910), a subaward description
+// (113) or an unadjudicated keyword match (217) — and /methodology/ describes
+// those correctly one page away, so the site contradicted itself. The table
+// carries no method column, so the pooled sentence must be true of all four
+// species or it is a false sentence about the table.
+//
+// These are the phrases that make it true; each names a species the old
+// sentence excluded. Reword the caveat and this leg fails, which is the
+// contract — MIRROR of src/__tests__/program-awards-caveat.test.tsx, which
+// asserts the same strings against the component.
+const MEDIUM_CAVEAT_PHRASES = [
+  "rest on evidence weaker than a program-level match",
+  "same appropriation account as this program",
+  "not evidence that this program paid for the contract",
+  "FPDS acquisition-program tag or a subaward description",
+  "which of its budget lines paid is not",
+  "high rows rest on evidence that names this program",
+];
+
+/** Non-vacuity floor for leg m (added 2026-09-04 with the C3 fix).
+ *
+ *  MEASURED, and the reason the targeted pass below exists: the leg's own
+ *  24-page sample (head+tail of each tier's sorted slug list) reaches ZERO
+ *  pages carrying a medium award row, so the presence check had never once
+ *  executed since it was added — it was green on every build for the same
+ *  reason leg n was green on a corpus of zeroes. Measured 2026-09-04 from
+ *  data/site/json/program_details: 247 pages carry a medium row inside the
+ *  25 the page renders before "show all". The targeted pass takes 8 of them,
+ *  spread head+tail; the floor sits below that with headroom for pages the
+ *  build skips, and above the regression it exists to catch (a selector or
+ *  slice change that silently stops finding any caveat at all).
+ *  RE-MEASURE if the corpus changes; never lower it to whatever the build
+ *  produced. */
+const MIN_MEDIUM_CAVEATS_SAMPLED = 5;
+/** How many medium-carrying pages the targeted pass parses. */
+const MEDIUM_CAVEAT_SAMPLE = 8;
+
+/** Check one built program page's medium caveat.
+ *  → {checked, ok}: `checked` counts toward the non-vacuity floor (the page
+ *  actually renders a medium badge AND a caveat); `ok` is false when the page
+ *  broke the contract. */
+function checkMediumCaveat(errors, slug, root) {
+  const hasMedium =
+    root.querySelectorAll('[title="Match confidence: medium"]').length > 0;
+  if (!hasMedium) return { checked: false, ok: true };
+  const tierNote = root.querySelector('[data-awards-tier-note="medium"]');
+  if (!tierNote) {
+    errors.push(
+      `program-skeleton(m): /program/${slug}/: medium-tier award rows without [data-awards-tier-note]`,
+    );
+    return { checked: false, ok: false };
+  }
+  let ok = true;
+  const noteText = (tierNote.text ?? "").replace(/\s+/g, " ").trim();
+  const missing = MEDIUM_CAVEAT_PHRASES.filter((phrase) => !noteText.includes(phrase));
+  if (missing.length > 0) {
+    ok = false;
+    errors.push(
+      `program-skeleton(m): /program/${slug}/: the medium caveat is missing ` +
+        `${missing.length} load-bearing phrase(s) — ` +
+        `${missing.map((phrase) => `"${phrase}"`).join(", ")}. The table has no ` +
+        `method column, so the pooled sentence has to be true of ALL four ` +
+        `medium species (account*, fpds-ap, subaward+lexicon)`,
+    );
+  }
+  if (noteText.includes("drew from the same appropriation account and agency")) {
+    ok = false;
+    errors.push(
+      `program-skeleton(m): /program/${slug}/: the medium caveat states the ` +
+        `withdrawn pre-C3 sentence ("drew from the same appropriation account ` +
+        `and agency"), which is false for FPDS-tagged, subaward-derived and ` +
+        `keyword-matched medium rows`,
+    );
+  }
+  return { checked: true, ok };
+}
+
+/** Slugs whose sidecar carries a medium award inside the first
+ *  PROGRAM_AWARDS_CAP rows — i.e. the pages that actually render the caveat.
+ *  Kept in step with program-awards.tsx's CAP and the page's slice(0, CAP). */
+const PROGRAM_AWARDS_CAP = 25;
+function mediumCaveatCandidates(sidecars) {
+  const out = [];
+  for (const [slug, d] of sidecars) {
+    const shown = (d.awards ?? []).slice(0, PROGRAM_AWARDS_CAP);
+    if (shown.some((a) => String(a.confidence ?? "").toLowerCase() === "medium")) {
+      out.push(slug);
+    }
+  }
+  return out.sort();
+}
+
 export async function runProgramSkeletonGate() {
   const errors = [];
   const notes = [];
@@ -181,6 +281,7 @@ export async function runProgramSkeletonGate() {
 
   // ── (a)+(b)+(c)+(d) per sampled page ─────────────────────────────────────
   let pagesOk = 0;
+  let mediumCaveatsChecked = 0;
   for (const slug of sample) {
     const p = pageHtmlPath(slug);
     if (!fs.existsSync(p)) {
@@ -276,18 +377,48 @@ export async function runProgramSkeletonGate() {
       }
     }
 
-    // (m) 2026-09: a Related Awards table showing any medium badge must carry
-    // the in-table caveat — the badge and /methodology/ alone let presence in
-    // the table read as attribution (#77).
-    const hasMedium = root.querySelectorAll('[title="Match confidence: medium"]').length > 0;
-    if (hasMedium && !root.querySelector('[data-awards-tier-note="medium"]')) {
-      pageOk = false;
-      errors.push(`program-skeleton(m): /program/${slug}/: medium-tier award rows without [data-awards-tier-note]`);
-    }
+    // (m) a Related Awards table showing any medium badge must carry the
+    // in-table caveat, and that caveat must be TRUE of every medium species.
+    // See checkMediumCaveat + the targeted pass below the sample loop.
+    const caveat = checkMediumCaveat(errors, slug, root);
+    if (caveat.checked) mediumCaveatsChecked++;
+    if (!caveat.ok) pageOk = false;
 
     if (pageOk) pagesOk++;
   }
   notes.push(`sampled ${sample.length} pages (${SAMPLE_PER_TIER}/tier target): ${pagesOk} fully conformant`);
+  // ── (m) targeted pass: the pages that actually render the caveat ─────────
+  // The 24-page sample above reaches none of them (see the floor's comment),
+  // so the check that matters runs here or nowhere.
+  const mediumCandidates = mediumCaveatCandidates(sidecars);
+  for (const slug of spreadSample(mediumCandidates, MEDIUM_CAVEAT_SAMPLE)) {
+    const p = pageHtmlPath(slug);
+    if (!fs.existsSync(p)) continue;
+    const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+    if (checkMediumCaveat(errors, slug, root).checked) mediumCaveatsChecked++;
+  }
+  if (mediumCaveatsChecked < MIN_MEDIUM_CAVEATS_SAMPLED) {
+    errors.push(
+      `program-skeleton(m): only ${mediumCaveatsChecked} sampled page(s) ` +
+        `rendered a medium-tier caveat (floor ${MIN_MEDIUM_CAVEATS_SAMPLED}, ` +
+        `measured 2026-09-04: 247 pages render a medium row, of which this leg ` +
+        `parses ${MEDIUM_CAVEAT_SAMPLE}). Below the floor the wording check ` +
+        `has nothing to read and would pass on a build that renders no ` +
+        `caveat at all — the same vacuity leg n had. Re-measure the ` +
+        `population; do not lower the floor`,
+    );
+  } else if (errors.some((e) => e.startsWith("program-skeleton(m)"))) {
+    notes.push(
+      `leg m: ${mediumCaveatsChecked} built page(s) carry a medium-tier caveat ` +
+        `(floor ${MIN_MEDIUM_CAVEATS_SAMPLED}) — see the leg m error(s) above`,
+    );
+  } else {
+    notes.push(
+      `leg m: ${mediumCaveatsChecked} built page(s) carry a medium-tier caveat ` +
+        `(floor ${MIN_MEDIUM_CAVEATS_SAMPLED}), each stating all ` +
+        `${MEDIUM_CAVEAT_PHRASES.length} load-bearing phrases ✓`,
+    );
+  }
 
   // ── (e) noindex policy ────────────────────────────────────────────────────
   const hasNoindex = (root) =>
@@ -406,6 +537,20 @@ export async function runProgramSkeletonGate() {
 const MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS = 5;
 const MIN_SPLIT_AWARD_ROWS = 60;
 
+/** Non-vacuity floor on the split UNIVERSE (added 2026-09-04, final review
+ *  I4). The two floors above are reached only after `splits.length === 0`
+ *  returns early with a friendly note — so a programs.json that lost its
+ *  shared-code members entirely (an exporter regression that stops emitting
+ *  the account-qualified rows, a slug-shape change that makes every pe_bli
+ *  look unique) made the whole leg say "nothing to check" and pass. The
+ *  emptiness IS the regression.
+ *
+ *  Measured 2026-09-04 from data/site/json/programs.json: THIRTEEN pe_bli
+ *  codes carry more than one dim_programs row. The floor sits below that with
+ *  headroom for ordinary corpus movement and above zero.
+ *  RE-MEASURE if the corpus changes; do not lower it to fit a build. */
+const MIN_SHARED_BLI_CODES = 10;
+
 /** `programs` is injected only by this leg's unit test
  *  (__tests__/split-key-awards.test.mjs), which has to be able to hand the leg
  *  a corpus the build does not contain — a floor that has never been seen to
@@ -429,8 +574,16 @@ export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
   const splits = [...byPe.entries()]
     .filter(([, rows]) => rows.length > 1)
     .sort(([a], [b]) => (a < b ? -1 : 1));
-  if (splits.length === 0) {
-    notes.push("leg n: no shared BLI codes in this corpus — nothing to check");
+  if (splits.length < MIN_SHARED_BLI_CODES) {
+    errors.push(
+      `program-skeleton(n): programs.json carries ${splits.length} shared BLI ` +
+        `code(s) (floor ${MIN_SHARED_BLI_CODES}, measured 2026-09-04 at 13). ` +
+        `Every check in this leg is satisfied by a corpus with no shared ` +
+        `codes at all, so an exporter that stops emitting account-qualified ` +
+        `members would read as "nothing to check" instead of as the ` +
+        `regression it is. Re-measure the population from dim_programs; do ` +
+        `not lower the floor`,
+    );
     return;
   }
 

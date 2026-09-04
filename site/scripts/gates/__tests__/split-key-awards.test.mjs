@@ -108,9 +108,24 @@ describe("leg n — non-vacuity floor", () => {
     expect(fused[0]).toContain("their money is never combined");
   });
 
-  it("says so rather than passing when a corpus has no shared codes at all", () => {
+  // 2026-09-04, final review I4: this case used to PASS with a friendly note.
+  // Every check in the leg is satisfied by a corpus with no shared codes, so
+  // "there are none" and "the exporter stopped emitting them" were the same
+  // observation — and the second is the regression the leg exists for.
+  it("FAILS when programs.json carries no shared codes at all", () => {
     const { errors, notes } = run([["TA", [3]]]);
-    expect(errors).toEqual([]);
-    expect(notes[0]).toContain("no shared BLI codes in this corpus");
+    expect(notes).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("carries 0 shared BLI code(s) (floor 10");
+    expect(errors[0]).toContain("do not lower the floor");
+  });
+
+  it("FAILS just below the shared-code floor and passes at it", () => {
+    const nine = LIVE_SHAPE.slice(0, 9);
+    expect(run(nine).errors[0]).toContain("carries 9 shared BLI code(s) (floor 10");
+    // Ten codes clears the universe floor; the award floors still apply and
+    // are met by this slice (7 pages / 86 rows all sit in the first ten).
+    const ten = LIVE_SHAPE.slice(0, 10);
+    expect(run(ten).errors).toEqual([]);
   });
 });

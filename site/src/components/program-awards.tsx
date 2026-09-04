@@ -123,12 +123,33 @@ export function ProgramAwards({
         Related Awards
       </h2>
       {scopeNote && <div className="mb-2">{scopeNote}</div>}
+      {/* ROADMAP #77 / 2026-09-04 final review C3. The first version of this
+          caveat said medium rows "drew from the same appropriation account and
+          agency as this program" — true of the account/sub-agency species
+          (~8,800 rows) and FALSE of the other ~2,300: an FPDS
+          acquisition-program tag, a subaward description, and an unadjudicated
+          keyword match are not account associations, and /methodology/ says so
+          one page away. A true sentence about most rows, printed over all of
+          them, is the same defect species as the rest of this branch.
+
+          Pooled rather than per-row on purpose: the program_details sidecar
+          carries only (award_piid, recipient_name, confidence) — no `method` —
+          so the component cannot name a row's species without an exporter
+          change. The sentence is therefore written to be true of EVERY medium
+          species. If `method` ever reaches the sidecar, replace this with a
+          per-row note and keep gate 21 leg m in step. */}
       {displayedAwards.some((a) => a.confidence?.toLowerCase() === "medium") && (
         <p className="text-xs text-muted-foreground mb-2" data-awards-tier-note="medium">
-          Rows marked <span className="font-medium">medium</span> drew from the same
-          appropriation account and agency as this program; that is an association,
-          not evidence that this program paid for the contract. Only{" "}
-          <span className="font-medium">high</span> rows carry program-level evidence.
+          Rows marked <span className="font-medium">medium</span> rest on
+          evidence weaker than a program-level match, and not all on the same
+          kind. Most are account-based — the award drew from the same
+          appropriation account as this program, usually under the same
+          sub-agency — which is an association, not evidence that this program
+          paid for the contract. Where the evidence is instead an FPDS
+          acquisition-program tag or a subaward description, the program is
+          established but which of its budget lines paid is not. Only{" "}
+          <span className="font-medium">high</span> rows rest on evidence that
+          names this program.
         </p>
       )}
       {hasMore && !expanded && (
