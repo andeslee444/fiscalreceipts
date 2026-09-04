@@ -193,8 +193,10 @@ often by program. Where an announcement's program name is one a program
 element's J-book narrative itself owns (a lexicon entry carrying the verbatim
 narrative quote), the pair is a candidate; every candidate is judged by an
 agent reviewer and challenged by an independent adversarial reviewer, and only
-links surviving both publish — at *high*, because the government named the
-program and the contract in the same sentence. Announcement links
+links surviving both publish — at *high*: the announcement names the
+contract, and the program is identified either by its name as written, a
+normalized designator, or an alias an adversarial reviewer checked — each
+link's citation card states which basis applied. Announcement links
 additionally require the award's funding accounts to match the line's
 appropriation; awards funded only from operations and maintenance money are
 not linked to research or procurement lines. Platform-support mentions,

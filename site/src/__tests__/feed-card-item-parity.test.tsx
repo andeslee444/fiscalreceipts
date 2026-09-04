@@ -11,8 +11,8 @@
  *
  * This test is the parity contract: for the SAME (card, companySlug,
  * hasProgramPage) triple, the two components must render byte-identical
- * HTML. Three fixtures exercise the paths that differ between the server
- * source and the client twin's reimplementation:
+ * HTML. Fixtures exercise the paths that differ between the server source
+ * and the client twin's reimplementation:
  *
  *   1. A plain title-led concentration_shift card (no money in the
  *      headline, no reconciliation split) — the common case.
@@ -26,6 +26,17 @@
  *      feedHeadlineSegments() would consult getPrograms() and the client
  *      twin deliberately does not (see that file's doc comment). Pinned
  *      here so a future divergence is caught.
+ *   4. A request_vs_actuals_gap card — the fct_book_diff / "USD thousands"
+ *      Cite branch, untouched by any earlier fixture.
+ *   5. A pe_bli card with hasProgramPage=false despite a non-null
+ *      program_url — the G1 dead-link contract: never link a page outside
+ *      the generateStaticParams universe.
+ *   6. A code-led headline whose title is a REAL resolved title (not a
+ *      no-op like #3), spliced across a multi-segment headline — pins the
+ *      actual swap arithmetic in feedDisplayHeadlineClient/
+ *      feedHeadlineSegmentsClient, not just its no-op branch.
+ *   7-8. A family_key-driven new_entrant card with a company link, and one
+ *      with no company page (data-no-company-page).
  */
 
 import { describe, it, expect } from "vitest";
@@ -221,6 +232,129 @@ describe("<FeedCardItemClient> parity with <FeedCardItem>", () => {
     expect(clientHtml).toBe(serverHtml);
     // next/link normalizes the trailing slash away under jsdom.
     expect(serverHtml).toContain('href="/company/acme-corp"');
+  });
+
+  it("renders identical HTML for a request_vs_actuals_gap card (fct_book_diff, USD thousands Cite branch)", () => {
+    const card: FeedCard = {
+      event_type: "request_vs_actuals_gap",
+      family_key: null,
+      figure_fact_id: "9".repeat(16),
+      figure_units: "thousands_usd",
+      figure_value: -46_700,
+      fiscal_year: 2025,
+      headline: "Minuteman Squadrons FY2025 actuals came in $46.7M below the PB2025 request (per the PB2026 book)",
+      headline_segments: [
+        { text: "Minuteman Squadrons FY2025 actuals came in " },
+        { amount: "$46.7M", fact_id: "9".repeat(16) },
+        { text: " below the PB2025 request (per the PB2026 book)" },
+      ],
+      organization: null,
+      pe_bli: "0101213F",
+      program_url: "/program/0101213F/",
+      title: "Minuteman Squadrons",
+      why_url: "/methodology/#feed-request_vs_actuals_gap",
+      basis: "toa",
+      fy: 2025,
+      measure: "change",
+      edition: 2026,
+      magnitude: {
+        kind: "pair",
+        units: "thousands_usd",
+        from: { label: "PB2025 FY2025 request", fy: 2025, value: 1_300_000, fact_id: "a1".repeat(8) },
+        to: { label: "PB2026 FY2025 actual TOA", fy: 2025, value: 1_253_300, fact_id: "a2".repeat(8) },
+        delta: { label: "gap", fy: 2025, value: -46_700, fact_id: "9".repeat(16) },
+        pct_change: -3.59,
+      },
+    };
+    const { serverHtml, clientHtml } = renderBoth(card, null, true);
+    expect(clientHtml).toBe(serverHtml);
+    // Sanity: the fct_book_diff / "USD thousands" branch actually fired.
+    expect(serverHtml).toContain("data-primary-value");
+  });
+
+  it("renders identical HTML for a pe_bli card with hasProgramPage=false (G1 dead-link branch — no 'view program' link)", () => {
+    const card: FeedCard = {
+      event_type: "concentration_shift",
+      family_key: null,
+      figure_fact_id: "b3".repeat(8),
+      figure_units: "hhi",
+      figure_value: 9500,
+      fiscal_year: 2021,
+      headline: "Some Program award concentration HHI=9500 (2021)",
+      headline_segments: [
+        { text: "Some Program award concentration HHI=9500 (2021)" },
+      ],
+      organization: null,
+      pe_bli: "0699999E",
+      // program_url IS set (the exporter thinks the PE has a page), but
+      // hasProgramPage=false below — the G1 contract this pins: a page not
+      // in the generateStaticParams universe must never be linked, even
+      // when program_url is non-null.
+      program_url: "/program/0699999E/",
+      title: "Some Program",
+      why_url: "/methodology/#feed-concentration_shift",
+      basis: null,
+      fy: null,
+      measure: null,
+      edition: null,
+      magnitude: {
+        kind: "single",
+        units: "dollars",
+        from: null,
+        to: { label: "FY2021 matched obligations", fy: 2021, value: 100_000_000, fact_id: "c4".repeat(8) },
+        delta: null,
+        pct_change: null,
+      },
+    };
+    const { serverHtml, clientHtml } = renderBoth(card, null, false);
+    expect(clientHtml).toBe(serverHtml);
+    expect(serverHtml).not.toContain("view program");
+  });
+
+  it("renders identical HTML for a code-led headline whose title differs from its code (pins the swap, not just the no-op)", () => {
+    // Unlike the "LRASM0" fixture above (title === pe_bli, a no-op), this is
+    // the actual dominant branch feed-card-item-client.tsx's
+    // feedDisplayHeadlineClient/feedHeadlineSegmentsClient reproduce: a
+    // code-led headline whose title is a REAL resolved title, spliced into a
+    // multi-segment headline (leading text segment + an amount segment) so
+    // the segment-splice arithmetic is exercised, not just the plain string.
+    const card: FeedCard = {
+      event_type: "yoy_swing",
+      family_key: null,
+      figure_fact_id: "d5".repeat(8),
+      figure_units: "pct_change",
+      figure_value: 79.0,
+      fiscal_year: 2026,
+      headline: "0101213F increased 79% FY25→26 (to $59.3M)",
+      headline_segments: [
+        { text: "0101213F increased 79% FY25→26 (to " },
+        { amount: "$59.3M", fact_id: "e6".repeat(8) },
+        { text: ")" },
+      ],
+      organization: "F",
+      pe_bli: "0101213F",
+      program_url: "/program/0101213F/",
+      title: "Minuteman III Squadrons",
+      why_url: "/methodology/#feed-yoy_swing",
+      basis: "toa",
+      fy: 2026,
+      measure: "change",
+      edition: 2026,
+      magnitude: {
+        kind: "pair",
+        units: "thousands_usd",
+        from: { label: "FY2025", fy: 2025, value: 33_100, fact_id: "f7".repeat(8) },
+        to: { label: "FY2026", fy: 2026, value: 59_300, fact_id: "08".repeat(8) },
+        delta: { label: "change", fy: 2026, value: 26_200, fact_id: "d5".repeat(8) },
+        pct_change: 79.0,
+      },
+    };
+    const { serverHtml, clientHtml } = renderBoth(card, null, true);
+    expect(clientHtml).toBe(serverHtml);
+    // Sanity: the swap actually fired on both sides — the resolved title
+    // leads, the raw code does not.
+    expect(serverHtml).toContain("Minuteman III Squadrons increased 79%");
+    expect(serverHtml).not.toContain("0101213F increased 79%");
   });
 
   it("renders identical HTML for a new_entrant card with no company page (data-no-company-page)", () => {

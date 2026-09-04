@@ -7,7 +7,7 @@ SRC="$(cd "$(dirname "$0")/../.." && pwd)/data/raw/announcements"
 [ -f "$SRC/manifest.jsonl" ] || { echo "no manifest at $SRC/manifest.jsonl"; exit 1; }
 rclone copy "$SRC" "r2:$BUCKET/research/announcements-raw" --checksum --transfers 8 -P
 # verify: every manifest entry exists remotely by name
-python3 - "$SRC" "$BUCKET" <<EOF
+python3 - "$SRC" "$BUCKET" <<'EOF'
 import json, subprocess, sys
 # Read JSONL manifest and extract article_ids (which are local filenames like 1000857.html)
 article_ids = set()

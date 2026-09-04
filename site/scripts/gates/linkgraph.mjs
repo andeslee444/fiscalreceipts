@@ -38,6 +38,20 @@
  *     own inventory of what it wrote — and requires each shipped parquet to
  *     have an ABSOLUTE asset-host href on /downloads/. Leg (d) no longer
  *     carves /assets/ out, so the negative half is covered too.
+ * (i) EVERY SAME-ORIGIN .json/.xml HREF RESOLVES TO A BUILT FILE (found:
+ *     /json/feed.json 404s live). Every RSS/Atom <a href> this site renders
+ *     is an ABSOLUTE self-URL (feeds.ts's abs()) — normalize()'s `href.
+ *     startsWith("http")` check in leg (d)/(g) drops those as "external", so
+ *     the per-program and per-company watch-feed links on ~2,000 templated
+ *     pages (where they actually live; leg (d) only scans the hub-page list)
+ *     have never been checked. Leg (i) recognises the site's own origin(s)
+ *     too, and checks every such href (relative or self-absolute) against a
+ *     Set of every .json/.xml path actually under out/, built once. It does
+ *     NOT catch feed.json itself: that path is reached only by a client-side
+ *     `fetch()` inside FeedSectionExpand, never by an <a href>, so no
+ *     link-graph leg — including this one — can see that specific miss.
+ *     (prepare-assets.mjs already copies feed.json as of Task 6/#73 — the
+ *     live 404 and this repo's stale out/ both predate that fix landing.)
  */
 import fs from "fs";
 import path from "path";
@@ -312,6 +326,9 @@ export async function runLinkgraphGate() {
 
   // ── (h) every shipped dataset is downloadable without JS (Wave 4) ──
   runDownloadLinkLeg(errors, notes);
+
+  // ── (i) every same-origin .json/.xml href resolves to a built file ──
+  runJsonXmlHrefLeg(errors, notes);
 
   // ── (f) universal PE linking on sampled program pages (Phase 5F §2a) ──
   {
@@ -659,6 +676,123 @@ function runDownloadLinkLeg(errors, notes) {
     notes.push(
       `leg h: all ${inventory.length} shipped datasets + the citation index link ` +
         `to absolute asset-host URLs on /downloads/ (no /assets/ paths) ✓`,
+    );
+  }
+}
+
+/**
+ * Leg (i) — EVERY SAME-ORIGIN .json/.xml HREF RESOLVES TO A BUILT FILE.
+ *
+ * Found: https://fiscalreceipts.com/json/feed.json 404s in production, and
+ * nothing caught it. The RSS/Atom <a href> this site actually renders is
+ * always an ABSOLUTE self-URL (lib/feeds.ts's abs(), used by every
+ * <SubscribeLinks> and the per-program/per-company "Watch this program/
+ * company" links) — normalize()'s `href.startsWith("http")` check in legs
+ * (d) and (g) treats every absolute href as external and drops it, so those
+ * links have never been checked, on the ~2,000 templated pages where most
+ * of them actually live (leg (d) only scans the curated hub-page list).
+ *
+ * Scope: the same hub-page list plus the same sampled templated pages leg
+ * (g) already parses (FRAGMENT_HUB_PAGES + sampledDetailPages()) — cheap
+ * because it reuses a page set this gate already reads elsewhere, not a
+ * fresh full-site walk. The existence check is a single Set of every
+ * .json/.xml path under out/, built once up front.
+ *
+ * Deliberately does NOT catch feed.json itself: /json/feed.json is reached
+ * only by a client-side `fetch()` inside FeedSectionExpand
+ * (feed-card-item-client.tsx's sibling, feed-section-expand.tsx), never by
+ * an <a href> anywhere in the built HTML — grep confirms no anchor points at
+ * it. No link-graph leg, this one included, can see a fetch() URL string
+ * baked into a client JS bundle; that miss is closed at the source
+ * (prepare-assets.mjs's copy list) rather than caught here.
+ */
+const SELF_ORIGINS = [
+  "https://fiscalreceipts.com",
+  process.env.NEXT_PUBLIC_SITE_URL,
+].filter(Boolean);
+
+/** Every .json/.xml file that actually exists under out/, as out/-relative
+ *  paths ("/json/feed.json", "/feeds/program/000074.xml", "/rss.xml", …). */
+function jsonXmlPathsUnderOut() {
+  const found = new Set();
+  const walk = (dir) => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        walk(abs);
+      } else if (/\.(json|xml)$/i.test(ent.name)) {
+        found.add("/" + path.relative(outDir, abs).split(path.sep).join("/"));
+      }
+    }
+  };
+  if (fs.existsSync(outDir)) walk(outDir);
+  return found;
+}
+
+/** The out/-relative .json/.xml path an href names, if it is same-origin
+ *  (relative, or absolute against one of SELF_ORIGINS) — else null. */
+function sameOriginJsonXmlTarget(href) {
+  if (!href) return null;
+  let rest = null;
+  if (href.startsWith("/")) {
+    rest = href;
+  } else {
+    for (const origin of SELF_ORIGINS) {
+      if (href.startsWith(origin + "/")) {
+        rest = href.slice(origin.length);
+        break;
+      }
+    }
+  }
+  if (rest === null) return null;
+  rest = rest.split("#")[0].split("?")[0];
+  if (!/\.(json|xml)$/i.test(rest)) return null;
+  return rest;
+}
+
+function runJsonXmlHrefLeg(errors, notes) {
+  const existing = jsonXmlPathsUnderOut();
+  const pages = [...FRAGMENT_HUB_PAGES, ...sampledDetailPages()];
+  let checked = 0;
+  const missing = new Map(); // target -> {count, sources:Set}
+
+  for (const pageUrl of pages) {
+    const p = htmlPathFor(pageUrl);
+    if (!fs.existsSync(p)) continue;
+    const root = parse(fs.readFileSync(p, "utf8"), { comment: false });
+    for (const a of root.querySelectorAll("a[href]")) {
+      const target = sameOriginJsonXmlTarget(a.getAttribute("href"));
+      if (!target) continue;
+      checked += 1;
+      if (!existing.has(target)) {
+        const rec = missing.get(target) ?? { count: 0, sources: new Set() };
+        rec.count += 1;
+        rec.sources.add(pageUrl);
+        missing.set(target, rec);
+      }
+    }
+  }
+
+  if (checked === 0) {
+    errors.push(
+      "leg i: 0 same-origin .json/.xml hrefs found across scanned pages — " +
+        "non-vacuity failure (the leg has nothing to check; a selector or " +
+        "page-set regression would look identical to 'all good')",
+    );
+    return;
+  }
+  if (missing.size > 0) {
+    for (const [target, rec] of missing) {
+      errors.push(
+        `leg i: dead json/xml asset ${target} — linked from ${rec.sources.size} ` +
+          `page(s) (${rec.count} href(s); first: ${[...rec.sources][0]}), no file ` +
+          `at out${target}`,
+      );
+    }
+  } else {
+    notes.push(
+      `leg i: ${checked} same-origin .json/.xml href(s) across ${pages.length} ` +
+        `scanned page(s), all resolve to a built file ✓`,
     );
   }
 }

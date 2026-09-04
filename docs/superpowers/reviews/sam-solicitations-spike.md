@@ -5,14 +5,15 @@ a usable rate, and there is no acquisition lane here.** Direct PE-code
 queries against SAM.gov's live search index return zero for all five sampled
 codes. Prose queries built from unambiguous procurement program names (KC-46A,
 Virginia class, GMLRS) return hundreds to hundreds of thousands of hits, but a
-full-text regex scan of 75 of those hits' description bodies — plus three
-complete archived FBO-era solicitation pages fetched from the Wayback Machine,
-including a real Army RFI (Lethal Miniature Aerial Missile System,
-`W31P4Q19R0031`) with substantial technical prose — found **zero** PE-code-
-shaped tokens anywhere. This is consistent with the prior finding that PE
-numbers appear in only 15 of ~20M award descriptions and 0 of 1.6M subaward
-descriptions: the folk method of citing a PE code doesn't show up in the text
-DoD contracting offices actually publish, at any layer probed so far.
+full-text regex scan of 75 of those hits' description bodies — plus two
+complete archived FBO-era solicitation pages fetched from the Wayback Machine
+(including a real Army RFI, Lethal Miniature Aerial Missile System,
+`W31P4Q19R0031`, with substantial technical prose) and the FBO portal
+homepage capture — found **zero** PE-code-shaped tokens anywhere. This is
+consistent with the prior finding that PE numbers appear in only 15 of ~20M
+award descriptions and 0 of 1.6M subaward descriptions: the folk method of
+citing a PE code doesn't show up in the text DoD contracting offices actually
+publish, at any layer probed so far.
 
 This document exists so the path is not re-probed from scratch.
 

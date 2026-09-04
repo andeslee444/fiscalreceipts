@@ -265,10 +265,13 @@ describe("coverage map — every number is read, never authored", () => {
 describe("coverage map — the crosswalk gap is framed as a methodology limit", () => {
   const r = () => byId.get(CROSSWALK_LIMIT_ID)!;
 
-  it("names account-code coarseness as the reason, and DARPA as the exception", () => {
+  it("names account-code coarseness as the reason, and states the evidence path behind each tier", () => {
     expect(r().blocker).toMatch(/account code/i);
     expect(r().blocker).toMatch(/coarse/i);
-    expect(r().blocker).toMatch(/DARPA/);
+    expect(r().blocker).toMatch(/hand-adjudicated/i);
+    expect(r().blocker).toMatch(/high means the contract/i);
+    expect(r().blocker).toMatch(/independent adversarial reviewers/i);
+    expect(r().blocker).toMatch(/medium means only/i);
   });
 
   it("has no dated target, and says the limit is methodological", () => {

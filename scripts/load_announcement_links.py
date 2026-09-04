@@ -328,7 +328,7 @@ def main() -> int:
         aid = p.get("article_id")
         rationale = (f"defense.gov contract announcement {aid} ({p.get('date')}): "
                      f"program '{p.get('program_name')}' named for this award "
-                     f"[match basis: {p.get('match_basis') or 'exact-name'}]; "
+                     f"[match basis: {p.get('match_basis') or 'not recorded'}]; "
                      f"J-book narrative owns it ({p.get('lexicon_doc')}); "
                      f"triage+adversarial refute survived — {reason[:160]}; "
                      f"url={ANN_URL.format(id=aid)}")

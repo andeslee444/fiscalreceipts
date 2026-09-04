@@ -120,9 +120,10 @@ def test_announcement_row_missing_archive_is_null_not_invented():
 def test_announcement_row_unrecorded_basis_is_null_not_the_strongest_one():
     """An absent match_basis must reach the card as null, not 'exact-name'.
 
-    The loader's rationale prose defaults an absent basis to 'exact-name';
-    the citation must not, or ~397 links would read as verbatim name matches
-    on the strength of a default.
+    The loader's rationale prose used to default an absent basis to
+    'exact-name' (fixed to 'not recorded' — ROADMAP #71 round-2 minor); the
+    citation must never do that either, or ~397 links would read as verbatim
+    name matches on the strength of a default.
     """
     row = _announcement_row("abcd1234abcd1234", article_id="1006508",
                             url=_ARTICLE_URL, archive_url=None, sha256=None)

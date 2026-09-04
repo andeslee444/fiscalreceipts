@@ -67,6 +67,11 @@ export function FeedSectionExpand({
 }: FeedSectionExpandProps) {
   const [expanded, setExpanded] = useState(false);
   const [extraCards, setExtraCards] = useState<FeedCard[] | null>(null);
+  // feed.json's own count for this event type, as actually fetched — kept
+  // separate from `total` (the server-rendered count) because the two can
+  // disagree after a partial deploy (build.mjs's page reads a newer/older
+  // feed.json than the one prepare-assets.mjs shipped to /json/feed.json).
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +91,7 @@ export function FeedSectionExpand({
       // `shown` cards from, so slicing the SAME filtered array at `shown`
       // continues that exact sequence with no gap or overlap.
       const filtered = data.cards.filter((c) => c.event_type === eventType);
+      setFilteredCount(filtered.length);
       setExtraCards(filtered.slice(shown));
       setExpanded(true);
     } catch (err) {
@@ -102,7 +108,7 @@ export function FeedSectionExpand({
         <div className="divide-y divide-border rounded-b-lg border border-t-0 border-border overflow-hidden bg-card">
           {extraCards.map((card, i) => (
             <FeedCardItemClient
-              key={`${card.event_type}-${card.pe_bli ?? card.family_key ?? i}`}
+              key={`${card.event_type}-${card.pe_bli ?? card.family_key ?? i}-${i}`}
               card={card}
               companySlug={
                 card.family_key
@@ -116,7 +122,11 @@ export function FeedSectionExpand({
           ))}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Showing all {formatCount(total)} cards in this section.
+          {/* feed.json can lag the built page after a partial deploy —
+              assert only what was actually fetched, not "all". */}
+          {filteredCount !== null && filteredCount !== total
+            ? `Showing ${formatCount(filteredCount)} of ${formatCount(total)} cards in this section.`
+            : `Showing all ${formatCount(total)} cards in this section.`}
         </p>
       </>
     );

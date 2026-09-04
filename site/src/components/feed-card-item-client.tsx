@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * <FeedCardItemClient> — the CLIENT-SAFE TWIN of <FeedCardItem>
  * (feed-card-item.tsx), for the /feed/ section-expand feature (Task 6, #73,
@@ -37,24 +39,22 @@
  *
  * TWO PIECES ARE REIMPLEMENTED, NOT JUST RE-EXPORTED, below:
  *
- *   feedHeadlineSegmentsClient() — data.ts's feedHeadlineSegments() has a
- *   defense-in-depth fallback for PRE-#44 code-led sidecars: when a card's
- *   headline still literally starts with its own pe_bli code, it calls
- *   getPrograms() (disk I/O) to try to swap in a resolved title. The
- *   exporter has resolved and led with the title for every card since #44
- *   (feed.json's headline_segments arrive title-led already — see that
- *   function's doc comment), so this swap is a no-op for current exports:
- *   verified against the live corpus (2026-09-04), the 6 cards whose
- *   headline still starts with their own code (all pe_bli "LRASM0") carry
- *   card.title === card.pe_bli === "LRASM0", so the "resolved" title is the
- *   code itself and feedDisplayHeadline() returns card.headline unchanged.
- *   This twin skips the getPrograms() lookup entirely (no fs in the
- *   browser) and returns card.headline_segments as-is, which is provably
- *   identical output for every card in the shipped corpus. A future export
- *   that ships a *different* resolved title for a code-led card than what
- *   card.title carries would diverge here — the parity test's code-led
- *   fixture pins today's behavior so that regression is caught if it ever
- *   changes shape.
+ *   feedHeadlineSegmentsClient() — data.ts's feedHeadlineSegments() (via
+ *   feedDisplayHeadline()) swaps a code-led headline's leading pe_bli run
+ *   for card.title when the two differ. This twin reproduces that swap
+ *   using ONLY card.title — it deliberately leaves out
+ *   feedDisplayHeadline()'s further fallback to getPrograms() (disk I/O)
+ *   for the case where card.title itself is absent: that path needs `fs`,
+ *   cannot run in the browser, and is unreachable for the current corpus
+ *   anyway (the exporter has resolved and led with the title for every card
+ *   since #44 — see that function's doc comment; the 6 cards whose headline
+ *   still starts with their own code, all pe_bli "LRASM0", carry
+ *   card.title === card.pe_bli === "LRASM0", the reconstruction's own
+ *   no-op case, verified against the live corpus 2026-09-04). A future
+ *   export that ships a code-led headline with no card.title at all would
+ *   render the raw code here and a getPrograms()-resolved title on the
+ *   server — caught by the parity test's code-led fixture, not silently
+ *   divergent.
  *
  *   Fy26SplitNoteClient — byte-for-byte the same JSX as
  *   program-figures.tsx's Fy26SplitNote, using <ScopeNote>/<Cite> directly
@@ -71,12 +71,36 @@ import type { FeedCard, FeedHeadlineSegment, Fy26Split } from "@/lib/data";
 
 // ── feedHeadlineSegments twin (see doc comment above) ───────────────────────
 
+/**
+ * Client-safe display headline — reproduces data.ts's feedDisplayHeadline()
+ * for the dominant branch only: card.title swapped in for a leading pe_bli
+ * code. No getPrograms() fallback (see class doc comment for why that's
+ * left out, not just deferred).
+ */
+function feedDisplayHeadlineClient(card: FeedCard): string {
+  if (!card.pe_bli || !card.headline.startsWith(card.pe_bli)) {
+    return card.headline;
+  }
+  if (!card.title || card.title === card.pe_bli) return card.headline;
+  return `${card.title}${card.headline.slice(card.pe_bli.length)}`;
+}
+
 function feedHeadlineSegmentsClient(card: FeedCard): FeedHeadlineSegment[] {
   const segments = card.headline_segments;
   if (!segments || segments.length === 0) {
-    return [{ text: card.headline }];
+    return [{ text: feedDisplayHeadlineClient(card) }];
   }
-  return segments;
+  const display = feedDisplayHeadlineClient(card);
+  if (display === card.headline) return segments;
+  // The swap only ever rewrites the leading run; splice it back in place
+  // (identical to feedHeadlineSegments in lib/data.ts).
+  const [first, ...rest] = segments;
+  if (first.text === undefined) return segments;
+  const swapped = display.slice(
+    0,
+    display.length - (card.headline.length - first.text.length),
+  );
+  return [{ text: swapped }, ...rest];
 }
 
 function FeedHeadlineClient({ card }: { card: FeedCard }) {

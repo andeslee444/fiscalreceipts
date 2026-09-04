@@ -55,6 +55,6 @@ create table if not exists award_link_sources (
 );
 
 -- schema_migrations records the FILE NAME, so a database that already applied
--- an earlier revision of this file will never re-run it: the alter below is
--- what those databases need, and it is a no-op everywhere else.
-alter table award_link_sources add column if not exists match_basis text;
+-- an earlier revision of this file (before match_basis was part of the CREATE)
+-- will never re-run it. See migrations/013_award_link_sources_match_basis.sql
+-- for the idempotent alter those databases need.

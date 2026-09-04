@@ -624,8 +624,11 @@ export default function MethodologyPage() {
                   J-book narrative itself owns, the pair is a candidate; every candidate
                   is then judged by an agent reviewer and challenged by an independent
                   adversarial reviewer, and only links that survive both publish — at{" "}
-                  <em>high</em>, because the government named the program and the
-                  contract in the same sentence. Announcement links additionally
+                  <em>high</em>: the announcement names the contract, and the
+                  program is identified either by its name as written, a
+                  normalized designator, or an alias an adversarial reviewer
+                  checked — each link&apos;s citation card states which basis
+                  applied. Announcement links additionally
                   require the award&apos;s funding accounts to match the
                   line&apos;s appropriation; awards funded only from operations
                   and maintenance money are not linked to research or procurement

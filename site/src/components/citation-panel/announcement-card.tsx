@@ -61,8 +61,8 @@ const MATCH_BASIS_PHRASES: Record<string, string> = {
   "subaward-description-exact": "exact subaward description",
 };
 
-export function matchBasisPhrase(basis: string | null | undefined): string {
-  const token = (basis ?? "").trim();
+export function matchBasisPhrase(basis: unknown): string {
+  const token = typeof basis === "string" ? basis.trim() : "";
   if (!token) return "basis not recorded";
   return MATCH_BASIS_PHRASES[token] ?? token;
 }

@@ -131,7 +131,7 @@ export function getCorpus(): Corpus {
 //
 // So: ONE declaration of all five, each DERIVED from the artifact that defines
 // it, each carrying the sentence that says what one unit is. /coverage/
-// renders the table; gate 24 leg k recomputes all five independently and
+// renders the list; gate 24 leg k recomputes all five independently and
 // requires every corpus-shaped number rendered on the singleton pages to be
 // one of them. A hard-coded 1,750 fails — that is the leg's whole point, and
 // it is the generalisation of the `measured:` annotation and the stale

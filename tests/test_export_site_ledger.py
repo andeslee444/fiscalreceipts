@@ -409,6 +409,33 @@ class TestBudgetToAwardsCitationRows:
         duckdb.connect(str(db_path)).close()
         assert _build_budget_to_awards_citation_rows(duckdb_path=db_path, bl_rows=[]) == []
 
+    def test_a_raising_connection_propagates_instead_of_returning_empty(
+        self, tmp_path, monkeypatch,
+    ):
+        """A genuine read failure must not degrade to a silent [].
+
+        Before the fix this read was wrapped in a blanket `except Exception:
+        link_rows = []`, so a corrupt file, a permissions error, or a
+        connection that dies mid-query looked identical to "mart not built" —
+        a clean-looking export with zero budget_to_awards citation rows.
+        Only the missing-table case (test above) is a genuinely empty mart;
+        everything else must raise, like the file's other unguarded reads.
+        """
+
+        class _BoomConnection:
+            def execute(self, sql):
+                raise OSError("simulated disk I/O error")
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(duckdb, "connect", lambda *a, **k: _BoomConnection())
+
+        with pytest.raises(OSError):
+            _build_budget_to_awards_citation_rows(
+                duckdb_path=tmp_path / "irrelevant.duckdb", bl_rows=[],
+            )
+
     def test_rows_pass_verify_derived(self, tmp_path):
         db = _make_b2a_duckdb(tmp_path)
         wb_fid = fact_id_workbook("sha", "R-1", 2026, "0400", "DARPA", "01",

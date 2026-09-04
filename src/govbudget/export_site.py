@@ -3565,7 +3565,8 @@ def _build_derived_citation_rows(
         )
         _DOLLARS_FORMULA = (
             "sum(fct_award_transactions.obligation) for this pe_bli "
-            "via fct_budget_to_awards high-confidence join, obligation > 0"
+            "via fct_budget_to_awards high- and medium-confidence links, "
+            "obligation > 0"
         )
         for pe_bli, hhi, prog_dollars in conc_rows:
             if hhi is not None:
@@ -6318,7 +6319,15 @@ def _build_budget_to_awards_citation_rows(
     (pe_bli, award_piid) mart rows collapse to the first occurrence
     (citation_distinctness invariant).
 
-    Never fails export: missing mart → [].
+    Missing mart (fct_budget_to_awards not in the warehouse) → []: that is
+    the one genuinely-empty case, indistinguishable from "this database was
+    never built with this mart." Any OTHER read failure (a corrupt file, a
+    permissions error, a connection that dies mid-query) now RAISES instead
+    (re-review observation, 2026-09-04) — it used to be caught by the same
+    blanket `except Exception` and silently returned [], which meant a failed
+    DuckDB read emitted ZERO budget_to_awards citation rows into a clean-
+    looking export. Every other read in this module that isn't a genuine
+    schema-compat fallback is unguarded and raises; this one now matches.
     """
     import datetime
     import json as _json
@@ -6340,12 +6349,18 @@ def _build_budget_to_awards_citation_rows(
     )
     con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        link_rows = _query_with_account_fallback(
-            con,
-            _LINK_SQL.format(account=", account"),
-            _LINK_SQL.format(account=""),
-            5,
-        )
+        try:
+            link_rows = con.execute(_LINK_SQL.format(account=", account")).fetchall()
+        except _duckdb.CatalogException:
+            return rows
+        except _duckdb.BinderException:
+            # Schema predates migration 014's `account` column (older test
+            # fixture) — fall back and pad None, same contract as
+            # _query_with_account_fallback uses elsewhere in this module.
+            link_rows = [
+                (*r, None)
+                for r in con.execute(_LINK_SQL.format(account="")).fetchall()
+            ]
     finally:
         con.close()
 

@@ -216,6 +216,16 @@ describe("AnnouncementCard match basis", () => {
   it("shows an unknown basis verbatim instead of relabelling it", () => {
     expect(basisText("some-future-basis")).toBe("Matched by: some-future-basis");
   });
+
+  it("degrades to 'basis not recorded' for a non-string match_basis instead of throwing", () => {
+    // AnnouncementBody types match_basis as string | null | undefined, but the
+    // value crosses a JSON boundary at runtime — a malformed export row could
+    // hand this a number or object. .trim() on that would throw and take the
+    // whole citation panel down with it.
+    expect(basisText(42 as unknown as string)).toBe(
+      "Matched by: basis not recorded",
+    );
+  });
 });
 
 describe("announcement citation kind", () => {
