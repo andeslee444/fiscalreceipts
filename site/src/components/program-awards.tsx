@@ -123,6 +123,14 @@ export function ProgramAwards({
         Related Awards
       </h2>
       {scopeNote && <div className="mb-2">{scopeNote}</div>}
+      {displayedAwards.some((a) => a.confidence?.toLowerCase() === "medium") && (
+        <p className="text-xs text-muted-foreground mb-2" data-awards-tier-note="medium">
+          Rows marked <span className="font-medium">medium</span> drew from the same
+          appropriation account and agency as this program; that is an association,
+          not evidence that this program paid for the contract. Only{" "}
+          <span className="font-medium">high</span> rows carry program-level evidence.
+        </p>
+      )}
       {hasMore && !expanded && (
         <p className="text-xs text-muted-foreground mb-3">
           Showing {formatCount(initialAwards.length)} of {formatCount(totalCount)}{" "}award records

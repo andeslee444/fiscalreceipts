@@ -273,6 +273,15 @@ export async function runProgramSkeletonGate() {
       }
     }
 
+    // (m) 2026-09: a Related Awards table showing any medium badge must carry
+    // the in-table caveat — the badge and /methodology/ alone let presence in
+    // the table read as attribution (#77).
+    const hasMedium = root.querySelectorAll('[title="Match confidence: medium"]').length > 0;
+    if (hasMedium && !root.querySelector('[data-awards-tier-note="medium"]')) {
+      pageOk = false;
+      errors.push(`program-skeleton(m): /program/${slug}/: medium-tier award rows without [data-awards-tier-note]`);
+    }
+
     if (pageOk) pagesOk++;
   }
   notes.push(`sampled ${sample.length} pages (${SAMPLE_PER_TIER}/tier target): ${pagesOk} fully conformant`);
