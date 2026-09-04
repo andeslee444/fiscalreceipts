@@ -193,15 +193,33 @@ def make_lake(data_dir: Path):
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E','R-1','2026','DARPA','HR001124C0001',"
-        f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account'))"
+        f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account'),"
+        # 2026-09-04 (#75 fix round 1, finding 1): HR001124C0002 is
+        # account+tokens/high with NO matching adjudication row below — the
+        # mart's demotion `case` (fct_budget_to_awards.sql) must publish it
+        # as 'medium' while crosswalk_confidence keeps the raw 'high' tag.
+        # The pre-existing HR001124C0001 fixture always had an adjudication
+        # row, so it could never exercise this branch.
+        f"('0601101E','R-1','2026','DARPA','HR001124C0002',"
+        f"'WIDGET CORP','UEI2','3000000','account+tokens','high','4','test account, unadjudicated'),"
+        # HR001124C0003 is adjudicated 'reject' below (mechanical tag is
+        # irrelevant) — must drop out of the mart entirely, not just get a
+        # low confidence.
+        f"('0601101E','R-1','2026','DARPA','HR001124C0003',"
+        f"'GAMMA INC','UEI3','2000000','account+tokens','high','4','test account, rejected'))"
         f" t({JBOOK_AWARD_COLS})) to '{jbooks}/budget_line_awards.parquet' (format parquet)"
     )
     # Hand-adjudication overlay (migration 010): the mart coalesces this over
     # the mechanical confidence — the fixture row exercises exactly that path
-    # (mechanical 'high' confirmed as adjudicated 'high').
+    # (mechanical 'high' confirmed as adjudicated 'high'). HR001124C0002 is
+    # deliberately absent here (see comment above); HR001124C0003 is
+    # adjudicated 'reject' so the mart's coalesce()/filter must drop it.
     duckdb.sql(
         f"copy (select * from (values ('HR001124C0001','0601101E','high','pinned',"
         f"'pinned-here','narrative-grep','fixture evidence','2','hand-adjudication-v1',"
+        f"'2026-09-01T00:00:00Z'),"
+        f"('HR001124C0003','0601101E','reject','contradicted',"
+        f"'pinned-elsewhere:other','narrative-grep','fixture evidence','2','hand-adjudication-v1',"
         f"'2026-09-01T00:00:00Z'))"
         f" t(award_piid, pe_bli, adjudicated_confidence, award_verdict, pair_reason,"
         f" basis, evidence, refuter_lenses_passed, method, adjudicated_at))"
@@ -391,6 +409,27 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     assert con.sql(
         "select title from dim_pe_titles where pe_bli='0601102E'"
     ).fetchone()[0] == 'APPLIED RESEARCH'
+    # fct_budget_to_awards (#75 fix round 1, finding 1): mart demotion
+    # coverage. HR001124C0001 is the adjudicated control — adjudicated
+    # 'high' publishes as 'high', confidence_source='adjudicated'.
+    control = con.sql(
+        "select confidence, crosswalk_confidence, confidence_source"
+        " from fct_budget_to_awards where award_piid='HR001124C0001'"
+    ).fetchone()
+    assert control == ('high', 'high', 'adjudicated')
+    # HR001124C0002 is account+tokens/high with NO adjudication row — the
+    # demotion `case` in fct_budget_to_awards.sql must publish 'medium'
+    # while crosswalk_confidence keeps the raw mechanical 'high' tag.
+    demoted = con.sql(
+        "select confidence, crosswalk_confidence, confidence_source"
+        " from fct_budget_to_awards where award_piid='HR001124C0002'"
+    ).fetchone()
+    assert demoted == ('medium', 'high', 'mechanical')
+    # HR001124C0003 is adjudicated 'reject' — it must drop out of the mart
+    # entirely (not merely demoted), regardless of its mechanical tag.
+    assert con.sql(
+        "select count(*) from fct_budget_to_awards where award_piid='HR001124C0003'"
+    ).fetchone()[0] == 0
     # fct_district_programs: the fixture contracts have CA-52 district + award HR001124C0001
     # which matches the high-confidence jbook_award. Expect >= 1 row.
     assert con.sql("select count(*) from fct_district_programs").fetchone()[0] >= 1

@@ -24,40 +24,67 @@ adjudications as (
     select award_piid, pe_bli, adjudicated_confidence, award_verdict,
            pair_reason, basis as adjudication_basis
     from {{ source('lake', 'jbook_award_adjudications') }}
+),
+-- 2026-09-04 (#75 fix round 1, finding 3): the published confidence is
+-- computed ONCE here, in `linked`, and reused by both the select list and
+-- the where filter below -- previously the where clause re-derived
+-- coalesce(adj.adjudicated_confidence, a.confidence) directly, which
+-- mirrors the PRE-demotion value. That happened to be harmless today
+-- (demotion only ever moves high->medium, and both tiers pass the filter),
+-- but it meant a future demotion target of 'low' could publish a row the
+-- filter believed it was excluding. Filtering on the same column the
+-- select emits closes that gap structurally, not by convention.
+linked as (
+    select
+        a.pe_bli,
+        a.exhibit,
+        cast(a.fiscal_year as integer) as fiscal_year,
+        a.organization,
+        a.award_piid,
+        a.recipient_name,
+        a.recipient_uei,
+        a.method,
+        -- 2026-09-04 (#75 addendum, ruling 3): demotion, not a drop. A
+        -- mechanical account+tokens/high pair that no human has adjudicated
+        -- must never publish as 'high' -- the crosswalk's token-overlap
+        -- 'high' tier alone is not evidence-graded. Demote the PUBLISHED
+        -- confidence to 'medium'; crosswalk_confidence below keeps the raw
+        -- mechanical tag untouched so the demotion is auditable, not a
+        -- silent loss of information ("publish the smaller true number").
+        case
+            when adj.award_piid is null
+             and a.method = 'account+tokens'
+             and a.confidence = 'high'
+            then 'medium'
+            else coalesce(adj.adjudicated_confidence, a.confidence)
+        end as published_confidence,
+        a.confidence as crosswalk_confidence,
+        case when adj.award_piid is not null then 'adjudicated' else 'mechanical' end
+            as confidence_source,
+        adj.award_verdict,
+        adj.pair_reason,
+        adj.adjudication_basis
+    from {{ source('lake', 'jbook_awards') }} a
+    left join adjudications adj
+      on adj.award_piid = a.award_piid and adj.pe_bli = a.pe_bli
 )
 select
-    a.pe_bli,
-    a.exhibit,
-    cast(a.fiscal_year as integer) as fiscal_year,
-    a.organization,
-    a.award_piid,
-    a.recipient_name,
-    a.recipient_uei,
-    a.method,
-    -- 2026-09-04 (#75 addendum, ruling 3): demotion, not a drop. A mechanical
-    -- account+tokens/high pair that no human has adjudicated must never
-    -- publish as 'high' -- the crosswalk's token-overlap 'high' tier alone
-    -- is not evidence-graded. Demote the PUBLISHED confidence to 'medium';
-    -- crosswalk_confidence below keeps the raw mechanical tag untouched so
-    -- the demotion is auditable, not a silent loss of information ("publish
-    -- the smaller true number").
-    case
-        when adj.award_piid is null
-         and a.method = 'account+tokens'
-         and a.confidence = 'high'
-        then 'medium'
-        else coalesce(adj.adjudicated_confidence, a.confidence)
-    end as confidence,
-    a.confidence as crosswalk_confidence,
-    case when adj.award_piid is not null then 'adjudicated' else 'mechanical' end
-        as confidence_source,
-    adj.award_verdict,
-    adj.pair_reason,
-    adj.adjudication_basis,
+    l.pe_bli,
+    l.exhibit,
+    l.fiscal_year,
+    l.organization,
+    l.award_piid,
+    l.recipient_name,
+    l.recipient_uei,
+    l.method,
+    l.published_confidence as confidence,
+    l.crosswalk_confidence,
+    l.confidence_source,
+    l.award_verdict,
+    l.pair_reason,
+    l.adjudication_basis,
     p.title as program_title
-from {{ source('lake', 'jbook_awards') }} a
-left join adjudications adj
-  on adj.award_piid = a.award_piid and adj.pe_bli = a.pe_bli
+from linked l
 left join programs p
-  on p.pe_bli = a.pe_bli
-where coalesce(adj.adjudicated_confidence, a.confidence) in ('high', 'medium')
+  on p.pe_bli = l.pe_bli
+where l.published_confidence in ('high', 'medium')

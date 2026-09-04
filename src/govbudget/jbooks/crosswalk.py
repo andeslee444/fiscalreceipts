@@ -28,7 +28,29 @@ def _load_subagency_aliases() -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     with open(_ALIASES_CSV, newline="") as f:
         for row in csv.DictReader(f):
-            out.setdefault(row["organization"], []).append(row["alias"].lower())
+            organization = (row.get("organization") or "").strip()
+            alias = (row.get("alias") or "").strip()
+            # 2026-09-04 (#75 fix round 1, finding 5): an empty alias makes
+            # `"" in sub_agency` true for EVERY award (empty string is a
+            # substring of everything in Python), silently promoting the
+            # whole organization's low-tier matches to medium. An empty
+            # organization is equally unusable (it can never be looked up
+            # by crosswalk_org's own `organization` argument). Fail loudly
+            # at load time rather than let either slip through as a no-op
+            # alias that quietly inflates confidence.
+            if not organization:
+                raise ValueError(
+                    f"{_ALIASES_CSV}: row with empty organization"
+                    f" (alias={row.get('alias')!r})"
+                )
+            if not alias:
+                raise ValueError(
+                    f"{_ALIASES_CSV}: empty alias for organization"
+                    f" {organization!r} — an empty alias would match every"
+                    " award's sub-agency and silently promote the whole"
+                    " organization to medium confidence"
+                )
+            out.setdefault(organization, []).append(alias.lower())
     return out
 
 

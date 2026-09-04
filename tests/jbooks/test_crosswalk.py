@@ -3,7 +3,9 @@ from pathlib import Path
 
 import duckdb
 import psycopg
+import pytest
 
+from govbudget.jbooks import crosswalk as crosswalk_module
 from govbudget.jbooks.crosswalk import crosswalk_org
 
 AWARD_COLS = (
@@ -405,3 +407,26 @@ def test_crosswalk_does_not_overwrite_non_mechanical_methods(pg_dsn, tmp_path):
             " where pe_bli='0601101E' and award_piid='HR001124C0001'"
         ).fetchone()
     assert (method, confidence) == ("announcement+lexicon", "high")
+
+
+def test_subagency_seed_rejects_empty_alias(tmp_path, monkeypatch):
+    """Fix round 1, finding 5: an empty alias in the seed CSV must raise, not
+    load silently. `"" in sub_agency` is True for every award (empty string
+    is a substring of anything in Python), so an unvalidated empty alias
+    would silently promote the whole organization's matches to medium."""
+    bad_csv = tmp_path / "org_subagency_aliases.csv"
+    bad_csv.write_text("organization,alias\nDARPA,advanced research projects\nMDA,\n")
+    monkeypatch.setattr(crosswalk_module, "_ALIASES_CSV", bad_csv)
+    with pytest.raises(ValueError, match="MDA"):
+        crosswalk_module._load_subagency_aliases()
+
+
+def test_subagency_seed_rejects_empty_organization(tmp_path, monkeypatch):
+    """Companion: an empty organization is equally unusable — it can never
+    be looked up by crosswalk_org's own `organization` argument, so it must
+    also raise rather than load as a silent no-op alias."""
+    bad_csv = tmp_path / "org_subagency_aliases.csv"
+    bad_csv.write_text("organization,alias\n,missile defense agency\n")
+    monkeypatch.setattr(crosswalk_module, "_ALIASES_CSV", bad_csv)
+    with pytest.raises(ValueError, match="empty organization"):
+        crosswalk_module._load_subagency_aliases()
