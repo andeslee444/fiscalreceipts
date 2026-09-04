@@ -14,7 +14,11 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
 
-import { AnnouncementCard } from "@/components/citation-panel/announcement-card";
+import {
+  AnnouncementCard,
+  matchBasisPhrase,
+} from "@/components/citation-panel/announcement-card";
+import { parseAnnouncementBody } from "@/components/citation-panel/panel";
 import { isAnnouncement } from "@/lib/citations";
 import type { AnnouncementCitation, Citation } from "@/lib/data";
 
@@ -109,8 +113,8 @@ describe("AnnouncementCard", () => {
 
   it("never claims the announcement names the program", () => {
     // The sentence this replaced ("The announcement names both this contract
-    // and this program") was false for every basis except exact-name — 511 of
-    // the 701 published links.
+    // and this program") was false for every basis except exact-name — 518 of
+    // the 708 published links (re-measured 2026-09-04).
     const { container } = render(
       <AnnouncementCard
         url={ARTICLE_URL}
@@ -206,8 +210,9 @@ describe("AnnouncementCard match basis", () => {
   });
 
   it("says 'basis not recorded' when the packet recorded none", () => {
-    // 317 of the 701 published links — the loader's rationale prose defaults
-    // an absent basis to 'exact-name'; the card must not.
+    // Hundreds of published links recorded no basis at all. The card says so
+    // plainly rather than naming one: "not recorded" is the honest answer,
+    // and it is not a weaker synonym for 'exact-name'.
     expect(basisText(null)).toBe("Matched by: basis not recorded");
     expect(basisText(undefined)).toBe("Matched by: basis not recorded");
     expect(basisText("   ")).toBe("Matched by: basis not recorded");
@@ -289,5 +294,45 @@ describe("announcement citation kind", () => {
     expect(input.sourceLabel).toBe("Official DoD contract announcement");
     expect(input.officialUrl).toBe(ARTICLE_URL);
     expect(input.sha256).toBe(SHA);
+  });
+});
+
+// ── M7: the degraded path — a body that cannot be read ──────────────────────
+//
+// parseAnnouncementBody returns null for a query_body the panel cannot trust,
+// and CitationBody then renders "This announcement citation could not be
+// read." rather than an AnnouncementCard with a blank article id. Every
+// not-null branch was tested; the null branch — the one a reader actually
+// meets when an export goes wrong — was not.
+describe("parseAnnouncementBody — the unusable-body path", () => {
+  it("returns null for an absent body", () => {
+    expect(parseAnnouncementBody(null)).toBeNull();
+    expect(parseAnnouncementBody("")).toBeNull();
+  });
+
+  it("returns null for malformed JSON instead of throwing", () => {
+    expect(parseAnnouncementBody("{not json")).toBeNull();
+  });
+
+  it("returns null when article_id is missing, empty or not a string", () => {
+    expect(parseAnnouncementBody(JSON.stringify({}))).toBeNull();
+    expect(parseAnnouncementBody(JSON.stringify({ article_id: "" }))).toBeNull();
+    expect(parseAnnouncementBody(JSON.stringify({ article_id: 1006508 }))).toBeNull();
+    expect(parseAnnouncementBody("null")).toBeNull();
+  });
+
+  it("parses a usable body and keeps an absent basis absent", () => {
+    const body = parseAnnouncementBody(
+      JSON.stringify({ article_id: "1006508", sha256: "a".repeat(64) }),
+    );
+    expect(body).toEqual({
+      article_id: "1006508",
+      archive_url: null,
+      sha256: "a".repeat(64),
+      match_basis: null,
+    });
+    // …and an absent basis reaches the reader as "not recorded", never as a
+    // default that flatters the link.
+    expect(matchBasisPhrase(body!.match_basis)).toBe("basis not recorded");
   });
 });

@@ -164,8 +164,8 @@ export function rollupProgramRow(
     project_count: 0,
     trajectory: details.trajectory ?? null,
     trajectory_fact_ids: details.trajectory_fact_ids ?? null,
-    // Sprint E, Task E3: a rollup-tier program is never one of the 8
-    // appropriation-account collisions (those all have a dim_programs row,
+    // Sprint E, Task E3: a rollup-tier program is never one of the 13 shared
+    // pe_bli codes (those all have a dim_programs row,
     // i.e. full tier) — slug is always its own bare pe_bli.
     slug: peBli,
     account: null,

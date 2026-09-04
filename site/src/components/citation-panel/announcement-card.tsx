@@ -15,10 +15,12 @@
  *     this replaced used to state
  *
  * The match basis is load-bearing, not decoration. Only 'exact-name' means
- * the announcement named the program as written — 190 of the 701 published
- * links. The other 511 (194 matched through a normalised designator or an LLM
- * judgement, 317 with no recorded basis) must not be shown a card claiming the
- * announcement named the program.
+ * the announcement named the program as written — 190 of the 708 published
+ * links (re-measured 2026-09-04). The other 518 (194 matched through a
+ * normalised designator or an LLM judgement, 324 with NO recorded basis at
+ * all) must not be shown a card claiming the announcement named the program:
+ * for those 324 the card says "basis not recorded", which is the honest
+ * answer and not a weaker synonym for exact-name.
  *
  * Archive fields are optional on purpose: not every article was archived, and
  * this card renders the absence rather than inventing a snapshot.

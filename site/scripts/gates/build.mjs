@@ -1074,6 +1074,59 @@ export async function runBuildGate() {
     }
   }
 
+  // ── /json/feed.json is SHIPPED, parses, and carries cards ─────────────────
+  //
+  // Final review I2 / batch review 1.2. /json/feed.json is fetched by
+  // FeedSectionExpand when a reader clicks "show all" on a /feed/ section,
+  // and by nothing else: no <a href> points at it, so no link-graph leg could
+  // see it. It 404'd in production. Gate 13 leg (i) now scans site/src for
+  // static fetch targets and asserts each exists; this leg adds the part a
+  // path-existence check cannot make: the file must PARSE and carry a real
+  // digest, not a zero-card husk written by a half-run prepare-assets.
+  //
+  // Floor measured 2026-09-04 from data/site/json/feed.json: 1,047 cards.
+  // 800 leaves headroom for ordinary corpus movement (feed cards come and go
+  // with each export) and still fails on the shape this exists to catch — an
+  // empty or truncated copy. RE-MEASURE if the feed's construction changes;
+  // do not lower it to whatever the build produced.
+  const MIN_SHIPPED_FEED_CARDS = 800;
+  const shippedFeedPath = path.join(outDir, "json", "feed.json");
+  if (!fileExists(shippedFeedPath)) {
+    errors.push(
+      "out/json/feed.json not found — /feed/'s 'show all' button fetches this " +
+        "file and nothing links to it, so a missing copy 404s silently for " +
+        "every reader (prepare-assets.mjs copies it into public/json/)"
+    );
+  } else {
+    let shippedFeed;
+    try {
+      shippedFeed = readJson(shippedFeedPath);
+    } catch (e) {
+      shippedFeed = null;
+      errors.push(`out/json/feed.json is not parseable JSON: ${e.message}`);
+    }
+    if (shippedFeed) {
+      const cards = Array.isArray(shippedFeed.cards) ? shippedFeed.cards : null;
+      if (!cards) {
+        errors.push(
+          "out/json/feed.json has no `cards` array — FeedSectionExpand reads " +
+            "data.cards and would throw on every expand"
+        );
+      } else if (cards.length < MIN_SHIPPED_FEED_CARDS) {
+        errors.push(
+          `out/json/feed.json carries ${cards.length} card(s), floor ` +
+            `${MIN_SHIPPED_FEED_CARDS} (measured 2026-09-04 at 1,047). A ` +
+            `truncated copy passes every existence check and still breaks ` +
+            `"show all". Re-measure the feed; do not lower the floor`
+        );
+      } else {
+        notes.push(
+          `out/json/feed.json: ${cards.length} cards (floor ${MIN_SHIPPED_FEED_CARDS}) ✓`
+        );
+      }
+    }
+  }
+
   // ── Download-href check ───────────────────────────────────────────────────
   // The built downloads page must use /citations/citations.parquet (not /data/).
   const downloadsHtml = path.join(outDir, "downloads", "index.html");

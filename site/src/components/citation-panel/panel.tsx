@@ -576,8 +576,13 @@ function CitationPanelDialog({
   );
 }
 
-/** Parse an announcement citation's query_body; null when it is unusable. */
-function parseAnnouncementBody(raw: string | null): AnnouncementBody | null {
+/** Parse an announcement citation's query_body; null when it is unusable.
+ *
+ *  Exported for src/__tests__/announcement-card.test.tsx: `null` is what makes
+ *  the panel render "This announcement citation could not be read." instead of
+ *  a card with a blank article id, and that degraded path had no test
+ *  (2026-09-04 final review M7). */
+export function parseAnnouncementBody(raw: string | null): AnnouncementBody | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<AnnouncementBody>;

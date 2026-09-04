@@ -44,10 +44,12 @@ export interface ProgramsTableRow {
   /** PE/BLI code — also the row key, the alias key and the link target. */
   pe: string;
   /**
-   * Sprint E, Task E3 (ROADMAP #67) — the page-route slug, present ONLY for
-   * one of the 8 genuine appropriation-account collisions (where it differs
-   * from `pe`; omitted entirely for the other ~1,735 rows, never a
-   * redundant per-row copy of `pe`). Use `s ?? pe` for the row key,
+   * Sprint E, Task E3 (ROADMAP #67) — the page-route slug, present ONLY on
+   * the 27 rows that sit on one of the 13 shared pe_bli codes (10
+   * appropriation-account collisions + 3 organization collisions,
+   * re-measured 2026-09-04; Sprint E measured 8 codes), where it differs
+   * from `pe`; omitted entirely for the other ~1,900 rows, never a
+   * redundant per-row copy of `pe`. Use `s ?? pe` for the row key,
    * data-entity, and href — omitting this would link every split-key row to
    * the bare disambiguation stub instead of its own page.
    */

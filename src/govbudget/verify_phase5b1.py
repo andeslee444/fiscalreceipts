@@ -885,7 +885,7 @@ _ANNOUNCEMENT_URL_RE = re.compile(
     r"(?P<article_id>\d+)/?"
 )
 # The ARCHIVED target is whatever URL the crawler fetched, not a URL this
-# codebase minted, and the real 701-row corpus varies in two harmless ways:
+# codebase minted, and the real 708-row corpus varies in two harmless ways:
 #   - tracking suffixes on 101 snapshots ('…/Article/1081980//',
 #     '…/Article/3763548/?ref=utahmoneywatch.com',
 #     '…/Article/968629/source/GovDelivery/')
@@ -919,7 +919,7 @@ def _verify_announcement(row: tuple, idx: dict) -> str | None:
     3. archive_url, when present, is an anchored Wayback snapshot URL
        (https://web.archive.org/web/{14-digit stamp}/…) whose archived target
        is a defense.gov Contracts article with the SAME article id (tracking
-       suffixes on the target are tolerated — 101 of 701 real snapshots carry
+       suffixes on the target are tolerated — 101 of 708 real snapshots carry
        one). Absent is fine: not every article was archived, and a null is
        the honest answer.
     4. sha256, when present, is 64 lowercase hex and equals the sha256 in

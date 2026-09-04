@@ -201,6 +201,114 @@ describe("<FeedSectionExpand> — expand", () => {
     expect(container.querySelectorAll("[data-feed-card]").length).toBe(0);
   });
 
+  // ── K.5: the footer states what is ON SCREEN, never "all" ────────────────
+  //
+  // /json/feed.json is a separate asset from the built page, so a partial
+  // deploy can leave the page ahead of the file. The footer must then say how
+  // many cards are actually rendered — and (final review M8) the first `shown`
+  // cards are SERVER-rendered and stay on screen regardless of what came back,
+  // so the honest number is `shown + extraCards.length`, not the fetch's own
+  // count.
+  it("says 'Showing 3 of 5' when the shipped feed.json is short of `total`", async () => {
+    // total=5 (what the page was built from), but the fetched file carries
+    // only 4 cards for this event type — one past the 3 already on screen.
+    const cards = [0, 1, 2, 3].map((i) => card(String(i).padStart(4, "0")));
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === "/json/feed.json"
+        ? Promise.resolve(jsonResponse({ cards, total: 4, scope_qualifier: null }))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+
+    const { container } = render(
+      <FeedSectionExpand
+        eventType="concentration_shift"
+        shown={3}
+        total={5}
+        programPeBlis={[]}
+        companySlugByFamilyKey={{}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(1);
+    });
+    const text = container.textContent ?? "";
+    expect(text).toContain("Showing 4 of 5 cards in this section.");
+    expect(text).not.toContain("Showing all");
+  });
+
+  it("counts the server-rendered cards too when the fetch returns fewer than `shown`", async () => {
+    // The M8 shape: feed.json is BEHIND the page and carries 3 cards where the
+    // page already renders 3 server-side. extraCards is empty, but 3 cards are
+    // on screen — the footer used to say "Showing 3 of 5" only by accident and
+    // said "Showing 2 of 5" whenever the file was shorter still.
+    const cards = [0, 1].map((i) => card(String(i).padStart(4, "0")));
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === "/json/feed.json"
+        ? Promise.resolve(jsonResponse({ cards, total: 2, scope_qualifier: null }))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+
+    const { container } = render(
+      <FeedSectionExpand
+        eventType="concentration_shift"
+        shown={3}
+        total={5}
+        programPeBlis={[]}
+        companySlugByFamilyKey={{}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 5/i }));
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("cards in this section.");
+    });
+    // 3 server-rendered + 0 fetched past the cap = 3 on screen, not 2.
+    expect(container.textContent).toContain("Showing 3 of 5 cards in this section.");
+    expect(container.textContent).not.toContain("Showing 2 of 5");
+    expect(container.textContent).not.toContain("Showing all");
+  });
+
+  // ── K.3: two hidden cards sharing a pe_bli must not collide on key ───────
+  it("renders two cards sharing a pe_bli without a duplicate-key warning", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Same pe_bli, same event_type — the shape that would collide if the key
+    // were `${event_type}-${pe_bli}`. React reports duplicate keys through
+    // console.error, so a silent regression here is a spy assertion, not a
+    // visible failure.
+    const cards = [
+      card("0001"),
+      card("0002"),
+      card("0002"),
+    ];
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === "/json/feed.json"
+        ? Promise.resolve(jsonResponse({ cards, total: 3, scope_qualifier: null }))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+
+    const { container } = render(
+      <FeedSectionExpand
+        eventType="concentration_shift"
+        shown={1}
+        total={3}
+        programPeBlis={[]}
+        companySlugByFamilyKey={{}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /show all 3/i }));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll("[data-feed-card]").length).toBe(2);
+    });
+    const keyWarnings = consoleError.mock.calls
+      .map((args) => String(args[0] ?? ""))
+      .filter((msg) => /same key|duplicate key|unique "key"/i.test(msg));
+    expect(keyWarnings).toEqual([]);
+    consoleError.mockRestore();
+  });
+
   it("companySlug resolves from companySlugByFamilyKey for family_key-driven cards", async () => {
     const cards = [
       card("", {

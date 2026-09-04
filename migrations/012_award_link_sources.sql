@@ -34,8 +34,9 @@
 --   subaward-description-exact (subaward rows) the sub's description verbatim
 --   NULL                       the wave packet recorded no basis
 -- The card must state this in words. "The announcement names this program" is
--- true only for exact-name — 190 of the 701 published announcement links. The
--- other 511 (194 designator/alias/description, 317 with no recorded basis) did
+-- true only for exact-name — 190 of the 708 published announcement links
+-- (re-measured 2026-09-04). The other 518 (194 designator/alias/description,
+-- 324 with no recorded basis) did
 -- not have the program named as written, so collapsing every basis into that
 -- one sentence overclaims for most of the corpus.
 --

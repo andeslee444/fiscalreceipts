@@ -50,11 +50,18 @@
  *   since #44 — see that function's doc comment; the 6 cards whose headline
  *   still starts with their own code, all pe_bli "LRASM0", carry
  *   card.title === card.pe_bli === "LRASM0", the reconstruction's own
- *   no-op case, verified against the live corpus 2026-09-04). A future
- *   export that ships a code-led headline with no card.title at all would
- *   render the raw code here and a getPrograms()-resolved title on the
- *   server — caught by the parity test's code-led fixture, not silently
- *   divergent.
+ *   no-op case, verified against the live corpus 2026-09-04).
+ *
+ *   NOT COVERED (2026-09-04 batch review 1.5): a future export shipping a
+ *   code-led headline with NO card.title at all would render the raw code
+ *   here and a getPrograms()-resolved title on the server. The parity test's
+ *   code-led fixtures all carry a title (that is what makes them
+ *   renderable on both sides at all), and its title-less fixtures are
+ *   company cards with pe_bli === null, so neither reaches this case — a
+ *   fixture that did would FAIL by construction, since the server resolves
+ *   from disk and the client cannot. The guard against it is upstream: the
+ *   exporter resolves a title for every card, and gate 23's feed legs check
+ *   the rendered headline against the card it came from.
  *
  *   Fy26SplitNoteClient — byte-for-byte the same JSX as
  *   program-figures.tsx's Fy26SplitNote, using <ScopeNote>/<Cite> directly

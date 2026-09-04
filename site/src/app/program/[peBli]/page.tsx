@@ -100,8 +100,7 @@ export const dynamicParams = false;
  * appropriation-account collision). A stub carries no program_details
  * sidecar of its own (see the stub branch below and program-skeleton.mjs's
  * exclusion of it), so it is not in getProgramPeBlis()'s directory listing —
- * union it in explicitly or its bare URL (a live 200 today for 6 of the 8
- * keys) would 404.
+ * union it in explicitly or its bare URL would 404.
  */
 export function generateStaticParams(): { peBli: string }[] {
   return [...getProgramPeBlis(), ...getSplitProgramKeys()].map((peBli) => ({
@@ -142,7 +141,9 @@ function resolveProgram(
 // more than one row for it, in which case the bare URL is this
 // disambiguation stub and each sibling gets its own page at
 // "{pe_bli}-{CODE}/" (ProgramRow.slug). Two independent shapes share this
-// stub: 8 keys collide on APPROPRIATION ACCOUNT (Sprint E) — same
+// stub: 10 keys collide on APPROPRIATION ACCOUNT (Sprint E measured 8; the
+// corpus grew to 10 with the last Navy procurement books, re-measured
+// 2026-09-04) — same
 // organization, different account — and 3 collide on ORGANIZATION instead
 // (ROADMAP #45, '20'/'30'/'500') — same account, different organization. No
 // key collides on both. stubDimension below reads which axis actually
@@ -931,9 +932,9 @@ export default async function ProgramPage({
           </>
         ) : (
           <SectionEmpty title="Awards">
-            No awards are linked to this program element at high confidence —
-            the budget→award crosswalk only asserts links it can defend, and
-            this line has none yet.
+            No awards are linked to this program element at high or medium
+            confidence — the budget→award crosswalk only asserts links it can
+            defend, and this line has none yet.
           </SectionEmpty>
         )}
       </ProgramSection>

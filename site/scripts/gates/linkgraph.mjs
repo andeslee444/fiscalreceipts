@@ -61,6 +61,7 @@ import { parse } from "node-html-parser";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(__dirname, "..", "..", "out");
 const jsonDir = path.resolve(__dirname, "..", "..", "..", "data", "site", "json");
+const srcDir = path.resolve(__dirname, "..", "..", "src");
 
 // PE-shaped token — independent recompute of lib/pe-link.ts PE_TOKEN_RE.
 const PE_TOKEN_RE = /\b\d{7}[A-Z][A-Z0-9]{0,2}\b/g;
@@ -698,13 +699,20 @@ function runDownloadLinkLeg(errors, notes) {
  * fresh full-site walk. The existence check is a single Set of every
  * .json/.xml path under out/, built once up front.
  *
- * Deliberately does NOT catch feed.json itself: /json/feed.json is reached
- * only by a client-side `fetch()` inside FeedSectionExpand
- * (feed-card-item-client.tsx's sibling, feed-section-expand.tsx), never by
- * an <a href> anywhere in the built HTML — grep confirms no anchor points at
- * it. No link-graph leg, this one included, can see a fetch() URL string
- * baked into a client JS bundle; that miss is closed at the source
- * (prepare-assets.mjs's copy list) rather than caught here.
+ * SECOND SCAN (2026-09-04, batch review 1.2). An <a href> sweep cannot catch
+ * the 404 this leg was written for. /json/feed.json is reached only by a
+ * client-side `fetch()` inside FeedSectionExpand — never by an anchor
+ * anywhere in the built HTML — and so are four more statically named
+ * targets: /json/years_matrix.json, /json/flow_chart.json, /config.json and
+ * /json-lite/search_quick.json. A missing one of those is a silent dead
+ * feature (an expand button that spins and errors), invisible to every
+ * link-graph check that reads HTML.
+ *
+ * So the leg ALSO reads the SOURCE: every string-literal fetch target under
+ * site/src whose path is statically known, asserted to exist under out/.
+ * Dynamic targets (`${assetBase}/…`, `/json-lite/program_details/${peBli}`)
+ * are deliberately out of scope — their existence is a per-row question the
+ * sidecar gates answer.
  */
 const SELF_ORIGINS = [
   "https://fiscalreceipts.com",
@@ -730,8 +738,9 @@ function jsonXmlPathsUnderOut() {
 }
 
 /** The out/-relative .json/.xml path an href names, if it is same-origin
- *  (relative, or absolute against one of SELF_ORIGINS) — else null. */
-function sameOriginJsonXmlTarget(href) {
+ *  (relative, or absolute against one of SELF_ORIGINS) — else null.
+ *  Exported for scripts/gates/__tests__/fetch-targets.test.mjs. */
+export function sameOriginJsonXmlTarget(href) {
   if (!href) return null;
   let rest = null;
   if (href.startsWith("/")) {
@@ -749,6 +758,69 @@ function sameOriginJsonXmlTarget(href) {
   if (!/\.(json|xml)$/i.test(rest)) return null;
   return rest;
 }
+
+/**
+ * Every STATICALLY KNOWN same-origin fetch target in one source file.
+ *
+ * Two shapes are static enough to check:
+ *   fetch("/json/feed.json")   fetch('/x.json')   fetch(`/x.json`)
+ *   fetch(`/json/foo.json?v=${n}`)  — the prefix before the first ${ is
+ *                                     already a complete .json/.xml path
+ * Everything else is dynamic by construction (`${assetBase}/…`,
+ * `/json-lite/program_details/${peBli}.json`, fetch(someUrlFn(x))) and is
+ * left alone: a scanner that guessed at those would either miss real
+ * targets or invent paths that never load.
+ *
+ * Exported for scripts/gates/__tests__/fetch-targets.test.mjs.
+ */
+export function staticFetchTargets(source) {
+  const found = new Set();
+  const clean = (p) => p.split("#")[0].split("?")[0];
+  // Fully static literal: no ${ inside, so the whole string is the path.
+  for (const m of source.matchAll(/\bfetch\(\s*(["'`])(\/[^"'`\n${]*)\1/g)) {
+    found.add(clean(m[2]));
+  }
+  // Template literal WITH interpolation: usable only when the static prefix
+  // is already a complete file path (i.e. the ${…} is a query/hash suffix).
+  for (const m of source.matchAll(/\bfetch\(\s*`(\/[^`\n]*?)\$\{/g)) {
+    const prefix = clean(m[1]);
+    if (/\.(json|xml)$/i.test(prefix)) found.add(prefix);
+  }
+  return [...found].sort();
+}
+
+/** {target → [source files]} over every .ts/.tsx under site/src, tests
+ *  excluded (a test's fetch mock names a URL nothing ships). */
+export function scanFetchTargets(dir) {
+  const byTarget = new Map();
+  const walk = (d) => {
+    for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+      const abs = path.join(d, ent.name);
+      if (ent.isDirectory()) {
+        if (ent.name === "__tests__" || ent.name === "node_modules") continue;
+        walk(abs);
+      } else if (/\.tsx?$/.test(ent.name) && !/\.test\.tsx?$/.test(ent.name)) {
+        const rel = path.relative(srcDir, abs).split(path.sep).join("/");
+        for (const t of staticFetchTargets(fs.readFileSync(abs, "utf8"))) {
+          if (!byTarget.has(t)) byTarget.set(t, []);
+          byTarget.get(t).push(rel);
+        }
+      }
+    }
+  };
+  if (fs.existsSync(dir)) walk(dir);
+  return byTarget;
+}
+
+/** Non-vacuity floor for the fetch-target scan (measured 2026-09-04 against
+ *  site/src: FIVE statically named targets — /config.json,
+ *  /json/feed.json, /json/flow_chart.json, /json/years_matrix.json,
+ *  /json-lite/search_quick.json). Below this the scanner has stopped
+ *  matching (a fetch wrapper, a moved file, a regex regression) and the leg
+ *  would report "all targets resolve" while checking none — which is exactly
+ *  the state in which /json/feed.json 404'd in production. RE-MEASURE if the
+ *  client stops fetching one of these; do not lower it to fit. */
+const MIN_STATIC_FETCH_TARGETS = 5;
 
 function runJsonXmlHrefLeg(errors, notes) {
   const existing = jsonXmlPathsUnderOut();
@@ -773,6 +845,18 @@ function runJsonXmlHrefLeg(errors, notes) {
     }
   }
 
+  // ── second scan: statically named client fetch targets ──────────────────
+  const fetchTargets = scanFetchTargets(srcDir);
+  const deadFetch = [];
+  for (const [target, sources] of [...fetchTargets].sort()) {
+    checked += 1;
+    // out/ holds every shipped asset, not just .json/.xml (e.g. /config.json
+    // is copied by prepare-assets), so test the file directly rather than
+    // reusing the .json/.xml index above.
+    const abs = path.join(outDir, ...target.split("/").filter(Boolean));
+    if (!fs.existsSync(abs)) deadFetch.push([target, sources]);
+  }
+
   if (checked === 0) {
     errors.push(
       "leg i: 0 same-origin .json/.xml hrefs found across scanned pages — " +
@@ -780,6 +864,23 @@ function runJsonXmlHrefLeg(errors, notes) {
         "page-set regression would look identical to 'all good')",
     );
     return;
+  }
+  if (fetchTargets.size < MIN_STATIC_FETCH_TARGETS) {
+    errors.push(
+      `leg i: only ${fetchTargets.size} statically named fetch target(s) found ` +
+        `under site/src (floor ${MIN_STATIC_FETCH_TARGETS}, measured ` +
+        `2026-09-04). The scanner has stopped matching, so the check that ` +
+        `would have caught /json/feed.json 404ing in production is running ` +
+        `against nothing. Re-derive the scan; do not lower the floor`,
+    );
+  }
+  for (const [target, sources] of deadFetch) {
+    errors.push(
+      `leg i: dead client fetch target ${target} — fetched by ` +
+        `${sources.join(", ")}, no file at out${target}. No <a href> points ` +
+        `at it, so nothing else on this site can catch it: the feature just ` +
+        `spins and errors for every reader`,
+    );
   }
   if (missing.size > 0) {
     for (const [target, rec] of missing) {
@@ -789,10 +890,13 @@ function runJsonXmlHrefLeg(errors, notes) {
           `at out${target}`,
       );
     }
-  } else {
+  } else if (deadFetch.length === 0) {
     notes.push(
-      `leg i: ${checked} same-origin .json/.xml href(s) across ${pages.length} ` +
-        `scanned page(s), all resolve to a built file ✓`,
+      `leg i: ${checked} same-origin target(s) — ` +
+        `${checked - fetchTargets.size} .json/.xml href(s) across ` +
+        `${pages.length} scanned page(s) plus ${fetchTargets.size} static ` +
+        `client fetch target(s) (floor ${MIN_STATIC_FETCH_TARGETS}) — all ` +
+        `resolve to a built file ✓`,
     );
   }
 }

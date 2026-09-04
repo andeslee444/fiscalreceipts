@@ -485,7 +485,9 @@ export function ProgramsTable({ programs, orgs }: ProgramsTableProps) {
                 // The row's subject, in gate 23's grouping vocabulary — leg e
                 // joins this to /program/{entity}/ to check that the index and
                 // the page it links to state one value under one label.
-                // Sprint E, Task E3: `s` (present only for the 8 split keys)
+                // Sprint E, Task E3: `s` (present only on the 27 rows that
+                // sit on one of the 13 shared pe_bli codes — re-measured
+                // 2026-09-04; Sprint E measured 8 codes)
                 // is the specific program's own slug — the bare `pe` would
                 // join to the disambiguation stub instead, which has none of
                 // this row's own figures to check.
