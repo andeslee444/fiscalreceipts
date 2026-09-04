@@ -38,9 +38,23 @@ from derive_ap_links import fed_accounts_from_codes
 def money_color_ok(award_accounts: set[str], line_accounts: set[str]) -> bool:
     """True when the award's funding accounts and the target line's
     appropriation accounts share at least one code, i.e. the award's money
-    color is consistent with the line it would be linked to. Either set
-    being empty (no data either side) is treated as a mismatch — absence of
-    evidence is not evidence of a match."""
+    color is consistent with the line it would be linked to.
+
+    Unknown award accounts (empty set, e.g. older PIIDs with NULL
+    federal_accounts_funding_this_award) are treated as unknown, not mismatched
+    — we do not skip the link. False only when the award's accounts are known
+    and disjoint from the line's accounts (the failure mode: O&M-only awards
+    attached to RDT&E/procurement lines).
+
+    If the line's accounts are unknown (empty set), we return False because
+    we cannot verify the money color match."""
+    # Unknown award accounts = don't skip, we don't know if it's wrong
+    if not award_accounts:
+        return True
+    # Known award accounts but unknown line accounts = skip, can't verify
+    if not line_accounts:
+        return False
+    # Both known: match only if they intersect
     return bool(award_accounts & line_accounts)
 
 
@@ -148,7 +162,7 @@ def main() -> int:
             # the target line's appropriation accounts. 3 of 6 refutations in
             # the 2026-09-04 held-out study were O&M-only awards attached to
             # RDT&E/procurement lines — a mismatch here is that failure mode.
-            award_accounts = set((accts or "").split(";"))
+            award_accounts = {a for a in (accts or "").split(";") if a.strip()}
             if not money_color_ok(award_accounts, line_fed_accounts.get(pe, set())):
                 skipped["money_color_mismatch"] += 1
                 continue

@@ -19,13 +19,16 @@ def test_disjoint_accounts_do_not_match():
     assert money_color_ok({"097-3400"}, {"097-1319"}) is False
 
 
-def test_empty_award_accounts_do_not_match():
-    assert money_color_ok(set(), {"097-1319"}) is False
+def test_empty_award_accounts_are_unknown_not_mismatched():
+    # Unknown award accounts (e.g. older PIIDs with NULL federal_accounts_funding_this_award)
+    # are not evidence of a mismatch — the guard skips only when award accounts are
+    # known and disjoint from the line's accounts.
+    assert money_color_ok(set(), {"057-3600"}) is True
 
 
 def test_empty_line_accounts_do_not_match():
     assert money_color_ok({"097-1319"}, set()) is False
 
 
-def test_both_empty_do_not_match():
-    assert money_color_ok(set(), set()) is False
+def test_both_empty_are_unknown_not_mismatched():
+    assert money_color_ok(set(), set()) is True
