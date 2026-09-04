@@ -57,6 +57,7 @@ import {
   isStateSoql,
   isStateFile,
   isJbookNarrative,
+  isAnnouncement,
 } from "@/lib/citations";
 import { CitationPanelContext } from "@/components/cite";
 import { SITE_URL } from "@/lib/site";
@@ -74,6 +75,7 @@ import { DerivedCard } from "./derived-card";
 import { UsaspendingCard } from "./usaspending-card";
 import { StateCard } from "./state-card";
 import { JbookNarrativeCard } from "./jbook-narrative-card";
+import { AnnouncementCard, type AnnouncementBody } from "./announcement-card";
 
 // ── CitationPanelProvider ─────────────────────────────────────────────────────
 
@@ -329,6 +331,8 @@ function kindLabel(citation: Citation): string {
       return "State Source File";
     case "jbook_narrative":
       return "J-book Narrative";
+    case "announcement":
+      return "DoD Contract Announcement";
   }
 }
 
@@ -349,6 +353,8 @@ function kindBadgeClass(citation: Citation): string {
       return "bg-teal-100 text-teal-800";
     case "jbook_narrative":
       return "bg-amber-100 text-amber-800";
+    case "announcement":
+      return "bg-rose-100 text-rose-800";
   }
 }
 
@@ -570,6 +576,24 @@ function CitationPanelDialog({
   );
 }
 
+/** Parse an announcement citation's query_body; null when it is unusable. */
+function parseAnnouncementBody(raw: string | null): AnnouncementBody | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<AnnouncementBody>;
+    if (!parsed || typeof parsed.article_id !== "string" || !parsed.article_id) {
+      return null;
+    }
+    return {
+      article_id: parsed.article_id,
+      archive_url: parsed.archive_url ?? null,
+      sha256: parsed.sha256 ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── CitationBody — dispatches to the right card ────────────────────────────
 
 function CitationBody({
@@ -605,6 +629,19 @@ function CitationBody({
   }
   if (isJbookNarrative(citation)) {
     return <JbookNarrativeCard citation={citation} />;
+  }
+  if (isAnnouncement(citation)) {
+    const body = parseAnnouncementBody(citation.query_body);
+    // A citation whose body will not parse has no article to point at — the
+    // degraded state, never a card with a blank article id.
+    if (!body) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          This announcement citation could not be read.
+        </p>
+      );
+    }
+    return <AnnouncementCard url={citation.official_url} body={body} />;
   }
   // Should never reach here — exhaustive guard
   return (

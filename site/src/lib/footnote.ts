@@ -553,6 +553,7 @@ function genericSourceLabel(kind: string): string | null {
   if (kind === "state_soql") return "State open-data query";
   if (kind === "state_file") return "State source file";
   if (kind === "jbook_narrative") return "J-book narrative";
+  if (kind === "announcement") return "Official DoD contract announcement";
   return null;
 }
 

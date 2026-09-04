@@ -231,6 +231,7 @@ const KIND_LABELS: Record<string, string> = {
   state_soql: "State Open Data Query",
   state_file: "State Source File",
   jbook_narrative: "J-book Narrative",
+  announcement: "Official DoD contract announcement",
 };
 
 /** Human labels for the core measure tokens in the semantic header. */

@@ -1592,7 +1592,8 @@ export type CitationKind =
   | "usaspending"
   | "state_soql"
   | "state_file"
-  | "jbook_narrative";
+  | "jbook_narrative"
+  | "announcement";
 
 export interface CitationBase {
   kind: CitationKind;
@@ -1796,6 +1797,33 @@ export interface JbookNarrativeCitation
   resolution: "unique" | "ambiguous_first" | null;
 }
 
+/**
+ * announcement — a defense.gov daily Contracts article that names BOTH the
+ * contract number and the program, the evidence behind an
+ * 'announcement+lexicon' budget→award crosswalk link (ROADMAP #71).
+ *
+ * official_url is the article URL; query_body is a JSON string
+ * {article_id, archive_url, sha256} describing the ARCHIVED copy the
+ * verification waves actually read, so the citation survives defense.gov
+ * reorganising its site. sha256 is that copy's hash, mirrored in query_body.
+ * Both archive fields are null when no snapshot was taken (never invented).
+ *
+ * recorded_value is null: the cited fact is the LINK itself, not a figure —
+ * link dollars live at award grain.
+ */
+export interface AnnouncementCitation
+  extends CitationBase,
+    Omit<NonDocumentCitationFields, "sha256"> {
+  kind: "announcement";
+  official_url: string;
+  query_body: string;
+  recorded_value: null;
+  formula: null;
+  inputs: null;
+  /** The archived copy's sha256; null when the article was never archived. */
+  sha256: string | null;
+}
+
 export type Citation =
   | JbookPdfCitation
   | WorkbookCitation
@@ -1804,7 +1832,8 @@ export type Citation =
   | UsaspendingCitation
   | StateSoqlCitation
   | StateFileCitation
-  | JbookNarrativeCitation;
+  | JbookNarrativeCitation
+  | AnnouncementCitation;
 
 export type CitationsMap = Record<string, Citation>;
 

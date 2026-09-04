@@ -2163,8 +2163,12 @@ def export_site(
     citation_rows.extend(geography_rows)
 
     # --- 4d3. Budget-to-awards crosswalk link citations ---
+    # link_sources (migration 012) flips announcement-derived links to
+    # kind='announcement' — the defense.gov article, its Wayback snapshot and
+    # that copy's sha256 — instead of a derived row restating the method.
     b2a_rows = _build_budget_to_awards_citation_rows(
-        duckdb_path=duckdb_path, bl_rows=bl_rows
+        duckdb_path=duckdb_path, bl_rows=bl_rows,
+        link_sources=_load_award_link_sources(dsn),
     )
     citation_rows.extend(b2a_rows)
 
@@ -6166,14 +6170,71 @@ def _build_geography_citation_rows(*, duckdb_path) -> list[tuple]:
 # ---------------------------------------------------------------------------
 
 
-def _build_budget_to_awards_citation_rows(*, duckdb_path, bl_rows: list) -> list[tuple]:
-    """Build derived citation rows for fct_budget_to_awards link rows.
+def _load_award_link_sources(dsn: str) -> dict[tuple[str, str], dict]:
+    """(award_piid, pe_bli) → announcement source row, from Postgres.
 
-    One kind='derived' row per distinct (pe_bli, award_piid) link:
+    Read STRAIGHT from Postgres (migration 012), not through the
+    export_facts → parquet → dbt lake path the adjudication overlay uses. The
+    adjudication overlay changes a link's published CONFIDENCE, so it has to
+    reach the mart that filters on confidence; this table only decides what a
+    citation row for an already-published link says. Routing it through the
+    lake would make the citation content depend on `jbooks export-facts` +
+    `dbt build` having run between the loader and export-site — and a
+    migrate → load → export-site sequence would silently emit the old generic
+    rows with no error. export_site already reads Postgres directly for
+    narrative/provenance-page facts, so this is the same door.
+
+    Only source_kind='announcement' is loaded: subaward links keep the generic
+    derived row (an "official DoD contract announcement" card would be false
+    for an FSRS sub's description), so their rows are provenance-only here.
+
+    Never fails export: an unreachable DB or a pre-012 schema → {}.
+    """
+    import psycopg
+
+    try:
+        with psycopg.connect(dsn) as pg:
+            rows = pg.execute(
+                "select award_piid, pe_bli, source_id, source_url,"
+                " archive_url, sha256 from award_link_sources"
+                " where source_kind = 'announcement'"
+            ).fetchall()
+    except Exception:
+        return {}
+    return {
+        (piid, pe): {
+            "source_id": source_id,
+            "source_url": source_url,
+            "archive_url": archive_url,
+            "sha256": sha256,
+        }
+        for piid, pe, source_id, source_url, archive_url, sha256 in rows
+    }
+
+
+def _build_budget_to_awards_citation_rows(
+    *, duckdb_path, bl_rows: list,
+    link_sources: dict[tuple[str, str], dict] | None = None,
+) -> list[tuple]:
+    """Build citation rows for fct_budget_to_awards link rows.
+
+    One row per distinct (pe_bli, award_piid) link:
       surface='budget_to_awards', key='{pe_bli}|{award_piid}', metric='link'.
 
-    The cited fact is the LINK itself — pe_bli matched to an award PIID via
-    the crosswalk. Provenance:
+    Announcement tier (ROADMAP #71): a link published via
+    method='announcement+lexicon' whose award_link_sources row carries a
+    defense.gov article URL mints kind='announcement' instead — the article
+    IS the evidence, and a reader clicking that receipt should land on it, not
+    on a formula restating the method name. Every other method (including
+    'subaward+lexicon', whose evidence is an FSRS sub's description rather
+    than a DoD announcement) keeps the derived row below, as does an
+    announcement link with no source row — never a fabricated URL.
+
+    The fact_id is minted identically either way, so the flip cannot move a
+    single program-page `data-fact-id` (gate 2's Cite-state contract).
+
+    The derived tier (every other link). The cited fact is the LINK itself —
+    pe_bli matched to an award PIID via the crosswalk. Provenance:
       - formula: the crosswalk method + confidence (self-describing; the link
         carries no dollar amount — dollars live at award grain in
         fct_award_transactions).
@@ -6240,6 +6301,21 @@ def _build_budget_to_awards_citation_rows(*, duckdb_path, bl_rows: list) -> list
             continue
         seen_links.add(link_key)
 
+        fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
+
+        # Announcement tier: the defense.gov article itself, when this link
+        # was published from one AND we hold its source row.
+        src = (link_sources or {}).get((award_piid, pe_bli))
+        if method == "announcement+lexicon" and src and src.get("source_url"):
+            rows.append(_announcement_row(
+                fid,
+                article_id=str(src.get("source_id") or ""),
+                url=src["source_url"],
+                archive_url=src.get("archive_url"),
+                sha256=src.get("sha256"),
+            ))
+            continue
+
         translated_org = _workbook_org(organization) if organization else organization
         input_fids = list(dict.fromkeys(
             bl_pe_org_to_fids.get((pe_bli, translated_org), [])
@@ -6256,7 +6332,6 @@ def _build_budget_to_awards_citation_rows(*, duckdb_path, bl_rows: list) -> list
             f" (dollars live at award grain in fct_award_transactions)"
         )
 
-        fid = fact_id_derived("budget_to_awards", f"{pe_bli}|{award_piid}", "link")
         rows.append(_null_derived_row(
             fid, "derived", None,
             formula,
@@ -9735,6 +9810,49 @@ def _null_usaspending_row(fid: str, query_body: str, recorded_value: str,
         None,   # inputs
         query_body,
         recorded_value,
+        None,   # pe_bli
+        None,   # scenario
+        None,   # amount_type
+    )
+
+
+def _announcement_row(fid: str, *, article_id: str, url: str,
+                      archive_url: str | None, sha256: str | None) -> tuple:
+    """Build a 27-element citation row for kind='announcement' (ROADMAP #71).
+
+    Cites the defense.gov daily Contracts article that names BOTH the contract
+    number and the program — the actual evidence behind an
+    'announcement+lexicon' crosswalk link, which until now could only show the
+    reader a generic derived row.
+
+    Same 27-column layout as _null_usaspending_row:
+      official_url = the defense.gov article URL (the durable public artifact)
+      sha256       = the archived copy's hash (null when nothing was archived)
+      query_body   = {article_id, archive_url, sha256} — the Wayback snapshot
+                     of the copy the verification waves actually read, so the
+                     citation survives defense.gov reorganising its site.
+      recorded_value is None: the cited fact is the LINK, not a dollar figure
+      (link dollars live at award grain in fct_award_transactions).
+    """
+    body = json.dumps({"article_id": article_id, "archive_url": archive_url,
+                       "sha256": sha256}, sort_keys=True)
+    return (
+        fid, "announcement", None,
+        None,   # amount_text
+        None, None, None, None, None, None, None,  # page bbox
+        None,   # resolution
+        None,   # sheet
+        None,   # cells
+        None,   # amount_thousands
+        sha256,
+        None,   # hosted_pdf_url
+        url,    # official_url
+        None,   # xml_path
+        None,   # retrieved_at
+        None,   # formula
+        None,   # inputs
+        body,   # query_body
+        None,   # recorded_value
         None,   # pe_bli
         None,   # scenario
         None,   # amount_type

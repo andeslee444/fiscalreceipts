@@ -22,11 +22,20 @@ account) and keep their existing medium-tier behavior unchanged.
 Exclusions mirror derive_ap_links.py: display-universe only, no collision
 keys (dim_programs >1 row), no synthetic -L rollup keys.
 
+Source rows (2026-09-04, ROADMAP #71): alongside each published link the
+loader writes its evidence STRUCTURALLY to award_link_sources — article_id +
+article URL + the archived copy's Wayback URL/timestamp/sha256 for
+announcement links, subaward_number for subaward links — so export_site can
+mint a first-class kind='announcement' citation instead of pointing the
+reader at a generic derived crosswalk row. The rationale prose is unchanged;
+this is the same evidence in a shape a citation panel can render.
+
 Usage: uv run python scripts/load_announcement_links.py <wave_result.json>... [--dry-run]
 """
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -67,6 +76,86 @@ CATCHALL_TITLE = re.compile(r"(less than|under|<)\s*\$|^other\b|^miscellaneous",
 ROOT = Path(__file__).resolve().parents[1]
 DSN = "postgresql://localhost/govbudget"
 ANN_URL = "https://www.defense.gov/News/Contracts/Contract/Article/{id}/"
+MANIFEST = ROOT / "data/raw/announcements/manifest.jsonl"
+WAYBACK_URL = "https://web.archive.org/web/{ts}/{url}"
+
+
+def _packet_value(packet: dict, key: str) -> str | None:
+    """A packet field, or None when it is absent/blank/the string 'None'.
+
+    The wave-3 (subaward) packets carry the STRING 'None' for the fields that
+    only announcement packets have (article_id, date, contractor) — a bare
+    .get() would happily build .../Article/None/ out of it.
+    """
+    v = packet.get(key)
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s if s and s != "None" else None
+
+
+def load_snapshot_manifest(path: Path = MANIFEST) -> dict[str, dict]:
+    """article_id → {archive_url, archived_at, sha256} for the archived corpus.
+
+    data/raw/announcements/manifest.jsonl is one JSON object per line with keys
+    article_id / original_url / snapshot_ts / sha256 / bytes. It records no
+    Wayback URL and no timestamp type, so both are derived from snapshot_ts
+    (a %Y%m%d%H%M%S Wayback stamp, UTC). Articles with no manifest line are
+    simply absent — the caller writes NULL archive fields rather than inventing
+    a snapshot that was never taken.
+    """
+    out: dict[str, dict] = {}
+    if not path.exists():
+        return out
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = json.loads(line)
+        aid = str(m.get("article_id") or "").strip()
+        ts = str(m.get("snapshot_ts") or "").strip()
+        url = m.get("original_url")
+        if not aid:
+            continue
+        archived_at = None
+        archive_url = None
+        if ts and url:
+            try:
+                archived_at = datetime.strptime(ts, "%Y%m%d%H%M%S").replace(
+                    tzinfo=timezone.utc)
+            except ValueError:
+                archived_at = None
+            else:
+                archive_url = WAYBACK_URL.format(ts=ts, url=url)
+        out[aid] = {
+            "archive_url": archive_url,
+            "archived_at": archived_at,
+            "sha256": m.get("sha256") or None,
+        }
+    return out
+
+
+def source_row(piid: str, pe: str, packet: dict, method: str,
+               manifest: dict[str, dict]) -> tuple | None:
+    """The award_link_sources row for one published link, or None.
+
+    Keyed off the SAME method the link was published with, so source_kind and
+    budget_line_awards.method can never disagree. Returns None when the packet
+    names no source id (nothing to cite — never a placeholder row).
+    """
+    if method == "subaward+lexicon":
+        sub = _packet_value(packet, "subaward_number")
+        if not sub:
+            return None
+        # No canonical public URL for an FSRS subaward record, and no archived
+        # copy: the id is the whole citation until one exists.
+        return (piid, pe, "subaward", sub, None, None, None, None)
+    aid = _packet_value(packet, "article_id")
+    if not aid:
+        return None
+    snap = manifest.get(aid, {})
+    return (piid, pe, "announcement", aid, ANN_URL.format(id=aid),
+            snap.get("archive_url"), snap.get("archived_at"), snap.get("sha256"))
 
 
 def main() -> int:
@@ -129,7 +218,13 @@ def main() -> int:
         ).fetchall()
         line_fed_accounts[pe] = fed_accounts_from_codes(a for (a,) in accounts)
 
+    # Archived-copy provenance for the citation tier (#71): the article the
+    # waves actually read, its Wayback snapshot and that copy's sha256.
+    manifest = load_snapshot_manifest()
+
     rows = []
+    src_rows = []
+    no_source_id = 0
     no_lake_evidence = 0
     for piid, pe, reason in pairs:
         rname, ruei, ob, accts = ev.get(piid, (None, None, None, None))
@@ -168,11 +263,24 @@ def main() -> int:
                 continue
             method, conf = "announcement+lexicon", "high"
         rows.append((pe, ex, 2026, org, piid, rname, ruei, ob, method, conf, 2, rationale))
+        # Structural provenance for the citation tier — same packet, same
+        # method decision, so a published link and its source row agree.
+        sr = source_row(piid, pe, p, method, manifest)
+        if sr is None:
+            no_source_id += 1
+        else:
+            src_rows.append(sr)
     print(f"rows to upsert: {len(rows)}; distinct PEs: {len({r[0] for r in rows})}; "
           f"skipped for no lake evidence: {no_lake_evidence}; "
           f"skipped for money_color_mismatch: {skipped['money_color_mismatch']}")
+    n_archived = sum(1 for r in src_rows if r[5])
+    print(f"source rows: {len(src_rows)} "
+          f"({sum(1 for r in src_rows if r[2] == 'announcement')} announcement, "
+          f"{sum(1 for r in src_rows if r[2] == 'subaward')} subaward); "
+          f"with archived copy: {n_archived}; links with no source id: {no_source_id}")
     if dry:
         for r in rows[:3]: print("  sample:", r[0], r[4], r[5], "|", r[11][:110])
+        for r in src_rows[:3]: print("  source:", r[2], r[3], r[4], "|", (r[7] or "")[:16])
         return 0
     with pg:
         cur = pg.cursor()
@@ -186,9 +294,25 @@ def main() -> int:
                  confidence=excluded.confidence, method=excluded.method,
                  score=excluded.score, rationale=excluded.rationale,
                  matched_obligation=excluded.matched_obligation""", rows)
+        # Same delete-then-upsert shape as the links above, scoped to the two
+        # kinds this loader owns: a link that stops being published must not
+        # leave its source row behind for the citation tier to mint from.
+        cur.execute("delete from award_link_sources"
+                    " where source_kind in ('announcement','subaward')")
+        cur.executemany(
+            """insert into award_link_sources
+               (award_piid, pe_bli, source_kind, source_id, source_url,
+                archive_url, archived_at, sha256)
+               values (%s,%s,%s,%s,%s,%s,%s,%s)
+               on conflict (award_piid, pe_bli, source_kind, source_id) do update set
+                 source_url=excluded.source_url, archive_url=excluded.archive_url,
+                 archived_at=excluded.archived_at, sha256=excluded.sha256""", src_rows)
     with psycopg.connect(DSN) as pg2:
         print("loaded:", pg2.execute("select method, confidence, count(*) from budget_line_awards"
                                      " where method in ('announcement+lexicon','subaward+lexicon') group by 1,2").fetchall())
+        print("sources:", pg2.execute("select source_kind, count(*),"
+                                      " count(archive_url), count(sha256)"
+                                      " from award_link_sources group by 1 order by 1").fetchall())
     return 0
 
 

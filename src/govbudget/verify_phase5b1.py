@@ -11,6 +11,11 @@ Gates (CLI: verify-phase5b1):
                           - lda_filing: official_url starts with
                             https://lda.senate.gov/ and contains filing_uuid
                             (shape-only; no network in gates)
+                          - announcement: defense.gov article URL, query_body
+                            article_id present AND appearing in that URL, any
+                            Wayback archive_url naming the same article, sha256
+                            64-hex and agreeing with query_body, no
+                            recorded_value (ROADMAP #71)
                           PASS iff 100% of sampled citations pass AND at least
                           one citation was sampled AND every fact_id present
                           in BOTH budget_lines.parquet and
@@ -223,6 +228,8 @@ def citation_gate5b1(
             reason = _verify_state_file(row, col_idx)
         elif kind == "jbook_narrative":
             reason = _verify_jbook_narrative(row, col_idx)
+        elif kind == "announcement":
+            reason = _verify_announcement(row, col_idx)
         else:
             reason = f"unknown citation kind: {kind}"
 
@@ -870,6 +877,77 @@ def _verify_jbook_narrative(row: tuple, idx: dict) -> str | None:
     return None
 
 
+def _verify_announcement(row: tuple, idx: dict) -> str | None:
+    """Verify an announcement citation (shape-only, no network) — ROADMAP #71.
+
+    kind='announcement' cites the defense.gov daily Contracts article behind an
+    'announcement+lexicon' crosswalk link. The cited fact is the LINK, so there
+    is no recorded value and no dollar amount; the durable artifacts are the
+    article URL and the archived copy identified by query_body + sha256.
+
+    Rules:
+    1. official_url is a defense.gov article URL.
+    2. query_body is JSON carrying a non-empty article_id, and that article_id
+       appears in official_url (the body must describe the URL it ships with —
+       a mismatch means the row was assembled from two different articles).
+    3. archive_url, when present, is a web.archive.org URL naming the same
+       article. Absent is fine: not every article was archived, and a null is
+       the honest answer.
+    4. sha256, when present, is 64 lowercase hex and equals the sha256 in
+       query_body (one hash, two places, never two hashes).
+    5. No recorded_value and no amount fields — an announcement never carries
+       a figure of its own.
+    """
+    official_url = row[idx["official_url"]] if "official_url" in idx else None
+    query_body = row[idx["query_body"]] if "query_body" in idx else None
+    sha = row[idx["sha256"]] if "sha256" in idx else None
+    recorded_value = row[idx["recorded_value"]] if "recorded_value" in idx else None
+
+    if not official_url:
+        return "announcement: official_url is null or empty"
+    if "defense.gov" not in str(official_url):
+        return (f"announcement: official_url is not a defense.gov article:"
+                f" {official_url!r}")
+
+    if not query_body:
+        return "announcement: query_body is null or empty"
+    try:
+        body = json.loads(query_body)
+    except (TypeError, ValueError):
+        return f"announcement: query_body is not valid JSON: {query_body!r}"
+    if not isinstance(body, dict):
+        return f"announcement: query_body is not a JSON object: {query_body!r}"
+
+    article_id = str(body.get("article_id") or "").strip()
+    if not article_id:
+        return "announcement: query_body carries no article_id"
+    if article_id not in str(official_url):
+        return (f"announcement: article_id {article_id!r} does not appear in"
+                f" official_url {official_url!r}")
+
+    archive_url = body.get("archive_url")
+    if archive_url:
+        if "web.archive.org" not in str(archive_url):
+            return (f"announcement: archive_url is not a Wayback snapshot:"
+                    f" {archive_url!r}")
+        if article_id not in str(archive_url):
+            return (f"announcement: archive_url does not name article"
+                    f" {article_id!r}: {archive_url!r}")
+
+    if sha is not None:
+        if not re.fullmatch(r"[0-9a-f]{64}", str(sha)):
+            return f"announcement: sha256 is not 64 lowercase hex: {sha!r}"
+        if body.get("sha256") != sha:
+            return ("announcement: sha256 column disagrees with the sha256 in"
+                    f" query_body ({sha!r} vs {body.get('sha256')!r})")
+
+    if recorded_value is not None:
+        return (f"announcement: recorded_value must be null (the cited fact is"
+                f" the link, not a figure): {recorded_value!r}")
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Gate 4: narrative_gate5b1 — narrative provenance re-derivation (Phase 5F §2b)
 # ---------------------------------------------------------------------------
@@ -1269,7 +1347,7 @@ def integrity_gate5b1(site_dir: Path) -> dict:
     # filing_uuid that appears twice in lda_filings multiplied a mention row).
     distinctness_ok = True
     for kind in ("jbook_pdf", "workbook", "lda_filing", "derived", "usaspending",
-                 "state_soql", "state_file", "jbook_narrative"):
+                 "state_soql", "state_file", "jbook_narrative", "announcement"):
         con = duckdb.connect()
         try:
             row = con.execute(

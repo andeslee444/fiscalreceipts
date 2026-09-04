@@ -7,6 +7,8 @@
  *              page_width(792), page_height(612), resolution, sha256, amount_text, units
  * workbook   — sha256, sheet, cells, amount_thousands, units, official_url, retrieved_at
  * lda_filing — official_url (LDA JSON API URL, uuid embedded)
+ * announcement — official_url (defense.gov article), query_body
+ *              ({article_id, archive_url, sha256}), sha256 of the archived copy
  *
  * Zero-amount jbook facts (1,004): NO citations row — the fact_id+xml_path
  * live in jbook_details rows with resolution='zero_amount'. These render as
@@ -39,6 +41,7 @@ export type {
   StateSoqlCitation,
   StateFileCitation,
   JbookNarrativeCitation,
+  AnnouncementCitation,
 } from "@/lib/data";
 
 // ── Type guards (defined here so client components can import them
@@ -54,6 +57,7 @@ import type {
   StateSoqlCitation,
   StateFileCitation,
   JbookNarrativeCitation,
+  AnnouncementCitation,
 } from "@/lib/data";
 
 export function isJbookPdf(c: Citation): c is JbookPdfCitation {
@@ -86,6 +90,10 @@ export function isStateFile(c: Citation): c is StateFileCitation {
 
 export function isJbookNarrative(c: Citation): c is JbookNarrativeCitation {
   return c.kind === "jbook_narrative";
+}
+
+export function isAnnouncement(c: Citation): c is AnnouncementCitation {
+  return c.kind === "announcement";
 }
 
 // ── PDF-page renderable citations (Phase 5F §2b) ─────────────────────────────
