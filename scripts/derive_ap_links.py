@@ -2,18 +2,22 @@
 into award-level links, narrowed per award by funding account.
 
 Tiers (deterministic, conservative):
-  high    the award's funding accounts select exactly ONE of its program's
-          verified lines (program identity from FPDS AP code, mapping verified
-          by two adversarial lenses, money color matches the line)
-  medium  accounts select >1 verified line of the same program — the award is
-          program-pinned but line-ambiguous
+  medium  the award's funding accounts select >=1 verified line of its
+          program (program identity from FPDS AP code, mapping verified by
+          two adversarial lenses, money color confirmed) — the award is
+          program-pinned, but which specific line (production vs
+          modification vs research) paid is not provable from account data
+          alone: sibling lines often share one appropriation account. A
+          held-out study measured the earlier "unique matched line" high
+          tier at 34/60 = 56.7% (17 of 26 refutations were exactly this
+          sibling-line ambiguity), and that tier was withdrawn 2026-09-04.
   low     accounts select none of the program's lines (e.g. O&M money on an
           MDAP) — NOT published; retained for audit
 
 Only lines present in dim_programs (the site's display universe) may publish.
-Inserts into budget_line_awards with method 'fpds-ap+account' (high) /
-'fpds-ap' (medium/low); the adjudication overlay does not apply to these rows
-(they are evidence-graded at creation).
+Inserts into budget_line_awards with method 'fpds-ap' (medium/low); the
+adjudication overlay does not apply to these rows (they are evidence-graded
+at creation).
 
 Usage: uv run python scripts/derive_ap_links.py [--dry-run]
 """
@@ -38,6 +42,39 @@ DSN = "postgresql://localhost/govbudget"
 AGENCY_BY_LETTER = {"D": "097", "N": "017", "A": "021", "F": "057", "M": "017"}
 
 
+def fed_accounts_from_codes(accounts) -> set[str]:
+    """Map raw budget_lines.account codes (e.g. '1319N') to lake-style
+    federal account keys ('097-1319') via AGENCY_BY_LETTER.
+
+    Shared with load_announcement_links.py so both the FPDS-account path and
+    the announcement money-color guard derive "which appropriation funds
+    this line" the same way.
+    """
+    fed = set()
+    for account in accounts:
+        if account and account[-1:].isalpha():
+            num, letter = account[:-1], account[-1].upper()
+            pref = AGENCY_BY_LETTER.get(letter)
+            if pref:
+                fed.add(f"{pref}-{num}")
+    return fed
+
+
+def tier_for(matched_count: int) -> tuple[str, str]:
+    """Confidence tier + method for an FPDS-tagged award given how many of
+    its program's verified lines its funding accounts matched.
+
+    The earlier "exactly one match -> high" tier is withdrawn (2026-09-04):
+    a held-out precision study measured it at 34/60 = 56.7%, driven mostly
+    by sibling lines sharing one appropriation account. Any account match
+    now publishes at medium under the single method 'fpds-ap'; zero matches
+    stays low (unpublished, audit-only).
+    """
+    if matched_count >= 1:
+        return "medium", "fpds-ap"
+    return "low", "fpds-ap"
+
+
 def main() -> int:
     dry = "--dry-run" in sys.argv
     res = json.load(open(RESEARCH / "adjudication" / "leg1_result.json"))
@@ -51,15 +88,10 @@ def main() -> int:
             "select distinct account, organization, exhibit from budget_lines"
             " where pe_bli=%s and account is not null", (pe_bli,),
         ).fetchall()
-        fed = set()
         orgs, exhibits = set(), set()
         for account, org, exhibit in rows:
             orgs.add(org); exhibits.add(exhibit or "")
-            if account and account[-1:].isalpha():
-                num, letter = account[:-1], account[-1].upper()
-                pref = AGENCY_BY_LETTER.get(letter)
-                if pref:
-                    fed.add(f"{pref}-{num}")
+        fed = fed_accounts_from_codes(account for account, _, _ in rows)
         line_meta[pe_bli] = {"fed_accounts": fed, "orgs": orgs,
                              "exhibit": sorted(exhibits)[0] if exhibits else "",
                              "org": sorted(orgs)[0] if orgs else ""}
@@ -119,15 +151,8 @@ def main() -> int:
         cands = lines_by_ap[ap]
         matched = [s for s in cands
                    if line_meta[s["pe_bli"]]["fed_accounts"] & award_accounts]
-        if len(matched) == 1:
-            conf, method = "high", "fpds-ap+account"
-            chosen = matched
-        elif len(matched) > 1:
-            conf, method = "medium", "fpds-ap"
-            chosen = matched
-        else:
-            conf, method = "low", "fpds-ap"
-            chosen = cands  # audit trail only; never published
+        conf, method = tier_for(len(matched))
+        chosen = matched if matched else cands  # low: audit trail only, never published
         tiers[conf] += 1
         for s in chosen:
             m = line_meta[s["pe_bli"]]

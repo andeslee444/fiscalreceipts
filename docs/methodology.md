@@ -175,13 +175,16 @@ acquisition program (F-35, Virginia class, Sentinel). We hand-mapped every
 such program (746 in our corpus; 449 mappable) to its J-book budget lines,
 each mapping challenged by the same two-reviewer adversarial process, then
 linked a tagged award to a specific line only when the award's own funding
-accounts match that line's appropriation. *High* means the accounts select
-exactly one verified line; *medium* means the award is program-verified but
-its money spans several of the program's lines. Tagged awards whose funding
-is entirely outside the program's J-book accounts (e.g. O&M sustainment) are
-not linked. The FPDS tag is DoD-entered and sparse (well under 1% of awards,
-concentrated in the largest programs), so absence of a link never means
-absence of spending.
+accounts match that line's appropriation. FPDS-tagged awards publish at
+*medium* — the tag plus a verified program mapping establish the program,
+and the award's funding accounts confirm the money color, but which of a
+program's several lines (production vs. modification vs. research) paid is
+not provable from account data alone. A held-out study measured the earlier
+"unique line" *high* tier at 34 of 60 and it was withdrawn on 2026-09-04.
+Tagged awards whose funding is entirely outside the program's J-book
+accounts (e.g. O&M sustainment) are not linked. The FPDS tag is DoD-entered
+and sparse (well under 1% of awards, concentrated in the largest programs),
+so absence of a link never means absence of spending.
 
 A third evidence path reads the Department of Defense's own daily contract
 announcements (defense.gov, archived with snapshot timestamps and SHA-256
@@ -191,7 +194,10 @@ element's J-book narrative itself owns (a lexicon entry carrying the verbatim
 narrative quote), the pair is a candidate; every candidate is judged by an
 agent reviewer and challenged by an independent adversarial reviewer, and only
 links surviving both publish — at *high*, because the government named the
-program and the contract in the same sentence. Platform-support mentions,
+program and the contract in the same sentence. Announcement links
+additionally require the award's funding accounts to match the line's
+appropriation; awards funded only from operations and maintenance money are
+not linked to research or procurement lines. Platform-support mentions,
 generic services, and weak generic names are rejected by design. Each link
 cites its announcement (article id, date, URL).
 

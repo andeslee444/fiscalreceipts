@@ -601,15 +601,19 @@ export default function MethodologyPage() {
                   its J-book budget lines — each mapping challenged by the same
                   two-reviewer adversarial process — then linked a tagged award to
                   a specific line only when the award&apos;s own funding accounts
-                  match that line&apos;s appropriation. <em>High</em> means the
-                  accounts select exactly one verified line; <em>medium</em> means
-                  the award is program-verified but its money spans several of the
-                  program&apos;s lines. Tagged awards whose funding is entirely
-                  outside the program&apos;s J-book accounts (for example O&amp;M
-                  sustainment money) are not linked at all. The FPDS tag is
-                  DoD-entered and sparse — it appears on well under 1% of awards,
-                  concentrated in the largest programs — so absence of a link
-                  never means absence of spending.
+                  match that line&apos;s appropriation. FPDS-tagged awards publish
+                  at <em>medium</em> — the tag plus a verified program mapping
+                  establish the program, and the award&apos;s funding accounts
+                  confirm the money color, but which of a program&apos;s several
+                  lines (production vs. modification vs. research) paid is not
+                  provable from account data alone. A held-out study measured the
+                  earlier &ldquo;unique line&rdquo; <em>high</em> tier at 34 of 60
+                  and it was withdrawn on 2026-09-04. Tagged awards whose funding
+                  is entirely outside the program&apos;s J-book accounts (for
+                  example O&amp;M sustainment money) are not linked at all. The
+                  FPDS tag is DoD-entered and sparse — it appears on well under 1%
+                  of awards, concentrated in the largest programs — so absence of
+                  a link never means absence of spending.
                 </p>
                 <p className="mt-2">
                   A third evidence path reads the Department of Defense&apos;s own
@@ -621,7 +625,11 @@ export default function MethodologyPage() {
                   is then judged by an agent reviewer and challenged by an independent
                   adversarial reviewer, and only links that survive both publish — at{" "}
                   <em>high</em>, because the government named the program and the
-                  contract in the same sentence. Names that merely describe a platform
+                  contract in the same sentence. Announcement links additionally
+                  require the award&apos;s funding accounts to match the
+                  line&apos;s appropriation; awards funded only from operations
+                  and maintenance money are not linked to research or procurement
+                  lines. Names that merely describe a platform
                   the contract supports, generic services, or weak generic names are
                   rejected by design. Each such link cites the announcement it came from.
                 </p>
