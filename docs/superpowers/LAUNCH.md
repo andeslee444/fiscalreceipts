@@ -485,6 +485,18 @@ When a domain is chosen:
 
 ---
 
+## Backups
+
+### Raw announcements corpus
+
+```bash
+./scripts/launch/backup_raw_announcements.sh
+```
+
+Backs up the git-ignored `data/raw/announcements/` corpus (2,788 HTML files + manifest, ~307 MB) to R2 under `research/announcements-raw/` with manifest SHA256 verification.
+
+---
+
 ## Quick reference — all commands
 
 ```bash
