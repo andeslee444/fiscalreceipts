@@ -115,16 +115,28 @@ export default function MethodologyPage() {
   // joined once here rather than inline in JSX — keeps the trailing
   // period's spacing independent of JSX's implicit whitespace collapsing.
   // siteMeta.link_precision is {} (or absent, pre-#72 exports) while no
-  // study has verdicts loaded yet; either way Object.entries(...).join(...)
-  // yields "", which is falsy — so §4's paragraph below stays unrendered
-  // without needing a null/undefined check on the source object itself.
-  const linkPrecisionText = siteMeta.link_precision
-    ? Object.entries(siteMeta.link_precision)
+  // study has verdicts loaded yet; either way the join yields "", which is
+  // falsy — so §4's paragraph below stays unrendered without needing a
+  // null/undefined check on the source object itself.
+  //
+  // Every figure and every tier name in that paragraph is DERIVED here. The
+  // 2026-09-04 final review found the old paragraph naming `fpds-ap+account`,
+  // a tier withdrawn hours after the sample was drawn, and stating 60/60 for
+  // the tier its links had moved into: both numbers came straight from the
+  // study table and both described a corpus that no longer existed. The
+  // exporter now tallies under the tier each link publishes under TODAY and
+  // hands over the tiers it could NOT measure, so the page can name them
+  // rather than let their silence read as a pass.
+  const linkPrecision = siteMeta.link_precision;
+  const linkPrecisionText = linkPrecision?.methods
+    ? Object.entries(linkPrecision.methods)
         .map(
           ([m, v]) => `${m} ${formatCount(v.confirmed)}/${formatCount(v.sampled)}`,
         )
         .join("; ")
     : null;
+  const linkPrecisionUnmeasured = (linkPrecision?.unmeasured ?? []).join(", ");
+  const linkPrecisionSampledAt = linkPrecision?.sampled_at ?? null;
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -624,11 +636,14 @@ export default function MethodologyPage() {
                   J-book narrative itself owns, the pair is a candidate; every candidate
                   is then judged by an agent reviewer and challenged by an independent
                   adversarial reviewer, and only links that survive both publish — at{" "}
-                  <em>high</em>: the announcement names the contract, and the
-                  program is identified either by its name as written, a
-                  normalized designator, or an alias an adversarial reviewer
-                  checked — each link&apos;s citation card states which basis
-                  applied. Announcement links additionally
+                  <em>high</em>: the announcement establishes the contract, and
+                  the program is identified by its name as written, by a
+                  normalized designator, by an alias an adversarial reviewer
+                  checked, or — rarely — by the announcement&apos;s own
+                  description of the work. Where the adjudication packet
+                  recorded which of those applied, the link&apos;s citation card
+                  states it; where it did not, the card says the basis was not
+                  recorded rather than asserting one. Announcement links additionally
                   require the award&apos;s funding accounts to match the
                   line&apos;s appropriation; awards funded only from operations
                   and maintenance money are not linked to research or procurement
@@ -642,8 +657,11 @@ export default function MethodologyPage() {
                   alias pass (decoding designators and aliases) covered the 3,840
                   unmatched records that carry about 88% of the residue by announced
                   value; the 12,811 smaller records carrying the remaining ~12% were
-                  not attempted. Each published
-                  link records which basis produced it.
+                  not attempted. Where the adjudication packet recorded a
+                  basis, the published link carries it and its card names it;
+                  for the rest the card says the basis was not recorded, which
+                  is not the same as the announcement having named the program
+                  outright.
                 </p>
                 <p className="mt-2">
                   Where the only evidence is a subaward: FSRS subaward reports describe
@@ -657,10 +675,37 @@ export default function MethodologyPage() {
                   <p className="mt-2" data-link-precision="">
                     Measured precision of the published tiers, from a held-out
                     hand-adjudicated sample re-run through the same two-reviewer
-                    process:{" "}
+                    process
+                    {linkPrecisionSampledAt
+                      ? ` and judged ${linkPrecisionSampledAt}`
+                      : ""}
+                    . Each sampled link is counted under the tier it publishes
+                    under today, not the tier it carried when it was drawn; a
+                    sampled link the corpus no longer publishes is counted in
+                    neither direction:{" "}
                     {linkPrecisionText}. Published whatever the numbers turn out
                     to be; a tier that misses is renamed or narrowed, never
                     widened to fit.
+                    {linkPrecisionUnmeasured && (
+                      <>
+                        {" "}
+                        No precision figure is published for the remaining
+                        tiers a reader can meet — {linkPrecisionUnmeasured}.
+                        Those rest on an appropriation-account match, narrowed
+                        by sub-agency, by keyword overlap, or by a hand
+                        adjudication that pinned the pair; an account match is
+                        an association by construction rather than proof this
+                        program paid, and how often it names the right program
+                        has not been independently measured. The account /
+                        sub-agency tier was sampled, but its adjudication asked
+                        only whether the mechanical rule had fired — the
+                        appropriation account, the sub-agency, the
+                        contract-number prefix — and not whether the award paid
+                        for this program, so those verdicts do not measure
+                        program attribution and are not published as if they
+                        did.
+                      </>
+                    )}
                   </p>
                 )}
               </div>

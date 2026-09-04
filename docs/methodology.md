@@ -193,10 +193,13 @@ often by program. Where an announcement's program name is one a program
 element's J-book narrative itself owns (a lexicon entry carrying the verbatim
 narrative quote), the pair is a candidate; every candidate is judged by an
 agent reviewer and challenged by an independent adversarial reviewer, and only
-links surviving both publish — at *high*: the announcement names the
-contract, and the program is identified either by its name as written, a
-normalized designator, or an alias an adversarial reviewer checked — each
-link's citation card states which basis applied. Announcement links
+links surviving both publish — at *high*: the announcement establishes the
+contract, and the program is identified by its name as written, by a
+normalized designator, by an alias an adversarial reviewer checked, or —
+rarely — by the announcement's own description of the work. Where the
+adjudication packet recorded which of those applied, the link's citation card
+states it; where it did not, the card says the basis was not recorded rather
+than asserting one. Announcement links
 additionally require the award's funding accounts to match the line's
 appropriation; awards funded only from operations and maintenance money are
 not linked to research or procurement lines. Platform-support mentions,
@@ -208,13 +211,38 @@ covered every archived announcement; an additional LLM-assisted alias pass
 (decoding designators and aliases such as PATRIOT backronyms → PAC-3 or
 Global Hawk → RQ-4B) covered the top 3,840 unmatched records by announced
 value ($1.96T of the $2.23T residue) — 12,811 smaller records ($278B) were
-not attempted. Each published link records which basis produced it.
+not attempted. Where the adjudication packet recorded a basis, the
+published link carries it and its card names it; for the rest the card
+says the basis was not recorded, which is not the same as the
+announcement having named the program outright.
 
 Where the only evidence is a subaward: FSRS subaward reports describe the
 work a subcontractor performs under a prime contract, and when that
 description names a program the PE's own narrative owns, the prime is linked
 at *medium* — the evidence is one hop removed, so it never publishes as high
 and its rationale names the subaward it rests on.
+
+**Measured precision of the published tiers.** A held-out stratified sample of
+published links is re-adjudicated by the same two-reviewer process, and
+/methodology/ prints the confirmed/judged figure per tier from
+`site_meta.link_precision` (the exporter derives it; no figure on that page is
+typed by hand). Each sampled link is counted under the tier it publishes under
+TODAY, not the tier it carried when it was drawn — `fpds-ap+account` was
+withdrawn hours after the 2026-09-04 draw and its links moved into the
+`fpds-ap` medium tier, so counting by the drawn method printed a figure for a
+tier no reader can meet. A sampled link the corpus no longer publishes counts
+in neither direction.
+
+Tiers with no published figure are NAMED on the page rather than left silent:
+the account, account/sub-agency and account/keyword tiers rest on an
+appropriation-account match — an association by construction, not proof this
+program paid — and their precision as program attribution has not been
+independently measured. The account/sub-agency tier was sampled, but its
+adjudication asked only whether the mechanical rule had fired (the
+appropriation account, the sub-agency, the contract-number prefix) and not
+whether the award paid for this program, so those verdicts are kept for audit
+and are not published as precision. Strata judged under different rubrics must
+not be reported side by side.
 
 **Derived figures are labeled derived.** Any figure computed from published
 rates or published subtotals — rather than directly reported in a source

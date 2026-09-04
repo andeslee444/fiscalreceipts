@@ -253,7 +253,7 @@ class _ProgramIdentity:
     IS NOT NULL — dim_programs.sql's own discriminator for "this specific
     row owns the R-2/P-40 J-book detail rows filed under this pe_bli"
     (Wave 5: has_detail is now genuinely per-row on both axes. The earlier
-    note here recorded "every one of the 8 account-collision keys has AT
+    note here recorded "every one of the 10 account-collision keys has AT
     MOST ONE account with has_detail=True" — an artefact of five of the six
     Navy procurement appropriations being unparsed, not a property of the
     data. All ten shared keys now carry real detail on both sides.)
@@ -310,7 +310,7 @@ class _ProgramIdentity:
         return pe_bli in self.split_pe_blis
 
     def is_account_split(self, pe_bli: str) -> bool:
-        """True iff this is a split key whose rows differ by ACCOUNT (the 8
+        """True iff this is a split key whose rows differ by ACCOUNT (the 10
         Sprint E, ROADMAP #67 keys). False for organization-split keys and
         non-split pe_blis. Callers that key a lookup by (pe_bli, account)
         use this to decide whether `account` is the real discriminator for
@@ -337,7 +337,7 @@ class _ProgramIdentity:
         Non-split pe_blis always collapse to (pe_bli, None, None) — the
         pre-E3 key, byte-for-byte. A split pe_bli's key carries a real value
         on whichever axis actually distinguishes its rows (account for the
-        8 Sprint E keys, organization for the 3 ROADMAP #45 keys) and None
+        10 Sprint E account keys, organization for the 3 ROADMAP #45 keys) and None
         on the other — this is the SAME dispatch `slug()`/`has_own_detail()`
         use, factored out because several callers (summary-block indexes,
         years_matrix indexes, decade-grain lookups) independently needed
@@ -364,7 +364,7 @@ class _ProgramIdentity:
         """The page slug for (pe_bli, account, organization). Identity when
         not a split key. For a split key, dispatches on whichever dimension
         actually differs among this pe_bli's own dim_programs rows:
-        "{pe_bli}-{ACCOUNT_CODE}" when account varies (the 8 Sprint E
+        "{pe_bli}-{ACCOUNT_CODE}" when account varies (the 10 Sprint E
         keys), "{pe_bli}-{ORGANIZATION}" when only organization does (the 3
         ROADMAP #45 keys — organization values are already short, unique
         workbook codes like 'DCSA'/'DTRA', so no derivation is needed the
@@ -2371,12 +2371,19 @@ def export_site(
     # script's precision_by_method query rather than importing scripts/ into
     # the package — same reason and same threading-via-manifest pattern as
     # ingested_service_orgs just above. Always a dict, {} when no study has
-    # verdicts loaded yet — methodology/page.tsx's guard checks the joined
-    # method-list STRING it derives from this (empty when the dict is
-    # empty), not object truthiness, so {} renders nothing without needing
-    # a null sentinel here.
+    # verdicts loaded yet — methodology/page.tsx's guard checks the derived
+    # method-list STRING (empty when the dict carries no `methods`), not
+    # object truthiness, so {} renders nothing without a null sentinel here.
+    #
+    # The mart's own published-tier universe is passed in so the block can
+    # report which published tiers carry NO measured figure (final review C1
+    # / C2): /methodology/ names those in prose rather than letting a tier
+    # with no number read as one that passed.
+    published_link_methods = _published_link_methods(duckdb_path)
     with psycopg.connect(dsn) as pg_precision:
-        link_precision = _link_precision_block(pg_precision)
+        link_precision = _link_precision_block(
+            pg_precision, published_methods=published_link_methods
+        )
 
     manifest = {
         "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
@@ -2592,25 +2599,155 @@ def _ingested_service_orgs(pg) -> list[str]:
     return sorted({_workbook_org(r[0]) for r in rows})
 
 
-def _link_precision_block(pg) -> dict:
-    """{method: {confirmed, sampled}} from the held-out link-precision study
-    (ROADMAP #72). {} while no study has verdicts loaded yet.
+#: Strata whose adjudication answered a DIFFERENT question from the others,
+#: so their verdicts must never be published beside them as one comparable
+#: "precision" figure (controller ruling, 2026-09-04, ROADMAP #72 final wave).
+#:
+#: `account+subagency`: all 60 verdict reasons for the 2026-09-04 study
+#: restate that the MECHANICAL rule fired — federal account 097-0400,
+#: sub-agency DARPA, PIID prefix HR0011 — and none judges whether the award
+#: paid for THIS program, which is the question every other stratum was
+#: judged on. 60/60 against a tautological question is not a measurement of
+#: program attribution, and publishing it as one for the site's largest tier
+#: (~9,100 mart rows) would read as certainty the study never established.
+#: The verdict rows stay in link_precision_samples for audit; the tier is
+#: named UNMEASURED on /methodology/ instead. Removing a name from this set
+#: requires a re-adjudication under the attribution rubric, not a re-count.
+_UNRUBRICKED_PRECISION_STRATA = frozenset({"account+subagency"})
 
-    Inlines the same query as scripts/precision_study.py's
-    precision_by_method — that script owns the draw/load/report CLI against
-    link_precision_samples; this is the read-only export-time mirror of it,
-    inlined rather than imported so export_site never imports from scripts/.
-    `sampled` counts only ADJUDICATED rows (verdict is not null) — a row
-    drawn into the sample but not yet judged counts toward neither number,
-    so a study can be drawn and loaded incrementally without understating
-    the precision of what has actually been judged so far.
+
+def _published_link_methods(duckdb_path) -> set[str]:
+    """Every fct_budget_to_awards `method` the site actually PUBLISHES — i.e.
+    carries at least one high- or medium-confidence row in the mart.
+
+    The mart is the right universe, not budget_line_awards: adjudication
+    overlays raise and demote rows on their way through dbt (an `account`
+    link a reviewer pinned publishes at medium even though Postgres grades it
+    low; an unadjudicated `account+tokens` link is demoted from high to
+    medium). A reader meets the mart's tiers, so the mart's tiers are the ones
+    /methodology/ owes either a measured figure or a plain statement that the
+    tier is unmeasured.
+
+    Empty set on a warehouse with no mart (older fixtures) — callers treat
+    that as "no universe known" and publish figures without an unmeasured list.
+    That degradation is NOT silent on the real corpus: gate 24 leg n reads the
+    published-tier universe independently, out of citations.json, and fails
+    when a published method is neither measured nor listed unmeasured.
     """
+    import duckdb as _duckdb
+
+    con = _duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        rows = con.execute(
+            "select distinct method from fct_budget_to_awards"
+            " where confidence in ('high', 'medium') and method is not null"
+        ).fetchall()
+    except Exception:  # CatalogException on a warehouse without the mart
+        return set()
+    finally:
+        con.close()
+    return {m for (m,) in rows}
+
+
+def _link_precision_block(pg, published_methods: set[str] | None = None,
+                          sample_id: str | None = None) -> dict:
+    """The held-out link-precision study (ROADMAP #72), tallied under the tier
+    each sampled link publishes under TODAY.
+
+    Returns ``{}`` while no study has adjudicated verdicts loaded, else::
+
+        {"sample_id": "2026-09-04", "sampled_at": "2026-09-04",
+         "methods": {method: {"confirmed": int, "sampled": int}},
+         "unmeasured": [method, ...]}
+
+    THE DEFECT THIS SHAPE FIXES (2026-09-04, final review C1). The old query
+    grouped link_precision_samples by its OWN `method` column — the method
+    each link carried when the sample was DRAWN — and published the result as
+    "measured precision of the published tiers". Two ways that lies:
+
+      * a tier can be withdrawn between draw and export. `fpds-ap+account`
+        measured 34/60, was withdrawn the same day (zero rows in
+        budget_line_awards), and its 60 links now publish under the single
+        `fpds-ap` medium tier — so the page printed a figure for a tier no
+        reader can meet AND a flattering 60/60 for `fpds-ap`, when the honest
+        number for the tier a reader actually sees is 94/120;
+      * a sampled link can stop being published at all. Six announcement
+        links were removed by the O&M funding-account filter after the draw;
+        counting them would state a denominator the corpus does not publish.
+
+    So: join every sampled row to `budget_line_awards` on (award_piid,
+    pe_bli), keep only rows the corpus still publishes (confidence high or
+    medium), and tally by the CURRENT method. Rows that no longer publish
+    drop out of both numerator and denominator — the figure describes the
+    tier as it stands, and `sampled_at` dates it so a reader can see how far
+    the corpus may have moved since.
+
+    `sampled` counts only ADJUDICATED rows (verdict is not null) — a row drawn
+    into the sample but not yet judged counts toward neither number, so a
+    study can be loaded incrementally without understating what was judged.
+
+    Only the LATEST sample_id is read (final review I1): pooling every study
+    run would silently average a re-measurement into the number it corrects.
+    `sample_id` may be passed explicitly; otherwise the lexicographic max is
+    taken, which is the latest run because precision_study.py names runs by
+    ISO date.
+
+    `published_methods` (from _published_link_methods) is the mart's own
+    published-tier universe. Methods it does not contain are dropped from the
+    figures; methods with no figure of their own — because the study drew no
+    sample from them, or because their stratum is in
+    _UNRUBRICKED_PRECISION_STRATA — come back in `unmeasured`, which
+    /methodology/ names in prose so no published tier passes silently as
+    measured. Pass None (tests, fixture warehouses) to skip both.
+
+    scripts/precision_study.py's precision_by_method is the twin of this
+    query; export_site never imports from scripts/, so the two are kept in
+    step by hand and by tests/test_export_site_link_precision.py.
+    """
+    if sample_id is None:
+        row = pg.execute(
+            "select max(sample_id) from link_precision_samples"
+            " where verdict is not null"
+        ).fetchone()
+        sample_id = row[0] if row else None
+    if not sample_id:
+        return {}
+
     rows = pg.execute(
-        "select method, count(*) filter (where verdict='confirmed'),"
-        " count(*) filter (where verdict is not null)"
-        " from link_precision_samples group by method"
+        "select b.method, s.verdict"
+        " from link_precision_samples s"
+        " join budget_line_awards b"
+        "   on b.award_piid = s.award_piid and b.pe_bli = s.pe_bli"
+        " where s.sample_id = %s and s.verdict is not null"
+        "   and b.confidence in ('high', 'medium')",
+        (sample_id,),
     ).fetchall()
-    return {m: {"confirmed": c, "sampled": n} for m, c, n in rows}
+
+    tally: dict[str, dict[str, int]] = {}
+    for method, verdict in rows:
+        if method in _UNRUBRICKED_PRECISION_STRATA:
+            continue
+        if published_methods is not None and method not in published_methods:
+            continue
+        slot = tally.setdefault(method, {"confirmed": 0, "sampled": 0})
+        slot["sampled"] += 1
+        if verdict == "confirmed":
+            slot["confirmed"] += 1
+    if not tally:
+        return {}
+
+    sampled_at = pg.execute(
+        "select max(adjudicated_at) from link_precision_samples"
+        " where sample_id = %s and verdict is not null",
+        (sample_id,),
+    ).fetchone()[0]
+
+    return {
+        "sample_id": sample_id,
+        "sampled_at": sampled_at.date().isoformat() if sampled_at else None,
+        "methods": dict(sorted(tally.items())),
+        "unmeasured": sorted((published_methods or set()) - set(tally)),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -2804,7 +2941,7 @@ def _program_trajectory_index(con) -> dict:
     degenerate export keeps its honest absences rather than falling back to a
     component and calling it a program).
 
-    AMBIGUOUS for the 8 Task-E3 (Sprint E, ROADMAP #67) split keys: E1
+    AMBIGUOUS for the 10 Task-E3 (Sprint E, ROADMAP #67) account-split keys: E1
     re-grained fct_program_trajectory on (pe_bli, account), so a split
     pe_bli now has >1 row here and this dict keeps whichever the query
     returns last (DB-order-dependent — the ROADMAP #68 failure mode). Safe
@@ -2845,12 +2982,12 @@ def _program_trajectory_index_by_account(
 
     Every fct_program_trajectory row carries a real account since E1's
     re-grain (never NULL), so this index is total and unambiguous —
-    including for the 8 account-split keys, where it correctly returns two
+    including for the 10 account-split keys, where it correctly returns two
     distinct rows instead of collapsing them. `organization` is additionally
     real for the 3 ROADMAP #45 org-split keys ('20'/'30'/'500' — where
     account alone does NOT distinguish rows, since it is the same real
     account for every organization sharing the key); NULL for every other
-    row, including the 8 account-split keys'.
+    row, including the 10 account-split keys'.
     """
     try:
         rows = con.execute(
@@ -2908,7 +3045,7 @@ def _resolve_program_trajectory(
 ) -> dict | None:
     """Resolve ONE program's trajectory metrics precisely.
 
-    account supplied (the 8 account-split keys): exact (pe_bli, account)
+    account supplied (the 10 account-split keys): exact (pe_bli, account)
     match, ignoring organization — or None (that specific account genuinely
     has no trajectory row — honest absence).
     organization supplied instead (the 3 ROADMAP #45 org-split keys):
@@ -2959,7 +3096,7 @@ def _trajectory_citation_key(
     an agency's share is, and the agency sums cite them.
 
     `account` (Task E3, Sprint E ROADMAP #67): pass the program's account
-    for one of the 8 genuine appropriation-account collisions so its two
+    for one of the 10 genuine appropriation-account collisions so its two
     accounts mint DIFFERENT fact_ids for their different figures — omitted
     (None) for every other program, reproducing the pre-E3 key exactly.
     """
@@ -3074,7 +3211,7 @@ def _build_derived_citation_rows(
         bl_key_to_fid.setdefault(k, []).append((fid_bl, bl_amt))
 
     con = _duckdb.connect(str(duckdb_path), read_only=True)
-    # Task E3 (Sprint E, ROADMAP #67): the identity map for the 8 genuine
+    # Task E3 (Sprint E, ROADMAP #67): the identity map for the 10 genuine
     # appropriation-account collisions — see _ProgramIdentity's own doc
     # comment. Every trajectory-derived fact key below is qualified by
     # account ONLY for these 8 pe_bli values; every other program's fact_id
@@ -3083,7 +3220,7 @@ def _build_derived_citation_rows(
     try:
         # ---- Trajectory figures ----
         # surface='trajectory', key='{pe_bli}|{org}' ('{pe_bli}|{org}|
-        # {account}' for the 8 Task-E3 split keys — see _trajectory_
+        # {account}' for the 10 Task-E3 account-split keys — see _trajectory_
         # citation_key's account parameter),
         # metrics: fy2024_actuals, fy2025_total, fy2026_total, fy2526_change
         #
@@ -3125,7 +3262,7 @@ def _build_derived_citation_rows(
 
         for pe_bli, org, account, fy24, fy25, fy26, chg in traj_rows:
             translated_org = _workbook_org(org)
-            # Task E3: for the 8 account-split keys, two rows now share
+            # Task E3: for the 10 account-split keys, two rows now share
             # (pe_bli, org) — qualify the key by account so each mints its
             # OWN fact_id instead of both colliding on one (and the second
             # processed silently overwriting the first's recorded_value).
@@ -3135,7 +3272,7 @@ def _build_derived_citation_rows(
             # ROADMAP #45: gated on is_account_split, NOT bare split_pe_blis
             # membership — the 3 org-split keys ('20'/'30'/'500') already
             # get a unique key from `org` alone (each is its own real
-            # organization here, unlike the 8 account-split keys' shared
+            # organization here, unlike the 10 account-split keys' shared
             # single org), and account is real-but-CONSTANT across every
             # organization sharing one of these 3 keys, so appending it
             # would be harmless-but-pointless at best — the actual
@@ -3243,7 +3380,7 @@ def _build_derived_citation_rows(
         # recomputes it exactly — the wider input set IS the difference
         # between the part and the whole.
         # Task E3: DISTINCT orgs, not one entry per traj_rows row — a split
-        # key's 8 traj_rows rows are (pe_bli, SAME org, two DIFFERENT
+        # key's two traj_rows rows are (pe_bli, SAME org, two DIFFERENT
         # accounts), so a raw per-row append would double-list one org and
         # trip the "len(orgs) >= 2" multi-org test below for a program that
         # is not multi-org at all (its plurality is account, not org). This
@@ -3497,7 +3634,7 @@ def _build_derived_citation_rows(
         # of the inputs sum to this row's recorded_value).
         #
         # Task E3: keyed by (pe_bli, org, account) — a raw (pe_bli, org) key
-        # collapses the 8 split keys' two accounts onto one dict entry (same
+        # collapses the 10 account-split keys' two accounts onto one dict entry (same
         # org, different account), and prog_rows_d then iterates that ONE
         # (possibly wrong) value once per dim_programs ROW — i.e. TWICE for
         # a split key — double-counting it into the org total instead of
@@ -3555,7 +3692,13 @@ def _build_derived_citation_rows(
             conc_rows = con.execute(
                 "select pe_bli, hhi, program_dollars from fct_program_concentration"
             ).fetchall()
-        except Exception:
+        except _duckdb.CatalogException:
+            # ONLY "the mart does not exist" (a fixture warehouse) is a silent
+            # empty result. A bare `except Exception` here also swallowed a
+            # renamed column, a corrupt file and a binder error — each of which
+            # would drop every concentration citation from the export while it
+            # still looked clean (2026-09-04 final review M4; same narrowing as
+            # the link-citation reader below).
             conc_rows = []
 
         _HHI_FORMULA = (
@@ -3563,10 +3706,17 @@ def _build_derived_citation_rows(
             "where share = family_obligation / sum(family_obligation) "
             "and obligation > 0 (positive-only shares; negative obligations excluded)"
         )
+        # 2026-09-04 final review I5: this string used to end "obligation > 0",
+        # which is the rule for the SHARES (pos_program_dollars), not for this
+        # figure. fct_program_concentration.sql computes
+        # `program_dollars = sum(award_obligation)` over ALL linked
+        # transactions; the positive-only column is a separate one. The
+        # citation must describe the column it is attached to — a deobligation
+        # moves this number down, and the old sentence said it could not.
         _DOLLARS_FORMULA = (
             "sum(fct_award_transactions.obligation) for this pe_bli "
             "via fct_budget_to_awards high- and medium-confidence links, "
-            "obligation > 0"
+            "across all linked award transactions (net of deobligations)"
         )
         for pe_bli, hhi, prog_dollars in conc_rows:
             if hhi is not None:
@@ -4137,7 +4287,7 @@ def _build_decade_citation_rows(
                          single-source, derived decade sum otherwise);
                          amount_type is the grain's chosen slug (consumers
                          derive slug-accurate `measure` from it). account is
-                         real only for the 8 Sprint E account-collision
+                         real only for the 10 Sprint E account-collision
                          keys; organization is real only for the 3 ROADMAP
                          #45 organization-collision keys ('20'/'30'/'500')
                          — the two are never both non-NULL on the same row.
@@ -4261,7 +4411,7 @@ def _build_decade_citation_rows(
     decade_bl_rows: list[tuple] = []
     decade_cit_rows: list[tuple] = []
     # 8-tuple working list (decade_grains 7-tuple + account) — E2 (Sprint E,
-    # ROADMAP #67). account is non-NULL only for the 8 genuine PB2026
+    # ROADMAP #67). account is non-NULL only for the 10 genuine PB2026
     # collisions (fct_decade_series' own E2 column); resolved down to the
     # existing 7-tuple decade_grains contract at the end of this function
     # (_resolve_decade_grains_primary_account) so every downstream consumer
@@ -4316,7 +4466,7 @@ def _build_decade_citation_rows(
             # row_account (NOT `account`): this is the RAW source row's own
             # account, always populated (every stg_budget_lines row carries
             # one). `account` is the outer series-row's E2 attribution
-            # (None except for the 8 genuine collisions) — reusing the same
+            # (None except for the 10 genuine collisions) — reusing the same
             # name here would shadow it for the rest of this pe_bli's outer
             # loop iteration and silently corrupt grain_fid_by_key's keys
             # (caught 2026-08-21: book-diff lookups for ordinary pe_bli
@@ -4429,7 +4579,7 @@ def _build_decade_citation_rows(
                 " fct_decade_series — join completeness violated"
             )
         # E2: account folded into the diff identity when the mart resolved
-        # one (the 8 genuine collisions) — without this, both accounts'
+        # one (the 10 genuine collisions) — without this, both accounts'
         # diff rows for the same (pe_bli, from_ed, to_ed, diff_kind) would
         # derive the IDENTICAL fid (fact_id_derived ignores account), and
         # the second one processed would be silently treated as an
@@ -4472,9 +4622,12 @@ def _build_decade_citation_rows(
     # instead of a collapse deciding it by dict-iteration order.
     #
     # E2.1 CORRECTION (2026-08-21): fct_decade_series' own collision anchor
-    # widened from fy_2026_total-only (8 keys, == dim_programs.split_pe_blis
-    # exactly) to any-amount_type (10 keys — also 1350, 2101; see that
-    # model's own header comment). The two sets are no longer identical:
+    # widened from fy_2026_total-only (8 keys as measured THAT DAY, == the
+    # then dim_programs.split_pe_blis exactly) to any-amount_type (10 keys —
+    # also 1350, 2101; see that model's own header comment). Both counts are
+    # that day's; the corpus has since grown to 10 account-split keys / 13
+    # shared (re-measured 2026-09-04) and both sets are derived, never
+    # hardcoded. The two sets are no longer identical:
     # 1350/2101 have zero dim_programs rows (Tomahawk's "no_detail" shape —
     # no R-2/P-40 detail on either side, so no page was ever split for
     # them), yet their decade_grains rows now carry a real, non-NULL
@@ -4805,7 +4958,7 @@ def _build_fy26_split_index(
     never a fabricated zero-vs-zero split.
 
     Task E3 (Sprint E, ROADMAP #67): grouping used to be by bare pe_bli,
-    which FUSES the 8 genuine appropriation-account collisions' two
+    which FUSES the 10 genuine appropriation-account collisions' two
     programs' disc/reconciliation rows into one number — the same #56
     failure shape, reintroduced in this later feature. `duckdb_path`
     (optional — every existing caller passes it; omitted only by tests that
@@ -5072,7 +5225,7 @@ def _build_summary_blocks(
     # the decade GRID cell renders (recon v2 pairs toa candidates by
     # rendered token). decade_grains is the FULL 9-tuple working list since
     # E3/#45 (see _build_decade_citation_rows) — account is real only for
-    # the 8 account-split keys, organization only for the 3 org-split keys,
+    # the 10 account-split keys, organization only for the 3 org-split keys,
     # so _gkey (ident.split_key) normalizes whichever doesn't apply to None.
     decade_slot: dict[tuple, dict] = {}
     for d_pe, _d_fy, d_edition, d_kind, d_amount, d_fid, d_at, d_account, d_org in (
@@ -6368,9 +6521,14 @@ def _build_budget_to_awards_citation_rows(
         return rows
 
     # Loud failure: every announcement+lexicon link in the mart must have a
-    # source row carrying a URL. Missing rows mean the loader has not run
-    # against this database (or the schema predates migration 012) — the one
-    # state in which the old code produced a clean, quietly degraded export.
+    # source row carrying a URL — the one state in which the old code produced
+    # a clean, quietly degraded export.
+    #
+    # This check straddles TWO stores. `link_rows` comes from the DuckDB mart
+    # (Postgres → export-facts → parquet → dbt); `sources` comes straight from
+    # Postgres. So a mismatch has two quite different causes, and the message
+    # used to name only one of them (2026-09-04 final review I8) — sending an
+    # operator to re-run a loader that had already run.
     sources = link_sources or {}
     missing = sorted({
         (piid, pe) for pe, piid, _org, mth, _conf, _acct in link_rows
@@ -6379,12 +6537,20 @@ def _build_budget_to_awards_citation_rows(
     })
     if missing:
         raise RuntimeError(
-            f"{len(missing)} 'announcement+lexicon' link(s) in"
-            " fct_budget_to_awards have no award_link_sources row with a"
-            f" source_url (e.g. {missing[:3]}). Apply migrations and re-run"
-            " scripts/load_announcement_links.py before exporting — without"
-            " it these links would silently revert to generic derived"
-            " citation rows and the export would look correct (ROADMAP #71)."
+            f"{len(missing)} 'announcement+lexicon' link(s) in the DuckDB mart"
+            " (fct_budget_to_awards) have no matching Postgres"
+            " award_link_sources row with a source_url"
+            f" (e.g. {missing[:3]}). Two causes, both fixable:\n"
+            "  (a) the mart is STALE — Postgres has moved on (a re-run of"
+            " scripts/load_announcement_links.py rewrites its rows) and the"
+            " mart still carries the previous run's links. This is the likelier"
+            " trigger. Fix: govbudget jbooks export-facts && govbudget build,"
+            " then export again.\n"
+            "  (b) the loader has never run against this database, or the"
+            " schema predates migration 012. Fix: govbudget migrate && uv run"
+            " python scripts/load_announcement_links.py, then (a).\n"
+            "Not raising would silently revert these links to generic derived"
+            " citation rows, and the export would look correct (ROADMAP #71)."
         )
 
     # Budget-side inputs: (pe_bli, workbook org) → budget_lines fact_ids.
@@ -7113,7 +7279,7 @@ def _write_all_sidecars(
     # Task E3 (Sprint E, ROADMAP #67): the account-aware program identity —
     # computed FIRST because several indexes below (built before dim_programs
     # is even queried again at "1. Load mart tables") already need to key on
-    # slug/account for the 8 genuine appropriation-account collisions.
+    # slug/account for the 10 genuine appropriation-account collisions.
     ident = _fetch_program_identity(con)
     if ident.split_pe_blis:
         print(
@@ -7228,7 +7394,7 @@ def _write_all_sidecars(
     # at most one row per (pe_bli, fy, edition, kind) by
     # _resolve_decade_grains_primary_account before it reaches here, so
     # there is nothing left to exclude. This closes the honest gap the old
-    # exclusion left behind (the 8 collision keys' sparklines and /years/
+    # exclusion left behind (the account-collision keys' sparklines and /years/
     # cells were entirely absent; they now render their resolved account's
     # correct, non-fused figures) without reintroducing the fusion.
     decade_grains = list(decade_grains or [])
@@ -7242,7 +7408,7 @@ def _write_all_sidecars(
     # decade_grains 8-tuple comment), never blindly from the series kind.
     #
     # Task E3 (Sprint E, ROADMAP #67): decade_grains is the FULL 8-tuple
-    # working list (account included, real only for the 8 split keys) — no
+    # working list (account included, real only for the 13 shared keys) — no
     # more collapse to one "primary" account. Keying by SLUG instead of
     # bare pe_bli is what lets each of a split key's two pages carry its
     # OWN decade series/sparkline instead of one page's or an arbitrary
@@ -7490,7 +7656,7 @@ def _write_all_sidecars(
     # account component is normalized to None for every non-split pe_bli,
     # so traj_index[(pe, org)] is unchanged for the ~1,740 ordinary programs
     # (byte-for-byte the same key, same value) and traj_index[(pe, org,
-    # account)] additionally resolves each of the 8 split keys' two rows on
+    # account)] additionally resolves each of the 10 account-split keys' two rows on
     # its own account.
     traj_rows = _query_with_account_fallback(
         con,
@@ -7656,9 +7822,14 @@ def _write_all_sidecars(
         for pe_bli in ident.split_pe_blis
         for account, _account_title, organization, _has_detail in ident.accounts(pe_bli)
     }
+    # sorted() on the raw (pe_bli, account, organization) key would raise
+    # TypeError the first time two drifted keys differed on a None vs a str —
+    # i.e. exactly when this diagnostic has something to say (2026-09-04 final
+    # review M1). Sort on a None-free projection of the key instead.
     _unread_split_links = sorted(
-        (k, len(v)) for k, v in awards_by_pe.items()
-        if v and k[0] in ident.split_pe_blis and k not in _readable_split_keys
+        ((k, len(v)) for k, v in awards_by_pe.items()
+         if v and k[0] in ident.split_pe_blis and k not in _readable_split_keys),
+        key=lambda kv: tuple(x or "" for x in kv[0]),
     )
     if _unread_split_links:
         print(
@@ -7967,7 +8138,7 @@ def _write_all_sidecars(
          reconciled_in_scope) = r
         # Task E3 (Sprint E, ROADMAP #67): one programs.json ENTRY per
         # dim_programs row (all_prog_rows is a list, never deduped) — for
-        # the 8 genuine appropriation-account collisions this loop runs
+        # the 10 genuine appropriation-account collisions this loop runs
         # twice, once per account, each producing its own entry with its
         # own slug/trajectory/fact_ids. Every other pe_bli has exactly one
         # row and is_split is False, so slug == pe_bli and every value
@@ -8067,7 +8238,7 @@ def _write_all_sidecars(
                 if _fy26_split and _fy26_split["reconciliation"] else None
             ),
             # Task E3 (URL contract): "slug" is the page's route/filename
-            # identity — identical to pe_bli except for the 8 split keys,
+            # identity — identical to pe_bli except for the 13 shared keys,
             # where it is the composite "{pe_bli}-{ACCOUNT_CODE}". account /
             # account_title are null except on those same 16 rows. The
             # frontend uses slug for hrefs and account_title to disambiguate
@@ -8176,7 +8347,7 @@ def _write_all_sidecars(
         #      (pe_bli, title), not by pe_bli alone).
         # Task E3 (Sprint E, ROADMAP #67): keyed by (pe_bli, title), not bare
         # pe_bli. programs_list can now carry TWO entries sharing one pe_bli
-        # (the 8 genuine appropriation-account collisions) — a bare-pe_bli
+        # (the 10 genuine appropriation-account collisions) — a bare-pe_bli
         # dict comprehension would keep only whichever entry iterated last
         # and this loop would then wrongly re-flag the OTHER, now-published
         # title as "key_collision" despite it having its own real page.
@@ -8351,7 +8522,7 @@ def _write_all_sidecars(
 
     # trajectory rows regrouped per PE — used by the §2c scoped-amount index
     # and the §2a rollup service_org rule. Bare (pe, org) keys only —
-    # traj_index also carries (pe, org, account) keys for the 8 Task E3
+    # traj_index also carries (pe, org, account) keys for the 10 Task E3
     # split keys (see traj_index's construction above); rollup-tier pe_blis
     # (this dict's only other consumer, _rollup_service_org) are never a
     # split key by construction (a split key always has a dim_programs row,
@@ -8369,7 +8540,7 @@ def _write_all_sidecars(
         (details, budget_lines, trajectory — cited or not; §2c ambiguity is
         counted over the full scope).
 
-        Task E3: for one of the 8 split keys, `account` selects the
+        Task E3: for one of the 10 account-split keys, `account` selects the
         trajectory figure precisely (traj_by_pe only ever carries non-split
         rows now — see its construction above) instead of silently reading
         nothing or an arbitrary sibling's number."""
@@ -9265,7 +9436,7 @@ def _write_all_sidecars(
         # collided on that key (same org, different account), so this
         # lookup must ask for the row's OWN account or it silently finds
         # nothing for either side, undercounting the org's FY2026 total by
-        # the full amount of these 8 keys' money instead of correctly
+        # the full amount of these 10 account-split keys' money instead of correctly
         # crediting both programs. ROADMAP #45: gated on is_account_split,
         # not bare split_pe_blis membership — an org-split key's account is
         # real-but-constant across every organization sharing the key, and
@@ -9397,7 +9568,7 @@ def _write_all_sidecars(
         slug = ident.slug(pe_bli, account, account_title, org) if is_split else pe_bli
         # The PROGRAM's total (backlog #37) — search ranks and labels a
         # program by its own size, not by its declared org's share of it.
-        # Task E3: account-precise for the 8 split keys (prog_traj_index's
+        # Task E3: account-precise for the 10 account-split keys (prog_traj_index's
         # bare pe_bli lookup is ambiguous there). ROADMAP #45: organization-
         # precise for the 3 org-split keys instead.
         traj = _resolve_program_trajectory(
@@ -9604,7 +9775,7 @@ def _write_all_sidecars(
         #
         # Task E3 (Sprint E, ROADMAP #67): this used to be
         # len(all_pe_blis | set(rollup_pes)) — a bare-pe_bli SET, which
-        # undercounts by exactly the 8 split keys' extra page each (both
+        # undercounts by exactly the 13 shared keys' extra page each (both
         # accounts share one pe_bli, so the set held only one member per
         # key). all_prog_rows is the loop that actually WRITES the
         # full-tier sidecars, one per ROW (never deduped) — its length is
@@ -10071,11 +10242,11 @@ def _announcement_row(fid: str, *, article_id: str, url: str,
 
     What the article establishes depends on match_basis. Only 'exact-name'
     means the announcement named the program as written, and that is 190 of
-    the 701 published links: 194 matched through a normalised designator or an
-    LLM judgement ('designator-normalized', 'llm-alias',
-    'llm-designator-variant', 'llm-description') and 317 recorded no basis at
-    all. The basis rides in query_body so the card can state it in words
-    instead of asserting the strongest reading for every link.
+    the 708 published links (re-measured 2026-09-04): 194 matched through a
+    normalised designator or an LLM judgement ('designator-normalized',
+    'llm-alias', 'llm-designator-variant', 'llm-description') and 324 recorded
+    no basis at all. The basis rides in query_body so the card can state it in
+    words instead of asserting the strongest reading for every link.
 
     Same 27-column layout as _null_usaspending_row:
       official_url = the defense.gov article URL (the durable public artifact)
@@ -11911,7 +12082,7 @@ def _build_slug_by_pe(duckdb_path) -> dict[str, str]:
     fct_budget_trajectory row out across every organization sharing the
     key, and ident.slug() then raised (correctly — it cannot derive a
     composite slug without knowing WHICH organization the caller means).
-    Organization always agrees trivially for the 8 account-split keys
+    Organization always agrees trivially for the 10 account-split keys
     (both accounts share one real org), so this is a no-op widening there.
     """
     out: dict[str, str] = {}
@@ -12116,7 +12287,7 @@ def _emit_years_matrix(
     # program-lineage Task 8: sparse pe_bli→family_id overlay (UI-only badge).
     fam_map: dict[str, int] = families or {}
 
-    # Task E3 (Sprint E, ROADMAP #67): the 8 genuine appropriation-account
+    # Task E3 (Sprint E, ROADMAP #67): the 10 genuine appropriation-account
     # collisions need their own /years/ row and their own cells — every
     # index below now carries a (pe, org[, account]) shape instead of bare
     # (pe, org), with account normalized to None for the ~1,740 non-split
@@ -12243,7 +12414,7 @@ def _emit_years_matrix(
         traj = traj_index.get((pe_bli, translated_org, key_account))
         # Task E3: the trajectory-derived fact_id must match the key
         # _build_derived_citation_rows minted it under (account-qualified
-        # for the 8 split keys, unchanged for everyone else — see
+        # for the 13 shared keys, unchanged for everyone else — see
         # _trajectory_citation_key).
         traj_key = _trajectory_citation_key(pe_bli, [translated_org], key_account)
         cells: dict[str, dict] = {}

@@ -169,16 +169,36 @@ export interface SiteMeta {
    */
   programs_coverage?: SiteMetaProgramsCoverage;
   /**
-   * ROADMAP #72: held-out precision study on the published link tiers —
-   * {method: {confirmed, sampled}} from a stratified random sample per
-   * method, hand-adjudicated with the same two-reviewer rubric the waves
-   * use (scripts/precision_study.py draw/load/report against
-   * link_precision_samples). {} until a study's verdicts are loaded —
-   * /methodology/ renders the paragraph only when this is non-empty.
-   * Optional (not just possibly-empty) because it is absent on pre-#72
-   * exports.
+   * ROADMAP #72: held-out precision study on the published link tiers, from a
+   * stratified random sample per method hand-adjudicated with the same
+   * two-reviewer rubric the waves use (scripts/precision_study.py
+   * draw/load/report against link_precision_samples).
+   *
+   * `methods` counts each sampled link under the tier it PUBLISHES under
+   * today, not the one it carried when the sample was drawn — the 2026-09-04
+   * final review found the page printing 34/60 for `fpds-ap+account`, a tier
+   * withdrawn the same day, and a flattering 60/60 for the `fpds-ap` tier its
+   * links had moved into (the honest pooled figure is 94/120). Sampled links
+   * the corpus no longer publishes count toward neither number.
+   *
+   * `unmeasured` is every published tier with NO figure — because the study
+   * drew no sample from it, or because its verdicts answered a different
+   * question (`account+subagency`: the adjudication confirmed the mechanical
+   * rule had fired, not that the award paid for the program). /methodology/
+   * names them in prose so a tier with no number never reads as one that
+   * passed; gate 24 leg n enforces that.
+   *
+   * `sampled_at` dates the study so a reader can see how far the corpus may
+   * have moved since. {} until a study's verdicts are loaded — /methodology/
+   * renders the paragraph only when `methods` is non-empty. Optional (not
+   * just possibly-empty) because it is absent on pre-#72 exports.
    */
-  link_precision?: Record<string, { confirmed: number; sampled: number }>;
+  link_precision?: {
+    sample_id?: string;
+    sampled_at?: string | null;
+    methods?: Record<string, { confirmed: number; sampled: number }>;
+    unmeasured?: string[];
+  };
 }
 
 export interface SiteMetaProgramsCoverageExcluded {
@@ -387,7 +407,9 @@ export interface ProgramRow {
   award_count: number;
   /**
    * Sprint E, Task E3 (ROADMAP #67): null for the SYNTHETIC side of one of
-   * the 8 appropriation-account collisions (e.g. LPD Flight II) — that
+   * the 10 appropriation-account collisions (e.g. LPD Flight II; Sprint E
+   * measured 8, the corpus grew to 10 with the last Navy procurement
+   * books — re-measured 2026-09-04) — that
    * account has no R-2/P-40 exhibit behind it at all (dbt/models/marts/
    * dim_programs.sql's `synth` branch), so there is no exhibit to name.
    * Every consumer already treats "budget"/unknown as the honest fallback
@@ -441,11 +463,14 @@ export interface ProgramRow {
   /**
    * Sprint E, Task E3 (ROADMAP #67) — the URL-contract identity. `slug` is
    * the page's route/filename: identical to `pe_bli` for every ordinary
-   * program, "{pe_bli}-{ACCOUNT_CODE}" for the 8 genuine appropriation-
-   * account collisions (dbt/models/marts/dim_programs.sql's account_match).
-   * `account` / `account_title` are non-null on exactly those same 16 rows
-   * — two dim_programs rows now legitimately share one `pe_bli`, and this
-   * is how a caller tells them apart. Always use `slug` for hrefs; `pe_bli`
+   * program, "{pe_bli}-{ACCOUNT_CODE}" for the 10 genuine appropriation-
+   * account collisions (dbt/models/marts/dim_programs.sql's account_match;
+   * re-measured 2026-09-04, was 8 at Sprint E).
+   * `account` / `account_title` are non-null on every row that sits on a
+   * shared `pe_bli` — 27 of them (re-measured 2026-09-04): the 20 on those
+   * 10 appropriation-account collisions plus the 7 on the 3 organization
+   * collisions. Two dim_programs rows now legitimately share one `pe_bli`,
+   * and this is how a caller tells them apart. Always use `slug` for hrefs; `pe_bli`
    * remains the display code and the bare-key stub-page identity.
    */
   slug: string;
@@ -1250,13 +1275,13 @@ export function getDetailGradeCount(): number {
   // true pre-E1, when dim_programs WAS "every pe_bli with stg_budget_details
   // presence" by construction (this function's own doc comment above states
   // that premise). E1's re-grain deliberately added a SYNTHETIC dim_programs
-  // row for the non-detail side of each of the 8 appropriation-account
+  // row for the non-detail side of each of the 10 appropriation-account
   // collisions (dbt/models/marts/dim_programs.sql's `synth` branch — "there
   // is no R-2/P-40 exhibit behind these rows"), so dim_programs' row count
   // now legitimately exceeds the detail-grade sidecar count by exactly the
   // number of those synthetic rows. slugsWithNoDetailExpected identifies
   // them independently (account !== null on the programs.json row — real
-  // only for the 16 split-key rows, half of which are synthetic by design)
+  // only for the 27 split-key rows, some of which are synthetic by design)
   // so the assertion can allow exactly that gap instead of forbidding it.
   const slugsWithAccount = new Set(
     getPrograms()
@@ -1329,7 +1354,9 @@ let _peLinkIndex: PeLinkIndex | null = null;
  * only when the target actually has that project row.
  */
 /**
- * `has` also recognizes the 8 split-key STUBS (Sprint E, Task E3) — a bare
+ * `has` also recognizes all 13 split-key STUBS (10 appropriation-account
+ * collisions + 3 organization collisions, re-measured 2026-09-04 — Sprint E
+ * measured 8) — a bare
  * pe_bli mention that cannot know which account it means still resolves to
  * a real, honest page (the disambiguation stub), so linking it is correct.
  * `projects` stays scoped to sidecar-backed pages only: a stub carries no
@@ -2946,7 +2973,7 @@ export function getProgramDecadeCells(): Map<string, ProgramDecadeCells> {
   }
 
   // Sprint E, Task E3 (ROADMAP #67): keyed by SLUG, not bare pe_bli — one of
-  // the 8 appropriation-account collisions carries TWO years_matrix.json
+  // the 10 appropriation-account collisions carries TWO years_matrix.json
   // program entries sharing one pe_bli (each with its own "slug" field,
   // emitted only when it differs from pe_bli), and a bare-pe_bli Map would
   // silently collapse them (whichever entry iterated last wins), showing

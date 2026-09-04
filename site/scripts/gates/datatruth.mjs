@@ -2165,41 +2165,145 @@ function runCorpusCountLeg(errors, notes) {
 // leg n — held-out link-precision study (ROADMAP #72)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// site_meta.link_precision ({method: {confirmed, sampled}}, or null while no
-// study has verdicts yet) is the recomputed source of truth here — this leg
-// reads data/site/json/site_meta.json directly (unlike leg e, which never
-// trusts site_meta for the artifact it is derived from; here site_meta IS
-// the artifact under test, produced by an inlined Postgres query in
-// export_site.py that this leg does not re-run — the DB tally is scripts/
-// precision_study.py's own job, exercised by tests/test_precision_study.py).
-// Two directions, both failures:
+// site_meta.link_precision ({sample_id, sampled_at, methods, unmeasured}, or
+// {} while no study has verdicts yet) is the recomputed source of truth here
+// — this leg reads data/site/json/site_meta.json directly (unlike leg e,
+// which never trusts site_meta for the artifact it is derived from; here
+// site_meta IS the artifact under test, produced by an inlined Postgres query
+// in export_site.py that this leg does not re-run — the DB tally is scripts/
+// precision_study.py's own job, exercised by tests/test_precision_study.py
+// and tests/test_export_site_link_precision.py).
+//
+// FOUR directions, all failures:
 //   - link_precision names a method the /methodology/ paragraph omits or
 //     states wrong numbers for (a stale/partial paragraph reads as more
-//     confidence than was measured).
+//     confidence than was measured);
 //   - the paragraph renders while link_precision carries nothing (leftover
 //     text with no numbers behind it — or numbers for a method site_meta
-//     no longer knows about).
-function runLinkPrecisionLeg(errors, notes) {
-  const siteMetaPath = path.join(jsonDir, "site_meta.json");
-  if (!fs.existsSync(siteMetaPath)) {
-    errors.push(`leg n: ${siteMetaPath} missing — cannot recompute link_precision`);
-    return;
+//     no longer knows about);
+//   - (2026-09-04, final review C1) link_precision carries a figure for a
+//     method the CORPUS DOES NOT PUBLISH. This is the defect that shipped:
+//     `fpds-ap+account` was withdrawn hours after the sample was drawn, the
+//     study table still remembered it, and /methodology/ printed 34/60 as
+//     "measured precision of the published tiers" for a tier with zero rows
+//     — while the tier that absorbed its links printed a flattering 60/60.
+//     Every number matched its source; the population was wrong;
+//   - (2026-09-04, final review C1/C2) a published method with no figure is
+//     SILENT. `account+subagency` (the largest tier) and `account+tokens`
+//     carry no measured number, and silence reads as "nothing to report".
+//     Every published tier must be either measured or named unmeasured in the
+//     rendered paragraph.
+//
+// The published-tier universe is read from citations.json's crosswalk
+// formulas ("… via method='X', confidence='Y'"), which is the same artifact
+// leg i already reads and the same rows the site renders — one citation per
+// published link, so the method set is exactly the set a reader can meet.
+/** Every crosswalk method the corpus PUBLISHES — i.e. carries at least one
+ *  high- or medium-confidence citation. citations.json mints exactly one row
+ *  per published budget→award link, and every one of them states its method
+ *  and tier in its `formula` sentence, so this set is the set of tiers a
+ *  reader can actually meet. */
+export function publishedLinkMethods(citations) {
+  const found = new Set();
+  const re = /via method='([^']+)', confidence='([^']+)'/;
+  for (const row of Object.values(citations ?? {})) {
+    const m = re.exec(row?.formula ?? "");
+    if (m && (m[2] === "high" || m[2] === "medium")) found.add(m[1]);
   }
-  let siteMeta;
-  try {
-    siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
-  } catch (e) {
-    errors.push(`leg n: site_meta.json unparseable — ${e.message}`);
-    return;
-  }
-  const linkPrecision = siteMeta.link_precision ?? {};
-  const methods = Object.keys(linkPrecision).sort();
+  return found;
+}
 
-  const methodRoot = readHtml("/methodology/");
-  const el = methodRoot?.querySelector("[data-link-precision]");
+/** True when `text` names `method` as a whole token — so "account" is not
+ *  found inside "account+subagency", which would let the largest published
+ *  tier go unnamed while the leg reported it named. */
+function namesMethodToken(text, method) {
+  const esc = method.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9+_-])${esc}([^a-z0-9+_-]|$)`, "i").test(text);
+}
+
+/** Non-vacuity floor for the published-tier universe (measured 2026-09-04
+ *  from data/site/json/citations.json: SIX methods publish at high or medium
+ *  — account, account+subagency, account+tokens, announcement+lexicon,
+ *  fpds-ap, subaward+lexicon). Below this the formula regex has stopped
+ *  matching (a formula-sentence reword, a citations.json shape change) and
+ *  the two directions that compare against the published universe would pass
+ *  on an empty set — which is exactly how the `fpds-ap+account` figure
+ *  survived. RE-MEASURE if the corpus changes; do not lower it to fit. */
+const MIN_PUBLISHED_LINK_METHODS = 4;
+
+/** `injected` is passed only by the leg's unit test
+ *  (__tests__/link-precision.test.mjs), which has to hand the leg corpora the
+ *  build does not contain — a direction that has never been seen to fail is
+ *  not a check. The gate itself always passes undefined and reads the shipped
+ *  site_meta.json, citations.json and built /methodology/. */
+export function runLinkPrecisionLeg(errors, notes, injected) {
+  let siteMeta;
+  let citations;
+  let paragraphText = null;
+  let paragraphExists = false;
+  let methodologyBuilt = true;
+
+  if (injected) {
+    siteMeta = injected.siteMeta ?? {};
+    citations = injected.citations ?? {};
+    paragraphExists = injected.paragraphText != null;
+    paragraphText = injected.paragraphText ?? null;
+    methodologyBuilt = injected.methodologyBuilt ?? true;
+  } else {
+    const siteMetaPath = path.join(jsonDir, "site_meta.json");
+    if (!fs.existsSync(siteMetaPath)) {
+      errors.push(`leg n: ${siteMetaPath} missing — cannot recompute link_precision`);
+      return;
+    }
+    try {
+      siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg n: site_meta.json unparseable — ${e.message}`);
+      return;
+    }
+    const citationsPath = path.join(jsonDir, "citations.json");
+    if (!fs.existsSync(citationsPath)) {
+      errors.push(
+        `leg n: ${citationsPath} missing — cannot establish which link tiers ` +
+          `the corpus publishes`,
+      );
+      return;
+    }
+    try {
+      citations = JSON.parse(fs.readFileSync(citationsPath, "utf8"));
+    } catch (e) {
+      errors.push(`leg n: citations.json unparseable — ${e.message}`);
+      return;
+    }
+    const methodRoot = readHtml("/methodology/");
+    methodologyBuilt = methodRoot != null;
+    const el = methodRoot?.querySelector("[data-link-precision]");
+    paragraphExists = el != null;
+    paragraphText = el ? norm(el.text) : null;
+  }
+
+  const linkPrecision = siteMeta.link_precision ?? {};
+  // Pre-2026-09-04 exports carried {method: {confirmed, sampled}} at the top
+  // level. That shape cannot answer "which tier does this link publish under
+  // today", so it is a stale export, not a legacy dialect to tolerate.
+  if (
+    Object.keys(linkPrecision).length > 0 &&
+    !Object.prototype.hasOwnProperty.call(linkPrecision, "methods")
+  ) {
+    errors.push(
+      `leg n: site_meta.link_precision carries the pre-2026-09-04 flat shape ` +
+        `(${Object.keys(linkPrecision).sort().join(", ")}) — re-run export-site; ` +
+        `the flat shape tallied each link under the tier it carried when the ` +
+        `sample was DRAWN, which published a figure for a withdrawn tier`,
+    );
+    return;
+  }
+  const figures = linkPrecision.methods ?? {};
+  const methods = Object.keys(figures).sort();
+  const unmeasured = [...(linkPrecision.unmeasured ?? [])].sort();
 
   if (methods.length === 0) {
-    if (el) {
+    if (paragraphExists) {
       errors.push(
         "leg n (/methodology/): [data-link-precision] renders while " +
           "site_meta.link_precision is empty — the paragraph must stay " +
@@ -2214,11 +2318,11 @@ function runLinkPrecisionLeg(errors, notes) {
     return;
   }
 
-  if (!methodRoot) {
+  if (!methodologyBuilt) {
     errors.push("leg n: built /methodology/ missing");
     return;
   }
-  if (!el) {
+  if (!paragraphExists) {
     errors.push(
       `leg n (/methodology/): site_meta.link_precision has ${methods.length} ` +
         `method(s) but no [data-link-precision] paragraph renders`,
@@ -2226,7 +2330,7 @@ function runLinkPrecisionLeg(errors, notes) {
     return;
   }
 
-  const text = norm(el.text);
+  const text = paragraphText ?? "";
   const rendered = new Map();
   for (const m of text.matchAll(/([a-z0-9][a-z0-9+_-]*)\s+([\d,]+)\/([\d,]+)/gi)) {
     rendered.set(m[1], {
@@ -2237,7 +2341,7 @@ function runLinkPrecisionLeg(errors, notes) {
 
   let checked = 0;
   for (const method of methods) {
-    const want = linkPrecision[method];
+    const want = figures[method];
     const got = rendered.get(method);
     if (!got) {
       errors.push(
@@ -2262,13 +2366,60 @@ function runLinkPrecisionLeg(errors, notes) {
       );
     }
   }
+
+  // ── the published-tier universe (final review C1/C2) ─────────────────────
+  const published = publishedLinkMethods(citations);
+  if (published.size < MIN_PUBLISHED_LINK_METHODS) {
+    errors.push(
+      `leg n: only ${published.size} published link method(s) recovered from ` +
+        `citations.json (floor ${MIN_PUBLISHED_LINK_METHODS}, measured ` +
+        `2026-09-04 at 6). The crosswalk formula sentence has changed shape, ` +
+        `so the two directions below compare against an empty universe and ` +
+        `pass on anything — which is how a withdrawn tier's figure shipped. ` +
+        `Re-derive the parse; do not lower the floor`,
+    );
+    return;
+  }
+  for (const method of methods) {
+    if (!published.has(method)) {
+      errors.push(
+        `leg n (/methodology/): "${method}" is published as measured precision ` +
+          `of a tier the corpus does NOT publish — no high- or ` +
+          `medium-confidence link carries method='${method}'. A withdrawn tier ` +
+          `keeps its verdicts; it must not keep its figure`,
+      );
+    }
+  }
+  for (const method of [...published].sort()) {
+    if (methods.includes(method)) continue;
+    if (!unmeasured.includes(method)) {
+      errors.push(
+        `leg n: the corpus publishes method='${method}' at high/medium but ` +
+          `site_meta.link_precision neither measures it nor lists it in ` +
+          `\`unmeasured\` — an unmeasured tier that says nothing reads as one ` +
+          `that passed`,
+      );
+      continue;
+    }
+    if (!namesMethodToken(text, method)) {
+      errors.push(
+        `leg n (/methodology/): "${method}" is listed unmeasured in site_meta ` +
+          `but [data-link-precision] never names it — the paragraph must say ` +
+          `which published tiers carry no measured figure`,
+      );
+    }
+  }
+
   if (errors.every((e) => !e.startsWith("leg n"))) {
     notes.push(
-      `leg n: [data-link-precision] states all ${checked} method(s) from ` +
-        `site_meta.link_precision, values match ✓`,
+      `leg n: [data-link-precision] states all ${checked} measured method(s) ` +
+        `from site_meta.link_precision (values match) and names all ` +
+        `${unmeasured.length} unmeasured published tier(s); ${published.size} ` +
+        `published method(s) in citations.json, all accounted for ✓`,
     );
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // leg l — family labels that won a coin flip (ROADMAP #10, option A)
