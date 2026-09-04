@@ -25,14 +25,30 @@
 -- fct_district_programs an account-qualified grain (and the district sidecars
 -- slug-addressed program links to match), so each member's dollars stay under
 -- its own name.
+--
+-- NULL IS A MEMBER, NOT AN ABSENCE (2026-09-04 final review, finding I7). The
+-- earlier version filtered `account is not null`, which made the exact fusion
+-- it guards against invisible: an account-NULL high link names BOTH members of
+-- a shared code, so an overlay-raised `account+subagency` high row (23 exist,
+-- all account-NULL) sitting beside an account-resolved high link on the same
+-- pe_bli is precisely two members' money under one title — and the filter
+-- dropped the NULL side before the count. `count(distinct account)` also
+-- ignores NULLs on its own, so the sentinel is what makes the NULL side
+-- countable at all. Zero rows on the corpus as of 2026-09-04, with the
+-- sentinel in place.
+with keyed as (
+    select
+        pe_bli,
+        coalesce(account, '(unresolved)') as account_key
+    from {{ ref('fct_budget_to_awards') }}
+    where confidence = 'high'
+)
 select
     pe_bli,
-    count(distinct account) as n_accounts,
-    min(account)            as lo_account,
-    max(account)            as hi_account,
-    count(*)                as n_high_links
-from {{ ref('fct_budget_to_awards') }}
-where confidence = 'high'
-  and account is not null
+    count(distinct account_key) as n_accounts,
+    min(account_key)            as lo_account,
+    max(account_key)            as hi_account,
+    count(*)                    as n_high_links
+from keyed
 group by pe_bli
-having count(distinct account) > 1
+having count(distinct account_key) > 1

@@ -673,6 +673,22 @@ def test_high_links_under_two_accounts_are_caught_before_they_fuse():
     fused = con.execute(sql).fetchall()
     assert fused == [("3010", 2, "1611N", "1810N", 2)], fused
 
+    # The MIXED shape (2026-09-04 final review, finding I7). An account-NULL
+    # high link names BOTH members of a shared code — an overlay-raised
+    # `account+subagency` high row is exactly that, and 23 of them exist — so
+    # one beside an account-resolved high link on the same pe_bli is the same
+    # fusion. The earlier assertion filtered `account is not null` and could
+    # not see it: it dropped the NULL row before counting, leaving one account
+    # and no complaint.
+    con.execute("delete from links")
+    con.execute(
+        "insert into links values"
+        " ('3010','1611N','high','N0002420C0001'),"
+        " ('3010',null,'high','N0003917D0006')"
+    )
+    mixed = con.execute(sql).fetchall()
+    assert mixed == [("3010", 2, "(unresolved)", "1611N", 2)], mixed
+
     # The live shape (verified 2026-09-04 against budget_line_awards): high
     # links on ONE member of a shared code, the sibling's links medium or
     # absent, and ordinary account-NULL keys everywhere else. min() has one
@@ -685,7 +701,8 @@ def test_high_links_under_two_accounts_are_caught_before_they_fuse():
         " ('3050','1810N','high','N0002419C0004'),"
         " ('3010','1611N','medium','N0002420C0001'),"
         " ('3010','1810N','medium','N0003917D0006'),"
-        " ('0601101E',null,'high','HR001124C0001')"
+        " ('0601101E',null,'high','HR001124C0001'),"
+        " ('0601101E',null,'high','HR001124C0002')"
     )
     assert con.execute(sql).fetchall() == []
     con.close()

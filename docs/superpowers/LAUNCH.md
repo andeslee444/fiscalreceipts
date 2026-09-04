@@ -17,6 +17,41 @@ Every step is idempotent — you can re-run any of them safely.
 
 ---
 
+## Step 0 — Loader order (run BEFORE export-site, whenever links are rebuilt)
+
+The budget→award link loaders share one table (`budget_line_awards`) and one
+unique key `(pe_bli, exhibit, fiscal_year, award_piid)`. Each deletes only its
+OWN rows before writing, so the order they run in decides which evidence a
+shared key ends up carrying. **The canonical order is:**
+
+```
+govbudget jbooks crosswalk           # mechanical account* rows
+uv run python scripts/derive_ap_links.py        # FPDS acquisition-program tags
+uv run python scripts/load_announcement_links.py  # defense.gov + FSRS subawards
+govbudget jbooks export-facts        # Postgres -> parquet
+govbudget build                      # dbt: parquet -> the mart
+govbudget export-site                # mart -> data/site/
+```
+
+Weakest evidence first, strongest last: each stage may upgrade the key, none
+may demote it. Two guards make that true regardless of who actually ran last,
+so a mistaken order degrades nothing silently:
+
+- `jbooks/crosswalk.py` restricts its upsert to
+  `method in ('account', 'account+subagency', 'account+tokens')`;
+- `scripts/derive_ap_links.py` restricts its upsert to
+  `method not in ('announcement+lexicon', 'subaward+lexicon')`
+  (added 2026-09-04 — without it, running the deriver after the announcement
+  loader rewrote an `announcement+lexicon`/high row to `fpds-ap`/medium and
+  orphaned its `award_link_sources` row, losing the article from the citation
+  panel with every gate still green).
+
+After ANY of these run, `export-facts` → `build` → `export-site` must run too,
+or the mart and Postgres disagree and `export_site` fails loudly on the
+announcement-source check.
+
+---
+
 ## Step 1 — Export site artifacts
 
 Regenerates `data/site/` from the DuckDB warehouse.  Must run before build so

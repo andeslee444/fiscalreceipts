@@ -93,11 +93,59 @@ def stored_member_claims(cur) -> dict[tuple, str | None]:
     }
 
 
+#: Column count of the budget_line_awards tuple both loaders build:
+#: pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
+#: recipient_uei, matched_obligation, method, confidence, score, rationale,
+#: account.
+BLA_ROW_WIDTH = 13
+
+
 def incoming_member_claims(rows) -> list[tuple[tuple, str | None]]:
     """The same shape for the rows about to be written. Both loaders build the
     13-column budget_line_awards tuple: pe_bli, exhibit, fiscal_year,
-    organization, award_piid, …, account."""
+    organization, award_piid, …, account.
+
+    The subscripts below are POSITIONAL across two files (final review M3): if
+    either loader ever inserts or reorders a column, `r[4]` silently starts
+    reading recipient_name as the PIID and `r[12]` reads past the end or picks
+    up the wrong field — and the member-attribution guard that runs on this
+    output would compare nonsense while still looking like it fired. Assert the
+    width so the shape change is a loud error at the loader, not a wrong
+    account on a shared-key page.
+    """
+    for r in rows:
+        if len(r) != BLA_ROW_WIDTH:
+            raise ValueError(
+                f"budget_line_awards row has {len(r)} column(s), expected"
+                f" {BLA_ROW_WIDTH}. incoming_member_claims reads pe_bli/exhibit/"
+                f"fiscal_year/award_piid/account POSITIONALLY (r[0], r[1], r[2],"
+                f" r[4], r[12]) and is shared by derive_ap_links.py and"
+                f" load_announcement_links.py — update both loaders and"
+                f" BLA_ROW_WIDTH together. Offending row: {r!r}"
+            )
     return [((r[0], r[1], int(r[2]), r[4]), r[12]) for r in rows]
+
+
+#: The loader's own upsert, hoisted so tests can run the REAL statement
+#: (tests/test_derive_ap_links_run_order.py) instead of restating it.
+#:
+#: The `where` clause is a RUN-ORDER guard (final review I3) — see the comment
+#: at the executemany call site for the failure it prevents. Evidence-graded
+#: methods outrank this mechanical derivation regardless of who ran last.
+EVIDENCE_GRADED_METHODS = ("announcement+lexicon", "subaward+lexicon")
+
+UPSERT_SQL = """insert into budget_line_awards
+   (pe_bli, exhibit, fiscal_year, organization, award_piid,
+    recipient_name, recipient_uei, matched_obligation, method,
+    confidence, score, rationale, account)
+   values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+   on conflict (pe_bli, exhibit, fiscal_year, award_piid)
+   do update set confidence=excluded.confidence,
+                 method=excluded.method, score=excluded.score,
+                 rationale=excluded.rationale,
+                 matched_obligation=excluded.matched_obligation,
+                 account=excluded.account
+   where budget_line_awards.method not in ('announcement+lexicon', 'subaward+lexicon')"""
 
 
 def tier_for(matched_count: int) -> tuple[str, str]:
@@ -320,20 +368,19 @@ def main() -> int:
             incoming_member_claims(out_rows),
             loader="derive_ap_links",
         )
-        cur.executemany(
-            """insert into budget_line_awards
-               (pe_bli, exhibit, fiscal_year, organization, award_piid,
-                recipient_name, recipient_uei, matched_obligation, method,
-                confidence, score, rationale, account)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               on conflict (pe_bli, exhibit, fiscal_year, award_piid)
-               do update set confidence=excluded.confidence,
-                             method=excluded.method, score=excluded.score,
-                             rationale=excluded.rationale,
-                             matched_obligation=excluded.matched_obligation,
-                             account=excluded.account""",
-            out_rows,
-        )
+        # The `where` on the DO UPDATE is a RUN-ORDER guard (final review I3).
+        # This loader deletes only its own 'fpds-ap%' rows, so an
+        # announcement- or subaward-evidenced link on the same
+        # (pe_bli, exhibit, fiscal_year, award_piid) survives the delete and
+        # is then hit by the upsert. Without the guard, running this AFTER
+        # load_announcement_links.py rewrites an 'announcement+lexicon'/high
+        # row to 'fpds-ap'/medium and orphans its award_link_sources row: the
+        # citation panel silently loses the article, the tier drops, and no
+        # gate can tell (every remaining number is still true). Evidence-graded
+        # rows outrank a mechanical derivation regardless of who ran last.
+        # Mirrors the same guard in jbooks/crosswalk.py, which restricts its
+        # own upsert to the account* family.
+        cur.executemany(UPSERT_SQL, out_rows)
     # `with pg:` closes the connection on exit (psycopg3) — count on a fresh one
     with psycopg.connect(DSN) as pg2:
         n = pg2.execute("select confidence, count(*) from budget_line_awards"
