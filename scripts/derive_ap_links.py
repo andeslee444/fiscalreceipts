@@ -30,7 +30,11 @@ from pathlib import Path
 import duckdb
 import psycopg
 
-from collision_keys import member_for_award, partition_split_keys
+from collision_keys import (
+    member_for_award,
+    partition_split_keys,
+    raise_on_contradictory_accounts,
+)
 
 # Catch-all budget lines ("Items Less Than $5 Million", "Ordnance Items <$5M",
 # "Other Support Aircraft") are aggregates, not programs: a link asserting an
@@ -60,6 +64,40 @@ def fed_accounts_from_codes(accounts) -> set[str]:
             if pref:
                 fed.add(f"{pref}-{num}")
     return fed
+
+
+# ---------------------------------------------------------------------------
+# The member-attribution guard both loaders run before they write (ROADMAP #70
+# fix round 1). Shared here rather than in collision_keys.py, which owns the
+# pure resolution rule and no SQL — the same reason fed_accounts_from_codes
+# lives here and is imported by load_announcement_links.
+# ---------------------------------------------------------------------------
+
+
+def stored_member_claims(cur) -> dict[tuple, str | None]:
+    """Every published link's unique key → the member account it names.
+
+    Read INSIDE the load transaction and AFTER this loader deleted its own
+    rows, so what remains is the other evidence route's standing claims. The
+    unique key's fiscal_year is an int column; normalize so a loader carrying
+    it as text compares equal instead of silently never matching (a guard that
+    can never fire is worse than no guard).
+    """
+    cur.execute(
+        "select pe_bli, exhibit, fiscal_year, award_piid, account"
+        " from budget_line_awards where account is not null"
+    )
+    return {
+        (pe_bli, exhibit, int(fiscal_year), award_piid): account
+        for pe_bli, exhibit, fiscal_year, award_piid, account in cur.fetchall()
+    }
+
+
+def incoming_member_claims(rows) -> list[tuple[tuple, str | None]]:
+    """The same shape for the rows about to be written. Both loaders build the
+    13-column budget_line_awards tuple: pe_bli, exhibit, fiscal_year,
+    organization, award_piid, …, account."""
+    return [((r[0], r[1], int(r[2]), r[4]), r[12]) for r in rows]
 
 
 def tier_for(matched_count: int) -> tuple[str, str]:
@@ -272,6 +310,16 @@ def main() -> int:
     with pg:
         cur = pg.cursor()
         cur.execute("delete from budget_line_awards where method like 'fpds-ap%'")
+        # ROADMAP #70 fix round 1: `account` is not part of the unique key, so
+        # the upsert below would happily move a link the announcement route
+        # already published from one member's page to the other's. Stop first
+        # — the raise aborts this transaction, so the delete above is rolled
+        # back too and the corpus is left exactly as it was.
+        raise_on_contradictory_accounts(
+            stored_member_claims(cur),
+            incoming_member_claims(out_rows),
+            loader="derive_ap_links",
+        )
         cur.executemany(
             """insert into budget_line_awards
                (pe_bli, exhibit, fiscal_year, organization, award_piid,

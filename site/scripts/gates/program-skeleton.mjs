@@ -370,15 +370,59 @@ export async function runProgramSkeletonGate() {
 //      awards array (the count and the table cannot disagree);
 //   3. the bare key owns no sidecar and its stub page renders no awards
 //      table — the stub is a chooser, and it must never state award facts
-//      about a program the reader has not chosen yet.
-function runSplitKeyAwardsLeg({ errors, notes, sidecars }) {
-  const programsPath = path.join(jsonDir, "programs.json");
-  if (!fs.existsSync(programsPath)) {
-    errors.push("program-skeleton(n): data/site/json/programs.json missing");
-    return;
+//      about a program the reader has not chosen yet;
+//   4. a non-vacuity floor, because all three checks above pass perfectly on
+//      a corpus where every member page shows ZERO awards.
+
+/** Non-vacuity floor for leg n (added 2026-09-04, #70 fix round 1 — the
+ *  leg's first standalone run printed "0 member page(s) carry 0 award row(s)"
+ *  and PASSED).
+ *
+ *  Measured 2026-09-04 from Postgres, not from a build: budget_line_awards
+ *  where account is not null, left-joined to award_pe_adjudications and
+ *  filtered to the tiers fct_budget_to_awards publishes (published
+ *  confidence high or medium) — SEVEN shared-code member pages carrying
+ *  EIGHTY-SIX award rows:
+ *
+ *    0145-PANMC  3   (announcement+lexicon, high)
+ *    2101-WPN   23   (fpds-ap, medium)
+ *    3010-SCN    5   (fpds-ap, medium)
+ *    3010-OPN    3   (fpds-ap, medium)
+ *    3050-OPN   50   (4 announcement+lexicon high, 46 subaward+lexicon medium)
+ *    3215-OPN    1   (fpds-ap, medium)
+ *    4217-OPN    1   (fpds-ap, medium)
+ *
+ *  All 86 rows are unadjudicated, so no adjudication drops or demotes any of
+ *  them, and each (pe_bli, account) pair has a dim_programs row, so each
+ *  resolves to a page that exists.
+ *
+ *  The floor sits below that with headroom for ordinary corpus movement
+ *  (re-derivation of the FPDS account narrowing, a new adjudication) but
+ *  above the regression it exists to catch: split_key drift between the mart
+ *  and the sidecar writer files every one of these links under a key no page
+ *  reads, and all three checks above stay green on the resulting corpus of
+ *  zeroes. RE-MEASURE and re-derive these numbers if the corpus changes;
+ *  never lower them to whatever the build produced. */
+const MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS = 5;
+const MIN_SPLIT_AWARD_ROWS = 60;
+
+/** `programs` is injected only by this leg's unit test
+ *  (__tests__/split-key-awards.test.mjs), which has to be able to hand the leg
+ *  a corpus the build does not contain — a floor that has never been seen to
+ *  trip is not a floor. The gate itself always passes it undefined and reads
+ *  the shipped programs.json. */
+export function runSplitKeyAwardsLeg({ errors, notes, sidecars, programs }) {
+  let programRows = programs;
+  if (!programRows) {
+    const programsPath = path.join(jsonDir, "programs.json");
+    if (!fs.existsSync(programsPath)) {
+      errors.push("program-skeleton(n): data/site/json/programs.json missing");
+      return;
+    }
+    programRows = readJson(programsPath);
   }
   const byPe = new Map();
-  for (const p of readJson(programsPath)) {
+  for (const p of programRows) {
     if (!byPe.has(p.pe_bli)) byPe.set(p.pe_bli, []);
     byPe.get(p.pe_bli).push(p);
   }
@@ -448,9 +492,28 @@ function runSplitKeyAwardsLeg({ errors, notes, sidecars }) {
       }
     }
   }
+  if (
+    membersWithAwards < MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS ||
+    awardRows < MIN_SPLIT_AWARD_ROWS
+  ) {
+    errors.push(
+      `program-skeleton(n): only ${membersWithAwards} shared-code member ` +
+        `page(s) carry ${awardRows} award row(s) (floor: >= ` +
+        `${MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS} page(s), >= ` +
+        `${MIN_SPLIT_AWARD_ROWS} row(s), measured 2026-09-04 at 7 pages / 86 ` +
+        `rows). The three checks above are all satisfied by a corpus of ` +
+        `zeroes, which is exactly what split_key drift between the mart and ` +
+        `the sidecar writer produces — the links exist and reach no page. ` +
+        `Re-measure the population from budget_line_awards and re-derive the ` +
+        `floor; do not lower it to fit the build`,
+    );
+    return;
+  }
+
   notes.push(
     `leg n: ${splits.length} shared BLI code(s) checked; ` +
-      `${membersWithAwards} member page(s) carry ${awardRows} award row(s), ` +
+      `${membersWithAwards} member page(s) carry ${awardRows} award row(s) ` +
+      `(floor ${MIN_SPLIT_MEMBER_PAGES_WITH_AWARDS}/${MIN_SPLIT_AWARD_ROWS}), ` +
       `no PIID shared between siblings, no stub rendering awards`,
   );
 }

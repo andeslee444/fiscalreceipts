@@ -481,12 +481,15 @@ export function getProgramMap(): Map<string, ProgramRow> {
 let _splitProgramKeys: string[] | null = null;
 
 /**
- * Bare pe_bli values with MORE than one programs.json row — the 8 genuine
- * appropriation-account collisions (Sprint E, Task E3). The bare
- * `/program/{pe_bli}/` URL for each of these is a disambiguation STUB
- * listing both real (slug-addressed) pages, never a program page itself —
- * it carries no program_details sidecar (see the stub branch in
- * app/program/[peBli]/page.tsx and program-skeleton.mjs's exclusion of it).
+ * Bare pe_bli values with MORE than one programs.json row — 13 of them in the
+ * PB2026 corpus (measured 2026-09-04): 10 genuine appropriation-account
+ * collisions (Sprint E, Task E3, which measured 8 before the last Navy
+ * procurement books were parsed) and 3 organization collisions (ROADMAP #45:
+ * '20', '30', '500'). The bare `/program/{pe_bli}/` URL for each of these is a
+ * disambiguation STUB listing both real (slug-addressed) pages, never a
+ * program page itself — it carries no program_details sidecar (see the stub
+ * branch in app/program/[peBli]/page.tsx and program-skeleton.mjs's exclusion
+ * of it). The count is derived from programs.json, never hardcoded.
  */
 export function getSplitProgramKeys(): string[] {
   if (_splitProgramKeys) return _splitProgramKeys;

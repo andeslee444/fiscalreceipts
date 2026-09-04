@@ -168,11 +168,18 @@ def fact_id_narrative(document_sha256: str, pe_bli: str, kind: str, xml_path: st
 # ---------------------------------------------------------------------------
 # Sprint E, Task E3 — the URL contract for appropriation-account collisions.
 #
-# E1 re-grained dim_programs/fct_budget_trajectory on (account, pe_bli): 8
+# E1 re-grained dim_programs/fct_budget_trajectory on (account, pe_bli): TEN
 # pe_bli values in the PB2026 corpus are genuinely shared by TWO real
 # programs, one per appropriation account (dbt/models/marts/dim_programs.sql
 # has the full account_match derivation). A bare pe_bli therefore no longer
-# identifies exactly one program for these 8 keys.
+# identifies exactly one program for these 10 keys.
+#
+# (Sprint E measured 8 and much of the prose below still says so. The corpus
+# grew to 10 when the remaining Navy procurement books were parsed — '3302'
+# and '4217' joined the original eight — and 13 pe_bli values are shared in
+# total once the 3 organization-split keys are counted. Verified 2026-09-04
+# against dim_programs; the count is measured, never hardcoded, so the code
+# was always right and only the comments drifted.)
 #
 # URL contract (composite slug, chosen over "incumbent keeps the bare URL" —
 # see docs/superpowers/plans/2026-08-14-sprint-e-key-split.md Step 1): a
@@ -254,11 +261,13 @@ class _ProgramIdentity:
     split_pe_blis: pe_bli values with >1 dim_programs row — exactly the keys
     that need a composite slug and a disambiguation stub. Two independent
     shapes share this one set (verified mutually exclusive — no pe_bli
-    collides on both dimensions in the shipped PB2026 warehouse): 8 keys
+    collides on both dimensions in the shipped PB2026 warehouse): 10 keys
     split by ACCOUNT (Sprint E, ROADMAP #67 — same organization, different
-    appropriation account) and 3 keys split by ORGANIZATION (ROADMAP #45 —
-    same account, different organization: '20' DCSA/DTRA, '30'
-    OSD/DTRA/DMACT, '500' DLA/DHRA). `slug()`/`has_own_detail()` dispatch on
+    appropriation account; Sprint E measured 8, and '3302'/'4217' joined them
+    when the last Navy procurement books were parsed) and 3 keys split by
+    ORGANIZATION (ROADMAP #45 — same account, different organization: '20'
+    DCSA/DTRA, '30' OSD/DTRA/DMACT, '500' DLA/DHRA).
+    `slug()`/`has_own_detail()` dispatch on
     whichever dimension actually differs among a pe_bli's own rows, so a
     future key colliding on BOTH would still resolve (both codes threaded
     into the slug) rather than silently collapsing.
@@ -420,6 +429,42 @@ class _ProgramIdentity:
             if o == organization:
                 return hd
         return False
+
+
+def shared_code_program_label(titles: list[str | None]) -> str | None:
+    """The label for a consumer keyed on the BARE pe_bli (ROADMAP #70 fix
+    round 1).
+
+    `titles` is every dim_programs title filed under one pe_bli, in the
+    table's own (pe_bli, account) order. For the ~1,930 codes that name one
+    program this is a one-element list and the answer is that title, byte for
+    byte. For the 13 codes two (or three) programs share, the previous rule
+    was last-wins over that list — so a district card, a feed headline or a
+    filing mention rendered whichever member the sort happened to end on, and
+    was right only by luck. Every one of those consumers links to
+    `/program/{pe_bli}/`, which for a shared code is the DISAMBIGUATION STUB
+    listing both members, so the honest label for that link names both:
+    "LPD Flight II / Shipboard Tactical Communications".
+
+    Members whose titles are identical ('2101' and '2292' publish the same
+    program name in two appropriations) collapse to one — "Tomahawk /
+    Tomahawk" is a worse label, not a more honest one. Empty titles are
+    dropped rather than allowed to blank out a sibling; a code with nothing to
+    say returns None, exactly as the old `dict.get` did, and the callers'
+    `or bl_titles.get(...)` fallback still fires.
+
+    Consumers that CAN name the one member a figure describes should do that
+    instead of calling this — see _emit_district_sidecars, whose mart rows
+    carry the per-account title of the member whose links produced the
+    dollars.
+    """
+    seen: list[str] = []
+    for title in titles:
+        if title and title not in seen:
+            seen.append(title)
+    if not seen:
+        return None
+    return " / ".join(seen)
 
 
 def _query_with_account_fallback(
@@ -7574,20 +7619,38 @@ def _write_all_sidecars(
             "confidence": confidence,
         })
 
-    # A link on a shared BLI code that carries NO account names both programs
-    # and is therefore shown on NEITHER member page — the safe direction, but a
-    # silent one, so say it out loud. Zero today: both link scripts resolve the
-    # account before publishing, and the mechanical crosswalk writes no rows on
-    # these keys at all. A non-zero count means a loader published an
-    # unattributed link on a shared code.
-    _unattributed_split_links = sum(
-        len(v) for k, v in awards_by_pe.items()
-        if ident.is_account_split(k[0]) and k[1] is None
+    # A link on a shared BLI code filed under a key NO PAGE READS is shown on
+    # neither member — the safe direction, but a silent one, so say it out
+    # loud. The keys a shared code's pages ask for are exactly its
+    # dim_programs rows' own split_keys; anything else under that code (an
+    # account NULL, which names both programs; an account no member carries;
+    # an organization dim_programs does not publish) lands in a slot the
+    # sidecar writer never looks in and vanishes.
+    #
+    # Widened from "account-split key with a NULL account" (ROADMAP #70 fix
+    # round 1): the original predicate would have missed the drift shape that
+    # actually costs money — a key whose account is populated but does not
+    # match any member — and said nothing about the organization axis at all.
+    # Non-split pe_blis cannot drift: split_key normalizes every one of them
+    # to (pe_bli, None, None), which is exactly what _awards_for looks up.
+    #
+    # Zero today: both link scripts resolve the member before publishing, and
+    # the mechanical crosswalk writes no rows on these keys at all.
+    _readable_split_keys = {
+        ident.split_key(pe_bli, account, organization)
+        for pe_bli in ident.split_pe_blis
+        for account, _account_title, organization, _has_detail in ident.accounts(pe_bli)
+    }
+    _unread_split_links = sorted(
+        (k, len(v)) for k, v in awards_by_pe.items()
+        if v and k[0] in ident.split_pe_blis and k not in _readable_split_keys
     )
-    if _unattributed_split_links:
+    if _unread_split_links:
         print(
-            f"awards: {_unattributed_split_links} link(s) on shared BLI codes"
-            f" carry no account (ROADMAP #70) — shown on neither member page"
+            f"awards: {sum(n for _k, n in _unread_split_links)} link(s) on"
+            f" shared BLI codes are filed under a key no member page reads"
+            f" (ROADMAP #70) — shown on neither member:"
+            f" {[(k, n) for k, n in _unread_split_links]}"
         )
 
     def _awards_for(pe_bli: str, account=None, organization=None) -> list:
@@ -7792,9 +7855,30 @@ def _write_all_sidecars(
     # link resolution. Includes trajectory-only feed programs: membership in
     # this dict == "a /program/{pe_bli}/ page exists", the same contract the
     # site enforces via programs.json (G1 dead-link gate).
-    prog_titles: dict[str, str] = {}
+    #
+    # ROADMAP #70 fix round 1: this was `prog_titles[r[0]] = r[3]` — LAST-WINS
+    # over dim_programs ordered by (pe_bli, account). For the 13 codes two
+    # programs share, the label every consumer of this dict rendered was
+    # whichever member the sort ended on. It happened to be the member that
+    # carries the links for both shared codes that publish any today ('0145'
+    # → 1508N, '3050' → 1810N), which is correct by sort order, not by
+    # construction — the sibling case renders a different program's name over
+    # this one's money. Each consumer keyed here links to /program/{pe_bli}/,
+    # the disambiguation stub, so the label names every member (see
+    # shared_code_program_label). District cards do better than that: their
+    # mart rows carry the per-account title of the member whose links produced
+    # the dollars, and _emit_district_sidecars now prefers it — hence
+    # shared_pe_blis below, which tells it which codes to prefer it for.
+    _titles_by_pe: dict[str, list[str | None]] = defaultdict(list)
     for r in all_prog_rows:
-        prog_titles[r[0]] = r[3]  # pe_bli → title
+        _titles_by_pe[r[0]].append(r[3])
+    prog_titles: dict[str, str | None] = {
+        pe_bli: shared_code_program_label(titles)
+        for pe_bli, titles in _titles_by_pe.items()
+    }
+    shared_pe_blis: set[str] = {
+        pe_bli for pe_bli, titles in _titles_by_pe.items() if len(titles) > 1
+    }
 
     # ------------------------------------------------------------------ #
     # 2. programs.json                                                    #
@@ -9718,6 +9802,7 @@ def _write_all_sidecars(
         con=con,
         prog_titles=prog_titles,
         cited_fact_ids=_cited_fact_ids,
+        shared_pe_blis=shared_pe_blis,
     )
     n_files += n_dist
 
@@ -10648,6 +10733,13 @@ def _emit_feed_sidecar(
         # Compose headline text — dim_programs title first (matches the
         # program page heading when one exists), dim_pe_titles canonical
         # title as fallback for trajectory-only pe_blis.
+        # ROADMAP #70 fix round 1: a feed event is keyed on the BARE pe_bli
+        # and its figures come from marts grouped the same way, so on one of
+        # the 13 shared codes the event genuinely unions both members' money.
+        # prog_titles now labels those with both members' titles rather than
+        # whichever one dim_programs' sort ended on (no feed event lands on a
+        # shared code in today's corpus — this is the shape, not a fix to a
+        # visible headline).
         program_title = ""
         if pe_bli:
             program_title = prog_titles.get(pe_bli) or bl_titles.get(pe_bli, "")
@@ -11063,6 +11155,7 @@ def _emit_district_sidecars(
     con,
     prog_titles: dict,
     cited_fact_ids: set,
+    shared_pe_blis: frozenset[str] | set[str] = frozenset(),
 ) -> int:
     """Emit districts/index.json and districts/{pop_district}.json (Task 5).
 
@@ -11084,6 +11177,16 @@ def _emit_district_sidecars(
     shared_award_count: the largest number of program elements any one of its
     underlying awards is ALSO matched to, so the page can say "this award,
     matched to N programs" rather than implying N distinct awards.
+
+    ROADMAP #70 fix round 1: `shared_pe_blis` is the set of pe_bli values
+    dim_programs publishes more than once. For those codes prog_titles holds a
+    both-members label (see shared_code_program_label) — right for a link to
+    the disambiguation stub, wrong over a dollar figure that belongs to ONE
+    member. A district row's dollars come from fct_district_programs, whose
+    program_title fct_budget_to_awards already resolved per (pe_bli, account)
+    to the member whose high-confidence links produced them, so on a shared
+    code that mart title is preferred over the dict. Every other pe_bli is
+    unaffected: prog_titles remains the label, exactly as before.
 
     Returns number of files written.
     """
@@ -11178,8 +11281,10 @@ def _emit_district_sidecars(
     district_programs: dict[str, list] = {}
 
     # ROADMAP #39: prog_titles (param) was already corrected by the caller;
-    # this covers only the fct_district_programs fallback path (a pe_bli
-    # absent from prog_titles), which reads its own raw title independently.
+    # this covers the fct_district_programs fallback path (a pe_bli absent
+    # from prog_titles) and — since #70 fix round 1 — the shared-code path,
+    # both of which read the mart's own raw title and so need their own
+    # correction.
     _title_overrides = load_title_overrides()
 
     for (pop_state, pop_district, pe_bli, program_title, organization,
@@ -11187,10 +11292,16 @@ def _emit_district_sidecars(
         if not pop_district:
             continue
         key = pop_district
-        title = prog_titles.get(
-            pe_bli,
-            apply_title_override(pe_bli, program_title, _title_overrides) or "",
-        )
+        _mart_title = apply_title_override(pe_bli, program_title, _title_overrides)
+        if pe_bli in shared_pe_blis and _mart_title:
+            # ROADMAP #70 fix round 1: one member of this code earned these
+            # dollars and the mart names it. prog_titles names BOTH members
+            # (it labels a link to the disambiguation stub), which over a
+            # figure would read as one program's money under two programs'
+            # names.
+            title = _mart_title
+        else:
+            title = prog_titles.get(pe_bli, _mart_title or "")
 
         # Compute the usaspending fact_id for this (district, program)
         key_str = f"{pop_state}|{pop_district}|{pe_bli}"
@@ -11409,6 +11520,15 @@ def _emit_filing_sidecars(
     # ROADMAP #39: prog_titles (param) was already corrected by the caller;
     # this covers only the fct_program_lobbying fallback (pe_bli absent from
     # prog_titles), which reads its own raw title independently.
+    # ROADMAP #70 fix round 1: a filing mention names the PROGRAM a lobbying
+    # description matched and links to /program/{pe_bli}/. On a shared code
+    # that link opens the disambiguation stub, and the mart's own
+    # program_title is not per-member either (fct_program_lobbying matches on
+    # a term, not on money — it publishes 'F/A-18E/F (Fighter) Hornet' for a
+    # '0145' filing whose matched term came from 'General Purpose Bombs'), so
+    # there is no member to name: prog_titles' both-members label is the
+    # honest one, and it is what the reader will find at the other end of the
+    # link.
     _title_overrides = load_title_overrides()
     for r in lob_rows:
         (filing_uuid, pe_bli, program_title, matched_term, evidence_kind,

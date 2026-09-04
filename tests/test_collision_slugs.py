@@ -222,6 +222,117 @@ def test_announcement_collision_without_a_usable_document_is_not_resolved():
 
 
 # ---------------------------------------------------------------------------
+# (a3) contradictory member evidence is a finding, not a tie-break
+#
+# The unique key on budget_line_awards is (pe_bli, exhibit, fiscal_year,
+# award_piid) — `account` is deliberately NOT part of it, so exactly-one-member
+# admission keeps one award naming at most one member. The cost of that choice
+# is that an `on conflict … do update set account=excluded.account` lets the
+# LAST loader to run move a published link from one member's page to the
+# other's, silently. Two independent evidence routes disagreeing about which
+# program an award belongs to is a finding about the evidence; the loaders must
+# stop rather than let run order decide.
+# ---------------------------------------------------------------------------
+
+
+_K1 = ("3010", "P-1", 2026, "N0002420C0001")
+_K2 = ("3010", "P-1", 2026, "N0003917D0006")
+
+
+def test_a_stored_link_on_the_other_member_is_a_contradiction():
+    from collision_keys import contradictory_accounts
+
+    conflicts = contradictory_accounts({_K1: SCN}, [(_K1, OPN)])
+    assert conflicts == [(_K1, SCN, OPN)]
+
+
+def test_agreeing_or_unclaimed_stored_accounts_are_not_contradictions():
+    from collision_keys import contradictory_accounts
+
+    # same member, twice — the normal re-run
+    assert contradictory_accounts({_K1: SCN}, [(_K1, SCN)]) == []
+    # no stored row at all (this loader owns the key)
+    assert contradictory_accounts({}, [(_K1, SCN)]) == []
+    # a stored row that claims no member (an ordinary, unshared key)
+    assert contradictory_accounts({_K1: None}, [(_K1, None)]) == []
+    # a different award on the same code — different key, no contradiction
+    assert contradictory_accounts({_K1: SCN}, [(_K2, OPN)]) == []
+
+
+def test_dropping_a_member_claim_is_also_a_contradiction():
+    """A published link that names 1611N must not become member-less: the
+    upsert would write account=NULL and the link would vanish from BOTH
+    member pages with nothing said."""
+    from collision_keys import contradictory_accounts
+
+    assert contradictory_accounts({_K1: SCN}, [(_K1, None)]) == [(_K1, SCN, None)]
+
+
+def test_one_batch_contradicting_itself_is_caught_too():
+    """Run order between loaders is not the only tie-break available — two
+    rows in ONE executemany would resolve by insertion order."""
+    from collision_keys import contradictory_accounts
+
+    assert contradictory_accounts({}, [(_K1, SCN), (_K1, OPN)]) == [(_K1, SCN, OPN)]
+
+
+def test_raise_on_contradictory_accounts_names_both_members():
+    from collision_keys import (
+        ContradictoryAccountError,
+        raise_on_contradictory_accounts,
+    )
+
+    raise_on_contradictory_accounts({_K1: SCN}, [(_K1, SCN)], loader="fpds-ap")
+    with pytest.raises(ContradictoryAccountError) as e:
+        raise_on_contradictory_accounts({_K1: SCN}, [(_K1, OPN)], loader="fpds-ap")
+    msg = str(e.value)
+    assert SCN in msg and OPN in msg and "N0002420C0001" in msg
+    assert "fpds-ap" in msg
+
+
+# ---------------------------------------------------------------------------
+# (a4) a consumer keyed on the BARE shared code names BOTH members
+#
+# prog_titles (export_site) is keyed on the bare pe_bli and feeds the feed
+# headline, the filing mention and the district card. For a shared code it was
+# last-wins over dim_programs ordered by (pe_bli, account) — the label was
+# whichever member the sort happened to end on. Every one of those consumers
+# links to /program/{pe_bli}/, which for a shared code is the disambiguation
+# STUB listing both members, so the honest label for that link names both.
+# ---------------------------------------------------------------------------
+
+
+def test_a_shared_code_label_names_every_member():
+    from govbudget.export_site import shared_code_program_label
+
+    assert shared_code_program_label(
+        ["LPD Flight II", "Shipboard Tactical Communications"]
+    ) == "LPD Flight II / Shipboard Tactical Communications"
+
+
+def test_two_members_with_one_title_are_labelled_once():
+    """2101 and 2292 publish two rows with the SAME title (Tomahawk in two
+    appropriations) — 'Tomahawk / Tomahawk' would be a worse label, not a
+    more honest one."""
+    from govbudget.export_site import shared_code_program_label
+
+    assert shared_code_program_label(["Tomahawk", "Tomahawk"]) == "Tomahawk"
+
+
+def test_an_ordinary_key_keeps_its_own_title_object():
+    from govbudget.export_site import shared_code_program_label
+
+    assert shared_code_program_label(["Defense Research Sciences"]) == (
+        "Defense Research Sciences"
+    )
+    # nothing to say → say nothing (the caller falls back to bl_titles)
+    assert shared_code_program_label([None]) is None
+    assert shared_code_program_label([None, ""]) is None
+    # a member with no title of its own does not blank out its sibling
+    assert shared_code_program_label([None, "Vehicles"]) == "Vehicles"
+
+
+# ---------------------------------------------------------------------------
 # (b) the exporter files the rows on the members' pages, not the stub
 # ---------------------------------------------------------------------------
 
@@ -303,6 +414,20 @@ def _make_collision_duckdb(db_path: Path) -> None:
         f" ('3010','P-1',2026,'N','N0003917D0006','Serco','UEI2',"
         f"  'fpds-ap','medium','Shipboard Tactical Communications','{OPN}')"
     )
+    # Two district rows on the SAME shared code, one per member, in two
+    # different districts. fct_district_programs is pe-grained and carries the
+    # per-account program_title of the member whose high-confidence links
+    # produced the dollars (fct_budget_to_awards resolves it through
+    # (pe_bli, account)); the exporter must render THAT title rather than the
+    # bare-code label. VA-08 gets the FIRST member by account order (1611N),
+    # CO-05 the SECOND (1810N) — a last-wins prog_titles lookup renders the
+    # second member's title on both.
+    con.execute(
+        "insert into fct_district_programs values"
+        " ('VA','VA-08','3010','LPD Flight II','N',3,2,1,900000.0),"
+        " ('CO','CO-05','3010','Shipboard Tactical Communications','N',"
+        "  2,1,1,100000.0)"
+    )
     con.close()
 
 
@@ -359,6 +484,43 @@ def test_ordinary_program_award_attachment_is_unchanged(collision_export):
     mart row must behave exactly as it did before this task."""
     d = _sidecar(collision_export, "0601101E")
     assert [a["award_piid"] for a in d["awards"]] == ["W911QX-24-C-0001"]
+
+
+def _district(site: Path, code: str) -> dict:
+    return json.loads((site / "json" / "districts" / f"{code}.json").read_text())
+
+
+def _district_program(site: Path, code: str, pe_bli: str) -> dict:
+    rows = [p for p in _district(site, code)["programs"] if p["pe_bli"] == pe_bli]
+    assert len(rows) == 1, f"{code}: expected one {pe_bli} row, got {len(rows)}"
+    return rows[0]
+
+
+def test_a_district_card_names_the_member_whose_links_produced_the_dollars(
+    collision_export,
+):
+    """The SECOND member by account order (1810N) — the one a last-wins
+    prog_titles lookup happens to land on."""
+    row = _district_program(collision_export, "CO-05", "3010")
+    assert row["title"] == "Shipboard Tactical Communications"
+
+
+def test_a_district_card_on_the_first_member_is_not_relabelled_as_its_sibling(
+    collision_export,
+):
+    """The reverse case — and the one last-wins got wrong. VA-08's dollars are
+    LPD Flight II's (1611N, the FIRST member by account order); labelling them
+    'Shipboard Tactical Communications' names a different program in a
+    different appropriation."""
+    row = _district_program(collision_export, "VA-08", "3010")
+    assert row["title"] == "LPD Flight II"
+
+
+def test_an_ordinary_district_card_still_reads_its_program_title(collision_export):
+    """The correction is scoped to shared codes: an ordinary pe_bli keeps the
+    dim_programs title prog_titles has always given it."""
+    row = _district_program(collision_export, "CO-05", "0601101E")
+    assert row["title"] == "Defense Research Sciences"
 
 
 def test_link_citation_row_names_the_account_for_a_split_key(collision_export):

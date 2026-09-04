@@ -623,3 +623,69 @@ def test_entity_xwalk_duplicate_uei_would_double_count(tmp_path):
     ).fetchone()[0]
     assert correct == 1000.0, f"unique UEI gives correct total: got {correct}"
     con.close()
+
+
+def _singular_test_sql(name: str, **refs: str) -> str:
+    """The committed dbt singular test's own SQL, with its {{ ref(...) }}
+    macros replaced by plain table names so it can run against a throwaway
+    DuckDB. Reading the real file (rather than restating the query here) is
+    the point: the assertion this test exercises is the one dbt runs."""
+    sql = (ROOT / "dbt" / "tests" / f"{name}.sql").read_text()
+    for model, table in refs.items():
+        sql = sql.replace("{{ ref('%s') }}" % model, table)
+    assert "{{" not in sql, f"unsubstituted macro left in {name}.sql"
+    return sql
+
+
+def test_high_links_under_two_accounts_are_caught_before_they_fuse():
+    """ROADMAP #70 fix round 1, finding 4.
+
+    fct_district_programs groups on (state, district, pe_bli) and takes
+    min() of program_title/organization. That is deliberate — grouping BY the
+    title would break the model's declared grain — but it means a shared BLI
+    code carrying HIGH-confidence links on BOTH members would sum two
+    programs' money into one district card under whichever title sorts first.
+    Latent today (one member of '0145' and one of '3050' carry high links);
+    assert_district_programs_single_member_high_links is what makes the day it
+    stops being latent loud instead of silent.
+
+    Like test_entity_xwalk_duplicate_uei_would_double_count, this does not run
+    dbt: it runs the committed assertion against both configurations.
+    """
+    import duckdb
+
+    con = duckdb.connect()
+    con.execute(
+        "create table links (pe_bli varchar, account varchar,"
+        " confidence varchar, award_piid varchar)"
+    )
+    sql = _singular_test_sql(
+        "assert_district_programs_single_member_high_links",
+        fct_budget_to_awards="links",
+    )
+
+    # The shape the model can fuse: '3010' high on BOTH members.
+    con.execute(
+        "insert into links values"
+        " ('3010','1611N','high','N0002420C0001'),"
+        " ('3010','1810N','high','N0003917D0006')"
+    )
+    fused = con.execute(sql).fetchall()
+    assert fused == [("3010", 2, "1611N", "1810N", 2)], fused
+
+    # The live shape (verified 2026-09-04 against budget_line_awards): high
+    # links on ONE member of a shared code, the sibling's links medium or
+    # absent, and ordinary account-NULL keys everywhere else. min() has one
+    # value to choose from, so nothing fuses and the assertion is silent.
+    con.execute("delete from links")
+    con.execute(
+        "insert into links values"
+        " ('0145','1508N','high','SPE30124D0001'),"
+        " ('3050','1810N','high','N0002419C0003'),"
+        " ('3050','1810N','high','N0002419C0004'),"
+        " ('3010','1611N','medium','N0002420C0001'),"
+        " ('3010','1810N','medium','N0003917D0006'),"
+        " ('0601101E',null,'high','HR001124C0001')"
+    )
+    assert con.execute(sql).fetchall() == []
+    con.close()

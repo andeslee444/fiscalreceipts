@@ -46,8 +46,16 @@ from pathlib import Path
 import duckdb
 import psycopg
 
-from collision_keys import member_for_document, partition_split_keys
-from derive_ap_links import fed_accounts_from_codes
+from collision_keys import (
+    member_for_document,
+    partition_split_keys,
+    raise_on_contradictory_accounts,
+)
+from derive_ap_links import (
+    fed_accounts_from_codes,
+    incoming_member_claims,
+    stored_member_claims,
+)
 
 
 def money_color_ok(award_accounts: set[str], line_accounts: set[str]) -> bool:
@@ -391,6 +399,15 @@ def main() -> int:
     with pg:
         cur = pg.cursor()
         cur.execute("delete from budget_line_awards where method in ('announcement+lexicon','subaward+lexicon')")
+        # ROADMAP #70 fix round 1: same guard as derive_ap_links — a link the
+        # FPDS route already attributed to one member of a shared code must
+        # not be moved to the other by whichever loader runs last. The raise
+        # aborts this transaction, so the delete above is rolled back with it.
+        raise_on_contradictory_accounts(
+            stored_member_claims(cur),
+            incoming_member_claims(rows),
+            loader="load_announcement_links",
+        )
         cur.executemany(
             """insert into budget_line_awards
                (pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
