@@ -168,6 +168,17 @@ export interface SiteMeta {
    * lines. Absent on pre-#49 exports.
    */
   programs_coverage?: SiteMetaProgramsCoverage;
+  /**
+   * ROADMAP #72: held-out precision study on the published link tiers —
+   * {method: {confirmed, sampled}} from a stratified random sample per
+   * method, hand-adjudicated with the same two-reviewer rubric the waves
+   * use (scripts/precision_study.py draw/load/report against
+   * link_precision_samples). {} until a study's verdicts are loaded —
+   * /methodology/ renders the paragraph only when this is non-empty.
+   * Optional (not just possibly-empty) because it is absent on pre-#72
+   * exports.
+   */
+  link_precision?: Record<string, { confirmed: number; sampled: number }>;
 }
 
 export interface SiteMetaProgramsCoverageExcluded {

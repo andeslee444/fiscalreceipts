@@ -112,6 +112,19 @@
  *      data/manifest.jsonl and the BUILT pages, never site_meta, and it
  *      requires the rendered date to EQUAL the manifest's, so a literal
  *      cannot satisfy it. See leg m's own block at the bottom.
+ *  (n) HELD-OUT LINK-PRECISION STUDY (ROADMAP #72). The new link tiers
+ *      (FPDS acquisition-program mapping, defense.gov announcement matching,
+ *      FSRS subaward matching) rely on an adversarial refute pass at
+ *      CREATION time as their precision control; scripts/precision_study.py
+ *      draws a stratified sample per method and a two-reviewer adjudication
+ *      MEASURES it independently, landing in link_precision_samples.
+ *      export_site.py mirrors the tally into site_meta.link_precision. This
+ *      leg recomputes that tally from data/site/json/site_meta.json and
+ *      requires /methodology/'s [data-link-precision] paragraph to state
+ *      every method's exact confirmed/sampled pair — and, symmetrically, to
+ *      render NOTHING when site_meta carries no measured methods yet (a
+ *      stale or partial paragraph is as much a lie as a rotted literal). See
+ *      leg n's own block at the bottom.
  *
  * WHY a built-artifact gate and not an export-time assertion: the defect this
  * closes was NEVER an export defect — the exporter's counts were correct and
@@ -609,6 +622,9 @@ export async function runDataTruthGate() {
 
   // ── leg k: corpus-count provenance (tri-persona Wave 4, item 4) ───────────
   runCorpusCountLeg(errors, notes);
+
+  // ── leg n: held-out link-precision study (ROADMAP #72) ────────────────────
+  runLinkPrecisionLeg(errors, notes);
 
   // ── leg l: family labels that won a coin flip (ROADMAP #10 A) ─────────────
   runFamilyLabelLeg(errors, notes);
@@ -2141,6 +2157,115 @@ function runCorpusCountLeg(errors, notes) {
         `declared count (` +
         ids.map((id) => `${id}=${expected[id].toLocaleString("en-US")}`).join(", ") +
         `) ✓`,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg n — held-out link-precision study (ROADMAP #72)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// site_meta.link_precision ({method: {confirmed, sampled}}, or null while no
+// study has verdicts yet) is the recomputed source of truth here — this leg
+// reads data/site/json/site_meta.json directly (unlike leg e, which never
+// trusts site_meta for the artifact it is derived from; here site_meta IS
+// the artifact under test, produced by an inlined Postgres query in
+// export_site.py that this leg does not re-run — the DB tally is scripts/
+// precision_study.py's own job, exercised by tests/test_precision_study.py).
+// Two directions, both failures:
+//   - link_precision names a method the /methodology/ paragraph omits or
+//     states wrong numbers for (a stale/partial paragraph reads as more
+//     confidence than was measured).
+//   - the paragraph renders while link_precision carries nothing (leftover
+//     text with no numbers behind it — or numbers for a method site_meta
+//     no longer knows about).
+function runLinkPrecisionLeg(errors, notes) {
+  const siteMetaPath = path.join(jsonDir, "site_meta.json");
+  if (!fs.existsSync(siteMetaPath)) {
+    errors.push(`leg n: ${siteMetaPath} missing — cannot recompute link_precision`);
+    return;
+  }
+  let siteMeta;
+  try {
+    siteMeta = JSON.parse(fs.readFileSync(siteMetaPath, "utf8"));
+  } catch (e) {
+    errors.push(`leg n: site_meta.json unparseable — ${e.message}`);
+    return;
+  }
+  const linkPrecision = siteMeta.link_precision ?? {};
+  const methods = Object.keys(linkPrecision).sort();
+
+  const methodRoot = readHtml("/methodology/");
+  const el = methodRoot?.querySelector("[data-link-precision]");
+
+  if (methods.length === 0) {
+    if (el) {
+      errors.push(
+        "leg n (/methodology/): [data-link-precision] renders while " +
+          "site_meta.link_precision is empty — the paragraph must stay " +
+          "absent until a study has verdicts",
+      );
+    } else {
+      notes.push(
+        "leg n: link_precision is empty and /methodology/ renders no " +
+          "paragraph (nothing published yet) ✓",
+      );
+    }
+    return;
+  }
+
+  if (!methodRoot) {
+    errors.push("leg n: built /methodology/ missing");
+    return;
+  }
+  if (!el) {
+    errors.push(
+      `leg n (/methodology/): site_meta.link_precision has ${methods.length} ` +
+        `method(s) but no [data-link-precision] paragraph renders`,
+    );
+    return;
+  }
+
+  const text = norm(el.text);
+  const rendered = new Map();
+  for (const m of text.matchAll(/([a-z0-9][a-z0-9+_-]*)\s+([\d,]+)\/([\d,]+)/gi)) {
+    rendered.set(m[1], {
+      confirmed: Number(m[2].replace(/,/g, "")),
+      sampled: Number(m[3].replace(/,/g, "")),
+    });
+  }
+
+  let checked = 0;
+  for (const method of methods) {
+    const want = linkPrecision[method];
+    const got = rendered.get(method);
+    if (!got) {
+      errors.push(
+        `leg n (/methodology/): [data-link-precision] states no figure for ` +
+          `"${method}" (site_meta has ${want.confirmed}/${want.sampled})`,
+      );
+      continue;
+    }
+    checked++;
+    if (got.confirmed !== want.confirmed || got.sampled !== want.sampled) {
+      errors.push(
+        `leg n (/methodology/): "${method}" renders ${got.confirmed}/${got.sampled}, ` +
+          `site_meta.link_precision has ${want.confirmed}/${want.sampled}`,
+      );
+    }
+  }
+  for (const rm of rendered.keys()) {
+    if (!methods.includes(rm)) {
+      errors.push(
+        `leg n (/methodology/): [data-link-precision] states a figure for ` +
+          `"${rm}", which is not in site_meta.link_precision`,
+      );
+    }
+  }
+  if (errors.every((e) => !e.startsWith("leg n"))) {
+    notes.push(
+      `leg n: [data-link-precision] states all ${checked} method(s) from ` +
+        `site_meta.link_precision, values match ✓`,
     );
   }
 }

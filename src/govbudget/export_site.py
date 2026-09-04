@@ -2315,11 +2315,26 @@ def export_site(
     with psycopg.connect(dsn) as pg_orgs:
         ingested_service_orgs = _ingested_service_orgs(pg_orgs)
 
+    # ROADMAP #72: held-out precision study on the published link tiers.
+    # scripts/precision_study.py owns the draw/load/report CLI against
+    # link_precision_samples (a human/agent adjudicator's confirmed/refuted
+    # verdict on a stratified random sample per method); this inlines that
+    # script's precision_by_method query rather than importing scripts/ into
+    # the package — same reason and same threading-via-manifest pattern as
+    # ingested_service_orgs just above. Always a dict, {} when no study has
+    # verdicts loaded yet — methodology/page.tsx's guard checks the joined
+    # method-list STRING it derives from this (empty when the dict is
+    # empty), not object truthiness, so {} renders nothing without needing
+    # a null sentinel here.
+    with psycopg.connect(dsn) as pg_precision:
+        link_precision = _link_precision_block(pg_precision)
+
     manifest = {
         "built_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "datasets": final_counts,
         "citations": cit_by_kind,
         "ingested_service_orgs": ingested_service_orgs,
+        "link_precision": link_precision,
         "pdf_count": n_pdfs,
         "workbook_count": n_workbooks,
         "skipped_unresolved": skipped_unresolved,
@@ -2526,6 +2541,27 @@ def _ingested_service_orgs(pg) -> list[str]:
         " where fiscal_year = 2026 and status = 'downloaded'"
     ).fetchall()
     return sorted({_workbook_org(r[0]) for r in rows})
+
+
+def _link_precision_block(pg) -> dict:
+    """{method: {confirmed, sampled}} from the held-out link-precision study
+    (ROADMAP #72). {} while no study has verdicts loaded yet.
+
+    Inlines the same query as scripts/precision_study.py's
+    precision_by_method — that script owns the draw/load/report CLI against
+    link_precision_samples; this is the read-only export-time mirror of it,
+    inlined rather than imported so export_site never imports from scripts/.
+    `sampled` counts only ADJUDICATED rows (verdict is not null) — a row
+    drawn into the sample but not yet judged counts toward neither number,
+    so a study can be drawn and loaded incrementally without understating
+    the precision of what has actually been judged so far.
+    """
+    rows = pg.execute(
+        "select method, count(*) filter (where verdict='confirmed'),"
+        " count(*) filter (where verdict is not null)"
+        " from link_precision_samples group by method"
+    ).fetchall()
+    return {m: {"confirmed": c, "sampled": n} for m, c, n in rows}
 
 
 # ---------------------------------------------------------------------------
@@ -9340,6 +9376,12 @@ def _write_all_sidecars(
         # must never re-derive it).
         "hero": hero,
         "scope_qualifier": _corpus_qualifier,
+        # ROADMAP #72: {method: {confirmed, sampled}} from the held-out
+        # precision study, {} until a study has verdicts loaded. Computed in
+        # export_site (Postgres scope) and threaded via manifest, same
+        # reason as ingested_service_orgs just above — this function only
+        # holds a duckdb connection, no Postgres dsn.
+        "link_precision": manifest.get("link_precision", {}),
         # backlog #49: dollar-denominated /programs/ coverage — see
         # build_programs_coverage's doc-comment and the 2b block above.
         "programs_coverage": programs_coverage,

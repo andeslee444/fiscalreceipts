@@ -111,6 +111,20 @@ export default function MethodologyPage() {
   // data/manifest.jsonl at export; gate 24 leg m checks that rendered date
   // against the manifest itself, so a literal here would fail rather than rot.
   const usaspending = siteMeta.source_freshness?.groups?.usaspending;
+  // ROADMAP #72: the held-out precision study's "method c/n" clauses,
+  // joined once here rather than inline in JSX — keeps the trailing
+  // period's spacing independent of JSX's implicit whitespace collapsing.
+  // siteMeta.link_precision is {} (or absent, pre-#72 exports) while no
+  // study has verdicts loaded yet; either way Object.entries(...).join(...)
+  // yields "", which is falsy — so §4's paragraph below stays unrendered
+  // without needing a null/undefined check on the source object itself.
+  const linkPrecisionText = siteMeta.link_precision
+    ? Object.entries(siteMeta.link_precision)
+        .map(
+          ([m, v]) => `${m} ${formatCount(v.confirmed)}/${formatCount(v.sampled)}`,
+        )
+        .join("; ")
+    : null;
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
   // ROADMAP #39: the published title-override table — read through data.ts
@@ -628,6 +642,16 @@ export default function MethodologyPage() {
                   never publishes as high and its rationale names the subaward it rests
                   on.
                 </p>
+                {linkPrecisionText && (
+                  <p className="mt-2" data-link-precision="">
+                    Measured precision of the published tiers, from a held-out
+                    hand-adjudicated sample re-run through the same two-reviewer
+                    process:{" "}
+                    {linkPrecisionText}. Published whatever the numbers turn out
+                    to be; a tier that misses is renamed or narrowed, never
+                    widened to fit.
+                  </p>
+                )}
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-1">

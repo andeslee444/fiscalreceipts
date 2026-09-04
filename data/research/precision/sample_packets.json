@@ -1,0 +1,2102 @@
+[
+{
+"method": "fpds-ap+account",
+"piid": "FA820420C0004",
+"pe_bli": "0101328F",
+"recipient": "ATA ENGINEERING, INC.",
+"rationale": "FPDS acquisition program 576; mapping narrative (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA860920F0003",
+"pe_bli": "0401221F",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 387; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA862019F2815",
+"pe_bli": "0205219F",
+"recipient": "GENERAL ATOMICS AERONAUTICAL SYSTEMS, INC.",
+"rationale": "FPDS acquisition program 424; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA862020F2009",
+"pe_bli": "0205219F",
+"recipient": "IRON BOW TECHNOLOGIES, LLC",
+"rationale": "FPDS acquisition program 424; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA862519F7016",
+"pe_bli": "C130J0",
+"recipient": "LOCKHEED MARTIN CORP",
+"rationale": "FPDS acquisition program 220; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA862519F7025",
+"pe_bli": "C130J0",
+"recipient": "LOCKHEED MARTIN CORP",
+"rationale": "FPDS acquisition program 220; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA867221C0005",
+"pe_bli": "SDB002",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 439; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA867221F6052",
+"pe_bli": "SDB002",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 439; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA867517F1034",
+"pe_bli": "0207163F",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 185; mapping title-exact (2-lens verified); account narrowing 1/3 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA867517F1036",
+"pe_bli": "0207163F",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 185; mapping title-exact (2-lens verified); account narrowing 1/3 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA868119F1150",
+"pe_bli": "353620",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 503; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA868217F1021",
+"pe_bli": "0207325F",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 555; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA868218F1039",
+"pe_bli": "JASSM0",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 555; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA868221C2000",
+"pe_bli": "0207325F",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 555; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA880712C0012",
+"pe_bli": "1203164SF",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 166; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA880810C0001",
+"pe_bli": "GAP000",
+"recipient": "BOEING SATELLITE SYSTEMS, INC.",
+"rationale": "FPDS acquisition program 326; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "FA880821C0015",
+"pe_bli": "1206855SF",
+"recipient": "LOCKHEED MARTIN CORP",
+"rationale": "FPDS acquisition program 586; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "M6785423F0010",
+"pe_bli": "4655",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "FPDS acquisition program 386; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "M6785423F0020",
+"pe_bli": "4655",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "FPDS acquisition program 386; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001909C0019",
+"pe_bli": "0505",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 549; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001910C0071",
+"pe_bli": "0604269N",
+"recipient": "L3HARRIS TECHNOLOGIES, INC.",
+"rationale": "FPDS acquisition program 378; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001912C2001",
+"pe_bli": "0590",
+"recipient": "BELL BOEING JOINT PROJECT OFFICE",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001917F0022",
+"pe_bli": "0530",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 191; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001918F1646",
+"pe_bli": "0195",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "FPDS acquisition program 364; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001918F1728",
+"pe_bli": "2301",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 289; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919C0006",
+"pe_bli": "0604262N",
+"recipient": "HAMILTON SUNDSTRAND CORPORATION",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919C0076",
+"pe_bli": "0505",
+"recipient": "MARVIN ENGINEERING CO, INC",
+"rationale": "FPDS acquisition program 378; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919F0279",
+"pe_bli": "0604262N",
+"recipient": "BELL BOEING JOINT PROJECT OFFICE",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919F2679",
+"pe_bli": "0193",
+"recipient": "CANADIAN COMMERCIAL CORPORATION",
+"rationale": "FPDS acquisition program 334; mapping title-exact (2-lens verified); account narrowing 1/3 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919F4273",
+"pe_bli": "0193",
+"recipient": "MEGGITT DEFENSE SYSTEMS, INC.",
+"rationale": "FPDS acquisition program 334; mapping title-exact (2-lens verified); account narrowing 1/3 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001919P0011",
+"pe_bli": "0590",
+"recipient": "FIRETRACE AEROSPACE LLC",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001920F0096",
+"pe_bli": "0590",
+"recipient": "ELBITAMERICA, INC.",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001920F0110",
+"pe_bli": "0588",
+"recipient": "BOEING DISTRIBUTION, INC.",
+"rationale": "FPDS acquisition program 253; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001920F0256",
+"pe_bli": "0158",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 390; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001920F0517",
+"pe_bli": "0604234N",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "FPDS acquisition program 364; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0001920F0858",
+"pe_bli": "0204229N",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 289; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0002412C2115",
+"pe_bli": "2013",
+"recipient": "ELECTRIC BOAT CORPORATION",
+"rationale": "FPDS acquisition program 516; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0002415C4103",
+"pe_bli": "2013",
+"recipient": "BAE SYSTEMS LAND & ARMAMENTS L.P.",
+"rationale": "FPDS acquisition program 516; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0002418C2305",
+"pe_bli": "2122",
+"recipient": "BATH IRON WORKS CORPORATION",
+"rationale": "FPDS acquisition program 180; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0003019C0010",
+"pe_bli": "1250",
+"recipient": "TRIDENT RESEARCH, LLC",
+"rationale": "FPDS acquisition program 178; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0003919F0190",
+"pe_bli": "0604280N",
+"recipient": "DATA LINK SOLUTIONS LLC",
+"rationale": "FPDS acquisition program 554; mapping narrative (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0003919F0475",
+"pe_bli": "0604280N",
+"recipient": "DATA LINK SOLUTIONS LLC",
+"rationale": "FPDS acquisition program 554; mapping narrative (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0003920F0023",
+"pe_bli": "0604280N",
+"recipient": "DATA LINK SOLUTIONS LLC",
+"rationale": "FPDS acquisition program 554; mapping narrative (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N0003920F0422",
+"pe_bli": "0604280N",
+"recipient": "VIASAT INC",
+"rationale": "FPDS acquisition program 554; mapping narrative (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6279314PA106",
+"pe_bli": "2001",
+"recipient": "DIAZ SALES, LLC",
+"rationale": "FPDS acquisition program 223; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6833518F0145",
+"pe_bli": "0590",
+"recipient": "PHYSICAL OPTICS CORPORATION",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6833520F1135",
+"pe_bli": "0590",
+"recipient": "ECLYPSE INTERNATIONAL CORPORATION",
+"rationale": "FPDS acquisition program 212; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6833520P0105",
+"pe_bli": "0158",
+"recipient": "AVIOSS LLC",
+"rationale": "FPDS acquisition program 390; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6931618F4003",
+"pe_bli": "2127",
+"recipient": "AUSTAL USA, LLC",
+"rationale": "FPDS acquisition program 374; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "N6931618F6001",
+"pe_bli": "2122",
+"recipient": "HUNTINGTON INGALLS INCORPORATED",
+"rationale": "FPDS acquisition program 180; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "S0305A20F0042",
+"pe_bli": "2301",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 289; mapping title-variant (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W31P4Q12C0151",
+"pe_bli": "3025",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 260; mapping title-exact (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W31P4Q19F0582",
+"pe_bli": "8260C53101",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 492; mapping title-variant (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W31P4Q20F0496",
+"pe_bli": "0604522N",
+"recipient": "SRC INC",
+"rationale": "FPDS acquisition program 384; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W56HZV21P0041",
+"pe_bli": "2073GZ0410",
+"recipient": "CUMMINS INC.",
+"rationale": "FPDS acquisition program 466; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W58RGZ18F0054",
+"pe_bli": "6771AA0005",
+"recipient": "SUPPORT SYSTEMS ASSOCIATES INC",
+"rationale": "FPDS acquisition program 341; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W58RGZ19F0005",
+"pe_bli": "6771AA0005",
+"recipient": "SCIENCE AND ENGINEERING SERVICES, LLC",
+"rationale": "FPDS acquisition program 341; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W58RGZ20F0235",
+"pe_bli": "0305219A",
+"recipient": "GENERAL ATOMICS AERONAUTICAL SYSTEMS, INC.",
+"rationale": "FPDS acquisition program 420; mapping title-exact (2-lens verified); account narrowing 1/3 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W58RGZ20F0252",
+"pe_bli": "0605241A",
+"recipient": "BT3 TECHNOLOGY SERVICES",
+"rationale": "FPDS acquisition program 550; mapping title-exact (2-lens verified); account narrowing 1/1 lines"
+},
+{
+"method": "fpds-ap+account",
+"piid": "W58RGZ21F0009",
+"pe_bli": "6775A05101",
+"recipient": "SCIENCE AND ENGINEERING SERVICES, LLC",
+"rationale": "FPDS acquisition program 577; mapping narrative (2-lens verified); account narrowing 1/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "FA862018F2372",
+"pe_bli": "0205219F",
+"recipient": "GENERAL ATOMICS AERONAUTICAL SYSTEMS, INC.",
+"rationale": "FPDS acquisition program 424; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "FA867219F1102",
+"pe_bli": "SDB002",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 439; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "FA867519F1001",
+"pe_bli": "2206",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 185; mapping title-exact (2-lens verified); account narrowing 3/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "FA867520F2002",
+"pe_bli": "2206",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 185; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "FA868218C0009",
+"pe_bli": "JASSM0",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 555; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "HQ003420F0414",
+"pe_bli": "ATA000",
+"recipient": "THE BOSTON CONSULTING GROUP INC",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001911C0083",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001913C0008",
+"pe_bli": "0152",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001913C0016",
+"pe_bli": "0147",
+"recipient": "RTX CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001914C0002",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001914C0004",
+"pe_bli": "0147",
+"recipient": "RTX CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001915C0114",
+"pe_bli": "0147",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001916C0004",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001916C0004",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001917C0020",
+"pe_bli": "F03500",
+"recipient": "RTX CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001917F0327",
+"pe_bli": "0147",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001917F0383",
+"pe_bli": "0605504N",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 334; mapping title-variant (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001918F0246",
+"pe_bli": "0505",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 378; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001918F0584",
+"pe_bli": "0152",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001918F2494",
+"pe_bli": "0147",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001918F6025",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919C0040",
+"pe_bli": "0147",
+"recipient": "BAE SYSTEMS INFORMATION AND ELECTRONIC SYSTEMS INTEGRATION INC.",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919F2474",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919F2698",
+"pe_bli": "0152",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919F2698",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919F4046",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001919F4216",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920C0011",
+"pe_bli": "0152",
+"recipient": "RTX CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0040",
+"pe_bli": "M09HAI",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 442; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0410",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0410",
+"pe_bli": "F03500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0411",
+"pe_bli": "0152",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0416",
+"pe_bli": "0147",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0565",
+"pe_bli": "0152",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0571",
+"pe_bli": "0147",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-variant (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001920F0579",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001921F0220",
+"pe_bli": "ATA000",
+"recipient": "RTX CORPORATION",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001921F0230",
+"pe_bli": "ATA000",
+"recipient": "DELL MARKETING L.P.",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001921F0231",
+"pe_bli": "F03500",
+"recipient": "HPI FEDERAL LLC",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0001921F0232",
+"pe_bli": "ATA000",
+"recipient": "CACI IDT, LLC",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002409C2116",
+"pe_bli": "2001",
+"recipient": "HUNTINGTON INGALLS INC",
+"rationale": "FPDS acquisition program 223; mapping title-variant (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002413C5116",
+"pe_bli": "0604307N",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 110; mapping narrative (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002413C5212",
+"pe_bli": "0607658N",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 582; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002413C5403",
+"pe_bli": "2356",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 234; mapping narrative (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002415C6311",
+"pe_bli": "1603",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "FPDS acquisition program 443; mapping title-exact (2-lens verified); account narrowing 4/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0002417C5145",
+"pe_bli": "2119",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "FPDS acquisition program 197; mapping title-exact (2-lens verified); account narrowing 3/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0003918F0128",
+"pe_bli": "2915",
+"recipient": "LAUREL TECHNOLOGIES PARTNERSHIP",
+"rationale": "FPDS acquisition program 417; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0003919F0064",
+"pe_bli": "2925",
+"recipient": "SERCO INC",
+"rationale": "FPDS acquisition program 417; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0003919F9039",
+"pe_bli": "2915",
+"recipient": "SERCO INC",
+"rationale": "FPDS acquisition program 417; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0003920F0021",
+"pe_bli": "2915",
+"recipient": "BAE SYSTEMS TECHNOLOGY SOLUTIONS & SERVICES INC.",
+"rationale": "FPDS acquisition program 417; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0003920F9060",
+"pe_bli": "2925",
+"recipient": "SERCO INC",
+"rationale": "FPDS acquisition program 417; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N0042120F1044",
+"pe_bli": "0305421N",
+"recipient": "L3 TECHNOLOGIES, INC.",
+"rationale": "FPDS acquisition program 373; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N6833519F0430",
+"pe_bli": "F03500",
+"recipient": "FLATWATER SOLUTIONS COMPANY",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N6833520F0775",
+"pe_bli": "ATA000",
+"recipient": "SIERTEK, LTD.",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "N6833521F0210",
+"pe_bli": "F03500",
+"recipient": "FLATWATER SOLUTIONS COMPANY",
+"rationale": "FPDS acquisition program 198; mapping title-exact (2-lens verified); account narrowing 2/4 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "W31P4Q07C0263",
+"pe_bli": "6200C02901",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 367; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "W31P4Q17C0080",
+"pe_bli": "3025",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FPDS acquisition program 260; mapping title-exact (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "W58RGZ13C0114",
+"pe_bli": "6775A05101",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 278; mapping title-variant (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "W58RGZ14C0021",
+"pe_bli": "6775A05101",
+"recipient": "HONEYWELL INTERNATIONAL INC.",
+"rationale": "FPDS acquisition program 115; mapping title-exact (2-lens verified); account narrowing 2/3 lines"
+},
+{
+"method": "fpds-ap",
+"piid": "W58RGZ18F0050",
+"pe_bli": "3264AA0252",
+"recipient": "THE BOEING COMPANY",
+"rationale": "FPDS acquisition program 278; mapping title-variant (2-lens verified); account narrowing 2/2 lines"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA229323DB001",
+"pe_bli": "0303131F",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 3442962 (2023-06-28): program 'Force Element Terminal (FET)' named for this award [match basis: llm-alias]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 Force Element Terminal production under FAB-T named; PE is FAB-T FET; url=https://www.defense.gov/News/Contracts/Contract/Article/3442962/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA810607C0001",
+"pe_bli": "C02500",
+"recipient": "BOEING AEROSPACE OPERATIONS, INC.",
+"rationale": "defense.gov contract announcement 957168 (2016-09-27): program 'VC-25A' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 VC-25A seat replacement mod; BLI funds VC-25A modernization efforts; url=https://www.defense.gov/News/Contracts/Contract/Article/957168/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA813423FB001",
+"pe_bli": "C04000",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 3348502 (2023-03-31): program 'C-40B' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 CLS contract explicitly includes C-40B/C modifications; lexicon is the C-40B/C mod line.; url=https://www.defense.gov/News/Contracts/Contract/Article/3348502/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA821317D0001",
+"pe_bli": "356010",
+"recipient": "CCI CAPCO, LLC",
+"rationale": "defense.gov contract announcement 1032766 (2016-12-16): program 'BBU-48 Impulse Cartridge (SS27)' named for this award [match basis: designator-normalized]; J-book narrative owns it (409); triage+adversarial refute survived \u2014 Replenishment of BBU-48 A/B impulse cartridges, the item the AF ammo line names (FMS also involved).; url=https://www.defense.gov/News/Contracts/Contract/Article/1032766/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA821319C0038",
+"pe_bli": "356120",
+"recipient": "ALLIANT TECHSYSTEMS OPERATIONS LLC",
+"rationale": "defense.gov contract announcement 1954307 (2019-09-06): program 'HTVSF' named for this award [match basis: exact-name]; J-book narrative owns it (409); triage+adversarial refute survived \u2014 Award is HTVSF Lot 2/3 full rate production; PE narrative names FMU-167 HTVSF; url=https://www.defense.gov/News/Contracts/Contract/Article/1954307/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA850419F0008",
+"pe_bli": "0401132F",
+"recipient": "ROLLS-ROYCE CORPORATION",
+"rationale": "defense.gov contract announcement 1745521 (2019-01-31): program 'C-130J' named for this award [match basis: exact-name]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 C-130J propulsion long-term sustainment order; PE owns C-130J program.; url=https://www.defense.gov/News/Contracts/Contract/Article/1745521/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA862615D0016",
+"pe_bli": "0207268F",
+"recipient": "GENERAL ELECTRIC COMPANY",
+"rationale": "defense.gov contract announcement 606783 (2015-02-06): program 'F110 Aircraft Engine Component Improvement Program' named for this award [match basis: llm-alias]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 F110/101/118 ECIP contract; PE is the F110 ECIP program; url=https://www.defense.gov/News/Contracts/Contract/Article/606783/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA862622C0002",
+"pe_bli": "0207146F",
+"recipient": "GENERAL ELECTRIC COMPANY",
+"rationale": "defense.gov contract announcement 2827649 (2021-10-29): program 'F-15EX' named for this award [match basis: exact-name]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 Award procures F-15EX propulsion (F110 engines) for the F-15EX fleet; PE owns F-15EX; url=https://www.defense.gov/News/Contracts/Contract/Article/2827649/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA869124CB002",
+"pe_bli": "0305206F",
+"recipient": "LOCKHEED MARTIN CORP",
+"rationale": "defense.gov contract announcement 3624785 (2023-12-21): program 'DRACO' named for this award [match basis: exact-name]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 Award develops/lab-tests DRACO 7.0; PE narrative owns DRACO image-quality capability; url=https://www.defense.gov/News/Contracts/Contract/Article/3624785/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA872621F0073",
+"pe_bli": "E011A1",
+"recipient": "LEARJET INC",
+"rationale": "defense.gov contract announcement 2641085 (2021-06-01): program 'Battlefield Airborne Communications Node (BACN)' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 Award purchases BACN Global 6000 aircraft; lexicon shows PE owns BACN; url=https://www.defense.gov/News/Contracts/Contract/Article/2641085/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA873018C0065",
+"pe_bli": "E00300",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 1642195 (2018-09-21): program 'Airborne Warning and Control System (AWACS)' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 AWACS-specific risk reduction/integration work; BLI narrative funds AWACS Upgrades; url=https://www.defense.gov/News/Contracts/Contract/Article/1642195/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA873021C0031",
+"pe_bli": "0208006F",
+"recipient": "DCS CORPORATION",
+"rationale": "defense.gov contract announcement 2641085 (2021-06-01): program 'Agile Global Mobility (AGM)' named for this award [match basis: exact-name]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 Award is the AGM bridge contract; PE narrative funds continued AGM JMPS MPE development; url=https://www.defense.gov/News/Contracts/Contract/Article/2641085/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA881018C0005",
+"pe_bli": "1206443SF",
+"recipient": "LOCKHEED MARTIN CORP",
+"rationale": "defense.gov contract announcement 2461951 (2021-01-04): program 'The Next-Gen OPIR GEO (NGG)' named for this award [match basis: llm-alias]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 Three NGG space vehicles from Lockheed; Next-Gen OPIR GEO is the program.; url=https://www.defense.gov/News/Contracts/Contract/Article/2461951/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "FA930420D0003",
+"pe_bli": "0604256F",
+"recipient": "AVARINT, LLC",
+"rationale": "defense.gov contract announcement 2132503 (2020-03-31): program 'Digital Integrated Air Defense System (DIADS)' named for this award [match basis: exact-name]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 Contract explicitly for DIADS engineering services; PE narrative owns DIADS at Edwards AFB; url=https://www.defense.gov/News/Contracts/Contract/Article/2132503/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "H9224118F0022",
+"pe_bli": "0201RWUPGR",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 1563154 (2018-06-28): program 'MH-47G' named for this award [match basis: exact-name]; J-book narrative owns it (92); triage+adversarial refute survived \u2014 Order buys four new-build MH-47G aircraft; SOCOM rotary wing line owns MH-47G; url=https://www.defense.gov/News/Contracts/Contract/Article/1563154/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "HQ014717C0032",
+"pe_bli": "MD07",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 2719988 (2021-08-04): program 'THAAD' named for this award [match basis: exact-name]; J-book narrative owns it (95); triage+adversarial refute survived \u2014 Award is a mod to the THAAD weapon system contract; MDA lexicon owns THAAD; url=https://www.defense.gov/News/Contracts/Contract/Article/2719988/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "HQ014719C0004",
+"pe_bli": "0603882C",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 1793336 (2019-03-22): program 'Ground-based Midcourse Defense (GMD)' named for this award [match basis: exact-name]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 Award is the GMD Development and Sustainment Contract itself; PE owns the GMD element; url=https://www.defense.gov/News/Contracts/Contract/Article/1793336/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "HR001114C0123",
+"pe_bli": "0603286E",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 606849 (2015-05-14): program 'The Tactical Boost Glide (TBG)' named for this award [match basis: exact-name]; J-book narrative owns it (276); triage+adversarial refute survived \u2014 Option exercised for the Tactical Boost Glide program; PE narrative owns TBG; url=https://www.defense.gov/News/Contracts/Contract/Article/606849/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "HR001121C0066",
+"pe_bli": "0603287E",
+"recipient": "GENERAL ATOMICS",
+"rationale": "defense.gov contract announcement 2567831 (2021-04-09): program 'The Demonstration Rocket for Agile Cislunar Operations (DRACO)' named for this award [match basis: exact-name]; J-book narrative owns it (20); triage+adversarial refute survived \u2014 DRACO Track A named as the contracted program; PE narrative owns DRACO; url=https://www.defense.gov/News/Contracts/Contract/Article/2567831/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "M6785417C9000",
+"pe_bli": "4630",
+"recipient": "GENERAL DYNAMICS INFORMATION TECHNOLOGY INC.",
+"rationale": "defense.gov contract announcement 1167080 (2017-04-28): program 'TECHNOLOGY SERVICES ORGANIZATION (TSO)' named for this award [match basis: exact-name]; J-book narrative owns it (339); triage+adversarial refute survived \u2014 Award is IT support services to Marine Corps TSO itself; lexicon shows PE funds TSO; url=https://www.defense.gov/News/Contracts/Contract/Article/1167080/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "M6785425C0023",
+"pe_bli": "2025",
+"recipient": "KONGSBERG DEFENCE & AEROSPACE AS",
+"rationale": "defense.gov contract announcement 4264034 (2025-08-04): program 'Amphibious Combat Vehicle (ACV)' named for this award [match basis: exact-name]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 Award is for ACV Medium Caliber Cannon turret; PE narrative owns the ACV program itself.; url=https://www.defense.gov/News/Contracts/Contract/Article/4264034/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001917C0001",
+"pe_bli": "0593",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 1167080 (2017-04-28): program 'F-35 CV Series' named for this award [match basis: designator-normalized]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Lot 12 F-35 long-lead across variants; CV line funds the Navy share of this production contract; url=https://www.defense.gov/News/Contracts/Contract/Article/1167080/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001917F0399",
+"pe_bli": "0528",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 1297072 (2017-08-31): program 'CH-53E' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Display B-kits for CH-53E with aircraft procurement funds; BLI funds CH-53E platform mods.; url=https://www.defense.gov/News/Contracts/Contract/Article/1297072/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001917G0002",
+"pe_bli": "1000CV2200",
+"recipient": "BELL BOEING JOINT PROJECT OFFICE",
+"rationale": "defense.gov contract announcement 2497472 (2021-02-08): program 'CV-22 MODIFICATION' named for this award [match basis: exact-name]; J-book narrative owns it (92); triage+adversarial refute survived \u2014 Order explicitly buys CV-22 retrofit and CV-22 modification spares kits; BLI is CV-22 modification.; url=https://www.defense.gov/News/Contracts/Contract/Article/2497472/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001919C0042",
+"pe_bli": "0164",
+"recipient": "ROBERTSON FUEL SYSTEMS, L.L.C.",
+"rationale": "defense.gov contract announcement 1968631 (2019-09-23): program 'V-22' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Manufactures V-22 mission auxiliary tank systems for Navy/USMC/AF; PE is the V-22 line; url=https://www.defense.gov/News/Contracts/Contract/Article/1968631/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001919D0015",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 1737551 (2019-01-22): program 'F-35' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 Lot 13 F-35 ancillary mission equipment and spares is F-35 program procurement; url=https://www.defense.gov/News/Contracts/Contract/Article/1737551/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001920C0056",
+"pe_bli": "0193",
+"recipient": "L3HARRIS TECHNOLOGIES, INC.",
+"rationale": "defense.gov contract announcement 2131035 (2020-03-30): program 'P-8A' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Bomb rack units bought with APN for P-8A Lots 9-11 aircraft deliveries; PE is the P-8A line.; url=https://www.defense.gov/News/Contracts/Contract/Article/2131035/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001920F0647",
+"pe_bli": "0586",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 4013440 (2024-12-19): program 'P-8' named for this award [match basis: designator-normalized]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Increment 3 retrofit A-kits for P-8A are modifications under the P-8 Series line; url=https://www.defense.gov/News/Contracts/Contract/Article/4013440/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001921C0044",
+"pe_bli": "2327",
+"recipient": "ALLIANT TECHSYSTEMS OPERATIONS LLC",
+"rationale": "defense.gov contract announcement 2774421 (2021-09-14): program 'AGM-88G' named for this award [match basis: exact-name]; J-book narrative owns it (342); triage+adversarial refute survived \u2014 LRIP Lot 1 of AGM-88G AARGM-ER is exactly the PE's program; url=https://www.defense.gov/News/Contracts/Contract/Article/2774421/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001921C0060",
+"pe_bli": "0442",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "defense.gov contract announcement 2537803 (2021-03-15): program 'MQ-4' named for this award [match basis: designator-normalized]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 MQ-4C Triton program support; BLI is MQ-4 Triton procurement; url=https://www.defense.gov/News/Contracts/Contract/Article/2537803/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001921F0228",
+"pe_bli": "0178",
+"recipient": "BELL TEXTRON INC",
+"rationale": "defense.gov contract announcement 2447883 (2020-12-15): program 'AH-1Z' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Order supports USMC/FMS AH-1Z production aircraft, mods and sustainment; lexicon owns AH-1Z; url=https://www.defense.gov/News/Contracts/Contract/Article/2447883/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001922F0889",
+"pe_bli": "0528",
+"recipient": "SIMMONDS PRECISION PRODUCTS INC",
+"rationale": "defense.gov contract announcement 3067663 (2022-06-17): program 'Integrated Vehicle Health Monitoring Unit (IVHMU)' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Buys 124 IVHMU B-kits with FY22 APN funds; lexicon BLI budgets IVHMU mods for CH-53E; url=https://www.defense.gov/News/Contracts/Contract/Article/3067663/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001923C0048",
+"pe_bli": "0305231N",
+"recipient": "PERATON LABS INC",
+"rationale": "defense.gov contract announcement 3390075 (2023-05-09): program 'MQ-8C' named for this award [match basis: exact-name]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 NRE/development of IDS/IPS devices for MQ-8C Fire Scout integration; PE owns MQ-8C.; url=https://www.defense.gov/News/Contracts/Contract/Article/3390075/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001924C0028",
+"pe_bli": "V02200",
+"recipient": "SIMMONDS PRECISION PRODUCTS INC",
+"rationale": "defense.gov contract announcement 3824019 (2024-07-01): program 'CV-22 Mods' named for this award [match basis: designator-normalized]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 VSLED WRAs for CV-22 retrofit with procurement funds; CV-22 Mods line; url=https://www.defense.gov/News/Contracts/Contract/Article/3824019/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001924F0008",
+"pe_bli": "0452",
+"recipient": "GENERAL ATOMICS AERONAUTICAL SYSTEMS, INC.",
+"rationale": "defense.gov contract announcement 3678731 (2024-02-15): program 'MQ-9A' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Award supports Marine MALE MQ-9A sustainment/capability; BLI narrative owns the MQ-9A MALE/MUX program; url=https://www.defense.gov/News/Contracts/Contract/Article/3678731/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0001925F0264",
+"pe_bli": "ATA000",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 4288098 (2025-08-27): program 'F-35' named for this award [match basis: exact-name]; J-book narrative owns it (407); triage+adversarial refute survived \u2014 DMSMS program management support for F-35 production and sustainment; url=https://www.defense.gov/News/Contracts/Contract/Article/4288098/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0002416C4202",
+"pe_bli": "2122",
+"recipient": "TIMKEN GEARS & SERVICES INC.",
+"rationale": "defense.gov contract announcement 655726 (2016-02-12): program 'DDG-51' named for this award [match basis: designator-normalized]; J-book narrative owns it (341); triage+adversarial refute survived \u2014 NRE for DDG 51 main reduction gears; DDG-51 SCN line funds ship propulsion components; url=https://www.defense.gov/News/Contracts/Contract/Article/655726/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0002418C4208",
+"pe_bli": "2122",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 1515278 (2018-05-08): program 'DDG-51' named for this award [match basis: designator-normalized]; J-book narrative owns it (341); triage+adversarial refute survived \u2014 MCS consoles for DDG 51 new construction and midlife modernization; DDG-51 SCN line owns it.; url=https://www.defense.gov/News/Contracts/Contract/Article/1515278/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0002418C5395",
+"pe_bli": "2026",
+"recipient": "LAUREL TECHNOLOGIES PARTNERSHIP",
+"rationale": "defense.gov contract announcement 1504779 (2018-04-26): program 'AN/SPQ-9B Radar' named for this award [match basis: exact-name]; J-book narrative owns it (333); triage+adversarial refute survived \u2014 Award manufactures AN/SPQ-9B radar systems; BLI 2026 is the SPQ-9B Radar procurement line; url=https://www.defense.gov/News/Contracts/Contract/Article/1504779/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0002418C5417",
+"pe_bli": "2307",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 1525992 (2018-05-18): program 'Evolved Sea Sparrow Missile (ESSM)' named for this award [match basis: exact-name]; J-book narrative owns it (342); triage+adversarial refute survived \u2014 Award transitions ESSM Block 2 to production; matches ESSM weapons procurement line; url=https://www.defense.gov/News/Contracts/Contract/Article/1525992/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0002419C5509",
+"pe_bli": "2981",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 1736461 (2019-01-18): program 'Dual Band Radar (DBR)' named for this award [match basis: exact-name]; J-book narrative owns it (333); triage+adversarial refute survived \u2014 DBR Design Agent ECP/engineering support; lexicon says this line funds DBR ECP efforts.; url=https://www.defense.gov/News/Contracts/Contract/Article/1736461/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0003924D4004",
+"pe_bli": "0604280N",
+"recipient": "DATA LINK SOLUTIONS LLC",
+"rationale": "defense.gov contract announcement 3812687 (2024-06-20): program 'Multifunctional Information Distribution System (MIDS)' named for this award [match basis: exact-name]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 MIDS JTRS terminal production/development/sustainment; PE owns MIDS JTRS; url=https://www.defense.gov/News/Contracts/Contract/Article/3812687/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0010416CK037",
+"pe_bli": "0182",
+"recipient": "BAE SYSTEMS INFORMATION AND ELECTRONIC SYSTEMS INTEGRATION INC.",
+"rationale": "defense.gov contract announcement 713026 (2016-04-04): program 'Air Expendable Countermeasures' named for this award [match basis: exact-name]; J-book narrative owns it (338); triage+adversarial refute survived \u2014 Flares bought for PMA272 Air Expendable Countermeasures program; lexicon shows AECM line funds such procurement.; url=https://www.defense.gov/News/Contracts/Contract/Article/713026/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0010416G0726",
+"pe_bli": "0182",
+"recipient": "BAE SYSTEMS INFORMATION AND ELECTRONIC SYSTEMS INTEGRATION INC.",
+"rationale": "defense.gov contract announcement 1081980 (2017-02-13): program 'Air Expendable Countermeasures' named for this award [match basis: exact-name]; J-book narrative owns it (338); triage+adversarial refute survived \u2014 Countermeasure manufacture DO under this BOA is expressly for PMA272 Air Expendable Countermeasures Program; PE is the AECM line; url=https://www.defense.gov/News/Contracts/Contract/Article/1081980/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0010423DC901",
+"pe_bli": "0182",
+"recipient": "ARMTEC COUNTERMEASURES CO",
+"rationale": "defense.gov contract announcement 3540301 (2023-09-27): program 'MJU-77' named for this award [match basis: exact-name]; J-book narrative owns it (338); triage+adversarial refute survived \u2014 Same MJU-77/B flare manufacture contract; PE narrative owns the MJU-77 decoy; url=https://www.defense.gov/News/Contracts/Contract/Article/3540301/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0016724D0004",
+"pe_bli": "2013",
+"recipient": "BAE SYSTEMS LAND & ARMAMENTS L.P.",
+"rationale": "defense.gov contract announcement 3917690 (2024-09-25): program 'Virginia Class Submarine' named for this award [match basis: exact-name]; J-book narrative owns it (341); triage+adversarial refute survived \u2014 VCS propulsor forward subassemblies production; PE line is Virginia Class Submarine.; url=https://www.defense.gov/News/Contracts/Contract/Article/3917690/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N0042119F0531",
+"pe_bli": "1000CV2200",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 2511328 (2021-02-22): program 'CV-22 MODIFICATION' named for this award [match basis: designator-normalized]; J-book narrative owns it (92); triage+adversarial refute survived \u2014 CV-22 mission planning system updates for RF countermeasures; CV-22 is the subject; url=https://www.defense.gov/News/Contracts/Contract/Article/2511328/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6134018F0056",
+"pe_bli": "0569",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 1581925 (2018-07-23): program 'T-45' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 NRE/ECP integrating backup oxygen into T-45 with APN funds; T-45 mod work.; url=https://www.defense.gov/News/Contracts/Contract/Article/1581925/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6134018F0067",
+"pe_bli": "0569",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 1592656 (2018-08-02): program 'T-45' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 39 T-45 inlet retrofit kits with APN funds; T-45 mod work.; url=https://www.defense.gov/News/Contracts/Contract/Article/1592656/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6134021F7002",
+"pe_bli": "0158",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 2539245 (2021-03-16): program 'CH-53K' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 CH-53K flight training device updates and flight model validation are CH-53K program work; url=https://www.defense.gov/News/Contracts/Contract/Article/2539245/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6833518C0482",
+"pe_bli": "0193",
+"recipient": "THE BOEING COMPANY",
+"rationale": "defense.gov contract announcement 1540364 (2018-06-04): program 'P-8A' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 AAS peculiar support equipment and logistics data for P-8A; P-8A APN line owns it.; url=https://www.defense.gov/News/Contracts/Contract/Article/1540364/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6833519C0248",
+"pe_bli": "0195",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 1968631 (2019-09-23): program 'E-2D' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Depot repair capability for E-2D APY-9 radar, awarded under the E-2D Advanced Hawkeye program; url=https://www.defense.gov/News/Contracts/Contract/Article/1968631/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6833520F0008",
+"pe_bli": "0305234N",
+"recipient": "IMSAR LLC",
+"rationale": "defense.gov contract announcement 1986937 (2019-10-10): program 'RQ-21A' named for this award [match basis: exact-name]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Order develops/sustains AN/DPY-2 payload for the RQ-21A Blackjack; PE owns RQ-21A; url=https://www.defense.gov/News/Contracts/Contract/Article/1986937/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6833523C0407",
+"pe_bli": "0591",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "defense.gov contract announcement 3434687 (2023-06-21): program 'Next Generation Jammer (NGJ)' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Award is explicitly NGJ Mid-Band test/repair support; PE narrative owns NGJ; url=https://www.defense.gov/News/Contracts/Contract/Article/3434687/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "N6893614D0024",
+"pe_bli": "0514",
+"recipient": "STAUDER CONSULTING, INC.",
+"rationale": "defense.gov contract announcement 606695 (2014-09-26): program 'AV-8B' named for this award [match basis: exact-name]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 AVT terminals produced for AV-8B fleet; BLI funds AV-8B aircraft modifications; url=https://www.defense.gov/News/Contracts/Contract/Article/606695/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "W31P4Q23C0032",
+"pe_bli": "6552C67500",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "defense.gov contract announcement 3378570 (2023-04-28): program 'The M270A2 Multiple Launch Rocket System (MLRS)' named for this award [match basis: llm-designator-variant]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 Recap of launchers into M270A2 configuration; BLI is the M270A2 line; url=https://www.defense.gov/News/Contracts/Contract/Article/3378570/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "W58RGZ17C0009",
+"pe_bli": "6771AA0005",
+"recipient": "SIKORSKY AIRCRAFT CORPORATION",
+"rationale": "defense.gov contract announcement 1238007 (2017-07-05): program 'UH-60M' named for this award [match basis: exact-name]; J-book narrative owns it (343); triage+adversarial refute survived \u2014 Correction to UH-60M multiyear procurement (142 Army UH-60M + HH-60M); BLI is UH-60M; url=https://www.defense.gov/News/Contracts/Contract/Article/1238007/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "W58RGZ21D0028",
+"pe_bli": "5399AZ3537",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "defense.gov contract announcement 2591938 (2021-04-30): program 'Common Infrared Countermeasures (CIRCM)' named for this award [match basis: llm-alias]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 CIRCM production by the CIRCM prime; PE is the CIRCM procurement line; url=https://www.defense.gov/News/Contracts/Contract/Article/2591938/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "W911QY16D0051",
+"pe_bli": "9140MA7804",
+"recipient": "AIRBORNE SYSTEMS NORTH AMERICA OF NJ INC.",
+"rationale": "defense.gov contract announcement 808535 (2016-06-21): program 'RA-1 Parachute System' named for this award [match basis: designator-normalized]; J-book narrative owns it (346); triage+adversarial refute survived \u2014 Award purchases the RA-1 Advanced Ram Air parachute system and spares; PE owns RA-1; url=https://www.defense.gov/News/Contracts/Contract/Article/808535/"
+},
+{
+"method": "announcement+lexicon",
+"piid": "W912CH24F0170",
+"pe_bli": "2073GZ0410",
+"recipient": "BAE SYSTEMS LAND & ARMAMENTS L.P.",
+"rationale": "defense.gov contract announcement 3827133 (2024-07-03): program 'Paladin Integrated Management (PIM)' named for this award [match basis: llm-alias]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 M109A7/M992A3 are the PIM production vehicles; BAE PIM prime; url=https://www.defense.gov/News/Contracts/Contract/Article/3827133/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA460021F0052",
+"pe_bli": "0604002SF",
+"recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORP",
+"rationale": "FSRS subaward P010260648 (THE REGENTS OF THE UNIVERSITY OF COLORADO): program 'Space Weather Analysis and Forecast System (SWAFS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (417); triage+adversarial refute survived \u2014 Sounder data for SWAFS sustainment; PE narrative owns SWAFS as its software suite; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA807517F1383",
+"pe_bli": "0605013N",
+"recipient": "KBR WYLE SERVICES, LLC",
+"rationale": "FSRS subaward A10625-1383-S009 (PRECISE SYSTEMS, INC.): program 'The Aviation Logistics Environment (ALE)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is AoA/system analysis for ALE program of record; lexicon shows ALE is the PE's program.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA807524F0008",
+"pe_bli": "0804768J",
+"recipient": "HII MISSION TECHNOLOGIES CORP",
+"rationale": "FSRS subaward P000063023 (2 CIRCLE, INCORPORATED): program 'Joint Training Synthetic Environment (JTSE)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (112); triage+adversarial refute survived \u2014 Sub is JTSE; PE 0804768J funds JTSE joint training enablers.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA830723FB173",
+"pe_bli": "0604250D8Z",
+"recipient": "OPEN SAN CONSULTING L.L.C.",
+"rationale": "FSRS subaward STEELGATE SUBCONTRACT REPORT C2I (STEELGATE LLC): program 'Command and Control of the Information Environment (C2IE)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (279); triage+adversarial refute survived \u2014 Sub description is the C2IE program objective; PE narrative names C2IE; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA861222FB004",
+"pe_bli": "0604003F",
+"recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+"rationale": "FSRS subaward P010266676 (TOFFLER ASSOCIATES, INC.): program 'Advanced Battle Management System (ABMS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 CSOW for development of ABMS enterprise of systems; PE is ABMS; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA861223FB001",
+"pe_bli": "0604003F",
+"recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+"rationale": "FSRS subaward P010266703 (DARK WOLF SOLUTIONS, LLC): program 'Advanced Battle Management System (ABMS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (412); triage+adversarial refute survived \u2014 Sub defines contractor requirements for ABMS development; PE is ABMS; AFLCMC ABMS vehicle.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA865020C1132",
+"pe_bli": "0603461A",
+"recipient": "APPLIED RESEARCH ASSOCIATES, INC.",
+"rationale": "FSRS subaward S-200252-004190-PTC (PEERLESS TECHNOLOGIES CORPORATION): program 'High Performance Computing Modernization Program' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (351); triage+adversarial refute survived \u2014 CREATE-RF is stated to be one of the HPCMP programs; PE is HPCMP; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA865116C0330",
+"pe_bli": "0603767E",
+"recipient": "BAE SYSTEMS INFORMATION AND ELECTRONIC SYSTEMS INTEGRATION INC.",
+"rationale": "FSRS subaward 921228 (DYNETICS, INC.): program 'Seeker Cost Transformation (SECTR)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (276); triage+adversarial refute survived \u2014 Sub is SECTR design/simulation/integration/test; SECTR is DARPA's program under this PE, AFRL Eglin as agent.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA872618F0039",
+"pe_bli": "835060",
+"recipient": "AMERICAN SYSTEMS CORPORATION",
+"rationale": "FSRS subaward S18010 (NOBLIS, INC.): program 'BASE INFORMATION TRANSPORT INFRASTRUCTURE (BITI)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (411); triage+adversarial refute survived \u2014 BITI NMS recapitalization; lexicon shows BITI is this BLI's program.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA875018F0024",
+"pe_bli": "0604294D8Z",
+"recipient": "RADIANCE TECHNOLOGIES INC",
+"rationale": "FSRS subaward 19S-0504 (INVARIANT CORPORATION): program 'Trusted and Assured Microelectronics' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (278); triage+adversarial refute survived \u2014 Sub develops methods to support DoD T&AM initiative; PE is OSD Trusted and Assured Microelectronics.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA875023C0518",
+"pe_bli": "0602025E",
+"recipient": "VANDERBILT UNIVERSITY",
+"rationale": "FSRS subaward OSA255 (DYNETICS, INC.): program 'Assured Neuro Symbolic Learning and Reasoning (ANSR)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (20); triage+adversarial refute survived \u2014 SME support for Vanderbilt on DARPA ANSR program TA1/TA2; ANSR named in PE narrative; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "FA880619C0003",
+"pe_bli": "1206770SF",
+"recipient": "PARSONS GOVERNMENT SERVICES INC.",
+"rationale": "FSRS subaward 1113-010 (BLUESTAQ LLC): program 'Enterprise Ground Services (EGS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (417); triage+adversarial refute survived \u2014 Sub supports SATOPS prototyping/integration explicitly for EGS capabilities; PE is the EGS program; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "H9240824F0015",
+"pe_bli": "1160434BB",
+"recipient": "TECHNOLOGY SERVICE CORP",
+"rationale": "FSRS subaward SC20250030 (NORTHROP GRUMMAN SYSTEMS CORPORATION): program 'Long Endurance Aircraft (LEA)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (73); triage+adversarial refute survived \u2014 NAVWAR lab support for LEA GPS hardening; SOCOM BLI owns LEA MCA effort; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HDTRA117C0031",
+"pe_bli": "0605000BR",
+"recipient": "UNIVERSITY OF ALASKA FAIRBANKS",
+"rationale": "FSRS subaward UAF 17-0093 MODS 7 & 8, 9, 10,11 (UNIVERSITY OF HAWAII): program 'International Monitoring System (IMS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (108); triage+adversarial refute survived \u2014 Sub operates IMS seismic/infrasound station under DTRA prime; lexicon shows U.S. IMS ownership.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HDTRA121C0030",
+"pe_bli": "0605000BR",
+"recipient": "UNIVERSITY OF ALASKA FAIRBANKS",
+"rationale": "FSRS subaward UA 21-0113, MOD 1, MOD 2, MOD 3R (REGENTS OF THE UNIVERSITY OF CALIFORNIA, THE): program 'International Monitoring System (IMS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (108); triage+adversarial refute survived \u2014 Operational support of IMS seismic/infrasound stations; PE narrative owns US portion of IMS; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HQ003418C0012",
+"pe_bli": "0305172K",
+"recipient": "GEORGIA TECH APPLIED RESEARCH CORP",
+"rationale": "FSRS subaward D8392-S2 (ACCENTURE FEDERAL SERVICES LLC): program 'Secure Web Services (SWS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (104); triage+adversarial refute survived \u2014 Cloud architect delivering hybrid cloud architecture under the SWS PWS; PE quote owns SWS (DoD SAP IT Enterprise).; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HQ003419C0012",
+"pe_bli": "0305172K",
+"recipient": "GEORGIA TECH APPLIED RESEARCH CORP",
+"rationale": "FSRS subaward D8746-S3 (SHR CONSULTING GROUP LLC): program 'Secure Web Services (SWS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (104); triage+adversarial refute survived \u2014 Cloud architecture tasking defined in the SWS PWS; lexicon names SWS as the SAP IT enterprise; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HQ003423F0237",
+"pe_bli": "0606774D8Z",
+"recipient": "THE TRUSTEES OF THE STEVENS INSTITUTE OF TECHNOLOGY",
+"rationale": "FSRS subaward 2103495-01 (NORTH CAROLINA AGRICULTURAL AND TECHNICAL STATE UNIVERSITY): program 'The Defense Civilian Training Corps (DCTC)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (174); triage+adversarial refute survived \u2014 NC A&T pilots the DCTC program; PE is DCTC; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HQ003425FE252",
+"pe_bli": "0606774D8Z",
+"recipient": "THE TRUSTEES OF THE STEVENS INSTITUTE OF TECHNOLOGY",
+"rationale": "FSRS subaward P25-0098-SUBA-03 (UNIVERSITY OF ARIZONA): program 'The Defense Civilian Training Corps (DCTC)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (174); triage+adversarial refute survived \u2014 Sub continues DCTC pilot; PE is the dedicated DCTC line (AIRC task order scoped to DCTC); url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "HR001115C0038",
+"pe_bli": "0602303E",
+"recipient": "RTX BBN TECHNOLOGIES, INC.",
+"rationale": "FSRS subaward 14485-S16050-BBN (UNIVERSITY OF CALIFORNIA, SAN DIEGO): program 'Robust Automatic Transcription of Speech (RATS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (209); triage+adversarial refute survived \u2014 Sub is RATS Phase IV/V research; RATS is DARPA's program under this PE.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0001922F0010",
+"pe_bli": "0604786N",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "FSRS subaward 4105829259 (L3 TECHNOLOGIES, INC.): program 'LRASM C-3' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is LRASM C-3 RFE/NRE; PE 0604786N is OASuW/LRASM.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0001923C0020",
+"pe_bli": "0343",
+"recipient": "TEXTRON AVIATION INC",
+"rationale": "FSRS subaward 4505840520 (CHELTON AVIONICS, INC): program 'Multi-Engine Training System (METS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (330); triage+adversarial refute survived \u2014 Order explicitly in support of NAVAIR METS program; BLI 0343 is METS itself; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002418F8804",
+"pe_bli": "0603724N",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA1472 (OCEANETICS INC): program 'Wave Energy Test Site (WETS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Research support to Navy WETS; PE narrative shows NAVFAC runs WETS via its contractor.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002419F8816",
+"pe_bli": "0603724N",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA1718 (OSCILLA POWER INC): program 'Wave Energy Test Site (WETS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Research support to Navy WETS; PE narrative owns WETS operations; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002420F8819",
+"pe_bli": "0603724N",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA1808 (SEA ENGINEERING INC): program 'Wave Energy Test Site (WETS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 WETS research and maintenance support; PE narrative says Navy directs WETS via its contractor; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002421F8805",
+"pe_bli": "0603724N",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA1877 (OCEAN ENERGY USA LLC): program 'Wave Energy Test Site (WETS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 WETS research/maintenance support (WETS-6); PE narrative owns WETS ops via contractor; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002421F8806",
+"pe_bli": "2010US",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA1698 (KENTCO CORPORATION): program 'SEAL Delivery Vehicle (SDV)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (92); triage+adversarial refute survived \u2014 MK11 SDV technical manual development; SOCOM Underwater Systems narrative owns SDV MK 11; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0002422F8803",
+"pe_bli": "0603724N",
+"recipient": "UNIVERSITY OF HAWAII",
+"rationale": "FSRS subaward MA2066 (TERRY LETTENMAIER): program 'Wave Energy Test Site (WETS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 WETS research and maintenance support; PE narrative directs all aspects of WETS; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0003918F1316",
+"pe_bli": "0305327N",
+"recipient": "GEORGIA TECH APPLIED RESEARCH CORP",
+"rationale": "FSRS subaward D8639-S2 (CYBERWORX, LLC): program 'The Counter Insider Threat Capability (CITC)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub does secure engineering of CITC for PMW 130; lexicon shows CITC is this PE's DON program; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0003921F1006",
+"pe_bli": "2001",
+"recipient": "SCIENTIFIC RESEARCH CORPORATION",
+"rationale": "FSRS subaward SR20230203 (MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.): program 'CVN 80' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (341); triage+adversarial refute survived \u2014 Sub is CVN 80 RCS integrate & test support; BLI 2001 is CVN 80 procurement.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0003923F6000",
+"pe_bli": "0605013N",
+"recipient": "KATMAI MANAGEMENT SERVICES LLC",
+"rationale": "FSRS subaward KMS-N0003923F6000-IBR MOD 16 (IMAGINE BELIEVE REALIZE LLC): program 'Learning Stack (LS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is Learning Stack software development; PE narrative owns Learning Stack cloud solution; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N0003923F6001",
+"pe_bli": "0605013N",
+"recipient": "KATMAI MANAGEMENT SERVICES LLC",
+"rationale": "FSRS subaward KMS-N0003923F6001-IBR MOD 7 (IMAGINE BELIEVE REALIZE LLC): program 'Learning Stack (LS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is Learning Stack analysis (RDTE); PE narrative owns Learning Stack; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6247019F4017",
+"pe_bli": "0605856N",
+"recipient": "HDR ENVIRONMENTAL, OPERATIONS AND CONSTRUCTION, INC.",
+"rationale": "FSRS subaward 1000300001254 (MARINE ACOUSTICS INC): program 'Compact LFA (CLFA)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Environmental compliance support for SURTASS LFA/CLFA; lexicon lists CLFA as the PE's own.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6523619F3014",
+"pe_bli": "0603287E",
+"recipient": "STRATEGIC ANALYSIS, INC.",
+"rationale": "FSRS subaward SA-ILS-DLC-2018 (INTEGRATED LAUNCH SOLUTIONS, INC.): program 'DARPA Launch Challenge' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (297); triage+adversarial refute survived \u2014 Sub is DARPA Launch Challenge range/safety support; PE is DARPA space programs.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600117F0562",
+"pe_bli": "3043",
+"recipient": "KOAM ENGINEERING SYSTEMS, INC.",
+"rationale": "FSRS subaward 1262-172-01 (SCIENCE APPLICATIONS INTERNATIONAL CORPORATION): program 'Expeditionary Fast Transport (EPF)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (341); triage+adversarial refute survived \u2014 Sub is EPF Hull-12 engineering design/production support; BLI is the EPF line.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600118F1086",
+"pe_bli": "3216",
+"recipient": "ALUTIIQ PACIFIC, LLC",
+"rationale": "FSRS subaward AP-D-15147-001 (CENTURUM INFORMATION TECHNOLOGY INC): program 'The Navy Multiband Terminal (NMT)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (333); triage+adversarial refute survived \u2014 Sub is SOVT/PICO/PITCO technical support for NMT systems; BLI 3216 is the NMT procurement line.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600119C4005",
+"pe_bli": "0603766E",
+"recipient": "ACCELINT AI, LLC",
+"rationale": "FSRS subaward 10391.02 (MICHIGAN TECHNOLOGICAL UNIVERSITY): program 'Ocean of Things' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (276); triage+adversarial refute survived \u2014 MTRI supports SoarTech's Ocean of Things effort with learning and oceanographic models; DARPA OoT program.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600122C4020",
+"pe_bli": "0602025E",
+"recipient": "RIVERSIDE RESEARCH INSTITUTE",
+"rationale": "FSRS subaward WBO.11426.RR002564.22 (HIGH PEAKS CYBER LLC): program 'The Hardening Development Toolchains Against Emergent Execution Engines (HARDEN)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (20); triage+adversarial refute survived \u2014 Sub describes DARPA HARDEN program work; NIWC-issued DARPA contract, PE owns HARDEN; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600122F0195",
+"pe_bli": "0603914C",
+"recipient": "COLSA CORP",
+"rationale": "FSRS subaward HS170271 (TECHNI-CORE ENGINEERING, INC.): program 'Tactical Communications Environment Segment (TCES)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (288); triage+adversarial refute survived \u2014 Labor for TCES test and integration; MDA test PE lists TCES as its infrastructure; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600123F0049",
+"pe_bli": "2915",
+"recipient": "NOBLIS MSD LLC",
+"rationale": "FSRS subaward NIEFHII002 (HII FLEET SUPPORT GROUP LLC): program 'Consolidated Afloat Networks and Enterprise Services (CANES)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (333); triage+adversarial refute survived \u2014 PMW160 CANES PITCO performance-based support; work is CANES fielding for the program office; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6600124F0403",
+"pe_bli": "0603914C",
+"recipient": "COLSA CORP",
+"rationale": "FSRS subaward HS-170271, TASK ORDER NO. 025 (TECHNI-CORE ENGINEERING, INC.): program 'Tactical Communications Environment Segment (TCES)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (288); triage+adversarial refute survived \u2014 Sub labor is for TCES test and integration SOW; PE lists TCES among its test labs; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6660418F3013",
+"pe_bli": "0603506N",
+"recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+"rationale": "FSRS subaward P010239801 (AMERICAN SYSTEMS CORPORATION): program 'Surface Ship Torpedo Defense (SSTD)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is SSTD systems engineering; PE is Surface Ship Torpedo Defense.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6660425FC429",
+"pe_bli": "0603506N",
+"recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+"rationale": "FSRS subaward P010286738 (CARDINAL ENGINEERING, LLC): program 'Surface Ship Torpedo Defense (SSTD)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Sub is explicitly for SSTD/NIXIE UW-UD FoS; J-book owns NIXIE as part of SSTD; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6833517C0392",
+"pe_bli": "0605502N",
+"recipient": "SERCO INC.",
+"rationale": "FSRS subaward 000000821 (INTERNATIONAL COMPUTER SCIENCE INSTITUTE): program 'The Small Business Technology Transfer (STTR)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Prime is a Navy STTR Phase I (topic N17A-T021); sub work is for that STTR effort; 0605502N is Navy SBIR/STTR PE.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6833520F0182",
+"pe_bli": "4213",
+"recipient": "VALKYRIE ENTERPRISES, LLC",
+"rationale": "FSRS subaward VEJM411193 (TECNICO CORPORATION): program 'Aircraft Launch and Recovery Equipment (ALRE)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (333); triage+adversarial refute survived \u2014 Shipboard alterations installing ALRE MWS/ILARTS; BLI is ALRE modernization; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6833522C0156",
+"pe_bli": "0605502N",
+"recipient": "MAINSTREAM ENGINEERING CORP",
+"rationale": "FSRS subaward NV0156 (FLORIDA ATLANTIC UNIVERSITY RESEARCH CORPORATION): program 'The Small Business Technology Transfer (STTR)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 Navy STTR Phase II award; Navy SBIR/STTR PE funds STTR program; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "N6893617F0353",
+"pe_bli": "0204571N",
+"recipient": "AMENTUM TECHNOLOGY, INC.",
+"rationale": "FSRS subaward 10383530603 (FAAC INCORPORATED): program 'Tactical Combat Training Systems (TCTS) Increment II' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (340); triage+adversarial refute survived \u2014 EWS software update delivery for TCTS Increment II; program named as the PE's own.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W31P4Q20F0424",
+"pe_bli": "0604181C",
+"recipient": "TORCH TECHNOLOGIES INC",
+"rationale": "FSRS subaward T18S096 (OPTICAL SCIENCES, LLC): program 'Hypersonic Defense (HD)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (318); triage+adversarial refute survived \u2014 Sub does engineering analysis explicitly for HD studies; lexicon shows HD is this PE's own program.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W31P4Q20F0543",
+"pe_bli": "0604181C",
+"recipient": "TORCH TECHNOLOGIES INC",
+"rationale": "FSRS subaward T18S074 (BLUEHALO LLC): program 'Hypersonic Defense (HD)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (318); triage+adversarial refute survived \u2014 Engineering analysis explicitly for HD studies; lexicon shows HD PE ownership.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W31P4Q22F0120",
+"pe_bli": "0605457A",
+"recipient": "PERATON INC.",
+"rationale": "FSRS subaward PO-0034311 (NORTHROP GRUMMAN SYSTEMS CORPORATION): program 'Integrated Battle Command System (IBCS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (355); triage+adversarial refute survived \u2014 $377M IBCS software sub to IBCS developer; J-book names IBCS as AIAMD centerpiece; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W58RGZ21F0232",
+"pe_bli": "6818AA0050",
+"recipient": "DEFENSE SYSTEMS AND SOLUTIONS",
+"rationale": "FSRS subaward D21SP00002 (9TH DEGREE, LLC): program 'Instrument Landing System (ILS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (343); triage+adversarial refute survived \u2014 Aviation ILS integration, $5.2M; PE's ATC portfolio owns the ILS program; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W58RGZ22F0265",
+"pe_bli": "0603801A",
+"recipient": "SMARTRONIX, LLC",
+"rationale": "FSRS subaward S013-FLRA (PEOPLETEC, INC.): program 'Future Long Range Assault Aircraft (FLRAA)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (353); triage+adversarial refute survived \u2014 SETA engineering/logistics for PM FLRAA office; PE funds FLRAA development; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W58RGZ23F0089",
+"pe_bli": "0603801A",
+"recipient": "TORCH TECHNOLOGIES INC",
+"rationale": "FSRS subaward RS30111019 (IRONMOUNTAIN SOLUTIONS, LLC): program 'Future Long Range Assault Aircraft (FLRAA)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (353); triage+adversarial refute survived \u2014 Engineering services PWS dedicated to PM FLRAA office; PE funds FLRAA development; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W58RGZ24F0287",
+"pe_bli": "6818AA0050",
+"recipient": "DEFENSE SYSTEMS AND SOLUTIONS",
+"rationale": "FSRS subaward D24SP00008 (9TH DEGREE, LLC): program 'Instrument Landing System (ILS)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (343); triage+adversarial refute survived \u2014 A3S ILS integration is the Army ATC portfolio ILS program named in the BLI narrative; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W900KK23F0041",
+"pe_bli": "0304270A",
+"recipient": "SUSTAINABLE SYSTEM SOLUTIONS LLC",
+"rationale": "FSRS subaward S3-TMC-20-D-0003/P370000182 (TMC DESIGN CORP): program 'Army Reprogramming Analysis Team (ARAT)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (355); triage+adversarial refute survived \u2014 ARAT Enterprise Applications/IV development for Army ARAT; PE Project EW6 owns ARAT; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W900KK23F0133",
+"pe_bli": "0604759A",
+"recipient": "SUSTAINABLE SYSTEM SOLUTIONS LLC",
+"rationale": "FSRS subaward S3-TMC-20-D-0003/P370000193 (TMC DESIGN CORP): program 'Applied Environments Modernization (AEM)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (None); triage+adversarial refute survived \u2014 PM CT2/ATEC AEM lab instrumentation requirements; PE narrative owns AEM upgrades; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W912HQ19F0018",
+"pe_bli": "0603716D8Z",
+"recipient": "NOBLIS, INC.",
+"rationale": "FSRS subaward 19T1SERCOR (CORRDESA LLC): program 'Strategic Environmental Research and Development Program (SERDP)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (268); triage+adversarial refute survived \u2014 Program support to the SERDP/ESTCP joint program office; sub work directly executes SERDP mission.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W912HQ19F0018",
+"pe_bli": "0603851D8Z",
+"recipient": "NOBLIS, INC.",
+"rationale": "FSRS subaward 19T1SERCOR (CORRDESA LLC): program 'The Environmental Security Technology Certification Program (ESTCP)' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (278); triage+adversarial refute survived \u2014 Program support to the SERDP/ESTCP joint program office; sub work directly executes ESTCP mission.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W912HZ24C0028",
+"pe_bli": "0603461A",
+"recipient": "BOWHEAD MISSION SOLUTIONS, LLC",
+"rationale": "FSRS subaward SUBC-000311 (BREAKPOINT LABS, L.L.C.): program 'High Performance Computing Modernization Program' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (351); triage+adversarial refute survived \u2014 HPCMP cybersecurity service provider contract at ERDC; PE is HPCMP; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "subaward+lexicon",
+"piid": "W912HZ24F0404",
+"pe_bli": "0603461A",
+"recipient": "BOWHEAD TOTAL ENTERPRISE SOLUTIONS, LLC",
+"rationale": "FSRS subaward SUBC-000270-T04-24F0404 (CFD RESEARCH CORPORATION): program 'High Performance Computing Modernization Program' named for this award [match basis: subaward-description-exact]; J-book narrative owns it (351); triage+adversarial refute survived \u2014 Sub is HPCMP work under ERDC prime; PE 0603461A is HPCMP.; url=https://www.defense.gov/News/Contracts/Contract/Article/None/"
+},
+{
+"method": "account+subagency",
+"piid": "HR001113C0077",
+"pe_bli": "0601122E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0035",
+"pe_bli": "0602115E",
+"recipient": "RTX CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0055",
+"pe_bli": "0605502E",
+"recipient": "UNIVERSITY OF CALIFORNIA, SANTA BARBARA",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0077",
+"pe_bli": "0603739E",
+"recipient": "HALFAKER AND ASSOCIATES, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0081",
+"pe_bli": "0601117E",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0135",
+"pe_bli": "0603286E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORP",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001115C0135",
+"pe_bli": "0603287E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORP",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0025",
+"pe_bli": "0602025E",
+"recipient": "UNIVERSITY OF WISCONSIN SYSTEM",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0025",
+"pe_bli": "0603469E",
+"recipient": "UNIVERSITY OF WISCONSIN SYSTEM",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0030",
+"pe_bli": "0602025E",
+"recipient": "MASSACHUSETTS INSTITUTE OF TECHNOLOGY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0030",
+"pe_bli": "0603767E",
+"recipient": "MASSACHUSETTS INSTITUTE OF TECHNOLOGY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0055",
+"pe_bli": "0603467E",
+"recipient": "GEORGE MASON UNIVERSITY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0083",
+"pe_bli": "0602303E",
+"recipient": "CERADYNE, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0101",
+"pe_bli": "0605502E",
+"recipient": "PERATON LABS INC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0118",
+"pe_bli": "0603767E",
+"recipient": "THE CHARLES STARK DRAPER LABORATORY, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001116C0133",
+"pe_bli": "0602025E",
+"recipient": "THE BOEING COMPANY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001117C0048",
+"pe_bli": "0603286E",
+"recipient": "BAE SYSTEMS INFORMATION AND ELECTRONIC SYSTEMS INTEGRATION INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001117C0071",
+"pe_bli": "0602115E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001117C0095",
+"pe_bli": "0605502E",
+"recipient": "UNIVERSITY OF WASHINGTON",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001117C0128",
+"pe_bli": "0602303E",
+"recipient": "JANUS-I SCIENCE INC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001117C0129",
+"pe_bli": "0601101E",
+"recipient": "APOGEE RESEARCH LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0010",
+"pe_bli": "0601101E",
+"recipient": "APPLIED PHYSICAL SCIENCES CORP",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0011",
+"pe_bli": "0602702E",
+"recipient": "THE CHARLES STARK DRAPER LABORATORY, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0027",
+"pe_bli": "0603760E",
+"recipient": "ADVENTIUM ENTERPRISES, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0036",
+"pe_bli": "0602024E",
+"recipient": "THE CORPORATION OF HAVERFORD COLLEGE",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0046",
+"pe_bli": "0602303E",
+"recipient": "VESPERIX CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0049",
+"pe_bli": "0603286E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0056",
+"pe_bli": "0603286E",
+"recipient": "PACKET FORENSICS LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0062",
+"pe_bli": "0603739E",
+"recipient": "KUDU DYNAMICS LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0071",
+"pe_bli": "0603767E",
+"recipient": "DYNETICS, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0089",
+"pe_bli": "0603287E",
+"recipient": "MELWOOD HORTICULTURAL TRAINING CENTER, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0096",
+"pe_bli": "0602716E",
+"recipient": "GEORGIA TECH RESEARCH CORP",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0120",
+"pe_bli": "0603760E",
+"recipient": "LOCKHEED MARTIN CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0124",
+"pe_bli": "0602303E",
+"recipient": "MICHIGAN TECHNOLOGICAL UNIVERSITY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0131",
+"pe_bli": "0603287E",
+"recipient": "UNIVERSITY OF SOUTHAMPTON",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118C0133",
+"pe_bli": "0605001E",
+"recipient": "MERCURY DEFENSE SYSTEMS, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118F0020",
+"pe_bli": "0602023E",
+"recipient": "UNIVERSITY OF MARYLAND, COLLEGE PARK",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118F0030",
+"pe_bli": "0601122E",
+"recipient": "SPC FEDERAL, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118F0031",
+"pe_bli": "0603467E",
+"recipient": "YOUR RECRUITING COMPANY, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001118F0033",
+"pe_bli": "0601117E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0014",
+"pe_bli": "0605001E",
+"recipient": "PHYSICAL SCIENCES INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0018",
+"pe_bli": "0605502E",
+"recipient": "SIERRA NEVADA COMPANY, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0020",
+"pe_bli": "0605502E",
+"recipient": "TRIDENT SYSTEMS LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0038",
+"pe_bli": "0602023E",
+"recipient": "PURDUE UNIVERSITY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0039",
+"pe_bli": "0603468E",
+"recipient": "TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA, THE",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0050",
+"pe_bli": "0603739E",
+"recipient": "RUTGERS, THE STATE UNIVERSITY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0085",
+"pe_bli": "0602024E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0085",
+"pe_bli": "0602026E",
+"recipient": "NORTHROP GRUMMAN SYSTEMS CORPORATION",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0092",
+"pe_bli": "0602303E",
+"recipient": "RAYTHEON COMPANY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0094",
+"pe_bli": "0601117E",
+"recipient": "CARNEGIE MELLON UNIVERSITY",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0113",
+"pe_bli": "0601122E",
+"recipient": "NOTOS TECHNOLOGIES LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0114",
+"pe_bli": "0602715E",
+"recipient": "RTX BBN TECHNOLOGIES, INC.",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0118",
+"pe_bli": "0602026E",
+"recipient": "SPATIAL INTEGRATED SYSTEMS INC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119C0131",
+"pe_bli": "0602024E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0010",
+"pe_bli": "0603287E",
+"recipient": "UNIVERSITY OF MARYLAND, COLLEGE PARK",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0011",
+"pe_bli": "0605001E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0012",
+"pe_bli": "0603469E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0067",
+"pe_bli": "0602023E",
+"recipient": "SPC FEDERAL, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0089",
+"pe_bli": "0602026E",
+"recipient": "OREGON PREMIER LOCATIONS, LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+},
+{
+"method": "account+subagency",
+"piid": "HR001119F0092",
+"pe_bli": "0605502E",
+"recipient": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC",
+"rationale": "account 097-0400; sub-agency Defense Advanced Research Projects Agency; all loaded award years"
+}
+]
