@@ -1,0 +1,586 @@
+{
+"triaged": 745,
+"verdict_counts": {
+"link": 222,
+"wrong": 171,
+"weak": 352
+},
+"proposed": 222,
+"surviving": [
+{
+"piid": "N6833517C0392",
+"pe_bli": "0605502N",
+"reason": "Prime is a Navy STTR Phase I (topic N17A-T021); sub work is for that STTR effort; 0605502N is Navy SBIR/STTR PE."
+},
+{
+"piid": "N6600117F0562",
+"pe_bli": "3043",
+"reason": "Sub is EPF Hull-12 engineering design/production support; BLI is the EPF line."
+},
+{
+"piid": "N6600117F0044",
+"pe_bli": "3050",
+"reason": "External/network interface integration engineering for AN/USQ-144(V) ADNS for PMW-160; BLI owns ADNS."
+},
+{
+"piid": "FA865116C0330",
+"pe_bli": "0603767E",
+"reason": "Sub is SECTR design/simulation/integration/test; SECTR is DARPA's program under this PE, AFRL Eglin as agent."
+},
+{
+"piid": "HR001115C0038",
+"pe_bli": "0602303E",
+"reason": "Sub is RATS Phase IV/V research; RATS is DARPA's program under this PE."
+},
+{
+"piid": "N6449817FBB09",
+"pe_bli": "0670",
+"reason": "Sub is NCDS installation on CVN-70; BLI funds procurement and installation of NCDS."
+},
+{
+"piid": "N6600118F0195",
+"pe_bli": "3050",
+"reason": "Engineering support for ADNS Inc III SP4; directly ADNS."
+},
+{
+"piid": "N0017818F3011",
+"pe_bli": "0204571N",
+"reason": "ATD systems engineering support; PE names ATD as a core system."
+},
+{
+"piid": "N6600118F0235",
+"pe_bli": "3050",
+"reason": "Engineering support for ADNS Inc III SP3/SP4; directly ADNS."
+},
+{
+"piid": "N6600118F0228",
+"pe_bli": "3050",
+"reason": "PITCO of ADNS Inc III SP4 engineering design models; directly ADNS."
+},
+{
+"piid": "N6600118F0752",
+"pe_bli": "3050",
+"reason": "ADNS airborne encryptor chassis rework; directly ADNS."
+},
+{
+"piid": "HQ003418C0012",
+"pe_bli": "0305172K",
+"reason": "Cloud architect delivering hybrid cloud architecture under the SWS PWS; PE quote owns SWS (DoD SAP IT Enterprise)."
+},
+{
+"piid": "N6600118F1086",
+"pe_bli": "3216",
+"reason": "Sub is SOVT/PICO/PITCO technical support for NMT systems; BLI 3216 is the NMT procurement line."
+},
+{
+"piid": "N6600119F0307",
+"pe_bli": "3050",
+"reason": "ADNS Increment III engineering support services; work is unmistakably for the ADNS program."
+},
+{
+"piid": "N0002418F8804",
+"pe_bli": "0603724N",
+"reason": "Research support to Navy WETS; PE narrative shows NAVFAC runs WETS via its contractor."
+},
+{
+"piid": "N6893617F0353",
+"pe_bli": "0204571N",
+"reason": "EWS software update delivery for TCTS Increment II; program named as the PE's own."
+},
+{
+"piid": "N6600119F0189",
+"pe_bli": "3050",
+"reason": "ADNS Inc III SP1-to-SP3 conversions for MSC is an ADNS upgrade under the ADNS line."
+},
+{
+"piid": "W912HQ19F0018",
+"pe_bli": "0603851D8Z",
+"reason": "Program support to the SERDP/ESTCP joint program office; sub work directly executes ESTCP mission."
+},
+{
+"piid": "W912HQ19F0018",
+"pe_bli": "0603716D8Z",
+"reason": "Program support to the SERDP/ESTCP joint program office; sub work directly executes SERDP mission."
+},
+{
+"piid": "N6600119C4005",
+"pe_bli": "0603766E",
+"reason": "MTRI supports SoarTech's Ocean of Things effort with learning and oceanographic models; DARPA OoT program."
+},
+{
+"piid": "N6600119F0340",
+"pe_bli": "3050",
+"reason": "Sub is ADNS ISEA fleet integration/support; ADNS is the BLI's own program."
+},
+{
+"piid": "N6600119F0353",
+"pe_bli": "3050",
+"reason": "Sub is ADNS Inc III LOE support; ADNS is the BLI's own program."
+},
+{
+"piid": "N6600119F0161",
+"pe_bli": "3050",
+"reason": "Sub is ADNS ISEA technical assistance; ADNS is the BLI's own program."
+},
+{
+"piid": "HC104619F5085",
+"pe_bli": "16",
+"reason": "Sub is CMS engineering support under DISA order; lexicon shows CMS is the BLI's program."
+},
+{
+"piid": "N6660418F3013",
+"pe_bli": "0603506N",
+"reason": "Sub is SSTD systems engineering; PE is Surface Ship Torpedo Defense."
+},
+{
+"piid": "N6600119F0470",
+"pe_bli": "3050",
+"reason": "Sub is ADNS Inc III SP4 EQT equipment; ADNS is the BLI's own program."
+},
+{
+"piid": "N6600119F1132",
+"pe_bli": "3050",
+"reason": "Sub is ADNS ISEA technical assistance onboard ships; ADNS is the BLI's own program."
+},
+{
+"piid": "HDTRA117C0031",
+"pe_bli": "0605000BR",
+"reason": "Sub operates IMS seismic/infrasound station under DTRA prime; lexicon shows U.S. IMS ownership."
+},
+{
+"piid": "FA807517F1383",
+"pe_bli": "0605013N",
+"reason": "Sub is AoA/system analysis for ALE program of record; lexicon shows ALE is the PE's program."
+},
+{
+"piid": "FA875018F0024",
+"pe_bli": "0604294D8Z",
+"reason": "Sub develops methods to support DoD T&AM initiative; PE is OSD Trusted and Assured Microelectronics."
+},
+{
+"piid": "N6247019F4017",
+"pe_bli": "0605856N",
+"reason": "Environmental compliance support for SURTASS LFA/CLFA; lexicon lists CLFA as the PE's own."
+},
+{
+"piid": "N6523619F3014",
+"pe_bli": "0603287E",
+"reason": "Sub is DARPA Launch Challenge range/safety support; PE is DARPA space programs."
+},
+{
+"piid": "N0003918F1316",
+"pe_bli": "0305327N",
+"reason": "Sub does secure engineering of CITC for PMW 130; lexicon shows CITC is this PE's DON program"
+},
+{
+"piid": "HQ003419C0012",
+"pe_bli": "0305172K",
+"reason": "Cloud architecture tasking defined in the SWS PWS; lexicon names SWS as the SAP IT enterprise"
+},
+{
+"piid": "N6600120F0626",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; lexicon shows ADNS is the line's own program"
+},
+{
+"piid": "N6600118F0697",
+"pe_bli": "3050",
+"reason": "AN/USQ-144 ADNS interface integration engineering; ADNS owned by line"
+},
+{
+"piid": "N6600120F0355",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard ships; ADNS owned by line"
+},
+{
+"piid": "N6600120F0478",
+"pe_bli": "3050",
+"reason": "ADNS engineering, drawing and SOVT development support; ADNS owned by line"
+},
+{
+"piid": "N6600120F3437",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by line"
+},
+{
+"piid": "N6600120F0278",
+"pe_bli": "3050",
+"reason": "ADNS Inc III technical data packages and drawings; ADNS owned by line"
+},
+{
+"piid": "FA875017C0153",
+"pe_bli": "0602702E",
+"reason": "UIUC assists HRL on the DARPA MAA program; lexicon shows MAA as PE's own program"
+},
+{
+"piid": "N6600120F0403",
+"pe_bli": "3050",
+"reason": "AN/USQ-144 ADNS interface integration engineering; ADNS owned by line"
+},
+{
+"piid": "N6600120F0183",
+"pe_bli": "3050",
+"reason": "ADNS FY2020 engineering, production and QA support; ADNS owned by line"
+},
+{
+"piid": "N6600120F0192",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard LCS-21; ADNS owned by line"
+},
+{
+"piid": "FA880619C0003",
+"pe_bli": "1206770SF",
+"reason": "Sub supports SATOPS prototyping/integration explicitly for EGS capabilities; PE is the EGS program"
+},
+{
+"piid": "N6600120F0229",
+"pe_bli": "3050",
+"reason": "ADNS ISEA fleet technical integration support; PE narrative owns ADNS"
+},
+{
+"piid": "FA865020C1132",
+"pe_bli": "0603461A",
+"reason": "CREATE-RF is stated to be one of the HPCMP programs; PE is HPCMP"
+},
+{
+"piid": "N6600120F0079",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard USS Porter; PE owns ADNS"
+},
+{
+"piid": "N6600120F0922",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard USS Cooperstown; PE owns ADNS"
+},
+{
+"piid": "N6833520F0182",
+"pe_bli": "4213",
+"reason": "Shipboard alterations installing ALRE MWS/ILARTS; BLI is ALRE modernization"
+},
+{
+"piid": "N6600120F0051",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance engineering services; PE owns ADNS"
+},
+{
+"piid": "N6600120F0255",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard multiple ships; PE owns ADNS"
+},
+{
+"piid": "N6600120F1332",
+"pe_bli": "3050",
+"reason": "ADNS Inc III engineering, production and EQT support; PE owns ADNS"
+},
+{
+"piid": "N6600120F0860",
+"pe_bli": "3050",
+"reason": "ADNS Inc III program management, engineering, PITCO and QA support; PE owns ADNS"
+},
+{
+"piid": "W31P4Q20F0424",
+"pe_bli": "0604181C",
+"reason": "Sub does engineering analysis explicitly for HD studies; lexicon shows HD is this PE's own program."
+},
+{
+"piid": "N6600121F0510",
+"pe_bli": "3050",
+"reason": "ADNS Inc III engineering/production support; lexicon shows ADNS is this BLI's program."
+},
+{
+"piid": "N6600120F1151",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0163",
+"pe_bli": "3050",
+"reason": "ADNS ISEA support on MSC ships; ADNS owned by BLI 3050."
+},
+{
+"piid": "W15QKN20F0667",
+"pe_bli": "0605018A",
+"reason": "$6.6M business/contract mgmt support for IPPS-A PMO; PE is IPPS-A."
+},
+{
+"piid": "N6523618F3113",
+"pe_bli": "3415",
+"reason": "Sub is CND RDT&E/production/sustainment; lexicon shows CND afloat under this BLI."
+},
+{
+"piid": "N6600121F0245",
+"pe_bli": "3050",
+"reason": "ADNS engineering, drawing and SOVT support; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0025",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0324",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F1077",
+"pe_bli": "3050",
+"reason": "ADNS ISEA support onboard LPD-28; ADNS owned by BLI 3050."
+},
+{
+"piid": "FA872618F0039",
+"pe_bli": "835060",
+"reason": "BITI NMS recapitalization; lexicon shows BITI is this BLI's program."
+},
+{
+"piid": "W31P4Q20F0543",
+"pe_bli": "0604181C",
+"reason": "Engineering analysis explicitly for HD studies; lexicon shows HD PE ownership."
+},
+{
+"piid": "N6600121F0203",
+"pe_bli": "3050",
+"reason": "ADNS ISEA fleet integration support; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0609",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0034",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance; ADNS owned by BLI 3050."
+},
+{
+"piid": "N6600121F0071",
+"pe_bli": "3050",
+"reason": "ADNS Inc III engineering and production support; work is for the ADNS program"
+},
+{
+"piid": "W56KGU21C0025",
+"pe_bli": "0605502A",
+"reason": "Army STTR Phase I topic A20B-T013 is executed under the Army SBIR/STTR PE"
+},
+{
+"piid": "W58RGZ21F0232",
+"pe_bli": "6818AA0050",
+"reason": "Aviation ILS integration, $5.2M; PE's ATC portfolio owns the ILS program"
+},
+{
+"piid": "N6600122F0478",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard ships; work is for ADNS"
+},
+{
+"piid": "N0042122C0018",
+"pe_bli": "4268",
+"reason": "Sub develops/qualifies HPH to Navy requirements; procurement line explicitly funds HPH"
+},
+{
+"piid": "N6600122F0195",
+"pe_bli": "0603914C",
+"reason": "Labor for TCES test and integration; MDA test PE lists TCES as its infrastructure"
+},
+{
+"piid": "N6600121F1046",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard ships; work is for ADNS"
+},
+{
+"piid": "N6600122F0408",
+"pe_bli": "3050",
+"reason": "ADNS ISEA fleet technical integration; work is for ADNS"
+},
+{
+"piid": "N0002419F8816",
+"pe_bli": "0603724N",
+"reason": "Research support to Navy WETS; PE narrative owns WETS operations"
+},
+{
+"piid": "N6600122F0789",
+"pe_bli": "3050",
+"reason": "ADNS ISEA technical assistance onboard ships; work is for ADNS"
+},
+{
+"piid": "N0001923C0020",
+"pe_bli": "0343",
+"reason": "Order explicitly in support of NAVAIR METS program; BLI 0343 is METS itself"
+},
+{
+"piid": "FA460021F0052",
+"pe_bli": "0604002SF",
+"reason": "Sounder data for SWAFS sustainment; PE narrative owns SWAFS as its software suite"
+},
+{
+"piid": "N6600122F0796",
+"pe_bli": "3050",
+"reason": "ADNS TDP/IRD/3D models are ADNS-specific engineering; 3050 narrative describes ADNS"
+},
+{
+"piid": "N6600122F0573",
+"pe_bli": "3050",
+"reason": "ADNS engineering, drawing and SOVT development support is ADNS-specific work"
+},
+{
+"piid": "N0002421F8806",
+"pe_bli": "2010US",
+"reason": "MK11 SDV technical manual development; SOCOM Underwater Systems narrative owns SDV MK 11"
+},
+{
+"piid": "FA861222FB004",
+"pe_bli": "0604003F",
+"reason": "CSOW for development of ABMS enterprise of systems; PE is ABMS"
+},
+{
+"piid": "N0002420F8819",
+"pe_bli": "0603724N",
+"reason": "WETS research and maintenance support; PE narrative says Navy directs WETS via its contractor"
+},
+{
+"piid": "N6833522C0156",
+"pe_bli": "0605502N",
+"reason": "Navy STTR Phase II award; Navy SBIR/STTR PE funds STTR program"
+},
+{
+"piid": "HDTRA121C0030",
+"pe_bli": "0605000BR",
+"reason": "Operational support of IMS seismic/infrasound stations; PE narrative owns US portion of IMS"
+},
+{
+"piid": "FA875023C0518",
+"pe_bli": "0602025E",
+"reason": "SME support for Vanderbilt on DARPA ANSR program TA1/TA2; ANSR named in PE narrative"
+},
+{
+"piid": "W58RGZ22F0265",
+"pe_bli": "0603801A",
+"reason": "SETA engineering/logistics for PM FLRAA office; PE funds FLRAA development"
+},
+{
+"piid": "W58RGZ23F0089",
+"pe_bli": "0603801A",
+"reason": "Engineering services PWS dedicated to PM FLRAA office; PE funds FLRAA development"
+},
+{
+"piid": "N0002421F8805",
+"pe_bli": "0603724N",
+"reason": "WETS research/maintenance support (WETS-6); PE narrative owns WETS ops via contractor"
+},
+{
+"piid": "N6600122C4020",
+"pe_bli": "0602025E",
+"reason": "Sub describes DARPA HARDEN program work; NIWC-issued DARPA contract, PE owns HARDEN"
+},
+{
+"piid": "N6600123F0854",
+"pe_bli": "3050",
+"reason": "ADNS AN/USQ-144 TDP production release; hardware-specific ADNS procurement work"
+},
+{
+"piid": "W900KK23F0133",
+"pe_bli": "0604759A",
+"reason": "PM CT2/ATEC AEM lab instrumentation requirements; PE narrative owns AEM upgrades"
+},
+{
+"piid": "W900KK23F0041",
+"pe_bli": "0304270A",
+"reason": "ARAT Enterprise Applications/IV development for Army ARAT; PE Project EW6 owns ARAT"
+},
+{
+"piid": "N6600123F0049",
+"pe_bli": "2915",
+"reason": "PMW160 CANES PITCO performance-based support; work is CANES fielding for the program office"
+},
+{
+"piid": "FA861223FB001",
+"pe_bli": "0604003F",
+"reason": "Sub defines contractor requirements for ABMS development; PE is ABMS; AFLCMC ABMS vehicle."
+},
+{
+"piid": "N0003921F1006",
+"pe_bli": "2001",
+"reason": "Sub is CVN 80 RCS integrate & test support; BLI 2001 is CVN 80 procurement."
+},
+{
+"piid": "W912HZ24F0404",
+"pe_bli": "0603461A",
+"reason": "Sub is HPCMP work under ERDC prime; PE 0603461A is HPCMP."
+},
+{
+"piid": "N0001922F0010",
+"pe_bli": "0604786N",
+"reason": "Sub is LRASM C-3 RFE/NRE; PE 0604786N is OASuW/LRASM."
+},
+{
+"piid": "FA807524F0008",
+"pe_bli": "0804768J",
+"reason": "Sub is JTSE; PE 0804768J funds JTSE joint training enablers."
+},
+{
+"piid": "W58RGZ24F0287",
+"pe_bli": "6818AA0050",
+"reason": "A3S ILS integration is the Army ATC portfolio ILS program named in the BLI narrative"
+},
+{
+"piid": "N6600124F0403",
+"pe_bli": "0603914C",
+"reason": "Sub labor is for TCES test and integration SOW; PE lists TCES among its test labs"
+},
+{
+"piid": "HQ003423F0237",
+"pe_bli": "0606774D8Z",
+"reason": "NC A&T pilots the DCTC program; PE is DCTC"
+},
+{
+"piid": "FA830723FB173",
+"pe_bli": "0604250D8Z",
+"reason": "Sub description is the C2IE program objective; PE narrative names C2IE"
+},
+{
+"piid": "N0002422F8803",
+"pe_bli": "0603724N",
+"reason": "WETS research and maintenance support; PE narrative directs all aspects of WETS"
+},
+{
+"piid": "FA810624F0018",
+"pe_bli": "0604233F",
+"reason": "CSR data validation model for T-6 SEPM; PE narrative names CSR for T-6"
+},
+{
+"piid": "W912HZ24C0028",
+"pe_bli": "0603461A",
+"reason": "HPCMP cybersecurity service provider contract at ERDC; PE is HPCMP"
+},
+{
+"piid": "N6660425FC429",
+"pe_bli": "0603506N",
+"reason": "Sub is explicitly for SSTD/NIXIE UW-UD FoS; J-book owns NIXIE as part of SSTD"
+},
+{
+"piid": "W31P4Q22F0120",
+"pe_bli": "0605457A",
+"reason": "$377M IBCS software sub to IBCS developer; J-book names IBCS as AIAMD centerpiece"
+},
+{
+"piid": "N0003923F6000",
+"pe_bli": "0605013N",
+"reason": "Sub is Learning Stack software development; PE narrative owns Learning Stack cloud solution"
+},
+{
+"piid": "N0003923F6001",
+"pe_bli": "0605013N",
+"reason": "Sub is Learning Stack analysis (RDTE); PE narrative owns Learning Stack"
+},
+{
+"piid": "HQ003425FE252",
+"pe_bli": "0606774D8Z",
+"reason": "Sub continues DCTC pilot; PE is the dedicated DCTC line (AIRC task order scoped to DCTC)"
+},
+{
+"piid": "H9240824F0015",
+"pe_bli": "1160434BB",
+"reason": "NAVWAR lab support for LEA GPS hardening; SOCOM BLI owns LEA MCA effort"
+}
+]
+}

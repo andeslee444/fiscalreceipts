@@ -154,7 +154,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // follow the ~6% convention over the expansion build's measure. A 4MB raw
   // feed is at the edge of reasonable — pagination is filed as follow-up,
   // and this ceiling must NOT be raised again without it.
-  { label: "/feed/", file: "feed/index.html", maxRaw: 4_230_000, maxGzip: 193_400, measured: "3,989,520 / 182,378" },
+  // 2026-09-02: the do-not-raise-again note above is honored — the feed page
+  // is now a per-section digest (FEED_SECTION_CAP = 75 in feed/page.tsx;
+  // full set in feed.json + RSS/Atom) and the ceiling comes DOWN. Provisional
+  // ceilings from the expected ≤300-card page; `measured` is updated from
+  // the first capped build.
+  { label: "/feed/", file: "feed/index.html", maxRaw: 3_200_000, maxGzip: 150_000, measured: "1,278,916 / 69,534" },
   // RE-BASELINED 2026-08-29 (tri-persona Wave 5) — CEILINGS RAISED, SAME
   // CHANGE. 1,260,784 / 80,771 -> 1,389,568 / 89,557, breaching both.
   //
@@ -215,7 +220,10 @@ export const PAGE_WEIGHT_BUDGET = [
   // Re-baselined 2026-09-01 (FPDS-AP expansion): district universe 41 → 181
   // pages and the index states them all. Same corpus-growth rationale as
   // /feed/ above; ~6% convention over the expansion build's measure.
-  { label: "/district/", file: "district/index.html", maxRaw: 442_700, maxGzip: 42_100, measured: "417,612 / 39,675" },
+  // Re-measured again 2026-09-02: announcement-verified links (wave 1) took
+  // districts 181 → 204; the index states them all. ~6% over the measure.
+  // 2026-09-03: districts 204 → 225 with wave-2 links; ~6% over the measure.
+  { label: "/district/", file: "district/index.html", maxRaw: 546_000, maxGzip: 51_000, measured: "515,448 / 48,126" },
   // Re-baselined 2026-09-01: grew +2,319 raw since the ceiling was set via
   // ordinary curated-events/table growth (#10 relabel note, adjudication
   // tier changes), tipping a 159-byte breach. ~6% convention.
@@ -353,7 +361,8 @@ export const PAGE_WEIGHT_BUDGET = [
   // FPDS-AP acquisition-program evidence path). Deliberate prose growth on
   // the page whose job is to disclose method; ~6% convention over the
   // expansion build's measure.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 149_200, maxGzip: 41_100, measured: "140,780 / 38,746" },
+  // Re-measured 2026-09-03 (announcement + subaward evidence-path paragraphs).
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "144,988 / 40,097" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //

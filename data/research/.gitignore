@@ -1,0 +1,8 @@
+# Regenerable intermediates from the announcements/lexicon legs (2026-09).
+# Sources: data/raw/announcements (ignored, 313MB, sha256 manifest) +
+# scripts/{fetch,parse}_contract_announcements.py, mine_lexicon_candidates.py.
+announcements/records.jsonl
+announcements/candidates.jsonl
+announcements/wave2_packets_prelim.json
+lexicon/candidates/
+lexicon/chunks/

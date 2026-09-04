@@ -18,12 +18,19 @@ Inserts into budget_line_awards with method 'fpds-ap+account' (high) /
 Usage: uv run python scripts/derive_ap_links.py [--dry-run]
 """
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 import duckdb
 import psycopg
+
+# Catch-all budget lines ("Items Less Than $5 Million", "Ordnance Items <$5M",
+# "Other Support Aircraft") are aggregates, not programs: a link asserting an
+# award executes "Items Less Than $5 Million" is content-free, and the $ in
+# the title trips the site's currency-in-prose sweep. Never link targets.
+CATCHALL_TITLE = re.compile(r"(less than|under|<)\s*\$|^other\b|^miscellaneous", re.I)
 
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH = ROOT / "data" / "research"
@@ -72,6 +79,10 @@ def main() -> int:
     con.close()
     display -= collisions
     print(f"excluded {len(collisions)} collision keys from link targets")
+    titles = pg.execute("select pe_bli, title from budget_lines where title is not null").fetchall()
+    catchall = {pe for pe, t in titles if CATCHALL_TITLE.search(t or "")}
+    display -= catchall
+    print(f"excluded {len(catchall & set(pe for pe, _ in titles))} catch-all titled lines from link targets")
 
     import re as _re
     synthetic = _re.compile(r"-L\d+$")

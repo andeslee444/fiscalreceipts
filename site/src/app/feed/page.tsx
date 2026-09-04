@@ -365,6 +365,8 @@ function FeedCardItem({
   );
 }
 
+const FEED_SECTION_CAP = 75;
+
 export default function FeedPage() {
   const { cards, total, scope_qualifier } = getFeed();
   // Backlog #49: the section scope note below used to hand-type its own
@@ -430,8 +432,15 @@ export default function FeedPage() {
         <div className="space-y-10">
           {EVENT_ORDER.map((etype) => {
             const meta = EVENT_META[etype];
-            const section_cards = grouped.get(etype) ?? [];
-            if (section_cards.length === 0) return null;
+            const all_section_cards = grouped.get(etype) ?? [];
+            if (all_section_cards.length === 0) return null;
+            // Page cap (2026-09-02): the crosswalk expansions grew the feed
+            // from 160 to 700+ cards and the page to 6.8MB raw. The page is a
+            // digest: the top FEED_SECTION_CAP cards per section (cards arrive
+            // ranked by magnitude from the exporter); the full set stays in
+            // feed.json and the RSS/Atom feeds linked in each section header.
+            const section_cards = all_section_cards.slice(0, FEED_SECTION_CAP);
+            const truncated = all_section_cards.length - section_cards.length;
 
             return (
               // scroll-mt-16 clears the sticky header when navigating to the
@@ -442,7 +451,7 @@ export default function FeedPage() {
                   <h2 className="text-xl font-semibold">
                     {meta.label}{" "}
                     <span className="ml-1 text-sm text-muted-foreground font-normal">
-                      ({section_cards.length})
+                      ({truncated > 0 ? `${formatCount(section_cards.length)} of ${formatCount(all_section_cards.length)}` : formatCount(section_cards.length)})
                     </span>
                   </h2>
                   {/* backlog #38: this carried data-source-text="methodology"
@@ -491,6 +500,16 @@ export default function FeedPage() {
                     </Reveal>
                   ))}
                 </div>
+                {truncated > 0 && (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground"
+                    data-feed-truncation-note=""
+                  >
+                    Showing the {formatCount(section_cards.length)} largest of{" "}
+                    {formatCount(all_section_cards.length)} cards in this section; the full
+                    set is in the RSS/Atom feeds above and in feed.json.
+                  </p>
+                )}
               </section>
             );
           })}

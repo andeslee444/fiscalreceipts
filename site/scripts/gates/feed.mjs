@@ -226,7 +226,10 @@ export async function runFeedGate() {
  * same-day 21 was measured against the intermediate state — peer review
  * caught the drift before it fossilized.)
  */
-const MIN_HHI_CARDS = 460;
+// 2026-09-02: /feed/ is now a per-section digest (75 cards per section), so
+// the hhi population on the PAGE is bounded by the cap, not the corpus. Floor
+// at 80% of the cap; the corpus-wide count lives in feed.json/RSS (gate 24 i).
+const MIN_HHI_CARDS = 60;
 
 /**
  * leg l — see this file's top doc-comment for the full rationale. Reads

@@ -1,0 +1,2308 @@
+{
+"triaged": 3933,
+"verdict_counts": {
+"link": 811,
+"weak": 1909,
+"wrong": 1213
+},
+"proposed": 811,
+"surviving": [
+{
+"piid": "N0001915G0026",
+"pe_bli": "0305220N",
+"reason": "Vehicle management software development/test for MQ-4C Triton, the PE's own program."
+},
+{
+"piid": "W52P1J17C0007",
+"pe_bli": "2706AA6605",
+"reason": "MUM-T expanded compatibility on AH-64E configurations is an AH-64 modification effort."
+},
+{
+"piid": "FA821317D0001",
+"pe_bli": "356010",
+"reason": "Replenishment of BBU-48 A/B impulse cartridges, the item the AF ammo line names (FMS also involved)."
+},
+{
+"piid": "FA821317D0002",
+"pe_bli": "356010",
+"reason": "Same combined award: BBU-48 A/B impulse cartridge replenishment, the named line item."
+},
+{
+"piid": "N0001917C0009",
+"pe_bli": "0564",
+"reason": "MR-TCDL kits, spares and installation for E-6B Mercury is an E-6B mission-system modification."
+},
+{
+"piid": "N0001914G0020",
+"pe_bli": "ATA000",
+"reason": "F-35 Block 3F reprogramming lab work under BOA N00019-14-G-0020, which is this PIID"
+},
+{
+"piid": "N0001917C0029",
+"pe_bli": "0720",
+"reason": "Award buys 300 BRU-55A/A ejector racks; PE narrative is the BRU-55 line itself"
+},
+{
+"piid": "N0001917C0001",
+"pe_bli": "0592",
+"reason": "Lot 12 F-35 long-lead across variants; STOVL line funds the USMC share of this production contract"
+},
+{
+"piid": "N0001917C0001",
+"pe_bli": "0593",
+"reason": "Lot 12 F-35 long-lead across variants; CV line funds the Navy share of this production contract"
+},
+{
+"piid": "N0001917F1024",
+"pe_bli": "0204229N",
+"reason": "Order is TTWCS software sustainment/upgrade; Tomahawk PE narrative owns TTWCS"
+},
+{
+"piid": "N0001915G0057",
+"pe_bli": "0204229N",
+"reason": "BOA vehicle for the TTWCS software order; same TTWCS work under the Tomahawk PE"
+},
+{
+"piid": "N0001915G0026",
+"pe_bli": "0195",
+"reason": "E-2D ENTR integration and software update is E-2D-specific engineering under the E-2D line"
+},
+{
+"piid": "N0001917G0002",
+"pe_bli": "0590",
+"reason": "NRE/testing for V-22 proprotor blade nickel cap life extension is V-22 modification work"
+},
+{
+"piid": "N6833513G0010",
+"pe_bli": "0590",
+"reason": "VSLED obsolescence test program set and WRAs are V-22-specific avionics mod work"
+},
+{
+"piid": "N6134017C0014",
+"pe_bli": "0195",
+"reason": "E-2D Advanced Hawkeye tactics trainer for HITS III is E-2D program work; PE owns E-2D AHE"
+},
+{
+"piid": "N6833517F0213",
+"pe_bli": "0195",
+"reason": "E-2D operational test program sets developed for the E-2D aircraft program"
+},
+{
+"piid": "N6600115A0001",
+"pe_bli": "2915",
+"reason": "Microsoft licenses bought explicitly for the CANES program; BLI is CANES"
+},
+{
+"piid": "FA862017F2358",
+"pe_bli": "PRDTB2",
+"reason": "MQ-9 datalink DMS replacement with aircraft procurement funds is an MQ-9 modification"
+},
+{
+"piid": "W58RGZ17C0009",
+"pe_bli": "6771AA0005",
+"reason": "Correction to UH-60M multiyear procurement (142 Army UH-60M + HH-60M); BLI is UH-60M"
+},
+{
+"piid": "W58RGZ17C0059",
+"pe_bli": "0607137A",
+"reason": "CH-47F Block II EMD with RDT&E funds; lexicon names PE 0607137A for Block II"
+},
+{
+"piid": "N0003915D0007",
+"pe_bli": "0604280N",
+"reason": "Production/development/sustainment of MIDS JTRS terminals; PE owns MIDS JTRS"
+},
+{
+"piid": "N0003915D0008",
+"pe_bli": "0604280N",
+"reason": "Production/development/sustainment of MIDS JTRS terminals; PE owns MIDS JTRS"
+},
+{
+"piid": "N0001917F0027",
+"pe_bli": "ATA000",
+"reason": "Ancillary/pilot equipment for LRIP Lot 11 F-35 aircraft; F-35 procurement is the subject"
+},
+{
+"piid": "M6785417C6002",
+"pe_bli": "0206313M",
+"reason": "Digital receiver exciter dev/production for AN/TPS-59A(V)3; PE narrative owns the AN/TPS-59 radar"
+},
+{
+"piid": "N6833517D0032",
+"pe_bli": "0193",
+"reason": "Peculiar support equipment specific to P-8A, bought under the P-8A aircraft program"
+},
+{
+"piid": "N0001912G0006",
+"pe_bli": "V02200",
+"reason": "AF CV-22 DIRCM/AMC kits and installation are CV-22 mods"
+},
+{
+"piid": "N0001914G0019",
+"pe_bli": "0530",
+"reason": "Gen VI mission computers and retrofit kits for MH-60R/S; procurement under MH-60R line (partly FMS)"
+},
+{
+"piid": "N0001917C0037",
+"pe_bli": "0576",
+"reason": "Production components and test stations for the AN/APR-39 program; PE OSIP owns AN/APR-39 RWR"
+},
+{
+"piid": "N6833517D0028",
+"pe_bli": "0590",
+"reason": "Ballistic floor protection kits bought for the V-22 itself; V-22 line owns platform"
+},
+{
+"piid": "N0001917C0090",
+"pe_bli": "0576",
+"reason": "FRP buy of AN/ALQ-214 IDECM jammer systems; PE narrative owns ALQ-214/IDECM"
+},
+{
+"piid": "N0016418CJQ37",
+"pe_bli": "0442",
+"reason": "MTS-B AN/DAS-3 sensors for MQ-4C LRIP 2, APN-funded; Triton procurement line"
+},
+{
+"piid": "N0001917F0582",
+"pe_bli": "0205601N",
+"reason": "AARGM-ER design trade studies; PE 0205601N owns AARGM development"
+},
+{
+"piid": "N0001917G0011",
+"pe_bli": "0205601N",
+"reason": "BOA under which AARGM-ER engineering studies ordered; PE owns AARGM"
+},
+{
+"piid": "N6134018F0001",
+"pe_bli": "0569",
+"reason": "DO buys 39 T-45 SLEP retrofit kits and retrofit engineering; PE 0569 is the Navy T-45 series line."
+},
+{
+"piid": "FA862018F2363",
+"pe_bli": "0205219F",
+"reason": "Order is MQ-9 software development for AFSOC/ACC; PE 0205219F is the MQ-9 UAV RDT&E line."
+},
+{
+"piid": "FA880818C0002",
+"pe_bli": "1206432SF",
+"reason": "Buys two EHF XDR payloads for EPS recapitalization (EPS-R); PE is the Enhanced Polar System line."
+},
+{
+"piid": "N0010418DNF01",
+"pe_bli": "356010",
+"reason": "Award manufactures CCU-145A/WB24 impulse cartridges; lexicon line is exactly CCU-145 (WB24), Navy-managed buy."
+},
+{
+"piid": "N0001918D0119",
+"pe_bli": "0443",
+"reason": "Procures Bell 407 airframes/components for MQ-8 Fire Scout; PE is MQ-8 UAV procurement line."
+},
+{
+"piid": "N0001918F2388",
+"pe_bli": "0532",
+"reason": "NRE for the H-1 rotor brake redesign is H-1 upgrade work; BLI is the H-1 Upgrades line."
+},
+{
+"piid": "N0001916G0012",
+"pe_bli": "0532",
+"reason": "BOA vehicle for the H-1 rotor brake redesign order; same H-1 Upgrades work."
+},
+{
+"piid": "N6523618C8009",
+"pe_bli": "0603766E",
+"reason": "Contract is named CDMaST outright; DARPA PE narrative lists CDMaST as its program."
+},
+{
+"piid": "N0001918F2334",
+"pe_bli": "0544",
+"reason": "Buys four E-2D aerial refueling retrofit kits; exactly the E-2D AR OSIP described in the line."
+},
+{
+"piid": "N0016418CJQ40",
+"pe_bli": "0023A01001",
+"reason": "EO/IR CSP is an MQ-1C payload buy; the MQ-1 Payload line is the direct match."
+},
+{
+"piid": "N0002418C4208",
+"pe_bli": "2122",
+"reason": "MCS consoles for DDG 51 new construction and midlife modernization; DDG-51 SCN line owns it."
+},
+{
+"piid": "FA862018F2364",
+"pe_bli": "PRDTB2",
+"reason": "Retrofit of 122 MQ-9 Block 5 aircraft on APAF funds is squarely MQ-9 modifications."
+},
+{
+"piid": "N0001918F0245",
+"pe_bli": "0564",
+"reason": "KGR-72 obsolescence kits and installs on E-6B with APN funds; E-6B mods line owns obsolescence work."
+},
+{
+"piid": "N6833518C0482",
+"pe_bli": "0193",
+"reason": "AAS peculiar support equipment and logistics data for P-8A; P-8A APN line owns it."
+},
+{
+"piid": "N6134018F0056",
+"pe_bli": "0569",
+"reason": "NRE/ECP integrating backup oxygen into T-45 with APN funds; T-45 mod work."
+},
+{
+"piid": "N0001918C1055",
+"pe_bli": "0576",
+"reason": "Lot 13 FRP of 38 ALE-50 IMPLCs plus repair; IMPLC is the item bought and PE names it."
+},
+{
+"piid": "N0001918F0478",
+"pe_bli": "0564",
+"reason": "MR-TCDL modification B-kits for E-6B with APN funds; E-6 mod line."
+},
+{
+"piid": "N6134018F0067",
+"pe_bli": "0569",
+"reason": "39 T-45 inlet retrofit kits with APN funds; T-45 mod work."
+},
+{
+"piid": "N6833518F0333",
+"pe_bli": "0195",
+"reason": "45 peculiar support equipment items and specs for E-2D Advanced Hawkeye; E-2D program buy."
+},
+{
+"piid": "N0001917F0472",
+"pe_bli": "ATA000",
+"reason": "Ancillary mission equipment for F-35 LRIP Lot 12; F-35 production program buy."
+},
+{
+"piid": "N0003918D0018",
+"pe_bli": "2915",
+"reason": "CANES baseline AoA engineering services; PE narrative owns CANES."
+},
+{
+"piid": "N6833518D0050",
+"pe_bli": "0193",
+"reason": "P-8A antenna interface units for Lots 9-11 FRP aircraft; PE owns P-8A."
+},
+{
+"piid": "N6833518F0461",
+"pe_bli": "0195",
+"reason": "E-2D operational test program sets on FY16 APN funds; PE owns E-2D AHE."
+},
+{
+"piid": "FA862018F2361",
+"pe_bli": "PRDTB2",
+"reason": "MQ-9 GCS Block 15-to-30 retrofits on aircraft procurement funds are MQ-9 mods."
+},
+{
+"piid": "N6833518C0780",
+"pe_bli": "0590",
+"reason": "Roll On/Roll Off Comms Suite production/installation upgrades for the V-22 Program is V-22 modification work."
+},
+{
+"piid": "N0001918F2048",
+"pe_bli": "ATA000",
+"reason": "LRIP 11 Gen 3 HMDS, masks and spares for F-35 aircraft is F-35 program procurement."
+},
+{
+"piid": "N0002419C4101",
+"pe_bli": "2122",
+"reason": "IBNS for DDG-51 new construction and modernization; SCN DDG-51 line owns the program"
+},
+{
+"piid": "FA862019F2386",
+"pe_bli": "0205219F",
+"reason": "MQ-9 weather tolerance activities with FY18 RDT&E funds; MQ-9 UAV RDT&E PE"
+},
+{
+"piid": "HQ027615C0003",
+"pe_bli": "0603892C",
+"reason": "SM-3 Block IIA GEU procurement/integration; Aegis BMD PE owns SM-3 development"
+},
+{
+"piid": "N6833519D0002",
+"pe_bli": "0193",
+"reason": "IFF interrogators for P-8A production lots 9-11 with APN funds; P-8A procurement line"
+},
+{
+"piid": "N0001919F0273",
+"pe_bli": "0564",
+"reason": "DRSS kits and NRE for E-6B aircraft/trainer; E-6 series modification line"
+},
+{
+"piid": "N0002419C5501",
+"pe_bli": "0604522N",
+"reason": "Award is AN/SPY-6(V) integration/production support; PE is AMDR = SPY-6 family of radars"
+},
+{
+"piid": "N0001919D0015",
+"pe_bli": "ATA000",
+"reason": "Lot 13 F-35 ancillary mission equipment and spares is F-35 program procurement"
+},
+{
+"piid": "N0001919F0012",
+"pe_bli": "0564",
+"reason": "NRE to implement E-6B Block II Sustainment and Support System; E-6B mod line owns it"
+},
+{
+"piid": "N0002419C4109",
+"pe_bli": "2122",
+"reason": "Engine controllers for DDG 51 new construction ship program; DDG-51 SCN line owns it"
+},
+{
+"piid": "FA860919D0007",
+"pe_bli": "0401221F",
+"reason": "KC-46 Pegasus Combat Capability post-production requirements; KC-46 PE owns the program"
+},
+{
+"piid": "N6833519F2993",
+"pe_bli": "0158",
+"reason": "CH-53K night vision FLIR kits and SDD test support for the CH-53K program itself"
+},
+{
+"piid": "N0016417GJQ02",
+"pe_bli": "0442",
+"reason": "MTS-B AN/DAS-3 sensors for MQ-4C Triton LRIP 3/4 on APN funds; MQ-4 Triton procurement line"
+},
+{
+"piid": "N0042118F0047",
+"pe_bli": "0569",
+"reason": "GGU-25 oxygen concentrator upgrade/qual on T-45 with APN funds; T-45 Series mods line"
+},
+{
+"piid": "N6833519C0276",
+"pe_bli": "0605414N",
+"reason": "NRE for MD-5A UMCS for MQ-25; PE narrative says UMCS builds the core of the MD-5 control station"
+},
+{
+"piid": "N0001919F4033",
+"pe_bli": "0576",
+"reason": "NRE and DRP2 CCAs for APR-39D(V)2; PE narrative covers ECPs and procurement of upgraded APR-39"
+},
+{
+"piid": "N0001919F0306",
+"pe_bli": "0576",
+"reason": "Software NRE for DoN LAIRCM AN/AAQ-24; PE narrative names the AN/AAQ-24 DoN LAIRCM system"
+},
+{
+"piid": "HQ027619C0001",
+"pe_bli": "0603892C",
+"reason": "Design/develop/certify Aegis BMD 6.0; PE is the Aegis BMD program"
+},
+{
+"piid": "N0001919G0002",
+"pe_bli": "0193",
+"reason": "P-8A aircrew training system concurrency upgrades bought under P-8A program; PE is P-8A line"
+},
+{
+"piid": "N0001918F2483",
+"pe_bli": "V02200",
+"reason": "DWS NRE, spares and mission kits for CV-22 fit CV-22 Mods procurement line"
+},
+{
+"piid": "N6833519C0248",
+"pe_bli": "0195",
+"reason": "Depot repair capability for E-2D APY-9 radar, awarded under the E-2D Advanced Hawkeye program"
+},
+{
+"piid": "FA865019C7935",
+"pe_bli": "0603739E",
+"reason": "Contract is explicitly for T-MUSIC; PE narrative names T-MUSIC"
+},
+{
+"piid": "N0001919F2719",
+"pe_bli": "0564",
+"reason": "HPTS obsolescence NRE on E-6B, APN-funded; PE funds E-6B obsolescence/mission mods"
+},
+{
+"piid": "N0001920F0029",
+"pe_bli": "0569",
+"reason": "Backup oxygen retrofit kits for T-45, APN-funded modification; PE is T-45 series line"
+},
+{
+"piid": "FA873020C0001",
+"pe_bli": "0208006F",
+"reason": "F-15 Mission Planning Environment development; PE 0208006F is AF Mission Planning Systems"
+},
+{
+"piid": "N0001920C0047",
+"pe_bli": "0158",
+"reason": "Long-lead for Lot 5 CH-53K LRIP aircraft with APN funds; PE is the CH-53K aircraft line."
+},
+{
+"piid": "N0001920C0056",
+"pe_bli": "0193",
+"reason": "Bomb rack units bought with APN for P-8A Lots 9-11 aircraft deliveries; PE is the P-8A line."
+},
+{
+"piid": "N6833520F0001",
+"pe_bli": "0569",
+"reason": "NRE and delivery of T-45 Head-Up Display upgrade; PE is the T-45 aircraft mod line."
+},
+{
+"piid": "N0001920F0571",
+"pe_bli": "0592",
+"reason": "Mod/retrofit of delivered F-35s incl. Marine Corps; STOVL series mod line funds F-35B retrofits."
+},
+{
+"piid": "N0001920F0571",
+"pe_bli": "0593",
+"reason": "Mod/retrofit of delivered F-35s incl. Navy; CV series mod line funds F-35C retrofits."
+},
+{
+"piid": "HR001120C0087",
+"pe_bli": "0602303E",
+"reason": "Research project explicitly under DARPA SIEVE program; PE narrative names SIEVE."
+},
+{
+"piid": "N0001920F0350",
+"pe_bli": "0530",
+"reason": "Mission computer retrofits on MH-60R/S helicopters; PE is the MH-60R mod line."
+},
+{
+"piid": "N6833520F0277",
+"pe_bli": "0195",
+"reason": "E-2D AHE peculiar support equipment and ILS, APN funded; BLI is E-2D Advanced Hawkeye procurement"
+},
+{
+"piid": "N0001920F0358",
+"pe_bli": "0604216N",
+"reason": "RDT&E software development for MH-60R/S baseline; PE funds MH-60R/S development."
+},
+{
+"piid": "N6833520C0843",
+"pe_bli": "0193",
+"reason": "P-8A armament support equipment on aircraft procurement funds; PE owns P-8A."
+},
+{
+"piid": "HR001120C0159",
+"pe_bli": "0602303E",
+"reason": "Research contract explicitly under DARPA OPS-5G program named in PE"
+},
+{
+"piid": "HR001120C0158",
+"pe_bli": "0602303E",
+"reason": "Research contract explicitly under DARPA OPS-5G program named in PE"
+},
+{
+"piid": "N0001920C0054",
+"pe_bli": "0576",
+"reason": "Procures AN/APR-39C/D RWR hardware; 0576 Common ECM line owns AN/APR-39"
+},
+{
+"piid": "N0010420FVQ01",
+"pe_bli": "0182",
+"reason": "Manufacture of MJU-32A/B decoy flares; lexicon IR decoys MJU-32/38"
+},
+{
+"piid": "N0010420DVQ01",
+"pe_bli": "0182",
+"reason": "IDIQ for MJU-32A/B and MJU-38A/B flares; lexicon IR decoys MJU-32/38"
+},
+{
+"piid": "N0016720D0015",
+"pe_bli": "2013",
+"reason": "Virginia Class Submarine tailcones with SCN funding"
+},
+{
+"piid": "N0001919F0453",
+"pe_bli": "0576",
+"reason": "AN/AAQ-24 DoN LAIRCM processor replacement with APN funds; 0576 owns AN/AAQ-24"
+},
+{
+"piid": "N0042121F0103",
+"pe_bli": "0569",
+"reason": "T-45 oxygen concentrators with APN funds under T-45 Series mods"
+},
+{
+"piid": "N0001921F0064",
+"pe_bli": "0544",
+"reason": "Five E-2D aerial refueling retrofit kits is exactly the AR OSIP"
+},
+{
+"piid": "N6833521D0045",
+"pe_bli": "0604221N",
+"reason": "Award is P-3 fleet fatigue/obsolescence engineering; PE is the P-3 Modernization Program itself"
+},
+{
+"piid": "N0001921D0011",
+"pe_bli": "0560",
+"reason": "LAIRCM A-kit procurement is a C/KC-130 modification; BLI funds C/KC-130 mods"
+},
+{
+"piid": "N0001921F0090",
+"pe_bli": "V02200",
+"reason": "Harness retrofit kits are CV-22 modifications; BLI is CV-22 Mods"
+},
+{
+"piid": "N0001921C0004",
+"pe_bli": "0193",
+"reason": "APY-10 radar production kits are P-8A program GFE; BLI is P-8A procurement"
+},
+{
+"piid": "N0042119F0531",
+"pe_bli": "1000CV2200",
+"reason": "CV-22 mission planning system updates for RF countermeasures; CV-22 is the subject"
+},
+{
+"piid": "N0001921C0060",
+"pe_bli": "0442",
+"reason": "MQ-4C Triton program support; BLI is MQ-4 Triton procurement"
+},
+{
+"piid": "N6134021F7002",
+"pe_bli": "0158",
+"reason": "CH-53K flight training device updates and flight model validation are CH-53K program work"
+},
+{
+"piid": "N0001921F0005",
+"pe_bli": "0564",
+"reason": "E-6B mission computer 64-bit upgrade is a mission-system mod; PE funds E-6B mission system mods"
+},
+{
+"piid": "FA873520C0001",
+"pe_bli": "FBLOST",
+"reason": "Mod to the PNVC Integrator contract for PNVC Baseband Kit; PE quote names PNVC Integrator"
+},
+{
+"piid": "HR001121C0066",
+"pe_bli": "0603287E",
+"reason": "DRACO Track A named as the contracted program; PE narrative owns DRACO"
+},
+{
+"piid": "FA865021C7115",
+"pe_bli": "0603767E",
+"reason": "Contract is explicitly for the Moving Target Recognition (MTR) effort; PE names the program."
+},
+{
+"piid": "N0042121F0394",
+"pe_bli": "0569",
+"reason": "T-45 inlet modification retrofit kits Lots 3-4 with support; T-45 APN mod line owns this."
+},
+{
+"piid": "N6134020F0029",
+"pe_bli": "0569",
+"reason": "48 backup oxygen retrofit kits for T-45 with APN funds; T-45 mod line owns this."
+},
+{
+"piid": "N0001921F0426",
+"pe_bli": "0604216N",
+"reason": "NRE developing MH-60R/S ASE architecture matches MH-60R/S development PE"
+},
+{
+"piid": "N0001921F0434",
+"pe_bli": "0158",
+"reason": "SE/PM for CH-53K LRIP Lot 5/6 rate tooling is CH-53K program work"
+},
+{
+"piid": "HR001121C0134",
+"pe_bli": "0602716E",
+"reason": "Award is explicitly for the DARPA FENCE program"
+},
+{
+"piid": "N0001921F0836",
+"pe_bli": "ATA000",
+"reason": "Engineering support for F-35 production/modification deficiencies"
+},
+{
+"piid": "N0001921F0213",
+"pe_bli": "0564",
+"reason": "HPTS modernization kits installed on E-6B with APN funds; E-6B mod line"
+},
+{
+"piid": "N6134021C0017",
+"pe_bli": "0195",
+"reason": "E-2D weapons system trainer and concurrency updates bought under E-2D program"
+},
+{
+"piid": "N0001921C0045",
+"pe_bli": "0564",
+"reason": "Aircraft bought as in-flight trainer for the E-6B program with APN funds"
+},
+{
+"piid": "N6134021F0119",
+"pe_bli": "0193",
+"reason": "P-8A maintenance trainer upgrade is P-8A program work; BLI is the P-8A APN line"
+},
+{
+"piid": "FA865021C7123",
+"pe_bli": "0602303E",
+"reason": "SSITH ASIC effort explicitly under DARPA's SSITH program; PE owns SSITH"
+},
+{
+"piid": "FA880721C0006",
+"pe_bli": "1203164SF",
+"reason": "MGUE Increment 2 MSI contract mod; PE owns MGUE (lexicon cites Inc 1, verify Inc 2 scope)"
+},
+{
+"piid": "FA821321D0007",
+"pe_bli": "356010",
+"reason": "Bought item is the BBU-63 impulse cartridge, the named line item in the PE narrative"
+},
+{
+"piid": "FA821321D0008",
+"pe_bli": "356010",
+"reason": "Bought item is the BBU-63 impulse cartridge, the named line item in the PE narrative"
+},
+{
+"piid": "N0001921C0044",
+"pe_bli": "2327",
+"reason": "LRIP Lot 1 of AGM-88G AARGM-ER is exactly the PE's program"
+},
+{
+"piid": "W58RGZ21D0067",
+"pe_bli": "0607137A",
+"reason": "Integration of emerging tech into CAAS OFP on CH-47F is Chinook product improvement work"
+},
+{
+"piid": "N0001921F0718",
+"pe_bli": "0158",
+"reason": "CH-53K retrofit kits for SDTA aircraft with APN funds; CH-53K line owns the program"
+},
+{
+"piid": "N6833522C0097",
+"pe_bli": "0720",
+"reason": "Procures BRU-55C/A kits for B/A-to-C/A transition; BRU-55 line owns the program"
+},
+{
+"piid": "N0001922C0003",
+"pe_bli": "2004",
+"reason": "EMALS motor generator long lead for CVN 81; CVN-81 SCN line owns the ship"
+},
+{
+"piid": "N0001922C0004",
+"pe_bli": "0158",
+"reason": "CH-53K FRP Lot 7 long lead with APN funds; CH-53K line owns the program"
+},
+{
+"piid": "N0001921F0398",
+"pe_bli": "ATA000",
+"reason": "Ancillary mission equipment for Lot 15/16 F-35 production aircraft is F-35 procurement work"
+},
+{
+"piid": "N0001922F1147",
+"pe_bli": "0158",
+"reason": "DCU/BFD obsolescence redesign for CH-53K, APN-funded; CH-53K line owns the aircraft"
+},
+{
+"piid": "N0001922C0033",
+"pe_bli": "2004",
+"reason": "EMALS/AAG NRE explicitly for the CVN 81 carrier; ship line funds this GFE"
+},
+{
+"piid": "N0001922F0016",
+"pe_bli": "ATA000",
+"reason": "Delivery of air vehicle initial spares for F-35 production aircraft; F-35 procurement scope"
+},
+{
+"piid": "N0001922F1186",
+"pe_bli": "0158",
+"reason": "Aft transition assembly/kits production for CH-53K, APN-funded; CH-53K line"
+},
+{
+"piid": "N0016422CB003",
+"pe_bli": "2122",
+"reason": "SCN-funded PMS 400D support to design/build/test DDG 51 class ships"
+},
+{
+"piid": "N0001922F0996",
+"pe_bli": "0604216N",
+"reason": "Link 16 NRE integration into MH-60R/S with RDT&E funds; PE funds MH-60R/S development"
+},
+{
+"piid": "N0001922D0013",
+"pe_bli": "0566",
+"reason": "VH-92A simulators/trainers for Presidential Helicopter Program; PE quote owns VH-92A inventory"
+},
+{
+"piid": "N0001922F2230",
+"pe_bli": "0158",
+"reason": "CH-53K flight control computer redesign/NRE; PE quote owns CH-53K"
+},
+{
+"piid": "N6833522F0144",
+"pe_bli": "0195",
+"reason": "E-2D NRE, peculiar support equipment and ILS; PE quote owns E-2D Advanced Hawkeye"
+},
+{
+"piid": "N0001919D0012",
+"pe_bli": "4048",
+"reason": "Production of AN/SSQ-125A sonobuoys; PE quote names AN/SSQ-125/125A under sonobuoy line"
+},
+{
+"piid": "N0001919D0013",
+"pe_bli": "4048",
+"reason": "Production of AN/SSQ-125A sonobuoys; PE quote names AN/SSQ-125/125A under sonobuoy line"
+},
+{
+"piid": "FA821322D0003",
+"pe_bli": "356010",
+"reason": "IDIQ for BBU-35A/B impulse cartridge; PE quote lists BBU-35 impulse cartridge (MG62)"
+},
+{
+"piid": "FA821322D0002",
+"pe_bli": "356010",
+"reason": "IDIQ for BBU-35A/B impulse cartridge; PE quote lists BBU-35 impulse cartridge (MG62)"
+},
+{
+"piid": "N0002422C5522",
+"pe_bli": "0204202N",
+"reason": "DDG 1000 combat system activation/modernization and NRE; PE quote owns DDG 1000"
+},
+{
+"piid": "N0001922F0001",
+"pe_bli": "ATA000",
+"reason": "DMS NRE for F-35 cockpit display unit on production aircraft; F-35 program work"
+},
+{
+"piid": "N0001922F1020",
+"pe_bli": "ATA000",
+"reason": "NRE for F-35 mission rehearsal trainer; F-35 program training device"
+},
+{
+"piid": "N0001922F0014",
+"pe_bli": "0576",
+"reason": "Repair/calibration of AN/AAQ-24 DoN LAIRCM test assets; the program itself"
+},
+{
+"piid": "N0001922F0910",
+"pe_bli": "0305220N",
+"reason": "MQ-4C Triton full scale fatigue test; Triton development work"
+},
+{
+"piid": "N6134022F7009",
+"pe_bli": "0158",
+"reason": "Order buys a CH-53K flight training device for the CH-53K program; PE is the CH-53K line."
+},
+{
+"piid": "N0001922F2498",
+"pe_bli": "0449",
+"reason": "Initial spares and repair equipment for MQ-25A with FY22 APN funds; 0449 is the MQ-25 procurement line."
+},
+{
+"piid": "N0001922F2298",
+"pe_bli": "0604112N",
+"reason": "EMALS depot/component repair standup funded partly with Navy RDT&E; PE is the EMALS development line."
+},
+{
+"piid": "N0001920F0187",
+"pe_bli": "0590",
+"reason": "18 retrofit kits plus NRE for V-22 Mesh Network Manager upgrade; 0590 is the V-22 APN mods line."
+},
+{
+"piid": "N0001922F2122",
+"pe_bli": "0158",
+"reason": "Program-specific spares/repair for Lot 6 CH-53K LRIP aircraft under the CH-53K procurement line"
+},
+{
+"piid": "N0001922F2491",
+"pe_bli": "0566",
+"reason": "VH-92A flight training device production/updates; line is the VH-92A presidential helicopter program"
+},
+{
+"piid": "N6833522D0035",
+"pe_bli": "0193",
+"reason": "Radios/direction finders for P-8A production Lots 12-14; line is P-8A aircraft procurement"
+},
+{
+"piid": "N0001922F2439",
+"pe_bli": "0158",
+"reason": "NRE to incorporate fuel firewall shutoff valve into CH-53K, APN funds; CH-53K program engineering"
+},
+{
+"piid": "HR001123C0035",
+"pe_bli": "0602303E",
+"reason": "Contract explicitly for the SMOKE program; PE narrative names SMOKE"
+},
+{
+"piid": "N0001923F0051",
+"pe_bli": "1000CV2200",
+"reason": "Silent Knight Radar software updates/qual testing is a CV-22 modification effort"
+},
+{
+"piid": "N0001922F1198",
+"pe_bli": "0158",
+"reason": "Tech pubs/logistics data from production engineering changes supporting CH-53K production"
+},
+{
+"piid": "HR001123C0012",
+"pe_bli": "0602702E",
+"reason": "Contract explicitly for CRANE phase 2-3; PE narrative names CRANE"
+},
+{
+"piid": "N0003923D9001",
+"pe_bli": "2915",
+"reason": "IDIQ for CANES production units, software and spares; CANES is the PE's program of record"
+},
+{
+"piid": "N0003923D9002",
+"pe_bli": "2915",
+"reason": "IDIQ for CANES production units, software and spares; CANES is the PE's program of record"
+},
+{
+"piid": "N0003923D9003",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0003923D9004",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0003923D9005",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0003923D9006",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0003923D9007",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0003923D9008",
+"pe_bli": "2915",
+"reason": "IDIQ buys CANES production units/software/spares; CANES is the PE's own program of record"
+},
+{
+"piid": "N0001923F0002",
+"pe_bli": "0592",
+"reason": "F-35B retrofit/modification effort matches the STOVL Series aircraft-modification line"
+},
+{
+"piid": "N0001923F0002",
+"pe_bli": "0593",
+"reason": "F-35C retrofit/modification effort matches the CV Series aircraft-modification line"
+},
+{
+"piid": "N0001923C0003",
+"pe_bli": "ATA000",
+"reason": "Lot 18 F-35 long-lead procurement; F-35 program is the item bought"
+},
+{
+"piid": "N0001923F0103",
+"pe_bli": "0576",
+"reason": "NRE software fixes for DoN LAIRCM AN/AAQ-24, APN funded; PE quote names same system"
+},
+{
+"piid": "W56HZV23D0008",
+"pe_bli": "0605812A",
+"reason": "Contract is for JLTV FoV itself, incl. RDT&E funds; PE owns JLTV EMD/development"
+},
+{
+"piid": "N0042123F0197",
+"pe_bli": "0544",
+"reason": "APN-funded propeller MPH mod kits installed on E-2 (and C-2); E-2 Series APN line owns E-2 mods"
+},
+{
+"piid": "N0001922F1162",
+"pe_bli": "0576",
+"reason": "Procures AN/AAQ-45 DAIRCM shipsets with APN funds; PE quote shows OSIP 018-17 DAIRCM owned here"
+},
+{
+"piid": "N0001920F0002",
+"pe_bli": "0592",
+"reason": "APN-funded Block 4 tooling and retrofit mod kits for USMC/Navy/AF F-35s; PE is Navy F-35B APN"
+},
+{
+"piid": "N0001920F0002",
+"pe_bli": "0593",
+"reason": "APN-funded Block 4 tooling and retrofit mod kits for Navy F-35s; PE is Navy F-35C APN"
+},
+{
+"piid": "HR001123C0054",
+"pe_bli": "0603467E",
+"reason": "Contract is for the APEX program by name; DARPA PE narrative names APEX"
+},
+{
+"piid": "N0001923C0013",
+"pe_bli": "0158",
+"reason": "Production-lot engines for CH-53K helicopter production; PE is Navy CH-53K APN line"
+},
+{
+"piid": "N0001923C0048",
+"pe_bli": "0305231N",
+"reason": "NRE/development of IDS/IPS devices for MQ-8C Fire Scout integration; PE owns MQ-8C."
+},
+{
+"piid": "N0002416C2116",
+"pe_bli": "2004",
+"reason": "Engineering and technical support for CVN 80/81 with SCN funds; PE is the CVN-81 shipbuilding line."
+},
+{
+"piid": "FA868223CB005",
+"pe_bli": "0207325F",
+"reason": "JASSM AGM-158D development, test and integration with RDT&E funds; PE owns JASSM-ER/AGM-158D."
+},
+{
+"piid": "N6833523F0001",
+"pe_bli": "0569",
+"reason": "Production of 108 T-45 Head-Up Display units plus spares is a T-45 aircraft modification buy; PE owns T-45."
+},
+{
+"piid": "N0001923F0039",
+"pe_bli": "ATA000",
+"reason": "DMS management for the F-35 Joint Program itself; F-35 is the subject, PE/BLI owns F-35."
+},
+{
+"piid": "N0001923F0294",
+"pe_bli": "0588",
+"reason": "Retrofit upgrades to MQ-8C air vehicles are modification work; MQ-8 Series mod line."
+},
+{
+"piid": "N0002423C2305",
+"pe_bli": "2122",
+"reason": "Multiyear construction of DDG 51 class ships; SCN DDG-51 line owns it."
+},
+{
+"piid": "N0002423C2307",
+"pe_bli": "2122",
+"reason": "Multiyear construction of six DDG 51 class ships; SCN DDG-51 line owns it."
+},
+{
+"piid": "N6134023F0254",
+"pe_bli": "0586",
+"reason": "Block Two/FR300 upgrades to Navy P-8 trainers; P-8 Series mod line covers training system updates."
+},
+{
+"piid": "N0001923F0041",
+"pe_bli": "0596",
+"reason": "IFC-4 retrofit of fielded MQ-4C air vehicles is modification work; MQ-4 Series mod line."
+},
+{
+"piid": "N6833523F0285",
+"pe_bli": "0195",
+"reason": "E-2D maintenance support equipment bought with APN; program-specific support equipment under E-2D line"
+},
+{
+"piid": "N0001923C0040",
+"pe_bli": "2004",
+"reason": "EMALS energy storage subsystems produced for CVN 81; carrier GFE under the CVN-81 line"
+},
+{
+"piid": "FA821924C0001",
+"pe_bli": "0101328F",
+"reason": "Contract explicitly 'for the MK21A Reentry Vehicle (RV) program'; PE narrative owns Mk21A RV"
+},
+{
+"piid": "HR001124C0303",
+"pe_bli": "0602716E",
+"reason": "DARPA research contract for the Minitherms3D program; PE lexicon names Minitherms3D"
+},
+{
+"piid": "N0002424C2313",
+"pe_bli": "2122",
+"reason": "DDG 51 class lead yard support funded by SCN; core DDG-51 shipbuilding line work"
+},
+{
+"piid": "N0002424C2312",
+"pe_bli": "2122",
+"reason": "DDG 51 class follow yard support funded by SCN; DDG-51 shipbuilding line work"
+},
+{
+"piid": "N6833524C0088",
+"pe_bli": "0158",
+"reason": "Nose gearbox test equipment, spares, support for CH-53K on FY23 APN; CH-53K program support equipment"
+},
+{
+"piid": "N0001924C0008",
+"pe_bli": "2327",
+"reason": "LRIP Lot 3 AGM-88G AARGM-ER production; BLI 2327 is the AARGM-ER weapons procurement line"
+},
+{
+"piid": "W58RGZ24C0021",
+"pe_bli": "0756AA6601",
+"reason": "Purchase of MQ-1C-25M Gray Eagle systems; PE owns the MQ-1C Gray Eagle program."
+},
+{
+"piid": "N0001924C0017",
+"pe_bli": "0158",
+"reason": "TBFDS/Delta install kits for CH-53K, APN-funded aircraft equipment under the CH-53K procurement line."
+},
+{
+"piid": "N0001921F0810",
+"pe_bli": "0158",
+"reason": "AN/AAQ-44 FLIR kits for CH-53K production aircraft, APN funds; production equipment under CH-53K line."
+},
+{
+"piid": "N0001924C0019",
+"pe_bli": "0158",
+"reason": "Long-lead for Lot 9 FRP T408 engines for CH-53K, APN; production under the CH-53K line."
+},
+{
+"piid": "N0002424C2331",
+"pe_bli": "0204202N",
+"reason": "DDG 1000 class planning yard support is DDG 1000 class program work"
+},
+{
+"piid": "N0001924F2584",
+"pe_bli": "ATA000",
+"reason": "F-35 Gen III HMD redesign explicitly in support of the F-35 program"
+},
+{
+"piid": "FA861624DB001",
+"pe_bli": "0101127F",
+"reason": "B-2 modernization and sustainment IDIQ; PE narrative names B-2 Modernization"
+},
+{
+"piid": "N0001924C0005",
+"pe_bli": "0305220N",
+"reason": "Triton sustainment engineering incl. ECP NRE; award subject is MQ-4C, PE owns Triton"
+},
+{
+"piid": "N0001924C0005",
+"pe_bli": "0596",
+"reason": "Sustainment, spares, mods for MQ-4C fit the MQ-4 Series support line"
+},
+{
+"piid": "N0001921F0806",
+"pe_bli": "0442",
+"reason": "Material for continued MQ-4C Triton production; APN Triton line"
+},
+{
+"piid": "N0003924D4004",
+"pe_bli": "0604280N",
+"reason": "MIDS JTRS terminal production/development/sustainment; PE owns MIDS JTRS"
+},
+{
+"piid": "N0003924D4005",
+"pe_bli": "0604280N",
+"reason": "MIDS JTRS terminal production/development/sustainment; PE owns MIDS JTRS"
+},
+{
+"piid": "N0001924F0663",
+"pe_bli": "0158",
+"reason": "NRE for inceptor obsolescence on CH-53K production/fielded aircraft; APN CH-53K"
+},
+{
+"piid": "N0001924F0074",
+"pe_bli": "0195",
+"reason": "Components for E-2D production, aircraft procurement funds; APN E-2D line"
+},
+{
+"piid": "N0001924C0028",
+"pe_bli": "V02200",
+"reason": "VSLED WRAs for CV-22 retrofit with procurement funds; CV-22 Mods line"
+},
+{
+"piid": "N0001924C0028",
+"pe_bli": "0590",
+"reason": "VSLED retrofit for Marine V-22/MV-22 with aircraft procurement funds; V-22 APN line"
+},
+{
+"piid": "N0001924F1870",
+"pe_bli": "0564",
+"reason": "E-6B waveform integration with APN funds; BLI is E-6 mission system mods"
+},
+{
+"piid": "N0001924G0017",
+"pe_bli": "0564",
+"reason": "BOA for E-6B mission system integration with APN funds; E-6 mods line"
+},
+{
+"piid": "N0001924F0020",
+"pe_bli": "0576",
+"reason": "IDECM AN/ALQ-214 DRTG G2 retrofit kits; BLI covers ALQ-214 IDECM procurement"
+},
+{
+"piid": "N0001922G0005",
+"pe_bli": "0576",
+"reason": "BOA for IDECM AN/ALQ-214 DRTG G2 retrofit kits; BLI covers ALQ-214 procurement"
+},
+{
+"piid": "W912CH24D0026",
+"pe_bli": "7181G80820",
+"reason": "Award is fielding tools/equipment for M10 Booker; PE line is M10 BOOKER itself."
+},
+{
+"piid": "N0001924C0062",
+"pe_bli": "2327",
+"reason": "LRIP long-lead for AGM-88G AARGM-ER; PE narrative names AGM-88G AARGM-ER as its program."
+},
+{
+"piid": "N0016724D0004",
+"pe_bli": "2013",
+"reason": "VCS propulsor forward subassemblies production; PE line is Virginia Class Submarine."
+},
+{
+"piid": "N0001924F0259",
+"pe_bli": "0604269N",
+"reason": "NGEAU kits and DT/OT for Growler Block II; PE narrative names NGEAU transition."
+},
+{
+"piid": "N0001921G0006",
+"pe_bli": "0604269N",
+"reason": "NGEAU kits and DT/OT for Growler Block II; PE narrative names NGEAU transition."
+},
+{
+"piid": "HR001124S0016",
+"pe_bli": "0602716E",
+"reason": "Award is explicitly for the COOP program; PE narrative describes COOP."
+},
+{
+"piid": "HR001125C0300",
+"pe_bli": "0602716E",
+"reason": "Award is explicitly for the COOP program; PE narrative describes COOP."
+},
+{
+"piid": "HR001124S0016",
+"pe_bli": "0603469E",
+"reason": "Award is explicitly for the COOP program; PE lists COOP by name."
+},
+{
+"piid": "HR001125C0300",
+"pe_bli": "0603469E",
+"reason": "Award is explicitly for the COOP program; PE lists COOP by name."
+},
+{
+"piid": "N0001925C0070",
+"pe_bli": "ATA000",
+"reason": "F-35 Lot 20 long-lead production materials; the F-35 aircraft program is the bought item."
+},
+{
+"piid": "N0001925C0070",
+"pe_bli": "0592",
+"reason": "Lot 20 long-lead includes Marine Corps STOVL aircraft; advance procurement under this line."
+},
+{
+"piid": "N0001925C0070",
+"pe_bli": "0593",
+"reason": "Lot 20 long-lead includes Navy CV aircraft; advance procurement under this line."
+},
+{
+"piid": "HR001124S0010",
+"pe_bli": "0602024E",
+"reason": "Award is explicitly for the BioLogical Undersea Energy program; PE lists it by name."
+},
+{
+"piid": "HR001125C0004",
+"pe_bli": "0602024E",
+"reason": "Award is explicitly for the BioLogical Undersea Energy program; PE lists it by name."
+},
+{
+"piid": "N0001920F0647",
+"pe_bli": "0586",
+"reason": "Increment 3 retrofit A-kits for P-8A are modifications under the P-8 Series line"
+},
+{
+"piid": "N0001925F0193",
+"pe_bli": "0158",
+"reason": "Logistics analysis and repair capability for CH-53K configuration changes; program work"
+},
+{
+"piid": "N0001925C0075",
+"pe_bli": "ATA000",
+"reason": "F135 engine depot sustainment for F-35 JSF; PE is the F-35 program"
+},
+{
+"piid": "N0001925F0280",
+"pe_bli": "0525",
+"reason": "DTP-N kits for F-18 service life modifications; F-18 Series is the mod line"
+},
+{
+"piid": "N0001924F0571",
+"pe_bli": "0195",
+"reason": "E-2D Advanced Hawkeye production-to-sustainment transition support; PE owns E-2D"
+},
+{
+"piid": "N0042125D0302",
+"pe_bli": "0522",
+"reason": "Navy F-16/F-5 avionics mods; PE narrative owns Adversary F-5/F-16 mission systems"
+},
+{
+"piid": "N0001925F2024",
+"pe_bli": "ATA000",
+"reason": "F-35 software activation/core software domains; PE is the F-35 program"
+},
+{
+"piid": "HQ085125DE001",
+"pe_bli": "0603892C",
+"reason": "Aegis BMD CSEA contract is the core Aegis BMD program engineering effort"
+},
+{
+"piid": "N0001924F5029",
+"pe_bli": "0590",
+"reason": "V-22 retrofit kits for improvement efforts are V-22 program modification buys"
+},
+{
+"piid": "N0001925C0100",
+"pe_bli": "0193",
+"reason": "Bomb rack shipsets for P-8A Lot 13 aircraft with APN funds"
+},
+{
+"piid": "N0001925F0264",
+"pe_bli": "ATA000",
+"reason": "DMSMS program management support for F-35 production and sustainment"
+},
+{
+"piid": "N0003910D0031",
+"pe_bli": "0604280N",
+"reason": "Systems engineering for MIDS LVT and MIDS JTRS terminals; PE is MIDS JTRS"
+},
+{
+"piid": "N0003910D0032",
+"pe_bli": "0604280N",
+"reason": "Systems engineering for MIDS LVT and MIDS JTRS terminals; PE is MIDS JTRS"
+},
+{
+"piid": "N0003914D0121",
+"pe_bli": "2915",
+"reason": "Multi-award IDIQ for CANES production units; this PIID is one of the named awards"
+},
+{
+"piid": "N0003914D0122",
+"pe_bli": "2915",
+"reason": "Multi-award IDIQ for CANES production units; this PIID is one of the named awards"
+},
+{
+"piid": "N0003914D0123",
+"pe_bli": "2915",
+"reason": "Multi-award IDIQ for CANES production units; this PIID is one of the named awards"
+},
+{
+"piid": "N0003914D0124",
+"pe_bli": "2915",
+"reason": "Multi-award IDIQ for CANES production units; this PIID is one of the named awards"
+},
+{
+"piid": "N0003914D0125",
+"pe_bli": "2915",
+"reason": "Multi-award IDIQ for CANES production units; this PIID is one of the named awards"
+},
+{
+"piid": "N0001914G0004",
+"pe_bli": "0566",
+"reason": "VH-3D cabin/ECS redesign NRE with APN funds; PE funds VH-3D modifications"
+},
+{
+"piid": "N0001911G0001",
+"pe_bli": "0569",
+"reason": "T-45 SLEP prototype kits NRE; PE is T-45 series line"
+},
+{
+"piid": "N0001910G0004",
+"pe_bli": "0576",
+"reason": "NRE integrating AN/AAQ-24(V)25 on MV-22 with APN funds; PE owns DoN LAIRCM AN/AAQ-24 for assault support"
+},
+{
+"piid": "N0001915C0016",
+"pe_bli": "0592",
+"reason": "Modification of 13 F-35B (STOVL) air vehicles with kits; PE is F-35 STOVL series mods"
+},
+{
+"piid": "FA862511C6597",
+"pe_bli": "0416",
+"reason": "Purchase of three KC-130J production aircraft (with other variants); PE is KC-130J procurement"
+},
+{
+"piid": "N0003915D0001",
+"pe_bli": "2915",
+"reason": "CANES production units contract; PE narrative is the CANES program itself."
+},
+{
+"piid": "N0003915D0002",
+"pe_bli": "2915",
+"reason": "CANES production units contract; PE narrative is the CANES program itself."
+},
+{
+"piid": "N6833510G0021",
+"pe_bli": "0195",
+"reason": "E-2D peculiar support equipment with APN funds; 0195 is the E-2D aircraft procurement line."
+},
+{
+"piid": "HR001115C0003",
+"pe_bli": "0602303E",
+"reason": "Research contract explicitly under DARPA SHIELD program, which the PE narrative owns."
+},
+{
+"piid": "HR001115C0010",
+"pe_bli": "0602303E",
+"reason": "Research contract explicitly under DARPA SHIELD program, which the PE narrative owns."
+},
+{
+"piid": "N0003915D0005",
+"pe_bli": "2915",
+"reason": "SBIR III decision-support tooling explicitly for the CANES program office."
+},
+{
+"piid": "N0001915C0034",
+"pe_bli": "0305231N",
+"reason": "Engineering sustainment of MQ-8 program software; PE narrative is the MQ-8 UAS program."
+},
+{
+"piid": "N0001915C0039",
+"pe_bli": "0569",
+"reason": "Digital data set kits and MDTUs installed on T-45; 0569 is the T-45 Series modification line."
+},
+{
+"piid": "N0001915C0093",
+"pe_bli": "0564",
+"reason": "APU upgrade A-kits for E-6B; PE is the E-6B modification line."
+},
+{
+"piid": "HR001114C0123",
+"pe_bli": "0603286E",
+"reason": "Option exercised for the Tactical Boost Glide program; PE narrative owns TBG"
+},
+{
+"piid": "N6833515D0003",
+"pe_bli": "0193",
+"reason": "Direction finders/radio shipsets bought with APN funds in support of the P-8A program"
+},
+{
+"piid": "N6893615D0016",
+"pe_bli": "0569",
+"reason": "DDS/TAWS integration and OFP for T-45C is T-45 modification work"
+},
+{
+"piid": "N6833515D0024",
+"pe_bli": "0193",
+"reason": "Antenna interface units for P-8A Lots 6-8 in support of the P-8A program"
+},
+{
+"piid": "N0001915C0104",
+"pe_bli": "0576",
+"reason": "FRP Lot XII AN/ALQ-214(V)4/5 IDECM jammers; PE narrative owns ALQ-214/IDECM Block 4"
+},
+{
+"piid": "W56HZV15C0095",
+"pe_bli": "5731D15610",
+"reason": "JLTV LRIP/FRP award; PE narrative owns JLTV FoV"
+},
+{
+"piid": "HR001115C0027",
+"pe_bli": "0602702E",
+"reason": "ALIAS Phase II option; PE narrative owns ALIAS"
+},
+{
+"piid": "W911QY15C0112",
+"pe_bli": "9140MA7804",
+"reason": "Fabrication of RA-1 free-fall parachute systems; PE owns RA-1"
+},
+{
+"piid": "HR001112C0086",
+"pe_bli": "0602702E",
+"reason": "ACTUV extended test phase; PE narrative owns ACTUV"
+},
+{
+"piid": "FA867510C0011",
+"pe_bli": "M88AAG",
+"reason": "AGM-88 HARM control-section mod production repair, fiscal 2013 missile procurement funds; line owns HARM"
+},
+{
+"piid": "HR001115C0135",
+"pe_bli": "0603760E",
+"reason": "Research under 100G RF Backbone Phase 2; DARPA PE names the program"
+},
+{
+"piid": "FA867515D0135",
+"pe_bli": "0207163F",
+"reason": "AIM-120D system improvement program support; AMRAAM PE narrative owns AIM-120D"
+},
+{
+"piid": "N0002416C4202",
+"pe_bli": "2122",
+"reason": "NRE for DDG 51 main reduction gears; DDG-51 SCN line funds ship propulsion components"
+},
+{
+"piid": "FA862016C3003",
+"pe_bli": "0205219F",
+"reason": "MQ-9 Hybrid Release 1 integration into Block 5 with RDT&E funds; MQ-9 UAV RDT&E PE"
+},
+{
+"piid": "N6833516C0024",
+"pe_bli": "0193",
+"reason": "P-8A support equipment on APN funds; P-8A production line funds support equipment"
+},
+{
+"piid": "N0001916C0048",
+"pe_bli": "0158",
+"reason": "CH-53K LRIP Lot 1 long-lead on APN; CH-53K production line"
+},
+{
+"piid": "W31P4Q16D0020",
+"pe_bli": "0605457A",
+"reason": "P&F A-kits and AIAMD integration/test support; AIAMD RDT&E PE"
+},
+{
+"piid": "FA865016C7623",
+"pe_bli": "0602303E",
+"reason": "LADS R&D award; lexicon shows DARPA PE owns LADS program"
+},
+{
+"piid": "FA821316D0005",
+"pe_bli": "356010",
+"reason": "Award replenishes BBU-35 A/B impulse cartridges; BBU-35 is the bought item and the PE line item"
+},
+{
+"piid": "FA821316D0006",
+"pe_bli": "356010",
+"reason": "Award replenishes BBU-35 A/B impulse cartridges; BBU-35 is the bought item and the PE line item"
+},
+{
+"piid": "W911QY16D0051",
+"pe_bli": "9140MA7804",
+"reason": "Award purchases the RA-1 Advanced Ram Air parachute system and spares; PE owns RA-1"
+},
+{
+"piid": "FA862116C6390",
+"pe_bli": "0401221F",
+"reason": "Award buys the KC-46 Maintenance Training System; KC-46 PE narrative names MTS as its capability"
+},
+{
+"piid": "N0001916D0051",
+"pe_bli": "0530",
+"reason": "APS-153 radar kits to upgrade the MH-60R fleet; award work is an MH-60R modification"
+},
+{
+"piid": "FA821316D0007",
+"pe_bli": "356010",
+"reason": "Award replenishes BBU-35 A/B impulse cartridges; BBU-35 is the bought item (partly FMS)"
+},
+{
+"piid": "FA821316D0008",
+"pe_bli": "356010",
+"reason": "Award replenishes BBU-35 A/B impulse cartridges; BBU-35 is the bought item (partly FMS)"
+},
+{
+"piid": "FA821316F0021",
+"pe_bli": "356010",
+"reason": "Order under BBU-35 impulse cartridge replenishment IDIQ; BBU-35 is the bought item"
+},
+{
+"piid": "FA821316F0022",
+"pe_bli": "356010",
+"reason": "Order under BBU-35 impulse cartridge replenishment IDIQ; BBU-35 is the bought item"
+},
+{
+"piid": "FA875016C0179",
+"pe_bli": "0602303E",
+"reason": "Award is a TA3 project under DARPA RADICS; PE narrative owns the RADICS program"
+},
+{
+"piid": "N0016416DWS02",
+"pe_bli": "0513",
+"reason": "Obsolescence prototypes for AN/ALQ-99F TJS; EA-18G mods line funds ALQ-99 sustainability"
+},
+{
+"piid": "N0016416DWS01",
+"pe_bli": "0513",
+"reason": "Obsolescence prototypes for AN/ALQ-99F TJS; EA-18G mods line funds ALQ-99 sustainability"
+},
+{
+"piid": "N0016416DWS94",
+"pe_bli": "0513",
+"reason": "Obsolescence prototypes for AN/ALQ-99F TJS; EA-18G mods line funds ALQ-99 sustainability"
+},
+{
+"piid": "HR001116C0106",
+"pe_bli": "0602716E",
+"reason": "Research project under DARPA MOABB program; PE narrative owns MOABB"
+},
+{
+"piid": "N0002416C5370",
+"pe_bli": "0604522N",
+"reason": "EMD contract for EASR itself; PE narrative owns AN/SPY-6(V)2/(V)3 EASR"
+},
+{
+"piid": "N0002416C5136",
+"pe_bli": "0603581N",
+"reason": "Development of LCS (Frigate increment) Combat Management System; PE is LCS RDT&E"
+},
+{
+"piid": "FA865016C7656",
+"pe_bli": "0603766E",
+"reason": "R&D Phase 2 of SoSITE program itself; DARPA PE narrative names SoSITE"
+},
+{
+"piid": "N0001916C0055",
+"pe_bli": "0443",
+"reason": "Procurement of 10 MQ-8C air systems on APN; MQ-8 UAV procurement line"
+},
+{
+"piid": "W31P4Q20C0023",
+"pe_bli": "8260C53101",
+"reason": "Spelled-out PATRIOT Advanced Capability-3 MSE missiles; PAC-3 missile line."
+},
+{
+"piid": "W56HZV21D0001",
+"pe_bli": "6500GA0750",
+"reason": "M1A2 SEPv3 tanks are the SEP program item; GDLS Army buy."
+},
+{
+"piid": "FA881125DB002",
+"pe_bli": "NSSL00",
+"reason": "NSSL Phase 3 Lane 2 launch services; program named directly."
+},
+{
+"piid": "FA881124DB002",
+"pe_bli": "NSSL00",
+"reason": "NSS Launch Phase 3 Lane 1 launch services; NSSL program named."
+},
+{
+"piid": "FA881124DB003",
+"pe_bli": "NSSL00",
+"reason": "NSS Launch Phase 3 Lane 1 launch services; NSSL program named."
+},
+{
+"piid": "FA881124DB001",
+"pe_bli": "NSSL00",
+"reason": "NSS Launch Phase 3 Lane 1 launch services; NSSL program named."
+},
+{
+"piid": "FA881018C0005",
+"pe_bli": "1206443SF",
+"reason": "Three NGG space vehicles from Lockheed; Next-Gen OPIR GEO is the program."
+},
+{
+"piid": "M6785416C0006",
+"pe_bli": "0605611M",
+"reason": "ACV recovery-variant vehicles; PE owns the Amphibious Combat Vehicle."
+},
+{
+"piid": "W900KK22D0001",
+"pe_bli": "0605100D8Z",
+"reason": "NCRC event execution and range modernization; program named exactly."
+},
+{
+"piid": "FA867220D0001",
+"pe_bli": "SDB000",
+"reason": "SDB Increment I weapon program from Boeing; GBU-39 is SDB I."
+},
+{
+"piid": "W15P7T18D0008",
+"pe_bli": "0604818A",
+"reason": "Common Hardware Systems 5th Gen from GDMS; CHS program named."
+},
+{
+"piid": "N6893618D0026",
+"pe_bli": "0505",
+"reason": "System configuration sets for F/A-18 upgrades; SCS program named unmistakably."
+},
+{
+"piid": "FA880718C0009",
+"pe_bli": "1203269SF",
+"reason": "GPS IIIF SV 11-12 production; GPS III Follow-On named verbatim."
+},
+{
+"piid": "FA862622D0010",
+"pe_bli": "0604010F",
+"reason": "NGAP prototype phase named in full; PE narrative carries NGAP"
+},
+{
+"piid": "W58RGZ21D0028",
+"pe_bli": "5399AZ3537",
+"reason": "CIRCM production by the CIRCM prime; PE is the CIRCM procurement line"
+},
+{
+"piid": "N0002424C2135",
+"pe_bli": "1045",
+"reason": "Submarine Industrial Base is the lexicon's stated prior name for MIB; BlueForge SIB award"
+},
+{
+"piid": "W56HZV21D0017",
+"pe_bli": "0363G85200",
+"reason": "Stryker MCWS production/fielding named as the bought item; Oshkosh is Stryker prime"
+},
+{
+"piid": "HQ014712D0003",
+"pe_bli": "0603896C",
+"reason": "Full C2BMC name spelled out for BMDS; Lockheed is C2BMC prime; PE is C2BMC"
+},
+{
+"piid": "FA881113C0003",
+"pe_bli": "NSSL00",
+"reason": "EELV launch capability is the same line later renamed NSSL; ULA Delta IV/Atlas V services"
+},
+{
+"piid": "FA872318D0001",
+"pe_bli": "SPCMOD",
+"reason": "PARCS (misspelled 'Parameter') is the sustained radar itself; Northrop sustains PARCS"
+},
+{
+"piid": "W56KGY20D0005",
+"pe_bli": "9690BZ7316",
+"reason": "DCGS-A named in full; Palantir DCGS-A award; PE is DCGS-A procurement line"
+},
+{
+"piid": "W56KGY20D0006",
+"pe_bli": "9690BZ7316",
+"reason": "DCGS-A named in full; Palantir DCGS-A award; PE is DCGS-A procurement line"
+},
+{
+"piid": "W56HZV15D0031",
+"pe_bli": "8309DA0500",
+"reason": "HEMTT recapitalization of 1,363 trucks named; PE is HEMTT line; Oshkosh prime"
+},
+{
+"piid": "W912CH25F0096",
+"pe_bli": "1678GZ2400",
+"reason": "M2A4 is the Bradley production designator; BAE producing M2A4 vehicles"
+},
+{
+"piid": "FA881819D0003",
+"pe_bli": "1206770SF",
+"reason": "Transition to and buildout of Enterprise Ground Services named verbatim; PE is EGS"
+},
+{
+"piid": "FA881820D0009",
+"pe_bli": "1206770SF",
+"reason": "Same EGS buildout series; program named verbatim; PE is EGS"
+},
+{
+"piid": "W15P7T21D0001",
+"pe_bli": "0605144A",
+"reason": "NGLD-M named as the contracted item; only hyphen spacing differs"
+},
+{
+"piid": "W15P7T21D0002",
+"pe_bli": "0605144A",
+"reason": "NGLD-M named as the contracted item; only hyphen spacing differs"
+},
+{
+"piid": "W15P7T19D0218",
+"pe_bli": "1989B11200",
+"reason": "Troposcatter Transmission System is the bought system plus spares/engineering; PE is TROPO"
+},
+{
+"piid": "FA229323DB001",
+"pe_bli": "0303131F",
+"reason": "Force Element Terminal production under FAB-T named; PE is FAB-T FET"
+},
+{
+"piid": "N0001917D5517",
+"pe_bli": "0151",
+"reason": "APKWS II FRP Lots 5-7 named; PE 0151 is the APKWS procurement line"
+},
+{
+"piid": "HQ085320D0001",
+"pe_bli": "0603881C",
+"reason": "THAAD product support named; Lockheed THAAD prime; PE is THAAD"
+},
+{
+"piid": "W912CH24F0170",
+"pe_bli": "2073GZ0410",
+"reason": "M109A7/M992A3 are the PIM production vehicles; BAE PIM prime"
+},
+{
+"piid": "W91CRB22D0008",
+"pe_bli": "0177K22001",
+"reason": "FWS-Individual is an increment of the FWS program; DRS is FWS-I prime"
+},
+{
+"piid": "M6785423D2060",
+"pe_bli": "0206313M",
+"reason": "MCWS-L/H purchase named; lexicon PE explicitly covers the L/H variants"
+},
+{
+"piid": "W15QKN18D0135",
+"pe_bli": "8310G04700",
+"reason": "M153 CROWS production/sustainment named verbatim; Kongsberg CROWS prime; PE is CROWS"
+},
+{
+"piid": "FA872319D0003",
+"pe_bli": "SPCMOD",
+"reason": "Solid State Module replacement is a BMEWS radar modification; PE names BMEWS as its program"
+},
+{
+"piid": "W56JSR24D0002",
+"pe_bli": "8659AA0723",
+"reason": "AN/ARC-231/A radio hardware is the bought item; PE names MARS as the ARC-231A system"
+},
+{
+"piid": "FA830717D0017",
+"pe_bli": "831010",
+"reason": "VACM full-rate production named verbatim; PE is the VACM line"
+},
+{
+"piid": "FA868221C0004",
+"pe_bli": "LRASM0",
+"reason": "Lots 4/5 LRASM missiles are the item; PE is the LRASM line"
+},
+{
+"piid": "W56JSR19D0014",
+"pe_bli": "8659AA0723",
+"reason": "AN/ARC-231 MARS radio hardware and repair is the item; PE owns MARS/ARC-231A"
+},
+{
+"piid": "W56KGY23D0003",
+"pe_bli": "9897K49000",
+"reason": "DAPS Gen II LRUs named in full; PE is the DAPS line"
+},
+{
+"piid": "N0002421C5408",
+"pe_bli": "2307",
+"reason": "ESSM Block 2 full-rate production; PE is the ESSM line"
+},
+{
+"piid": "FA880708C0010",
+"pe_bli": "GPSIII",
+"reason": "GPS III SV 09/10 option is the GPS III Space Segment program"
+},
+{
+"piid": "FA880819C0001",
+"pe_bli": "1206760SF",
+"reason": "PTES named verbatim as contract subject; PE owns PTES"
+},
+{
+"piid": "W31P4Q19C0077",
+"pe_bli": "6552C67500",
+"reason": "M270A0-to-M270A2 launcher conversion is the M270A2 MLRS program the PE names"
+},
+{
+"piid": "N0002423C6411",
+"pe_bli": "3117",
+"reason": "MK 48 all-up-round components; PE is the MK 48 G&C/WES procurement line"
+},
+{
+"piid": "W56HZV22D0092",
+"pe_bli": "8309DA0500",
+"reason": "EHETS trailer named in full; PE is EHETS"
+},
+{
+"piid": "W56HZV22D0082",
+"pe_bli": "6880D15620",
+"reason": "CATV production units and CLS; PE is the CATV procurement line"
+},
+{
+"piid": "W909MY24D0001",
+"pe_bli": "0050MA0780",
+"reason": "Automated Installation Entry system named verbatim; PE is AIE"
+},
+{
+"piid": "N0001919C0020",
+"pe_bli": "2867",
+"reason": "JPALS LRIP of 23 systems; Navy PE is JPALS"
+},
+{
+"piid": "W56HZV20D0066",
+"pe_bli": "3484D15501",
+"reason": "ISV production award to prime; BLI is the Army ISV procurement line"
+},
+{
+"piid": "FA867219D0001",
+"pe_bli": "0207327F",
+"reason": "SDB II life-cycle support; SDB II is GBU-53/B, the PE's own program"
+},
+{
+"piid": "FA867216D0010",
+"pe_bli": "SDB000",
+"reason": "SDB I Lots 12-14 production; SDB I is GBU-39/B, the BLI's own item"
+},
+{
+"piid": "FA862615D0016",
+"pe_bli": "0207268F",
+"reason": "F110/101/118 ECIP contract; PE is the F110 ECIP program"
+},
+{
+"piid": "W31P4Q23C0032",
+"pe_bli": "6552C67500",
+"reason": "Recap of launchers into M270A2 configuration; BLI is the M270A2 line"
+},
+{
+"piid": "FA810224D2200",
+"pe_bli": "833010",
+"reason": "MP TACAN replacement program named verbatim; BLI owns MP TACAN"
+},
+{
+"piid": "W912GB16C0005",
+"pe_bli": "MD73",
+"reason": "EPAA Phase III Aegis Ashore Poland construction; MDA line is Aegis Ashore Phase III"
+},
+{
+"piid": "N0002416C5102",
+"pe_bli": "0604307N",
+"reason": "Aegis Baseline 9 AWS development and fielding; PE is AWS RDT&E"
+},
+{
+"piid": "FA868219C0010",
+"pe_bli": "LRASM0",
+"reason": "LRASM Lot 2 production named directly; AF BLI is LRASM"
+},
+{
+"piid": "FA868220C0003",
+"pe_bli": "LRASM0",
+"reason": "48 LRASM missiles plus tooling; AF BLI is LRASM"
+},
+{
+"piid": "N0001918C1022",
+"pe_bli": "0604014N",
+"reason": "F/A-18E/F IRST Block II engineering change; PE owns F/A-18 IRST"
+},
+{
+"piid": "N0002420C5400",
+"pe_bli": "2242",
+"reason": "RAM Block 2/2A round pack production; WPN line is RAM"
+},
+{
+"piid": "N6660424DR400",
+"pe_bli": "0840",
+"reason": "Depot repair/upgrade of photonics masts incl. LPPM; OPN line covers these masts"
+},
+{
+"piid": "N6134017C0007",
+"pe_bli": "0204571N",
+"reason": "TCTS Inc II named directly; PE owns TCTS Increment II"
+},
+{
+"piid": "N0002421C5406",
+"pe_bli": "4205",
+"reason": "MK 15 CIWS upgrades/conversions/overhauls is Phalanx CIWS procurement work"
+},
+{
+"piid": "W900KK25D0047",
+"pe_bli": "0604760A",
+"reason": "Award is for OneSAF software itself; hyphenation-only variant of the PE's program"
+},
+{
+"piid": "M6785416C0007",
+"pe_bli": "0605611M",
+"reason": "ACV 1.1 EMD is the RDT&E development phase this PE funds"
+},
+{
+"piid": "N0002422C6419",
+"pe_bli": "3117",
+"reason": "MK 48 Mod 7 afterbody/tailcone and fuel tank production is the MK 48 Mod 7 torpedo line"
+},
+{
+"piid": "FA881922C0001",
+"pe_bli": "CTRSPC",
+"reason": "Upgrades of Counter Communications Block 10.2 fielded systems is CCS P3I work"
+},
+{
+"piid": "FA820419C0001",
+"pe_bli": "M30MLG",
+"reason": "ICBM cryptography upgrade production in 2019 is a Minuteman III (LGM-30G) modification"
+},
+{
+"piid": "W912CH24F0082",
+"pe_bli": "6866D15500",
+"reason": "Oshkosh 'Family of Medium Trucks' award is FMTV vehicle procurement"
+},
+{
+"piid": "FA821017C0001",
+"pe_bli": "0604735F",
+"reason": "Advance(d) Radar Threat System Variant 2 is the ARTS item; contractor field garbled but match holds"
+},
+{
+"piid": "W31P4Q19C0055",
+"pe_bli": "0962C50700",
+"reason": "Patriot DSLC and PEAB modification kits are Patriot Mods work"
+},
+{
+"piid": "W56KGY24D0004",
+"pe_bli": "0304270A",
+"reason": "TLS-BCT Manpack is a variant within the TLS-BCT program the PE describes"
+},
+{
+"piid": "W911QY19D0033",
+"pe_bli": "0604113A",
+"reason": "FTUAS award; 'Aerial' vs 'Aircraft' wording variant of the same Army program"
+},
+{
+"piid": "W911QY19D0050",
+"pe_bli": "0604113A",
+"reason": "FTUAS award; 'Aerial' vs 'Aircraft' wording variant of the same Army program"
+},
+{
+"piid": "W911QY19D0032",
+"pe_bli": "0604113A",
+"reason": "FTUAS award; 'Aerial' vs 'Aircraft' wording variant of the same Army program"
+},
+{
+"piid": "W911QY19D0051",
+"pe_bli": "0604113A",
+"reason": "FTUAS award; 'Aerial' vs 'Aircraft' wording variant of the same Army program"
+},
+{
+"piid": "N0001419D7001",
+"pe_bli": "0603680N",
+"reason": "Navy ManTech center award is the Navy Manufacturing Technology Program"
+},
+{
+"piid": "N0001421D7001",
+"pe_bli": "0603680N",
+"reason": "Navy ManTech Composite Manufacturing Center is Navy ManTech program work"
+},
+{
+"piid": "N0001424D7001",
+"pe_bli": "0603680N",
+"reason": "ONR ManTech NSAM COE is Navy ManTech program work"
+},
+{
+"piid": "N0001416D4004",
+"pe_bli": "0603680N",
+"reason": "ONR ManTech Navy Electronics center support; Navy ManTech program named explicitly"
+},
+{
+"piid": "W56HZV23D0076",
+"pe_bli": "1110MA4500",
+"reason": "RTCH modernization program is the item; matches Army MHE procurement line"
+},
+{
+"piid": "W56KGY24F0033",
+"pe_bli": "9897K49000",
+"reason": "Collins 'mounted position, navigation and timing system procurement' is MAPS procurement"
+},
+{
+"piid": "FA881018C0002",
+"pe_bli": "1206422SF",
+"reason": "Contract is the WSF-Microwave satellite itself; PE owns WSF."
+},
+{
+"piid": "W91CRB23D0007",
+"pe_bli": "0177K22001",
+"reason": "FWS-Sniper Block III system bought outright; FWS family PE owns it."
+},
+{
+"piid": "W15QKN16C0020",
+"pe_bli": "0962C50700",
+"reason": "Patriot radar C3+ upgrade with procurement funds is Patriot Mods work."
+},
+{
+"piid": "W15QKN24D0013",
+"pe_bli": "0612E76740",
+"reason": "Production of XM343 SAVO system, identical designator and name."
+},
+{
+"piid": "FA955023D0001",
+"pe_bli": "0602022F",
+"reason": "HBCU UARC for tactical autonomy is exactly the named PE program."
+},
+{
+"piid": "N0001917C0024",
+"pe_bli": "0604014N",
+"reason": "Block II IRST incorporation on F/A-18E/F is the PE's IRST program."
+},
+{
+"piid": "N0003921D4000",
+"pe_bli": "0604280N",
+"reason": "MIDS-LVT systems engineering/integration; PE owns MIDS LVT."
+},
+{
+"piid": "W56KGY15D0005",
+"pe_bli": "0023A01001",
+"reason": "AN/AAS-53 Common Sensor Payload is the bought item; PE owns CSP."
+},
+{
+"piid": "W15QKN15D0003",
+"pe_bli": "2472G13000",
+"reason": "Fabrication/delivery of M240 machine guns; PE is the M240 line."
+},
+{
+"piid": "N0002416C6425",
+"pe_bli": "3117",
+"reason": "MK 48 Mod 7 AUR torpedo production; PE is MK-48 torpedo line."
+},
+{
+"piid": "FA867221F6052",
+"pe_bli": "2238",
+"reason": "SDB Increment II lot integration and test; PE is SDB II line."
+},
+{
+"piid": "N0002416C5408",
+"pe_bli": "2307",
+"reason": "ESSM Block I multi-year production; PE is ESSM line."
+},
+{
+"piid": "W56HZV16C0038",
+"pe_bli": "0203735A",
+"reason": "30mm cannon integration onto Stryker ICV is combat vehicle improvement."
+},
+{
+"piid": "W56HZV23C0078",
+"pe_bli": "3700GA0570",
+"reason": "Award buys M88A2 HERCULES vehicles outright; lexicon PE is the M88 HERCULES procurement line"
+},
+{
+"piid": "W56HZV22F0001",
+"pe_bli": "1678GZ2400",
+"reason": "ECP kits are Bradley modification work; Bradley named as the subject and PE owns BFV"
+},
+{
+"piid": "M6785415D6001",
+"pe_bli": "4733",
+"reason": "Award is for CLRF-Integrated Capability, the CLRF program's own variant per the PE narrative"
+},
+{
+"piid": "FA868119D0008",
+"pe_bli": "353190",
+"reason": "Procurement of GBU-57 Massive Ordnance Penetrators; MOP is the bought item and the PE"
+},
+{
+"piid": "W31P4Q15C0102",
+"pe_bli": "0605450A",
+"reason": "Develops JAGM; program named as the subject, LM MFC prime, PE owns JAGM"
+},
+{
+"piid": "W31P4Q24F0015",
+"pe_bli": "8260C53101",
+"reason": "PAC-3 software from the PAC-3 missile prime; program spelled out as the contract subject"
+},
+{
+"piid": "FA880724CB001",
+"pe_bli": "1203109SF",
+"reason": "Award is MUOS SLE 1; exact program name spelled out, PE project owns MUOS SLE"
+},
+{
+"piid": "FA880724CB002",
+"pe_bli": "1203109SF",
+"reason": "Award is MUOS SLE 1; exact program name spelled out, PE project owns MUOS SLE"
+},
+{
+"piid": "W912CH24F0069",
+"pe_bli": "0363G85200",
+"reason": "Production of Stryker DVH A1 vehicles; DVH is the bought item under the Stryker upgrade line"
+},
+{
+"piid": "W56KGY23F0017",
+"pe_bli": "9897K49000",
+"reason": "Procures Mounted APNT Systems; MAPS spelled out as the bought item, PE is the MAPS line"
+}
+],
+"refutations_sample": [
+{
+"piid": "N0001915G0026",
+"pe_bli": "0532",
+"refuted": true,
+"reason": "Lot 14 production GFE (mission computers) is H-1 Upgrades line 0178 money; 0532 is the H-1 Series mod line"
+},
+{
+"piid": "FA863416C2653",
+"pe_bli": "0207134F",
+"refuted": true,
+"reason": "Buys/installs 71 radars on FY15-16 procurement funds; 0207134F is RDT&E, APAF F-15 line F01500 exists"
+},
+{
+"piid": "N0002414G5105",
+"pe_bli": "0604307N",
+"refuted": true,
+"reason": "'Aegis modernization production' ORDALT kits on OPN/PDW/FMS funds; PE is RDT&E, AMOD quote is only a fielding mention"
+},
+{
+"piid": "N0001917C0016",
+"pe_bli": "0532",
+"refuted": true,
+"reason": "Depot test equipment + data rights for the HMSD is support equipment/ILS, not a 0532 mod kit; 0178 line likelier"
+},
+{
+"piid": "FA872613C0001",
+"pe_bli": "E011A0",
+"refuted": true,
+"reason": "P00048 is 100% FY17 O&M-OCO E-11A platform ops support; not APAF procurement under the E-11 BACN line"
+},
+{
+"piid": "N0001911G0003",
+"pe_bli": "0532",
+"refuted": true,
+"reason": "APN+O&M ILS 'in support of the H-1 upgrade effort' = H-1 Upgrades production program (line 0178); 0532 is the mod line"
+},
+{
+"piid": "N0001912G0006",
+"pe_bli": "0590",
+"refuted": true,
+"reason": "DO 0112 GOJ-configuration NRE is 100% FMS-funded; no DON APN 0590 money (wave-1 refused same paragraph on FMS)"
+},
+{
+"piid": "FA867217C0010",
+"pe_bli": "0401221F",
+"refuted": true,
+"reason": "Wrong PIID: FA8672-17-C-0010 is Raytheon's SDB II Lot 3 mod in the same article; KC-46 Lot 3 is FA8625-11-C-6600"
+},
+{
+"piid": "N0001917F0022",
+"pe_bli": "0604216N",
+"refuted": true,
+"reason": "29 ARPDD retrofit kits on FY17 APN; 0604216N is RDT&E, APN MH-60 Series mod line 0530 exists - wrong appropriation"
+},
+{
+"piid": "N0001914G0004",
+"pe_bli": "0158",
+"refuted": true,
+"reason": "CH-53K SDTA spares on FY16 RDT&E; 0158 is the APN production line, RDT&E PE 0605212N (CH-53K RDTE) exists"
+},
+{
+"piid": "FA852517F0008",
+"pe_bli": "0401119F",
+"refuted": true,
+"reason": "C-5 CLS supply-chain/repair services on TWCF+O&M; generic sustainment, PE is RDT&E - platform, not program"
+},
+{
+"piid": "N0001917D0008",
+"pe_bli": "0193",
+"refuted": true,
+"reason": "Software/engineering sustainment IDIQ, no funds obligated; P-8 Series mod line 0586 exists - 0193 is the production line"
+},
+{
+"piid": "HQ014710D0001",
+"pe_bli": "0603881C",
+"refuted": true,
+"reason": "TFSC is logistics/PDSS/forward-stationing sustainment services, no funds cited; not shown as 0603881C development money"
+},
+{
+"piid": "N0001917F0150",
+"pe_bli": "0158",
+"refuted": true,
+"reason": "CH-53K SDTA spares/labor on FY17 RDT&E; 0158 is APN production line, CH-53K RDTE PE 0605212N exists"
+},
+{
+"piid": "N0001914G0020",
+"pe_bli": "0158",
+"refuted": true,
+"reason": "Wrong PIID: CH-53K DO is N00019-17-F-0150 under Sikorsky BOA N00019-14-G-0004; this LM F-35 BOA co-occurs in article"
+},
+{
+"piid": "N0001917F0150",
+"pe_bli": "0195",
+"refuted": true,
+"reason": "Wrong PIID: E-2D Lot 5 support is N00019-13-C-9999 P00037; N00019-17-F-0150 is the CH-53K DO in the same roundup"
+},
+{
+"piid": "N0001914G0004",
+"pe_bli": "0195",
+"refuted": true,
+"reason": "Wrong PIID: E-2D Lot 5 support is N00019-13-C-9999; N00019-14-G-0004 is Sikorsky's CH-53K BOA in the same roundup"
+},
+{
+"piid": "N0001914G0020",
+"pe_bli": "0195",
+"refuted": true,
+"reason": "Wrong PIID: E-2D Lot 5 support is N00019-13-C-9999; N00019-14-G-0020 is LM's F-35 BOA (SPEAR study) in same roundup"
+},
+{
+"piid": "N0018917DZ028",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "Wrong PIID: F-35 spares DO 0132 is under N00019-14-G-0020; N00189-17-D-Z028 is a NAVSUP FLC award in the same roundup"
+},
+{
+"piid": "N6247017D5010",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "Wrong PIID: F-35 spares DO 0132 is under N00019-14-G-0020; N62470-17-D-5010 is a NAVFAC award in the same roundup"
+},
+{
+"piid": "N0001916G0001",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "Wrong PIID: F-35 spares DO 0132 is under N00019-14-G-0020; N00019-16-G-0001 is Boeing's BOA co-occurring in the roundup"
+},
+{
+"piid": "N0002415C4103",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "Wrong PIID: F-35 spares DO 0132 is under N00019-14-G-0020; N00024-15-C-4103 is a NAVSEA award in the same roundup"
+},
+{
+"piid": "N0002417C5409",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "Wrong PIID: F-35 spares DO 0132 is under N00019-14-G-0020; N00024-17-C-5409 is a NAVSEA award in the same roundup"
+},
+{
+"piid": "N0001917F0108",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "TR-3 ICP DMS order obligates FY17 RDT&E (AF/Navy/USMC) + partner funds; ATA000 is APAF - wrong appropriation"
+},
+{
+"piid": "N0001917C0018",
+"pe_bli": "0305220N",
+"refuted": true,
+"reason": "Triton production long-lead on FY17 APN; 0305220N is RDT&E, APN MQ-4 Triton line 0442 exists - wrong appropriation"
+},
+{
+"piid": "N6833517D0017",
+"pe_bli": "0193",
+"refuted": true,
+"reason": "COTS Jeppesen planning tools on mixed APN/O&M/RDT&E/coop funds; P-8A is the supported platform, not 0193 line content"
+},
+{
+"piid": "FA821313C0001",
+"pe_bli": "0605238F",
+"refuted": true,
+"reason": "piid not in packet (award is FA8214-13-C-0001); work is A&AS integration support = generic services"
+},
+{
+"piid": "N0001917F0027",
+"pe_bli": "0592",
+"refuted": true,
+"reason": "0592 F-35 STOVL Series is the APN mod line (SLLP items); Lot 11 gear is bought under the JSF STOVL new-buy line"
+},
+{
+"piid": "N0001917F0027",
+"pe_bli": "0593",
+"refuted": true,
+"reason": "0593 F-35 CV Series is the APN mod line (UWS/SLLP); Lot 11 gear belongs to F-35C new-buy line 0147"
+},
+{
+"piid": "N0001917C0005",
+"pe_bli": "M88AAG",
+"refuted": true,
+"reason": "AARGM Lot 6 FRP is 100% Navy WPN; M88AAG is the AF Missile Procurement HARM line; Navy WPN has its own AARGM line"
+},
+{
+"piid": "N0001912G0006",
+"pe_bli": "1000CV2200",
+"refuted": true,
+"reason": "Order funded APN+APAF only; 1000CV2200 is SOCOM Procurement Defense-Wide; lexicon match is title-only"
+},
+{
+"piid": "N0001917F0383",
+"pe_bli": "0193",
+"refuted": true,
+"reason": "WBSC radome design to CDR is RDT&E-funded development; 0193 is the APN aircraft-buy line, not a P-8A RDT&E PE"
+},
+{
+"piid": "N0001917F0442",
+"pe_bli": "M88AAG",
+"refuted": true,
+"reason": "O&M-funded depot repair of HARM guidance/control sections; sustainment, not an AF Missile Procurement buy"
+},
+{
+"piid": "FA850417D0004",
+"pe_bli": "0560",
+"refuted": true,
+"reason": "0560 is the Navy APN C-130 Series mod line; award is an AF (Robins) O&M-funded wing durability test service"
+},
+{
+"piid": "W58RGZ17D0092",
+"pe_bli": "2706AA6605",
+"refuted": true,
+"reason": "Aux fuel systems, funding unstated per order; title-only lexicon match; not shown to be an AH-64 Mods line buy"
+},
+{
+"piid": "N0001915G0026",
+"pe_bli": "0158",
+"refuted": true,
+"reason": "CH-53K DECM Phase II NRE is RDT&E-funded; 0158 is the APN CH-53K buy line; RDT&E PE is 0605212M/N"
+},
+{
+"piid": "N6339416G0005",
+"pe_bli": "0603581N",
+"refuted": true,
+"reason": "Generic LCS maintain/support services (PM, ILS, training) funded O&M+OPN; not RDT&E LCS development"
+},
+{
+"piid": "N0001915G0026",
+"pe_bli": "0305421N",
+"refuted": true,
+"reason": "Test/maintenance/FSR sustainment services; 0305421N is Triton modernization, baseline dev is 0305220N"
+},
+{
+"piid": "N0001918C1004",
+"pe_bli": "ATA000",
+"refuted": true,
+"reason": "SDB-II/F-35 TMRR pre-EMD work funded RDT&E (USMC, AF); ATA000 is the APAF aircraft buy, not an RDT&E PE"
+},
+{
+"piid": "FA862018F2366",
+"pe_bli": "PRDTB2",
+"refuted": true,
+"reason": "GBU-39 integration is RDT&E-funded (FY17/18); PRDTB2 is the APAF MQ-9 Mods line; RDT&E PE 0205219F fits"
+}
+]
+}

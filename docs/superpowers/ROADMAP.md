@@ -93,6 +93,45 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   filed: /feed/ pagination (ceiling raised with do-not-raise-again note),
   Leg 2 name-lexicon + Leg 3 (SAM solicitations, FSRS, defense.gov
   announcements) in flight via parallel sessions.
+- **2026-09-01/02: Leg 2/3 discovery — announcements corpus + lexicon (two
+  parallel sessions).** Deterministic J-book name-lexicon mined from 30,116
+  narrative rows (v1.2: 10,464 entries, ownership own/mentioned, 943 flagged
+  weak_name); defense.gov daily Contracts announcements acquired via the
+  Wayback Machine (2,786 digests, 22,140 records, 92.4% PIID join to the
+  lake, sha256 manifest); FSRS subaward descriptions matched to lexicon
+  (3,966 subawards / 269 PEs / $6.6B, corroboration tier). **Hard negative,
+  do not rebuild:** literal PE numbers appear in 15 of ~20M award
+  descriptions and ZERO of 1.6M subaward descriptions — the "grep award text
+  for PE numbers" folk method exists only in solicitation documents.
+  SAM.gov solicitations: official API key-gated; unauthenticated search
+  returns 0 for bare PE codes — filed as a task chip with probe notes.
+  **Wave-1 verification (6,309 candidates on PEs with no published links,
+  triage → adversarial refute, 133 agents):** 6,276 triaged → 802 proposed
+  (4,311 wrong, 1,163 weak) → **397 survived the refute pass → 386 published
+  at high across 168 PEs** (7 collision-key and 4 no-lake-evidence exclusions).
+  Method `announcement+lexicon`; every link's rationale cites its announcement
+  (article id, date, URL) and its match basis. **Wave 2** (3,934 packets after
+  wave-1 dedupe: exact-name 1,254 / designator-normalized 2,347 / LLM-alias
+  bases 333, weak_name excluded; 91 agents): 3,933 triaged → 811 proposed
+  (1,213 wrong, 1,909 weak) → **411 survived**. **Combined waves 1+2: 808
+  survivors → 783 published at high across 300 PEs** (7 collision, 4 catch-all,
+  14 no-lake-evidence exclusions). LLM-pass scope disclosed on /methodology/
+  verbatim ($1.96T of $2.23T residue attempted; 12,811 records/$278B not).
+  **Wave 3 (FSRS subawards)**: 3,871 raw (prime, PE) hits collapsed to 750
+  distinct new candidates (265 corroborated existing prime links; 460 weak_name
+  hits excluded); 745 triaged → 222 proposed (352 weak, 171 wrong) → 115
+  survived → **67 published at MEDIUM** (`subaward+lexicon`; one hop removed,
+  never high) after collision/catch-all/no-lake exclusions. **Grand total of the
+  announcement legs: 850 links (783 high + 67 medium) across 329 PEs; site-wide
+  PEs with any published link: 24 → 430+.**
+  Two more species surfaced by the wave-1 publish: **catch-all budget lines are
+  not link targets** ("Items Less Than $5 Million", "Ordnance Items <$5M",
+  "Other Support Aircraft" — aggregates, not programs; the `$` in the title
+  also trips the currency-in-prose sweep) — `CATCHALL_TITLE` exclusion in both
+  loaders; and **/feed/ is now a digest** (expansions took it 160→720 cards /
+  1.5→6.8MB; per its do-not-raise note the page renders the top 75 cards per
+  section with a truncation note, full set in feed.json + RSS/Atom, ceilings
+  LOWERED to 3.2MB/150KB, hhi floor re-scoped to the capped page).
 - **2026-07-02: product rebranded to Fiscal Receipts** (site display name; infra
   identifiers unchanged).
 - **47.3% of FY2025 DoD obligations ($232.4B) were not competed** — surfaced by

@@ -1959,11 +1959,23 @@ function runFeedFy26SplitLeg(errors, notes) {
 
   const cardEls = root.querySelectorAll("[data-feed-card]");
   let resolved = 0;
+  let belowCap = 0;
   const missing = [];
+  // 2026-09-03: /feed/ renders a per-section digest (top-N cards by
+  // magnitude, FEED_SECTION_CAP in feed/page.tsx) and says so with a
+  // [data-feed-truncation-note]. A qualifying card that is below the cap is
+  // not ON the page, so it cannot mislead there — the disclosure obligation
+  // attaches to rendered cards only. Without the note present, absence is
+  // still a defect (a template regression that dropped the card).
+  const pageIsTruncated = root.querySelector("[data-feed-truncation-note]") != null;
 
   for (const card of qualifying) {
     const headlineSel = `[data-xml-path="site:feed/yoy_swing/${card.pe_bli}"]`;
     const cardEl = cardEls.find((el) => el.querySelector(headlineSel));
+    if (!cardEl && pageIsTruncated) {
+      belowCap++;
+      continue;
+    }
     if (!cardEl) {
       missing.push(
         `${card.pe_bli}: feed.json carries a qualifying yoy_swing card but no ` +
@@ -1981,6 +1993,9 @@ function runFeedFy26SplitLeg(errors, notes) {
     }
   }
 
+  if (belowCap > 0) {
+    notes.push(`leg g4: ${belowCap} qualifying yoy_swing card(s) sit below the /feed/ section cap (not rendered, not checked here)`);
+  }
   if (missing.length > 0) {
     errors.push(
       `leg g4 /feed/ fy26-split disclosure: ${missing.length} yoy_swing card(s) ` +

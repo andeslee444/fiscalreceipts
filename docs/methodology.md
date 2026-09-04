@@ -183,6 +183,31 @@ not linked. The FPDS tag is DoD-entered and sparse (well under 1% of awards,
 concentrated in the largest programs), so absence of a link never means
 absence of spending.
 
+A third evidence path reads the Department of Defense's own daily contract
+announcements (defense.gov, archived with snapshot timestamps and SHA-256
+hashes): each announcement names the contract number and describes the work,
+often by program. Where an announcement's program name is one a program
+element's J-book narrative itself owns (a lexicon entry carrying the verbatim
+narrative quote), the pair is a candidate; every candidate is judged by an
+agent reviewer and challenged by an independent adversarial reviewer, and only
+links surviving both publish — at *high*, because the government named the
+program and the contract in the same sentence. Platform-support mentions,
+generic services, and weak generic names are rejected by design. Each link
+cites its announcement (article id, date, URL).
+
+Scope of the announcement path, stated plainly: deterministic name matching
+covered every archived announcement; an additional LLM-assisted alias pass
+(decoding designators and aliases such as PATRIOT backronyms → PAC-3 or
+Global Hawk → RQ-4B) covered the top 3,840 unmatched records by announced
+value ($1.96T of the $2.23T residue) — 12,811 smaller records ($278B) were
+not attempted. Each published link records which basis produced it.
+
+Where the only evidence is a subaward: FSRS subaward reports describe the
+work a subcontractor performs under a prime contract, and when that
+description names a program the PE's own narrative owns, the prime is linked
+at *medium* — the evidence is one hop removed, so it never publishes as high
+and its rationale names the subaward it rests on.
+
 **Derived figures are labeled derived.** Any figure computed from published
 rates or published subtotals — rather than directly reported in a source
 document — is labeled as derived wherever it appears.

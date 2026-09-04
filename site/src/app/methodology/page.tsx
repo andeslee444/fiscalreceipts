@@ -597,6 +597,37 @@ export default function MethodologyPage() {
                   concentrated in the largest programs — so absence of a link
                   never means absence of spending.
                 </p>
+                <p className="mt-2">
+                  A third evidence path reads the Department of Defense&apos;s own
+                  daily contract announcements (defense.gov, archived with snapshot
+                  timestamps and file hashes): each announcement names the contract
+                  number and describes the work, often by program. Where an
+                  announcement&apos;s program name is one that a program element&apos;s
+                  J-book narrative itself owns, the pair is a candidate; every candidate
+                  is then judged by an agent reviewer and challenged by an independent
+                  adversarial reviewer, and only links that survive both publish — at{" "}
+                  <em>high</em>, because the government named the program and the
+                  contract in the same sentence. Names that merely describe a platform
+                  the contract supports, generic services, or weak generic names are
+                  rejected by design. Each such link cites the announcement it came from.
+                </p>
+                <p className="mt-2">
+                  Scope of the announcement path, stated plainly: deterministic name
+                  matching covered every archived announcement; an additional LLM-assisted
+                  alias pass (decoding designators and aliases) covered the 3,840
+                  unmatched records that carry about 88% of the residue by announced
+                  value; the 12,811 smaller records carrying the remaining ~12% were
+                  not attempted. Each published
+                  link records which basis produced it.
+                </p>
+                <p className="mt-2">
+                  Where the only evidence is a subaward: FSRS subaward reports describe
+                  the work a subcontractor performs under a prime contract, and when that
+                  description names a program the PE&apos;s own narrative owns, the prime
+                  is linked at <em>medium</em> — the evidence is one hop removed, so it
+                  never publishes as high and its rationale names the subaward it rests
+                  on.
+                </p>
               </div>
               <div>
                 <h3 className="font-semibold text-foreground mb-1">
