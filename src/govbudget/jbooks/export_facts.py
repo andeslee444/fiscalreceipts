@@ -45,9 +45,14 @@ EXPORTS: dict[str, str] = {
         " where not n.superseded"
     ),
     "budget_line_awards": (
+        # `account` (migration 014, ROADMAP #70) names the ONE program a link
+        # belongs to for the pe_bli values two programs share; NULL for every
+        # key that names a single program. fct_budget_to_awards joins
+        # dim_programs on it so a shared code's two members keep their own
+        # awards instead of both showing the union.
         "select pe_bli, exhibit, fiscal_year, organization, award_piid,"
         " recipient_name, recipient_uei, matched_obligation, method, confidence,"
-        " score, rationale from budget_line_awards"
+        " score, rationale, account from budget_line_awards"
     ),
     "award_adjudications": (
         # hand-adjudication overlay (migration 010) — the mart coalesces

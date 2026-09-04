@@ -5847,7 +5847,7 @@ def _build_lobbied_by(
     con,
     hhi_by_pe: dict,
     named_primes_by_pe: dict,
-    awards_by_pe: dict,
+    awarded_pe_blis: set,
     entity_rows: list,
     entity_labels: dict[str, str] | None = None,
 ) -> dict[str, dict]:
@@ -5936,13 +5936,18 @@ def _build_lobbied_by(
             continue  # the crosswalk answers WHO-GETS-IT — no fallback needed
         if named_primes_by_pe.get(pe_bli):
             continue  # the J-book names a prime — a stronger, cited answer
-        if awards_by_pe.get(pe_bli):
+        if pe_bli in awarded_pe_blis:
             # The page renders a Related Awards table, so its card must not
             # say "no contract award is linked to this line" three thousand
             # pixels above a list of award records. Zero pages hit this on
             # the current corpus (all 41 strong-tier candidates have an empty
             # awards array); the guard exists so a future crosswalk expansion
             # cannot make the disclaimer false without anyone noticing.
+            #
+            # ROADMAP #70: bare pe_bli on purpose. This block is keyed by
+            # pe_bli (out[pe_bli] below), so it cannot address one member of
+            # a shared BLI code anyway; skipping the key when EITHER member
+            # renders an awards table keeps the disclaimer true on both.
             continue
         shown = families[:_WHO_LOBBY_CAP]
         out[pe_bli] = {
@@ -6278,16 +6283,24 @@ def _build_budget_to_awards_citation_rows(
     rows: list[tuple] = []
     built_at = datetime.datetime.now(datetime.UTC).isoformat()
 
+    # ROADMAP #70: `account` names the ONE program a link on a shared BLI code
+    # belongs to; NULL for every pe_bli that names a single program (and for a
+    # mart predating migration 014, via the fallback). It is read only to make
+    # the formula sentence below name that program — the fact_id is minted from
+    # (pe_bli, award_piid) exactly as before, so no existing link's id moves.
+    _LINK_SQL = (
+        "select pe_bli, award_piid, organization, method, confidence{account}"
+        " from fct_budget_to_awards"
+        " order by pe_bli, award_piid"
+    )
     con = _duckdb.connect(str(duckdb_path), read_only=True)
     try:
-        try:
-            link_rows = con.execute(
-                "select pe_bli, award_piid, organization, method, confidence"
-                " from fct_budget_to_awards"
-                " order by pe_bli, award_piid"
-            ).fetchall()
-        except Exception:
-            link_rows = []
+        link_rows = _query_with_account_fallback(
+            con,
+            _LINK_SQL.format(account=", account"),
+            _LINK_SQL.format(account=""),
+            5,
+        )
     finally:
         con.close()
 
@@ -6300,7 +6313,7 @@ def _build_budget_to_awards_citation_rows(
     # state in which the old code produced a clean, quietly degraded export.
     sources = link_sources or {}
     missing = sorted({
-        (piid, pe) for pe, piid, _org, mth, _conf in link_rows
+        (piid, pe) for pe, piid, _org, mth, _conf, _acct in link_rows
         if mth == "announcement+lexicon" and pe and piid
         and not (sources.get((piid, pe)) or {}).get("source_url")
     })
@@ -6327,7 +6340,7 @@ def _build_budget_to_awards_citation_rows(
     _MAX_BUDGET_INPUTS = 8
     seen_links: set[tuple] = set()
 
-    for pe_bli, award_piid, organization, method, confidence in link_rows:
+    for pe_bli, award_piid, organization, method, confidence, account in link_rows:
         if not pe_bli or not award_piid:
             continue
         link_key = (pe_bli, award_piid)
@@ -6340,8 +6353,15 @@ def _build_budget_to_awards_citation_rows(
         # The link's own provenance sentence — method + confidence tier. Both
         # tiers carry it: the announcement row would otherwise drop the only
         # place the panel states HOW the link was made and how strong it is.
+        #
+        # ROADMAP #70: a shared BLI code names two programs, so the sentence
+        # says WHICH one — the account the link's own evidence identified.
+        # Appended only when `account` is populated, which is true of no link
+        # that existed before #70, so no published formula changes.
         formula = (
-            f"crosswalk link: pe_bli={pe_bli} matched to award PIID"
+            f"crosswalk link: pe_bli={pe_bli}"
+            + (f" (account {account})" if account else "")
+            + f" matched to award PIID"
             f" {award_piid} via method={method!r}, confidence={confidence!r}"
             f" (dollars live at award grain in fct_award_transactions)"
         )
@@ -7521,21 +7541,62 @@ def _write_all_sidecars(
     # Confidence leads because both tables render a Confidence column and only
     # the first 25 rows are server-rendered: an arbitrary order was deciding
     # which links a reader saw without expanding.
-    awards_rows = con.execute(
-        "select pe_bli, award_piid, recipient_name, confidence"
+    #
+    # ROADMAP #70: keyed by the program's own identity, not the bare pe_bli.
+    # Ten pe_bli values are shared by TWO programs (E3), and their links now
+    # carry the account of the ONE member the link's evidence identifies
+    # (budget_line_awards.account, migration 014). A bare-pe_bli index would
+    # hand BOTH members every award on the shared code — the #56 fusion shape,
+    # relocated into the Awards table. `split_key` collapses to
+    # (pe_bli, None, None) for every ordinary program, so this is a no-op for
+    # ~1,930 of them; the organization-split keys publish no links at all
+    # (account evidence cannot tell their members apart), so their key is
+    # (pe_bli, None, org) on both sides and simply finds nothing.
+    _AWARDS_SQL = (
+        "select pe_bli, award_piid, recipient_name, confidence, organization{account}"
         " from fct_budget_to_awards"
         " order by case confidence when 'high' then 0 when 'medium' then 1"
         "               when 'low' then 2 else 3 end,"
         "          recipient_name, pe_bli, award_piid"
-    ).fetchall()
-    awards_by_pe: dict[str, list] = defaultdict(list)
+    )
+    awards_rows = _query_with_account_fallback(
+        con,
+        _AWARDS_SQL.format(account=", account"),
+        _AWARDS_SQL.format(account=""),
+        5,
+    )
+    awards_by_pe: dict[tuple, list] = defaultdict(list)
     for r in awards_rows:
-        pe_bli, award_piid, recipient_name, confidence = r
-        awards_by_pe[pe_bli].append({
+        pe_bli, award_piid, recipient_name, confidence, organization, account = r
+        awards_by_pe[ident.split_key(pe_bli, account, organization)].append({
             "recipient_name": recipient_name,
             "award_piid": award_piid,
             "confidence": confidence,
         })
+
+    # A link on a shared BLI code that carries NO account names both programs
+    # and is therefore shown on NEITHER member page — the safe direction, but a
+    # silent one, so say it out loud. Zero today: both link scripts resolve the
+    # account before publishing, and the mechanical crosswalk writes no rows on
+    # these keys at all. A non-zero count means a loader published an
+    # unattributed link on a shared code.
+    _unattributed_split_links = sum(
+        len(v) for k, v in awards_by_pe.items()
+        if ident.is_account_split(k[0]) and k[1] is None
+    )
+    if _unattributed_split_links:
+        print(
+            f"awards: {_unattributed_split_links} link(s) on shared BLI codes"
+            f" carry no account (ROADMAP #70) — shown on neither member page"
+        )
+
+    def _awards_for(pe_bli: str, account=None, organization=None) -> list:
+        """This program's own crosswalk links (ROADMAP #70). Identical to the
+        pre-#70 `awards_by_pe.get(pe_bli, [])` for every pe_bli dim_programs
+        publishes once — including every rollup- and decade-tier page, which
+        are never split keys."""
+        return awards_by_pe.get(
+            ident.split_key(pe_bli, account, organization), [])
 
     # fct_program_concentration — HHI keyed by pe_bli
     conc_rows = con.execute(
@@ -7561,6 +7622,34 @@ def _write_all_sidecars(
                 else None
             ),
         }
+
+    def _concentration_for(pe_bli: str, account=None, organization=None):
+        """This program's vendor-concentration block, or None when the mart's
+        figure is not this program's to claim (ROADMAP #70).
+
+        fct_program_concentration aggregates award dollars by BARE pe_bli, so
+        for a pe_bli two programs share its HHI and program_dollars describe
+        the UNION of both members' links. Handing that to both member pages
+        would put one program's contractor concentration on the other's page —
+        the #56 fusion shape, in the figure a reader is most likely to quote.
+
+        The union figure IS this member's own figure exactly when every link on
+        the shared code carries this member's account; when both members carry
+        links, it is neither member's and the block is withheld from both
+        rather than published under a name it does not describe. Non-split
+        pe_blis take the pre-#70 path unchanged.
+        """
+        block = hhi_by_pe.get(pe_bli)
+        if block is None or not ident.is_split(pe_bli):
+            return block
+        linked_keys = {
+            key for key in awards_by_pe
+            if key[0] == pe_bli and awards_by_pe[key]
+        }
+        if len(linked_keys) != 1:
+            return None
+        return block if ident.split_key(
+            pe_bli, account, organization) in linked_keys else None
 
     # jbook_narratives — from detail_rows we don't have narratives;
     # we need to re-read from the written parquet or store them in memory.
@@ -7683,10 +7772,15 @@ def _write_all_sidecars(
             "filing_url": filing_url,
         })
 
-    # awards by display_name (for entity_details; exact match only)
+    # awards by display_name (for entity_details; exact match only).
+    # ROADMAP #70: bare pe_bli, unchanged. This payload names the budget line
+    # an award was crosswalked to; for a shared code that names the pair, and
+    # /program/{pe_bli}/ is the disambiguation stub listing both — a real page,
+    # not a dead link. Naming the member here would mean threading the slug
+    # into a sidecar field the site does not currently render.
     awards_by_display: dict[str, list] = defaultdict(list)
     for r in awards_rows:
-        pe_bli, award_piid, recipient_name, confidence = r
+        pe_bli, award_piid, recipient_name, confidence, _org, _account = r
         if recipient_name:
             awards_by_display[recipient_name].append({
                 "pe_bli": pe_bli,
@@ -7829,7 +7923,7 @@ def _write_all_sidecars(
             if n_rdte or n_proc:
                 exhibit_family = "rdte" if n_rdte >= n_proc else "procurement"
         programs_list.append({
-            "award_count": len(awards_by_pe.get(pe_bli, [])),
+            "award_count": len(_awards_for(pe_bli, account, org)),
             "exhibit_family": exhibit_family,
             "fy2024_actual_millions": fy2024_actual_millions,
             # Task E3: gated on owns_detail — fy2024_fact_id/xml_path come
@@ -7850,7 +7944,7 @@ def _write_all_sidecars(
             # reads this, not fully_reconciled. See dim_programs.sql's
             # details CTE for why the two differ on 1,310 programs.
             "reconciled_in_scope": reconciled_in_scope,
-            "hhi": hhi_by_pe.get(pe_bli),
+            "hhi": _concentration_for(pe_bli, account, org),
             # Task E3: gated on owns_detail for the same reason as
             # fy2024_fact_id — narr_by_pe is bare pe_bli and (per
             # dim_programs.sql's own account_match) belongs entirely to the
@@ -8271,7 +8365,7 @@ def _write_all_sidecars(
         con=con,
         hhi_by_pe=hhi_by_pe,
         named_primes_by_pe=named_primes_by_pe,
-        awards_by_pe=awards_by_pe,
+        awarded_pe_blis={key[0] for key in awards_by_pe},
         entity_rows=entity_rows,
         entity_labels=entity_labels,
     )
@@ -8284,10 +8378,14 @@ def _write_all_sidecars(
         Task E3: summary_by_pe is keyed by SLUG (identity for every
         non-split pe_bli); named_primes_by_pe stays bare pe_bli — dossier
         named-primes claims have no account concept, so both accounts of a
-        split key legitimately share the same list (same "no account data
-        available" bucket as awards/mentions). lobbied_by_pe is keyed the
+        split key legitimately share the same list (the same "no account
+        data available" bucket as mentions). lobbied_by_pe is keyed the
         same way and for the same reason: a filing names a PROGRAM, not one
-        of a split key's two accounts."""
+        of a split key's two accounts.
+
+        ROADMAP #70 moved AWARDS out of that bucket — a crosswalk link now
+        carries the account its own evidence identified, so `awards` is per
+        member (see _awards_for) while these two remain per bare code."""
         block = dict(summary_by_pe.get(slug) or _summary_absence_block())
         block["named_primes"] = named_primes_by_pe.get(pe_bli, [])
         block["lobbied_by"] = lobbied_by_pe.get(pe_bli)
@@ -8519,7 +8617,10 @@ def _write_all_sidecars(
             else:
                 own_bl = [bl for bl in own_bl if bl.get("account_title") == account_title]
         obj = {
-            "awards": awards_by_pe.get(pe_bli, []),
+            # ROADMAP #70: this member's own links. For a shared BLI code the
+            # sibling's awards belong on the sibling's page, and the bare key
+            # is a disambiguation stub that owns no sidecar at all.
+            "awards": _awards_for(pe_bli, account, org),
             "budget_lines": own_bl,
             "details": details_by_pe.get(pe_bli, []) if owns_detail else [],
             "mentions": _build_mentions(
@@ -8614,7 +8715,7 @@ def _write_all_sidecars(
         service_org = _rollup_service_org(pe_bli)
         traj = prog_traj_index.get(pe_bli)
         obj = {
-            "awards": awards_by_pe.get(pe_bli, []),
+            "awards": _awards_for(pe_bli),   # rollup pe's are never split
             "budget_lines": bl_by_pe.get(pe_bli, []),
             "details": details_by_pe.get(pe_bli, []),
             "mentions": _build_mentions(
@@ -8701,7 +8802,7 @@ def _write_all_sidecars(
     _n_decade_absent = 0
     for pe_bli in decade_only_pes:
         obj = {
-            "awards": awards_by_pe.get(pe_bli, []),
+            "awards": _awards_for(pe_bli),   # decade pe's are never split
             "budget_lines": [],
             "details": [],
             "mentions": _build_mentions(

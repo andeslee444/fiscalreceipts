@@ -46,6 +46,7 @@ from pathlib import Path
 import duckdb
 import psycopg
 
+from collision_keys import member_for_document, partition_split_keys
 from derive_ap_links import fed_accounts_from_codes
 
 
@@ -97,6 +98,28 @@ def _packet_value(packet: dict, key: str) -> str | None:
         return None
     s = str(v).strip()
     return s if s and s != "None" else None
+
+
+def collision_account_for(
+    pe_bli: str, packet: dict, doc_accounts: dict, members: set[str],
+) -> str | None:
+    """The ONE member of a shared BLI code this packet's evidence identifies.
+
+    ROADMAP #70. An announcement/subaward link's evidence chain runs through a
+    lexicon entry quoting a J-book narrative in a specific document, and the
+    Navy files one procurement book per appropriation (SCN_Book.pdf,
+    OPN_BA1_Book.pdf, …). `doc_accounts` maps (pe_bli, lexicon_doc) to the
+    accounts that document's own non-superseded detail rows carry for this
+    pe_bli, so the book names the member.
+
+    Returns None — link not published, exactly as every shared key was before
+    #70 — when the packet records no lexicon document, when the document is
+    unknown, or when it carries BOTH members' lines and so names neither.
+    """
+    doc = _packet_value(packet, "lexicon_doc")
+    if not doc:
+        return None
+    return member_for_document(doc_accounts.get((pe_bli, str(doc)), set()), members)
 
 
 def load_snapshot_manifest(path: Path = MANIFEST) -> dict[str, dict]:
@@ -184,12 +207,34 @@ def main() -> int:
 
     con = duckdb.connect(str(ROOT / "data/duckdb/govbudget.duckdb"), read_only=True)
     display = {r[0] for r in con.execute("select distinct pe_bli from dim_programs").fetchall()}
-    collisions = {r[0] for r in con.execute(
-        "select pe_bli from dim_programs group by pe_bli having count(*) > 1").fetchall()}
+    # Shared BLI codes: ROADMAP #70 admits the ACCOUNT-split ones (each link
+    # carries the one account its lexicon document identifies — see
+    # collision_account_for); the ORGANIZATION-split ones ('20','30','500')
+    # share one account and stay excluded, as every shared key was before.
+    split_rows = con.execute(
+        "select pe_bli, account from dim_programs"
+        " where pe_bli in (select pe_bli from dim_programs"
+        "                  group by pe_bli having count(*) > 1)"
+    ).fetchall()
     con.close()
+    account_split, org_split = partition_split_keys(split_rows)
     synthetic = re.compile(r"-L\d+$")
     with psycopg.connect(DSN) as pg0:
         titles = pg0.execute("select pe_bli, title from budget_lines where title is not null").fetchall()
+        # (pe_bli, document_id) -> the accounts that document's own
+        # non-superseded detail rows carry for this pe_bli. Only the
+        # account-split keys need it; superseded rows are excluded because a
+        # withdrawn extraction is not evidence about the current book.
+        doc_accounts: dict[tuple[str, str], set[str]] = {}
+        if account_split:
+            for pe, doc_id, account in pg0.execute(
+                "select distinct pe_bli, document_id, account"
+                " from budget_line_details"
+                " where pe_bli = any(%s) and account is not null"
+                " and not superseded",
+                (sorted(account_split),),
+            ).fetchall():
+                doc_accounts.setdefault((pe, str(doc_id)), set()).add(account)
     catchall = {pe for pe, t in titles if CATCHALL_TITLE.search(t or "")}
     display -= catchall
 
@@ -202,17 +247,24 @@ def main() -> int:
 
     pairs = []
     skipped = {"not_display_or_catchall": 0, "collision": 0, "synthetic": 0,
-               "money_color_mismatch": 0}
+               "collision_unresolved": 0, "money_color_mismatch": 0}
     for s in surviving:
         pe, piid = s["pe_bli"], s["piid"]
+        account = None
         if synthetic.search(pe): skipped["synthetic"] += 1; continue
-        if pe in collisions: skipped["collision"] += 1; continue
+        if pe in org_split: skipped["collision"] += 1; continue
+        if pe in account_split:
+            account = collision_account_for(
+                pe, prov.get((piid, pe), {}), doc_accounts, account_split[pe])
+            if account is None:
+                skipped["collision_unresolved"] += 1
+                continue
         if pe not in display: skipped["not_display_or_catchall"] += 1; continue
-        pairs.append((piid, pe, s.get("reason", "")))
+        pairs.append((piid, pe, s.get("reason", ""), account))
     print(f"surviving {len(surviving)} -> publishable {len(pairs)}; skipped {skipped}")
 
     # lake evidence for recipients/obligations/funding accounts
-    piids = sorted({p for p, _, _ in pairs})
+    piids = sorted({p for p, _, _, _ in pairs})
     lake = duckdb.connect()
     lake.execute("create temp table want(piid varchar)")
     lake.executemany("insert into want values (?)", [(p,) for p in piids])
@@ -224,16 +276,29 @@ def main() -> int:
         where award_id_piid in (select piid from want) group by 1""").fetchall()}
     lake.close()
 
+    # Keyed (pe_bli, account) — account is None for every pe_bli that names
+    # one program, and the resolved member's own account for a shared BLI
+    # code, so the exhibit/organization stamped on the link and the money
+    # color it is checked against are that MEMBER's, never the union of two
+    # different programs' appropriations (ROADMAP #70).
     pg = psycopg.connect(DSN)
     line_meta = {}
     line_fed_accounts = {}
-    for pe in {pe for _, pe, _ in pairs}:
-        r = pg.execute("select min(exhibit), min(organization) from budget_lines where pe_bli=%s", (pe,)).fetchone()
-        line_meta[pe] = (r[0] or "", r[1] or "")
+    for pe, account in {(pe, account) for _, pe, _, account in pairs}:
+        where, args = "pe_bli=%s", [pe]
+        if account is not None:
+            where, args = "pe_bli=%s and account=%s", [pe, account]
+        r = pg.execute(
+            f"select min(exhibit), min(organization) from budget_lines where {where}",
+            args,
+        ).fetchone()
+        line_meta[(pe, account)] = (r[0] or "", r[1] or "")
         accounts = pg.execute(
-            "select distinct account from budget_lines where pe_bli=%s and account is not null", (pe,),
+            f"select distinct account from budget_lines"
+            f" where {where} and account is not null", args,
         ).fetchall()
-        line_fed_accounts[pe] = fed_accounts_from_codes(a for (a,) in accounts)
+        line_fed_accounts[(pe, account)] = fed_accounts_from_codes(
+            a for (a,) in accounts)
 
     # Archived-copy provenance for the citation tier (#71): the article the
     # waves actually read, its Wayback snapshot and that copy's sha256.
@@ -243,7 +308,7 @@ def main() -> int:
     src_rows = []
     no_source_id = 0
     no_lake_evidence = 0
-    for piid, pe, reason in pairs:
+    for piid, pe, reason, account in pairs:
         rname, ruei, ob, accts = ev.get(piid, (None, None, None, None))
         if rname is None:
             # the lake does not hold this PIID (formatting variant or pre-FY17
@@ -259,7 +324,10 @@ def main() -> int:
                      f"J-book narrative owns it ({p.get('lexicon_doc')}); "
                      f"triage+adversarial refute survived — {reason[:160]}; "
                      f"url={ANN_URL.format(id=aid)}")
-        ex, org = line_meta[pe]
+        if account:
+            rationale += (f"; shared BLI code resolved to account {account}"
+                          f" by that document")
+        ex, org = line_meta[(pe, account)]
         # Subaward-derived evidence is one hop removed (a sub's description
         # says what the prime is for): publishes at MEDIUM under its own
         # method so the tier states the evidence species. It keeps its
@@ -275,11 +343,14 @@ def main() -> int:
             # the 2026-09-04 held-out study were O&M-only awards attached to
             # RDT&E/procurement lines — a mismatch here is that failure mode.
             award_accounts = {a for a in (accts or "").split(";") if a.strip()}
-            if not money_color_ok(award_accounts, line_fed_accounts.get(pe, set())):
+            if not money_color_ok(
+                award_accounts, line_fed_accounts.get((pe, account), set())
+            ):
                 skipped["money_color_mismatch"] += 1
                 continue
             method, conf = "announcement+lexicon", "high"
-        rows.append((pe, ex, 2026, org, piid, rname, ruei, ob, method, conf, 2, rationale))
+        rows.append((pe, ex, 2026, org, piid, rname, ruei, ob, method, conf, 2,
+                     rationale, account))
         # Structural provenance for the citation tier — same packet, same
         # method decision, so a published link and its source row agree.
         sr = source_row(piid, pe, p, method, manifest)
@@ -290,6 +361,13 @@ def main() -> int:
     print(f"rows to upsert: {len(rows)}; distinct PEs: {len({r[0] for r in rows})}; "
           f"skipped for no lake evidence: {no_lake_evidence}; "
           f"skipped for money_color_mismatch: {skipped['money_color_mismatch']}")
+    # ROADMAP #70: what the shared BLI codes actually gained this run.
+    split_gains = {}
+    for r in rows:
+        if r[12]:
+            split_gains[(r[0], r[12], r[8])] = split_gains.get((r[0], r[12], r[8]), 0) + 1
+    print(f"account-split key gains (pe_bli, account, method): "
+          f"{dict(sorted(split_gains.items()))}")
     n_archived = sum(1 for r in src_rows if r[5])
     print(f"source rows: {len(src_rows)} "
           f"({sum(1 for r in src_rows if r[2] == 'announcement')} announcement, "
@@ -306,6 +384,8 @@ def main() -> int:
         key=lambda t: (t[0], -t[2])))
     if dry:
         for r in rows[:3]: print("  sample:", r[0], r[4], r[5], "|", r[11][:110])
+        for r in [x for x in rows if x[12]][:3]:
+            print("  split-key sample:", r[0], r[12], r[4], r[8], r[9])
         for r in src_rows[:3]: print("  source:", r[2], r[3], r[4], "|", (r[7] or "")[:16], "|", r[8])
         return 0
     with pg:
@@ -314,12 +394,14 @@ def main() -> int:
         cur.executemany(
             """insert into budget_line_awards
                (pe_bli, exhibit, fiscal_year, organization, award_piid, recipient_name,
-                recipient_uei, matched_obligation, method, confidence, score, rationale)
-               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                recipient_uei, matched_obligation, method, confidence, score, rationale,
+                account)
+               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                on conflict (pe_bli, exhibit, fiscal_year, award_piid) do update set
                  confidence=excluded.confidence, method=excluded.method,
                  score=excluded.score, rationale=excluded.rationale,
-                 matched_obligation=excluded.matched_obligation""", rows)
+                 matched_obligation=excluded.matched_obligation,
+                 account=excluded.account""", rows)
         # Same delete-then-upsert shape as the links above, scoped to the two
         # kinds this loader owns: a link that stops being published must not
         # leave its source row behind for the citation tier to mint from.
@@ -343,6 +425,11 @@ def main() -> int:
         print("sources by basis:", pg2.execute(
             "select source_kind, coalesce(match_basis, '(null)'), count(*)"
             " from award_link_sources group by 1,2 order by 1, 3 desc").fetchall())
+        print("loaded on shared BLI codes:", pg2.execute(
+            "select pe_bli, account, method, confidence, count(*)"
+            " from budget_line_awards"
+            " where method in ('announcement+lexicon','subaward+lexicon')"
+            " and account is not null group by 1,2,3,4 order by 1,2,3").fetchall())
     return 0
 
 

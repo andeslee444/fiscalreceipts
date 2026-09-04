@@ -42,6 +42,9 @@
  *     workbook line at all) states its absence, states it about the record
  *     that is actually blank, and states nothing the page itself contradicts
  *     — see leg k's own block at the bottom.
+ * (n) A pe_bli shared by two programs files each member's crosswalk links on
+ *     that member's own page, never on both and never on the bare
+ *     disambiguation stub (ROADMAP #70) — see leg n's own block at the bottom.
  */
 
 import fs from "fs";
@@ -339,7 +342,117 @@ export async function runProgramSkeletonGate() {
   // ── (k) the decade-only tier's absence claims (ROADMAP #28) ─────────────
   runDecadeOnlyLeg({ errors, notes, sidecars });
 
+  // ── (n) a shared BLI code's members own their own awards (ROADMAP #70) ──
+  runSplitKeyAwardsLeg({ errors, notes, sidecars });
+
   return { pass: errors.length === 0, errors, notes };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg n — a shared BLI code's two members own their own awards (ROADMAP #70)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Ten pe_bli values are shared by TWO real programs that differ only by
+// appropriation account ('3010' is LPD Flight II in Shipbuilding & Conversion,
+// Navy AND Shipboard Tactical Communications in Other Procurement, Navy).
+// Sprint E gave each member its own page and made the bare /program/{pe}/ a
+// disambiguation stub; #70 makes their crosswalk links land on the right
+// member by carrying the account the link's own evidence identified.
+//
+// The failure this leg exists to catch is the #56 fusion shape, relocated
+// into the Related Awards table: an exporter keyed on the BARE pe_bli hands
+// BOTH members every award on the shared code, so a reader sees one program's
+// contracts filed under the other's name — with every number↔citation gate
+// still green, because each link is individually true. Three checks:
+//
+//   1. no award PIID appears on more than one member of one shared code;
+//   2. each member's programs.json award_count equals its own sidecar's
+//      awards array (the count and the table cannot disagree);
+//   3. the bare key owns no sidecar and its stub page renders no awards
+//      table — the stub is a chooser, and it must never state award facts
+//      about a program the reader has not chosen yet.
+function runSplitKeyAwardsLeg({ errors, notes, sidecars }) {
+  const programsPath = path.join(jsonDir, "programs.json");
+  if (!fs.existsSync(programsPath)) {
+    errors.push("program-skeleton(n): data/site/json/programs.json missing");
+    return;
+  }
+  const byPe = new Map();
+  for (const p of readJson(programsPath)) {
+    if (!byPe.has(p.pe_bli)) byPe.set(p.pe_bli, []);
+    byPe.get(p.pe_bli).push(p);
+  }
+  const splits = [...byPe.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .sort(([a], [b]) => (a < b ? -1 : 1));
+  if (splits.length === 0) {
+    notes.push("leg n: no shared BLI codes in this corpus — nothing to check");
+    return;
+  }
+
+  let membersWithAwards = 0;
+  let awardRows = 0;
+  for (const [pe, rows] of splits) {
+    const ownerOfPiid = new Map();
+    for (const r of rows) {
+      const d = sidecars.get(r.slug);
+      if (!d) {
+        errors.push(
+          `program-skeleton(n): shared-code member /program/${r.slug}/ has no ` +
+            `program_details sidecar`,
+        );
+        continue;
+      }
+      const awards = d.awards ?? [];
+      if (awards.length) membersWithAwards++;
+      awardRows += awards.length;
+      for (const a of awards) {
+        const piid = a.award_piid;
+        if (!piid) continue;
+        const prior = ownerOfPiid.get(piid);
+        if (prior !== undefined && prior !== r.slug) {
+          errors.push(
+            `program-skeleton(n): award ${piid} is listed on BOTH ` +
+              `/program/${prior}/ and /program/${r.slug}/ — the two programs ` +
+              `sharing code ${pe} are different programs and their money is ` +
+              `never combined`,
+          );
+        }
+        ownerOfPiid.set(piid, r.slug);
+      }
+      if (
+        typeof r.award_count === "number" &&
+        r.award_count !== awards.length
+      ) {
+        errors.push(
+          `program-skeleton(n): /program/${r.slug}/ programs.json award_count ` +
+            `is ${r.award_count} but its sidecar lists ${awards.length} award(s)`,
+        );
+      }
+    }
+
+    if (sidecars.has(pe)) {
+      errors.push(
+        `program-skeleton(n): bare shared code ${pe} owns a program_details ` +
+          `sidecar — /program/${pe}/ is a disambiguation stub, not a program page`,
+      );
+    }
+    const stubPath = pageHtmlPath(pe);
+    if (fs.existsSync(stubPath)) {
+      const root = parse(fs.readFileSync(stubPath, "utf8"), { comment: false });
+      if (root.querySelector('[data-sort-table="program-awards"]')) {
+        errors.push(
+          `program-skeleton(n): the /program/${pe}/ disambiguation stub renders ` +
+            `an awards table — it cannot say whose awards those are`,
+        );
+      }
+    }
+  }
+  notes.push(
+    `leg n: ${splits.length} shared BLI code(s) checked; ` +
+      `${membersWithAwards} member page(s) carry ${awardRows} award row(s), ` +
+      `no PIID shared between siblings, no stub rendering awards`,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -50,8 +50,11 @@ JBOOK_NARRATIVE_COLS = (
 )
 
 JBOOK_AWARD_COLS = (
+    # `account` (migration 014, ROADMAP #70): the ONE program a link belongs
+    # to for a pe_bli two programs share; NULL for every key that names one.
     "pe_bli, exhibit, fiscal_year, organization, award_piid,"
-    " recipient_name, recipient_uei, matched_obligation, method, confidence, score, rationale"
+    " recipient_name, recipient_uei, matched_obligation, method, confidence, score,"
+    " rationale, account"
 )
 
 
@@ -193,7 +196,7 @@ def make_lake(data_dir: Path):
     )
     duckdb.sql(
         f"copy (select * from (values ('0601101E','R-1','2026','DARPA','HR001124C0001',"
-        f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account'),"
+        f"'ACME RESEARCH','UEI1','5000000','account+tokens','high','4','test account','0400'),"
         # 2026-09-04 (#75 fix round 1, finding 1): HR001124C0002 is
         # account+tokens/high with NO matching adjudication row below — the
         # mart's demotion `case` (fct_budget_to_awards.sql) must publish it
@@ -201,12 +204,23 @@ def make_lake(data_dir: Path):
         # The pre-existing HR001124C0001 fixture always had an adjudication
         # row, so it could never exercise this branch.
         f"('0601101E','R-1','2026','DARPA','HR001124C0002',"
-        f"'WIDGET CORP','UEI2','3000000','account+tokens','high','4','test account, unadjudicated'),"
+        f"'WIDGET CORP','UEI2','3000000','account+tokens','high','4','test account, unadjudicated','0400'),"
         # HR001124C0003 is adjudicated 'reject' below (mechanical tag is
         # irrelevant) — must drop out of the mart entirely, not just get a
         # low confidence.
         f"('0601101E','R-1','2026','DARPA','HR001124C0003',"
-        f"'GAMMA INC','UEI3','2000000','account+tokens','high','4','test account, rejected'))"
+        f"'GAMMA INC','UEI3','2000000','account+tokens','high','4','test account, rejected','0400'),"
+        # ROADMAP #70: the shared '3010' code (LPD Flight II in 1611N,
+        # Shipboard Tactical Communications in 1810N — the budget_lines rows
+        # above) with ONE link per member. The mart must resolve each link's
+        # program_title through (pe_bli, account) and must NOT fan either row
+        # out across both dim_programs rows.
+        f"('3010','P-1','2026','N','N0002420C0001',"
+        f"'HUNTINGTON INGALLS','UEI4','9000000','fpds-ap','medium','1',"
+        f"'FPDS account narrowing; shared BLI code resolved to account 1611N','1611N'),"
+        f"('3010','P-1','2026','N','N0003917D0006',"
+        f"'SERCO','UEI5','1000000','fpds-ap','medium','1',"
+        f"'FPDS account narrowing; shared BLI code resolved to account 1810N','1810N'))"
         f" t({JBOOK_AWARD_COLS})) to '{jbooks}/budget_line_awards.parquet' (format parquet)"
     )
     # Hand-adjudication overlay (migration 010): the mart coalesces this over
@@ -430,6 +444,26 @@ def test_dbt_build_succeeds_on_fixture_lake(tmp_path):
     assert con.sql(
         "select count(*) from fct_budget_to_awards where award_piid='HR001124C0003'"
     ).fetchone()[0] == 0
+    # ROADMAP #70: the two links on the shared '3010' code each resolve to
+    # their OWN member's title through (pe_bli, account), and neither fans out
+    # across both dim_programs rows (the pre-#70 `programs` CTE deduped to one
+    # row per pe_bli precisely to stop that, and still does for account-NULL
+    # rows — this asserts the account-qualified join is a strict refinement).
+    split = con.sql(
+        "select award_piid, account, program_title, count(*) over () as n_rows"
+        " from fct_budget_to_awards where pe_bli='3010' order by award_piid"
+    ).fetchall()
+    assert split == [
+        ('N0002420C0001', '1611N', 'LPD Flight II', 2),
+        ('N0003917D0006', '1810N', 'Shipboard Tactical Communications', 2),
+    ], split
+    # An ordinary (single-program) pe_bli keeps its own title either way — the
+    # account-qualified join resolves it when dim_programs carries the account,
+    # the bare-key CTE when it does not.
+    assert con.sql(
+        "select account, program_title from fct_budget_to_awards"
+        " where award_piid='HR001124C0002'"
+    ).fetchone() == ('0400', 'DEFENSE RESEARCH')
     # fct_district_programs: the fixture contracts have CA-52 district + award HR001124C0001
     # which matches the high-confidence jbook_award. Expect >= 1 row.
     assert con.sql("select count(*) from fct_district_programs").fetchone()[0] >= 1
