@@ -453,40 +453,110 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (a maximal-recall linker would have manufactured doubt about all of them).
   Precision-over-recall in citation UX is a trust feature, not a coverage gap.
 
+- **2026-09-04: crosswalk follow-ups (#70–#77 + raw-corpus backup), one SDD
+  plan, 20 commits.** What the reviews caught, in the order they bit: (1) the
+  announcement citation card said the announcement "names both this contract
+  and this program" — true for 190 of 708 links; the rest were matched by a
+  normalized designator, an LLM-judged alias or the work description, and 324
+  recorded no basis at all → `match_basis` carried end to end and rendered in
+  words. (2) `/methodology/` listed measured precision for a tier withdrawn
+  four commits earlier and 100% for `fpds-ap` on a population that no longer
+  existed (pooled honest figure 94/120); `account+subagency 60/60` had been
+  adjudicated against the rule itself, not program attribution → figures now
+  tally by the tier a link publishes under today, latest sample only, and
+  unmeasured tiers are named (gate 24 leg n checks listed ⊆ published ⊆
+  listed-or-named). (3) The in-table medium caveat shipped two commits before
+  the FPDS tier moved into medium and was false for ~2,000 rows. (4)
+  `program_dollars`/HHI formula text said "high-confidence join, obligation
+  > 0" over a high+medium, net-of-deobligation sum. (5) `/json/feed.json` 404'd
+  in production — reached only by client fetch, invisible to the link-graph
+  gate → fetch-target leg. (6) The brief's unbounded `jbooks crosswalk --org
+  DARPA` cross-joined 177 line-editions × a FY2017–26 lake (+2,214,705 rows;
+  reverted from a parquet backup). Lessons: any change to a tier's name,
+  membership or threshold must re-read every rendered sentence that names a
+  tier; a precision study must record its rubric and refuse to publish strata
+  judged on different questions side by side; loaders that share a key need
+  the same method guard regardless of run order; a gate that resolves hrefs
+  does not see fetches.
+
 ## Improvement backlog (content + tech; pulled into phases as they fit)
 
 - **#70 Collision-key program pages (E3).** 8 numeric pe_blis carry two
   programs each (e.g. `3010`); all award links on them are excluded (53 wave-3
   pairs incl. every ADNS link; earlier FPDS/DARPA exclusions). Needs
   account-qualified program routes so a link can name which program.
-  **Status:** open (owner call, 2026-09-04).
+  **Status:** CLOSED 2026-09-04 — E3 composite slugs reused (no new route); 10 account-split keys are link targets when the award's accounts identify one member (86 links on 7 member pages; 3 org-split keys stay excluded); migration 014; gate 21 leg n with a measured floor.
 - **#71 Announcement source kind in the citation panel.** Announcement- and
   subaward-derived links carry provenance in `rationale` text (article id,
   date, URL / subaward number) but the cite panel has no first-class
   "announcement" kind (URL + archive snapshot + sha256 from the manifest).
-  **Status:** open (2026-09-04).
+  **Status:** CLOSED 2026-09-04 — `announcement` citation kind (defense.gov URL, Wayback snapshot, sha256, match_basis; migrations 012/013); 708 rows; exporter fails loudly without a source row; subaward links still cite the derived row (see #84).
 - **#72 Held-out precision study on the new link tiers.** The retired tier was
   measured (9.1%); the FPDS-AP, announcement and subaward tiers rely on the
   adversarial refute pass as their precision control. Run a hand-adjudicated
-  held-out sample and publish the number either way. **Status:** open.
+  held-out sample and publish the number either way. **Status:** CLOSED 2026-09-04 — 300-link held-out study (migration 011); FPDS unique-line high tier withdrawn at 34/60; figures derived onto /methodology/ by the tier each link publishes under today (fpds-ap 94/120, announcement 51/54 (six sampled links unpublished by the later money-color guard drop out, 3 confirmed + 3 refuted), subaward 53/60); account+subagency reported as unmeasured for program attribution (its stratum was judged on the rule, not attribution — see #79).
 - **#73 /feed/ pagination UX.** The page is a 75-per-section digest with a
   truncation note; a client-side expand (the ProgramAwards pattern) would let
-  readers reach the full set without RSS. **Status:** open (2026-09-02).
+  readers reach the full set without RSS. **Status:** CLOSED 2026-09-04 — client-side expand per section (lookup props, byte-identical client twin pinned by a parity test); /json/feed.json was never copied to public/ (live 404) — fixed and gated.
 - **#74 SAM.gov solicitations leg.** Official API key-gated; unauthenticated
   search returns 0 for bare PE codes. Needs a real spike (archived-index
   params, FBO-era Internet Archive fallback). Task chip filed with probe
-  notes. **Status:** open.
+  notes. **Status:** CLOSED 2026-09-04 — NEGATIVE: 0/10 bare-PE queries, 75 solicitation records + 3 archived FBO pages regex-scanned, 0 PE-code hits; key-gated attachment/SOW text untested (docs/superpowers/reviews/sam-solicitations-spike.md).
 - **#75 Mechanical crosswalk v1 debts (medium tier).** The 9,142 DARPA
   `account+subagency` rows still carry v1 mechanics: hardcoded DARPA clause,
   calendar-year (not federal FY) filter, full-award obligation attributed to
-  the account. Fix before any non-DARPA mechanical run. **Status:** open.
+  the account. Fix before any non-DARPA mechanical run. **Status:** CLOSED 2026-09-04 — federal-FY filter, single-account obligations, seed-driven aliases, conditional upsert guard (mechanical re-runs cannot overwrite evidence-graded rows), mart demotes unadjudicated mechanical high → medium. The brief's unbounded DARPA re-run cross-joined editions × the decade lake (+2.2M rows, reverted) — see #78.
 - **#76 Program-count denominators.** 1,739 (parquet, correct per #35) vs
   1,741/1,753 on some surfaces; reconcile to one build-derived value.
-  **Status:** open.
+  **Status:** CLOSED 2026-09-04 — registry-derived denominator only; stale literals demoted to dated comments.
 - **#77 In-table medium caveat.** Related Awards tables disclose the tier on
   the badge and /methodology/ only; a one-line in-table note ("same account +
   same agency, not evidence this program paid") would stop presence-in-table
-  reading as attribution. **Status:** open.
+  reading as attribution. **Status:** CLOSED 2026-09-04 — in-table caveat true of every medium species (account/sub-agency association; FPDS tag or subaward description establishes the program, not the line); gate 21 leg m.
+- **#78 `jbooks crosswalk` has no default FY window.** With the lake at ten
+  fiscal years, an unbounded `--org` run cross-joins every line-edition against
+  every award of the org's account (177 × 13,216 for DARPA). Add a default
+  window (the line's own edition FY) or a per-edition line filter, and a
+  projected-row dry-run abort. **Status:** open (2026-09-04).
+- **#79 Precision study rubric.** `link_precision_samples` needs a `rubric`
+  column; strata judged on different questions must not publish side by side.
+  Re-adjudicate `account+subagency` against program attribution (its first
+  study confirmed only that the rule fired). **Status:** open (2026-09-04).
+- **#80 Owner call: should `fct_program_concentration` (program-page HHI +
+  program_dollars) be high-only?** It is high+medium by construction; 158 of
+  438 programs' blocks rest entirely on medium links, and medium is now
+  dominated by the unmeasured account+subagency tier (#79). Prose is honest
+  meanwhile. **Status:** open (owner call, 2026-09-04).
+- **#81 FeedCardItem shared shell.** The client twin (`feed-card-item-client.tsx`)
+  is pinned by a byte-identical parity test, not by construction; extract
+  `hhiScopeNote` and `Fy26SplitNote` to client-safe files and render one shell
+  from both trees. **Status:** open (2026-09-04).
+- **#82 Collision member pages: account in the title block.** E3 pages render
+  the member title but not its appropriation; the gate-21 assertion the #70
+  plan wanted needs that UI. Also: district cards and filing mentions on shared
+  codes still link the bare-key stub, and a withheld concentration block
+  suppresses the named-prime/lobbied-by fallback on 3010's members.
+  **Status:** open (2026-09-04).
+- **#83 Two definitions of "account-split"** (`scripts/collision_keys.py` vs
+  `_ProgramIdentity.is_account_split`) — fail-closed today; unify.
+  **Status:** open (2026-09-04).
+- **#84 Subaward citation kind.** `subaward+lexicon` links (67) still cite the
+  generic derived row; `award_link_sources` already records the subaward number.
+  **Status:** open (2026-09-04).
+- **#85 Mechanical crosswalk nondeterminism.** `crosswalk_org` selects several
+  title variants per (pe_bli, exhibit, FY, account) key and the last iteration's
+  token overlap wins the tag (±346 medium / +119 high on an identical re-run).
+  **Status:** open (2026-09-04).
+- **#86 Task-5 deferred minors:** `_ALIASES_CSV` via `config.ROOT`; upsert count
+  overstates guarded skips; NULL `action_date` untested under an FY window;
+  f-string SQL for `fed_account`. **Status:** open (2026-09-04).
+- **#87 Task-4 deferred minors:** gate docstring rule 5 vs code; gate accepts
+  `archive_url` with null sha256; source map keyed (award_piid, pe_bli) collapses
+  a second announcement row per pair; loader delete is effectively a truncate.
+  **Status:** open (2026-09-04).
+- **#88 /feed/ expand payload.** "Show all" downloads the whole 862 KB
+  feed.json; a per-event-type sidecar would be a tenth of that.
+  **Status:** open (2026-09-04).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
