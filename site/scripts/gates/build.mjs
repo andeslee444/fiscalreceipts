@@ -362,7 +362,7 @@ export const PAGE_WEIGHT_BUDGET = [
   // the page whose job is to disclose method; ~6% convention over the
   // expansion build's measure.
   // Re-measured 2026-09-03 (announcement + subaward evidence-path paragraphs).
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "144,988 / 40,097" },
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 155_000, maxGzip: 42_500, measured: "150,339 / 41,862" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
