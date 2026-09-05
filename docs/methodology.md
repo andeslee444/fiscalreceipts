@@ -161,10 +161,13 @@ narratives and project titles, and every proposed program-level link was then
 challenged by two independent adversarial reviewers — a link publishes as
 high only if neither could refute it. *High*: affirmative program-level
 evidence — the contract names a program the budget line's own J-book pages
-also name, adversarially verified. *Medium*: the award drew from the same
-appropriation account and was awarded by the program's agency; an
-agency-and-account association, not evidence this specific program paid for
-the contract. *Low*: only the account matches — never published. The earlier
+also name, adversarially verified. *Medium*: most such links are
+account-based — the award drew from the same appropriation account as the
+program, usually under the same sub-agency — an association, not evidence
+this specific program paid for the contract. Where the evidence is instead an
+FPDS acquisition-program tag or a subaward description (both detailed below),
+the program is established but which of its budget lines paid is not.
+*Low*: only the account matches — never published. The earlier
 automated high tier (account match plus keyword overlap) measured 9.1%
 precise under this adjudication (37 of 408 confirmed) and was corrected on
 2026-09-01; superseded links are retained in the correction record.

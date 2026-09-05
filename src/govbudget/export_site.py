@@ -2713,6 +2713,10 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     if not sample_id:
         return {}
 
+    # This tally's universe is Postgres budget_line_awards (confidence
+    # high/medium below), NOT the dbt mart _published_link_methods reads —
+    # identical for every published figure today; if they ever drift, the
+    # mart is the reader's universe.
     rows = pg.execute(
         "select b.method, s.verdict"
         " from link_precision_samples s"
@@ -8240,7 +8244,7 @@ def _write_all_sidecars(
             # Task E3 (URL contract): "slug" is the page's route/filename
             # identity — identical to pe_bli except for the 13 shared keys,
             # where it is the composite "{pe_bli}-{ACCOUNT_CODE}". account /
-            # account_title are null except on those same 16 rows. The
+            # account_title are null except on those same 27 rows. The
             # frontend uses slug for hrefs and account_title to disambiguate
             # a title that collides with its sibling (see programHref /
             # programDisplayTitle in lib/program-identity.ts).
@@ -8841,7 +8845,7 @@ def _write_all_sidecars(
 
     # Task E3 (Sprint E, ROADMAP #67): one sidecar per dim_programs ROW, not
     # per distinct pe_bli — all_prog_rows is a LIST (never deduped), so the
-    # 8 genuine appropriation-account collisions' two rows each get their
+    # 10 genuine appropriation-account collisions' two rows each get their
     # own iteration here, where the bare-pe_bli SET all_pe_blis used to
     # visit them once (silently keeping only one account's content). Every
     # other pe_bli has exactly one row and this loop is byte-for-byte

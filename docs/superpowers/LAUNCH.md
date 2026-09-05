@@ -20,9 +20,13 @@ Every step is idempotent — you can re-run any of them safely.
 ## Step 0 — Loader order (run BEFORE export-site, whenever links are rebuilt)
 
 The budget→award link loaders share one table (`budget_line_awards`) and one
-unique key `(pe_bli, exhibit, fiscal_year, award_piid)`. Each deletes only its
-OWN rows before writing, so the order they run in decides which evidence a
-shared key ends up carrying. **The canonical order is:**
+unique key `(pe_bli, exhibit, fiscal_year, award_piid)`. Each writes only its
+own rows: the mechanical crosswalk has no delete at all, it upserts under a
+method guard (`on conflict … do update … where method in ('account',
+'account+subagency','account+tokens')`), while the FPDS and announcement/
+subaward loaders delete their own method's rows before reinserting. Either
+way, the order they run in decides which evidence a shared key ends up
+carrying. **The canonical order is:**
 
 ```
 govbudget jbooks crosswalk           # mechanical account* rows

@@ -135,7 +135,24 @@ export default function MethodologyPage() {
         )
         .join("; ")
     : null;
-  const linkPrecisionUnmeasured = (linkPrecision?.unmeasured ?? []).join(", ");
+  const linkPrecisionUnmeasuredList = linkPrecision?.unmeasured ?? [];
+  const linkPrecisionUnmeasured = linkPrecisionUnmeasuredList.join(", ");
+  // Final wave 2, item 2: the paragraph below explaining WHY these tiers
+  // have no figure ("an appropriation-account match, narrowed by
+  // sub-agency…") is true only of the account family. It was hardcoded
+  // after the list, so a future unmeasured tier outside that family (an
+  // FPDS or subaward species, say) would render a false explanation with
+  // no gate able to catch it — the property lives in this derived boolean,
+  // not a literal. `account`/`account+subagency`/`account+tokens` measured
+  // 2026-09-04 against site_meta.link_precision.unmeasured.
+  const ACCOUNT_FAMILY_TIERS = new Set([
+    "account",
+    "account+subagency",
+    "account+tokens",
+  ]);
+  const linkPrecisionUnmeasuredAllAccountFamily = linkPrecisionUnmeasuredList.every(
+    (t) => ACCOUNT_FAMILY_TIERS.has(t),
+  );
   const linkPrecisionSampledAt = linkPrecision?.sampled_at ?? null;
   // §P1-8 syndication counts — the RSS files this build actually wrote.
   const feedInventory = getFeedInventory();
@@ -595,10 +612,14 @@ export default function MethodologyPage() {
                   <em>High</em>: affirmative program-level evidence — the contract
                   names a program that the budget line&apos;s own J-book pages also
                   name, verified adversarially.{" "}
-                  <em>Medium</em>: the award drew from the same appropriation
-                  account and was awarded by the program&apos;s agency; this is an
-                  agency-and-account association, not evidence that this specific
-                  program paid for the contract.{" "}
+                  <em>Medium</em>: most such links are account-based — the
+                  award drew from the same appropriation account as the
+                  program, usually under the same sub-agency — which is an
+                  association, not evidence that this specific program paid
+                  for the contract. Where the evidence is instead an FPDS
+                  acquisition-program tag or a subaward description (both
+                  detailed below), the program is established but which of
+                  its budget lines paid is not.{" "}
                   <em>Low</em>: only the account matches — never published. Our
                   earlier automated high tier (account match plus keyword overlap)
                   measured 9.1% precise under this adjudication (37 of 408 links
@@ -690,20 +711,26 @@ export default function MethodologyPage() {
                       <>
                         {" "}
                         No precision figure is published for the remaining
-                        tiers a reader can meet — {linkPrecisionUnmeasured}.
-                        Those rest on an appropriation-account match, narrowed
-                        by sub-agency, by keyword overlap, or by a hand
-                        adjudication that pinned the pair; an account match is
-                        an association by construction rather than proof this
-                        program paid, and how often it names the right program
-                        has not been independently measured. The account /
-                        sub-agency tier was sampled, but its adjudication asked
-                        only whether the mechanical rule had fired — the
-                        appropriation account, the sub-agency, the
-                        contract-number prefix — and not whether the award paid
-                        for this program, so those verdicts do not measure
-                        program attribution and are not published as if they
-                        did.
+                        tiers a reader can meet — {linkPrecisionUnmeasured}.{" "}
+                        {linkPrecisionUnmeasuredAllAccountFamily ? (
+                          <>
+                            Those rest on an appropriation-account match, narrowed
+                            by sub-agency, by keyword overlap, or by a hand
+                            adjudication that pinned the pair; an account match is
+                            an association by construction rather than proof this
+                            program paid, and how often it names the right program
+                            has not been independently measured. The account /
+                            sub-agency tier was sampled, but its adjudication asked
+                            only whether the mechanical rule had fired — the
+                            appropriation account, the sub-agency, the
+                            contract-number prefix — and not whether the award paid
+                            for this program, so those verdicts do not measure
+                            program attribution and are not published as if they
+                            did.
+                          </>
+                        ) : (
+                          "Their evidence paths are described above."
+                        )}
                       </>
                     )}
                   </p>

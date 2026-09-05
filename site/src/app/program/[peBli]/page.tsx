@@ -95,9 +95,10 @@ export const dynamicParams = false;
  * programs from programs.json plus the ~254 remaining rollup-tier sidecars
  * (R-1/P-1 figures + trajectory only, no matching R-2/P-40 J-book detail).
  *
- * Sprint E, Task E3 (ROADMAP #67): PLUS the 8 split-key STUB params — bare
- * pe_bli values with more than one programs.json row (a genuine
- * appropriation-account collision). A stub carries no program_details
+ * Sprint E, Task E3 (ROADMAP #67): PLUS the 13 split-key STUB params (all
+ * shared codes today — see getSplitProgramKeys) — bare pe_bli values with
+ * more than one programs.json row, whether an appropriation-account
+ * collision or an organization collision. A stub carries no program_details
  * sidecar of its own (see the stub branch below and program-skeleton.mjs's
  * exclusion of it), so it is not in getProgramPeBlis()'s directory listing —
  * union it in explicitly or its bare URL would 404.

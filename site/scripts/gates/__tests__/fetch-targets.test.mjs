@@ -22,6 +22,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, it, expect } from "vitest";
 import {
+  runJsonXmlHrefLeg,
   sameOriginJsonXmlTarget,
   scanFetchTargets,
   staticFetchTargets,
@@ -169,5 +170,45 @@ describe("sameOriginJsonXmlTarget — the href half of leg (i)", () => {
   it("ignores an empty or missing href", () => {
     expect(sameOriginJsonXmlTarget("")).toBeNull();
     expect(sameOriginJsonXmlTarget(undefined)).toBeNull();
+  });
+});
+
+describe("runJsonXmlHrefLeg — the href floor must not be backfilled by fetch targets", () => {
+  // Regression: a `checked` counter shared by the href sweep and the
+  // fetch-target sweep meant `checked === 0` could never fire once the
+  // real site/src's >= MIN_STATIC_FETCH_TARGETS static fetch targets were
+  // found — an href-sweep regression (broken selector, empty page set)
+  // would pass green. A `pages` list that resolves to nothing built (no
+  // file under site/out for any of these URLs) forces the href sweep to
+  // zero while scanFetchTargets(srcDir) still runs for real and finds its
+  // usual targets, proving the two counters are independent.
+  const NEVER_BUILT_PAGES = ["/__leg_i_regression_test__/no-such-page/"];
+
+  it("errors on zero hrefs even though real fetch targets are present", () => {
+    const errors = [];
+    const notes = [];
+    runJsonXmlHrefLeg(errors, notes, NEVER_BUILT_PAGES);
+
+    // Sanity: the fetch-target half really did find targets in this run —
+    // otherwise this test would pass for the wrong reason (both zero).
+    expect(scanFetchTargets(srcDir).size).toBeGreaterThan(0);
+
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "leg i: 0 same-origin .json/.xml hrefs found across scanned pages",
+        ),
+      ]),
+    );
+  });
+
+  it("does not report the href sweep as a passing 'all resolve' note when it found zero", () => {
+    const errors = [];
+    const notes = [];
+    runJsonXmlHrefLeg(errors, notes, NEVER_BUILT_PAGES);
+
+    for (const note of notes) {
+      expect(note).not.toMatch(/^leg i: \d+ same-origin target\(s\)/);
+    }
   });
 });

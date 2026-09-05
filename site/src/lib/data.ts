@@ -406,14 +406,15 @@ export interface ProgramHHI {
 export interface ProgramRow {
   award_count: number;
   /**
-   * Sprint E, Task E3 (ROADMAP #67): null for the SYNTHETIC side of one of
-   * the 10 appropriation-account collisions (e.g. LPD Flight II; Sprint E
-   * measured 8, the corpus grew to 10 with the last Navy procurement
-   * books — re-measured 2026-09-04) — that
-   * account has no R-2/P-40 exhibit behind it at all (dbt/models/marts/
-   * dim_programs.sql's `synth` branch), so there is no exhibit to name.
-   * Every consumer already treats "budget"/unknown as the honest fallback
-   * label (rollup-tier programs produce it too) — see answerFamilyPlain /
+   * Sprint E, Task E3 (ROADMAP #67): reserved for the SYNTHETIC side of a
+   * split-key collision (13 shared pe_bli codes, 27 programs.json rows: 10
+   * appropriation-account + 3 organization) whose bare pe_bli has no
+   * R-2/P-40 exhibit behind it at all (dbt/models/marts/dim_programs.sql's
+   * `synth` branch) — that side would carry this as null, since there is no
+   * exhibit to name. All 27 shared-code rows currently carry real detail
+   * (measured 2026-09-04); a synthetic side would be null. Every consumer
+   * already treats "budget"/unknown as the honest fallback label
+   * (rollup-tier programs produce it too) — see answerFamilyPlain /
    * exhibitFamilyLabel.
    */
   exhibit_family: string | null;
@@ -490,7 +491,7 @@ export function getPrograms(): ProgramRow[] {
 
 /**
  * Keyed by SLUG (Sprint E, Task E3 — ROADMAP #67), not pe_bli: identical to
- * pe_bli for every ordinary program, but the 8 genuine appropriation-account
+ * pe_bli for every ordinary program, but the 10 genuine appropriation-account
  * collisions each carry TWO programs.json rows sharing one pe_bli — keying
  * by pe_bli would silently collapse them (whichever iterated last wins),
  * exactly the #56 fusion failure this sprint removes. `[peBli]`'s dynamic
@@ -1281,8 +1282,9 @@ export function getDetailGradeCount(): number {
   // now legitimately exceeds the detail-grade sidecar count by exactly the
   // number of those synthetic rows. slugsWithNoDetailExpected identifies
   // them independently (account !== null on the programs.json row — real
-  // only for the 27 split-key rows, some of which are synthetic by design)
-  // so the assertion can allow exactly that gap instead of forbidding it.
+  // only for the 27 split-key rows; all 27 currently carry real detail, so
+  // a synthetic side would be null) so the assertion can allow exactly
+  // that gap instead of forbidding it.
   const slugsWithAccount = new Set(
     getPrograms()
       .filter((p) => p.account !== null)

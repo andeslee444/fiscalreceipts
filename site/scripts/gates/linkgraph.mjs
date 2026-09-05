@@ -822,10 +822,23 @@ export function scanFetchTargets(dir) {
  *  client stops fetching one of these; do not lower it to fit. */
 const MIN_STATIC_FETCH_TARGETS = 5;
 
-function runJsonXmlHrefLeg(errors, notes) {
+/** Exported for scripts/gates/__tests__/fetch-targets.test.mjs, which needs
+ *  to force the href sweep to zero (a fake, guaranteed-unbuilt `pages` list)
+ *  while the fetch-target sweep still runs for real against site/src — the
+ *  exact split the hrefsChecked/fetchTargets separation below exists for. */
+export function runJsonXmlHrefLeg(
+  errors,
+  notes,
+  pages = [...FRAGMENT_HUB_PAGES, ...sampledDetailPages()],
+) {
   const existing = jsonXmlPathsUnderOut();
-  const pages = [...FRAGMENT_HUB_PAGES, ...sampledDetailPages()];
-  let checked = 0;
+  // Counts ONLY the href sweep. Kept apart from the fetch-target sweep below
+  // on purpose: scanFetchTargets(srcDir) always finds >= MIN_STATIC_FETCH_
+  // TARGETS regardless of what the href sweep saw, so folding both into one
+  // counter let an href-sweep regression (broken selector, empty page set)
+  // hide behind the fetch-target count and report green — see the vacuity
+  // check below.
+  let hrefsChecked = 0;
   const missing = new Map(); // target -> {count, sources:Set}
 
   for (const pageUrl of pages) {
@@ -835,7 +848,7 @@ function runJsonXmlHrefLeg(errors, notes) {
     for (const a of root.querySelectorAll("a[href]")) {
       const target = sameOriginJsonXmlTarget(a.getAttribute("href"));
       if (!target) continue;
-      checked += 1;
+      hrefsChecked += 1;
       if (!existing.has(target)) {
         const rec = missing.get(target) ?? { count: 0, sources: new Set() };
         rec.count += 1;
@@ -849,7 +862,6 @@ function runJsonXmlHrefLeg(errors, notes) {
   const fetchTargets = scanFetchTargets(srcDir);
   const deadFetch = [];
   for (const [target, sources] of [...fetchTargets].sort()) {
-    checked += 1;
     // out/ holds every shipped asset, not just .json/.xml (e.g. /config.json
     // is copied by prepare-assets), so test the file directly rather than
     // reusing the .json/.xml index above.
@@ -857,13 +869,14 @@ function runJsonXmlHrefLeg(errors, notes) {
     if (!fs.existsSync(abs)) deadFetch.push([target, sources]);
   }
 
-  if (checked === 0) {
+  // Non-vacuity floor for the href half ONLY — the fetch-target floor right
+  // below is separate and must not backfill this one (that was the bug).
+  if (hrefsChecked === 0) {
     errors.push(
       "leg i: 0 same-origin .json/.xml hrefs found across scanned pages — " +
         "non-vacuity failure (the leg has nothing to check; a selector or " +
         "page-set regression would look identical to 'all good')",
     );
-    return;
   }
   if (fetchTargets.size < MIN_STATIC_FETCH_TARGETS) {
     errors.push(
@@ -890,10 +903,10 @@ function runJsonXmlHrefLeg(errors, notes) {
           `at out${target}`,
       );
     }
-  } else if (deadFetch.length === 0) {
+  } else if (deadFetch.length === 0 && hrefsChecked > 0) {
     notes.push(
-      `leg i: ${checked} same-origin target(s) — ` +
-        `${checked - fetchTargets.size} .json/.xml href(s) across ` +
+      `leg i: ${hrefsChecked + fetchTargets.size} same-origin target(s) — ` +
+        `${hrefsChecked} .json/.xml href(s) across ` +
         `${pages.length} scanned page(s) plus ${fetchTargets.size} static ` +
         `client fetch target(s) (floor ${MIN_STATIC_FETCH_TARGETS}) — all ` +
         `resolve to a built file ✓`,
